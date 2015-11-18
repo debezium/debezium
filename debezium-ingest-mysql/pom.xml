@@ -109,15 +109,8 @@
                                     <color>yellow</color>
                                 </log>
                                 <wait>
-                                    <!-- 
-                                    This is about as good as we can do with this base image. When this message is output
-                                    to the log, the container has not yet restarted `mysqld`, and so if the integration
-                                    tests run quickly enough they may run before the server has indeed started.
-                                    But on a decent laptop, this consistently works.
-                                    -->
                                     <log>MySQL init process done. Ready for start up.</log>
-                                    <!-- No more than 20 seconds -->
-                                    <time>20000</time>
+                                    <time>30000</time> <!-- 30 seconds max -->
                                 </wait>
                             </run>
                         </image>

@@ -104,7 +104,7 @@ public class TestDatabase {
             setProperties.accept(props);
         }
         Connection conn = DriverManager.getConnection(url, props);
-        LOGGER.info("Connected to {} with properties: {}",url, props);
+        LOGGER.info("Connected to {} with {}",url, props);
         return conn;
     }
 

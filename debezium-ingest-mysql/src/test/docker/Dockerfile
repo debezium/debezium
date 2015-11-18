@@ -1,4 +1,4 @@
-FROM mysql:5.7
+FROM mysql/mysql-server:5.7
 
 MAINTAINER Debezium Community
 

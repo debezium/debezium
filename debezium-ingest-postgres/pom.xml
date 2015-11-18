@@ -104,6 +104,7 @@
                                 </log>
                                 <wait>
                                     <log>PostgreSQL init process complete; ready for start up.</log>
+                                    <time>30000</time> <!-- 30 seconds max -->
                                 </wait>
                             </run>
                         </image>
