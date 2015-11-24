@@ -19,7 +19,7 @@
     <dependencies>
         <dependency>
             <groupId>io.debezium</groupId>
-            <artifactId>debezium-ingest-jdbc</artifactId>
+            <artifactId>debezium-core</artifactId>
         </dependency>
         <dependency>
             <groupId>mysql</groupId>
@@ -36,7 +36,7 @@
         <!-- Testing -->
         <dependency>
             <groupId>io.debezium</groupId>
-            <artifactId>debezium-ingest-jdbc</artifactId>
+            <artifactId>debezium-core</artifactId>
             <type>test-jar</type>
         </dependency>
         <dependency>
@@ -63,7 +63,7 @@
         work on all platforms. We'll set some of these as system properties during integration testing.
         -->
         <database.port>3306</database.port>
-        <database.username>mysqluser</database.username>
+        <database.user>mysqluser</database.user>
         <database.password>mysqlpw</database.password>
     </properties>
     <build>
@@ -97,7 +97,7 @@
                                 <env>
                                     <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
                                     <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
-                                    <MYSQL_USER>${database.username}</MYSQL_USER>
+                                    <MYSQL_USER>${database.user}</MYSQL_USER>
                                     <MYSQL_PASSWORD>${database.password}</MYSQL_PASSWORD>
                                 </env>
                                 <ports>
@@ -165,7 +165,7 @@
                         <!-- Make these available to the tests via system properties -->
                         <database.hostname>${dockerhost.ip}</database.hostname>
                         <database.port>${database.port}</database.port>
-                        <database.username>${database.username}</database.username>
+                        <database.user>${database.user}</database.user>
                         <database.password>${database.password}</database.password>
                     </systemPropertyVariables>
                 </configuration>
@@ -211,6 +211,6 @@
                     <include>**/*</include>
                 </includes>
             </testResource>
-        </testResources>        
+        </testResources>
     </build>
 </project></project>

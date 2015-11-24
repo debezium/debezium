@@ -19,7 +19,7 @@
     <dependencies>
         <dependency>
           <groupId>io.debezium</groupId>
-          <artifactId>debezium-ingest-jdbc</artifactId>
+          <artifactId>debezium-core</artifactId>
         </dependency>
         <dependency>
             <groupId>org.postgresql</groupId>
@@ -32,7 +32,7 @@
         <!-- Testing -->
         <dependency>
             <groupId>io.debezium</groupId>
-            <artifactId>debezium-ingest-jdbc</artifactId>
+            <artifactId>debezium-core</artifactId>
             <type>test-jar</type>
         </dependency>
         <dependency>
@@ -59,7 +59,7 @@
         work on all platforms. We'll set some of these as system properties during integration testing.
         -->
         <database.port>5432</database.port>
-        <database.username>postgres</database.username>
+        <database.user>postgres</database.user>
         <database.password>postgres</database.password>
     </properties>
     <build>
@@ -91,7 +91,7 @@
                                     </bind>
                                 </volumes-->
                                 <env>
-                                    <POSTGRES_USER>${database.username}</POSTGRES_USER>
+                                    <POSTGRES_USER>${database.user}</POSTGRES_USER>
                                     <POSTGRES_PASSWORD>${database.password}</POSTGRES_PASSWORD>
                                 </env>
                                 <ports>
@@ -159,7 +159,7 @@
                         <!-- Make these available to the tests via system properties -->
                         <database.hostname>${dockerhost.ip}</database.hostname>
                         <database.port>${database.port}</database.port>
-                        <database.username>${database.username}</database.username>
+                        <database.user>${database.user}</database.user>
                         <database.password>${database.password}</database.password>
                     </systemPropertyVariables>
                 </configuration>

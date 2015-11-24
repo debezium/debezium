@@ -14,9 +14,9 @@
         <!--property name="fileExtensions" value="java,cnd"/-->
         <property name="fileExtensions" value="java"/>
         <!-- Exclude any classes that keep their own copyright and header -->
-        <property name="excludedClasses" value=""/>
+        <property name="excludedClasses" value="io.debezium.util.VariableLatch"/>
         <!-- Exclude any directories that contain completely different headers -->
-        <!-- property name="excludedFilesRegex" value="io/debezium/something"/-->
+        <property name="excludedFilesRegex" value="io/debezium/annotation/.*"/>
     </module>
 
     <module name="TreeWalker">
@@ -103,7 +103,7 @@
         <!-- Required to get SuppressionCommentFilter to work -->
         <module name="FileContentsHolder" />
 
-        <!-- Checks that ModeShape is expressly NOT using -->
+        <!-- Checks that Debezium is expressly NOT using -->
         <!--module name="ModifiedControlVariable" /-->
         <!--module name="DeclarationOrder" /-->
         <!--module name="InnerTypeLast" /-->

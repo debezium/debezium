@@ -81,6 +81,7 @@
     </properties>
     <modules>
         <module>support/checkstyle</module>
+        <module>debezium-core</module>
         <module>debezium-ingest-jdbc</module>
         <module>debezium-ingest-postgres</module>
         <module>debezium-ingest-mysql</module>
@@ -149,6 +150,11 @@
             <!-- Debezium artifacts -->
             <dependency>
                 <groupId>io.debezium</groupId>
+                <artifactId>debezium-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
                 <artifactId>debezium-ingest-jdbc</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -169,6 +175,13 @@
             </dependency>
 
             <!-- Debezium test artifacts -->
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-core</artifactId>
+                <version>${project.version}</version>
+                <scope>test</scope>
+                <type>test-jar</type>
+            </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-ingest-jdbc</artifactId>
