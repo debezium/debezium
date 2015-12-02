@@ -1,7 +1,7 @@
-== Ingesting MySQL
+## Ingesting MySQL
 
 
-== Unit and integration tests
+## Unit and integration tests
 
 This module contains both unit tests and integration tests.
 
@@ -11,13 +11,39 @@ An *integration test* is a JUnit test class named `*IT.java` or `IT*.java` that 
 
 Running `mvn install` will compile all code and run the unit tests. If there are any problems, such as failing unit tests, the build will stop immediately. Otherwise, the build will create the module's artifacts, create the Docker image with MySQL, start the Docker container, run the integration tests, and stop the container even if there are integration test failures. If there are no problems, the build will end by installing the artifacts into the local Maven repository.
 
-You should always default to using `mvn install`, especially prior to committing changes to Git. However, there are a few situations where you may want to run a different Maven command:
+You should always default to using `mvn install`, especially prior to committing changes to Git. However, there are a few situations where you may want to run a different Maven command.
 
-* Normally, the MySQL Docker container is stopped and removed after the integration tests are run. If instead you want to inspect the state of the database(s) after the integration tests are run, you can use `mvn integration-test` to instruct Maven to run the normal Maven lifecycle but stop before shutting down the Docker container during the `post-integration-test` phase. Be aware that you will need to manually stop and remove the container before running the build again, and to make this more convenient we give the MySQL container the alias `database`:
+### Running some tests
+
+If you are trying to get the test methods in a single integration test class to pass and would rather not run *all* of the integration tests, you can instruct Maven to just run that one integration test class and to skip all of the others. For example, use the following command to run the tests in the `ConnectionIT.java` class:
+
+    $ mvn -Dit.test=ConnectionIT install
+
+Of course, wildcards also work:
+
+    $ mvn -Dit.test=Connect*IT install
+
+### Debugging tests
+
+Normally, the MySQL Docker container is stopped and removed after the integration tests are run. One way to debug tests is to configure the build to wait for a remote debugging client, but then you also have to set up your IDE to connect. It's often far easier to debug a single test directly from within your IDE. To do that, you want to start the MySQL Docker container and keep it running:
+
+    $ mvn docker:start
+
+Then use your IDE to run one or more unit tests, optionally debugging them as needed. Just be sure that the unit tests clean up their database before (and after) each test.
+
+To stop the container, simply use Docker to stop and remove the MySQL Docker container named `database`:
 
     $ docker stop database
     $ docker rm database
 
-* If you are trying to get the test methods in a single integration test class to pass and would rather not run *all* of the integration tests, you can instruct Maven to just run that one integration test class and to skip all of the others. For example, use the following command to run the tests in the `ConnectionIT.java` class:
+### Analyzing the database
 
-    $ mvn -Dit.test=ConnectionIT install
+Sometimes you may want to inspect the state of the database(s) after one or more integration tests are run. The `mvn install` command runs the tests but shuts down and removes the container after the tests complete. To keep the container running after the tests complete, use this Maven command:
+
+    $ mvn integration-test
+
+This instructs Maven to run the normal Maven lifecycle through `integration-test`, and to stop before the `post-integration-test` phase when the Docker container is normally shut down and removed. Be aware that you will need to manually stop and remove the container before running the build again, and to make this more convenient we give the MySQL container the alias `database`:
+
+    $ docker stop database
+    $ docker rm database
+
