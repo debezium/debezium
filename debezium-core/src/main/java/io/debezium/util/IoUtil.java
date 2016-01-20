@@ -30,8 +30,10 @@ import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.EnumSet;
+import java.util.Properties;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -420,6 +422,47 @@ public class IoUtil {
         if (stream != null && logger != null) {
             logger.accept("Found " + resourceDesc + " " + msg);
         }
+    }
+
+    /**
+     * Atomically load the properties file at the given location within the designated class loader.
+     * @param classLoader the supplier for the class loader; may not be null or return null
+     * @param classpathResource the path to the resource file; may not be null
+     * @return the properties object; never null, but possibly empty
+     * @throws IllegalStateException if the file could not be found or read
+     */
+    public static Properties loadProperties(Supplier<ClassLoader> classLoader, String classpathResource) {
+        // This is idempotent, so we don't need to lock ...
+        try (InputStream stream = classLoader.get().getResourceAsStream(classpathResource)) {
+            Properties props = new Properties();
+            props.load(stream);
+            return props;
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to find or read the '" + classpathResource + "' file using the " +
+                    classLoader + " class loader", e);
+        }
+    }
+
+    /**
+     * Atomically load the properties file at the given location within the designated class loader.
+     * @param classLoader the class loader; may not be null
+     * @param classpathResource the path to the resource file; may not be null
+     * @return the properties object; never null, but possibly empty
+     * @throws IllegalStateException if the file could not be found or read
+     */
+    public static Properties loadProperties(ClassLoader classLoader, String classpathResource) {
+        return loadProperties(()->classLoader,classpathResource);
+    }
+
+    /**
+     * Atomically load the properties file at the given location within the designated class' class loader.
+     * @param clazz the class whose class loader is to be used; may not be null
+     * @param classpathResource the path to the resource file; may not be null
+     * @return the properties object; never null, but possibly empty
+     * @throws IllegalStateException if the file could not be found or read
+     */
+    public static Properties loadProperties(Class<?> clazz, String classpathResource) {
+        return loadProperties(clazz::getClassLoader,classpathResource);
     }
 
     private IoUtil() {

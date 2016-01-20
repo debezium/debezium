@@ -7,6 +7,7 @@ package io.debezium.util;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
+import java.util.Objects;
 
 import io.debezium.annotation.ThreadSafe;
 
@@ -48,6 +49,31 @@ public final class Strings {
     }
 
     /**
+     * Returns a new String composed of the supplied integer values joined together
+     * with a copy of the specified {@code delimiter}.
+     *
+     * @param delimiter the delimiter that separates each element
+     * @param values the values to join together.
+     * @return a new {@code String} that is composed of the {@code elements} separated by the {@code delimiter}
+     *
+     * @throws NullPointerException If {@code delimiter} or {@code elements} is {@code null}
+     * @see java.lang.String#join
+     */
+    public static String join(CharSequence delimiter, int[] values) {
+        Objects.requireNonNull(delimiter);
+        Objects.requireNonNull(values);
+        if (values.length == 0) return "";
+        if (values.length == 1) return Integer.toString(values[0]);
+        StringBuilder sb = new StringBuilder();
+        sb.append(values[0]);
+        for (int i = 1; i != values.length; ++i) {
+            sb.append(delimiter);
+            sb.append(values[i]);
+        }
+        return sb.toString();
+    }
+
+    /**
      * Trim away any leading or trailing whitespace characters.
      * <p>
      * This is semantically equivalent to {@link String#trim()} but instead uses {@link #trim(String, CharacterPredicate)}.
@@ -57,7 +83,7 @@ public final class Strings {
      * @see #trim(String,CharacterPredicate)
      */
     public static String trim(String str) {
-        return trim(str, c -> c <= ' ');    // same logic as String.trim()
+        return trim(str, c -> c <= ' '); // same logic as String.trim()
     }
 
     /**
@@ -88,8 +114,8 @@ public final class Strings {
      * @param numberOfRepeats the number of times the character is to repeat in the result; must be greater than 0
      * @return the resulting string
      */
-    public static String createString( final char charToRepeat,
-                                       int numberOfRepeats ) {
+    public static String createString(final char charToRepeat,
+                                      int numberOfRepeats) {
         assert numberOfRepeats >= 0;
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < numberOfRepeats; ++i) {
@@ -109,16 +135,14 @@ public final class Strings {
      * @return the string of the desired length
      * @see #justifyLeft(String, int, char)
      */
-    public static String setLength( String original,
-                                    int length,
-                                    char padChar ) {
+    public static String setLength(String original,
+                                   int length,
+                                   char padChar) {
         return justifyLeft(original, length, padChar, false);
     }
 
     public static enum Justify {
-        LEFT,
-        RIGHT,
-        CENTER;
+        LEFT, RIGHT, CENTER;
     }
 
     /**
@@ -130,10 +154,10 @@ public final class Strings {
      * @param padWithChar the character to use for padding, if needed
      * @return the right justified string
      */
-    public static String justify( Justify justify,
-                                  String str,
-                                  final int width,
-                                  char padWithChar ) {
+    public static String justify(Justify justify,
+                                 String str,
+                                 final int width,
+                                 char padWithChar) {
         switch (justify) {
             case LEFT:
                 return justifyLeft(str, width, padWithChar);
@@ -158,9 +182,9 @@ public final class Strings {
      * @param padWithChar the character to use for padding, if needed
      * @return the right justified string
      */
-    public static String justifyRight( String str,
-                                       final int width,
-                                       char padWithChar ) {
+    public static String justifyRight(String str,
+                                      final int width,
+                                      char padWithChar) {
         assert width > 0;
         // Trim the leading and trailing whitespace ...
         str = str != null ? str.trim() : "";
@@ -195,16 +219,16 @@ public final class Strings {
      * @return the left justified string
      * @see #setLength(String, int, char)
      */
-    public static String justifyLeft( String str,
-                                      final int width,
-                                      char padWithChar ) {
+    public static String justifyLeft(String str,
+                                     final int width,
+                                     char padWithChar) {
         return justifyLeft(str, width, padWithChar, true);
     }
 
-    protected static String justifyLeft( String str,
-                                         final int width,
-                                         char padWithChar,
-                                         boolean trimWhitespace ) {
+    protected static String justifyLeft(String str,
+                                        final int width,
+                                        char padWithChar,
+                                        boolean trimWhitespace) {
         // Trim the leading and trailing whitespace ...
         str = str != null ? (trimWhitespace ? str.trim() : str) : "";
 
@@ -238,9 +262,9 @@ public final class Strings {
      * @return the left justified string
      * @see #setLength(String, int, char)
      */
-    public static String justifyCenter( String str,
-                                        final int width,
-                                        char padWithChar ) {
+    public static String justifyCenter(String str,
+                                       final int width,
+                                       char padWithChar) {
         // Trim the leading and trailing whitespace ...
         str = str != null ? str.trim() : "";
 
@@ -324,7 +348,7 @@ public final class Strings {
         }
         return defaultValue;
     }
-    
+
     /**
      * Parse the supplied string as a double value.
      * 
@@ -358,7 +382,7 @@ public final class Strings {
         }
         return defaultValue;
     }
-    
+
     private Strings() {
     }
 }

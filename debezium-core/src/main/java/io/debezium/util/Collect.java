@@ -14,6 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * A set of utilities for more easily creating various kinds of collections.
@@ -31,7 +32,7 @@ public class Collect {
      * @return the map that is limited in size by the specified number of entries; never null
      */
     public static <K, V> Map<K, V> fixedSizeMap(int maximumNumberOfEntries) {
-        return new LinkedHashMap<K, V>(maximumNumberOfEntries + 1, .75F, true) {    // throws illegal argument if < 0
+        return new LinkedHashMap<K, V>(maximumNumberOfEntries + 1, .75F, true) { // throws illegal argument if < 0
             private static final long serialVersionUID = 1L;
             final int evictionSize = maximumNumberOfEntries - 1;
 
@@ -42,7 +43,34 @@ public class Collect {
         };
     }
 
-    public static <T> Set<T> unmodifiableSet(@SuppressWarnings("unchecked") T... values) {
+    @SuppressWarnings("unchecked")
+    public static <T, V> Set<T> unmodifiableSet(Function<V, T> extractor, V... values) {
+        Set<T> newSet = new HashSet<>();
+        for (V value : values) {
+            if (value != null) newSet.add(extractor.apply(value));
+        }
+        return Collections.unmodifiableSet(newSet);
+    }
+
+    public static <T, V> Set<T> unmodifiableSet(Function<V, T> extractor, Collection<V> values) {
+        Set<T> newSet = new HashSet<>();
+        for (V value : values) {
+            if (value != null) newSet.add(extractor.apply(value));
+        }
+        return Collections.unmodifiableSet(newSet);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> Set<T> unmodifiableSet(Set<T> values, T... additionalValues) {
+        Set<T> newSet = new HashSet<>(values);
+        for (T value : values) {
+            if (value != null) newSet.add(value);
+        }
+        return Collections.unmodifiableSet(newSet);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> Set<T> unmodifiableSet(T... values) {
         return unmodifiableSet(arrayListOf(values));
     }
 
@@ -62,7 +90,8 @@ public class Collect {
         return result;
     }
 
-    public static <T> List<T> arrayListOf(T first, @SuppressWarnings("unchecked") T... additional) {
+    @SuppressWarnings("unchecked")
+    public static <T> List<T> arrayListOf(T first, T... additional) {
         List<T> result = new ArrayList<>();
         result.add(first);
         for (T another : additional) {
@@ -109,6 +138,23 @@ public class Collect {
         map.put(key3, value3);
         map.put(key4, value4);
         return map;
+    }
+
+    /**
+     * Set the value at the given position in the list, expanding the list as required to accommodate the new position.
+     * <p>
+     * This is not a thread-safe operation
+     * 
+     * @param list the list to be modified
+     * @param index the index position of the new value
+     * @param value the value
+     * @param defaultValue the value used for intermediate positions when expanding the list; may be null
+     */
+    public static <T> void set(List<T> list, int index, T value, T defaultValue) {
+        while (list.size() <= index) {
+            list.add(defaultValue);
+        }
+        list.set(index, value);
     }
 
     private Collect() {

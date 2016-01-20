@@ -21,25 +21,102 @@ import io.debezium.util.Collect;
 @Immutable
 public interface JdbcConfiguration extends Configuration {
 
+    public static final Field DATABASE = Configuration.field("dbname",
+                                                             "Name of the database");
+    public static final Field USER = Configuration.field("user",
+                                                         "Name of the database user to be used when connecting to the database");
+    public static final Field PASSWORD = Configuration.field("password",
+                                                             "Password to be used when connecting to the database");
+    public static final Field HOSTNAME = Configuration.field("hostname", "IP address of the database");
+    public static final Field PORT = Configuration.field("port", "Port of the database", 5432);
+
+    /**
+     * The set of pre-defined fields for JDBC configurations.
+     */
+    public static Set<String> ALL_KNOWN_FIELDS = Collect.unmodifiableSet(Field::name, DATABASE, USER, PASSWORD, HOSTNAME, PORT);
+
+    
+    /**
+     * Obtain a {@link JdbcConfiguration} adapter for the given {@link Configuration}.
+     * 
+     * @param config the configuration; may not be null
+     * @return the ClientConfiguration; never null
+     */
+    public static JdbcConfiguration adapt(Configuration config) {
+        if (config instanceof JdbcConfiguration) return (JdbcConfiguration) config;
+        return new JdbcConfiguration() {
+            @Override
+            public Set<String> keys() {
+                return config.keys();
+            }
+
+            @Override
+            public String getString(String key) {
+                return config.getString(key);
+            }
+
+            @Override
+            public String toString() {
+                return config.toString();
+            }
+        };
+    }
+
+    /**
+     * The JDBC-specific builder used to construct and/or alter JDBC configuration instances.
+     * 
+     * @see JdbcConfiguration#copy(Configuration)
+     * @see JdbcConfiguration#create()
+     */
     public static interface Builder extends Configuration.ConfigBuilder<JdbcConfiguration, Builder> {
+        /**
+         * Use the given user in the resulting configuration.
+         * 
+         * @param username the name of the user
+         * @return this builder object so methods can be chained together; never null
+         */
         default Builder withUser(String username) {
-            return with(Field.USER, username);
+            return with(USER, username);
         }
 
+        /**
+         * Use the given password in the resulting configuration.
+         * 
+         * @param password the password
+         * @return this builder object so methods can be chained together; never null
+         */
         default Builder withPassword(String password) {
-            return with(Field.PASSWORD, password);
+            return with(PASSWORD, password);
         }
 
+        /**
+         * Use the given host in the resulting configuration.
+         * 
+         * @param hostname the hostname
+         * @return this builder object so methods can be chained together; never null
+         */
         default Builder withHostname(String hostname) {
-            return with(Field.HOSTNAME, hostname);
+            return with(HOSTNAME, hostname);
         }
 
+        /**
+         * Use the given database name in the resulting configuration.
+         * 
+         * @param databaseName the name of the database
+         * @return this builder object so methods can be chained together; never null
+         */
         default Builder withDatabase(String databaseName) {
-            return with(Field.DATABASE, databaseName);
+            return with(DATABASE, databaseName);
         }
 
+        /**
+         * Use the given port in the resulting configuration.
+         * 
+         * @param port the port
+         * @return this builder object so methods can be chained together; never null
+         */
         default Builder withPort(int port) {
-            return with(Field.PORT, port);
+            return with(PORT, port);
         }
     }
 
@@ -99,24 +176,7 @@ public interface JdbcConfiguration extends Configuration {
     }
 
     /**
-     * The pre-defined fields for JDBC configurations.
-     */
-    public static interface Field {
-        public static final String USER = "user";
-        public static final String PASSWORD = "password";
-        public static final String DATABASE = "dbname";
-        public static final String HOSTNAME = "hostname";
-        public static final String PORT = "port";
-    }
-
-    /**
-     * The set of pre-defined fields for JDBC configurations.
-     */
-    public static Set<String> ALL_KNOWN_FIELDS = Collect.unmodifiableSet(Field.DATABASE, Field.USER, Field.PASSWORD, Field.HOSTNAME,
-                                                                         Field.PORT);
-
-    /**
-     * Get a predicate that determines if supplied keys are {@link Field pre-defined field names}.
+     * Get a predicate that determines if supplied keys are pre-defined field names.
      * 
      * @return the predicate; never null
      */
@@ -134,142 +194,56 @@ public interface JdbcConfiguration extends Configuration {
     }
 
     /**
-     * Obtain a {@link JdbcConfiguration} adapter for the given {@link Configuration}.
-     * 
-     * @param config the configuration; may not be null
-     * @return the ClientConfiguration; never null
-     */
-    public static JdbcConfiguration adapt(Configuration config) {
-        if (config instanceof JdbcConfiguration) return (JdbcConfiguration) config;
-        return new JdbcConfiguration() {
-            @Override
-            public Set<String> keys() {
-                return config.keys();
-            }
-
-            @Override
-            public String getString(String key) {
-                return config.getString(key);
-            }
-
-            @Override
-            public String toString() {
-                return config.toString();
-            }
-        };
-    }
-
-    /**
      * Get the hostname property from the configuration.
      * 
-     * @return the host name, or null if there is none.
+     * @return the specified or default host name, or null if there is none.
      */
     default String getHostname() {
-        return getHostname(null);
-    }
-
-    /**
-     * Get the hostname property from the configuration.
-     * 
-     * @param defaultValue the value to use by default
-     * @return the host name, or the {@code defaultValue} if there is no such property
-     */
-    default String getHostname(String defaultValue) {
-        return getString(Field.HOSTNAME, defaultValue);
+        return getString(HOSTNAME);
     }
 
     /**
      * Get the port property from the configuration.
      * 
-     * @return the port number, or null if there is none.
+     * @return the specified or default port number, or null if there is none.
      */
     default String getPortAsString() {
-        return getPort(null);
+        return getString(PORT);
     }
 
     /**
      * Get the port property from the configuration.
      * 
-     * @param defaultValue the value to use by default
-     * @return the port, or the {@code defaultValue} if there is no such property
+     * @return the specified or default port number, or null if there is none.
      */
-    default String getPort(String defaultValue) {
-        return getString(Field.PORT, defaultValue);
-    }
-
-    /**
-     * Get the port property from the configuration.
-     * 
-     * @return the port number, or null if there is none.
-     */
-    default Integer getPort() {
-        return getInteger(Field.PORT);
-    }
-
-    /**
-     * Get the port property from the configuration.
-     * 
-     * @param defaultValue the value to use by default
-     * @return the port, or the {@code defaultValue} if there is no such property
-     */
-    default int getPort(int defaultValue) {
-        return getInteger(Field.PORT, defaultValue);
+    default int getPort() {
+        return getInteger(PORT);
     }
 
     /**
      * Get the database name property from the configuration.
      * 
-     * @return the database name, or null if there is none.
+     * @return the specified or default database name, or null if there is none.
      */
     default String getDatabase() {
-        return getDatabase(null);
-    }
-
-    /**
-     * Get the database name property from the configuration.
-     * 
-     * @param defaultValue the value to use by default
-     * @return the database name, or the {@code defaultValue} if there is no such property
-     */
-    default String getDatabase(String defaultValue) {
-        return getString(Field.DATABASE, defaultValue);
+        return getString(DATABASE);
     }
 
     /**
      * Get the user property from the configuration.
      * 
-     * @return the username, or null if there is none.
+     * @return the specified or default username, or null if there is none.
      */
     default String getUser() {
-        return getUser(null);
-    }
-
-    /**
-     * Get the user property from the configuration.
-     * 
-     * @param defaultValue the value to use by default
-     * @return the username, or the {@code defaultValue} if there is no such property
-     */
-    default String getUser(String defaultValue) {
-        return getString(Field.USER, defaultValue);
+        return getString(USER);
     }
 
     /**
      * Get the password property from the configuration.
      * 
-     * @return the password value, or null if there is none.
+     * @return the specified or default password value, or null if there is none.
      */
     default String getPassword() {
-        return getPassword(null);
-    }
-
-    /**
-     * Get the password property from the configuration.
-     * 
-     * @param defaultValue the value to use by default
-     * @return the password, or the {@code defaultValue} if there is no such property
-     */
-    default String getPassword(String defaultValue) {
-        return getString(Field.PASSWORD, defaultValue);
+        return getString(PASSWORD);
     }
 }

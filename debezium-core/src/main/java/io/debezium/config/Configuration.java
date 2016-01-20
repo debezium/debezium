@@ -47,119 +47,251 @@ import io.debezium.util.IoUtil;
  */
 @Immutable
 public interface Configuration {
-    
+
+    public static Field field(String name, String description) {
+        return new Field(name, description, null);
+    }
+
+    public static Field field(String name, String description, String defaultValue) {
+        return new Field(name, description, defaultValue);
+    }
+
+    public static Field field(String name, String description, int defaultValue) {
+        return new Field(name, description, Integer.toString(defaultValue));
+    }
+
+    public static Field field(String name, String description, long defaultValue) {
+        return new Field(name, description, Long.toString(defaultValue));
+    }
+
+    public static Field field(String name, String description, boolean defaultValue) {
+        return new Field(name, description, Boolean.toString(defaultValue));
+    }
+
+    public static class Field {
+        private final String name;
+        private final String desc;
+        private final String defaultValue;
+
+        public Field(String name, String description, String defaultValue) {
+            this.name = name;
+            this.desc = description;
+            this.defaultValue = defaultValue;
+            assert this.name != null;
+        }
+
+        public String name() {
+            return name;
+        }
+
+        public String defaultValue() {
+            return defaultValue;
+        }
+
+        public String description() {
+            return desc;
+        }
+    }
+
     /**
      * The basic interface for configuration builders.
+     * 
      * @param <C> the type of configuration
      * @param <B> the type of builder
      */
-    public static interface ConfigBuilder<C extends Configuration, B extends ConfigBuilder<C,B>> {
+    public static interface ConfigBuilder<C extends Configuration, B extends ConfigBuilder<C, B>> {
         /**
-         * Associated the given value with the specified key.
+         * Associate the given value with the specified key.
+         * 
          * @param key the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
          */
-        B with( String key, String value );
+        B with(String key, String value);
+
         /**
-         * Associated the given value with the specified key.
+         * Associate the given value with the specified key.
+         * 
          * @param key the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
          */
-        default B with( String key, int value ) {
+        default B with(String key, int value) {
             return with(key, Integer.toString(value));
         }
+
         /**
-         * Associated the given value with the specified key.
+         * Associate the given value with the specified key.
+         * 
          * @param key the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
          */
-        default B with( String key, float value ) {
+        default B with(String key, float value) {
             return with(key, Float.toString(value));
         }
+
         /**
-         * Associated the given value with the specified key.
+         * Associate the given value with the specified key.
+         * 
          * @param key the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
          */
-        default B with( String key, double value ) {
+        default B with(String key, double value) {
             return with(key, Double.toString(value));
         }
+
         /**
-         * Associated the given value with the specified key.
+         * Associate the given value with the specified key.
+         * 
          * @param key the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
          */
-        default B with( String key, long value ) {
+        default B with(String key, long value) {
             return with(key, Long.toString(value));
         }
+
         /**
-         * Associated the given value with the specified key.
+         * Associate the given value with the specified key.
+         * 
          * @param key the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
          */
-        default B with( String key, boolean value ) {
+        default B with(String key, boolean value) {
             return with(key, Boolean.toString(value));
         }
+
+        /**
+         * Associate the given value with the key of the specified field.
+         * 
+         * @param field the predefined field for the key
+         * @param value the value
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B with(Field field, String value) {
+            return with(field.name(),value);
+        }
+
+        /**
+         * Associate the given value with the key of the specified field.
+         * 
+         * @param field the predefined field for the key
+         * @param value the value
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B with(Field field, int value) {
+            return with(field.name(),value);
+        }
+
+        /**
+         * Associate the given value with the key of the specified field.
+         * 
+         * @param field the predefined field for the key
+         * @param value the value
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B with(Field field, float value) {
+            return with(field.name(),value);
+        }
+
+        /**
+         * Associate the given value with the key of the specified field.
+         * 
+         * @param field the predefined field for the key
+         * @param value the value
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B with(Field field, double value) {
+            return with(field.name(),value);
+        }
+
+        /**
+         * Associate the given value with the key of the specified field.
+         * 
+         * @param field the predefined field for the key
+         * @param value the value
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B with(Field field, long value) {
+            return with(field.name(),value);
+        }
+
+        /**
+         * Associate the given value with the key of the specified field.
+         * 
+         * @param field the predefined field for the key
+         * @param value the value
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B with(Field field, boolean value) {
+            return with(field.name(),value);
+        }
+        
         /**
          * Build and return the immutable configuration.
+         * 
          * @return the immutable configuration; never null
          */
         C build();
     }
-    
+
     /**
      * A builder of Configuration objects.
      */
-    public static class Builder implements ConfigBuilder<Configuration,Builder> {
+    public static class Builder implements ConfigBuilder<Configuration, Builder> {
         private final Properties props = new Properties();
+
         protected Builder() {
         }
-        protected Builder( Properties props ) {
+
+        protected Builder(Properties props) {
             this.props.putAll(props);
         }
+
         @Override
         public Builder with(String key, String value) {
             props.setProperty(key, value);
             return this;
         }
+
         @Override
         public Configuration build() {
             return Configuration.from(props);
         }
     }
-    
+
     /**
      * Create a new {@link Builder configuration builder}.
+     * 
      * @return the configuration builder
      */
     public static Builder create() {
         return new Builder();
     }
-    
+
     /**
      * Create a new {@link Builder configuration builder} that starts with a copy of the supplied configuration.
+     * 
      * @param config the configuration to copy
      * @return the configuration builder
      */
-    public static Builder copy( Configuration config) {
+    public static Builder copy(Configuration config) {
         return new Builder(config.asProperties());
     }
-    
+
     /**
      * Create a Configuration object that is populated by system properties, per {@link #withSystemProperties(String)}.
+     * 
      * @param prefix the required prefix for the system properties; may not be null but may be empty
      * @return the configuration
      */
-    public static Configuration fromSystemProperties( String prefix ) {
+    public static Configuration fromSystemProperties(String prefix) {
         return empty().withSystemProperties(prefix);
     }
-    
+
     /**
      * Obtain an empty configuration.
      * 
@@ -199,7 +331,35 @@ public interface Configuration {
             public Set<String> keys() {
                 return properties.stringPropertyNames();
             }
-            
+
+            @Override
+            public String toString() {
+                return props.toString();
+            }
+        };
+    }
+
+    /**
+     * Obtain a configuration instance by copying the supplied map of string keys and string values. The entries within the map
+     * are copied so that the resulting Configuration cannot be modified.
+     * 
+     * @param properties the properties; may be null or empty
+     * @return the configuration; never null
+     */
+    public static Configuration from(Map<String, String> properties) {
+        Map<String, String> props = new HashMap<>();
+        if (properties != null) props.putAll(properties);
+        return new Configuration() {
+            @Override
+            public String getString(String key) {
+                return properties.get(key);
+            }
+
+            @Override
+            public Set<String> keys() {
+                return properties.keySet();
+            }
+
             @Override
             public String toString() {
                 return props.toString();
@@ -365,6 +525,18 @@ public interface Configuration {
     }
 
     /**
+     * Get the string value associated with the given field, returning the field's default value if there is no such key-value
+     * pair in this configuration.
+     * 
+     * @param field the field; may not be null
+     * @return the configuration's value for the field, or the field's {@link Field#defaultValue() default value} if there is no
+     *         such key-value pair in the configuration
+     */
+    default String getString(Field field) {
+        return getString(field.name(), field.defaultValue());
+    }
+
+    /**
      * Get the string value(s) associated with the given key, where the supplied regular expression is used to parse the single
      * string value into multiple values.
      * 
@@ -514,6 +686,45 @@ public interface Configuration {
     }
 
     /**
+     * Get the integer value associated with the given field, returning the field's default value if there is no such
+     * key-value pair.
+     * 
+     * @param field the field
+     * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration and there is
+     *         no default value in the field or the default value could not be parsed as a long, or there is a key-value pair in
+     *         the configuration but the value could not be parsed as an integer value
+     */
+    default int getInteger(Field field) {
+        return getInteger(field.name(), Integer.valueOf(field.defaultValue()));
+    }
+
+    /**
+     * Get the long value associated with the given field, returning the field's default value if there is no such
+     * key-value pair.
+     * 
+     * @param field the field
+     * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration and there is
+     *         no default value in the field or the default value could not be parsed as a long, or there is a key-value pair in
+     *         the configuration but the value could not be parsed as a long value
+     */
+    default long getLong(Field field) {
+        return getLong(field.name(), Long.valueOf(field.defaultValue()));
+    }
+
+    /**
+     * Get the boolean value associated with the given field, returning the field's default value if there is no such
+     * key-value pair.
+     * 
+     * @param field the field
+     * @return the boolean value, or null if the key is null, there is no such key-value pair in the configuration and there is
+     *         no default value in the field or the default value could not be parsed as a long, or there is a key-value pair in
+     *         the configuration but the value could not be parsed as a boolean value
+     */
+    default boolean getBoolean(Field field) {
+        return getBoolean(field.name(), Boolean.valueOf(field.defaultValue()));
+    }
+
+    /**
      * Get an instance of the class given by the value in the configuration associated with the given key.
      * 
      * @param key the key for the configuration property
@@ -568,7 +779,7 @@ public interface Configuration {
         String prefixWithSeparator = prefix.endsWith(".") ? prefix : prefix + ".";
         int minLength = prefixWithSeparator.length();
         Function<String, String> prefixRemover = removePrefix ? key -> key.substring(minLength) : key -> key;
-        return filter(key->key.startsWith(prefixWithSeparator)).map(prefixRemover);
+        return filter(key -> key.startsWith(prefixWithSeparator)).map(prefixRemover);
     }
 
     /**
@@ -579,7 +790,7 @@ public interface Configuration {
      */
     default Configuration map(Function<String, String> mapper) {
         if (mapper == null) return this;
-        Map<String,String> newToOld = new HashMap<>();
+        Map<String, String> newToOld = new HashMap<>();
         keys().stream().filter(k -> k != null).forEach(oldKey -> {
             String newKey = mapper.apply(oldKey);
             if (newKey != null) {
@@ -591,6 +802,7 @@ public interface Configuration {
             public Set<String> keys() {
                 return Collect.unmodifiableSet(newToOld.keySet());
             }
+
             @Override
             public String getString(String key) {
                 String oldKey = newToOld.get(key);
@@ -622,7 +834,7 @@ public interface Configuration {
             }
         };
     }
-    
+
     /**
      * Determine if this configuration is empty and has no properties.
      * 
