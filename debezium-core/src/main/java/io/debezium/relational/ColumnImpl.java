@@ -77,6 +77,11 @@ final class ColumnImpl implements Column, Comparable<Column> {
     }
     
     @Override
+    public int hashCode() {
+        return name.hashCode();
+    }
+    
+    @Override
     public boolean equals(Object obj) {
         if ( obj == this ) return true;
         if ( obj instanceof Column ) {
@@ -105,9 +110,9 @@ final class ColumnImpl implements Column, Comparable<Column> {
             }
             sb.append(')');
         }
-        if ( optional ) sb.append(" optional");
-        if ( autoIncremented ) sb.append(" autoIncr");
-        if ( generated ) sb.append(" generated");
+        if ( !optional ) sb.append(" NOT NULL");
+        if ( autoIncremented ) sb.append(" AUTO_INCREMENTED");
+        if ( generated ) sb.append(" GENERATED");
         return sb.toString();
     }
 

@@ -3,7 +3,7 @@
  * 
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.ingest.mysql;
+package io.debezium.mysql;
 
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConnection;

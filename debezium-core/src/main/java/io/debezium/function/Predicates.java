@@ -13,6 +13,10 @@ import java.util.function.Predicate;
  */
 public class Predicates {
 
+    public static <R> Predicate<R> not(Predicate<R> predicate) {
+        return predicate.negate();
+    }
+    
     public static <T> Predicate<T> notNull() {
         return new Predicate<T>() {
             @Override

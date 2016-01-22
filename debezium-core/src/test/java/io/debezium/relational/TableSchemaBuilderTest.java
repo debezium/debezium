@@ -20,7 +20,7 @@ import static org.fest.assertions.Assertions.assertThat;
 public class TableSchemaBuilderTest {
 
     private final TableId id = new TableId("catalog", "schema", "table");
-    private final Object[] data = new Object[] { "c1value", 3.14d, java.sql.Date.valueOf("2001-10-31"), 4 };
+    private final Object[] data = new Object[] { "c1value", 3.142d, java.sql.Date.valueOf("2001-10-31"), 4 };
     private Table table;
     private Column c1;
     private Column c2;
@@ -35,6 +35,7 @@ public class TableSchemaBuilderTest {
                      .tableId(id)
                      .addColumns(Column.editor().name("C1")
                                        .typeName("VARCHAR").jdbcType(Types.VARCHAR).length(10)
+                                       .optional(false)
                                        .generated(true)
                                        .create(),
                                  Column.editor().name("C2")
@@ -86,14 +87,13 @@ public class TableSchemaBuilderTest {
         assertThat(schema.keyFromColumnData(data)).isNull();
         // Check the values ...
         Schema values = schema.valueSchema();
-        System.out.println("Value schema: " + values);
         assertThat(values).isNotNull();
         assertThat(values.field("C1").name()).isEqualTo("C1");
         assertThat(values.field("C1").index()).isEqualTo(0);
-        assertThat(values.field("C1").schema()).isEqualTo(Schema.STRING_SCHEMA);
+        assertThat(values.field("C1").schema()).isEqualTo(SchemaBuilder.string().build());
         assertThat(values.field("C2").name()).isEqualTo("C2");
         assertThat(values.field("C2").index()).isEqualTo(1);
-        assertThat(values.field("C2").schema()).isEqualTo(Decimal.schema(3)); // scale of 3
+        assertThat(values.field("C2").schema()).isEqualTo(Decimal.builder(3).optional().build()); // scale of 3
         assertThat(values.field("C3").name()).isEqualTo("C3");
         assertThat(values.field("C3").index()).isEqualTo(2);
         assertThat(values.field("C3").schema()).isEqualTo(Date.builder().optional().build()); // optional date

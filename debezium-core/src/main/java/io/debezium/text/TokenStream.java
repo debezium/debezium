@@ -356,7 +356,7 @@ public class TokenStream {
         }
 
         /**
-         * Get the position of this marker, or null if this is at the start of the token stream.
+         * Get the position of this marker, or null if this is at the start or end of the token stream.
          * 
          * @return the position.
          */
@@ -477,6 +477,9 @@ public class TokenStream {
      * @throws NoSuchElementException if there are no more tokens
      */
     public Marker mark() {
+        if ( completed ) {
+            return new Marker(null, tokenIterator.previousIndex());
+        }
         Token currentToken = currentToken();
         Position currentPosition = currentToken != null ? currentToken.position() : null;
         return new Marker(currentPosition, tokenIterator.previousIndex());
@@ -974,10 +977,12 @@ public class TokenStream {
         }
         Marker start = mark();
         int remaining = 0;
-        while (hasNext() && !matches(expected)) {
+        while (hasNext()) {
             if ( skipMatchingTokens != null && matches(skipMatchingTokens)) ++remaining;
             if ( matches(expected) ) {
-                if ( remaining == 0 ) break;
+                if ( remaining == 0 ) {
+                    break;
+                }
                 --remaining;
             }
             consume();
@@ -1491,7 +1496,7 @@ public class TokenStream {
      * 
      * @param firstOption the first option for the value of the current token
      * @param additionalOptions the additional options for the value of the current token
-     * @return true if the current token's value did match one of the suplied options, or false otherwise
+     * @return true if the current token's value did match one of the supplied options, or false otherwise
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean matchesAnyOf(String firstOption,
@@ -1509,7 +1514,7 @@ public class TokenStream {
      * Determine if the next token matches one of the supplied values.
      * 
      * @param options the options for the value of the current token
-     * @return true if the current token's value did match one of the suplied options, or false otherwise
+     * @return true if the current token's value did match one of the supplied options, or false otherwise
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean matchesAnyOf(String[] options) throws IllegalStateException {
@@ -1525,7 +1530,7 @@ public class TokenStream {
      * Determine if the next token matches one of the supplied values.
      * 
      * @param options the options for the value of the current token
-     * @return true if the current token's value did match one of the suplied options, or false otherwise
+     * @return true if the current token's value did match one of the supplied options, or false otherwise
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean matchesAnyOf(Iterable<String> options) throws IllegalStateException {

@@ -3,7 +3,7 @@
  * 
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.ingest.mysql;
+package io.debezium.mysql.ingest;
 
 import static org.junit.Assert.fail;
 
@@ -46,11 +46,18 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.TestDatabase;
+import io.debezium.mysql.MySQLConnection;
 
 public class ReadBinLogIT {
 
     protected static final Logger LOGGER = LoggerFactory.getLogger(ReadBinLogIT.class);
     protected static final long DEFAULT_TIMEOUT = TimeUnit.SECONDS.toMillis(3);
+
+    private static final class AnyValue implements Serializable {
+        private static final long serialVersionUID = 1L;
+    }
+
+    private static final Serializable ANY_OBJECT = new AnyValue();
 
     private JdbcConfiguration config;
     private EventCounters counters;
@@ -81,7 +88,13 @@ public class ReadBinLogIT {
 
         // Set up the table as one transaction and wait to see the events ...
         conn.execute("DROP TABLE IF EXISTS person",
-                     "CREATE TABLE person (name VARCHAR(255) primary key)");
+                     "CREATE TABLE person (" +
+                             "  name VARCHAR(255) primary key," +
+                             "  age INTEGER NULL DEFAULT 10," +
+                             "  createdAt DATETIME NULL DEFAULT CURRENT_TIMESTAMP," +
+                             "  updatedAt DATETIME NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" +
+                             ")");
+
         counters.waitFor(2, EventType.QUERY, DEFAULT_TIMEOUT);
         counters.reset();
     }
@@ -104,36 +117,37 @@ public class ReadBinLogIT {
     @Test
     public void shouldCaptureSingleWriteUpdateDeleteEvents() throws Exception {
         // write/insert
-        conn.execute("INSERT INTO person VALUES ('Georgia')");
+        conn.execute("INSERT INTO person(name,age) VALUES ('Georgia',30)");
         counters.waitFor(1, WriteRowsEventData.class, DEFAULT_TIMEOUT);
         List<WriteRowsEventData> writeRowEvents = recordedEventData(WriteRowsEventData.class, 1);
-        assertRows(writeRowEvents.get(0), rows().insertedRow("Georgia"));
+        assertRows(writeRowEvents.get(0), rows().insertedRow("Georgia", 30, any(), any()));
 
         // update
         conn.execute("UPDATE person SET name = 'Maggie' WHERE name = 'Georgia'");
         counters.waitFor(1, UpdateRowsEventData.class, DEFAULT_TIMEOUT);
         List<UpdateRowsEventData> updateRowEvents = recordedEventData(UpdateRowsEventData.class, 1);
-        assertRows(updateRowEvents.get(0), rows().changeRow("Georgia").to("Maggie"));
+        assertRows(updateRowEvents.get(0),
+                   rows().changeRow("Georgia", 30, any(), any()).to("Maggie", 30, any(), any()));
 
         // delete
         conn.execute("DELETE FROM person WHERE name = 'Maggie'");
         counters.waitFor(1, DeleteRowsEventData.class, DEFAULT_TIMEOUT);
         List<DeleteRowsEventData> deleteRowEvents = recordedEventData(DeleteRowsEventData.class, 1);
-        assertRows(deleteRowEvents.get(0), rows().removedRow("Maggie"));
+        assertRows(deleteRowEvents.get(0), rows().removedRow("Maggie", 30, any(), any()));
     }
 
     @Test
     public void shouldCaptureMultipleWriteUpdateDeleteEvents() throws Exception {
         // write/insert as a single transaction
-        conn.execute("INSERT INTO person VALUES ('Georgia')",
-                     "INSERT INTO person VALUES ('Janice')");
+        conn.execute("INSERT INTO person(name,age) VALUES ('Georgia',30)",
+                     "INSERT INTO person(name,age) VALUES ('Janice',19)");
         counters.waitFor(1, QueryEventData.class, DEFAULT_TIMEOUT); // BEGIN
         counters.waitFor(1, TableMapEventData.class, DEFAULT_TIMEOUT);
         counters.waitFor(2, WriteRowsEventData.class, DEFAULT_TIMEOUT);
-        counters.waitFor(1, XidEventData.class, DEFAULT_TIMEOUT);   // COMMIT
+        counters.waitFor(1, XidEventData.class, DEFAULT_TIMEOUT); // COMMIT
         List<WriteRowsEventData> writeRowEvents = recordedEventData(WriteRowsEventData.class, 2);
-        assertRows(writeRowEvents.get(0), rows().insertedRow("Georgia"));
-        assertRows(writeRowEvents.get(1), rows().insertedRow("Janice"));
+        assertRows(writeRowEvents.get(0), rows().insertedRow("Georgia", 30, any(), any()));
+        assertRows(writeRowEvents.get(1), rows().insertedRow("Janice", 19, any(), any()));
         counters.reset();
 
         // update as a single transaction
@@ -142,10 +156,10 @@ public class ReadBinLogIT {
         counters.waitFor(1, QueryEventData.class, DEFAULT_TIMEOUT); // BEGIN
         counters.waitFor(1, TableMapEventData.class, DEFAULT_TIMEOUT);
         counters.waitFor(2, UpdateRowsEventData.class, DEFAULT_TIMEOUT);
-        counters.waitFor(1, XidEventData.class, DEFAULT_TIMEOUT);   // COMMIT
+        counters.waitFor(1, XidEventData.class, DEFAULT_TIMEOUT); // COMMIT
         List<UpdateRowsEventData> updateRowEvents = recordedEventData(UpdateRowsEventData.class, 2);
-        assertRows(updateRowEvents.get(0), rows().changeRow("Georgia").to("Maggie"));
-        assertRows(updateRowEvents.get(1), rows().changeRow("Janice").to("Jamie"));
+        assertRows(updateRowEvents.get(0), rows().changeRow("Georgia", 30, any(), any()).to("Maggie", 30, any(), any()));
+        assertRows(updateRowEvents.get(1), rows().changeRow("Janice", 19, any(), any()).to("Jamie", 19, any(), any()));
         counters.reset();
 
         // delete as a single transaction
@@ -154,36 +168,38 @@ public class ReadBinLogIT {
         counters.waitFor(1, QueryEventData.class, DEFAULT_TIMEOUT); // BEGIN
         counters.waitFor(1, TableMapEventData.class, DEFAULT_TIMEOUT);
         counters.waitFor(2, DeleteRowsEventData.class, DEFAULT_TIMEOUT);
-        counters.waitFor(1, XidEventData.class, DEFAULT_TIMEOUT);   // COMMIT
+        counters.waitFor(1, XidEventData.class, DEFAULT_TIMEOUT); // COMMIT
         List<DeleteRowsEventData> deleteRowEvents = recordedEventData(DeleteRowsEventData.class, 2);
-        assertRows(deleteRowEvents.get(0), rows().removedRow("Maggie"));
-        assertRows(deleteRowEvents.get(1), rows().removedRow("Jamie"));
+        assertRows(deleteRowEvents.get(0), rows().removedRow("Maggie", 30, any(), any()));
+        assertRows(deleteRowEvents.get(1), rows().removedRow("Jamie", 19, any(), any()));
     }
 
     @Test
     public void shouldCaptureMultipleWriteUpdateDeletesInSingleEvents() throws Exception {
         // write/insert as a single statement/transaction
-        conn.execute("INSERT INTO person VALUES ('Georgia'),('Janice')");
+        conn.execute("INSERT INTO person(name,age) VALUES ('Georgia',30),('Janice',19)");
         counters.waitFor(1, QueryEventData.class, DEFAULT_TIMEOUT); // BEGIN
         counters.waitFor(1, TableMapEventData.class, DEFAULT_TIMEOUT);
         counters.waitFor(1, WriteRowsEventData.class, DEFAULT_TIMEOUT);
-        counters.waitFor(1, XidEventData.class, DEFAULT_TIMEOUT);   // COMMIT
+        counters.waitFor(1, XidEventData.class, DEFAULT_TIMEOUT); // COMMIT
         List<WriteRowsEventData> writeRowEvents = recordedEventData(WriteRowsEventData.class, 1);
-        assertRows(writeRowEvents.get(0), rows().insertedRow("Georgia").insertedRow("Janice"));
+        assertRows(writeRowEvents.get(0), rows().insertedRow("Georgia", 30, any(), any())
+                                                .insertedRow("Janice", 19, any(), any()));
         counters.reset();
 
         // update as a single statement/transaction
         conn.execute("UPDATE person SET name = CASE " +
-                     "                          WHEN name = 'Georgia' THEN 'Maggie' " +
-                     "                          WHEN name = 'Janice' THEN 'Jamie' " +
-                     "                         END " +
-                     "WHERE name IN ('Georgia','Janice')");
+                "                          WHEN name = 'Georgia' THEN 'Maggie' " +
+                "                          WHEN name = 'Janice' THEN 'Jamie' " +
+                "                         END " +
+                "WHERE name IN ('Georgia','Janice')");
         counters.waitFor(1, QueryEventData.class, DEFAULT_TIMEOUT); // BEGIN
         counters.waitFor(1, TableMapEventData.class, DEFAULT_TIMEOUT);
         counters.waitFor(1, UpdateRowsEventData.class, DEFAULT_TIMEOUT);
-        counters.waitFor(1, XidEventData.class, DEFAULT_TIMEOUT);   // COMMIT
+        counters.waitFor(1, XidEventData.class, DEFAULT_TIMEOUT); // COMMIT
         List<UpdateRowsEventData> updateRowEvents = recordedEventData(UpdateRowsEventData.class, 1);
-        assertRows(updateRowEvents.get(0), rows().changeRow("Georgia").to("Maggie").changeRow("Janice").to("Jamie"));
+        assertRows(updateRowEvents.get(0), rows().changeRow("Georgia", 30, any(), any()).to("Maggie", 30, any(), any())
+                                                 .changeRow("Janice", 19, any(), any()).to("Jamie", 19, any(), any()));
         counters.reset();
 
         // delete as a single statement/transaction
@@ -191,24 +207,26 @@ public class ReadBinLogIT {
         counters.waitFor(1, QueryEventData.class, DEFAULT_TIMEOUT); // BEGIN
         counters.waitFor(1, TableMapEventData.class, DEFAULT_TIMEOUT);
         counters.waitFor(1, DeleteRowsEventData.class, DEFAULT_TIMEOUT);
-        counters.waitFor(1, XidEventData.class, DEFAULT_TIMEOUT);   // COMMIT
+        counters.waitFor(1, XidEventData.class, DEFAULT_TIMEOUT); // COMMIT
         List<DeleteRowsEventData> deleteRowEvents = recordedEventData(DeleteRowsEventData.class, 1);
-        assertRows(deleteRowEvents.get(0), rows().removedRow("Maggie").removedRow("Jamie"));
+        assertRows(deleteRowEvents.get(0), rows().removedRow("Maggie", 30, any(), any())
+                                                 .removedRow("Jamie", 19, any(), any()));
     }
 
     @Test
     public void shouldQueryInformationSchema() throws Exception {
-//        long tableId = writeRows.getTableId();
-//        BitSet columnIds = writeRows.getIncludedColumns();
-//
-//        conn.query("select TABLE_NAME, ROW_FORMAT, TABLE_ROWS, AVG_ROW_LENGTH, DATA_LENGTH, MAX_DATA_LENGTH, INDEX_LENGTH, DATA_FREE, " +
-//                "AUTO_INCREMENT, CREATE_TIME, UPDATE_TIME, CHECK_TIME, TABLE_COLLATION, CHECKSUM, CREATE_OPTIONS, TABLE_COMMENT " +
-//                "from INFORMATION_SCHEMA.TABLES " +
-//                "where TABLE_SCHEMA like 'readbinlog_test' and TABLE_NAME like 'person'", conn::print);
-//        conn.query("select TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, COLUMN_DEFAULT, IS_NULLABLE, " +
-//                "DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, CHARACTER_OCTET_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, " +
-//                "CHARACTER_SET_NAME, COLLATION_NAME from INFORMATION_SCHEMA.COLUMNS " +
-//                "where TABLE_SCHEMA like 'readbinlog_test' and TABLE_NAME like 'person'", conn::print);
+        // long tableId = writeRows.getTableId();
+        // BitSet columnIds = writeRows.getIncludedColumns();
+        //
+        // conn.query("select TABLE_NAME, ROW_FORMAT, TABLE_ROWS, AVG_ROW_LENGTH, DATA_LENGTH, MAX_DATA_LENGTH, INDEX_LENGTH,
+        // DATA_FREE, " +
+        // "AUTO_INCREMENT, CREATE_TIME, UPDATE_TIME, CHECK_TIME, TABLE_COLLATION, CHECKSUM, CREATE_OPTIONS, TABLE_COMMENT " +
+        // "from INFORMATION_SCHEMA.TABLES " +
+        // "where TABLE_SCHEMA like 'readbinlog_test' and TABLE_NAME like 'person'", conn::print);
+        // conn.query("select TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, COLUMN_DEFAULT, IS_NULLABLE, " +
+        // "DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, CHARACTER_OCTET_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, " +
+        // "CHARACTER_SET_NAME, COLLATION_NAME from INFORMATION_SCHEMA.COLUMNS " +
+        // "where TABLE_SCHEMA like 'readbinlog_test' and TABLE_NAME like 'person'", conn::print);
 
     }
 
@@ -237,39 +255,46 @@ public class ReadBinLogIT {
         assertThat(data.length).isEqualTo(expected.length);
         assertThat(data).contains((Object[]) expected);
     }
-    
-    protected void assertRows( WriteRowsEventData eventData, int numRowsInEvent, Serializable... expectedValuesInRows ) {
+
+    protected void assertRows(WriteRowsEventData eventData, int numRowsInEvent, Serializable... expectedValuesInRows) {
         assertThat(eventData.getRows().size()).isEqualTo(numRowsInEvent);
         int valuePosition = 0;
-        for (Serializable[] row : eventData.getRows() ) {
-            for ( Serializable value : row ) {
+        for (Serializable[] row : eventData.getRows()) {
+            for (Serializable value : row) {
                 assertThat(value).isEqualTo(expectedValuesInRows[valuePosition++]);
             }
         }
     }
-    
+
+    protected Serializable any() {
+        return ANY_OBJECT;
+    }
+
     public static class Row {
         public Serializable[] fromValues;
         public Serializable[] toValues;
-        
+
     }
-    
+
     public static interface UpdateBuilder {
-        RowBuilder to( Serializable...values );
+        RowBuilder to(Serializable... values);
     }
-    
+
     public static class RowBuilder {
         private List<Row> rows = new ArrayList<>();
         private Row nextRow = null;
-        public RowBuilder insertedRow( Serializable...values ) {
+
+        public RowBuilder insertedRow(Serializable... values) {
             maybeAddRow();
             return changeRow().to(values);
         }
-        public RowBuilder removedRow( Serializable...values ) {
+
+        public RowBuilder removedRow(Serializable... values) {
             maybeAddRow();
             return changeRow(values).to(values);
         }
-        public UpdateBuilder changeRow( Serializable...values ) {
+
+        public UpdateBuilder changeRow(Serializable... values) {
             maybeAddRow();
             nextRow = new Row();
             nextRow.fromValues = values;
@@ -281,82 +306,99 @@ public class ReadBinLogIT {
                 }
             };
         }
+
         protected void maybeAddRow() {
-            if ( nextRow != null ) {
+            if (nextRow != null) {
                 rows.add(nextRow);
                 nextRow = null;
             }
         }
+
         protected List<Row> rows() {
             maybeAddRow();
             return rows;
         }
-        protected boolean findInsertedRow( Serializable[] values ) {
+
+        protected boolean findInsertedRow(Serializable[] values) {
             maybeAddRow();
-            for ( Iterator<Row> iter = rows.iterator(); iter.hasNext(); ) {
+            for (Iterator<Row> iter = rows.iterator(); iter.hasNext();) {
                 Row expectedRow = iter.next();
-                if ( Arrays.deepEquals(expectedRow.toValues,values)) {
+                if (deepEquals(expectedRow.toValues, values)) {
                     iter.remove();
                     return true;
                 }
             }
             return false;
         }
-        protected boolean findDeletedRow( Serializable[] values ) {
+
+        protected boolean findDeletedRow(Serializable[] values) {
             maybeAddRow();
-            for ( Iterator<Row> iter = rows.iterator(); iter.hasNext(); ) {
+            for (Iterator<Row> iter = rows.iterator(); iter.hasNext();) {
                 Row expectedRow = iter.next();
-                if ( Arrays.deepEquals(expectedRow.fromValues,values)) {
+                if (deepEquals(expectedRow.fromValues, values)) {
                     iter.remove();
                     return true;
                 }
             }
             return false;
         }
-        protected boolean findUpdatedRow( Serializable[] oldValues, Serializable[] newValues ) {
+
+        protected boolean findUpdatedRow(Serializable[] oldValues, Serializable[] newValues) {
             maybeAddRow();
-            for ( Iterator<Row> iter = rows.iterator(); iter.hasNext(); ) {
+            for (Iterator<Row> iter = rows.iterator(); iter.hasNext();) {
                 Row expectedRow = iter.next();
-                if ( Arrays.deepEquals(expectedRow.fromValues,oldValues) && Arrays.deepEquals(expectedRow.toValues,newValues)) {
+                if (deepEquals(expectedRow.fromValues, oldValues) && deepEquals(expectedRow.toValues, newValues)) {
                     iter.remove();
                     return true;
                 }
             }
             return false;
+        }
+
+        protected boolean deepEquals(Serializable[] expectedValues, Serializable[] actualValues) {
+            assertThat(expectedValues.length).isEqualTo(actualValues.length);
+            // Make a copy of the actual values, and find all 'AnyValue' instances in the expected values and replace
+            // their counterpart in the copy of the actual values ...
+            Serializable[] actualValuesCopy = Arrays.copyOf(actualValues, actualValues.length);
+            for (int i = 0; i != actualValuesCopy.length; ++i) {
+                if (expectedValues[i] instanceof AnyValue) actualValuesCopy[i] = expectedValues[i];
+            }
+            // Now compare the arrays ...
+            return Arrays.deepEquals(expectedValues, actualValuesCopy);
         }
     }
-    
+
     protected RowBuilder rows() {
         return new RowBuilder();
     }
-    
-    protected void assertRows( UpdateRowsEventData eventData, RowBuilder rows ) {
+
+    protected void assertRows(UpdateRowsEventData eventData, RowBuilder rows) {
         assertThat(eventData.getRows().size()).isEqualTo(rows.rows().size());
-        for (Map.Entry<Serializable[], Serializable[]> row : eventData.getRows() ) {
-            if ( !rows.findUpdatedRow(row.getKey(), row.getValue()) ) {
-                fail("Failed to find updated row: " + eventData );
+        for (Map.Entry<Serializable[], Serializable[]> row : eventData.getRows()) {
+            if (!rows.findUpdatedRow(row.getKey(), row.getValue())) {
+                fail("Failed to find updated row: " + eventData);
             }
         }
     }
 
-    protected void assertRows( WriteRowsEventData eventData, RowBuilder rows ) {
+    protected void assertRows(WriteRowsEventData eventData, RowBuilder rows) {
         assertThat(eventData.getRows().size()).isEqualTo(rows.rows().size());
-        for (Serializable[] removedRow : eventData.getRows() ) {
-            if ( !rows.findInsertedRow(removedRow) ) {
-                fail("Failed to find inserted row: " + eventData );
+        for (Serializable[] removedRow : eventData.getRows()) {
+            if (!rows.findInsertedRow(removedRow)) {
+                fail("Failed to find inserted row: " + eventData);
             }
         }
     }
-    
-    protected void assertRows( DeleteRowsEventData eventData, RowBuilder rows ) {
+
+    protected void assertRows(DeleteRowsEventData eventData, RowBuilder rows) {
         assertThat(eventData.getRows().size()).isEqualTo(rows.rows().size());
-        for (Serializable[] removedRow : eventData.getRows() ) {
-            if ( !rows.findDeletedRow(removedRow) ) {
-                fail("Failed to find removed row: " + eventData );
+        for (Serializable[] removedRow : eventData.getRows()) {
+            if (!rows.findDeletedRow(removedRow)) {
+                fail("Failed to find removed row: " + eventData);
             }
         }
     }
-    
+
     protected static class EventCounters implements EventListener {
         /*
          * VariableLatch instances count down when receiving an event, and thus are negative. When callers wait for a specified

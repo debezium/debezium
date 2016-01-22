@@ -28,9 +28,11 @@ public class TableTest {
                      .addColumns(Column.editor().name("C1")
                                        .typeName("VARCHAR").jdbcType(Types.VARCHAR).length(10)
                                        .generated(true)
+                                       .optional(false)
                                        .create(),
                                  Column.editor().name("C2")
                                        .typeName("NUMBER").jdbcType(Types.NUMERIC).length(5)
+                                       .optional(false)
                                        .create(),
                                  Column.editor().name("C3")
                                        .typeName("DATE").jdbcType(Types.DATE).length(4)

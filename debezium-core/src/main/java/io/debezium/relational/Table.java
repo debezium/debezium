@@ -62,6 +62,15 @@ public interface Table {
     default List<Column> filterColumns( Predicate<Column> predicate ) {
         return columns().stream().filter(predicate).collect(Collectors.toList());
     }
+    
+    /**
+     * Utility to obtain a copy of a list of the names of those columns that satisfy the specified predicate.
+     * @param predicate the filter predicate; may not be null
+     * @return the list of names of those columns that satisfy the predicate; never null but possibly empty
+     */
+    default List<String> filterColumnNames( Predicate<Column> predicate ) {
+        return columns().stream().filter(predicate).map(Column::name).collect(Collectors.toList());
+    }
 
     /**
      * The list of column names that make up this table.

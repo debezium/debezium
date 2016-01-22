@@ -13,12 +13,6 @@ import org.junit.Test;
 
 import static org.fest.assertions.Assertions.assertThat;
 
-import io.debezium.relational.Column;
-import io.debezium.relational.ColumnEditor;
-import io.debezium.relational.Table;
-import io.debezium.relational.TableEditor;
-import io.debezium.relational.TableId;
-
 public class TableEditorTest {
 
     private final TableId id = new TableId("catalog", "schema", "table");

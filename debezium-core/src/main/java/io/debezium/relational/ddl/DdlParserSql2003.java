@@ -5,7 +5,6 @@
  */
 package io.debezium.relational.ddl;
 
-import java.math.BigDecimal;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +21,9 @@ import io.debezium.text.TokenStream.Marker;
 
 /**
  * A parser for DDL statements.
+ * <p>
+ * See the <a href="http://savage.net.au/SQL/sql-2003-2.bnf.html">BNF Grammar for ISO/IEC 9075-2:2003</a> for the grammar
+ * supported by this parser.
  * 
  * @author Randall Hauch
  */
@@ -29,10 +31,18 @@ import io.debezium.text.TokenStream.Marker;
 public class DdlParserSql2003 extends DdlParser {
 
     /**
-     * Create a new DDL parser for SQL-2003.
+     * Create a new DDL parser for SQL-2003 that does not include view definitions.
      */
     public DdlParserSql2003() {
         super(";");
+    }
+
+    /**
+     * Create a new DDL parser for SQL-2003.
+     * @param includeViews {@code true} if view definitions should be included, or {@code false} if they should be skipped
+     */
+    public DdlParserSql2003( boolean includeViews ) {
+        super(";",includeViews);
     }
 
     @Override
@@ -426,109 +436,12 @@ public class DdlParserSql2003 extends DdlParser {
         return parseSchemaQualifiedName(start);
     }
 
+    @Override
     protected Object parseLiteral(Marker start) {
-        if (tokens.canConsume('_')) { // introducer
-            // This is a character literal beginning with a character set ...
-            parseCharacterSetName(start);
-            return parseCharacterLiteral(start);
-        }
-        if (tokens.canConsume('N')) {
-            return parseCharacterLiteral(start);
-        }
-        if (tokens.canConsume("U", "&")) {
-            return parseCharacterLiteral(start);
-        }
-        if (tokens.canConsume('X')) {
-            return parseCharacterLiteral(start);
-        }
-        if (tokens.canConsume("DATE")) {
-            return parseDateLiteral(start);
-        }
-        if (tokens.canConsume("TIME")) {
-            return parseDateLiteral(start);
-        }
-        if (tokens.canConsume("TIMESTAMP")) {
-            return parseDateLiteral(start);
-        }
         if (tokens.canConsume("INTERVAL")) {
             return parseIntervalLiteral(start);
         }
-        if (tokens.canConsume("TRUE")) {
-            return Boolean.TRUE;
-        }
-        if (tokens.canConsume("FALSE")) {
-            return Boolean.FALSE;
-        }
-        if (tokens.canConsume("UNKNOWN")) {
-            return Boolean.FALSE;
-        }
-        // Otherwise, it's just a numeric literal ...
-        return parseNumericLiteral(start, true);
-    }
-
-    protected Object parseNumericLiteral(Marker start, boolean signed) {
-        StringBuilder sb = new StringBuilder();
-        boolean decimal = false;
-        if (signed && tokens.matches("+", "-")) {
-            sb.append(tokens.consumeAnyOf("+", "-"));
-        }
-        if (!tokens.canConsume('.')) {
-            sb.append(tokens.consumeInteger());
-        }
-        if (tokens.canConsume('.')) {
-            sb.append(tokens.consumeInteger());
-            decimal = true;
-        }
-        if (!tokens.canConsume('E')) {
-            if (decimal) return Double.parseDouble(sb.toString());
-            return Integer.parseInt(sb.toString());
-        }
-        sb.append('E');
-        if (tokens.matches("+", "-")) {
-            sb.append(tokens.consumeAnyOf("+", "-"));
-        }
-        sb.append(tokens.consumeInteger());
-        return new BigDecimal(sb.toString());
-    }
-
-    protected String parseCharacterLiteral(Marker start) {
-        StringBuilder sb = new StringBuilder();
-        while (true) {
-            if (tokens.matches(DdlTokenizer.COMMENT)) {
-                parseComment(start);
-            } else if (tokens.matches(DdlTokenizer.SINGLE_QUOTED_STRING)) {
-                if (sb.length() != 0) sb.append(' ');
-                sb.append(tokens.consume());
-            } else {
-                break;
-            }
-        }
-        if (tokens.canConsume("ESCAPE")) {
-            tokens.consume();
-        }
-        return sb.toString();
-    }
-
-    protected String parseCharacterSetName(Marker start) {
-        String name = tokens.consume();
-        if (tokens.canConsume('.')) {
-            // The name was actually a schema name ...
-            String id = tokens.consume();
-            return name + "." + id;
-        }
-        return name;
-    }
-
-    protected String parseDateLiteral(Marker start) {
-        return consumeQuotedString();
-    }
-
-    protected String parseTimeLiteral(Marker start) {
-        return consumeQuotedString();
-    }
-
-    protected String parseTimestampLiteral(Marker start) {
-        return consumeQuotedString();
+        return super.parseLiteral(start);
     }
 
     protected String parseIntervalLiteral(Marker start) {
@@ -588,11 +501,18 @@ public class DdlParserSql2003 extends DdlParser {
     }
 
     protected void parseCreateView(Marker start) {
+        if ( skipViews ) {
+            // We don't care about the rest ...
+            consumeRemainingStatement(start);
+            debugSkipped(start);
+            return;
+        }
         tokens.canConsume("RECURSIVE");
         tokens.consume("VIEW");
         TableId tableId = parseQualifiedTableName(start);
         TableEditor table = databaseTables.editOrCreateTable(tableId);
 
+        List<String> columnNames = null;
         if (tokens.canConsume("OF")) {
             // Read the qualified name ...
             parseSchemaQualifiedName(start);
@@ -601,15 +521,22 @@ public class DdlParserSql2003 extends DdlParser {
                 parseSchemaQualifiedName(start);
             }
             if (tokens.matches('(')) {
-                parseColumnNameList(start);
+                columnNames = parseColumnNameList(start);
             }
         } else if (tokens.matches('(')) {
-            parseColumnNameList(start);
+            columnNames = parseColumnNameList(start);
         }
         tokens.canConsume("AS");
         // We don't care about the rest ...
         consumeRemainingStatement(start);
 
+        if ( columnNames != null ) {
+            // We know nothing other than the names ...
+            columnNames.forEach(name->{
+                table.addColumn(Column.editor().name(name).create());
+            });
+        }
+        
         // Update the table definition ...
         databaseTables.overwriteTable(table.create());
     }

@@ -70,7 +70,16 @@ public interface TableEditor {
      * @return the list of column names that make up the primary key; never null but possibly empty
      */
     List<String> primaryKeyColumnNames();
-
+    
+    /**
+     * Determine whether this table has a primary key.
+     * @return {@code true} if this table has at least one {@link #primaryKeyColumnNames() primary key column}, or {@code false}
+     * if there are no primary key columns
+     */
+    default boolean hasPrimaryKey() {
+        return !primaryKeyColumnNames().isEmpty();
+    }
+    
     /**
      * Add one columns to this table, regardless of the {@link Column#position() position} of the supplied
      * columns. However, if an existing column definition matches a supplied column, the new column definition will replace
@@ -141,6 +150,15 @@ public interface TableEditor {
     TableEditor reorderColumn(String columnName, String afterColumnName);
 
     /**
+     * Rename the column with the given name to the new specified name.
+     * 
+     * @param existingName the existing name of the column to be renamed; may not be null
+     * @param newName the new name of the column; may not be null
+     * @return this editor so callers can chain methods together
+     */
+    TableEditor renameColumn(String existingName, String newName);
+
+    /**
      * Set the columns that make up this table's primary key.
      * 
      * @param pkColumnNames the names of this tables columns that make up the primary key
@@ -167,7 +185,14 @@ public interface TableEditor {
      * @throws IllegalArgumentException if a name does not correspond to an existing column
      */
     TableEditor setUniqueValues();
-
+    
+    /**
+     * Determine whether this table's primary key contains all columns (via {@link #setUniqueValues()}) such that all rows
+     * within the table are unique.
+     * @return {@code true} if {@link #setUniqueValues()} was last called on this table, or {@code false} otherwise
+     */
+    boolean hasUniqueValues();
+    
     /**
      * Obtain an immutable table definition representing the current state of this editor. This editor can be reused
      * after this method, since the resulting table definition no longer refers to any of the data used in this editor.

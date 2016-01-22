@@ -37,8 +37,10 @@ import io.debezium.text.TokenStream.Marker;
  * <li>{@code BIT}</li>
  * <li>{@code BIT(3)} will match when the length is exactly 3 and will not match {@code BIT(2)}.</li>
  * <li>{@code DECIMAL(L[,S])} will match {@code DECIMAL(5)} and {@code DECIMAL (10,3)}</li>
- * <li><code>INTEGER{n}</code> will match {@code INTEGER[3]}, which is an array of integers.<li>
- * <li><code>ENUM(...)</code> will match {@code ENUM(a,b,c,d)} and {@code ENUM(a)}.<li>
+ * <li><code>INTEGER{n}</code> will match {@code INTEGER[3]}, which is an array of integers.
+ * <li>
+ * <li><code>ENUM(...)</code> will match {@code ENUM(a,b,c,d)} and {@code ENUM(a)}.
+ * <li>
  * </ul>
  * 
  * @author Randall Hauch
@@ -174,11 +176,11 @@ public class DataTypeGrammarParser {
     protected Pattern parseLength(TokenStream stream) throws ParsingException {
         stream.consume('(');
         Pattern result = new LiteralPattern("(", false);
-        
-        if (stream.canConsume(".",".",".")) {
+
+        if (stream.canConsume(".", ".", ".")) {
             // This is a list pattern ...
             result = new AndPattern(result, new ListPattern());
-        } else if (stream.canConsumeAnyOf("L","M","P","N") ) {
+        } else if (stream.canConsumeAnyOf("L", "M", "P", "N")) {
             // specifies length, mantissa, precision, or number ...
             result = new AndPattern(result, new LengthPattern());
         } else {
@@ -452,11 +454,11 @@ public class DataTypeGrammarParser {
     protected static class ListPattern implements Pattern {
 
         private final String delimiter;
-        
+
         public ListPattern() {
             this.delimiter = ",";
         }
-        
+
         public ListPattern(String delimiter) {
             this.delimiter = delimiter;
         }
@@ -467,8 +469,8 @@ public class DataTypeGrammarParser {
                 // empty list ...
                 return true;
             }
-            stream.consume();   // first item
-            while ( stream.matches(delimiter) ) {
+            stream.consume(); // first item
+            while (stream.matches(delimiter)) {
                 stream.consume();
             }
             return true;
@@ -494,14 +496,16 @@ public class DataTypeGrammarParser {
 
         @Override
         public boolean match(TokenStream stream, DataTypeBuilder builder, Consumer<ParsingException> error) {
-            Marker marker = stream.mark();
-            try {
-                if (!pattern.match(stream, builder, error)) {
+            if (stream.hasNext()) {
+                Marker marker = stream.mark();
+                try {
+                    if (!pattern.match(stream, builder, error)) {
+                        stream.rewind(marker);
+                    }
+                } catch (ParsingException e) {
+                    error.accept(e);
                     stream.rewind(marker);
                 }
-            } catch (ParsingException e) {
-                error.accept(e);
-                stream.rewind(marker);
             }
             return true;
         }
@@ -575,7 +579,6 @@ public class DataTypeGrammarParser {
                 builder.length(literal);
                 return true;
             }
-            ;
             return false;
         }
 

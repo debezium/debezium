@@ -12,9 +12,6 @@ import org.junit.Test;
 
 import static org.fest.assertions.Assertions.assertThat;
 
-import io.debezium.relational.Column;
-import io.debezium.relational.ColumnEditor;
-
 public class ColumnEditorTest {
 
     private ColumnEditor editor;
@@ -59,10 +56,10 @@ public class ColumnEditorTest {
         assertThat(column.name()).isNull();
         assertThat(column.typeName()).isNull();
         assertThat(column.jdbcType()).isEqualTo(Types.INTEGER);
-        assertThat(column.length()).isEqualTo(0);
+        assertThat(column.length()).isEqualTo(-1);
         assertThat(column.scale()).isEqualTo(-1);
         assertThat(column.position()).isEqualTo(1);
-        assertThat(column.isOptional()).isFalse();
+        assertThat(column.isOptional()).isTrue();
         assertThat(column.isAutoIncremented()).isFalse();
         assertThat(column.isGenerated()).isFalse();
     }

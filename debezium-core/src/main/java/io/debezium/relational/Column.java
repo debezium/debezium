@@ -72,8 +72,19 @@ public interface Column extends Comparable<Column> {
      * Determine whether this column is optional.
      * 
      * @return {@code true} if it is optional, or {@code false} otherwise
+     * @see #isRequired()
      */
     boolean isOptional();
+    
+    /**
+     * Determine whether this column is required. This is equivalent to calling {@code !isOptional()}.
+     * 
+     * @return {@code true} if it is required (not optional), or {@code false} otherwise
+     * @see #isOptional()
+     */
+    default boolean isRequired() {
+        return !isOptional();
+    }
 
     /**
      * Determine whether this column's values are automatically incremented by the database.

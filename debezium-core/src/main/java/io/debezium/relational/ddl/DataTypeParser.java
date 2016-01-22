@@ -86,11 +86,15 @@ public class DataTypeParser {
                 ErrorCollector errors = new ErrorCollector();
                 Marker mostReadMarker = null;
                 DataType mostReadType = null;
+                Marker marker = stream.mark();
                 for (DataTypePattern pattern : matchingPatterns) {
-                    Marker marker = stream.mark();
                     DataType result = pattern.match(stream, errors::record);
                     if (result != null) {
                         // We found a match, so record it if it is better than our previous best ...
+                        if (!stream.hasNext()) {
+                            // There's no more to read, so we should be done ...
+                            return result;
+                        }
                         Marker endMarker = stream.mark();
                         if (mostReadMarker == null || endMarker.compareTo(mostReadMarker) > 0) {
                             mostReadMarker = endMarker;

@@ -110,6 +110,7 @@ final class TableEditorImpl implements TableEditor {
                 throw new IllegalArgumentException("The primary key cannot reference a non-existant column'" + pkColumnName + "'");
             }
         }
+        uniqueValues = false;
         this.pkColumnNames.clear();
         for (String pkColumnName : pkColumnNames) {
             this.pkColumnNames.add(pkColumnName);
@@ -126,6 +127,7 @@ final class TableEditorImpl implements TableEditor {
         }
         this.pkColumnNames.clear();
         this.pkColumnNames.addAll(pkColumnNames);
+        uniqueValues = false;
         return this;
     }
 
@@ -134,6 +136,11 @@ final class TableEditorImpl implements TableEditor {
         pkColumnNames.clear();
         uniqueValues = true;
         return this;
+    }
+    
+    @Override
+    public boolean hasUniqueValues() {
+        return uniqueValues;
     }
 
     @Override
@@ -175,6 +182,27 @@ final class TableEditorImpl implements TableEditor {
             sortedColumns = newColumns;
         }
         updatePositions();
+        return this;
+    }
+    
+    @Override
+    public TableEditor renameColumn(String existingName, String newName) {
+        final Column existing = columnWithName(existingName);
+        if (existing == null) throw new IllegalArgumentException("No column with name '" + existingName + "'");
+        Column newColumn = existing.edit().name(newName).create();
+        // Determine the primary key names ...
+        List<String> newPkNames = null;
+        if ( !hasUniqueValues() && primaryKeyColumnNames().contains(existing.name())) {
+            newPkNames = new ArrayList<>(primaryKeyColumnNames());
+            newPkNames.replaceAll(name->existing.name().equals(name) ? newName : name);
+        }
+        // Add the new column, move it before the existing column, and remove the old column ...
+        addColumn(newColumn);
+        reorderColumn(newColumn.name(), existing.name());
+        removeColumn(existing.name());
+        if (newPkNames != null) {
+            setPrimaryKeyNames(newPkNames);
+        }
         return this;
     }
 

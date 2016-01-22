@@ -6,7 +6,9 @@
 package io.debezium.relational;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -65,6 +67,7 @@ public class Tables {
 
     private final FunctionalReadWriteLock lock = FunctionalReadWriteLock.reentrant();
     private final Map<TableId, TableImpl> tablesByTableId = new HashMap<>();
+    private final Set<TableId> changes = new HashSet<>();
 
     /**
      * Create an empty set of definitions.
@@ -81,6 +84,15 @@ public class Tables {
         return lock.read(tablesByTableId::size);
     }
 
+    public Set<TableId> drainChanges() {
+        return lock.write(() -> {
+            if (changes.isEmpty()) return Collections.emptySet();
+            Set<TableId> result = new HashSet<>(changes);
+            changes.clear();
+            return result;
+        });
+    }
+
     /**
      * Add or update the definition for the identified table.
      * 
@@ -92,7 +104,11 @@ public class Tables {
     public Table overwriteTable(TableId tableId, List<Column> columnDefs, List<String> primaryKeyColumnNames) {
         return lock.write(() -> {
             TableImpl updated = new TableImpl(tableId, columnDefs, primaryKeyColumnNames);
-            return tablesByTableId.put(tableId, updated);
+            try {
+                return tablesByTableId.put(tableId, updated);
+            } finally {
+                changes.add(tableId);
+            }
         });
     }
 
@@ -105,7 +121,33 @@ public class Tables {
     public Table overwriteTable(Table table) {
         return lock.write(() -> {
             TableImpl updated = new TableImpl(table);
-            return tablesByTableId.put(updated.id(), updated);
+            try {
+                return tablesByTableId.put(updated.id(), updated);
+            } finally {
+                changes.add(updated.id());
+            }
+        });
+    }
+
+    /**
+     * Rename an existing table.
+     * 
+     * @param existingTableId the identifier of the existing table to be renamed; may not be null
+     * @param newTableId the new identifier for the table; may not be null
+     * @return the previous table definition, or null if there was no prior table definition
+     */
+    public Table renameTable(TableId existingTableId, TableId newTableId) {
+        return lock.write(() -> {
+            Table existing = forTable(existingTableId);
+            if (existing == null) return null;
+            tablesByTableId.remove(existing);
+            TableImpl updated = new TableImpl(newTableId, existing.columns(), existing.primaryKeyColumnNames());
+            try {
+                return tablesByTableId.put(updated.id(), updated);
+            } finally {
+                changes.add(existingTableId);
+                changes.add(updated.id());
+            }
         });
     }
 
@@ -124,6 +166,7 @@ public class Tables {
             if (updated != existing) {
                 tablesByTableId.put(tableId, new TableImpl(tableId, updated.columns(), updated.primaryKeyColumnNames()));
             }
+            changes.add(tableId);
             return existing;
         });
     }
@@ -144,6 +187,7 @@ public class Tables {
             changer.rewrite(columns, pkColumnNames);
             TableImpl updated = new TableImpl(tableId, columns, pkColumnNames);
             tablesByTableId.put(tableId, updated);
+            changes.add(tableId);
             return existing;
         });
     }
@@ -159,7 +203,10 @@ public class Tables {
      * @return the existing table definition that was removed, or null if there was no prior table definition
      */
     public Table removeTable(TableId tableId) {
-        return lock.write(() -> tablesByTableId.remove(tableId));
+        return lock.write(() -> {
+            changes.add(tableId);
+            return tablesByTableId.remove(tableId);
+        });
     }
 
     /**
@@ -259,11 +306,11 @@ public class Tables {
         return lock.read(() -> {
             StringBuilder sb = new StringBuilder();
             sb.append("Tables {").append(System.lineSeparator());
-            for (Map.Entry<TableId, TableImpl> entry : tablesByTableId.entrySet()) {
-                sb.append("  ").append(entry.getKey()).append(": {").append(System.lineSeparator());
-                entry.getValue().toString(sb, "    ");
+            tablesByTableId.forEach((tableId,table)->{
+                sb.append("  ").append(tableId).append(": {").append(System.lineSeparator());
+                table.toString(sb, "    ");
                 sb.append("  }").append(System.lineSeparator());
-            }
+            });
             sb.append("}");
             return sb.toString();
         });

@@ -501,7 +501,20 @@ public class TableSchemaBuilder {
                 };
             case Types.NUMERIC:
             case Types.DECIMAL:
-                return (data) -> Decimal.fromLogical(fieldDefn.schema(), (BigDecimal) data);
+                return (data) -> {
+                    BigDecimal decimal = null;
+                    if ( data instanceof BigDecimal) decimal = (BigDecimal)data;
+                    else if (data instanceof Boolean) decimal = new BigDecimal(((Boolean)data).booleanValue() ? 1 : 0);
+                    else if (data instanceof Short) decimal = new BigDecimal(((Short)data).intValue());
+                    else if (data instanceof Integer) decimal = new BigDecimal(((Integer)data).intValue());
+                    else if (data instanceof Long) decimal = BigDecimal.valueOf(((Long)data).longValue());
+                    else if (data instanceof Float) decimal = BigDecimal.valueOf(((Float)data).doubleValue());
+                    else if (data instanceof Double) decimal = BigDecimal.valueOf(((Double)data).doubleValue());
+                    else {
+                        handleUnknownData(column, fieldDefn, data);
+                    }
+                    return decimal;
+                };
 
             // String values
             case Types.CHAR: // variable-length
@@ -606,7 +619,7 @@ public class TableSchemaBuilder {
             // An unexpected
             dateTime = unexpectedTimestampWithZone(data, fieldDefn);
         }
-        return dateTime == null ? null : IsoTimestamp.fromLogical(fieldDefn.schema(), dateTime);
+        return dateTime;
     }
 
     /**
@@ -661,7 +674,7 @@ public class TableSchemaBuilder {
             // An unexpected
             time = unexpectedTimeWithZone(data, fieldDefn);
         }
-        return time == null ? null : IsoTime.fromLogical(fieldDefn.schema(), time);
+        return time;
     }
 
     /**
@@ -711,7 +724,7 @@ public class TableSchemaBuilder {
             // An unexpected
             date = unexpectedTimestamp(data, fieldDefn);
         }
-        return date == null ? null : Timestamp.fromLogical(fieldDefn.schema(), date);
+        return date;
     }
 
     /**
@@ -763,7 +776,7 @@ public class TableSchemaBuilder {
             // An unexpected
             date = unexpectedTime(data, fieldDefn);
         }
-        return date == null ? null : Time.fromLogical(fieldDefn.schema(), date);
+        return date;
     }
 
     /**
@@ -815,7 +828,7 @@ public class TableSchemaBuilder {
             // An unexpected
             date = unexpectedDate(data, fieldDefn);
         }
-        return date == null ? null : Date.fromLogical(fieldDefn.schema(), date);
+        return date;
     }
 
     /**
