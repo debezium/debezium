@@ -1,0 +1,7 @@
+sudo: required
+language: java
+script: mvn clean install
+jdk:
+  - oraclejdk8
+services:
+  - docker
