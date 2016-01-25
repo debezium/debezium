@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/debezium/debezium.svg?branch=master)](https://travis-ci.org/debezium/debezium)
 Copyright 2008-2015 Red Hat and contributors. Licensed under the Apache License, Version 2.0.
 
 # Debezium
