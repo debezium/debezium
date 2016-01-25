@@ -25,7 +25,9 @@ import java.util.stream.Collectors;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.FixMethodOrder;
 import org.junit.Test;
+import org.junit.runners.MethodSorters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,10 +50,11 @@ import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.TestDatabase;
 import io.debezium.mysql.MySQLConnection;
 
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class ReadBinLogIT {
 
     protected static final Logger LOGGER = LoggerFactory.getLogger(ReadBinLogIT.class);
-    protected static final long DEFAULT_TIMEOUT = TimeUnit.SECONDS.toMillis(3);
+    protected static final long DEFAULT_TIMEOUT = TimeUnit.SECONDS.toMillis(15);
 
     private static final class AnyValue implements Serializable {
         private static final long serialVersionUID = 1L;

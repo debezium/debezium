@@ -1,7 +1,23 @@
-sudo: required
 language: java
-script: mvn clean install
+sudo: required
+
 jdk:
   - oraclejdk8
+
 services:
   - docker
+
+# Install Maven 3.3.9, since the Jolokia Maven plugin requires 3.2.1 or later but Travis current runs 3.1.x
+before_install:
+  - docker ps -a
+  - wget https://archive.apache.org/dist/maven/maven-3/3.3.9/binaries/apache-maven-3.3.9-bin.zip
+  - unzip -qq apache-maven-3.3.9-bin.zip
+  - export M2_HOME=$PWD/apache-maven-3.3.9
+  - export PATH=$M2_HOME/bin:$PATH
+  - mvn -version
+
+after_install:
+  - docker ps -a
+
+script: 
+  - mvn clean install

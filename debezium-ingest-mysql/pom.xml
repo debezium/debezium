@@ -167,7 +167,7 @@
                 <configuration>
                     <systemPropertyVariables>
                         <!-- Make these available to the tests via system properties -->
-                        <database.hostname>${dockerhost.ip}</database.hostname>
+                        <database.hostname>${docker.host.address}</database.hostname>
                         <database.port>${database.port}</database.port>
                         <database.user>${database.user}</database.user>
                         <database.password>${database.password}</database.password>
@@ -175,6 +175,7 @@
                 </configuration>
             </plugin>
             <!-- Extract from $DOCKER_HOST the IP address of the host that will run our Docker images -->
+            <!--
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
@@ -194,6 +195,7 @@
                   </execution>
                 </executions>
             </plugin>
+            -->
         </plugins>
         <resources>
             <!-- Apply the properties set in the POM to the resource files -->
