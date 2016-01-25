@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Red Hat, Inc. and/or its affiliates.
+ * Copyright 2008 Debezium Authors.
  * 
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
@@ -7,6 +7,9 @@ package io.debezium.util;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
 import io.debezium.annotation.ThreadSafe;
@@ -31,6 +34,18 @@ public final class Strings {
          * @return {@code true} if the input argument matches the predicate, or {@code false} otherwise
          */
         boolean test(char c);
+    }
+
+    /**
+     * Split the supplied content into lines, returning each line as an element in the returned list.
+     * 
+     * @param content the string content that is to be split
+     * @return the list of lines; never null but may be an empty (unmodifiable) list if the supplied content is null or empty
+     */
+    public static List<String> splitLines( final String content ) {
+        if (content == null || content.length() == 0) return Collections.emptyList();
+        String[] lines = content.split("[\\r]?\\n");
+        return Arrays.asList(lines);
     }
 
     /**
