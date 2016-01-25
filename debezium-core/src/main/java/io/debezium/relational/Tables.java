@@ -6,7 +6,6 @@
 package io.debezium.relational;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -86,7 +85,7 @@ public class Tables {
 
     public Set<TableId> drainChanges() {
         return lock.write(() -> {
-            if (changes.isEmpty()) return Collections.<TableId>emptySet();
+            // if (changes.isEmpty()) return Collections.<TableId>emptySet();
             Set<TableId> result = new HashSet<>(changes);
             changes.clear();
             return result;
@@ -306,7 +305,7 @@ public class Tables {
         return lock.read(() -> {
             StringBuilder sb = new StringBuilder();
             sb.append("Tables {").append(System.lineSeparator());
-            tablesByTableId.forEach((tableId,table)->{
+            tablesByTableId.forEach((tableId, table) -> {
                 sb.append("  ").append(tableId).append(": {").append(System.lineSeparator());
                 table.toString(sb, "    ");
                 sb.append("  }").append(System.lineSeparator());
