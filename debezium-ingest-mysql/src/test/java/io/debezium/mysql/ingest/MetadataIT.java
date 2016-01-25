@@ -20,8 +20,13 @@ import io.debezium.relational.Tables;
 
 public class MetadataIT {
 
+    /**
+     * Loads the {@link Tables} definition by reading JDBC metadata. Note that some characteristics, such as whether columns
+     * are generated, are not exposed through JDBC (unlike when reading DDL).
+     * @throws SQLException if there's an error
+     */
     @Test
-    public void shouldLoadMetadata() throws SQLException {
+    public void shouldLoadMetadataViaJdbc() throws SQLException {
         try (MySQLConnection conn = new MySQLConnection(TestDatabase.testConfig("readbinlog_test"));) {
             conn.connect();
             // Set up the table as one transaction and wait to see the events ...
