@@ -1,5 +1,5 @@
 /*
- * Copyright 2008 Debezium Authors.
+ * Copyright Debezium Authors.
  * 
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
@@ -15,10 +15,10 @@ import io.debezium.annotation.Immutable;
  */
 @Immutable
 public class HashCode {
-    
+
     // Prime number used in improving distribution
     private static final int PRIME = 103;
-    
+
     /**
      * Compute a combined hash code from the supplied objects. This method always returns 0 if no objects are supplied.
      * 
@@ -26,9 +26,9 @@ public class HashCode {
      * @return the hash code
      */
     public static int compute(Object... objects) {
-        return _compute(0, objects);
+        return computeHashCode(0, objects);
     }
-    
+
     /**
      * Compute a combined hash code from the supplied objects using the supplied seed.
      * 
@@ -36,8 +36,8 @@ public class HashCode {
      * @param objects the objects that should be used to compute the hash code
      * @return the hash code
      */
-    private static int _compute(int seed,
-                                Object... objects) {
+    private static int computeHashCode(int seed,
+                                       Object... objects) {
         if (objects == null || objects.length == 0) {
             return seed * HashCode.PRIME;
         }
@@ -69,8 +69,8 @@ public class HashCode {
         }
         return hc;
     }
-    
+
     private HashCode() {
     }
-    
+
 }

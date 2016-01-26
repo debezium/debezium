@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Debezium Authors.
+ * Copyright Debezium Authors.
  * 
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
@@ -19,10 +19,14 @@ import io.debezium.text.TokenStream;
 import io.debezium.text.TokenStream.Marker;
 
 /**
- * A parser of SQL data types. Callers set up a parser and register patterns that describe the possible lists of tokens, and then
- * can repeatedly {@link #parse(TokenStream, Consumer) parse} {@link TokenStream streams of tokens} looking for matches.
+ * A parser of SQL data types. Callers set up a parser and register patterns that describe the possible lists of data type tokens,
+ * and then repeatedly {@link #parse(TokenStream, Consumer) parse} {@link TokenStream streams of tokens} looking for matches.
+ * <p>
+ * This is typically used within a {@link DdlParser} implementation to parse and identify data types appearing within a stream
+ * of DDL content.
  * 
  * @author Randall Hauch
+ * @see DdlParser
  */
 @ThreadSafe
 public class DataTypeParser {

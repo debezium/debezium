@@ -1,5 +1,5 @@
 /*
- * Copyright 2010 Debezium Authors.
+ * Copyright Debezium Authors.
  * 
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
@@ -9,6 +9,9 @@ import org.junit.Test;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+/**
+ * @author Randall Hauch
+ */
 public class PositionTest {
 
     private int combinedIndex(int firstIndex,

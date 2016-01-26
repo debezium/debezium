@@ -1,5 +1,5 @@
 /*
- * Copyright 2008 Debezium Authors.
+ * Copyright Debezium Authors.
  * 
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
@@ -164,7 +164,7 @@ public class IoUtil {
      * reading.
      * 
      * @param stream the streamed contents; may be null
-     * @param charset charset of the stream data; may not be null
+     * @param charset character set of the stream data; may not be null
      * @return the contents, or an empty string if the supplied stream is null
      * @throws IOException if there is an error reading the content
      */

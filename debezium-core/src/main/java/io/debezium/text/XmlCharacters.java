@@ -1,5 +1,5 @@
 /*
- * Copyright 2010 Debezium Authors.
+ * Copyright Debezium Authors.
  * 
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
@@ -13,6 +13,8 @@ import io.debezium.annotation.Immutable;
 /**
  * A utility class for determining the validity of various XML names, per the <a href="http://www.w3.org/TR/REC-xml/">XML 1.0
  * Specification</a>.
+ * 
+ * @author Randall Hauch
  */
 @Immutable
 public class XmlCharacters {

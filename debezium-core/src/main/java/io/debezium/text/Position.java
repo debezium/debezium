@@ -1,5 +1,5 @@
 /*
- * Copyright 2010 Debezium Authors.
+ * Copyright Debezium Authors.
  * 
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
@@ -9,6 +9,8 @@ import io.debezium.annotation.Immutable;
 
 /**
  * A class that represents the position of a particular character in terms of the lines and columns of a character sequence.
+ * 
+ * @author Randall Hauch
  */
 @Immutable
 public final class Position {
