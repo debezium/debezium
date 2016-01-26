@@ -83,10 +83,10 @@
     <modules>
         <module>support/checkstyle</module>
         <module>debezium-core</module>
-        <module>debezium-ingest-jdbc</module>
-        <module>debezium-ingest-postgres</module>
+        <!--module>debezium-ingest-jdbc</module-->
+        <!--module>debezium-ingest-postgres</module-->
         <module>debezium-ingest-mysql</module>
-        <module>debezium-kafka-connect</module>
+        <!--module>debezium-kafka-connect</module-->
     </modules>
     <dependencyManagement>
         <dependencies>

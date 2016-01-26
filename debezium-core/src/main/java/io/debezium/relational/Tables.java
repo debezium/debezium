@@ -85,7 +85,6 @@ public class Tables {
 
     public Set<TableId> drainChanges() {
         return lock.write(() -> {
-            // if (changes.isEmpty()) return Collections.<TableId>emptySet();
             Set<TableId> result = new HashSet<>(changes);
             changes.clear();
             return result;
