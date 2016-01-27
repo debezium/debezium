@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Debezium Authors.
+ * Copyright Debezium Authors.
  * 
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
@@ -14,6 +14,10 @@ import java.util.List;
 
 import org.junit.Test;
 
+/**
+ * @author Randall Hauch
+ * @author Horia Chiorean
+ */
 public class StringsTest {
 
     public void compareSeparatedLines( Object... lines ) {

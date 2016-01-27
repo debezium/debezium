@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Debezium Authors.
+ * Copyright Debezium Authors.
  * 
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
@@ -13,8 +13,12 @@ import io.debezium.text.TokenStream.Tokenizer;
 import io.debezium.text.TokenStream.Tokens;
 
 /**
+ * A {@link Tokenizer} that is specialized for tokenizing DDL streams.
+ * 
  * @author Randall Hauch
- *
+ * @author Horia Chiorean
+ * @author Barry LaFond
+ * @author Jure Kajzer
  */
 public class DdlTokenizer implements Tokenizer {
 
@@ -56,7 +60,6 @@ public class DdlTokenizer implements Tokenizer {
      * <p>
      * Examples would be: "CREATE", "TABLE", "ALTER", "SCHEMA", "DROP", etc...
      * </p>
-     * see {@link DdlConstants} for the default SQL 92 representations.
      */
     public static final int KEYWORD = 64;
 
@@ -66,7 +69,6 @@ public class DdlTokenizer implements Tokenizer {
      * <p>
      * Examples would be: {"CREATE", "TABLE"} {"CREATE", "OR", "REPLACE", "VIEW"}
      * </p>
-     * see {@link DdlConstants} for the default SQL 92 representations.
      */
     public static final int STATEMENT_KEY = 128;
 

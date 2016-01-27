@@ -1,5 +1,5 @@
 /*
- * Copyright 2010 Debezium Authors.
+ * Copyright Debezium Authors.
  * 
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
@@ -15,6 +15,10 @@ import static org.fest.assertions.Assertions.assertThat;
 import io.debezium.text.TokenStream.BasicTokenizer;
 import io.debezium.text.TokenStream.Tokenizer;
 
+/**
+ * @author Randall Hauch
+ * @author Daniel Kelleher
+ */
 public class TokenStreamTest {
     public static final int WORD = TokenStream.BasicTokenizer.WORD;
     public static final int SYMBOL = TokenStream.BasicTokenizer.SYMBOL;
@@ -44,25 +48,25 @@ public class TokenStreamTest {
         tokens.start();
     }
 
-    @Test( expected = IllegalStateException.class )
+    @Test(expected = IllegalStateException.class)
     public void shouldNotAllowConsumeBeforeStartIsCalled() {
         tokens = new TokenStream(content, TokenStream.basicTokenizer(false), false);
         tokens.consume("Select");
     }
 
-    @Test( expected = IllegalStateException.class )
+    @Test(expected = IllegalStateException.class)
     public void shouldNotAllowHasNextBeforeStartIsCalled() {
         tokens = new TokenStream(content, TokenStream.basicTokenizer(false), false);
         tokens.hasNext();
     }
 
-    @Test( expected = IllegalStateException.class )
+    @Test(expected = IllegalStateException.class)
     public void shouldNotAllowMatchesBeforeStartIsCalled() {
         tokens = new TokenStream(content, TokenStream.basicTokenizer(false), false);
         tokens.matches("Select");
     }
 
-    @Test( expected = IllegalStateException.class )
+    @Test(expected = IllegalStateException.class)
     public void shouldNotAllowCanConsumeBeforeStartIsCalled() {
         tokens = new TokenStream(content, TokenStream.basicTokenizer(false), false);
         tokens.canConsume("Select");
@@ -88,7 +92,7 @@ public class TokenStreamTest {
         assertThat(tokens.hasNext()).isFalse();
     }
 
-    @Test( expected = ParsingException.class )
+    @Test(expected = ParsingException.class)
     public void shouldFailToConsumeInCaseSensitiveMannerWithExpectedValuesWhenMatchingIncorrectCase() {
         makeCaseSensitive();
         tokens.consume("Select");
@@ -108,7 +112,7 @@ public class TokenStreamTest {
         assertThat(tokens.hasNext()).isFalse();
     }
 
-    @Test( expected = ParsingException.class )
+    @Test(expected = ParsingException.class)
     public void shouldFailToConsumeInCaseInsensitiveMannerWithExpectedValuesWhenMatchingStringIsInLowerCase() {
         makeCaseInsensitive();
         tokens.consume("SELECT");
@@ -311,7 +315,7 @@ public class TokenStreamTest {
         assertThat(tokens.hasNext()).isFalse();
     }
 
-    @Test( expected = ParsingException.class )
+    @Test(expected = ParsingException.class)
     public void shouldFailToConsumeMultipleTokensIfTheyDoNotMatch() {
         makeCaseInsensitive();
         tokens.consume("SELECT", "ALL", "COLUMNS", "FROM", "TABLE");
@@ -327,8 +331,8 @@ public class TokenStreamTest {
     @Test
     public void shouldReturnTrueFromCanConsumeArrayOfTokensIfTheyAllMatch() {
         makeCaseInsensitive();
-        assertThat(tokens.matches(new String[] {"SELECT", "ALL", "COLUMNS", "FROM", "THIS", "TABLE"})).isTrue();
-        assertThat(tokens.canConsume(new String[] {"SELECT", "ALL", "COLUMNS", "FROM", "THIS", "TABLE"})).isTrue();
+        assertThat(tokens.matches(new String[] { "SELECT", "ALL", "COLUMNS", "FROM", "THIS", "TABLE" })).isTrue();
+        assertThat(tokens.canConsume(new String[] { "SELECT", "ALL", "COLUMNS", "FROM", "THIS", "TABLE" })).isTrue();
         assertThat(tokens.hasNext()).isFalse();
     }
 
@@ -417,7 +421,7 @@ public class TokenStreamTest {
     public void shouldCanConsumeStringAfterTokensCompleteFromCanConsumeStringArray() {
         makeCaseInsensitive();
         // consume ALL the tokens using canConsume()
-        tokens.canConsume(new String[] {"SELECT", "ALL", "COLUMNS", "FROM", "THIS", "TABLE"});
+        tokens.canConsume(new String[] { "SELECT", "ALL", "COLUMNS", "FROM", "THIS", "TABLE" });
         // try to canConsume() single word
         assertThat(tokens.canConsume("SELECT")).isFalse();
         assertThat(tokens.canConsume(TokenStream.ANY_VALUE)).isFalse();
@@ -428,7 +432,7 @@ public class TokenStreamTest {
     public void shouldCanConsumeStringAfterTokensCompleteFromCanConsumeStringIterator() {
         makeCaseInsensitive();
         // consume ALL the tokens using canConsume()
-        tokens.canConsume(Arrays.asList(new String[] {"SELECT", "ALL", "COLUMNS", "FROM", "THIS", "TABLE"}));
+        tokens.canConsume(Arrays.asList(new String[] { "SELECT", "ALL", "COLUMNS", "FROM", "THIS", "TABLE" }));
         // try to canConsume() single word
         assertThat(tokens.canConsume("SELECT")).isFalse();
         assertThat(tokens.canConsume(TokenStream.ANY_VALUE)).isFalse();

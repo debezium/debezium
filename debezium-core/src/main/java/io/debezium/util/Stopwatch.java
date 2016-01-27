@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Debezium Authors.
+ * Copyright Debezium Authors.
  * 
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
@@ -65,9 +65,6 @@ public abstract class Stopwatch {
 
     /**
      * The timing statistics for a recorded set of samples.
-     * 
-     * @author Randall Hauch
-     *
      */
     public static interface Statistics {
         /**
@@ -255,8 +252,6 @@ public abstract class Stopwatch {
      * This set is threadsafe, meaning that multiple threads can {@link #create()} new stopwatches concurrently, and each
      * stopwatch's duration is measured separately. Additionally, all of the other methods of this interface are also threadsafe.
      * </p>
-     * 
-     * @author Randall Hauch
      */
     @ThreadSafe
     public static interface StopwatchSet extends Durations {
@@ -464,8 +459,6 @@ public abstract class Stopwatch {
 
     /**
      * Abstract base class for {@link Durations} implementations.
-     * 
-     * @author Randall Hauch
      */
     @ThreadSafe
     protected static abstract class BaseDurations implements Durations {
@@ -479,8 +472,6 @@ public abstract class Stopwatch {
 
     /**
      * A {@link Durations} implementation that only remembers the most recently {@link #add(Duration) added} duration.
-     * 
-     * @author Randall Hauch
      */
     @ThreadSafe
     private static final class SingleDuration extends BaseDurations {
@@ -501,8 +492,6 @@ public abstract class Stopwatch {
 
     /**
      * A {@link Durations} implementation that accumulates all {@link #add(Duration) added} durations.
-     * 
-     * @author Randall Hauch
      */
     @ThreadSafe
     private static final class MultipleDurations extends BaseDurations {

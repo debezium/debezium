@@ -1,5 +1,5 @@
 /*
- * Copyright 2010 Debezium Authors.
+ * Copyright Debezium Authors.
  * 
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
@@ -337,6 +337,9 @@ import io.debezium.util.Strings;
  * {@link Tokenizer}s with exactly this behavior can actually be created using the {@link #basicTokenizer(boolean)} method. So
  * while this very basic implementation is not meant to be used in all situations, it may be useful in some situations.
  * </p>
+ * @author Randall Hauch
+ * @author Horia Chiorean
+ * @author Daniel Kelleher
  */
 @NotThreadSafe
 public class TokenStream {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2008 Debezium Authors.
+ * Copyright Debezium Authors.
  * 
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
@@ -18,6 +18,7 @@ import io.debezium.annotation.ThreadSafe;
  * String-related utility methods.
  * 
  * @author Randall Hauch
+ * @author Horia Chiorean
  */
 @ThreadSafe
 public final class Strings {

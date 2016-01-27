@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Debezium Authors.
+ * Copyright Debezium Authors.
  * 
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
@@ -33,6 +33,8 @@ import io.debezium.text.TokenStream.Marker;
  * A parser for DDL statements.
  * 
  * @author Randall Hauch
+ * @author Horia Chiorean
+ * @author Barry LaFond
  */
 @NotThreadSafe
 public class DdlParser {
