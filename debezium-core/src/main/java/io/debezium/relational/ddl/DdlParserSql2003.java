@@ -575,7 +575,7 @@ public class DdlParserSql2003 extends DdlParser {
 
             // Update the table ...
             Column newColumnDefn = column.create();
-            table.setColumns(newColumnDefn);
+            table.addColumn(newColumnDefn);
             if (isPrimaryKey.get()) {
                 table.setPrimaryKeyNames(newColumnDefn.name());
             }

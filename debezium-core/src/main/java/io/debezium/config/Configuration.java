@@ -36,7 +36,9 @@ import io.debezium.util.IoUtil;
 /**
  * An immutable representation of a Debezium configuration. A {@link Configuration} instance can be obtained
  * {@link #from(Properties) from Properties} or loaded from a {@link #load(File) file}, {@link #load(InputStream) stream},
- * {@link #load(Reader) reader}, {@link #load(URL) URL}, or from a {@link #load(String, ClassLoader) resource on the classpath}.
+ * {@link #load(Reader) reader}, {@link #load(URL) URL}, or {@link #load(String, ClassLoader) classpath resource}. They can
+ * also be built by first {@link #create() creating a builder} and then using that builder to populate and
+ * {@link Builder#build() return} the immutable Configuration instance.
  * <p>
  * A Configuration object is basically a decorator around a {@link Properties} object. It has methods to get and convert
  * individual property values to numeric, boolean and String types, optionally using a default value if the given property value
@@ -47,51 +49,6 @@ import io.debezium.util.IoUtil;
  */
 @Immutable
 public interface Configuration {
-
-    public static Field field(String name, String description) {
-        return new Field(name, description, null);
-    }
-
-    public static Field field(String name, String description, String defaultValue) {
-        return new Field(name, description, defaultValue);
-    }
-
-    public static Field field(String name, String description, int defaultValue) {
-        return new Field(name, description, Integer.toString(defaultValue));
-    }
-
-    public static Field field(String name, String description, long defaultValue) {
-        return new Field(name, description, Long.toString(defaultValue));
-    }
-
-    public static Field field(String name, String description, boolean defaultValue) {
-        return new Field(name, description, Boolean.toString(defaultValue));
-    }
-
-    public static class Field {
-        private final String name;
-        private final String desc;
-        private final String defaultValue;
-
-        public Field(String name, String description, String defaultValue) {
-            this.name = name;
-            this.desc = description;
-            this.defaultValue = defaultValue;
-            assert this.name != null;
-        }
-
-        public String name() {
-            return name;
-        }
-
-        public String defaultValue() {
-            return defaultValue;
-        }
-
-        public String description() {
-            return desc;
-        }
-    }
 
     /**
      * The basic interface for configuration builders.
@@ -165,6 +122,70 @@ public interface Configuration {
         }
 
         /**
+         * If there is no field with the specified key, then associate the given value with the specified key.
+         * 
+         * @param key the key
+         * @param value the value
+         * @return this builder object so methods can be chained together; never null
+         */
+        B withDefault(String key, String value);
+
+        /**
+         * If there is no field with the specified key, then associate the given value with the specified key.
+         * 
+         * @param key the key
+         * @param value the value
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B withDefault(String key, int value) {
+            return withDefault(key, Integer.toString(value));
+        }
+
+        /**
+         * If there is no field with the specified key, then associate the given value with the specified key.
+         * 
+         * @param key the key
+         * @param value the value
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B withDefault(String key, float value) {
+            return withDefault(key, Float.toString(value));
+        }
+
+        /**
+         * If there is no field with the specified key, then associate the given value with the specified key.
+         * 
+         * @param key the key
+         * @param value the value
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B withDefault(String key, double value) {
+            return withDefault(key, Double.toString(value));
+        }
+
+        /**
+         * If there is no field with the specified key, then associate the given value with the specified key.
+         * 
+         * @param key the key
+         * @param value the value
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B withDefault(String key, long value) {
+            return withDefault(key, Long.toString(value));
+        }
+
+        /**
+         * If there is no field with the specified key, then associate the given value with the specified key.
+         * 
+         * @param key the key
+         * @param value the value
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B withDefault(String key, boolean value) {
+            return withDefault(key, Boolean.toString(value));
+        }
+
+        /**
          * Associate the given value with the key of the specified field.
          * 
          * @param field the predefined field for the key
@@ -172,7 +193,7 @@ public interface Configuration {
          * @return this builder object so methods can be chained together; never null
          */
         default B with(Field field, String value) {
-            return with(field.name(),value);
+            return with(field.name(), value);
         }
 
         /**
@@ -183,7 +204,7 @@ public interface Configuration {
          * @return this builder object so methods can be chained together; never null
          */
         default B with(Field field, int value) {
-            return with(field.name(),value);
+            return with(field.name(), value);
         }
 
         /**
@@ -194,7 +215,7 @@ public interface Configuration {
          * @return this builder object so methods can be chained together; never null
          */
         default B with(Field field, float value) {
-            return with(field.name(),value);
+            return with(field.name(), value);
         }
 
         /**
@@ -205,7 +226,7 @@ public interface Configuration {
          * @return this builder object so methods can be chained together; never null
          */
         default B with(Field field, double value) {
-            return with(field.name(),value);
+            return with(field.name(), value);
         }
 
         /**
@@ -216,7 +237,7 @@ public interface Configuration {
          * @return this builder object so methods can be chained together; never null
          */
         default B with(Field field, long value) {
-            return with(field.name(),value);
+            return with(field.name(), value);
         }
 
         /**
@@ -227,9 +248,83 @@ public interface Configuration {
          * @return this builder object so methods can be chained together; never null
          */
         default B with(Field field, boolean value) {
-            return with(field.name(),value);
+            return with(field.name(), value);
         }
-        
+
+        /**
+         * If the field does not have a value, then associate the given value with the key of the specified field.
+         * 
+         * @param field the predefined field for the key
+         * @param value the value
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B withDefault(Field field, String value) {
+            return withDefault(field.name(), value);
+        }
+
+        /**
+         * If the field does not have a value, then associate the given value with the key of the specified field.
+         * 
+         * @param field the predefined field for the key
+         * @param value the value
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B withDefault(Field field, int value) {
+            return withDefault(field.name(), value);
+        }
+
+        /**
+         * If the field does not have a value, then associate the given value with the key of the specified field.
+         * 
+         * @param field the predefined field for the key
+         * @param value the value
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B withDefault(Field field, float value) {
+            return withDefault(field.name(), value);
+        }
+
+        /**
+         * If the field does not have a value, then associate the given value with the key of the specified field.
+         * 
+         * @param field the predefined field for the key
+         * @param value the value
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B withDefault(Field field, double value) {
+            return withDefault(field.name(), value);
+        }
+
+        /**
+         * If the field does not have a value, then associate the given value with the key of the specified field.
+         * 
+         * @param field the predefined field for the key
+         * @param value the value
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B withDefault(Field field, long value) {
+            return withDefault(field.name(), value);
+        }
+
+        /**
+         * If the field does not have a value, then associate the given value with the key of the specified field.
+         * 
+         * @param field the predefined field for the key
+         * @param value the default value
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B withDefault(Field field, boolean value) {
+            return withDefault(field.name(), value);
+        }
+
+        /**
+         * Apply the function to this builder.
+         * 
+         * @param function the predefined field for the key
+         * @return this builder object so methods can be chained together; never null
+         */
+        B apply(Consumer<B> function);
+
         /**
          * Build and return the immutable configuration.
          * 
@@ -254,6 +349,20 @@ public interface Configuration {
         @Override
         public Builder with(String key, String value) {
             props.setProperty(key, value);
+            return this;
+        }
+        
+        @Override
+        public Builder withDefault(String key, String value) {
+            if ( !props.containsKey(key)) {
+                props.setProperty(key, value);
+            }
+            return this;
+        }
+        
+        @Override
+        public Builder apply(Consumer<Builder> function) {
+            function.accept(this);
             return this;
         }
 
@@ -281,7 +390,7 @@ public interface Configuration {
     public static Builder copy(Configuration config) {
         return new Builder(config.asProperties());
     }
-
+    
     /**
      * Create a Configuration object that is populated by system properties, per {@link #withSystemProperties(String)}.
      * 
@@ -473,7 +582,15 @@ public interface Configuration {
             return from(props);
         }
     }
-
+    
+    /**
+     * Obtain an editor for a copy of this configuration.
+     * @return a builder that is populated with this configuration's key-value pairs; never null
+     */
+    default Builder edit() {
+        return copy(this);
+    }
+    
     /**
      * Determine whether this configuration contains a key-value pair with the given key and the value is non-null
      * 
@@ -534,6 +651,19 @@ public interface Configuration {
      */
     default String getString(Field field) {
         return getString(field.name(), field.defaultValue());
+    }
+
+    /**
+     * Get the string value associated with the given field, returning the field's default value if there is no such key-value
+     * pair in this configuration.
+     * 
+     * @param field the field; may not be null
+     * @param defaultValue the default value
+     * @return the configuration's value for the field, or the field's {@link Field#defaultValue() default value} if there is no
+     *         such key-value pair in the configuration
+     */
+    default String getString(Field field, String defaultValue) {
+        return getString(field.name(), ()->field.defaultValue());
     }
 
     /**
@@ -693,9 +823,10 @@ public interface Configuration {
      * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration and there is
      *         no default value in the field or the default value could not be parsed as a long, or there is a key-value pair in
      *         the configuration but the value could not be parsed as an integer value
+     * @throws NumberFormatException if there is no name-value pair and the field has no default value
      */
     default int getInteger(Field field) {
-        return getInteger(field.name(), Integer.valueOf(field.defaultValue()));
+        return getInteger(field.name(), ()->Integer.valueOf(field.defaultValue())).intValue();
     }
 
     /**
@@ -706,9 +837,52 @@ public interface Configuration {
      * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration and there is
      *         no default value in the field or the default value could not be parsed as a long, or there is a key-value pair in
      *         the configuration but the value could not be parsed as a long value
+     * @throws NumberFormatException if there is no name-value pair and the field has no default value
      */
     default long getLong(Field field) {
-        return getLong(field.name(), Long.valueOf(field.defaultValue()));
+        return getLong(field.name(), ()->Long.valueOf(field.defaultValue())).longValue();
+    }
+
+    /**
+     * Get the boolean value associated with the given field when that field has a default value. If the configuration does
+     * not have a name-value pair with the same name as the field, then the field's default value.
+     * 
+     * @param field the field
+     * @return the boolean value, or null if the key is null, there is no such key-value pair in the configuration and there is
+     *         no default value in the field or the default value could not be parsed as a long, or there is a key-value pair in
+     *         the configuration but the value could not be parsed as a boolean value
+     * @throws NumberFormatException if there is no name-value pair and the field has no default value
+     */
+    default boolean getBoolean(Field field) {
+        return getBoolean(field.name(), ()->Boolean.valueOf(field.defaultValue())).booleanValue();
+    }
+
+    /**
+     * Get the integer value associated with the given field, returning the field's default value if there is no such
+     * key-value pair.
+     * 
+     * @param field the field
+     * @param defaultValue the default value
+     * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration and there is
+     *         no default value in the field or the default value could not be parsed as a long, or there is a key-value pair in
+     *         the configuration but the value could not be parsed as an integer value
+     */
+    default int getInteger(Field field, int defaultValue) {
+        return getInteger(field.name(), defaultValue);
+    }
+
+    /**
+     * Get the long value associated with the given field, returning the field's default value if there is no such
+     * key-value pair.
+     * 
+     * @param field the field
+     * @param defaultValue the default value
+     * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration and there is
+     *         no default value in the field or the default value could not be parsed as a long, or there is a key-value pair in
+     *         the configuration but the value could not be parsed as a long value
+     */
+    default long getLong(Field field, long defaultValue) {
+        return getLong(field.name(), defaultValue);
     }
 
     /**
@@ -716,12 +890,13 @@ public interface Configuration {
      * key-value pair.
      * 
      * @param field the field
+     * @param defaultValue the default value
      * @return the boolean value, or null if the key is null, there is no such key-value pair in the configuration and there is
      *         no default value in the field or the default value could not be parsed as a long, or there is a key-value pair in
      *         the configuration but the value could not be parsed as a boolean value
      */
-    default boolean getBoolean(Field field) {
-        return getBoolean(field.name(), Boolean.valueOf(field.defaultValue()));
+    default boolean getBoolean(Field field, boolean defaultValue) {
+        return getBoolean(field.name(), defaultValue);
     }
 
     /**

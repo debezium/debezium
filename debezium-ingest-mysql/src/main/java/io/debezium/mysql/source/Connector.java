@@ -3,7 +3,7 @@
  * 
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.mysql.ingest;
+package io.debezium.mysql.source;
 
 import java.util.List;
 import java.util.Map;
@@ -11,15 +11,17 @@ import java.util.Map;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.source.SourceConnector;
 
+import io.debezium.mysql.Module;
+
 /**
  * A Kafka Connect source connector that creates tasks that read the MySQL binary log and generate the corresponding
  * data change events.
  * 
  * @author Randall Hauch
  */
-public class MySqlConnector extends SourceConnector {
+public class Connector extends SourceConnector {
 
-    public MySqlConnector() {
+    public Connector() {
     }
 
     @Override
@@ -33,7 +35,7 @@ public class MySqlConnector extends SourceConnector {
 
     @Override
     public Class<? extends Task> taskClass() {
-        return null;
+        return LogReader.class;
     }
 
     @Override

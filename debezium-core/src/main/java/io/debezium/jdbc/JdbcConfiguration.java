@@ -7,35 +7,53 @@ package io.debezium.jdbc;
 
 import java.util.Properties;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.util.Collect;
 
 /**
- * A specialized configuration for the Debezium driver.
+ * A specialized configuration for the Debezium driver. This defines several known {@link io.debezium.config.Field
+ * fields} that are common to all JDBC configurations.
  * 
  * @author Randall Hauch
  */
 @Immutable
 public interface JdbcConfiguration extends Configuration {
 
-    public static final Field DATABASE = Configuration.field("dbname",
-                                                             "Name of the database");
-    public static final Field USER = Configuration.field("user",
-                                                         "Name of the database user to be used when connecting to the database");
-    public static final Field PASSWORD = Configuration.field("password",
-                                                             "Password to be used when connecting to the database");
-    public static final Field HOSTNAME = Configuration.field("hostname", "IP address of the database");
-    public static final Field PORT = Configuration.field("port", "Port of the database", 5432);
+    /**
+     * A field for the name of the database. This field has no default value.
+     */
+    public static final Field DATABASE = Field.create("dbname",
+                                                      "Name of the database");
+    /**
+     * A field for the user of the database. This field has no default value.
+     */
+    public static final Field USER = Field.create("user",
+                                                  "Name of the database user to be used when connecting to the database");
+    /**
+     * A field for the password of the database. This field has no default value.
+     */
+    public static final Field PASSWORD = Field.create("password",
+                                                      "Password to be used when connecting to the database");
+    /**
+     * A field for the hostname of the database server. This field has no default value.
+     */
+    public static final Field HOSTNAME = Field.create("hostname", "IP address of the database");
+    /**
+     * A field for the port of the database server. There is no default value.
+     */
+    public static final Field PORT = Field.create("port", "Port of the database");
 
     /**
-     * The set of pre-defined fields for JDBC configurations.
+     * The set of names of the pre-defined JDBC configuration fields, including {@link #DATABASE}, {@link #USER},
+     * {@link #PASSWORD}, {@link #HOSTNAME}, and {@link #PORT}.
      */
     public static Set<String> ALL_KNOWN_FIELDS = Collect.unmodifiableSet(Field::name, DATABASE, USER, PASSWORD, HOSTNAME, PORT);
 
-    
     /**
      * Obtain a {@link JdbcConfiguration} adapter for the given {@link Configuration}.
      * 
@@ -137,6 +155,20 @@ public interface JdbcConfiguration extends Configuration {
             }
 
             @Override
+            public Builder withDefault(String key, String value) {
+                if (!props.containsKey(key)) {
+                    props.setProperty(key, value);
+                }
+                return this;
+            }
+
+            @Override
+            public Builder apply(Consumer<Builder> function) {
+                function.accept(this);
+                return this;
+            }
+
+            @Override
             public JdbcConfiguration build() {
                 return JdbcConfiguration.adapt(Configuration.from(props));
             }
@@ -160,6 +192,20 @@ public interface JdbcConfiguration extends Configuration {
             @Override
             public Builder with(String key, String value) {
                 props.setProperty(key, value);
+                return this;
+            }
+
+            @Override
+            public Builder withDefault(String key, String value) {
+                if (!props.containsKey(key)) {
+                    props.setProperty(key, value);
+                }
+                return this;
+            }
+
+            @Override
+            public Builder apply(Consumer<Builder> function) {
+                function.accept(this);
                 return this;
             }
 

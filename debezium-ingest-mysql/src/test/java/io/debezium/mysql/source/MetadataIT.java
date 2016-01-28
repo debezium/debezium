@@ -3,7 +3,7 @@
  * 
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.mysql.ingest;
+package io.debezium.mysql.source;
 
 import java.sql.SQLException;
 import java.sql.Types;
@@ -12,7 +12,6 @@ import org.junit.Test;
 
 import static org.fest.assertions.Assertions.assertThat;
 
-import io.debezium.jdbc.TestDatabase;
 import io.debezium.mysql.MySQLConnection;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
@@ -27,7 +26,7 @@ public class MetadataIT {
      */
     @Test
     public void shouldLoadMetadataViaJdbc() throws SQLException {
-        try (MySQLConnection conn = new MySQLConnection(TestDatabase.testConfig("readbinlog_test"));) {
+        try (MySQLConnection conn = MySQLConnection.forTestDatabase("readbinlog_test");) {
             conn.connect();
             // Set up the table as one transaction and wait to see the events ...
             conn.execute("DROP TABLE IF EXISTS person",

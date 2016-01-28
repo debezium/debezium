@@ -6,11 +6,11 @@
 package io.debezium.relational;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import org.apache.kafka.connect.data.Schema;
@@ -65,7 +65,7 @@ public class Tables {
     }
 
     private final FunctionalReadWriteLock lock = FunctionalReadWriteLock.reentrant();
-    private final Map<TableId, TableImpl> tablesByTableId = new HashMap<>();
+    private final Map<TableId, TableImpl> tablesByTableId = new ConcurrentHashMap<>();
     private final Set<TableId> changes = new HashSet<>();
 
     /**
@@ -298,7 +298,22 @@ public class Tables {
     public TableEditor editOrCreateTable(String catalogName, String schemaName, String tableName) {
         return editOrCreateTable(new TableId(catalogName, schemaName, tableName));
     }
+    
+    @Override
+    public int hashCode() {
+        return tablesByTableId.hashCode();
+    }
 
+    @Override
+    public boolean equals(Object obj) {
+        if ( obj == this ) return true;
+        if ( obj instanceof Tables ) {
+            Tables that = (Tables)obj;
+            return this.tablesByTableId.equals(that.tablesByTableId);
+        }
+        return false;
+    }
+    
     @Override
     public String toString() {
         return lock.read(() -> {

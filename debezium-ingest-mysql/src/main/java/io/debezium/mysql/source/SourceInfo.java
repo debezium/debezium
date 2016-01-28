@@ -3,7 +3,7 @@
  * 
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.mysql.ingest;
+package io.debezium.mysql.source;
 
 import java.util.Map;
 
@@ -29,9 +29,9 @@ import io.debezium.util.Collect;
  * 
  * <pre>
  * {
- *         "file" = "mysql-bin.000003",
- *         "pos" = 105586,
- *         "row" = 0
+ *     "file" = "mysql-bin.000003",
+ *     "pos" = 105586,
+ *     "row" = 0
  * }
  * </pre>
  * 
@@ -40,7 +40,7 @@ import io.debezium.util.Collect;
 @NotThreadSafe
 final class SourceInfo {
 
-    public static final String DATABASE_PARTITION_KEY = "db";
+    public static final String SERVER_PARTITION_KEY = "server";
     public static final String BINLOG_FILENAME_OFFSET_KEY = "file";
     public static final String BINLOG_POSITION_OFFSET_KEY = "pos";
     public static final String BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY = "row";
@@ -48,7 +48,7 @@ final class SourceInfo {
     private String binlogFilename;
     private long binlogPosition = 4;
     private int eventRowNumber = 0;
-    private String databaseId;
+    private String serverName;
     private Map<String, ?> sourcePartition;
 
     public SourceInfo() {
@@ -59,15 +59,15 @@ final class SourceInfo {
      * 
      * @param logicalId the logical identifier for the database; may not be null
      */
-    public void setDatabase(String logicalId) {
-        this.databaseId = logicalId;
-        sourcePartition = Collect.hashMapOf(DATABASE_PARTITION_KEY, databaseId);
+    public void setServerName(String logicalId) {
+        this.serverName = logicalId;
+        sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, serverName);
     }
 
     /**
      * Get the Kafka Connect detail about the source "partition", which describes the portion of the source that we are
      * consuming. Since we're reading the binary log for a single database, the source partition specifies the
-     * {@link #setDatabase database server}.
+     * {@link #setServerName(String) database server}.
      * <p>
      * The resulting map is mutable for efficiency reasons (this information rarely changes), but should not be mutated.
      * 
@@ -79,7 +79,7 @@ final class SourceInfo {
 
     /**
      * Get the Kafka Connect detail about the source "offset", which describes the position within the source where we last
-     * stopped reading.
+     * have last read.
      * 
      * @return a copy of the current offset; never null
      */
@@ -91,9 +91,9 @@ final class SourceInfo {
 
     /**
      * Set the current row number within a given event, and then get the Kafka Connect detail about the source "offset", which
-     * describes the position within the source where we last stopped reading.
+     * describes the position within the source where we have last read.
      * 
-     * @param eventRowNumber the row number within the last event that was successfully processed
+     * @param eventRowNumber the 0-based row number within the last event that was successfully processed
      * @return a copy of the current offset; never null
      */
     public Map<String, Object> offset(int eventRowNumber) {
@@ -174,9 +174,9 @@ final class SourceInfo {
     
     /**
      * Get the logical identifier of the database that is the source of the events.
-     * @return the database name; null if it has not been {@link #setDatabase(String) set}
+     * @return the database name; null if it has not been {@link #setServerName(String) set}
      */
-    public String database() {
-        return databaseId;
+    public String serverName() {
+        return serverName;
     }
 }

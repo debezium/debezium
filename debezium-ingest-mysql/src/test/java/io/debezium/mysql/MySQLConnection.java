@@ -6,14 +6,36 @@
 package io.debezium.mysql;
 
 import io.debezium.config.Configuration;
+import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 
 /**
- * A utility for working with MySQL connections.
+ * A utility for integration test cases to connect the MySQL server running in the Docker container created by this module's
+ * build.
+ * 
  * @author Randall Hauch
  */
 public class MySQLConnection extends JdbcConnection {
-    
+
+    /**
+     * Obtain a connection instance to the named test database.
+     * 
+     * @param databaseName the name of the test database
+     * @return the MySQLConnection instance; never null
+     */
+    public static MySQLConnection forTestDatabase(String databaseName) {
+        return new MySQLConnection(JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
+                                                    .withDatabase(databaseName)
+                                                    .build());
+    }
+
+    protected static void addDefaults(Configuration.Builder builder) {
+        builder.withDefault(JdbcConfiguration.HOSTNAME, "localhost")
+               .withDefault(JdbcConfiguration.PORT, 3306)
+               .withDefault(JdbcConfiguration.USER, "mysql")
+               .withDefault(JdbcConfiguration.PASSWORD, "mysqlpw");
+    }
+
     protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory("jdbc:mysql://${hostname}:${port}/${dbname}");
 
     /**
@@ -22,7 +44,7 @@ public class MySQLConnection extends JdbcConnection {
      * @param config the configuration; may not be null
      */
     public MySQLConnection(Configuration config) {
-        super(config, FACTORY);
+        super(config, FACTORY, null, MySQLConnection::addDefaults);
     }
 
     /**
@@ -33,6 +55,6 @@ public class MySQLConnection extends JdbcConnection {
      * @param initialOperations the initial operations that should be run on each new connection; may be null
      */
     public MySQLConnection(Configuration config, Operations initialOperations) {
-        super(config, FACTORY, initialOperations);
+        super(config, FACTORY, initialOperations, MySQLConnection::addDefaults);
     }
 }

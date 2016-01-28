@@ -3,7 +3,7 @@
  * 
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.mysql.ingest;
+package io.debezium.mysql.source;
 
 import static org.junit.Assert.fail;
 
@@ -45,7 +45,6 @@ import com.github.shyiko.mysql.binlog.event.XidEventData;
 import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.jdbc.TestDatabase;
 import io.debezium.mysql.MySQLConnection;
 
 public class ReadBinLogIT {
@@ -59,7 +58,6 @@ public class ReadBinLogIT {
 
     private static final Serializable ANY_OBJECT = new AnyValue();
 
-    private JdbcConfiguration config;
     private EventQueue counters;
     private BinaryLogClient client;
     private MySQLConnection conn;
@@ -69,11 +67,12 @@ public class ReadBinLogIT {
     public void beforeEach() throws TimeoutException, IOException, SQLException, InterruptedException {
         events.clear();
 
-        config = TestDatabase.buildTestConfig().withDatabase("readbinlog_test").build();
-
         // Connect the normal SQL client ...
-        conn = new MySQLConnection(config);
+        conn = MySQLConnection.forTestDatabase("readbinlog_test");
         conn.connect();
+
+        // Get the configuration that we used ...
+        JdbcConfiguration config = conn.config();
 
         // Connect the bin log client ...
         counters = new EventQueue(DEFAULT_TIMEOUT, this::logConsumedEvent, this::logIgnoredEvent);

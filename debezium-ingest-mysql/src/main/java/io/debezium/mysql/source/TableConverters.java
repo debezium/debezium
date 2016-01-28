@@ -3,7 +3,7 @@
  * 
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.mysql.ingest;
+package io.debezium.mysql.source;
 
 import java.io.Serializable;
 import java.util.BitSet;
@@ -46,39 +46,45 @@ final class TableConverters {
     private final MySqlDdlParser ddlParser;
     private final Tables tables;
     private final TableSchemaBuilder schemaBuilder = new TableSchemaBuilder();
-    private final Consumer<Set<TableId>> tablesChangedHandler;
     private final Map<String, TableSchema> tableSchemaByTableName = new HashMap<>();
     private final Map<Long, Converter> convertersByTableId = new HashMap<>();
     private final Map<String, Long> tableNumbersByTableName = new HashMap<>();
 
-    public TableConverters( TopicSelector topicSelector, Tables tables, Consumer<Set<TableId>> tablesChangedHandler ) {
+    public TableConverters(TopicSelector topicSelector, Tables tables) {
         this.topicSelector = topicSelector;
-        this.tablesChangedHandler = tablesChangedHandler != null ? tablesChangedHandler : (ids)->{};
         this.tables = tables != null ? tables : new Tables();
         this.ddlParser = new MySqlDdlParser(false); // don't include views
     }
-    
+
     public void updateTableCommand(Event event, SourceInfo source, Consumer<SourceRecord> recorder) {
         QueryEventData command = event.getData();
         String ddlStatements = command.getSql();
         try {
             this.ddlParser.parse(ddlStatements, tables);
-        } catch ( ParsingException e) {
+        } catch (ParsingException e) {
             logger.error("Error parsing DDL statement and updating tables", e);
         } finally {
-            // Figure out what changed ...
-            Set<TableId> changes = tables.drainChanges();
-            changes.forEach(tableId->{
-                Table table = tables.forTable(tableId);
-                if ( table == null ) {  // removed
-                    tableSchemaByTableName.remove(tableId.table());
-                } else {
-                    TableSchema schema = schemaBuilder.create(table, false);
-                    tableSchemaByTableName.put(tableId.table(), schema);
-                }
-            });
-            tablesChangedHandler.accept(changes); // notify
+            // Write the DDL statements to a source record on the topic named for the server. This way we'll record
+            // all DDL statements for all databases hosted by that server ...
+            String databaseName = command.getDatabase();
+            String topic = topicSelector.getTopic(source.serverName());
+            Integer partition = null;
+            SourceRecord record = new SourceRecord(source.partition(), source.offset(), topic, partition,
+                    Schema.STRING_SCHEMA, databaseName, Schema.STRING_SCHEMA, ddlStatements);
+            recorder.accept(record);
         }
+
+        // Figure out what changed ...
+        Set<TableId> changes = tables.drainChanges();
+        changes.forEach(tableId -> {
+            Table table = tables.forTable(tableId);
+            if (table == null) { // removed
+                tableSchemaByTableName.remove(tableId.table());
+            } else {
+                TableSchema schema = schemaBuilder.create(table, false);
+                tableSchemaByTableName.put(tableId.table(), schema);
+            }
+        });
     }
 
     /**
@@ -102,9 +108,10 @@ final class TableConverters {
         long tableNumber = metadata.getTableId();
         if (!convertersByTableId.containsKey(tableNumber)) {
             // We haven't seen this table ID, so we need to rebuild our converter functions ...
+            String serverName = source.serverName();
             String databaseName = metadata.getDatabase();
             String tableName = metadata.getTable();
-            String topicName = topicSelector.getTopic(databaseName, tableName);
+            String topicName = topicSelector.getTopic(serverName, databaseName, tableName);
 
             // Just get the current schema, which should be up-to-date ...
             TableSchema tableSchema = tableSchemaByTableName.get(tableName);
@@ -115,44 +122,50 @@ final class TableConverters {
                 public String topic() {
                     return topicName;
                 }
+
                 @Override
                 public Integer partition() {
                     return null;
                 }
+
                 @Override
                 public Schema keySchema() {
                     return tableSchema.keySchema();
                 }
+
                 @Override
                 public Schema valueSchema() {
                     return tableSchema.valueSchema();
                 }
+
                 @Override
                 public Object createKey(Serializable[] row, BitSet includedColumns) {
                     // assume all columns in the table are included ...
                     return tableSchema.keyFromColumnData(row);
                 }
+
                 @Override
                 public Struct inserted(Serializable[] row, BitSet includedColumns) {
                     // assume all columns in the table are included ...
                     return tableSchema.valueFromColumnData(row);
                 }
+
                 @Override
                 public Struct updated(Serializable[] after, BitSet includedColumns, Serializable[] before,
                                       BitSet includedColumnsBeforeUpdate) {
-                    // assume all columns in the table are included, and we'll write out only the updates ...
+                    // assume all columns in the table are included, and we'll write out only the after state ...
                     return tableSchema.valueFromColumnData(after);
                 }
+
                 @Override
                 public Struct deleted(Serializable[] deleted, BitSet includedColumns) {
-                    // TODO: Should we write out the old values or null?
-                    // assume all columns in the table are included ...
+                    // We current write out null to signal that the row was removed ...
                     return null; // tableSchema.valueFromColumnData(row);
                 }
             };
             convertersByTableId.put(tableNumber, converter);
             Long previousTableNumber = tableNumbersByTableName.put(tableName, tableNumber);
-            if ( previousTableNumber != null ) {
+            if (previousTableNumber != null) {
                 convertersByTableId.remove(previousTableNumber);
             }
         }
@@ -168,9 +181,9 @@ final class TableConverters {
         for (int row = 0; row <= source.eventRowNumber(); ++row) {
             Serializable[] values = write.getRows().get(row);
             Schema keySchema = converter.keySchema();
-            Object key = converter.createKey(values,includedColumns);
+            Object key = converter.createKey(values, includedColumns);
             Schema valueSchema = converter.valueSchema();
-            Struct value = converter.inserted(values,includedColumns);
+            Struct value = converter.inserted(values, includedColumns);
             SourceRecord record = new SourceRecord(source.partition(), source.offset(row), topic, partition,
                     keySchema, key, valueSchema, value);
             recorder.accept(record);
@@ -197,9 +210,9 @@ final class TableConverters {
             Serializable[] before = changes.getKey();
             Serializable[] after = changes.getValue();
             Schema keySchema = converter.keySchema();
-            Object key = converter.createKey(after,includedColumns);
+            Object key = converter.createKey(after, includedColumns);
             Schema valueSchema = converter.valueSchema();
-            Struct value = converter.updated(before,includedColumnsBefore, after,includedColumns);
+            Struct value = converter.updated(before, includedColumnsBefore, after, includedColumns);
             SourceRecord record = new SourceRecord(source.partition(), source.offset(row), topic, partition,
                     keySchema, key, valueSchema, value);
             recorder.accept(record);
@@ -216,9 +229,9 @@ final class TableConverters {
         for (int row = 0; row <= source.eventRowNumber(); ++row) {
             Serializable[] values = deleted.getRows().get(row);
             Schema keySchema = converter.keySchema();
-            Object key = converter.createKey(values,includedColumns);
+            Object key = converter.createKey(values, includedColumns);
             Schema valueSchema = converter.valueSchema();
-            Struct value = converter.inserted(values,includedColumns);
+            Struct value = converter.inserted(values, includedColumns);
             SourceRecord record = new SourceRecord(source.partition(), source.offset(row), topic, partition,
                     keySchema, key, valueSchema, value);
             recorder.accept(record);
@@ -227,7 +240,7 @@ final class TableConverters {
 
     protected static interface Converter {
         String topic();
-        
+
         Integer partition();
 
         Schema keySchema();
@@ -238,7 +251,7 @@ final class TableConverters {
 
         Struct inserted(Serializable[] row, BitSet includedColumns);
 
-        Struct updated(Serializable[] after, BitSet includedColumns, Serializable[] before, BitSet includedColumnsBeforeUpdate );
+        Struct updated(Serializable[] after, BitSet includedColumns, Serializable[] before, BitSet includedColumnsBeforeUpdate);
 
         Struct deleted(Serializable[] deleted, BitSet includedColumns);
     }

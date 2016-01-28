@@ -3,14 +3,13 @@
  * 
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.mysql.ingest;
+package io.debezium.mysql.source;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
@@ -35,24 +34,24 @@ import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer;
 import com.github.shyiko.mysql.binlog.network.AuthenticationException;
 
 import io.debezium.config.Configuration;
-import io.debezium.mysql.MySqlConfiguration;
-import io.debezium.relational.TableId;
+import io.debezium.mysql.Module;
 import io.debezium.relational.Tables;
 
 /**
  * A Kafka Connect source task reads the MySQL binary log and generate the corresponding data change events.
  * 
- * @see MySqlConnector
+ * @see Connector
  * @author Randall Hauch
  */
-public class MySqlChangeDetector extends SourceTask {
+public class LogReader extends SourceTask {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
-    private final EnumMap<EventType, EventHandler> eventHandlers = new EnumMap<>(EventType.class);
-    private final Tables tables;
-    private final TableConverters tableConverters;
+    private final TopicSelector topicSelector;
 
     // These are all effectively constants between start(...) and stop(...)
+    private EnumMap<EventType, EventHandler> eventHandlers = new EnumMap<>(EventType.class);
+    private Tables tables;
+    private TableConverters tableConverters;
     private BinaryLogClient client;
     private BlockingQueue<Event> events;
     private List<Event> batchEvents;
@@ -62,49 +61,62 @@ public class MySqlChangeDetector extends SourceTask {
     // Used in the methods that process events ...
     private final SourceInfo sourceInfo = new SourceInfo();
 
-    public MySqlChangeDetector() {
+    /**
+     * Create an instance of the log reader that uses the {@link TopicSelector#defaultSelector() default topic selector} of
+     * "{@code <serverName>.<databaseName>.<tableName>}" for data and "{@code <serverName>}" for metadata.
+     */
+    public LogReader() {
         this(null);
     }
 
-    public MySqlChangeDetector( TopicSelector topicSelector ) {
-        topicSelector = topicSelector != null ? topicSelector : TopicSelector.defaultSelector();
-        tables = new Tables();
-        tableConverters = new TableConverters(topicSelector, tables, this::signalTablesChanged);
-        eventHandlers.put(EventType.TABLE_MAP, tableConverters::updateTableMetadata);
-        eventHandlers.put(EventType.QUERY, tableConverters::updateTableCommand);
-        eventHandlers.put(EventType.EXT_WRITE_ROWS, tableConverters::handleInsert);
-        eventHandlers.put(EventType.EXT_UPDATE_ROWS, tableConverters::handleUpdate);
-        eventHandlers.put(EventType.EXT_DELETE_ROWS, tableConverters::handleDelete);
+    /**
+     * Create an instance of the log reader that uses the supplied {@link TopicSelector}.
+     * 
+     * @param dataTopicSelector the selector for topics where data and metadata changes are to be written; if null the
+     *            {@link TopicSelector#defaultSelector() default topic selector} will be used
+     */
+    public LogReader(TopicSelector dataTopicSelector) {
+        this.topicSelector = dataTopicSelector != null ? dataTopicSelector : TopicSelector.defaultSelector();
     }
 
     @Override
     public String version() {
         return Module.version();
     }
-    
-    protected void signalTablesChanged( Set<TableId> changedTables ) {
-        // TODO: do something
-    }
 
     @Override
     public void start(Map<String, String> props) {
         // Read and verify the configuration ...
         final Configuration config = Configuration.from(props);
-        final String user = config.getString(MySqlConfiguration.USER);
-        final String password = config.getString(MySqlConfiguration.PASSWORD);
-        final String host = config.getString(MySqlConfiguration.HOSTNAME);
-        final int port = config.getInteger(MySqlConfiguration.PORT);
-        final Long serverId = config.getLong(MySqlConfiguration.SERVER_ID);
-        final String logicalId = config.getString(MySqlConfiguration.LOGICAL_ID.name(), "" + host + ":" + port);
-        final boolean keepAlive = config.getBoolean(MySqlConfiguration.KEEP_ALIVE);
-        final int maxQueueSize = config.getInteger(MySqlConfiguration.MAX_QUEUE_SIZE);
-        final long timeoutInMilliseconds = config.getLong(MySqlConfiguration.CONNECTION_TIMEOUT_MS);
-        maxBatchSize = config.getInteger(MySqlConfiguration.MAX_BATCH_SIZE);
-        pollIntervalMs = config.getLong(MySqlConfiguration.POLL_INTERVAL_MS);
-        
+        final String user = config.getString(ConnectorConfig.USER);
+        final String password = config.getString(ConnectorConfig.PASSWORD);
+        final String host = config.getString(ConnectorConfig.HOSTNAME);
+        final int port = config.getInteger(ConnectorConfig.PORT);
+        final Long serverId = config.getLong(ConnectorConfig.SERVER_ID);
+        final String serverName = config.getString(ConnectorConfig.SERVER_NAME.name(), host + ":" + port);
+        final boolean keepAlive = config.getBoolean(ConnectorConfig.KEEP_ALIVE);
+        final int maxQueueSize = config.getInteger(ConnectorConfig.MAX_QUEUE_SIZE);
+        final long timeoutInMilliseconds = config.getLong(ConnectorConfig.CONNECTION_TIMEOUT_MS);
+        maxBatchSize = config.getInteger(ConnectorConfig.MAX_BATCH_SIZE);
+        pollIntervalMs = config.getLong(ConnectorConfig.POLL_INTERVAL_MS);
+        if (maxQueueSize <= maxBatchSize) {
+            maxBatchSize = maxQueueSize / 2;
+            logger.error("The {} value must be larger than {}, so changing {} to {}", ConnectorConfig.MAX_QUEUE_SIZE,
+                         ConnectorConfig.MAX_BATCH_SIZE, ConnectorConfig.MAX_QUEUE_SIZE, maxBatchSize);
+        }
+
         // Create the queue ...
         events = new LinkedBlockingDeque<>(maxQueueSize);
         batchEvents = new ArrayList<>(maxBatchSize);
+
+        // Set up our handlers ...
+        tables = new Tables();
+        tableConverters = new TableConverters(topicSelector, tables);
+        eventHandlers.put(EventType.TABLE_MAP, tableConverters::updateTableMetadata);
+        eventHandlers.put(EventType.QUERY, tableConverters::updateTableCommand);
+        eventHandlers.put(EventType.EXT_WRITE_ROWS, tableConverters::handleInsert);
+        eventHandlers.put(EventType.EXT_UPDATE_ROWS, tableConverters::handleUpdate);
+        eventHandlers.put(EventType.EXT_DELETE_ROWS, tableConverters::handleDelete);
 
         // Set up the log reader ...
         client = new BinaryLogClient(host, port, user, password);
@@ -115,17 +127,23 @@ public class MySqlChangeDetector extends SourceTask {
         client.registerLifecycleListener(traceLifecycleListener());
 
         // Check if we've already processed some of the log for this database ...
-        sourceInfo.setDatabase(logicalId);
+        sourceInfo.setServerName(serverName);
         if (context != null) {
-            // TODO: Figure out how to load the table definitions from previous runs. Can it be read from each of the output
-            // topics? Does it need to be serialized locally?
-            
             // Get the offsets for our partition ...
             sourceInfo.setOffset(context.offsetStorageReader().offset(sourceInfo.partition()));
             // And set the client to start from that point ...
             client.setBinlogFilename(sourceInfo.binlogFilename());
             client.setBinlogPosition(sourceInfo.binlogPosition());
             // The event row number will be used when processing the first event ...
+
+            // We have to make our Tables reflect the state of the database at the above source partition (e.g., the location
+            // in the MySQL log where we last stopped reading. Since the TableConverts writes out all DDL statements to the
+            // TopicSelector.getTopic(serverName) topic, we can consume that topic and apply each of the DDL statements
+            // to our Tables object. Each of those DDL messages is keyed by the database name, and contains a single string
+            // of DDL. However, we should consume no further than offset we recovered above.
+
+            // TODO: implement this
+        
         } else {
             // initializes this position, though it will be reset when we see the first event (should be a rotate event) ...
             sourceInfo.setBinlogPosition(client.getBinlogPosition());
@@ -146,7 +164,7 @@ public class MySqlChangeDetector extends SourceTask {
                     "Unable to connect to the MySQL database at " + host + ":" + port + " with user '" + user + "': " + e.getMessage(), e);
         }
     }
-
+    
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
         while (events.drainTo(batchEvents, maxBatchSize - batchEvents.size()) == 0 || batchEvents.isEmpty()) {
