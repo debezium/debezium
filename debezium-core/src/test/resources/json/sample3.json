@@ -1,0 +1,4 @@
+{
+    "values": [ "str1", "str2", 103, true, false, { "field1" : "value1", "field2" : true }, [ "nestedValue1", 203 ] ],
+    "user": "jsmith"
+}

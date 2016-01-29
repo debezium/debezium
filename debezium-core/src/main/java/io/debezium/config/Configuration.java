@@ -903,32 +903,78 @@ public interface Configuration {
      * Get an instance of the class given by the value in the configuration associated with the given key.
      * 
      * @param key the key for the configuration property
-     * @param clazz the Class of which the resulting object is expected to be an instance of; may not be null
+     * @param type the Class of which the resulting object is expected to be an instance of; may not be null
      * @return the new instance, or null if there is no such key-value pair in the configuration or if there is a key-value
      *         configuration but the value could not be converted to an existing class with a zero-argument constructor
      */
-    default <T> T getInstance(String key, Class<T> clazz) {
-        return getInstance(key, clazz, () -> getClass().getClassLoader());
+    default <T> T getInstance(String key, Class<T> type) {
+        return getInstance(key, type, () -> getClass().getClassLoader());
     }
 
     /**
      * Get an instance of the class given by the value in the configuration associated with the given key.
      * 
      * @param key the key for the configuration property
-     * @param clazz the Class of which the resulting object is expected to be an instance of; may not be null
+     * @param type the Class of which the resulting object is expected to be an instance of; may not be null
      * @param classloaderSupplier the supplier of the ClassLoader to be used to load the resulting class; may be null if this
      *            class' ClassLoader should be used
      * @return the new instance, or null if there is no such key-value pair in the configuration or if there is a key-value
      *         configuration but the value could not be converted to an existing class with a zero-argument constructor
      */
     @SuppressWarnings("unchecked")
-    default <T> T getInstance(String key, Class<T> clazz, Supplier<ClassLoader> classloaderSupplier) {
+    default <T> T getInstance(String key, Class<T> type, Supplier<ClassLoader> classloaderSupplier) {
         String className = getString(key);
         if (className != null) {
             ClassLoader classloader = classloaderSupplier != null ? classloaderSupplier.get() : getClass().getClassLoader();
             try {
-                return (T) classloader.loadClass(className);
+                Class<? extends T> clazz = (Class<? extends T>)classloader.loadClass(className);
+                return clazz.newInstance();
             } catch (ClassNotFoundException e) {
+                LoggerFactory.getLogger(getClass()).error("Unable to find class {}",className,e);
+            } catch (InstantiationException e) {
+                LoggerFactory.getLogger(getClass()).error("Unable to instantiate class {}",className,e);
+            } catch (IllegalAccessException e) {
+                LoggerFactory.getLogger(getClass()).error("Unable to access class {}",className,e);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get an instance of the class given by the value in the configuration associated with the given field.
+     * 
+     * @param field the field for the configuration property
+     * @param clazz the Class of which the resulting object is expected to be an instance of; may not be null
+     * @return the new instance, or null if there is no such key-value pair in the configuration or if there is a key-value
+     *         configuration but the value could not be converted to an existing class with a zero-argument constructor
+     */
+    default <T> T getInstance(Field field, Class<T> clazz) {
+        return getInstance(field, clazz, () -> getClass().getClassLoader());
+    }
+    /**
+     * Get an instance of the class given by the value in the configuration associated with the given field.
+     * 
+     * @param field the field for the configuration property
+     * @param type the Class of which the resulting object is expected to be an instance of; may not be null
+     * @param classloaderSupplier the supplier of the ClassLoader to be used to load the resulting class; may be null if this
+     *            class' ClassLoader should be used
+     * @return the new instance, or null if there is no such key-value pair in the configuration or if there is a key-value
+     *         configuration but the value could not be converted to an existing class with a zero-argument constructor
+     */
+    @SuppressWarnings("unchecked")
+    default <T> T getInstance(Field field, Class<T> type, Supplier<ClassLoader> classloaderSupplier) {
+        String className = getString(field);
+        if (className != null) {
+            ClassLoader classloader = classloaderSupplier != null ? classloaderSupplier.get() : getClass().getClassLoader();
+            try {
+                Class<? extends T> clazz = (Class<? extends T>)classloader.loadClass(className);
+                return clazz.newInstance();
+            } catch (ClassNotFoundException e) {
+                LoggerFactory.getLogger(getClass()).error("Unable to find class {}",className,e);
+            } catch (InstantiationException e) {
+                LoggerFactory.getLogger(getClass()).error("Unable to instantiate class {}",className,e);
+            } catch (IllegalAccessException e) {
+                LoggerFactory.getLogger(getClass()).error("Unable to access class {}",className,e);
             }
         }
         return null;
@@ -1018,7 +1064,7 @@ public interface Configuration {
     default boolean isEmpty() {
         return keys().isEmpty();
     }
-
+    
     /**
      * Get a copy of these configuration properties as a Properties object.
      * 
@@ -1029,6 +1075,20 @@ public interface Configuration {
         keys().forEach(key -> {
             String value = getString(key);
             if (key != null && value != null) props.setProperty(key, value);
+        });
+        return props;
+    }
+    
+    /**
+     * Get a copy of these configuration properties as a Properties object.
+     * 
+     * @return the properties object; never null
+     */
+    default Map<String,String> asMap() {
+        Map<String, String> props = new HashMap<>();
+        keys().forEach(key -> {
+            String value = getString(key);
+            if (key != null && value != null) props.put(key, value);
         });
         return props;
     }
@@ -1077,5 +1137,34 @@ public interface Configuration {
             }
         }
         return from(props);
+    }
+
+    /**
+     * Validate the supplied fields in this configuration.
+     * 
+     * @param fields the fields
+     * @param problems the consumer to be called with each problem; never null
+     * @return {@code true} if the value is considered valid, or {@code false} if it is not valid
+     */
+    default boolean validate(Iterable<Field> fields, Consumer<String> problems) {
+        boolean valid = true;
+        for ( Field field : fields ) {
+            if ( !field.validate(this,problems) ) valid = false;
+        }
+        return valid;
+    }
+
+    /**
+     * Validate the supplied fields in this configuration.
+     * @param fields the fields
+     * @param problems the consumer to be called with each problem; never null
+     * @return {@code true} if the value is considered valid, or {@code false} if it is not valid
+     */
+    default boolean validate(Field[] fields, Consumer<String> problems) {
+        boolean valid = true;
+        for ( Field field : fields ) {
+            if ( !field.validate(this,problems) ) valid = false;
+        }
+        return valid;
     }
 }

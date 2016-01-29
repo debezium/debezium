@@ -108,7 +108,7 @@ public class DdlParser {
      * 
      * @param name the name of the current schema; may be null
      */
-    protected void setCurrentSchema(String name) {
+    public void setCurrentSchema(String name) {
         this.currentSchema = name;
     }
 
@@ -117,7 +117,7 @@ public class DdlParser {
      * 
      * @return the current schema name, or null if the current schema name has not been {@link #setCurrentSchema(String) set}
      */
-    protected String currentSchema() {
+    public String currentSchema() {
         return currentSchema;
     }
 

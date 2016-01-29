@@ -83,7 +83,7 @@ final class SourceInfo {
      * 
      * @return a copy of the current offset; never null
      */
-    public Map<String, Object> offset() {
+    public Map<String, ?> offset() {
         return Collect.hashMapOf(BINLOG_FILENAME_OFFSET_KEY, binlogFilename,
                                  BINLOG_POSITION_OFFSET_KEY, binlogPosition,
                                  BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, eventRowNumber);
@@ -96,7 +96,7 @@ final class SourceInfo {
      * @param eventRowNumber the 0-based row number within the last event that was successfully processed
      * @return a copy of the current offset; never null
      */
-    public Map<String, Object> offset(int eventRowNumber) {
+    public Map<String, ?> offset(int eventRowNumber) {
         setRowInEvent(eventRowNumber);
         return offset();
     }
@@ -134,7 +134,7 @@ final class SourceInfo {
      * 
      * @param sourceOffset the previously-recorded Kafka Connect source offset
      */
-    public void setOffset(Map<String, Object> sourceOffset) {
+    public void setOffset(Map<String, ?> sourceOffset) {
         if (sourceOffset != null) {
             // We have previously recorded an offset ...
             binlogFilename = (String) sourceOffset.get(BINLOG_FILENAME_OFFSET_KEY);

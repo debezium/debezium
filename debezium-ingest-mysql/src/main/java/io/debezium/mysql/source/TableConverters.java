@@ -9,6 +9,7 @@ import java.io.Serializable;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -32,6 +33,8 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
+import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.HistoryRecord;
 import io.debezium.text.ParsingException;
 
 /**
@@ -42,36 +45,48 @@ import io.debezium.text.ParsingException;
 final class TableConverters {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
+    private final DatabaseHistory dbHistory;
     private final TopicSelector topicSelector;
     private final MySqlDdlParser ddlParser;
     private final Tables tables;
     private final TableSchemaBuilder schemaBuilder = new TableSchemaBuilder();
-    private final Map<String, TableSchema> tableSchemaByTableName = new HashMap<>();
+    private final Map<TableId, TableSchema> tableSchemaByTableId = new HashMap<>();
     private final Map<Long, Converter> convertersByTableId = new HashMap<>();
     private final Map<String, Long> tableNumbersByTableName = new HashMap<>();
+    private final boolean recordSchemaChangesInSourceRecords;
 
-    public TableConverters(TopicSelector topicSelector, Tables tables) {
+    public TableConverters(TopicSelector topicSelector, DatabaseHistory dbHistory,
+            boolean recordSchemaChangesInSourceRecords, Tables tables) {
+        Objects.requireNonNull(topicSelector, "A topic selector is required");
+        Objects.requireNonNull(dbHistory, "Database history storage is required");
+        Objects.requireNonNull(tables, "A Tables object is required");
         this.topicSelector = topicSelector;
-        this.tables = tables != null ? tables : new Tables();
+        this.dbHistory = dbHistory;
+        this.tables = tables;
         this.ddlParser = new MySqlDdlParser(false); // don't include views
+        this.recordSchemaChangesInSourceRecords = recordSchemaChangesInSourceRecords;
     }
 
     public void updateTableCommand(Event event, SourceInfo source, Consumer<SourceRecord> recorder) {
         QueryEventData command = event.getData();
+        String databaseName = command.getDatabase();
         String ddlStatements = command.getSql();
         try {
+            this.ddlParser.setCurrentSchema(databaseName);
             this.ddlParser.parse(ddlStatements, tables);
         } catch (ParsingException e) {
             logger.error("Error parsing DDL statement and updating tables", e);
         } finally {
-            // Write the DDL statements to a source record on the topic named for the server. This way we'll record
-            // all DDL statements for all databases hosted by that server ...
-            String databaseName = command.getDatabase();
-            String topic = topicSelector.getTopic(source.serverName());
-            Integer partition = null;
-            SourceRecord record = new SourceRecord(source.partition(), source.offset(), topic, partition,
-                    Schema.STRING_SCHEMA, databaseName, Schema.STRING_SCHEMA, ddlStatements);
-            recorder.accept(record);
+            // Record the DDL statement so that we can later recover them if needed ...
+            dbHistory.record(source.partition(), source.offset(), databaseName, tables, ddlStatements);
+
+            if (recordSchemaChangesInSourceRecords) {
+                String serverName = source.serverName();
+                String topicName = topicSelector.getTopic(serverName);
+                HistoryRecord historyRecord = new HistoryRecord(source.partition(), source.offset(), databaseName, ddlStatements);
+                recorder.accept(new SourceRecord(source.partition(), source.offset(), topicName, 0,
+                        Schema.STRING_SCHEMA, databaseName, Schema.STRING_SCHEMA, historyRecord.document().toString()));
+            }
         }
 
         // Figure out what changed ...
@@ -79,10 +94,10 @@ final class TableConverters {
         changes.forEach(tableId -> {
             Table table = tables.forTable(tableId);
             if (table == null) { // removed
-                tableSchemaByTableName.remove(tableId.table());
+                tableSchemaByTableId.remove(tableId);
             } else {
                 TableSchema schema = schemaBuilder.create(table, false);
-                tableSchemaByTableName.put(tableId.table(), schema);
+                tableSchemaByTableId.put(tableId, schema);
             }
         });
     }
@@ -114,7 +129,8 @@ final class TableConverters {
             String topicName = topicSelector.getTopic(serverName, databaseName, tableName);
 
             // Just get the current schema, which should be up-to-date ...
-            TableSchema tableSchema = tableSchemaByTableName.get(tableName);
+            TableId tableId = new TableId(databaseName, null, tableName);
+            TableSchema tableSchema = tableSchemaByTableId.get(tableId);
 
             // Generate this table's insert, update, and delete converters ...
             Converter converter = new Converter() {

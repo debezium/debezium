@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
@@ -33,9 +34,13 @@ import com.github.shyiko.mysql.binlog.event.RotateEventData;
 import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer;
 import com.github.shyiko.mysql.binlog.network.AuthenticationException;
 
+import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.mysql.Module;
+import io.debezium.mysql.MySqlDdlParser;
 import io.debezium.relational.Tables;
+import io.debezium.relational.ddl.DdlParser;
+import io.debezium.relational.history.DatabaseHistory;
 
 /**
  * A Kafka Connect source task reads the MySQL binary log and generate the corresponding data change events.
@@ -43,12 +48,14 @@ import io.debezium.relational.Tables;
  * @see Connector
  * @author Randall Hauch
  */
-public class LogReader extends SourceTask {
+@NotThreadSafe
+final class LogReader extends SourceTask {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final TopicSelector topicSelector;
 
     // These are all effectively constants between start(...) and stop(...)
+    private DatabaseHistory dbHistory;
     private EnumMap<EventType, EventHandler> eventHandlers = new EnumMap<>(EventType.class);
     private Tables tables;
     private TableConverters tableConverters;
@@ -59,24 +66,30 @@ public class LogReader extends SourceTask {
     private long pollIntervalMs;
 
     // Used in the methods that process events ...
-    private final SourceInfo sourceInfo = new SourceInfo();
+    private final SourceInfo source = new SourceInfo();
 
     /**
-     * Create an instance of the log reader that uses the {@link TopicSelector#defaultSelector() default topic selector} of
-     * "{@code <serverName>.<databaseName>.<tableName>}" for data and "{@code <serverName>}" for metadata.
+     * Create an instance of the log reader that uses Kafka to store database schema history and the
+     * {@link TopicSelector#defaultSelector() default topic selector} of "{@code <serverName>.<databaseName>.<tableName>}" for
+     * data and "{@code <serverName>}" for metadata.
      */
     public LogReader() {
-        this(null);
+        this.topicSelector = TopicSelector.defaultSelector();
+        this.dbHistory = null; // delay creating the history until startup, which is only allowed by default constructor
     }
 
     /**
-     * Create an instance of the log reader that uses the supplied {@link TopicSelector}.
+     * Create an instance of the log reader that uses the supplied {@link TopicSelector} and the supplied storage for database
+     * schema history.
      * 
+     * @param dbHistory the history storage for the database's schema; may not be null
      * @param dataTopicSelector the selector for topics where data and metadata changes are to be written; if null the
      *            {@link TopicSelector#defaultSelector() default topic selector} will be used
      */
-    public LogReader(TopicSelector dataTopicSelector) {
+    protected LogReader(DatabaseHistory dbHistory, TopicSelector dataTopicSelector) {
+        Objects.requireNonNull(dbHistory, "The storage for database schema history is required");
         this.topicSelector = dataTopicSelector != null ? dataTopicSelector : TopicSelector.defaultSelector();
+        this.dbHistory = dbHistory;
     }
 
     @Override
@@ -86,8 +99,22 @@ public class LogReader extends SourceTask {
 
     @Override
     public void start(Map<String, String> props) {
-        // Read and verify the configuration ...
+        // Validate the configuration ...
         final Configuration config = Configuration.from(props);
+        if ( config.validate(ConnectorConfig.ALL_FIELDS,logger::error) ) {
+            return;
+        }
+        
+        // Create and configure the database history ...
+        this.dbHistory = config.getInstance(ConnectorConfig.DATABASE_HISTORY, DatabaseHistory.class);
+        if ( this.dbHistory == null ) {
+            this.logger.error("Unable to instantiate the database history class {}",config.getString(ConnectorConfig.DATABASE_HISTORY));
+            return;
+        }
+        Configuration dbHistoryConfig = config.subset(ConnectorConfig.DATABASE_HISTORY.name() + ".", true);
+        this.dbHistory.configure(dbHistoryConfig);
+
+        // Read the configuration ...
         final String user = config.getString(ConnectorConfig.USER);
         final String password = config.getString(ConnectorConfig.PASSWORD);
         final String host = config.getString(ConnectorConfig.HOSTNAME);
@@ -97,6 +124,7 @@ public class LogReader extends SourceTask {
         final boolean keepAlive = config.getBoolean(ConnectorConfig.KEEP_ALIVE);
         final int maxQueueSize = config.getInteger(ConnectorConfig.MAX_QUEUE_SIZE);
         final long timeoutInMilliseconds = config.getLong(ConnectorConfig.CONNECTION_TIMEOUT_MS);
+        final boolean includeSchemaChanges = config.getBoolean(ConnectorConfig.INCLUDE_SCHEMA_CHANGES);
         maxBatchSize = config.getInteger(ConnectorConfig.MAX_BATCH_SIZE);
         pollIntervalMs = config.getLong(ConnectorConfig.POLL_INTERVAL_MS);
         if (maxQueueSize <= maxBatchSize) {
@@ -111,7 +139,7 @@ public class LogReader extends SourceTask {
 
         // Set up our handlers ...
         tables = new Tables();
-        tableConverters = new TableConverters(topicSelector, tables);
+        tableConverters = new TableConverters(topicSelector, dbHistory, includeSchemaChanges, tables);
         eventHandlers.put(EventType.TABLE_MAP, tableConverters::updateTableMetadata);
         eventHandlers.put(EventType.QUERY, tableConverters::updateTableCommand);
         eventHandlers.put(EventType.EXT_WRITE_ROWS, tableConverters::handleInsert);
@@ -127,13 +155,13 @@ public class LogReader extends SourceTask {
         client.registerLifecycleListener(traceLifecycleListener());
 
         // Check if we've already processed some of the log for this database ...
-        sourceInfo.setServerName(serverName);
+        source.setServerName(serverName);
         if (context != null) {
             // Get the offsets for our partition ...
-            sourceInfo.setOffset(context.offsetStorageReader().offset(sourceInfo.partition()));
+            source.setOffset(context.offsetStorageReader().offset(source.partition()));
             // And set the client to start from that point ...
-            client.setBinlogFilename(sourceInfo.binlogFilename());
-            client.setBinlogPosition(sourceInfo.binlogPosition());
+            client.setBinlogFilename(source.binlogFilename());
+            client.setBinlogPosition(source.binlogPosition());
             // The event row number will be used when processing the first event ...
 
             // We have to make our Tables reflect the state of the database at the above source partition (e.g., the location
@@ -141,12 +169,15 @@ public class LogReader extends SourceTask {
             // TopicSelector.getTopic(serverName) topic, we can consume that topic and apply each of the DDL statements
             // to our Tables object. Each of those DDL messages is keyed by the database name, and contains a single string
             // of DDL. However, we should consume no further than offset we recovered above.
-
-            // TODO: implement this
-        
+            try {
+                DdlParser ddlParser = new MySqlDdlParser();
+                dbHistory.recover(source.partition(), source.offset(), tables, ddlParser);
+            } catch (Throwable t) {
+                logger.error("Error while recovering database schemas", t);
+            }
         } else {
             // initializes this position, though it will be reset when we see the first event (should be a rotate event) ...
-            sourceInfo.setBinlogPosition(client.getBinlogPosition());
+            source.setBinlogPosition(client.getBinlogPosition());
         }
 
         // Start the log reader, which starts background threads ...
@@ -164,7 +195,7 @@ public class LogReader extends SourceTask {
                     "Unable to connect to the MySQL database at " + host + ":" + port + " with user '" + user + "': " + e.getMessage(), e);
         }
     }
-    
+
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
         while (events.drainTo(batchEvents, maxBatchSize - batchEvents.size()) == 0 || batchEvents.isEmpty()) {
@@ -187,22 +218,22 @@ public class LogReader extends SourceTask {
                 } else {
                     rotateEventData = (RotateEventData) eventData;
                 }
-                sourceInfo.setBinlogFilename(rotateEventData.getBinlogFilename());
-                sourceInfo.setBinlogPosition(rotateEventData.getBinlogPosition());
-                sourceInfo.setRowInEvent(0);
+                source.setBinlogFilename(rotateEventData.getBinlogFilename());
+                source.setBinlogPosition(rotateEventData.getBinlogPosition());
+                source.setRowInEvent(0);
             } else if (eventHeader instanceof EventHeaderV4) {
                 EventHeaderV4 trackableEventHeader = (EventHeaderV4) eventHeader;
                 long nextBinlogPosition = trackableEventHeader.getNextPosition();
                 if (nextBinlogPosition > 0) {
-                    sourceInfo.setBinlogPosition(nextBinlogPosition);
-                    sourceInfo.setRowInEvent(0);
+                    source.setBinlogPosition(nextBinlogPosition);
+                    source.setRowInEvent(0);
                 }
             }
 
             // If there is a handler for this event, forward the event to it ...
             EventHandler handler = eventHandlers.get(eventType);
             if (handler != null) {
-                handler.handle(event, sourceInfo, records::add);
+                handler.handle(event, source, records::add);
             }
         }
         // We've processed them all, so clear the batch and return the records ...
