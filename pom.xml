@@ -84,9 +84,9 @@
         <module>support/checkstyle</module>
         <module>debezium-core</module>
         <module>debezium-embedded</module>
-        <module>debezium-ingest-mysql</module>
-        <!--module>debezium-ingest-jdbc</module-->
-        <!--module>debezium-ingest-postgres</module-->
+        <module>debezium-connector-mysql</module>
+        <!--module>debezium-connector-jdbc</module-->
+        <!--module>debezium-connector-postgres</module-->
         <!--module>debezium-kafka-connect</module-->
     </modules>
     <dependencyManagement>
@@ -185,22 +185,22 @@
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
-                <artifactId>debezium-ingest-jdbc</artifactId>
+                <artifactId>debezium-connector-jdbc</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
-                <artifactId>debezium-ingest-postgres</artifactId>
+                <artifactId>debezium-connector-postgres</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
-                <artifactId>debezium-ingest-postgres-test</artifactId>
+                <artifactId>debezium-connector-postgres-test</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
-                <artifactId>debezium-ingest-mysql</artifactId>
+                <artifactId>debezium-connector-mysql</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -214,7 +214,7 @@
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
-                <artifactId>debezium-ingest-jdbc</artifactId>
+                <artifactId>debezium-connector-jdbc</artifactId>
                 <version>${project.version}</version>
                 <scope>test</scope>
                 <type>test-jar</type>
