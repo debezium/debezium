@@ -25,6 +25,10 @@
             <groupId>org.apache.kafka</groupId>
             <artifactId>connect-api</artifactId>
         </dependency>
+	    <dependency>
+	        <groupId>com.fasterxml.jackson.core</groupId>
+	        <artifactId>jackson-core</artifactId>
+	    </dependency>
         <!-- Testing -->
         <dependency>
             <groupId>org.slf4j</groupId>

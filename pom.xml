@@ -68,7 +68,7 @@
         <version.fest>1.4</version.fest>
 
        <!-- Maven Plugins -->
-        <version.resources.plugin>2.4.2</version.resources.plugin>
+        <version.resources.plugin>2.7</version.resources.plugin>
         <version.dependency.plugin>2.10</version.dependency.plugin>
         <version.assembly.plugin>2.4</version.assembly.plugin>
         <version.war.plugin>2.5</version.war.plugin>
@@ -83,9 +83,10 @@
     <modules>
         <module>support/checkstyle</module>
         <module>debezium-core</module>
+        <module>debezium-embedded</module>
+        <module>debezium-ingest-mysql</module>
         <!--module>debezium-ingest-jdbc</module-->
         <!--module>debezium-ingest-postgres</module-->
-        <module>debezium-ingest-mysql</module>
         <!--module>debezium-kafka-connect</module-->
     </modules>
     <dependencyManagement>
@@ -175,6 +176,11 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-embedded</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

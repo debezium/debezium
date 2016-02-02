@@ -23,6 +23,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.util.IoUtil;
+import io.debezium.util.Testing;
 
 public class MySqlDdlParserTest {
 
@@ -86,13 +87,13 @@ public class MySqlDdlParserTest {
     @Test
     public void shouldParseCreateStatements() {
         parser.parse(readFile("ddl/mysql-test-create.ddl"), tables);
-        //System.out.println(tables);
+        Testing.print(tables);
     }
 
     @Test
     public void shouldParseTestStatements() {
         parser.parse(readFile("ddl/mysql-test-statements.ddl"), tables);
-        System.out.println(tables);
+        Testing.print(tables);
     }
 
     @Test

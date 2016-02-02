@@ -309,6 +309,11 @@ public class IoUtil {
             throw new IllegalStateException("Expecting '" + path + "' to be a file but found a directory");
         }
         file.getParentFile().mkdirs();
+        try {
+            Files.createFile(path);
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to create the file '" + path + "': " + e.getMessage(), e);
+        }
         return file;
     }
 
@@ -426,6 +431,7 @@ public class IoUtil {
 
     /**
      * Atomically load the properties file at the given location within the designated class loader.
+     * 
      * @param classLoader the supplier for the class loader; may not be null or return null
      * @param classpathResource the path to the resource file; may not be null
      * @return the properties object; never null, but possibly empty
@@ -445,24 +451,26 @@ public class IoUtil {
 
     /**
      * Atomically load the properties file at the given location within the designated class loader.
+     * 
      * @param classLoader the class loader; may not be null
      * @param classpathResource the path to the resource file; may not be null
      * @return the properties object; never null, but possibly empty
      * @throws IllegalStateException if the file could not be found or read
      */
     public static Properties loadProperties(ClassLoader classLoader, String classpathResource) {
-        return loadProperties(()->classLoader,classpathResource);
+        return loadProperties(() -> classLoader, classpathResource);
     }
 
     /**
      * Atomically load the properties file at the given location within the designated class' class loader.
+     * 
      * @param clazz the class whose class loader is to be used; may not be null
      * @param classpathResource the path to the resource file; may not be null
      * @return the properties object; never null, but possibly empty
      * @throws IllegalStateException if the file could not be found or read
      */
     public static Properties loadProperties(Class<?> clazz, String classpathResource) {
-        return loadProperties(clazz::getClassLoader,classpathResource);
+        return loadProperties(clazz::getClassLoader, classpathResource);
     }
 
     private IoUtil() {

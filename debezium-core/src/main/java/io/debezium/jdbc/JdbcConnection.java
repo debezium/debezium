@@ -14,7 +14,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -25,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.TableEditor;
@@ -85,18 +88,20 @@ public class JdbcConnection implements AutoCloseable {
      * </ul>
      * 
      * @param urlPattern the URL pattern string; may not be null
+     * @param variables any custom or overridden configuration variables
      * @return the connection factory
      */
-    protected static ConnectionFactory patternBasedFactory(String urlPattern) {
+    protected static ConnectionFactory patternBasedFactory(String urlPattern, Field... variables) {
         return (config) -> {
             LOGGER.trace("Config: {}", config.asProperties());
             Properties props = config.asProperties();
-            String url = findAndReplace(urlPattern, props,
-                                        JdbcConfiguration.HOSTNAME,
-                                        JdbcConfiguration.PORT,
-                                        JdbcConfiguration.USER,
-                                        JdbcConfiguration.PASSWORD,
-                                        JdbcConfiguration.DATABASE);
+            Field[] varsWithDefaults = combineVariables(variables,
+                                                                      JdbcConfiguration.HOSTNAME,
+                                                                      JdbcConfiguration.PORT,
+                                                                      JdbcConfiguration.USER,
+                                                                      JdbcConfiguration.PASSWORD,
+                                                                      JdbcConfiguration.DATABASE);
+            String url = findAndReplace(urlPattern, props, varsWithDefaults);
             LOGGER.trace("Props: {}", props);
             LOGGER.trace("URL: {}", url);
             Connection conn = DriverManager.getConnection(url, props);
@@ -105,13 +110,29 @@ public class JdbcConnection implements AutoCloseable {
         };
     }
 
-    private static String findAndReplace(String url, Properties props, Configuration.Field... variables) {
-        for (Configuration.Field field : variables ) {
+    private static Field[] combineVariables(Field[] overriddenVariables,
+                                                          Field... defaultVariables) {
+        Map<String, Field> fields = new HashMap<>();
+        if (defaultVariables != null) {
+            for (Field variable : defaultVariables) {
+                fields.put(variable.name(), variable);
+            }
+        }
+        if (overriddenVariables != null) {
+            for (Field variable : overriddenVariables) {
+                fields.put(variable.name(), variable);
+            }
+        }
+        return fields.values().toArray(new Field[fields.size()]);
+    }
+
+    private static String findAndReplace(String url, Properties props, Field... variables) {
+        for (Field field : variables) {
             String variable = field.name();
             if (variable != null && url.contains("${" + variable + "}")) {
                 // Otherwise, we have to remove it from the properties ...
                 String value = props.getProperty(variable);
-                if ( value != null ) {
+                if (value != null) {
                     props.remove(variable);
                     // And replace the variable ...
                     url = url.replaceAll("\\$\\{" + variable + "\\}", value);
@@ -145,10 +166,32 @@ public class JdbcConnection implements AutoCloseable {
      * @param initialOperations the initial operations that should be run on each new connection; may be null
      */
     public JdbcConnection(Configuration config, ConnectionFactory connectionFactory, Operations initialOperations) {
-        this.config = config;
+        this(config,connectionFactory,initialOperations,null);
+    }
+
+    /**
+     * Create a new instance with the given configuration and connection factory, and specify the operations that should be
+     * run against each newly-established connection.
+     * 
+     * @param config the configuration; may not be null
+     * @param connectionFactory the connection factory; may not be null
+     * @param initialOperations the initial operations that should be run on each new connection; may be null
+     * @param adapter the function that can be called to update the configuration with defaults
+     */
+    protected JdbcConnection(Configuration config, ConnectionFactory connectionFactory, Operations initialOperations, Consumer<Configuration.Builder> adapter) {
+        this.config = adapter == null ? config : config.edit().apply(adapter).build();
         this.factory = connectionFactory;
         this.initialOps = initialOperations;
         this.conn = null;
+    }
+
+    /**
+     * Obtain the configuration for this connection.
+     * 
+     * @return the JDBC configuration; never null
+     */
+    public JdbcConfiguration config() {
+        return JdbcConfiguration.adapt(config);
     }
 
     /**
@@ -214,23 +257,23 @@ public class JdbcConnection implements AutoCloseable {
         }
         return this;
     }
-    
-    public void print(ResultSet resultSet ) {
+
+    public void print(ResultSet resultSet) {
         // CHECKSTYLE:OFF
-        print(resultSet,System.out::println);
+        print(resultSet, System.out::println);
         // CHECKSTYLE:ON
     }
-    
-    public void print(ResultSet resultSet, Consumer<String> lines ) {
+
+    public void print(ResultSet resultSet, Consumer<String> lines) {
         try {
             ResultSetMetaData rsmd = resultSet.getMetaData();
             int columnCount = rsmd.getColumnCount();
             int[] columnSizes = findMaxLength(resultSet);
             lines.accept(delimiter(columnCount, columnSizes));
             StringBuilder sb = new StringBuilder();
-            for ( int i=1; i<=columnCount; i++ ) {
+            for (int i = 1; i <= columnCount; i++) {
                 if (i > 1) sb.append(" | ");
-                sb.append(Strings.setLength(rsmd.getColumnLabel(i),columnSizes[i],' '));
+                sb.append(Strings.setLength(rsmd.getColumnLabel(i), columnSizes[i], ' '));
             }
             lines.accept(sb.toString());
             sb.setLength(0);
@@ -239,7 +282,7 @@ public class JdbcConnection implements AutoCloseable {
                 sb.setLength(0);
                 for (int i = 1; i <= columnCount; i++) {
                     if (i > 1) sb.append(" | ");
-                    sb.append(Strings.setLength(resultSet.getString(i),columnSizes[i],' '));
+                    sb.append(Strings.setLength(resultSet.getString(i), columnSizes[i], ' '));
                 }
                 lines.accept(sb.toString());
                 sb.setLength(0);
@@ -249,27 +292,27 @@ public class JdbcConnection implements AutoCloseable {
             throw new RuntimeException(e);
         }
     }
-    
-    private String delimiter( int columnCount, int[] columnSizes ) {
+
+    private String delimiter(int columnCount, int[] columnSizes) {
         StringBuilder sb = new StringBuilder();
-        for ( int i=1; i<=columnCount; i++ ) {
+        for (int i = 1; i <= columnCount; i++) {
             if (i > 1) sb.append("---");
-            sb.append(Strings.createString('-',columnSizes[i]));
+            sb.append(Strings.createString('-', columnSizes[i]));
         }
         return sb.toString();
     }
-    
-    private int[] findMaxLength( ResultSet resultSet ) throws SQLException {
+
+    private int[] findMaxLength(ResultSet resultSet) throws SQLException {
         ResultSetMetaData rsmd = resultSet.getMetaData();
         int columnCount = rsmd.getColumnCount();
-        int[] columnSizes = new int[columnCount+1];
-        for ( int i=1; i<=columnCount; i++ ) {
+        int[] columnSizes = new int[columnCount + 1];
+        for (int i = 1; i <= columnCount; i++) {
             columnSizes[i] = Math.max(columnSizes[i], rsmd.getColumnLabel(i).length());
         }
         while (resultSet.next()) {
             for (int i = 1; i <= columnCount; i++) {
                 String value = resultSet.getString(i);
-                if ( value != null ) columnSizes[i] = Math.max(columnSizes[i], value.length());
+                if (value != null) columnSizes[i] = Math.max(columnSizes[i], value.length());
             }
         }
         resultSet.beforeFirst();
@@ -299,7 +342,7 @@ public class JdbcConnection implements AutoCloseable {
             }
         }
     }
-    
+
     /**
      * Create definitions for each tables in the database, given the catalog name, schema pattern, table filter, and
      * column filter.
@@ -375,7 +418,7 @@ public class JdbcConnection implements AutoCloseable {
      */
     public static void columnsFor(ResultSet resultSet, TableEditor editor) throws SQLException {
         List<Column> columns = new ArrayList<>();
-        columnsFor(resultSet,columns::add);
+        columnsFor(resultSet, columns::add);
         editor.setColumns(columns);
     }
 
@@ -406,7 +449,5 @@ public class JdbcConnection implements AutoCloseable {
     private static boolean isNullable(int jdbcNullable) {
         return jdbcNullable == ResultSetMetaData.columnNullable || jdbcNullable == ResultSetMetaData.columnNullableUnknown;
     }
-
-
 
 }

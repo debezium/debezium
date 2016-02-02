@@ -11,21 +11,19 @@ import java.sql.SQLException;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import io.debezium.jdbc.TestDatabase;
-
 public class ConnectionIT {
 
     @Ignore
     @Test
     public void shouldConnectToDefaulDatabase() throws SQLException {
-        try (MySQLConnection conn = new MySQLConnection(TestDatabase.testConfig("mysql"));) {
+        try (MySQLConnection conn = MySQLConnection.forTestDatabase("mysql");) {
             conn.connect();
         }
     }
 
     @Test
     public void shouldDoStuffWithDatabase() throws SQLException {
-        try (MySQLConnection conn = new MySQLConnection(TestDatabase.testConfig("readbinlog_test"));) {
+        try (MySQLConnection conn = MySQLConnection.forTestDatabase("readbinlog_test");) {
             conn.connect();
             // Set up the table as one transaction and wait to see the events ...
             conn.execute("DROP TABLE IF EXISTS person",
@@ -46,7 +44,7 @@ public class ConnectionIT {
     @Ignore
     @Test
     public void shouldConnectToEmptyDatabase() throws SQLException {
-        try (MySQLConnection conn = new MySQLConnection(TestDatabase.testConfig("emptydb"));) {
+        try (MySQLConnection conn = MySQLConnection.forTestDatabase("emptydb");) {
             conn.connect();
         }
     }
