@@ -99,18 +99,20 @@ final class LogReader extends SourceTask {
     public void start(Map<String, String> props) {
         // Validate the configuration ...
         final Configuration config = Configuration.from(props);
-        if ( config.validate(MySqlConnectorConfig.ALL_FIELDS,logger::error) ) {
+        if (config.validate(MySqlConnectorConfig.ALL_FIELDS, logger::error)) {
             return;
         }
-        
+
         // Create and configure the database history ...
         this.dbHistory = config.getInstance(MySqlConnectorConfig.DATABASE_HISTORY, DatabaseHistory.class);
-        if ( this.dbHistory == null ) {
-            this.logger.error("Unable to instantiate the database history class {}",config.getString(MySqlConnectorConfig.DATABASE_HISTORY));
+        if (this.dbHistory == null) {
+            this.logger.error("Unable to instantiate the database history class {}",
+                              config.getString(MySqlConnectorConfig.DATABASE_HISTORY));
             return;
         }
-        Configuration dbHistoryConfig = config.subset(MySqlConnectorConfig.DATABASE_HISTORY.name() + ".", true);
+        Configuration dbHistoryConfig = config.subset(DatabaseHistory.CONFIG_PREFIX, false); // do not remove prefix
         this.dbHistory.configure(dbHistoryConfig);
+        this.dbHistory.start();
 
         // Read the configuration ...
         final String user = config.getString(MySqlConnectorConfig.USER);
@@ -242,9 +244,15 @@ final class LogReader extends SourceTask {
     @Override
     public void stop() {
         try {
-            client.disconnect();
-        } catch (IOException e) {
-            logger.error("Unexpected error when disconnecting from the MySQL binary log reader", e);
+            dbHistory.stop();
+        } catch (Throwable e) {
+            logger.error("Unexpected error shutting down the database history", e);
+        } finally {
+            try {
+                client.disconnect();
+            } catch (IOException e) {
+                logger.error("Unexpected error when disconnecting from the MySQL binary log reader", e);
+            }
         }
     }
 

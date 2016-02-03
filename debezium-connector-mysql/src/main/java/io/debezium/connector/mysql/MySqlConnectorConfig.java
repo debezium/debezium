@@ -6,10 +6,12 @@
 package io.debezium.connector.mysql;
 
 import java.util.Collection;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.KafkaDatabaseHistory;
 import io.debezium.util.Collect;
 
@@ -65,17 +67,20 @@ public class MySqlConnectorConfig {
                                                     .withValidation(Field::isPositiveInteger);
 
     public static final Field POLL_INTERVAL_MS = Field.create("poll.interval.ms")
-                                                      .withDescription("Frequency in milliseconds to poll for new change events.")
-                                                      .withDefault(1 * 1000)
+                                                      .withDescription("Frequency in milliseconds to poll for new change events. Defaults to 1 second (1000 ms)")
+                                                      .withDefault(TimeUnit.SECONDS.toMillis(1))
                                                       .withValidation(Field::isPositiveInteger);
 
     public static final Field DATABASE_HISTORY = Field.create("database.history")
                                                       .withDescription("The name of the DatabaseHistory class that should be used to store and recover database schema changes. "
-                                                              + "The configuration properties for the history can be specified with the 'database.history.' prefix.")
+                                                              + "The configuration properties for the history can be specified with the '"
+                                                              + DatabaseHistory.CONFIG_PREFIX + "' prefix.")
                                                       .withDefault(KafkaDatabaseHistory.class.getName());
 
     public static final Field INCLUDE_SCHEMA_CHANGES = Field.create("include.schema.changes")
-                                                            .withDescription("Whether schema changes should be included in the change events")
+                                                            .withDescription("Whether schema changes should be included in the "
+                                                                    + "change events (in addition to storing in the database "
+                                                                    + "history). The default is 'false'.")
                                                             .withDefault(false)
                                                             .withValidation(Field::isBoolean);
 

@@ -24,7 +24,7 @@
     <scm>
         <connection>scm:git:git@github.com:debezium/debezium.git</connection>
         <developerConnection>scm:git:git@github.com:debezium/debezium.git</developerConnection>
-        <url>git@github.com:debezium/debezium.git</url>
+        <url>https://github.com/debezium/debezium</url>
     </scm>
     <issueManagement>
         <system>jira</system>

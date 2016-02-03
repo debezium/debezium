@@ -25,7 +25,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
 import org.apache.kafka.connect.source.SourceTaskContext;
 import org.apache.kafka.connect.storage.Converter;
-import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
+import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetStorageReader;
 import org.apache.kafka.connect.storage.OffsetStorageReaderImpl;
@@ -77,16 +77,36 @@ public final class EmbeddedConnector implements Runnable {
                                                      .withValidation(Field::isRequired);
 
     /**
+     * An optional field that specifies the name of the class that implements the {@link OffsetBackingStore} interface,
+     * and that will be used to store offsets recorded by the connector.
+     */
+    public static final Field OFFSET_STORAGE = Field.create("offset.storage")
+                                                    .withDescription("The Java class that implements the `OffsetBackingStore` "
+                                                            + "interface, used to periodically store offsets so that, upon "
+                                                            + "restart, the connector can resume where it last left off.")
+                                                    .withDefault(FileOffsetBackingStore.class.getName());
+
+    /**
      * An optional advanced field that specifies the maximum amount of time that the embedded connector should wait
      * for an offset commit to complete.
      */
     @SuppressWarnings("unchecked")
-    public static final Field OFFSET_COMMIT_TIMEOUT_MS_CONFIG = Field.create("offset.flush.timeout.ms")
-                                                                     .withDescription("Maximum number of milliseconds to wait for records to flush and partition offset data to be"
-                                                                             + " committed to offset storage before cancelling the process and restoring the offset "
-                                                                             + "data to be committed in a future attempt.")
-                                                                     .withDefault(5000L)
-                                                                     .withValidation(Field::isPositiveInteger);
+    public static final Field OFFSET_FLUSH_INTERVAL_MS = Field.create("offset.flush.interval.ms")
+                                                              .withDescription("Interval at which to try committing offsets. The default is 1 minute.")
+                                                              .withDefault(60000L)
+                                                              .withValidation(Field::isNonNegativeInteger);
+
+    /**
+     * An optional advanced field that specifies the maximum amount of time that the embedded connector should wait
+     * for an offset commit to complete.
+     */
+    @SuppressWarnings("unchecked")
+    public static final Field OFFSET_COMMIT_TIMEOUT_MS = Field.create("offset.flush.timeout.ms")
+                                                              .withDescription("Maximum number of milliseconds to wait for records to flush and partition offset data to be"
+                                                                      + " committed to offset storage before cancelling the process and restoring the offset "
+                                                                      + "data to be committed in a future attempt.")
+                                                              .withDefault(5000L)
+                                                              .withValidation(Field::isPositiveInteger);
 
     protected static final Field INTERNAL_KEY_CONVERTER_CLASS = Field.create("internal.key.converter")
                                                                      .withDescription("The Converter class that should be used to serialize and deserialize key data for offsets.")
@@ -125,32 +145,6 @@ public final class EmbeddedConnector implements Runnable {
         Builder using(Configuration config);
 
         /**
-         * Use the specified {@link OffsetCommitPolicy} to determine when offsets should be written to offset storage.
-         * <p>
-         * Passing <code>null</code> or not calling this method results in the connector using all offsets
-         * {@link OffsetCommitPolicy#always() always} being committed after each batch of records are received from the source
-         * system and processed by the {@link #notifying(Consumer) consumer function}.
-         * 
-         * @param policy the policy for when to commit offsets to the offset store
-         * @return this builder object so methods can be chained together; never null
-         */
-        Builder using(OffsetCommitPolicy policy);
-
-        /**
-         * Use the specified storage mechanism for tracking how much data change history in the source database the connector
-         * has processed.
-         * <p>
-         * Passing <code>null</code> or not calling this method results in the connector storing offsets in-memory, which means
-         * when the application stops it will lose all record of how far the connector has read from the source database. If the
-         * application upon restart should resume reading the source database where it left off, then a durable store must be
-         * supplied.
-         * 
-         * @param offsetStorage the store for recording connector offsets
-         * @return this builder object so methods can be chained together; never null
-         */
-        Builder using(OffsetBackingStore offsetStorage);
-
-        /**
          * Use the specified class loader to find all necessary classes. Passing <code>null</code> or not calling this method
          * results in the connector using this class's class loader.
          * 
@@ -186,8 +180,6 @@ public final class EmbeddedConnector implements Runnable {
     public static Builder create() {
         return new Builder() {
             private Configuration config;
-            private OffsetBackingStore offsetStore;
-            private OffsetCommitPolicy offsetCommitPolicy;
             private Consumer<SourceRecord> consumer;
             private ClassLoader classLoader;
             private Clock clock;
@@ -195,18 +187,6 @@ public final class EmbeddedConnector implements Runnable {
             @Override
             public Builder using(Configuration config) {
                 this.config = config;
-                return this;
-            }
-
-            @Override
-            public Builder using(OffsetBackingStore offsetStore) {
-                this.offsetStore = offsetStore;
-                return this;
-            }
-
-            @Override
-            public Builder using(OffsetCommitPolicy policy) {
-                this.offsetCommitPolicy = policy;
                 return this;
             }
 
@@ -230,13 +210,11 @@ public final class EmbeddedConnector implements Runnable {
 
             @Override
             public EmbeddedConnector build() {
-                if (offsetStore == null) offsetStore = new MemoryOffsetBackingStore();
-                if (offsetCommitPolicy == null) offsetCommitPolicy = OffsetCommitPolicy.always();
                 if (classLoader == null) classLoader = getClass().getClassLoader();
                 if (clock == null) clock = Clock.system();
                 Objects.requireNonNull(config, "A connector configuration must be specified.");
                 Objects.requireNonNull(consumer, "A connector consumer must be specified.");
-                return new EmbeddedConnector(config, offsetStore, offsetCommitPolicy, classLoader, clock, consumer);
+                return new EmbeddedConnector(config, classLoader, clock, consumer);
             }
 
         };
@@ -244,8 +222,6 @@ public final class EmbeddedConnector implements Runnable {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final Configuration config;
-    private final OffsetBackingStore offsetStore;
-    private final OffsetCommitPolicy offsetCommitPolicy;
     private final Clock clock;
     private final ClassLoader classLoader;
     private final Consumer<SourceRecord> consumer;
@@ -256,17 +232,12 @@ public final class EmbeddedConnector implements Runnable {
     private long recordsSinceLastCommit = 0;
     private long timeSinceLastCommitMillis = 0;
 
-    private EmbeddedConnector(Configuration config, OffsetBackingStore offsetStore,
-            OffsetCommitPolicy offsetCommitPolicy, ClassLoader classLoader, Clock clock, Consumer<SourceRecord> consumer) {
+    private EmbeddedConnector(Configuration config, ClassLoader classLoader, Clock clock, Consumer<SourceRecord> consumer) {
         this.config = config;
-        this.offsetStore = offsetStore;
-        this.offsetCommitPolicy = offsetCommitPolicy;
         this.consumer = consumer;
         this.classLoader = classLoader;
         this.clock = clock;
         assert this.config != null;
-        assert this.offsetStore != null;
-        assert this.offsetCommitPolicy != null;
         assert this.consumer != null;
         assert this.classLoader != null;
         assert this.clock != null;
@@ -302,7 +273,8 @@ public final class EmbeddedConnector implements Runnable {
      * {@link #stop() stopped}.
      * <p>
      * Note that there are two ways to stop a connector running on a thread: calling {@link #stop()} from another thread, or
-     * interrupting the thread (e.g., via {@link ExecutorService#shutdownNow()}).
+     * interrupting the thread (e.g., via {@link ExecutorService#shutdownNow()}). However, interrupting the thread may result
+     * in source records being repeated upon next startup, so {@link #stop()} should always be used when possible.
      */
     @Override
     public void run() {
@@ -324,6 +296,32 @@ public final class EmbeddedConnector implements Runnable {
                         return;
                     }
 
+                    // Instantiate the offset store ...
+                    final String offsetStoreClassName = config.getString(OFFSET_STORAGE);
+                    OffsetBackingStore offsetStore = null;
+                    try {
+                        @SuppressWarnings("unchecked")
+                        Class<? extends OffsetBackingStore> offsetStoreClass = (Class<OffsetBackingStore>) classLoader.loadClass(offsetStoreClassName);
+                        offsetStore = offsetStoreClass.newInstance();
+                    } catch (Throwable t) {
+                        logger.error("Unable to instantiate OffsetBackingStore class {}", offsetStoreClassName, t);
+                        return;
+                    }
+
+                    // Initialize the offset store ...
+                    try {
+                        offsetStore.configure(config.subset(OFFSET_STORAGE.name() + ".", false).asMap()); // subset but do not
+                                                                                                          // remove prefixes
+                        offsetStore.start();
+                    } catch (Throwable t) {
+                        logger.error("Unable to configure and start the {} offset backing store", offsetStoreClassName, t);
+                        return;
+                    }
+
+                    // Set up the offset commit policy ...
+                    long offsetPeriodMs = config.getLong(OFFSET_FLUSH_INTERVAL_MS);
+                    OffsetCommitPolicy offsetCommitPolicy = OffsetCommitPolicy.periodic(offsetPeriodMs, TimeUnit.MILLISECONDS);
+
                     // Initialize the connector using a context that does NOT respond to requests to reconfigure tasks ...
                     ConnectorContext context = () -> {};
                     connector.initialize(context);
@@ -331,7 +329,7 @@ public final class EmbeddedConnector implements Runnable {
                             keyConverter, valueConverter);
                     OffsetStorageReader offsetReader = new OffsetStorageReaderImpl(offsetStore, connectorName,
                             keyConverter, valueConverter);
-                    long commitTimeoutMs = config.getLong(OFFSET_COMMIT_TIMEOUT_MS_CONFIG);
+                    long commitTimeoutMs = config.getLong(OFFSET_COMMIT_TIMEOUT_MS);
 
                     try {
                         // Start the connector with the given properties and get the task configurations ...
@@ -362,33 +360,43 @@ public final class EmbeddedConnector implements Runnable {
                                 List<SourceRecord> changeRecords = task.poll(); // blocks until there are values ...
                                 if (changeRecords != null && !changeRecords.isEmpty()) {
 
-                                    // First write out the last partition to offset storage ...
+                                    // First forward the records to the connector's consumer ...
+                                    for (SourceRecord record : changeRecords) {
+                                        try {
+                                            consumer.accept(record);
+                                        } catch (Throwable t) {
+                                            logger.error("Error in the application's handler method, but continuing anyway", t);
+                                        }
+                                    }
+
+                                    // Only then do we write out the last partition to offset storage ...
                                     SourceRecord lastRecord = changeRecords.get(changeRecords.size() - 1);
                                     lastRecord.sourceOffset();
                                     offsetWriter.offset(lastRecord.sourcePartition(), lastRecord.sourceOffset());
 
-                                    // Now forward the records to the connector's consumer ...
-                                    for (SourceRecord record : changeRecords) {
-                                        consumer.accept(record);
-                                    }
-
                                     // Flush the offsets to storage if necessary ...
                                     recordsSinceLastCommit += changeRecords.size();
-                                    maybeFlush(offsetWriter, commitTimeoutMs);
+                                    maybeFlush(offsetWriter, offsetCommitPolicy, commitTimeoutMs);
                                 }
                             } catch (InterruptedException e) {
-                                // This thread was interrupted, which signals that the thread should stop work ...
-                                // but first try to commit the offsets ...
-                                maybeFlush(offsetWriter, commitTimeoutMs);
+                                // This thread was interrupted, which signals that the thread should stop work.
+                                // We first try to commit the offsets, since we record them only after the records were handled
+                                // by the consumer ...
+                                maybeFlush(offsetWriter, offsetCommitPolicy, commitTimeoutMs);
                                 // Then clear the interrupted status ...
                                 Thread.interrupted();
-                                return;
+                                break;
                             }
                         }
                     } catch (Throwable t) {
                         logger.error("Error while running  to instantiate connector class {}", connectorClassName, t);
                     } finally {
-                        connector.stop();
+                        // Close the offset storage and finally the connector ...
+                        try {
+                            offsetStore.stop();
+                        } finally {
+                            connector.stop();
+                        }
                     }
                 }
             } finally {
@@ -402,12 +410,13 @@ public final class EmbeddedConnector implements Runnable {
      * Determine if we should flush offsets to storage, and if so then attempt to flush offsets.
      * 
      * @param offsetWriter the offset storage writer; may not be null
+     * @param policy the offset commit policy; may not be null
      * @param commitTimeoutMs the timeout to wait for commit results
      */
-    protected void maybeFlush(OffsetStorageWriter offsetWriter, long commitTimeoutMs) {
+    protected void maybeFlush(OffsetStorageWriter offsetWriter, OffsetCommitPolicy policy, long commitTimeoutMs) {
         // Determine if we need to commit to offset storage ...
-        if (this.offsetCommitPolicy.performCommit(recordsSinceLastCommit, timeSinceLastCommitMillis,
-                                                  TimeUnit.MILLISECONDS)) {
+        if (policy.performCommit(recordsSinceLastCommit, timeSinceLastCommitMillis,
+                                 TimeUnit.MILLISECONDS)) {
 
             long started = clock.currentTimeInMillis();
             long timeout = started + commitTimeoutMs;

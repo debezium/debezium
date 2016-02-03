@@ -20,11 +20,18 @@ import io.debezium.relational.ddl.DdlParser;
  */
 public interface DatabaseHistory {
     
+    public static final String CONFIG_PREFIX = "database.history.";
+    
     /**
      * Configure this instance.
      * @param config the configuration for this history store
      */
     void configure(Configuration config);
+    
+    /**
+     * Start the history.
+     */
+    void start();
 
     /**
      * Record a change to the schema of the named database, and store it in the schema storage.
@@ -55,5 +62,5 @@ public interface DatabaseHistory {
     /**
      * Stop recording history and release any resources acquired since {@link #configure(Configuration)}.
      */
-    void shutdown();
+    void stop();
 }

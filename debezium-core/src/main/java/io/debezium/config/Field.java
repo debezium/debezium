@@ -311,6 +311,10 @@ public final class Field {
         return true;
     }
 
+    public static boolean isNonNegativeInteger(String value) {
+        return value != null ? Integer.parseInt(value) >= 0 : true;
+    }
+
     public static boolean isPositiveInteger(String value) {
         return value != null ? Integer.parseInt(value) > 0 : true;
     }
