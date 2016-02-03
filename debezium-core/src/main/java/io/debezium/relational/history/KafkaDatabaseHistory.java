@@ -37,12 +37,12 @@ import io.debezium.util.Collect;
 public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
 
     @SuppressWarnings("unchecked")
-    public static final Field TOPIC = Field.create("topic")
+    public static final Field TOPIC = Field.create(CONFIG_PREFIX + "kafka.topic")
                                            .withDescription("The name of the topic for the database schema history")
                                            .withValidation(Field::isRequired);
 
     @SuppressWarnings("unchecked")
-    public static final Field BOOTSTRAP_SERVERS = Field.create("bootstrap.servers")
+    public static final Field BOOTSTRAP_SERVERS = Field.create(CONFIG_PREFIX + "kafka.bootstrap.servers")
                                                        .withDescription("A list of host/port pairs that the connector will use for establishing the initial "
                                                                + "connection to the Kafka cluster for retrieving database schema history previously stored "
                                                                + "by the connector. This should point to the same Kafka cluster used by the Kafka Connect "
@@ -83,6 +83,11 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                                     .withDefault("key.deserializer", StringDeserializer.class.getName())
                                     .withDefault("value.deserializer", StringDeserializer.class.getName())
                                     .build();
+    }
+    
+    @Override
+    public void start() {
+        super.start();
         this.producer = new KafkaProducer<>(this.producerConfig.asProperties());
     }
 
@@ -114,12 +119,12 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     }
 
     @Override
-    public void shutdown() {
+    public void stop() {
         try {
             if (this.producer != null) this.producer.close();
         } finally {
             this.producer = null;
-            super.shutdown();
+            super.stop();
         }
     }
 }

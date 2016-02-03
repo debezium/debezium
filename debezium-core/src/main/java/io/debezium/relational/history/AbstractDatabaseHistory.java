@@ -31,6 +31,11 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     public void configure(Configuration config) {
         this.config = config;
     }
+    
+    @Override
+    public void start() {
+        // do nothing
+    }
 
     @Override
     public final void record(Map<String, ?> source, Map<String, ?> position, String databaseName, Tables schema, String ddl) {
@@ -56,7 +61,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     protected abstract void recoverRecords(Tables schema, DdlParser ddlParser, Consumer<HistoryRecord> records);
     
     @Override
-    public void shutdown() {
+    public void stop() {
         // do nothing
     }
 }

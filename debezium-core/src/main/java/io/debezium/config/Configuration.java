@@ -73,6 +73,17 @@ public interface Configuration {
          * @param value the value
          * @return this builder object so methods can be chained together; never null
          */
+        default B with(String key, Object value) {
+            return with(key, value != null ? value.toString() : null);
+        }
+
+        /**
+         * Associate the given value with the specified key.
+         * 
+         * @param key the key
+         * @param value the value
+         * @return this builder object so methods can be chained together; never null
+         */
         default B with(String key, int value) {
             return with(key, Integer.toString(value));
         }
@@ -129,6 +140,17 @@ public interface Configuration {
          * @return this builder object so methods can be chained together; never null
          */
         B withDefault(String key, String value);
+
+        /**
+         * If there is no field with the specified key, then associate the given value with the specified key.
+         * 
+         * @param key the key
+         * @param value the value
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B withDefault(String key, Object value) {
+            return withDefault(key, value != null ? value.toString() : null);
+        }
 
         /**
          * If there is no field with the specified key, then associate the given value with the specified key.
@@ -416,6 +438,11 @@ public interface Configuration {
             @Override
             public String getString(String key) {
                 return null;
+            }
+            
+            @Override
+            public String toString() {
+                return "{}";
             }
         };
     }
@@ -1029,6 +1056,11 @@ public interface Configuration {
                 String oldKey = newToOld.get(key);
                 return Configuration.this.getString(oldKey);
             }
+            
+            @Override
+            public String toString() {
+                return asProperties().toString();
+            }
         };
     }
 
@@ -1052,6 +1084,11 @@ public interface Configuration {
             @Override
             public String getString(String key) {
                 return matcher.test(key) ? Configuration.this.getString(key) : null;
+            }
+            
+            @Override
+            public String toString() {
+                return asProperties().toString();
             }
         };
     }

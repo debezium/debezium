@@ -1,0 +1,190 @@
+<?xml version="1.0"?>
+<!--
+  ~ Copyright 2014 Red Hat, Inc. and/or its affiliates.
+  ~
+  ~ Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+  -->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0                    http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-parent</artifactId>
+        <version>0.1-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>debezium-connector-postgres</artifactId>
+    <name>Debezium Connector for PostgreSQL</name>
+    <packaging>jar</packaging>
+    <dependencies>
+        <dependency>
+          <groupId>io.debezium</groupId>
+          <artifactId>debezium-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+        <!-- Testing -->
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-core</artifactId>
+            <type>test-jar</type>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.easytesting</groupId>
+            <artifactId>fest-assert</artifactId>
+        </dependency>
+    </dependencies>
+    <properties>
+        <!-- 
+        Specify the properties that will be used for setting up the integration tests' Docker container.
+        Note that the `dockerhost.ip` property is computed from the IP address of DOCKER_HOST, which will
+        work on all platforms. We'll set some of these as system properties during integration testing.
+        -->
+        <database.port>5432</database.port>
+        <database.user>postgres</database.user>
+        <database.password>postgres</database.password>
+    </properties>
+    <build>
+       <plugins>
+            <!-- Build a Docker image of our PostgreSQL installation, and run it as a container for our integration tests -->
+            <plugin>
+                <groupId>org.jolokia</groupId>
+                <artifactId>docker-maven-plugin</artifactId>
+                <configuration>
+                    <watchInterval>500</watchInterval>
+                    <logDate>default</logDate>
+                    <verbose>true</verbose>
+                    <autoPull>always</autoPull>
+                    <images>
+                        <image>
+                            <name>debezium-pg94-server</name>
+                            <alias>database</alias>
+                            <build>
+                                <assembly>
+                                    <basedir>/docker-entrypoint-initdb.d</basedir>
+                                    <dockerFileDir>${project.basedir}/src/test/docker</dockerFileDir>
+                                </assembly>
+                            </build>
+                            <run>
+                                <namingStrategy>alias</namingStrategy>
+                                <!--volumes>
+                                    <bind>
+                                        <volume>${project.build.directory}/data:/var/lib/postgresql/data</volume>
+                                    </bind>
+                                </volumes-->
+                                <env>
+                                    <POSTGRES_USER>${database.user}</POSTGRES_USER>
+                                    <POSTGRES_PASSWORD>${database.password}</POSTGRES_PASSWORD>
+                                </env>
+                                <ports>
+                                    <port>${database.port}:5432</port>
+                                </ports>
+                                <log>
+                                    <prefix>postgres</prefix>
+                                    <enabled>true</enabled>
+                                    <color>yellow</color>
+                                </log>
+                                <wait>
+                                    <log>PostgreSQL init process complete; ready for start up.</log>
+                                    <time>30000</time> <!-- 30 seconds max -->
+                                </wait>
+                            </run>
+                        </image>
+                    </images>
+                </configuration>
+                <!-- 
+                Connect this plugin to the maven lifecycle around the integration-test phase: 
+                start the container in pre-integration-test and stop it in post-integration-test. 
+                -->
+                <executions>
+                    <execution>
+                        <id>start</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>build</goal>
+                            <goal>start</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>stop</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>stop</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- 
+            Unlike surefire, the failsafe plugin ensures 'post-integration-test' phase always runs, even
+            when there are failed integration tests. We rely upon this to always shut down the Docker container
+            after the integration tests (defined as '*IT.java') are run.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>integration-test</id>
+                        <goals>
+                            <goal>integration-test</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>verify</id>
+                        <goals>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <systemPropertyVariables>
+                        <!-- Make these available to the tests via system properties -->
+                        <database.hostname>${docker.host.address}</database.hostname>
+                        <database.port>${database.port}</database.port>
+                        <database.user>${database.user}</database.user>
+                        <database.password>${database.password}</database.password>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+        </plugins>
+        <resources>
+            <!-- Apply the properties set in the POM to the resource files -->
+            <resource>
+                <filtering>true</filtering>
+                <directory>src/main/resources</directory>
+                <includes>
+                    <include>*</include>
+                    <include>**/*</include>
+                </includes>
+            </resource>
+        </resources>
+        <testResources>
+            <testResource>
+                <directory>src/test/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>*</include>
+                    <include>**/*</include>
+                </includes>
+            </testResource>
+        </testResources>
+     </build>
+</project>

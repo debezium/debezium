@@ -15,7 +15,7 @@ import org.apache.kafka.connect.storage.OffsetBackingStore;
  * @author Randall Hauch
  */
 @FunctionalInterface
-public interface OffsetCommitPolicy {
+interface OffsetCommitPolicy {
 
     /**
      * Get an {@link OffsetCommitPolicy} that will commit offsets as frequently as possible. This may result in reduced
@@ -28,13 +28,15 @@ public interface OffsetCommitPolicy {
     }
 
     /**
-     * Get an {@link OffsetCommitPolicy} that will commit offsets no more than the specified time period.
+     * Get an {@link OffsetCommitPolicy} that will commit offsets no more than the specified time period. If the {@code minimumTime}
+     * is not positive, then this method returns {@link #always()}.
      * 
-     * @param minimumTime the minimum amount of time between committing offsets; must be positive
+     * @param minimumTime the minimum amount of time between committing offsets
      * @param timeUnit the time unit for {@code minimumTime}; may not be null
      * @return the offset commit policy; never null
      */
     static OffsetCommitPolicy periodic(long minimumTime, TimeUnit timeUnit) {
+        if ( minimumTime <= 0 ) return always();
         return (number, actualTime, actualUnit) -> {
             return timeUnit.convert(actualTime, actualUnit) >= minimumTime;
         };

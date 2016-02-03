@@ -20,8 +20,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.file.FileStreamSourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
-import org.apache.kafka.connect.storage.OffsetBackingStore;
+import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -39,16 +38,16 @@ public class EmbeddedConnectorTest implements Testing {
 
     private static final int NUMBER_OF_LINES = 10;
 
-    private static final Path TEST_FILE_PATH = Testing.Files.createTestingPath("file-connector-input.txt");
+    private static final Path TEST_FILE_PATH = Testing.Files.createTestingPath("file-connector-input.txt").toAbsolutePath();
+    private static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath("file-connector-offsets.txt").toAbsolutePath();
     private static final Charset UTF8 = StandardCharsets.UTF_8;
 
     private ExecutorService executor;
-    private EmbeddedConnector connector;
+    private EmbeddedEngine connector;
     private File inputFile;
     private BlockingQueue<SourceRecord> consumedLines;
     private int nextConsumedLineNumber;
     private int linesAdded;
-    private OffsetBackingStore offsetStore;
 
     @Before
     public void beforeEach() throws Exception {
@@ -56,6 +55,7 @@ public class EmbeddedConnectorTest implements Testing {
         linesAdded = 0;
         consumedLines = new ArrayBlockingQueue<>(100);
         Testing.Files.delete(TEST_FILE_PATH);
+        Testing.Files.delete(OFFSET_STORE_PATH);
         inputFile = Testing.Files.createTestingFile(TEST_FILE_PATH);
         executor = Executors.newFixedThreadPool(1);
     }
@@ -67,22 +67,19 @@ public class EmbeddedConnectorTest implements Testing {
 
     @Test
     public void shouldStartAndUseFileConnectorUsingMemoryOffsetStorage() throws Exception {
-        // Set up the offset store ...
-        offsetStore = new MemoryOffsetBackingStore();
-        
         // Add initial content to the file ...
         appendLinesToSource(NUMBER_OF_LINES);
 
         // Create the connector ...
-        connector = EmbeddedConnector.create()
+        connector = EmbeddedEngine.create()
                                      .using(Configuration.create()
-                                                         .with(EmbeddedConnector.CONNECTOR_NAME, "file-connector")
-                                                         .with(EmbeddedConnector.CONNECTOR_CLASS, FileStreamSourceConnector.class.getName())
-                                                         .with(FileStreamSourceConnector.FILE_CONFIG, inputFile.getAbsolutePath())
+                                                         .with(EmbeddedEngine.ENGINE_NAME, "file-connector")
+                                                         .with(EmbeddedEngine.CONNECTOR_CLASS, FileStreamSourceConnector.class.getName())
+                                                         .with(FileOffsetBackingStore.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
+                                                         .with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 0)
+                                                         .with(FileStreamSourceConnector.FILE_CONFIG, TEST_FILE_PATH)
                                                          .with(FileStreamSourceConnector.TOPIC_CONFIG, "topicX")
                                                          .build())
-                                     .using(offsetStore)
-                                     .using(OffsetCommitPolicy.always())
                                      .notifying(consumedLines::add)
                                      .build();
 
