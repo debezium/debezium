@@ -16,6 +16,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -36,6 +37,7 @@ import com.github.shyiko.mysql.binlog.network.AuthenticationException;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
+import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.DatabaseHistory;
@@ -133,13 +135,19 @@ final class LogReader extends SourceTask {
                          MySqlConnectorConfig.MAX_BATCH_SIZE, MySqlConnectorConfig.MAX_QUEUE_SIZE, maxBatchSize);
         }
 
+        // Define the filter using the whitelists and blacklists for tables and database names ...
+        Predicate<TableId> tableFilter = TableId.filter(config.getString(MySqlConnectorConfig.DATABASE_WHITELIST),
+                                                        config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST),
+                                                        config.getString(MySqlConnectorConfig.TABLE_WHITELIST),
+                                                        config.getString(MySqlConnectorConfig.TABLE_BLACKLIST));
+
         // Create the queue ...
         events = new LinkedBlockingDeque<>(maxQueueSize);
         batchEvents = new ArrayList<>(maxBatchSize);
 
-        // Set up our handlers ...
+        // Set up our handlers for specific kinds of events ...
         tables = new Tables();
-        tableConverters = new TableConverters(topicSelector, dbHistory, includeSchemaChanges, tables);
+        tableConverters = new TableConverters(topicSelector, dbHistory, includeSchemaChanges, tables, tableFilter);
         eventHandlers.put(EventType.TABLE_MAP, tableConverters::updateTableMetadata);
         eventHandlers.put(EventType.QUERY, tableConverters::updateTableCommand);
         eventHandlers.put(EventType.EXT_WRITE_ROWS, tableConverters::handleInsert);

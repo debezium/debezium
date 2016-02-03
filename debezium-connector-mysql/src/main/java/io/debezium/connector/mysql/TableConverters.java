@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -53,9 +54,11 @@ final class TableConverters {
     private final Map<Long, Converter> convertersByTableId = new HashMap<>();
     private final Map<String, Long> tableNumbersByTableName = new HashMap<>();
     private final boolean recordSchemaChangesInSourceRecords;
+    private final Predicate<TableId> tableFilter;
 
     public TableConverters(TopicSelector topicSelector, DatabaseHistory dbHistory,
-            boolean recordSchemaChangesInSourceRecords, Tables tables) {
+            boolean recordSchemaChangesInSourceRecords, Tables tables,
+            Predicate<TableId> tableFilter) {
         Objects.requireNonNull(topicSelector, "A topic selector is required");
         Objects.requireNonNull(dbHistory, "Database history storage is required");
         Objects.requireNonNull(tables, "A Tables object is required");
@@ -64,6 +67,7 @@ final class TableConverters {
         this.tables = tables;
         this.ddlParser = new MySqlDdlParser(false); // don't include views
         this.recordSchemaChangesInSourceRecords = recordSchemaChangesInSourceRecords;
+        this.tableFilter = tableFilter != null ? tableFilter : (id) -> true;
     }
 
     public void updateTableCommand(Event event, SourceInfo source, Consumer<SourceRecord> recorder) {
@@ -134,6 +138,11 @@ final class TableConverters {
             // Generate this table's insert, update, and delete converters ...
             Converter converter = new Converter() {
                 @Override
+                public TableId tableId() {
+                    return tableId;
+                }
+
+                @Override
                 public String topic() {
                     return topicName;
                 }
@@ -191,17 +200,19 @@ final class TableConverters {
         long tableNumber = write.getTableId();
         BitSet includedColumns = write.getIncludedColumns();
         Converter converter = convertersByTableId.get(tableNumber);
-        String topic = converter.topic();
-        Integer partition = converter.partition();
-        for (int row = 0; row <= source.eventRowNumber(); ++row) {
-            Serializable[] values = write.getRows().get(row);
-            Schema keySchema = converter.keySchema();
-            Object key = converter.createKey(values, includedColumns);
-            Schema valueSchema = converter.valueSchema();
-            Struct value = converter.inserted(values, includedColumns);
-            SourceRecord record = new SourceRecord(source.partition(), source.offset(row), topic, partition,
-                    keySchema, key, valueSchema, value);
-            recorder.accept(record);
+        if (tableFilter.test(converter.tableId())) {
+            String topic = converter.topic();
+            Integer partition = converter.partition();
+            for (int row = 0; row <= source.eventRowNumber(); ++row) {
+                Serializable[] values = write.getRows().get(row);
+                Schema keySchema = converter.keySchema();
+                Object key = converter.createKey(values, includedColumns);
+                Schema valueSchema = converter.valueSchema();
+                Struct value = converter.inserted(values, includedColumns);
+                SourceRecord record = new SourceRecord(source.partition(), source.offset(row), topic, partition,
+                        keySchema, key, valueSchema, value);
+                recorder.accept(record);
+            }
         }
     }
 
@@ -218,19 +229,21 @@ final class TableConverters {
         BitSet includedColumns = update.getIncludedColumns();
         BitSet includedColumnsBefore = update.getIncludedColumnsBeforeUpdate();
         Converter converter = convertersByTableId.get(tableNumber);
-        String topic = converter.topic();
-        Integer partition = converter.partition();
-        for (int row = 0; row <= source.eventRowNumber(); ++row) {
-            Map.Entry<Serializable[], Serializable[]> changes = update.getRows().get(row);
-            Serializable[] before = changes.getKey();
-            Serializable[] after = changes.getValue();
-            Schema keySchema = converter.keySchema();
-            Object key = converter.createKey(after, includedColumns);
-            Schema valueSchema = converter.valueSchema();
-            Struct value = converter.updated(before, includedColumnsBefore, after, includedColumns);
-            SourceRecord record = new SourceRecord(source.partition(), source.offset(row), topic, partition,
-                    keySchema, key, valueSchema, value);
-            recorder.accept(record);
+        if (tableFilter.test(converter.tableId())) {
+            String topic = converter.topic();
+            Integer partition = converter.partition();
+            for (int row = 0; row <= source.eventRowNumber(); ++row) {
+                Map.Entry<Serializable[], Serializable[]> changes = update.getRows().get(row);
+                Serializable[] before = changes.getKey();
+                Serializable[] after = changes.getValue();
+                Schema keySchema = converter.keySchema();
+                Object key = converter.createKey(after, includedColumns);
+                Schema valueSchema = converter.valueSchema();
+                Struct value = converter.updated(before, includedColumnsBefore, after, includedColumns);
+                SourceRecord record = new SourceRecord(source.partition(), source.offset(row), topic, partition,
+                        keySchema, key, valueSchema, value);
+                recorder.accept(record);
+            }
         }
     }
 
@@ -239,21 +252,25 @@ final class TableConverters {
         long tableNumber = deleted.getTableId();
         BitSet includedColumns = deleted.getIncludedColumns();
         Converter converter = convertersByTableId.get(tableNumber);
-        String topic = converter.topic();
-        Integer partition = converter.partition();
-        for (int row = 0; row <= source.eventRowNumber(); ++row) {
-            Serializable[] values = deleted.getRows().get(row);
-            Schema keySchema = converter.keySchema();
-            Object key = converter.createKey(values, includedColumns);
-            Schema valueSchema = converter.valueSchema();
-            Struct value = converter.inserted(values, includedColumns);
-            SourceRecord record = new SourceRecord(source.partition(), source.offset(row), topic, partition,
-                    keySchema, key, valueSchema, value);
-            recorder.accept(record);
+        if (tableFilter.test(converter.tableId())) {
+            String topic = converter.topic();
+            Integer partition = converter.partition();
+            for (int row = 0; row <= source.eventRowNumber(); ++row) {
+                Serializable[] values = deleted.getRows().get(row);
+                Schema keySchema = converter.keySchema();
+                Object key = converter.createKey(values, includedColumns);
+                Schema valueSchema = converter.valueSchema();
+                Struct value = converter.inserted(values, includedColumns);
+                SourceRecord record = new SourceRecord(source.partition(), source.offset(row), topic, partition,
+                        keySchema, key, valueSchema, value);
+                recorder.accept(record);
+            }
         }
     }
 
     protected static interface Converter {
+        TableId tableId();
+
         String topic();
 
         Integer partition();
