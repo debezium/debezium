@@ -58,13 +58,13 @@ import io.debezium.util.VariableLatch;
  * @author Randall Hauch
  */
 @ThreadSafe
-public final class EmbeddedConnector implements Runnable {
+public final class EmbeddedEngine implements Runnable {
 
     /**
      * A required field for an embedded connector that specifies the unique name for the connector instance.
      */
     @SuppressWarnings("unchecked")
-    public static final Field CONNECTOR_NAME = Field.create("name")
+    public static final Field ENGINE_NAME = Field.create("name")
                                                     .withDescription("Unique name for this connector instance.")
                                                     .withValidation(Field::isRequired);
 
@@ -119,10 +119,10 @@ public final class EmbeddedConnector implements Runnable {
     /**
      * The array of fields that are required by each connectors.
      */
-    public static final Field[] CONNECTOR_FIELDS = { CONNECTOR_NAME, CONNECTOR_CLASS };
+    public static final Field[] CONNECTOR_FIELDS = { ENGINE_NAME, CONNECTOR_CLASS };
 
     /**
-     * A builder to set up and create {@link EmbeddedConnector} instances.
+     * A builder to set up and create {@link EmbeddedEngine} instances.
      */
     public static interface Builder {
 
@@ -169,11 +169,11 @@ public final class EmbeddedConnector implements Runnable {
          * @throws IllegalArgumentException if a {@link #using(Configuration) configuration} or {@link #notifying(Consumer)
          *             consumer function} were not supplied before this method is called
          */
-        EmbeddedConnector build();
+        EmbeddedEngine build();
     }
 
     /**
-     * Obtain a new {@link Builder} instance that can be used to construct runnable {@link EmbeddedConnector} instances.
+     * Obtain a new {@link Builder} instance that can be used to construct runnable {@link EmbeddedEngine} instances.
      * 
      * @return the new builder; never null
      */
@@ -209,12 +209,12 @@ public final class EmbeddedConnector implements Runnable {
             }
 
             @Override
-            public EmbeddedConnector build() {
+            public EmbeddedEngine build() {
                 if (classLoader == null) classLoader = getClass().getClassLoader();
                 if (clock == null) clock = Clock.system();
                 Objects.requireNonNull(config, "A connector configuration must be specified.");
                 Objects.requireNonNull(consumer, "A connector consumer must be specified.");
-                return new EmbeddedConnector(config, classLoader, clock, consumer);
+                return new EmbeddedEngine(config, classLoader, clock, consumer);
             }
 
         };
@@ -232,7 +232,7 @@ public final class EmbeddedConnector implements Runnable {
     private long recordsSinceLastCommit = 0;
     private long timeSinceLastCommitMillis = 0;
 
-    private EmbeddedConnector(Configuration config, ClassLoader classLoader, Clock clock, Consumer<SourceRecord> consumer) {
+    private EmbeddedEngine(Configuration config, ClassLoader classLoader, Clock clock, Consumer<SourceRecord> consumer) {
         this.config = config;
         this.consumer = consumer;
         this.classLoader = classLoader;
@@ -284,7 +284,7 @@ public final class EmbeddedConnector implements Runnable {
             try {
                 if (config.validate(CONNECTOR_FIELDS, logger::error)) {
                     // Instantiate the connector ...
-                    final String connectorName = config.getString(CONNECTOR_NAME);
+                    final String engineName = config.getString(ENGINE_NAME);
                     final String connectorClassName = config.getString(CONNECTOR_CLASS);
                     SourceConnector connector = null;
                     try {
@@ -325,9 +325,9 @@ public final class EmbeddedConnector implements Runnable {
                     // Initialize the connector using a context that does NOT respond to requests to reconfigure tasks ...
                     ConnectorContext context = () -> {};
                     connector.initialize(context);
-                    OffsetStorageWriter offsetWriter = new OffsetStorageWriter(offsetStore, connectorName,
+                    OffsetStorageWriter offsetWriter = new OffsetStorageWriter(offsetStore, engineName,
                             keyConverter, valueConverter);
-                    OffsetStorageReader offsetReader = new OffsetStorageReaderImpl(offsetStore, connectorName,
+                    OffsetStorageReader offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName,
                             keyConverter, valueConverter);
                     long commitTimeoutMs = config.getLong(OFFSET_COMMIT_TIMEOUT_MS);
 
@@ -479,6 +479,6 @@ public final class EmbeddedConnector implements Runnable {
 
     @Override
     public String toString() {
-        return "EmbeddedConnector{id=" + config.getString(CONNECTOR_NAME) + '}';
+        return "EmbeddedConnector{id=" + config.getString(ENGINE_NAME) + '}';
     }
 }

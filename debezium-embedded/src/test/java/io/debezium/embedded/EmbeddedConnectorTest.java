@@ -43,7 +43,7 @@ public class EmbeddedConnectorTest implements Testing {
     private static final Charset UTF8 = StandardCharsets.UTF_8;
 
     private ExecutorService executor;
-    private EmbeddedConnector connector;
+    private EmbeddedEngine connector;
     private File inputFile;
     private BlockingQueue<SourceRecord> consumedLines;
     private int nextConsumedLineNumber;
@@ -71,12 +71,12 @@ public class EmbeddedConnectorTest implements Testing {
         appendLinesToSource(NUMBER_OF_LINES);
 
         // Create the connector ...
-        connector = EmbeddedConnector.create()
+        connector = EmbeddedEngine.create()
                                      .using(Configuration.create()
-                                                         .with(EmbeddedConnector.CONNECTOR_NAME, "file-connector")
-                                                         .with(EmbeddedConnector.CONNECTOR_CLASS, FileStreamSourceConnector.class.getName())
+                                                         .with(EmbeddedEngine.ENGINE_NAME, "file-connector")
+                                                         .with(EmbeddedEngine.CONNECTOR_CLASS, FileStreamSourceConnector.class.getName())
                                                          .with(FileOffsetBackingStore.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
-                                                         .with(EmbeddedConnector.OFFSET_FLUSH_INTERVAL_MS, 0)
+                                                         .with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 0)
                                                          .with(FileStreamSourceConnector.FILE_CONFIG, TEST_FILE_PATH)
                                                          .with(FileStreamSourceConnector.TOPIC_CONFIG, "topicX")
                                                          .build())

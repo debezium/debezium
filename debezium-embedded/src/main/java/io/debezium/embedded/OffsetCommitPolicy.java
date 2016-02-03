@@ -15,7 +15,7 @@ import org.apache.kafka.connect.storage.OffsetBackingStore;
  * @author Randall Hauch
  */
 @FunctionalInterface
-public interface OffsetCommitPolicy {
+interface OffsetCommitPolicy {
 
     /**
      * Get an {@link OffsetCommitPolicy} that will commit offsets as frequently as possible. This may result in reduced

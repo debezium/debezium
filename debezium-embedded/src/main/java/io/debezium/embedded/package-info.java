@@ -20,24 +20,25 @@ package io.debezium.embedded;
  * restarts its connector, the connector can continue processing exactly where it left off.
  * <h2>Usage</h2>
  * <p>
- * Applications do not directly work with Debezium connectors, but instead use the {@link io.debezium.embedded.EmbeddedConnector}
- * class to configure and build an {@link io.debezium.embedded.EmbeddedConnector} instance that wraps and completely manages
- * a standard Debezium connector. The application also provides, among other things, a function that the EmbeddedConnector will
- * use to deliver data change events to the application.
+ * Applications do not directly work with Debezium connectors, but instead configure and build an
+ * {@link io.debezium.embedded.EmbeddedEngine} instance that wraps and completely manages a single standard Debezium connector.
+ * The application also provides the engine with a function that it will use to deliver data change events to the application.
  * <p>
- * Once the application has configured its {@link io.debezium.embedded.EmbeddedConnector} instance and is ready to start receiving
- * data change events, the application submits the EmbeddedConnector to an {@link java.util.concurrent.Executor} or
- * {@link java.util.concurrent.ExecutorService} managed by the application. The EmbeddedConnector's
+ * Once the application has configured its {@link io.debezium.embedded.EmbeddedEngine} instance and is ready to start receiving
+ * data change events, the application submits the EmbeddedEngine to an {@link java.util.concurrent.Executor} or
+ * {@link java.util.concurrent.ExecutorService} managed by the application. The EmbeddedEngine's
  * {@link io.debezium.embedded.EmbeddedConnector#run()} method will start the standard Debezium connector and continuously
  * deliver any data changes events to the application.
  * <p>
- * When the application is ready to shut down the connector, it should call {@link EmbeddedConnector#stop()} on the
- * EmbeddedConnector, which will then stop monitoring the source database, complete any current work, and gracefully shut down.
- * The application can wait for the connector to complete by using the
- * {@link io.debezium.embedded.EmbeddedConnector#await(long, java.util.concurrent.TimeUnit)} method.
+ * When the application is ready to shut down the engine, it should call {@link io.debezium.embedded.EmbeddedEngine#stop()} on the
+ * engine, which will then stop the connector and have it gracefully complete all current work and shut down.
+ * The application can wait for the engine to complete by using the
+ * {@link io.debezium.embedded.EmbeddedEngine#await(long, java.util.concurrent.TimeUnit)} method.
  * <h2>Storing connector state</h2>
  * <p>
- * As Debezium connectors operate, they keep track of which information from the source database they have processed, and they
+ * All connector state is managed by components defined in the engine's configuration.
+ * <p>
+ * As Debezium connectors operate, they keep track of how much information from the source database they have processed, and they
  * record this <em>offset information</em> in an {@link org.apache.kafka.connect.storage.OffsetBackingStore}. Kafka Connect
  * provides several implementations that can be used by an application, including a
  * {@link org.apache.kafka.connect.storage.FileOffsetBackingStore file-based store} and an
