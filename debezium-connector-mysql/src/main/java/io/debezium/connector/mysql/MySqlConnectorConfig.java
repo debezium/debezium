@@ -84,10 +84,26 @@ public class MySqlConnectorConfig {
                                                             .withDefault(false)
                                                             .withValidation(Field::isBoolean);
 
+    public static final Field TABLE_WHITELIST = Field.create("table.whitelist")
+                                                     .withDescription("A comma-separated list of table identifiers to be monitored, where each identifer consists "
+                                                             + "of the '<databaseName>.<tableName>'. A whitelist takes precedence over any blacklist.");
+
+    public static final Field TABLE_BLACKLIST = Field.create("table.blacklist")
+                                                     .withDescription("A comma-separated list of table identifiers to not be monitored, where each identifer consists "
+                                                             + "of the '<databaseName>.<tableName>'. Any whitelist takes precedence over this blacklist.");
+
+    public static final Field DATABASE_WHITELIST = Field.create("database.whitelist")
+                                                        .withDescription("A comma-separated list of database names to be monitored. A database whitelist takes precedence over any database blacklist and supersedes a table whitelist or table blacklist.");
+
+    public static final Field DATABASE_BLACKLIST = Field.create("database.blacklist")
+                                                        .withDescription("A comma-separated list of database names to not be monitored. Any database whitelist takes precedence over this blacklist, and supersedes a table whitelist or table blacklist.");
+
     public static Collection<Field> ALL_FIELDS = Collect.arrayListOf(USER, PASSWORD, HOSTNAME, PORT, SERVER_ID,
                                                                      SERVER_NAME, CONNECTION_TIMEOUT_MS, KEEP_ALIVE,
                                                                      MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
-                                                                     DATABASE_HISTORY, INCLUDE_SCHEMA_CHANGES);
+                                                                     DATABASE_HISTORY, INCLUDE_SCHEMA_CHANGES,
+                                                                     TABLE_WHITELIST, TABLE_BLACKLIST,
+                                                                     DATABASE_WHITELIST, DATABASE_BLACKLIST);
 
     private static int validateMaxQueueSize(Configuration config, Field field, Consumer<String> problems) {
         int maxQueueSize = config.getInteger(field);
