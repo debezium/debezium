@@ -14,10 +14,14 @@ import org.apache.kafka.common.serialization.IntegerSerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import io.debezium.junit.SkipLongRunning;
+import io.debezium.junit.SkipTestRule;
 import io.debezium.util.Stopwatch;
 import io.debezium.util.Testing;
 
@@ -25,6 +29,9 @@ import io.debezium.util.Testing;
  * @author Randall Hauch
  */
 public class KafkaClusterTest {
+    
+    @Rule
+    public TestRule skipTestRule = new SkipTestRule();
 
     private KafkaCluster cluster;
     private File dataDir;
@@ -43,6 +50,7 @@ public class KafkaClusterTest {
     }
 
     @Test
+    @SkipLongRunning
     public void shouldStartClusterWithOneBrokerAndRemoveData() throws Exception {
         cluster.deleteDataUponShutdown(true).addBrokers(1).startup();
         cluster.onEachDirectory(this::assertValidDataDirectory);
@@ -51,6 +59,7 @@ public class KafkaClusterTest {
     }
 
     @Test
+    @SkipLongRunning
     public void shouldStartClusterWithMultipleBrokerAndRemoveData() throws Exception {
         cluster.deleteDataUponShutdown(true).addBrokers(3).startup();
         cluster.onEachDirectory(this::assertValidDataDirectory);
@@ -59,6 +68,7 @@ public class KafkaClusterTest {
     }
 
     @Test
+    @SkipLongRunning
     public void shouldStartClusterWithOneBrokerAndLeaveData() throws Exception {
         cluster.deleteDataUponShutdown(false).addBrokers(1).startup();
         cluster.onEachDirectory(this::assertValidDataDirectory);
@@ -67,6 +77,7 @@ public class KafkaClusterTest {
     }
 
     @Test
+    @SkipLongRunning
     public void shouldStartClusterWithMultipleBrokerAndLeaveData() throws Exception {
         cluster.deleteDataUponShutdown(false).addBrokers(3).startup();
         cluster.onEachDirectory(this::assertValidDataDirectory);
@@ -75,6 +86,7 @@ public class KafkaClusterTest {
     }
 
     @Test
+    @SkipLongRunning
     public void shouldStartClusterAndAllowProducersAndConsumersToUseIt() throws Exception {
         Testing.Debug.enable();
         final String topicName = "topicA";
@@ -146,6 +158,7 @@ public class KafkaClusterTest {
     }
 
     @Test
+    @SkipLongRunning
     public void shouldStartClusterAndAllowAsynchronousProductionAndAutomaticConsumersToUseIt() throws Exception {
         Testing.Debug.enable();
         final String topicName = "topicA";

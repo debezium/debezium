@@ -85,6 +85,9 @@
         <version.scala>2.11.7</version.scala>
         <version.curator>2.4.0</version.curator>
         <version.zookeeper>3.4.6</version.zookeeper>
+
+        <!--Skip long running tests by default-->
+        <skipLongRunningTests>true</skipLongRunningTests>
     </properties>
     <modules>
         <module>support/checkstyle</module>
@@ -435,6 +438,10 @@
                             <name>java.io.tmpdir</name>
                             <value>${basedir}/target</value>
                         </property>
+                        <property>
+                            <name>skipLongRunningTests</name>
+                            <value>${skipLongRunningTests}</value>
+                        </property>
                     </systemProperties>
                     <argLine>-Djava.awt.headless=true</argLine>
                     <!--runOrder>alphabetical</runOrder-->
@@ -473,6 +480,19 @@
         </plugins>
     </build>
     <profiles>
+        <profile>
+            <id>assembly</id>
+            <properties>
+                <skipLongRunningTests>false</skipLongRunningTests>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>performance</id>
+            <properties>
+                <skipLongRunningTests>false</skipLongRunningTests>
+            </properties>
+        </profile>
         <profile>
             <id>docs</id>
             <activation>

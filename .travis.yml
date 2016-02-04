@@ -20,4 +20,4 @@ after_install:
   - docker ps -a
 
 script: 
-  - mvn clean install
+  - mvn clean install -DskipLongRunningTests=false

@@ -34,6 +34,7 @@ import java.util.stream.Stream;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -497,6 +498,7 @@ public class KafkaCluster {
             Properties props = new Properties();
             props.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList());
             props.setProperty(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+            props.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, Boolean.FALSE.toString());
             if (autoOffsetReset != null) {
                 props.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, autoOffsetReset.toString().toLowerCase());
             }
@@ -592,8 +594,9 @@ public class KafkaCluster {
             BlockingQueue<ConsumerRecord<K, V>> consumed = new LinkedBlockingQueue<>();
             List<ConsumerRecord<K, V>> allMessages = new LinkedList<>();
             AtomicBoolean keepReading = new AtomicBoolean();
+            OffsetCommitCallback offsetCommitCallback = null;
             consume(groupId, clientId, OffsetResetStrategy.EARLIEST, keyDeserializer, valueDeserializer, () -> keepReading.get(),
-                    completion, topicNames, record -> {
+                    offsetCommitCallback, completion, topicNames, record -> {
                         consumed.add(record);
                         allMessages.add(record);
                     });
@@ -847,13 +850,16 @@ public class KafkaCluster {
          * @param keyDeserializer the deserializer for the keys; may not be null
          * @param valueDeserializer the deserializer for the values; may not be null
          * @param continuation the function that determines if the consumer should continue; may not be null
+         * @param offsetCommitCallback the callback that should be used after committing offsets; may be null if offsets are
+         *            not to be committed
          * @param completion the function to call when the consumer terminates; may be null
          * @param topics the set of topics to consume; may not be null or empty
          * @param consumerFunction the function to consume the messages; may not be null
          */
         public <K, V> void consume(String groupId, String clientId, OffsetResetStrategy autoOffsetReset,
                                    Deserializer<K> keyDeserializer, Deserializer<V> valueDeserializer,
-                                   BooleanSupplier continuation, Runnable completion, Collection<String> topics,
+                                   BooleanSupplier continuation, OffsetCommitCallback offsetCommitCallback, Runnable completion,
+                                   Collection<String> topics,
                                    java.util.function.Consumer<ConsumerRecord<K, V>> consumerFunction) {
             Properties props = getConsumerProperties(groupId, clientId, autoOffsetReset);
             Thread t = new Thread(() -> {
@@ -864,7 +870,9 @@ public class KafkaCluster {
                         consumer.poll(10).forEach(record -> {
                             LOGGER.debug("Consumer {}: consuming message {}", clientId, record);
                             consumerFunction.accept(record);
-                            consumer.commitAsync();
+                            if (offsetCommitCallback != null) {
+                                consumer.commitAsync(offsetCommitCallback);
+                            }
                         });
                     }
                 } finally {
@@ -889,7 +897,9 @@ public class KafkaCluster {
             Deserializer<String> keyDes = new StringDeserializer();
             Deserializer<Document> valDes = new DocumentSerdes();
             String randomId = UUID.randomUUID().toString();
-            consume(randomId, randomId, OffsetResetStrategy.EARLIEST, keyDes, valDes, continuation, completion, topics, consumerFunction);
+            OffsetCommitCallback offsetCommitCallback = null;
+            consume(randomId, randomId, OffsetResetStrategy.EARLIEST, keyDes, valDes, continuation, offsetCommitCallback,
+                    completion, topics, consumerFunction);
         }
 
         /**
@@ -905,7 +915,9 @@ public class KafkaCluster {
             Deserializer<String> keyDes = new StringDeserializer();
             Deserializer<String> valDes = keyDes;
             String randomId = UUID.randomUUID().toString();
-            consume(randomId, randomId, OffsetResetStrategy.EARLIEST, keyDes, valDes, continuation, completion, topics, consumerFunction);
+            OffsetCommitCallback offsetCommitCallback = null;
+            consume(randomId, randomId, OffsetResetStrategy.EARLIEST, keyDes, valDes, continuation, offsetCommitCallback,
+                    completion, topics, consumerFunction);
         }
 
         /**
@@ -921,7 +933,9 @@ public class KafkaCluster {
             Deserializer<String> keyDes = new StringDeserializer();
             Deserializer<Integer> valDes = new IntegerDeserializer();
             String randomId = UUID.randomUUID().toString();
-            consume(randomId, randomId, OffsetResetStrategy.EARLIEST, keyDes, valDes, continuation, completion, topics, consumerFunction);
+            OffsetCommitCallback offsetCommitCallback = null;
+            consume(randomId, randomId, OffsetResetStrategy.EARLIEST, keyDes, valDes, continuation, offsetCommitCallback,
+                    completion, topics, consumerFunction);
         }
 
         /**
