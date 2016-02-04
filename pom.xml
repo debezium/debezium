@@ -79,6 +79,12 @@
        <!-- Dockerfiles -->
         <docker.maintainer>Debezium community</docker.maintainer>
 
+       <!-- Kafka -->
+        <version.kafka>0.9.0.0</version.kafka>
+        <version.kafka.scala>2.11</version.kafka.scala>
+        <version.scala>2.11.7</version.scala>
+        <version.curator>2.4.0</version.curator>
+        <version.zookeeper>3.4.6</version.zookeeper>
     </properties>
     <modules>
         <module>support/checkstyle</module>
@@ -155,6 +161,36 @@
                 <groupId>log4j</groupId>
                 <artifactId>log4j</artifactId>
                 <version>${version.log4j}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <!-- Kafka -->
+            <dependency>
+                <groupId>org.apache.kafka</groupId>
+                <artifactId>kafka_${version.kafka.scala}</artifactId>
+                <version>${version.kafka}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.kafka</groupId>
+                <artifactId>kafka-clients</artifactId>
+                <version>${version.kafka}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.zookeeper</groupId>
+                <artifactId>zookeeper</artifactId>
+                <version>${version.zookeeper}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.kafka</groupId>
+                <artifactId>kafka_${version.kafka.scala}</artifactId>
+                <version>${version.kafka}</version>
+                <classifier>test</classifier>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.curator</groupId>
+                <artifactId>curator-test</artifactId>
+                <version>${version.curator}</version>
                 <scope>test</scope>
             </dependency>
 
