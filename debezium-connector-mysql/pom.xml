@@ -171,6 +171,7 @@
                         <database.port>${database.port}</database.port>
                         <database.user>${database.user}</database.user>
                         <database.password>${database.password}</database.password>
+                        <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
