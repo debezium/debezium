@@ -251,7 +251,7 @@ public class DdlParser {
      */
     protected void parseComment(Marker marker) {
         String comment = tokens.consume();
-        logger.debug("COMMENT: {}", comment);
+        logger.trace("COMMENT: {}", comment);
     }
 
     /**
@@ -304,16 +304,16 @@ public class DdlParser {
     }
 
     protected void debugParsed(Marker statementStart) {
-        if (logger.isDebugEnabled()) {
+        if (logger.isTraceEnabled()) {
             String statement = removeLineFeeds(tokens.getContentFrom(statementStart));
-            logger.debug("PARSED:  {}", statement);
+            logger.trace("PARSED:  {}", statement);
         }
     }
 
     protected void debugSkipped(Marker statementStart) {
-        if (logger.isDebugEnabled()) {
+        if (logger.isTraceEnabled()) {
             String statement = removeLineFeeds(tokens.getContentFrom(statementStart));
-            logger.debug("SKIPPED: {}", statement);
+            logger.trace("SKIPPED: {}", statement);
         }
     }
 
