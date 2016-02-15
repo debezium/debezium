@@ -133,6 +133,17 @@ public interface Configuration {
         }
 
         /**
+         * Associate the given class name value with the specified key.
+         * 
+         * @param key the key
+         * @param value the Class value
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B with(String key, Class<?> value) {
+            return with(key, value != null ? value.getName() : null);
+        }
+
+        /**
          * If there is no field with the specified key, then associate the given value with the specified key.
          * 
          * @param key the key
@@ -208,6 +219,17 @@ public interface Configuration {
         }
 
         /**
+         * If there is no field with the specified key, then associate the given class name value with the specified key.
+         * 
+         * @param key the key
+         * @param value the Class value
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B withDefault(String key, Class<?> value) {
+            return withDefault(key, value != null ? value.getName() : null);
+        }
+
+        /**
          * Associate the given value with the key of the specified field.
          * 
          * @param field the predefined field for the key
@@ -215,6 +237,17 @@ public interface Configuration {
          * @return this builder object so methods can be chained together; never null
          */
         default B with(Field field, String value) {
+            return with(field.name(), value);
+        }
+
+        /**
+         * Associate the given value with the key of the specified field.
+         * 
+         * @param field the predefined field for the key
+         * @param value the value
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B with(Field field, Object value) {
             return with(field.name(), value);
         }
 
@@ -274,6 +307,17 @@ public interface Configuration {
         }
 
         /**
+         * Associate the given class name value with the specified field.
+         * 
+         * @param field the predefined field for the key
+         * @param value the Class value
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B with(Field field, Class<?> value) {
+            return with(field.name(), value);
+        }
+
+        /**
          * If the field does not have a value, then associate the given value with the key of the specified field.
          * 
          * @param field the predefined field for the key
@@ -281,6 +325,17 @@ public interface Configuration {
          * @return this builder object so methods can be chained together; never null
          */
         default B withDefault(Field field, String value) {
+            return withDefault(field.name(), value);
+        }
+
+        /**
+         * If the field does not have a value, then associate the given value with the key of the specified field.
+         * 
+         * @param field the predefined field for the key
+         * @param value the value
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B withDefault(Field field, Object value) {
             return withDefault(field.name(), value);
         }
 
@@ -337,6 +392,17 @@ public interface Configuration {
          */
         default B withDefault(Field field, boolean value) {
             return withDefault(field.name(), value);
+        }
+
+        /**
+         * If the field does not have a value, then associate the given value with the key of the specified field.
+         * 
+         * @param field the predefined field for the key
+         * @param value the default value
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B withDefault(Field field, Class<?> value) {
+            return withDefault(field.name(), value != null ? value.getName() : null);
         }
 
         /**
@@ -927,6 +993,61 @@ public interface Configuration {
     }
 
     /**
+     * Get the integer value associated with the given key, using the given supplier to obtain a default value if there is no such
+     * key-value pair.
+     * 
+     * @param field the field
+     * @param defaultValueSupplier the supplier for the default value; may be null
+     * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration, the
+     *         {@code defaultValueSupplier} reference is null, or there is a key-value pair in the configuration but the value
+     *         could not be parsed as an integer
+     */
+    default Integer getInteger(Field field, IntSupplier defaultValueSupplier) {
+        return getInteger(field.name(),defaultValueSupplier);
+    }
+
+    /**
+     * Get the long value associated with the given key, using the given supplier to obtain a default value if there is no such
+     * key-value pair.
+     * 
+     * @param field the field
+     * @param defaultValueSupplier the supplier for the default value; may be null
+     * @return the long value, or null if the key is null, there is no such key-value pair in the configuration, the
+     *         {@code defaultValueSupplier} reference is null, or there is a key-value pair in the configuration but the value
+     *         could not be parsed as a long
+     */
+    default Long getLong(Field field, LongSupplier defaultValueSupplier) {
+        return getLong(field.name(),defaultValueSupplier);
+    }
+
+    /**
+     * Get the boolean value associated with the given key, using the given supplier to obtain a default value if there is no such
+     * key-value pair.
+     * 
+     * @param field the field
+     * @param defaultValueSupplier the supplier for the default value; may be null
+     * @return the boolean value, or null if the key is null, there is no such key-value pair in the configuration, the
+     *         {@code defaultValueSupplier} reference is null, or there is a key-value pair in the configuration but the value
+     *         could not be parsed as a boolean value
+     */
+    default Boolean getBoolean(Field field, BooleanSupplier defaultValueSupplier) {
+        return getBoolean(field.name(),defaultValueSupplier);
+    }
+
+    /**
+     * Get the boolean value associated with the given key, using the given supplier to obtain a default value if there is no such
+     * key-value pair.
+     * 
+     * @param field the field
+     * @param defaultValueSupplier the supplier of value that should be returned by default if there is no such key-value pair in
+     *            the configuration; may be null and may return null
+     * @return the configuration value, or the {@code defaultValue} if there is no such key-value pair in the configuration
+     */
+    default String getString(Field field, Supplier<String> defaultValueSupplier) {
+        return getString(field.name(),defaultValueSupplier);
+    }
+
+    /**
      * Get an instance of the class given by the value in the configuration associated with the given key.
      * 
      * @param key the key for the configuration property
@@ -1027,7 +1148,7 @@ public interface Configuration {
         String prefixWithSeparator = prefix.endsWith(".") ? prefix : prefix + ".";
         int minLength = prefixWithSeparator.length();
         Function<String, String> prefixRemover = removePrefix ? key -> key.substring(minLength) : key -> key;
-        return filter(key -> key.startsWith(prefixWithSeparator)).map(prefixRemover);
+        return filter(key -> key != null && key.startsWith(prefixWithSeparator)).map(prefixRemover);
     }
 
     /**

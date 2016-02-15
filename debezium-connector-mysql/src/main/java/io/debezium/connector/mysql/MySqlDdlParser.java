@@ -61,14 +61,16 @@ public class MySqlDdlParser extends DdlParser {
         dataTypes.register(Types.INTEGER, "TINYINT[(L)] [UNSIGNED] [ZEROFILL]");
         dataTypes.register(Types.INTEGER, "SMALLINT[(L)] [UNSIGNED] [ZEROFILL]");
         dataTypes.register(Types.INTEGER, "MEDIUMINT[(L)] [UNSIGNED] [ZEROFILL]");
-        dataTypes.register(Types.INTEGER, "INT[(L)] [UNSIGNED] [ZEROFILL]");
+        dataTypes.register(Types.INTEGER, "INT[(L)] [UNSIGNED|SIGNED] [ZEROFILL]");
         dataTypes.register(Types.INTEGER, "INTEGER[(L)] [UNSIGNED] [ZEROFILL]");
-        dataTypes.register(Types.BIGINT, "BIGINT[(L)] [UNSIGNED] [ZEROFILL]");
+        dataTypes.register(Types.BIGINT, "BIGINT[(L)] [UNSIGNED|SIGNED] [ZEROFILL]");
         dataTypes.register(Types.REAL, "REAL[(M[,D])] [UNSIGNED] [ZEROFILL]");
         dataTypes.register(Types.DOUBLE, "DOUBLE[(M[,D])] [UNSIGNED] [ZEROFILL]");
         dataTypes.register(Types.FLOAT, "FLOAT[(M[,D])] [UNSIGNED] [ZEROFILL]");
         dataTypes.register(Types.DECIMAL, "DECIMAL[(M[,D])] [UNSIGNED] [ZEROFILL]");
         dataTypes.register(Types.NUMERIC, "NUMERIC[(M[,D])] [UNSIGNED] [ZEROFILL]");
+        dataTypes.register(Types.BOOLEAN, "BOOLEAN");
+        dataTypes.register(Types.BOOLEAN, "BOOL");
         dataTypes.register(Types.DATE, "DATE");
         dataTypes.register(Types.TIME, "TIME[(L)]");
         dataTypes.register(Types.TIMESTAMP, "TIMESTAMP[(L)]");
@@ -103,7 +105,7 @@ public class MySqlDdlParser extends DdlParser {
 
     @Override
     protected void initializeStatementStarts(TokenSet statementStartTokens) {
-        statementStartTokens.add("CREATE", "ALTER", "DROP", "INSERT", "SET", "GRANT", "REVOKE");
+        statementStartTokens.add("CREATE", "ALTER", "DROP", "INSERT", "SET", "GRANT", "REVOKE", "FLUSH", "TRUNCATE");
     }
 
     @Override
@@ -157,6 +159,16 @@ public class MySqlDdlParser extends DdlParser {
         tokens.consume("TABLE");
         boolean onlyIfNotExists = tokens.canConsume("IF", "NOT", "EXISTS");
         TableId tableId = parseQualifiedTableName(start);
+        if ( tokens.canConsume("LIKE")) {
+            TableId originalId = parseQualifiedTableName(start);
+            Table original = databaseTables.forTable(originalId);
+            if ( original != null ) {
+                databaseTables.overwriteTable(tableId, original.columns(), original.primaryKeyColumnNames());
+            }
+            consumeRemainingStatement(start);
+            debugParsed(start);
+            return;
+        }
         if (onlyIfNotExists && databaseTables.forTable(tableId) != null) {
             // The table does exist, so we should do nothing ...
             consumeRemainingStatement(start);
@@ -201,7 +213,8 @@ public class MySqlDdlParser extends DdlParser {
             tokens.canConsume('=');
             tokens.consume();
             return true;
-        } else if (tokens.canConsume("DEFAULT", "CHARACTER", "SET") || tokens.canConsume("CHARACTER", "SET")) {
+        } else if (tokens.canConsume("DEFAULT", "CHARACTER", "SET") || tokens.canConsume("CHARACTER", "SET") ||
+                   tokens.canConsume("DEFAULT", "CHARSET") || tokens.canConsume("CHARSET")) {
             tokens.canConsume('=');
             tokens.consume();
             return true;
@@ -348,6 +361,9 @@ public class MySqlDdlParser extends DdlParser {
         } else if (tokens.canConsume("CONSTRAINT", TokenStream.ANY_VALUE, "PRIMARY", "KEY") || tokens.canConsume("PRIMARY", "KEY")) {
             if (tokens.canConsume("USING")) {
                 parseIndexType(start);
+            }
+            if (!tokens.matches('(')) {
+                tokens.consume();   // index name
             }
             List<String> pkColumnNames = parseIndexColumnNames(start);
             table.setPrimaryKeyNames(pkColumnNames);
@@ -987,7 +1003,15 @@ public class MySqlDdlParser extends DdlParser {
     protected void parseDefaultClause(Marker start) {
         tokens.consume("DEFAULT");
         if (tokens.canConsume("CURRENT_TIMESTAMP")) {
+            if ( tokens.canConsume('(')) {
+                tokens.consumeInteger();
+                tokens.consume(')');
+            }
             tokens.canConsume("ON", "UPDATE", "CURRENT_TIMESTAMP");
+            if ( tokens.canConsume('(')) {
+                tokens.consumeInteger();
+                tokens.consume(')');
+            }
         } else if (tokens.canConsume("NULL")) {
             // do nothing ...
         } else {

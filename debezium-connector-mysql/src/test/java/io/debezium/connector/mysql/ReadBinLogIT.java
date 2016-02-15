@@ -13,6 +13,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,12 +43,14 @@ import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
 import com.github.shyiko.mysql.binlog.event.XidEventData;
+import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer;
 
 import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.util.Testing;
 
-public class ReadBinLogIT {
+public class ReadBinLogIT implements Testing {
 
     protected static final Logger LOGGER = LoggerFactory.getLogger(ReadBinLogIT.class);
     protected static final long DEFAULT_TIMEOUT = TimeUnit.SECONDS.toMillis(15);
@@ -60,7 +64,8 @@ public class ReadBinLogIT {
     private EventQueue counters;
     private BinaryLogClient client;
     private MySQLConnection conn;
-    private List<Event> events = new ArrayList<>();
+    private List<Event> events = new LinkedList<>();
+    private JdbcConfiguration config;
 
     @Before
     public void beforeEach() throws TimeoutException, IOException, SQLException, InterruptedException {
@@ -71,29 +76,7 @@ public class ReadBinLogIT {
         conn.connect();
 
         // Get the configuration that we used ...
-        JdbcConfiguration config = conn.config();
-
-        // Connect the bin log client ...
-        counters = new EventQueue(DEFAULT_TIMEOUT, this::logConsumedEvent, this::logIgnoredEvent);
-        client = new BinaryLogClient(config.getHostname(), config.getPort(), "replicator", "replpass");
-        client.setServerId(client.getServerId() - 1); // avoid clashes between BinaryLogClient instances
-        client.setKeepAlive(false);
-        client.registerEventListener(counters);
-        client.registerEventListener(this::recordEvent);
-        client.registerLifecycleListener(new TraceLifecycleListener());
-        client.connect(DEFAULT_TIMEOUT); // does not block
-
-        // Set up the table as one transaction and wait to see the events ...
-        conn.execute("DROP TABLE IF EXISTS person",
-                     "CREATE TABLE person (" +
-                             "  name VARCHAR(255) primary key," +
-                             "  age INTEGER NULL DEFAULT 10," +
-                             "  createdAt DATETIME NULL DEFAULT CURRENT_TIMESTAMP," +
-                             "  updatedAt DATETIME NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" +
-                             ")");
-
-        counters.consume(2, EventType.QUERY);
-        counters.reset();
+        config = conn.config();
     }
 
     @After
@@ -111,8 +94,52 @@ public class ReadBinLogIT {
         }
     }
 
+    protected void startClient() throws IOException, TimeoutException, SQLException {
+        startClient(null);
+    }
+    
+    protected void startClient(Consumer<BinaryLogClient> preConnect) throws IOException, TimeoutException, SQLException {
+        // Connect the bin log client ...
+        counters = new EventQueue(DEFAULT_TIMEOUT, this::logConsumedEvent, this::logIgnoredEvent);
+        client = new BinaryLogClient(config.getHostname(), config.getPort(), "replicator", "replpass");
+        client.setServerId(client.getServerId() - 1); // avoid clashes between BinaryLogClient instances
+        client.setKeepAlive(false);
+        client.registerEventListener(counters);
+        client.registerEventListener(this::recordEvent);
+        client.registerLifecycleListener(new TraceLifecycleListener());
+        EventDeserializer eventDeserializer = new EventDeserializer();
+        eventDeserializer.setEventDataDeserializer(EventType.STOP, new StopEventDataDeserializer());
+        client.setEventDeserializer(eventDeserializer);
+        if (preConnect != null) preConnect.accept(client);
+        client.connect(DEFAULT_TIMEOUT); // does not block
+
+        // Set up the table as one transaction and wait to see the events ...
+        conn.execute("DROP TABLE IF EXISTS person",
+                     "CREATE TABLE person (" +
+                             "  name VARCHAR(255) primary key," +
+                             "  age INTEGER NULL DEFAULT 10," +
+                             "  createdAt DATETIME NULL DEFAULT CURRENT_TIMESTAMP," +
+                             "  updatedAt DATETIME NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" +
+                             ")");
+
+        counters.consume(2, EventType.QUERY);
+        counters.reset();
+    }
+
+    @Ignore
+    @Test
+    public void shouldReadMultipleBinlogFiles() throws Exception {
+        Testing.Print.enable();
+        startClient(client -> {
+            client.setBinlogFilename("mysql-bin.000001");
+        });
+        counters.consumeAll(20, TimeUnit.SECONDS);
+    }
+
     @Test
     public void shouldCaptureSingleWriteUpdateDeleteEvents() throws Exception {
+        startClient();
+        //Testing.Print.enable();
         // write/insert
         conn.execute("INSERT INTO person(name,age) VALUES ('Georgia',30)");
         counters.consume(1, WriteRowsEventData.class);
@@ -135,6 +162,7 @@ public class ReadBinLogIT {
 
     @Test
     public void shouldCaptureMultipleWriteUpdateDeleteEvents() throws Exception {
+        startClient();
         // write/insert as a single transaction
         conn.execute("INSERT INTO person(name,age) VALUES ('Georgia',30)",
                      "INSERT INTO person(name,age) VALUES ('Janice',19)");
@@ -173,6 +201,7 @@ public class ReadBinLogIT {
 
     @Test
     public void shouldCaptureMultipleWriteUpdateDeletesInSingleEvents() throws Exception {
+        startClient();
         // write/insert as a single statement/transaction
         conn.execute("INSERT INTO person(name,age) VALUES ('Georgia',30),('Janice',19)");
         counters.consume(1, QueryEventData.class); // BEGIN
@@ -228,11 +257,11 @@ public class ReadBinLogIT {
     }
 
     protected void logConsumedEvent(Event event) {
-        LOGGER.info("Consumed event: " + event);
+        Testing.print("Consumed event: " + event);
     }
 
     protected void logIgnoredEvent(Event event) {
-        LOGGER.info("Ignored event:  " + event);
+        Testing.print("Ignored event:  " + event);
     }
 
     protected void recordEvent(Event event) {
@@ -418,11 +447,26 @@ public class ReadBinLogIT {
 
         @Override
         public void onEvent(Event event) {
-            queue.add(event);
+            boolean success = queue.offer(event);
+            assert success;
         }
 
-        protected Event consume() {
-            return queue.poll();
+        /**
+         * Blocks for the specified amount of time, consuming (and discarding) all events.
+         * 
+         * @param timeout the maximum amount of time that this method should block
+         * @param unit the time unit for {@code timeout}
+         * @throws TimeoutException if the waiting timed out before the expected number of events were received
+         */
+        public void consumeAll(long timeout, TimeUnit unit) throws TimeoutException {
+            final long stopTime = System.currentTimeMillis() + unit.toMillis(timeout);
+            while (System.currentTimeMillis() < stopTime) {
+                Event nextEvent = queue.poll();
+                if (nextEvent != null) {
+                    Testing.print("Found event: " + nextEvent);
+                    consumedEvents.accept(nextEvent);
+                }
+            }
         }
 
         /**
@@ -540,17 +584,17 @@ public class ReadBinLogIT {
 
         @Override
         public void onDisconnect(BinaryLogClient client) {
-            LOGGER.info("Client disconnected");
+            LOGGER.debug("Client disconnected");
         }
 
         @Override
         public void onConnect(BinaryLogClient client) {
-            LOGGER.info("Client connected");
+            LOGGER.debug("Client connected");
         }
 
         @Override
         public void onCommunicationFailure(BinaryLogClient client, Exception ex) {
-            LOGGER.error("Client communication failure", ex);
+            LOGGER.warn("Client communication failure", ex);
         }
 
         @Override

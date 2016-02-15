@@ -196,10 +196,10 @@ public class KafkaServer {
 
         // Start the server ...
         try {
-            LOGGER.debug("Starting Kafka broker {} @ {} with storage in {}", brokerId, getConnection(), logsDir.getAbsolutePath());
+            LOGGER.debug("Starting Kafka broker {} at {} with storage in {}", brokerId, getConnection(), logsDir.getAbsolutePath());
             server = new kafka.server.KafkaServer(new KafkaConfig(config), new SystemTime(), scala.Option.apply(null));
             server.startup();
-            LOGGER.info("Started Kafka server {} @ {} with storage in {}", brokerId, getConnection(), logsDir.getAbsolutePath());
+            LOGGER.info("Started Kafka server {} at {} with storage in {}", brokerId, getConnection(), logsDir.getAbsolutePath());
             return this;
         } catch (RuntimeException e) {
             server = null;
@@ -214,6 +214,7 @@ public class KafkaServer {
         if (server != null) {
             try {
                 server.shutdown();
+                LOGGER.info("Stopped Kafka server {} at {}", brokerId, getConnection());
             } finally {
                 server = null;
                 port = desiredPort;

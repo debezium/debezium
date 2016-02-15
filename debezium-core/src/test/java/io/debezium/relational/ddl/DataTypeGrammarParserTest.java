@@ -272,6 +272,28 @@ public class DataTypeGrammarParserTest {
     }
 
     @Test
+    public void shouldParseGrammarWithComplexVariableNames() {
+        pattern = parser.parse(TYPE, "CHAR[(L)] BINARY [CHARACTER SET charset_name] [COLLATE collation_name]");
+        assertThat(pattern).isNotNull();
+
+        type = pattern.match(text("CHAR(60) BINARY CHARACTER SET utf8 COLLATE utf8_bin"));
+        assertThat(type.arrayDimensions()).isNull();
+        assertThat(type.length()).isEqualTo(60);
+        assertThat(type.scale()).isEqualTo(-1);
+        assertThat(type.name()).isEqualTo("CHAR BINARY CHARACTER SET utf8 COLLATE utf8_bin");
+        assertThat(type.expression()).isEqualTo("CHAR(60) BINARY CHARACTER SET utf8 COLLATE utf8_bin");
+        assertThat(type.jdbcType()).isEqualTo(TYPE);
+
+        type = pattern.match(text("char  (  60  )  binary  DEFAULT  ''  NOT  NULL"));
+        assertThat(type.arrayDimensions()).isNull();
+        assertThat(type.length()).isEqualTo(60);
+        assertThat(type.scale()).isEqualTo(-1);
+        assertThat(type.name()).isEqualTo("CHAR BINARY");
+        assertThat(type.expression()).isEqualTo("CHAR(60) BINARY");
+        assertThat(type.jdbcType()).isEqualTo(TYPE);
+    }
+
+    @Test
     public void shouldParseGrammarWithOptionalTokenLists() {
         pattern = parser.parse(TYPE, "TEXT [CHARACTER SET]");
         assertThat(pattern).isNotNull();
@@ -299,7 +321,7 @@ public class DataTypeGrammarParserTest {
         assertThat(type.jdbcType()).isEqualTo(TYPE);
 
         type = pattern.match(text("DECIMAL(5,1)[3][6]"));
-        assertThat(type.arrayDimensions()).containsOnly(3,6);
+        assertThat(type.arrayDimensions()).containsOnly(3, 6);
         assertThat(type.length()).isEqualTo(5);
         assertThat(type.scale()).isEqualTo(1);
         assertThat(type.name()).isEqualTo("DECIMAL");

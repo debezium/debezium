@@ -42,9 +42,15 @@ These commands will automatically manage the MySQL Docker container.
 
 ### Debugging tests
 
-If you want to debug integration tests by stepping through them in your IDE, using the `mvn install` command will be problematic since it will not wait for your IDE's breakpoints. There are ways of doing this, but it is typically far easier to simply start the Docker container and leave it running so that it is available when you run the integration test(s). To create and start the Docker container, simply run:
+If you want to debug integration tests by stepping through them in your IDE, using the `mvn install` command will be problematic since it will not wait for your IDE's breakpoints. There are ways of doing this, but it is typically far easier to simply start the Docker container and leave it running so that it is available when you run the integration test(s). The following command:
 
     $ mvn docker:start
+
+will start the default MySQL container based upon the [mysql/mysql-server:5.7](https://hub.docker.com/r/mysql/mysql-server/) Docker image maintained by the MySQL team, or
+
+    $ mvn docker:start -Palt-mysql
+
+to start the MySQL container named based upon the Docker-maintained [mysql](https://hub.docker.com/r/_/mysql/) Docker image maintained by Docker (the company). (The former is used by default because it starts a bit faster, though it doesn't have a full installation of MySQL. The latter is a full-installation whose startup is a bit slower and more verbose, and it includes tools such as `mysqldump` and `mysqlbinlog`. Both containers are named `database`, configured identically, and initialized with the same databases and content, so they should behave the same for the integration tests.)
 
 Again, the container and database server will be initialized as usual but will continue to run. Now you can use your IDE to run/debug one or more integration tests. Just be sure that the integration tests clean up their database before (and after) each test, and that you run the tests with VM arguments that define the required system properties, including:
 
@@ -54,7 +60,7 @@ Again, the container and database server will be initialized as usual but will c
 * `database.user` - the name of the database user; defaults to `mysql` and is correct unless your database script uses something different
 * `database.password` - the password of the database user; defaults to `mysqlpw` and is correct unless your database script uses something different
 
-For example, you can define these properties by passing these arguments to the VM:
+For example, you can define these properties by passing these arguments to the JVM:
 
     -Ddatabase.dbname=<DATABASE_NAME> -Ddatabase.hostname=<DOCKER_HOST> -Ddatabase.port=3306 -Ddatabase.user=mysqluser -Ddatabase.password=mysqlpw
 
@@ -62,6 +68,8 @@ When you are finished running the integration tests from your IDE, you have to s
 
     $ docker stop database
     $ docker rm database
+
+Please note that when running the MySQL database Docker container, the output is written to the Maven build output and includes several lines with `[Warning] Using a password on the command line interface can be insecure.` You can ignore these warnings, since we don't need a secure database server for our transient database testing.
 
 ### Analyzing the database
 

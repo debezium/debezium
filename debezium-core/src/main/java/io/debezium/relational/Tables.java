@@ -298,7 +298,7 @@ public class Tables {
     public TableEditor editOrCreateTable(String catalogName, String schemaName, String tableName) {
         return editOrCreateTable(new TableId(catalogName, schemaName, tableName));
     }
-    
+
     @Override
     public int hashCode() {
         return tablesByTableId.hashCode();
@@ -306,24 +306,27 @@ public class Tables {
 
     @Override
     public boolean equals(Object obj) {
-        if ( obj == this ) return true;
-        if ( obj instanceof Tables ) {
-            Tables that = (Tables)obj;
+        if (obj == this) return true;
+        if (obj instanceof Tables) {
+            Tables that = (Tables) obj;
             return this.tablesByTableId.equals(that.tablesByTableId);
         }
         return false;
     }
-    
+
     @Override
     public String toString() {
         return lock.read(() -> {
             StringBuilder sb = new StringBuilder();
-            sb.append("Tables {").append(System.lineSeparator());
-            tablesByTableId.forEach((tableId, table) -> {
-                sb.append("  ").append(tableId).append(": {").append(System.lineSeparator());
-                table.toString(sb, "    ");
-                sb.append("  }").append(System.lineSeparator());
-            });
+            sb.append("Tables {");
+            if (!tablesByTableId.isEmpty()) {
+                sb.append(System.lineSeparator());
+                tablesByTableId.forEach((tableId, table) -> {
+                    sb.append("  ").append(tableId).append(": {").append(System.lineSeparator());
+                    table.toString(sb, "    ");
+                    sb.append("  }").append(System.lineSeparator());
+                });
+            }
             sb.append("}");
             return sb.toString();
         });

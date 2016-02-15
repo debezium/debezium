@@ -29,6 +29,22 @@ public class MySQLConnection extends JdbcConnection {
                                                     .build());
     }
 
+    /**
+     * Obtain a connection instance to the named test database.
+     * 
+     * @param databaseName the name of the test database
+     * @param username the username
+     * @param password the password
+     * @return the MySQLConnection instance; never null
+     */
+    public static MySQLConnection forTestDatabase(String databaseName, String username, String password) {
+        return new MySQLConnection(JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
+                                                    .withDatabase(databaseName)
+                                                    .withUser(username)
+                                                    .withPassword(password)
+                                                    .build());
+    }
+
     protected static void addDefaults(Configuration.Builder builder) {
         builder.withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                .withDefault(JdbcConfiguration.PORT, 3306)

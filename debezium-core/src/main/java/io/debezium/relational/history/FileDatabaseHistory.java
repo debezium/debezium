@@ -9,12 +9,13 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.function.Consumer;
+
+import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.Configuration;
@@ -34,13 +35,12 @@ import io.debezium.util.FunctionalReadWriteLock;
 @ThreadSafe
 public final class FileDatabaseHistory extends AbstractDatabaseHistory {
 
-    @SuppressWarnings("unchecked")
-    public static final Field FILE_PATH = Field.create(CONFIG_PREFIX + "file.filename")
+    public static final Field FILE_PATH = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "file.filename")
                                                .withDescription("The path to the file that will be used to record the database history")
                                                .withValidation(Field::isRequired);
 
     public static Collection<Field> ALL_FIELDS = Collect.arrayListOf(FILE_PATH);
-    
+
     private static final Charset UTF8 = StandardCharsets.UTF_8;
     private final FunctionalReadWriteLock lock = FunctionalReadWriteLock.reentrant();
     private final DocumentWriter writer = DocumentWriter.defaultWriter();
@@ -49,17 +49,21 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
 
     @Override
     public void configure(Configuration config) {
+        super.configure(config);
+        if (!config.validate(ALL_FIELDS, logger::error)) {
+            throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
+        }
         config.validate(ALL_FIELDS, logger::error);
         super.configure(config);
         path = Paths.get(config.getString(FILE_PATH));
     }
-    
+
     @Override
     protected void storeRecord(HistoryRecord record) {
         lock.write(() -> {
             try {
                 String line = writer.write(record.document());
-                if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
+                if (!Files.exists(path)) {
                     Files.createDirectories(path.getParent());
                     Files.createFile(path);
                 }
@@ -69,17 +73,24 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
             }
         });
     }
-    
+
     @Override
     protected void recoverRecords(Tables schema, DdlParser ddlParser, Consumer<HistoryRecord> records) {
         lock.write(() -> {
             try {
-                for ( String line : Files.readAllLines(path)) {
-                    records.accept(new HistoryRecord(reader.read(line)));
+                if (Files.exists(path)) {
+                    for (String line : Files.readAllLines(path)) {
+                        records.accept(new HistoryRecord(reader.read(line)));
+                    }
                 }
             } catch (IOException e) {
                 logger.error("Failed to add recover records from history at {}", path, e);
             }
         });
+    }
+
+    @Override
+    public String toString() {
+        return "file " + (path != null ? path : "(unstarted)");
     }
 }
