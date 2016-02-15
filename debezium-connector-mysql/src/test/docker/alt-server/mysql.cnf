@@ -1,0 +1,19 @@
+# For advice on how to change settings please see
+# http://dev.mysql.com/doc/refman/5.7/en/server-configuration-defaults.html
+
+[mysqld]
+
+# ----------------------------------------------
+# Debezium ingest
+# ----------------------------------------------
+
+# Enable binary replication log and set the prefix, expiration, and log format.
+# The prefix is arbitrary, expiration can be short for integration tests but would
+# be longer on a production system. Row-level info is required for ingest to work.
+# Server ID is required, but this will vary on production systems
+server-id         = 112233
+log_bin           = mysql-bin
+expire_logs_days  = 1
+binlog_format     = row
+
+

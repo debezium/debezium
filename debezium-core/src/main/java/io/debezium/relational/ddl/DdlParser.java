@@ -189,7 +189,7 @@ public class DdlParser {
      * @throws ParsingException if there is a problem parsing the supplied content
      */
     public final void parse(String ddlContent, Tables databaseTables) {
-        TokenStream stream = new TokenStream(ddlContent, new DdlTokenizer(!skipComments(), this::determineTokenType), true);
+        TokenStream stream = new TokenStream(ddlContent, new DdlTokenizer(!skipComments(), this::determineTokenType), false);
         stream.start();
         parse(stream, databaseTables);
     }

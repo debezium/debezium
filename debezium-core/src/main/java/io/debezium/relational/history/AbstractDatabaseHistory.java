@@ -47,9 +47,9 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
         HistoryRecord stopPoint = new HistoryRecord(source, position, null, null);
         recoverRecords(schema,ddlParser,recovered->{
             if (recovered.isAtOrBefore(stopPoint)) {
-                ddlParser.setCurrentSchema(recovered.databaseName()); // may be null
                 String ddl = recovered.ddl();
                 if (ddl != null) {
+                    ddlParser.setCurrentSchema(recovered.databaseName()); // may be null
                     ddlParser.parse(ddl, schema);
                 }
             }

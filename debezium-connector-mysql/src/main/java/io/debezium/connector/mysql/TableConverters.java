@@ -8,7 +8,9 @@ package io.debezium.connector.mysql;
 import java.io.Serializable;
 import java.util.BitSet;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -36,6 +38,7 @@ import io.debezium.relational.Tables;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.text.ParsingException;
+import io.debezium.util.Collect;
 
 /**
  * @author Randall Hauch
@@ -55,6 +58,7 @@ final class TableConverters {
     private final Map<String, Long> tableNumbersByTableName = new HashMap<>();
     private final boolean recordSchemaChangesInSourceRecords;
     private final Predicate<TableId> tableFilter;
+    private final Set<String> ignoredQueryStatements = Collect.unmodifiableSet("BEGIN","END","FLUSH PRIVILEGES");
 
     public TableConverters(TopicSelector topicSelector, DatabaseHistory dbHistory,
             boolean recordSchemaChangesInSourceRecords, Tables tables,
@@ -74,11 +78,13 @@ final class TableConverters {
         QueryEventData command = event.getData();
         String databaseName = command.getDatabase();
         String ddlStatements = command.getSql();
+        if ( ignoredQueryStatements.contains(ddlStatements) ) return;
+        logger.debug("Received update table command: {}", event);
         try {
             this.ddlParser.setCurrentSchema(databaseName);
             this.ddlParser.parse(ddlStatements, tables);
         } catch (ParsingException e) {
-            logger.error("Error parsing DDL statement and updating tables", e);
+            logger.error("Error parsing DDL statement and updating tables: {}", ddlStatements, e);
         } finally {
             // Record the DDL statement so that we can later recover them if needed ...
             dbHistory.record(source.partition(), source.offset(), databaseName, tables, ddlStatements);
@@ -125,6 +131,7 @@ final class TableConverters {
         TableMapEventData metadata = event.getData();
         long tableNumber = metadata.getTableId();
         if (!convertersByTableId.containsKey(tableNumber)) {
+            logger.debug("Received update table metadata event: {}", event);
             // We haven't seen this table ID, so we need to rebuild our converter functions ...
             String serverName = source.serverName();
             String databaseName = metadata.getDatabase();
@@ -201,10 +208,12 @@ final class TableConverters {
         BitSet includedColumns = write.getIncludedColumns();
         Converter converter = convertersByTableId.get(tableNumber);
         if (tableFilter.test(converter.tableId())) {
+            logger.debug("Received insert row event: {}", event);
             String topic = converter.topic();
             Integer partition = converter.partition();
-            for (int row = 0; row <= source.eventRowNumber(); ++row) {
-                Serializable[] values = write.getRows().get(row);
+            List<Serializable[]> rows = write.getRows();
+            for (int row = 0; row != rows.size(); ++row) {
+                Serializable[] values = rows.get(row);
                 Schema keySchema = converter.keySchema();
                 Object key = converter.createKey(values, includedColumns);
                 Schema valueSchema = converter.valueSchema();
@@ -230,10 +239,12 @@ final class TableConverters {
         BitSet includedColumnsBefore = update.getIncludedColumnsBeforeUpdate();
         Converter converter = convertersByTableId.get(tableNumber);
         if (tableFilter.test(converter.tableId())) {
+            logger.debug("Received update row event: {}", event);
             String topic = converter.topic();
             Integer partition = converter.partition();
-            for (int row = 0; row <= source.eventRowNumber(); ++row) {
-                Map.Entry<Serializable[], Serializable[]> changes = update.getRows().get(row);
+            List<Entry<Serializable[],Serializable[]>> rows = update.getRows();
+            for (int row = 0; row != rows.size(); ++row) {
+                Map.Entry<Serializable[], Serializable[]> changes = rows.get(row);
                 Serializable[] before = changes.getKey();
                 Serializable[] after = changes.getValue();
                 Schema keySchema = converter.keySchema();
@@ -253,10 +264,12 @@ final class TableConverters {
         BitSet includedColumns = deleted.getIncludedColumns();
         Converter converter = convertersByTableId.get(tableNumber);
         if (tableFilter.test(converter.tableId())) {
+            logger.debug("Received delete row event: {}", event);
             String topic = converter.topic();
             Integer partition = converter.partition();
-            for (int row = 0; row <= source.eventRowNumber(); ++row) {
-                Serializable[] values = deleted.getRows().get(row);
+            List<Serializable[]> rows = deleted.getRows();
+            for (int row = 0; row != rows.size(); ++row) {
+                Serializable[] values = rows.get(row);
                 Schema keySchema = converter.keySchema();
                 Object key = converter.createKey(values, includedColumns);
                 Schema valueSchema = converter.valueSchema();

@@ -30,6 +30,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.data.Time;
 import org.apache.kafka.connect.data.Timestamp;
+import org.apache.kafka.connect.errors.DataException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,6 +48,9 @@ import io.debezium.jdbc.JdbcConnection;
  * and this is necessarily dependent upon the database's supported types. Although mappings are defined for standard types,
  * this class may need to be subclassed for each DBMS to add support for DBMS-specific types by overriding any of the
  * "{@code add*Field}" methods.
+ * <p>
+ * See the <a href="http://docs.oracle.com/javase/6/docs/technotes/guides/jdbc/getstart/mapping.html#table1">Java SE Mapping SQL
+ * and Java Types</a> for details about how JDBC {@link Types types} map to Java value types.
  * 
  * @author Randall Hauch
  */
@@ -83,7 +87,7 @@ public class TableSchemaBuilder {
         Schema valueSchema = schemaBuilder.build();
 
         // And a generator that can be used to create values from rows in the result set ...
-        Function<Object[], Struct> valueGenerator = createValueGenerator(valueSchema, columns);
+        Function<Object[], Struct> valueGenerator = createValueGenerator(valueSchema, name, columns);
 
         // Finally create our result object with no primary key or key generator ...
         return new TableSchema(null, null, valueSchema, valueGenerator);
@@ -120,8 +124,9 @@ public class TableSchemaBuilder {
      */
     public TableSchema create(Table table, boolean includePrimaryKeyColumnsInValue) {
         // Build the schemas ...
-        SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(table.id().toString());
-        SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(table.id().toString() + "/pk");
+        final String tableId = table.id().toString();
+        SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(tableId);
+        SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(tableId + "/pk");
         AtomicBoolean hasPrimaryKey = new AtomicBoolean(false);
         table.columns().forEach(column -> {
             if (table.isPrimaryKeyColumn(column.name())) {
@@ -142,8 +147,8 @@ public class TableSchemaBuilder {
 
         // Create the generators ...
         List<Column> valueColumns = includePrimaryKeyColumnsInValue ? table.columns() : table.nonPrimaryKeyColumns();
-        Function<Object[], Object> keyGenerator = createKeyGenerator(keySchema, table.primaryKeyColumns());
-        Function<Object[], Struct> valueGenerator = createValueGenerator(valSchema, valueColumns);
+        Function<Object[], Object> keyGenerator = createKeyGenerator(keySchema, tableId, table.primaryKeyColumns());
+        Function<Object[], Struct> valueGenerator = createValueGenerator(valSchema, tableId, valueColumns);
 
         // And the table schema ...
         return new TableSchema(keySchema, keyGenerator, valSchema, valueGenerator);
@@ -154,10 +159,11 @@ public class TableSchemaBuilder {
      * 
      * @param schema the Kafka Connect schema for the key; may be null if there is no known schema, in which case the generator
      *            will be null
+     * @param columnSetName the name for the set of columns, used in error messages; may not be null
      * @param columns the column definitions for the table that defines the row; may not be null
      * @return the key-generating function, or null if there is no key schema
      */
-    protected Function<Object[], Object> createKeyGenerator(Schema schema, List<Column> columns) {
+    protected Function<Object[], Object> createKeyGenerator(Schema schema, String columnSetName, List<Column> columns) {
         if (schema != null) {
             int[] recordIndexes = indexesForColumns(columns);
             Field[] fields = fieldsForColumns(schema, columns);
@@ -168,7 +174,13 @@ public class TableSchemaBuilder {
                 for (int i = 0; i != numFields; ++i) {
                     Object value = row[recordIndexes[i]];
                     value = value == null ? value : converters[i].convert(value);
-                    result.put(fields[i], value);
+                    try {
+                        result.put(fields[i], value);
+                    } catch (DataException e) {
+                        Column col = columns.get(i);
+                        LOGGER.error("Failed to properly convert key value for '" + columnSetName + "." + col.name() + "' of type "
+                                + col.typeName() + ":", e);
+                    }
                 }
                 return result;
             };
@@ -181,10 +193,11 @@ public class TableSchemaBuilder {
      * 
      * @param schema the Kafka Connect schema for the value; may be null if there is no known schema, in which case the generator
      *            will be null
+     * @param columnSetName the name for the set of columns, used in error messages; may not be null
      * @param columns the column definitions for the table that defines the row; may not be null
      * @return the value-generating function, or null if there is no value schema
      */
-    protected Function<Object[], Struct> createValueGenerator(Schema schema, List<Column> columns) {
+    protected Function<Object[], Struct> createValueGenerator(Schema schema, String columnSetName, List<Column> columns) {
         if (schema != null) {
             int[] recordIndexes = indexesForColumns(columns);
             Field[] fields = fieldsForColumns(schema, columns);
@@ -194,8 +207,14 @@ public class TableSchemaBuilder {
                 Struct result = new Struct(schema);
                 for (int i = 0; i != numFields; ++i) {
                     Object value = row[recordIndexes[i]];
-                    value = value == null ? value : converters[i].convert(value);
-                    result.put(fields[i], value);
+                    if (value != null) value = converters[i].convert(value);
+                    try {
+                        result.put(fields[i], value);
+                    } catch (DataException e) {
+                        Column col = columns.get(i);
+                        LOGGER.error("Failed to properly convert data value for '" + columnSetName + "." + col.name() + "' of type "
+                                + col.typeName() + ":", e);
+                    }
                 }
                 return result;
             };
@@ -436,10 +455,10 @@ public class TableSchemaBuilder {
             case Types.BIT:
             case Types.BOOLEAN:
                 return (data) -> {
-                    if ( data instanceof Boolean ) return (Boolean)data;
-                    if ( data instanceof Short ) return ((Short)data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
-                    if ( data instanceof Integer ) return ((Integer)data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
-                    if ( data instanceof Long ) return ((Long)data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
+                    if (data instanceof Boolean) return (Boolean) data;
+                    if (data instanceof Short) return ((Short) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
+                    if (data instanceof Integer) return ((Integer) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
+                    if (data instanceof Long) return ((Long) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
                     return handleUnknownData(column, fieldDefn, data);
                 };
 
@@ -453,63 +472,70 @@ public class TableSchemaBuilder {
             // Numeric integers
             case Types.TINYINT:
                 return (data) -> {
-                    if (data instanceof Byte) return (Byte)data;
+                    if (data instanceof Byte) return (Byte) data;
                     if (data instanceof Boolean) return ((Boolean) data).booleanValue() ? (byte) 1 : (byte) 0;
                     return handleUnknownData(column, fieldDefn, data);
                 };
             case Types.SMALLINT:
                 return (data) -> {
-                    if (data instanceof Short)  return (Short)data;
-                    if (data instanceof Integer)  return new Short(((Integer)data).shortValue());
-                    if (data instanceof Long)  return new Short(((Long)data).shortValue());
+                    if (data instanceof Short) return (Short) data;
+                    if (data instanceof Integer) return new Short(((Integer) data).shortValue());
+                    if (data instanceof Long) return new Short(((Long) data).shortValue());
                     return handleUnknownData(column, fieldDefn, data);
                 };
             case Types.INTEGER:
                 return (data) -> {
-                    if (data instanceof Integer)  return (Integer)data;
-                    if (data instanceof Short)  return new Integer(((Short)data).intValue());
-                    if (data instanceof Long)  return new Integer(((Long)data).intValue());
+                    if (data instanceof Integer) return (Integer) data;
+                    if (data instanceof Short) return new Integer(((Short) data).intValue());
+                    if (data instanceof Long) return new Integer(((Long) data).intValue());
                     return handleUnknownData(column, fieldDefn, data);
                 };
             case Types.BIGINT:
                 return (data) -> {
-                    if (data instanceof Long)  return (Long)data;
-                    if (data instanceof Integer)  return new Long(((Integer)data).longValue());
-                    if (data instanceof Short)  return new Long(((Short)data).longValue());
+                    if (data instanceof Long) return (Long) data;
+                    if (data instanceof Integer) return new Long(((Integer) data).longValue());
+                    if (data instanceof Short) return new Long(((Short) data).longValue());
                     return handleUnknownData(column, fieldDefn, data);
                 };
 
             // Numeric decimal numbers
-            case Types.REAL:
+            case Types.FLOAT:
             case Types.DOUBLE:
                 return (data) -> {
-                    if (data instanceof Double)  return (Double)data;
-                    if (data instanceof Float)  return new Double(((Float)data).doubleValue());
-                    if (data instanceof Integer)  return new Double(((Integer)data).doubleValue());
-                    if (data instanceof Long)  return new Double(((Long)data).doubleValue());
-                    if (data instanceof Short)  return new Double(((Short)data).doubleValue());
+                    if (data instanceof Double) return (Double) data;
+                    if (data instanceof Float) return new Double(((Float) data).doubleValue());
+                    if (data instanceof Integer) return new Double(((Integer) data).doubleValue());
+                    if (data instanceof Long) return new Double(((Long) data).doubleValue());
+                    if (data instanceof Short) return new Double(((Short) data).doubleValue());
                     return handleUnknownData(column, fieldDefn, data);
                 };
-            case Types.FLOAT:
+            case Types.REAL:
                 return (data) -> {
-                    if (data instanceof Float)  return (Float)data;
-                    if (data instanceof Double)  return new Float(((Double)data).floatValue());
-                    if (data instanceof Integer)  return new Float(((Integer)data).floatValue());
-                    if (data instanceof Long)  return new Float(((Long)data).floatValue());
-                    if (data instanceof Short)  return new Float(((Short)data).floatValue());
+                    if (data instanceof Float) return (Float) data;
+                    if (data instanceof Double) return new Float(((Double) data).floatValue());
+                    if (data instanceof Integer) return new Float(((Integer) data).floatValue());
+                    if (data instanceof Long) return new Float(((Long) data).floatValue());
+                    if (data instanceof Short) return new Float(((Short) data).floatValue());
                     return handleUnknownData(column, fieldDefn, data);
                 };
             case Types.NUMERIC:
             case Types.DECIMAL:
                 return (data) -> {
                     BigDecimal decimal = null;
-                    if ( data instanceof BigDecimal) decimal = (BigDecimal)data;
-                    else if (data instanceof Boolean) decimal = new BigDecimal(((Boolean)data).booleanValue() ? 1 : 0);
-                    else if (data instanceof Short) decimal = new BigDecimal(((Short)data).intValue());
-                    else if (data instanceof Integer) decimal = new BigDecimal(((Integer)data).intValue());
-                    else if (data instanceof Long) decimal = BigDecimal.valueOf(((Long)data).longValue());
-                    else if (data instanceof Float) decimal = BigDecimal.valueOf(((Float)data).doubleValue());
-                    else if (data instanceof Double) decimal = BigDecimal.valueOf(((Double)data).doubleValue());
+                    if (data instanceof BigDecimal)
+                        decimal = (BigDecimal) data;
+                    else if (data instanceof Boolean)
+                        decimal = new BigDecimal(((Boolean) data).booleanValue() ? 1 : 0);
+                    else if (data instanceof Short)
+                        decimal = new BigDecimal(((Short) data).intValue());
+                    else if (data instanceof Integer)
+                        decimal = new BigDecimal(((Integer) data).intValue());
+                    else if (data instanceof Long)
+                        decimal = BigDecimal.valueOf(((Long) data).longValue());
+                    else if (data instanceof Float)
+                        decimal = BigDecimal.valueOf(((Float) data).doubleValue());
+                    else if (data instanceof Double)
+                        decimal = BigDecimal.valueOf(((Double) data).doubleValue());
                     else {
                         handleUnknownData(column, fieldDefn, data);
                     }

@@ -107,7 +107,7 @@
                 <version>${version.jackson}</version>
             </dependency>
 
-            <!-- Kafka -->
+            <!-- Kafka Connect -->
             <dependency>
                 <groupId>org.apache.kafka</groupId>
                 <artifactId>connect-api</artifactId>
@@ -127,6 +127,36 @@
                 <groupId>org.apache.kafka</groupId>
                 <artifactId>connect-file</artifactId>
                 <version>${version.kafka}</version>
+            </dependency>
+
+           <!-- Kafka -->
+            <dependency>
+                <groupId>org.apache.kafka</groupId>
+                <artifactId>kafka_${version.kafka.scala}</artifactId>
+                <version>${version.kafka}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.kafka</groupId>
+                <artifactId>kafka-clients</artifactId>
+                <version>${version.kafka}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.zookeeper</groupId>
+                <artifactId>zookeeper</artifactId>
+                <version>${version.zookeeper}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.kafka</groupId>
+                <artifactId>kafka_${version.kafka.scala}</artifactId>
+                <version>${version.kafka}</version>
+                <classifier>test</classifier>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.curator</groupId>
+                <artifactId>curator-test</artifactId>
+                <version>${version.curator}</version>
+                <scope>test</scope>
             </dependency>
 
             <!-- PostgreSQL -->
@@ -164,36 +194,6 @@
                 <groupId>log4j</groupId>
                 <artifactId>log4j</artifactId>
                 <version>${version.log4j}</version>
-                <scope>test</scope>
-            </dependency>
-
-            <!-- Kafka -->
-            <dependency>
-                <groupId>org.apache.kafka</groupId>
-                <artifactId>kafka_${version.kafka.scala}</artifactId>
-                <version>${version.kafka}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.kafka</groupId>
-                <artifactId>kafka-clients</artifactId>
-                <version>${version.kafka}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.zookeeper</groupId>
-                <artifactId>zookeeper</artifactId>
-                <version>${version.zookeeper}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.kafka</groupId>
-                <artifactId>kafka_${version.kafka.scala}</artifactId>
-                <version>${version.kafka}</version>
-                <classifier>test</classifier>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.curator</groupId>
-                <artifactId>curator-test</artifactId>
-                <version>${version.curator}</version>
                 <scope>test</scope>
             </dependency>
 
@@ -247,6 +247,13 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-core</artifactId>
+                <version>${project.version}</version>
+                <scope>test</scope>
+                <type>test-jar</type>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-embedded</artifactId>
                 <version>${project.version}</version>
                 <scope>test</scope>
                 <type>test-jar</type>

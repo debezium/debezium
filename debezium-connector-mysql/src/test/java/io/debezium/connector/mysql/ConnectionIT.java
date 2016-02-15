@@ -11,7 +11,9 @@ import java.sql.SQLException;
 import org.junit.Ignore;
 import org.junit.Test;
 
-public class ConnectionIT {
+import io.debezium.util.Testing;
+
+public class ConnectionIT implements Testing {
 
     @Ignore
     @Test
@@ -36,7 +38,7 @@ public class ConnectionIT {
                                  + ")");
             conn.execute("SELECT * FROM person");
             try (ResultSet rs = conn.connection().getMetaData().getColumns("readbinlog_test", null, null, null)) {
-                conn.print(rs);
+                //if ( Testing.Print.isEnabled() ) conn.print(rs);
             }
         }
     }

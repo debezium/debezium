@@ -88,8 +88,7 @@ public class DataTypeGrammarParser {
         public DataType match(TokenStream stream, Consumer<ParsingException> errors) {
             builder.reset();
             builder.jdbcType = jdbcType;
-            if (pattern.match(stream, builder, errors != null ? errors : (e) -> {
-            })) {
+            if (pattern.match(stream, builder, errors != null ? errors : (e) -> {})) {
                 return builder.create();
             }
             return null;
@@ -133,6 +132,10 @@ public class DataTypeGrammarParser {
         while (stream.hasNext()) {
             Pattern inner = parsePattern(stream);
             if (inner == null) return pattern;
+            if ( stream.canConsume('|')) {
+                Pattern orPattern = parseMultiple(stream);
+                inner = new OrPattern(inner,orPattern);
+            }
             pattern = pattern == null ? inner : new AndPattern(pattern, inner);
         }
         return pattern;
@@ -369,13 +372,11 @@ public class DataTypeGrammarParser {
             Marker marker = stream.mark();
             try {
                 if (pattern1.match(stream, builder, error)) return true;
-            } catch (ParsingException e) {
-            }
+            } catch (ParsingException e) {}
             stream.rewind(marker);
             try {
                 if (pattern2.match(stream, builder, error)) return true;
-            } catch (ParsingException e) {
-            }
+            } catch (ParsingException e) {}
             stream.rewind(marker);
             return false;
         }
@@ -470,7 +471,7 @@ public class DataTypeGrammarParser {
                 return true;
             }
             stream.consume(); // first item
-            while (stream.matches(delimiter)) {
+            while (stream.canConsume(delimiter)) {
                 stream.consume();
             }
             return true;

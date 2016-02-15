@@ -84,7 +84,7 @@ public class DataTypeParser {
     public DataType parse(TokenStream stream, Consumer<Collection<ParsingException>> errorHandler) {
         if (stream.hasNext()) {
             // Look for all patterns that begin with the first token ...
-            Collection<DataTypePattern> matchingPatterns = patterns.get(stream.peek());
+            Collection<DataTypePattern> matchingPatterns = patterns.get(stream.peek().toUpperCase());
             if (matchingPatterns != null) {
                 // At least one registered type begins with the first token, so go through them all in order ...
                 ErrorCollector errors = new ErrorCollector();

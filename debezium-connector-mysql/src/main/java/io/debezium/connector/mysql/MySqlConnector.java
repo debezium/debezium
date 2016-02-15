@@ -12,10 +12,6 @@ import java.util.Map;
 
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.source.SourceConnector;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import io.debezium.config.Configuration;
 
 /**
  * A Kafka Connect source connector that creates tasks that read the MySQL binary log and generate the corresponding
@@ -29,7 +25,6 @@ import io.debezium.config.Configuration;
  */
 public class MySqlConnector extends SourceConnector {
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
     private Map<String, String> props;
 
     public MySqlConnector() {
@@ -42,13 +37,12 @@ public class MySqlConnector extends SourceConnector {
 
     @Override
     public Class<? extends Task> taskClass() {
-        return LogReader.class;
+        return MySqlConnectorTask.class;
     }
 
     @Override
     public void start(Map<String, String> props) {
         this.props = props;
-        Configuration.from(props).validate(MySqlConnectorConfig.ALL_FIELDS, logger::error);
     }
 
     @Override

@@ -40,4 +40,9 @@ public final class MemoryDatabaseHistory extends AbstractDatabaseHistory {
     protected void recoverRecords(Tables schema, DdlParser ddlParser, Consumer<HistoryRecord> records) {
         lock.write(() -> this.records.forEach(records));
     }
+    
+    @Override
+    public String toString() {
+        return "memory";
+    }
 }

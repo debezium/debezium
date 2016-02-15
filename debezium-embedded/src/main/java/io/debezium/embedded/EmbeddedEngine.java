@@ -63,15 +63,13 @@ public final class EmbeddedEngine implements Runnable {
     /**
      * A required field for an embedded connector that specifies the unique name for the connector instance.
      */
-    @SuppressWarnings("unchecked")
     public static final Field ENGINE_NAME = Field.create("name")
-                                                    .withDescription("Unique name for this connector instance.")
-                                                    .withValidation(Field::isRequired);
+                                                 .withDescription("Unique name for this connector instance.")
+                                                 .withValidation(Field::isRequired);
 
     /**
      * A required field for an embedded connector that specifies the name of the normal Debezium connector's Java class.
      */
-    @SuppressWarnings("unchecked")
     public static final Field CONNECTOR_CLASS = Field.create("connector.class")
                                                      .withDescription("The Java class for the connector")
                                                      .withValidation(Field::isRequired);
@@ -90,7 +88,6 @@ public final class EmbeddedEngine implements Runnable {
      * An optional advanced field that specifies the maximum amount of time that the embedded connector should wait
      * for an offset commit to complete.
      */
-    @SuppressWarnings("unchecked")
     public static final Field OFFSET_FLUSH_INTERVAL_MS = Field.create("offset.flush.interval.ms")
                                                               .withDescription("Interval at which to try committing offsets. The default is 1 minute.")
                                                               .withDefault(60000L)
@@ -100,7 +97,6 @@ public final class EmbeddedEngine implements Runnable {
      * An optional advanced field that specifies the maximum amount of time that the embedded connector should wait
      * for an offset commit to complete.
      */
-    @SuppressWarnings("unchecked")
     public static final Field OFFSET_COMMIT_TIMEOUT_MS = Field.create("offset.flush.timeout.ms")
                                                               .withDescription("Maximum number of milliseconds to wait for records to flush and partition offset data to be"
                                                                       + " committed to offset storage before cancelling the process and restoring the offset "
@@ -120,6 +116,21 @@ public final class EmbeddedEngine implements Runnable {
      * The array of fields that are required by each connectors.
      */
     public static final Field[] CONNECTOR_FIELDS = { ENGINE_NAME, CONNECTOR_CLASS };
+
+    /**
+     * A callback function to be notified when the connector completes.
+     */
+    public static interface CompletionCallback {
+        /**
+         * Handle the completion of the embedded connector engine.
+         * 
+         * @param success true if the connector completed normally, or {@code false} if the connector produced an error that
+         *            prevented startup or premature termination.
+         * @param message the completion message; never null
+         * @param error the error, or null if there was no exception
+         */
+        void handle(boolean success, String message, Throwable error);
+    }
 
     /**
      * A builder to set up and create {@link EmbeddedEngine} instances.
@@ -163,6 +174,14 @@ public final class EmbeddedEngine implements Runnable {
         Builder using(Clock clock);
 
         /**
+         * When the engine's {@link EmbeddedEngine#run()} method completes, call the supplied function with the results.
+         * 
+         * @param completionCallback the callback function; may be null if errors should be written to the log
+         * @return this builder object so methods can be chained together; never null
+         */
+        Builder using(CompletionCallback completionCallback);
+
+        /**
          * Build a new connector with the information previously supplied to this builder.
          * 
          * @return the embedded connector; never null
@@ -183,6 +202,7 @@ public final class EmbeddedEngine implements Runnable {
             private Consumer<SourceRecord> consumer;
             private ClassLoader classLoader;
             private Clock clock;
+            private CompletionCallback completionCallback;
 
             @Override
             public Builder using(Configuration config) {
@@ -203,6 +223,12 @@ public final class EmbeddedEngine implements Runnable {
             }
 
             @Override
+            public Builder using(CompletionCallback completionCallback) {
+                this.completionCallback = completionCallback;
+                return this;
+            }
+
+            @Override
             public Builder notifying(Consumer<SourceRecord> consumer) {
                 this.consumer = consumer;
                 return this;
@@ -214,7 +240,7 @@ public final class EmbeddedEngine implements Runnable {
                 if (clock == null) clock = Clock.system();
                 Objects.requireNonNull(config, "A connector configuration must be specified.");
                 Objects.requireNonNull(consumer, "A connector consumer must be specified.");
-                return new EmbeddedEngine(config, classLoader, clock, consumer);
+                return new EmbeddedEngine(config, classLoader, clock, consumer, completionCallback);
             }
 
         };
@@ -225,6 +251,7 @@ public final class EmbeddedEngine implements Runnable {
     private final Clock clock;
     private final ClassLoader classLoader;
     private final Consumer<SourceRecord> consumer;
+    private final CompletionCallback completionCallback;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final VariableLatch latch = new VariableLatch(0);
     private final Converter keyConverter;
@@ -232,11 +259,15 @@ public final class EmbeddedEngine implements Runnable {
     private long recordsSinceLastCommit = 0;
     private long timeSinceLastCommitMillis = 0;
 
-    private EmbeddedEngine(Configuration config, ClassLoader classLoader, Clock clock, Consumer<SourceRecord> consumer) {
+    private EmbeddedEngine(Configuration config, ClassLoader classLoader, Clock clock, Consumer<SourceRecord> consumer,
+            CompletionCallback completionCallback) {
         this.config = config;
         this.consumer = consumer;
         this.classLoader = classLoader;
         this.clock = clock;
+        this.completionCallback = completionCallback != null ? completionCallback : (success, msg, error) -> {
+            if (success) logger.error(msg, error);
+        };
         assert this.config != null;
         assert this.consumer != null;
         assert this.classLoader != null;
@@ -261,6 +292,18 @@ public final class EmbeddedEngine implements Runnable {
         return this.running.get();
     }
 
+    private void fail(String msg) {
+        fail(msg, null);
+    }
+
+    private void fail(String msg, Throwable error) {
+        completionCallback.handle(false, msg, error);
+    }
+
+    private void succeed(String msg) {
+        completionCallback.handle(true, msg, null);
+    }
+
     /**
      * Run this embedded connector and deliver database changes to the registered {@link Consumer}.
      * <p>
@@ -279,124 +322,130 @@ public final class EmbeddedEngine implements Runnable {
     @Override
     public void run() {
         if (running.compareAndSet(false, true)) {
+            final String engineName = config.getString(ENGINE_NAME);
+            final String connectorClassName = config.getString(CONNECTOR_CLASS);
             // Only one thread can be in this part of the method at a time ...
             latch.countUp();
             try {
-                if (config.validate(CONNECTOR_FIELDS, logger::error)) {
-                    // Instantiate the connector ...
-                    final String engineName = config.getString(ENGINE_NAME);
-                    final String connectorClassName = config.getString(CONNECTOR_CLASS);
-                    SourceConnector connector = null;
+                if (!config.validate(CONNECTOR_FIELDS, logger::error)) {
+                    fail("Failed to start connector with invalid configuration (see logs for actual errors)");
+                    return;
+                }
+
+                // Instantiate the connector ...
+                SourceConnector connector = null;
+                try {
+                    @SuppressWarnings("unchecked")
+                    Class<? extends SourceConnector> connectorClass = (Class<SourceConnector>) classLoader.loadClass(connectorClassName);
+                    connector = connectorClass.newInstance();
+                } catch (Throwable t) {
+                    fail("Unable to instantiate connector class '" + connectorClassName + "'", t);
+                    return;
+                }
+
+                // Instantiate the offset store ...
+                final String offsetStoreClassName = config.getString(OFFSET_STORAGE);
+                OffsetBackingStore offsetStore = null;
+                try {
+                    @SuppressWarnings("unchecked")
+                    Class<? extends OffsetBackingStore> offsetStoreClass = (Class<OffsetBackingStore>) classLoader.loadClass(offsetStoreClassName);
+                    offsetStore = offsetStoreClass.newInstance();
+                } catch (Throwable t) {
+                    fail("Unable to instantiate OffsetBackingStore class '" + offsetStoreClassName + "'", t);
+                    return;
+                }
+
+                // Initialize the offset store ...
+                try {
+                    offsetStore.configure(config.subset(OFFSET_STORAGE.name() + ".", false).asMap()); // subset but do not
+                                                                                                      // remove prefixes
+                    offsetStore.start();
+                } catch (Throwable t) {
+                    fail("Unable to configure and start the '" + offsetStoreClassName + "' offset backing store", t);
+                    return;
+                }
+
+                // Set up the offset commit policy ...
+                long offsetPeriodMs = config.getLong(OFFSET_FLUSH_INTERVAL_MS);
+                OffsetCommitPolicy offsetCommitPolicy = OffsetCommitPolicy.periodic(offsetPeriodMs, TimeUnit.MILLISECONDS);
+
+                // Initialize the connector using a context that does NOT respond to requests to reconfigure tasks ...
+                ConnectorContext context = () -> {};
+                connector.initialize(context);
+                OffsetStorageWriter offsetWriter = new OffsetStorageWriter(offsetStore, engineName,
+                        keyConverter, valueConverter);
+                OffsetStorageReader offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName,
+                        keyConverter, valueConverter);
+                long commitTimeoutMs = config.getLong(OFFSET_COMMIT_TIMEOUT_MS);
+
+                try {
+                    // Start the connector with the given properties and get the task configurations ...
+                    connector.start(config.asMap());
+                    List<Map<String, String>> taskConfigs = connector.taskConfigs(1);
+                    Class<? extends Task> taskClass = connector.taskClass();
+                    SourceTask task = null;
                     try {
-                        @SuppressWarnings("unchecked")
-                        Class<? extends SourceConnector> connectorClass = (Class<SourceConnector>) classLoader.loadClass(connectorClassName);
-                        connector = connectorClass.newInstance();
+                        task = (SourceTask) taskClass.newInstance();
+                    } catch (IllegalAccessException | InstantiationException t) {
+                        fail("Unable to instantiate connector's task class '" + taskClass.getName() + "'", t);
+                        return;
+                    }
+                    try {
+                        SourceTaskContext taskContext = () -> offsetReader;
+                        task.initialize(taskContext);
+                        task.start(taskConfigs.get(0));
                     } catch (Throwable t) {
-                        logger.error("Unable to instantiate connector class {}", connectorClassName, t);
+                        String msg = "Unable to initialize and start connector's task class '" + taskClass.getName() + "' with config: "
+                                + taskConfigs.get(0);
+                        fail(msg, t);
                         return;
                     }
 
-                    // Instantiate the offset store ...
-                    final String offsetStoreClassName = config.getString(OFFSET_STORAGE);
-                    OffsetBackingStore offsetStore = null;
-                    try {
-                        @SuppressWarnings("unchecked")
-                        Class<? extends OffsetBackingStore> offsetStoreClass = (Class<OffsetBackingStore>) classLoader.loadClass(offsetStoreClassName);
-                        offsetStore = offsetStoreClass.newInstance();
-                    } catch (Throwable t) {
-                        logger.error("Unable to instantiate OffsetBackingStore class {}", offsetStoreClassName, t);
-                        return;
-                    }
-
-                    // Initialize the offset store ...
-                    try {
-                        offsetStore.configure(config.subset(OFFSET_STORAGE.name() + ".", false).asMap()); // subset but do not
-                                                                                                          // remove prefixes
-                        offsetStore.start();
-                    } catch (Throwable t) {
-                        logger.error("Unable to configure and start the {} offset backing store", offsetStoreClassName, t);
-                        return;
-                    }
-
-                    // Set up the offset commit policy ...
-                    long offsetPeriodMs = config.getLong(OFFSET_FLUSH_INTERVAL_MS);
-                    OffsetCommitPolicy offsetCommitPolicy = OffsetCommitPolicy.periodic(offsetPeriodMs, TimeUnit.MILLISECONDS);
-
-                    // Initialize the connector using a context that does NOT respond to requests to reconfigure tasks ...
-                    ConnectorContext context = () -> {};
-                    connector.initialize(context);
-                    OffsetStorageWriter offsetWriter = new OffsetStorageWriter(offsetStore, engineName,
-                            keyConverter, valueConverter);
-                    OffsetStorageReader offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName,
-                            keyConverter, valueConverter);
-                    long commitTimeoutMs = config.getLong(OFFSET_COMMIT_TIMEOUT_MS);
-
-                    try {
-                        // Start the connector with the given properties and get the task configurations ...
-                        connector.start(config.asMap());
-                        List<Map<String, String>> taskConfigs = connector.taskConfigs(1);
-                        Class<? extends Task> taskClass = connector.taskClass();
-                        SourceTask task = null;
+                    recordsSinceLastCommit = 0;
+                    timeSinceLastCommitMillis = clock.currentTimeInMillis();
+                    while (running.get()) {
                         try {
-                            task = (SourceTask) taskClass.newInstance();
-                        } catch (IllegalAccessException | InstantiationException t) {
-                            logger.error("Unable to instantiate connector's task class {}", taskClass.getName(), t);
-                            return;
-                        }
-                        try {
-                            SourceTaskContext taskContext = () -> offsetReader;
-                            task.initialize(taskContext);
-                            task.start(taskConfigs.get(0));
-                        } catch (Throwable t) {
-                            logger.error("Unable to initialize and start connector's task class {} with config: {}",
-                                         taskClass.getName(), taskConfigs.get(0), t);
-                            return;
-                        }
+                            List<SourceRecord> changeRecords = task.poll(); // blocks until there are values ...
+                            if (changeRecords != null && !changeRecords.isEmpty()) {
 
-                        recordsSinceLastCommit = 0;
-                        timeSinceLastCommitMillis = clock.currentTimeInMillis();
-                        while (running.get()) {
-                            try {
-                                List<SourceRecord> changeRecords = task.poll(); // blocks until there are values ...
-                                if (changeRecords != null && !changeRecords.isEmpty()) {
-
-                                    // First forward the records to the connector's consumer ...
-                                    for (SourceRecord record : changeRecords) {
-                                        try {
-                                            consumer.accept(record);
-                                        } catch (Throwable t) {
-                                            logger.error("Error in the application's handler method, but continuing anyway", t);
-                                        }
+                                // First forward the records to the connector's consumer ...
+                                for (SourceRecord record : changeRecords) {
+                                    try {
+                                        consumer.accept(record);
+                                    } catch (Throwable t) {
+                                        logger.error("Error in the application's handler method, but continuing anyway", t);
                                     }
-
-                                    // Only then do we write out the last partition to offset storage ...
-                                    SourceRecord lastRecord = changeRecords.get(changeRecords.size() - 1);
-                                    lastRecord.sourceOffset();
-                                    offsetWriter.offset(lastRecord.sourcePartition(), lastRecord.sourceOffset());
-
-                                    // Flush the offsets to storage if necessary ...
-                                    recordsSinceLastCommit += changeRecords.size();
-                                    maybeFlush(offsetWriter, offsetCommitPolicy, commitTimeoutMs);
                                 }
-                            } catch (InterruptedException e) {
-                                // This thread was interrupted, which signals that the thread should stop work.
-                                // We first try to commit the offsets, since we record them only after the records were handled
-                                // by the consumer ...
+
+                                // Only then do we write out the last partition to offset storage ...
+                                SourceRecord lastRecord = changeRecords.get(changeRecords.size() - 1);
+                                lastRecord.sourceOffset();
+                                offsetWriter.offset(lastRecord.sourcePartition(), lastRecord.sourceOffset());
+
+                                // Flush the offsets to storage if necessary ...
+                                recordsSinceLastCommit += changeRecords.size();
                                 maybeFlush(offsetWriter, offsetCommitPolicy, commitTimeoutMs);
-                                // Then clear the interrupted status ...
-                                Thread.interrupted();
-                                break;
                             }
+                        } catch (InterruptedException e) {
+                            // This thread was interrupted, which signals that the thread should stop work.
+                            // We first try to commit the offsets, since we record them only after the records were handled
+                            // by the consumer ...
+                            maybeFlush(offsetWriter, offsetCommitPolicy, commitTimeoutMs);
+                            // Then clear the interrupted status ...
+                            Thread.interrupted();
+                            break;
                         }
-                    } catch (Throwable t) {
-                        logger.error("Error while running  to instantiate connector class {}", connectorClassName, t);
+                    }
+                    succeed("Connector '" + connectorClassName + "' completed normally.");
+                } catch (Throwable t) {
+                    fail("Error while trying to run connector class '" + connectorClassName + "'", t);
+                    return;
+                } finally {
+                    // Close the offset storage and finally the connector ...
+                    try {
+                        offsetStore.stop();
                     } finally {
-                        // Close the offset storage and finally the connector ...
-                        try {
-                            offsetStore.stop();
-                        } finally {
-                            connector.stop();
-                        }
+                        connector.stop();
                     }
                 }
             } finally {

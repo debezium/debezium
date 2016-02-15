@@ -61,4 +61,9 @@ public class HistoryRecord {
         if (this == other) return true;
         return other != null && databaseName().equals(other.databaseName());
     }
+    
+    @Override
+    public String toString() {
+        return doc.toString();
+    }
 }

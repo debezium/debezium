@@ -15,8 +15,9 @@ import static org.fest.assertions.Assertions.assertThat;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.Tables;
+import io.debezium.util.Testing;
 
-public class MetadataIT {
+public class MetadataIT implements Testing {
 
     /**
      * Loads the {@link Tables} definition by reading JDBC metadata. Note that some characteristics, such as whether columns
