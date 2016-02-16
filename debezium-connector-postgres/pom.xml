@@ -155,6 +155,7 @@
                     </execution>
                 </executions>
                 <configuration>
+                    <skipTests>${skipITs</skipTests>
                     <systemPropertyVariables>
                         <!-- Make these available to the tests via system properties -->
                         <database.hostname>${docker.host.address}</database.hostname>

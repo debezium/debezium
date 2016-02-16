@@ -85,80 +85,7 @@
     <build>
         <plugins>
             <!-- Build a Docker image of our MySQL installation, and run it as a container for our integration tests -->
-            <plugin>
-                <groupId>org.jolokia</groupId>
-                <artifactId>docker-maven-plugin</artifactId>
-                <configuration>
-                    <watchInterval>500</watchInterval>
-                    <logDate>default</logDate>
-                    <verbose>true</verbose>
-                    <autoPull>always</autoPull>
-                    <images>
-                        <image>
-                            <name>debezium-mysql57-server</name>
-                            <alias>database</alias>
-                            <build>
-                                <assembly>
-                                    <basedir>/docker-entrypoint-initdb.d</basedir>
-                                    <dockerFileDir>${project.basedir}/src/test/docker</dockerFileDir>
-                                </assembly>
-                            </build>
-                            <run>
-                                <namingStrategy>alias</namingStrategy>
-                                <!--volumes>
-                                    <bind>
-                                        <volume>${project.build.directory}/data:/var/lib/postgresql/data</volume>
-                                    </bind>
-                                </volumes-->
-                                <env>
-                                    <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
-                                    <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
-                                    <MYSQL_USER>${database.user}</MYSQL_USER>
-                                    <MYSQL_PASSWORD>${database.password}</MYSQL_PASSWORD>
-                                </env>
-                                <ports>
-                                    <port>${database.port}:3306</port>
-                                </ports>
-                                <log>
-                                    <prefix>mysql</prefix>
-                                    <enabled>true</enabled>
-                                    <color>yellow</color>
-                                </log>
-                                <wait>
-                                    <log>MySQL init process done. Ready for start up.</log>
-                                    <time>30000</time> <!-- 30 seconds max -->
-                                </wait>
-                            </run>
-                        </image>
-                    </images>
-                </configuration>
-                <!-- 
-                Connect this plugin to the maven lifecycle around the integration-test phase: 
-                start the container in pre-integration-test and stop it in post-integration-test. 
-                -->
-                <executions>
-                    <execution>
-                        <id>start</id>
-                        <phase>pre-integration-test</phase>
-                        <goals>
-                            <goal>build</goal>
-                            <goal>start</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>stop</id>
-                        <phase>post-integration-test</phase>
-                        <goals>
-                            <goal>stop</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <!-- 
-            Unlike surefire, the failsafe plugin ensures 'post-integration-test' phase always runs, even
-            when there are failed integration tests. We rely upon this to always shut down the Docker container
-            after the integration tests (defined as '*IT.java') are run.
-            -->
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
@@ -177,6 +104,7 @@
                     </execution>
                 </executions>
                 <configuration>
+                    <skipTests>${skipITs}</skipTests>
                     <systemPropertyVariables>
                         <!-- Make these available to the tests via system properties -->
                         <database.hostname>${docker.host.address}</database.hostname>
@@ -211,82 +139,163 @@
         </testResources>
     </build>
     <profiles>
-        <profile>
-            <id>alt-mysql</id>
-            <activation>
-              <activeByDefault>false</activeByDefault>
-            </activation>
-            <build>
-                <plugins>
-                    <!-- Build a Docker image of our MySQL installation, and run it as a container for our integration tests -->
-                    <plugin>
-                        <groupId>org.jolokia</groupId>
-                        <artifactId>docker-maven-plugin</artifactId>
-                        <configuration>
-                            <watchInterval>500</watchInterval>
-                            <logDate>default</logDate>
-                            <verbose>true</verbose>
-                            <autoPull>always</autoPull>
-                            <images>
-                                <image>
-                                    <name>mysql:5.7</name>
-                                    <alias>database</alias>
-                                    <run>
-                                        <namingStrategy>alias</namingStrategy>
-                                        <volumes>
-                                            <bind>
-                                                <volume>${project.basedir}/src/test/docker/alt-server:/etc/mysql/conf.ddata:/var/lib/postgresql/data</volume>
-                                            </bind>
-                                            <bind>
-                                                <volume>${project.basedir}/src/test/docker/init:/docker-entrypoint-initdb.d</volume>
-                                            </bind>
-                                        </volumes>
-                                        <env>
-                                            <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
-                                            <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
-                                            <MYSQL_USER>${database.user}</MYSQL_USER>
-                                            <MYSQL_PASSWORD>${database.password}</MYSQL_PASSWORD>
-                                        </env>
-                                        <ports>
-                                            <port>${database.port}:3306</port>
-                                        </ports>
-                                        <log>
-                                            <prefix>mysql</prefix>
-                                            <enabled>true</enabled>
-                                            <color>yellow</color>
-                                        </log>
-                                        <wait>
-                                            <log>MySQL Community Server (GPL)</log>
-                                            <time>30000</time> <!-- 30 seconds max -->
-                                        </wait>
-                                    </run>
-                                </image>
-                            </images>
-                        </configuration>
-                        <!-- 
-                        Connect this plugin to the maven lifecycle around the integration-test phase: 
-                        start the container in pre-integration-test and stop it in post-integration-test. 
-                        -->
-                        <executions>
-                            <execution>
-                                <id>start</id>
-                                <phase>pre-integration-test</phase>
-                                <goals>
-                                    <goal>build</goal>
-                                    <goal>start</goal>
-                                </goals>
-                            </execution>
-                            <execution>
-                                <id>stop</id>
-                                <phase>post-integration-test</phase>
-                                <goals>
-                                    <goal>stop</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
+      <profile>
+        <id>docker</id>
+        <activation>
+          <property>
+            <name>!skipITs</name>
+          </property>
+        </activation>
+        <build>
+          <plugins>
+            <plugin>
+              <groupId>org.jolokia</groupId>
+              <artifactId>docker-maven-plugin</artifactId>
+              <configuration>
+                <watchInterval>500</watchInterval>
+                <logDate>default</logDate>
+                <verbose>true</verbose>
+                <autoPull>always</autoPull>
+                <images>
+                  <image>
+                    <name>debezium-mysql57-server</name>
+                    <alias>database</alias>
+                    <build>
+                      <assembly>
+                        <basedir>/docker-entrypoint-initdb.d</basedir>
+                        <dockerFileDir>${project.basedir}/src/test/docker</dockerFileDir>
+                      </assembly>
+                    </build>
+                    <run>
+                      <namingStrategy>alias</namingStrategy>
+                      <!--volumes>
+                          <bind>
+                              <volume>${project.build.directory}/data:/var/lib/postgresql/data</volume>
+                          </bind>
+                      </volumes-->
+                      <env>
+                        <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
+                        <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
+                        <MYSQL_USER>${database.user}</MYSQL_USER>
+                        <MYSQL_PASSWORD>${database.password}</MYSQL_PASSWORD>
+                      </env>
+                      <ports>
+                        <port>${database.port}:3306</port>
+                      </ports>
+                      <log>
+                        <prefix>mysql</prefix>
+                        <enabled>true</enabled>
+                        <color>yellow</color>
+                      </log>
+                      <wait>
+                        <log>MySQL init process done. Ready for start up.</log>
+                        <time>30000</time> <!-- 30 seconds max -->
+                      </wait>
+                    </run>
+                  </image>
+                </images>
+              </configuration>
+              <!--
+              Connect this plugin to the maven lifecycle around the integration-test phase:
+              start the container in pre-integration-test and stop it in post-integration-test.
+              -->
+              <executions>
+                <execution>
+                  <id>start</id>
+                  <phase>pre-integration-test</phase>
+                  <goals>
+                    <goal>build</goal>
+                    <goal>start</goal>
+                  </goals>
+                </execution>
+                <execution>
+                  <id>stop</id>
+                  <phase>post-integration-test</phase>
+                  <goals>
+                    <goal>stop</goal>
+                  </goals>
+                </execution>
+              </executions>
+            </plugin>
+          </plugins>
+        </build>
+      </profile>
+      <profile>
+        <id>alt-mysql</id>
+        <activation>
+          <activeByDefault>false</activeByDefault>
+        </activation>
+        <build>
+          <plugins>
+            <!-- Build a Docker image of our MySQL installation, and run it as a container for our integration tests -->
+            <plugin>
+              <groupId>org.jolokia</groupId>
+              <artifactId>docker-maven-plugin</artifactId>
+              <configuration>
+                <watchInterval>500</watchInterval>
+                <logDate>default</logDate>
+                <verbose>true</verbose>
+                <autoPull>always</autoPull>
+                <images>
+                  <image>
+                    <name>mysql:5.7</name>
+                    <alias>database</alias>
+                    <run>
+                      <namingStrategy>alias</namingStrategy>
+                      <volumes>
+                        <bind>
+                          <volume>${project.basedir}/src/test/docker/alt-server:/etc/mysql/conf.ddata:/var/lib/postgresql/data</volume>
+                        </bind>
+                        <bind>
+                          <volume>${project.basedir}/src/test/docker/init:/docker-entrypoint-initdb.d</volume>
+                        </bind>
+                      </volumes>
+                      <env>
+                        <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
+                        <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
+                        <MYSQL_USER>${database.user}</MYSQL_USER>
+                        <MYSQL_PASSWORD>${database.password}</MYSQL_PASSWORD>
+                      </env>
+                      <ports>
+                        <port>${database.port}:3306</port>
+                      </ports>
+                      <log>
+                        <prefix>mysql</prefix>
+                        <enabled>true</enabled>
+                        <color>yellow</color>
+                      </log>
+                      <wait>
+                        <log>MySQL Community Server (GPL)</log>
+                        <time>30000</time> <!-- 30 seconds max -->
+                      </wait>
+                    </run>
+                  </image>
+                </images>
+              </configuration>
+              <!--
+              Connect this plugin to the maven lifecycle around the integration-test phase:
+              start the container in pre-integration-test and stop it in post-integration-test.
+              -->
+              <executions>
+                <execution>
+                  <id>start</id>
+                  <phase>pre-integration-test</phase>
+                  <goals>
+                    <goal>build</goal>
+                    <goal>start</goal>
+                  </goals>
+                </execution>
+                <execution>
+                  <id>stop</id>
+                  <phase>post-integration-test</phase>
+                  <goals>
+                    <goal>stop</goal>
+                  </goals>
+                </execution>
+              </executions>
+            </plugin>
+          </plugins>
+        </build>
+      </profile>
     </profiles>
 </project>
