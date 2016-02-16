@@ -14,15 +14,13 @@ The MySQL connector can also be used as a library without Kafka or Kafka Connect
 
 
 
-
-
 ## Testing
 
 This module contains both unit tests and integration tests.
 
 A *unit test* is a JUnit test class named `*Test.java` or `Test*.java` that never requires or uses external services, though it can use the file system and can run any components within the same JVM process. They should run very quickly, be independent of each other, and clean up after itself.
 
-An *integration test* is a JUnit test class named `*IT.java` or `IT*.java` that uses a MySQL database server running in a custom Docker container. The build will automatically start the MySQL container before the integration tests are run and automatically stop and remove it after all of the integration tests complete (regardless of whether they suceed or fail). All databases used in the integration tests are defined and populated using `*.sql` files and `*.sh` scripts in the `src/test/docker/init` directory, which are copied into the Docker image and run in lexicographical order by MySQL upon startup. Multiple test methods within a single integration test class can reuse the same database, but generally each integration test class should use its own dedicated database(s).
+An *integration test* is a JUnit test class named `*IT.java` or `IT*.java` that uses a MySQL database server running in a custom Docker container based upon the [mysql/mysql-server:5.7](https://hub.docker.com/r/mysql/mysql-server/) Docker image maintained by the MySQL team. The build will automatically start the MySQL container before the integration tests are run and automatically stop and remove it after all of the integration tests complete (regardless of whether they suceed or fail). All databases used in the integration tests are defined and populated using `*.sql` files and `*.sh` scripts in the `src/test/docker/init` directory, which are copied into the Docker image and run in lexicographical order by MySQL upon startup. Multiple test methods within a single integration test class can reuse the same database, but generally each integration test class should use its own dedicated database(s).
 
 Running `mvn install` will compile all code and run the unit tests. If there are any compile problems or any of the unit tests fail, the build will stop immediately. Otherwise, the command will continue to create the module's artifacts, create the Docker image with MySQL and custom scripts, start the Docker container, run the integration tests, stop the container (even if there are integration test failures), and run checkstyle on the code. If there are still no problems, the build will then install the module's artifacts into the local Maven repository.
 
@@ -46,13 +44,7 @@ If you want to debug integration tests by stepping through them in your IDE, usi
 
     $ mvn docker:start
 
-will start the default MySQL container based upon the [mysql/mysql-server:5.7](https://hub.docker.com/r/mysql/mysql-server/) Docker image maintained by the MySQL team, or
-
-    $ mvn docker:start -Palt-mysql
-
-to start the MySQL container named based upon the Docker-maintained [mysql](https://hub.docker.com/r/_/mysql/) Docker image maintained by Docker (the company). (The former is used by default because it starts a bit faster, though it doesn't have a full installation of MySQL. The latter is a full-installation whose startup is a bit slower and more verbose, and it includes tools such as `mysqldump` and `mysqlbinlog`. Both containers are named `database`, configured identically, and initialized with the same databases and content, so they should behave the same for the integration tests.)
-
-Again, the container and database server will be initialized as usual but will continue to run. Now you can use your IDE to run/debug one or more integration tests. Just be sure that the integration tests clean up their database before (and after) each test, and that you run the tests with VM arguments that define the required system properties, including:
+will start the default MySQL container and run the database server. Now you can use your IDE to run/debug one or more integration tests. Just be sure that the integration tests clean up their database before (and after) each test, and that you run the tests with VM arguments that define the required system properties, including:
 
 * `database.dbname` - the name of the database that your integration test will use; there is no default
 * `database.hostname` - the IP address or name of the host where the Docker container is running; defaults to `localhost` which is likely for Linux, but on OS X and Windows Docker it will have to be set to the IP address of the VM that runs Docker (which you can find by looking at the `DOCKER_HOST` environment variable).
@@ -66,6 +58,10 @@ For example, you can define these properties by passing these arguments to the J
 
 When you are finished running the integration tests from your IDE, you have to stop and remove the Docker container (conveniently named "database") before you can run the next build:
 
+    $ mvn docker:stop
+
+or using Docker directly:
+
     $ docker stop database
     $ docker rm database
 
@@ -77,8 +73,32 @@ Sometimes you may want to inspect the state of the database(s) after one or more
 
     $ mvn integration-test
 
+### Stopping the Docker container
+
 This instructs Maven to run the normal Maven lifecycle through `integration-test`, and to stop before the `post-integration-test` phase when the Docker container is normally shut down and removed. Be aware that you will need to manually stop and remove the container (conveniently named "database") before running the build again:
+
+    $ mvn docker:stop
+
+or using Docker directly:
 
     $ docker stop database
     $ docker rm database
+
+### Using an alternative MySQL Server
+
+All of the above commands will start the MySQL Docker container that is built upon the [mysql/mysql-server:5.7](https://hub.docker.com/r/mysql/mysql-server/) Docker image maintained by the MySQL team. This image has an "optimized" MySQL server that includes only a portion of the full installation (e.g., it excludes some tools such as `mysqlbinlog`). However, it starts a little faster and is less verbose in its output.
+
+This module defines the `alt-mysql` Maven profile that will instead use the [mysql](https://hub.docker.com/r/_/mysql/) Docker image maintained by Docker (the company). This is a bit more verbose, but it includes all of the MySQL utilities, including `mysqlbinlog` that may be necessary to properly debug and analyze the behavior of the integration tests.
+
+To use the alternative Docker image, simply specify the `alt-mysql` Maven profile on all of the Maven commands, including a build:
+
+    $ mvn clean install -Palt-mysql
+
+or to manually start the Docker container and keep it running:
+
+    $ mvn docker:start -Palt-mysql
+
+or to stop and remove the Docker container:
+
+    $ mvn docker:start -Palt-mysql
 
