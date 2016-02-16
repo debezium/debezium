@@ -74,7 +74,7 @@
         <version.war.plugin>2.5</version.war.plugin>
         <version.codehaus.helper.plugin>1.8</version.codehaus.helper.plugin>
         <version.google.formatter.plugin>0.3.1</version.google.formatter.plugin>
-        <version.docker.maven.plugin>0.13.6</version.docker.maven.plugin>
+        <version.docker.maven.plugin>0.13.9</version.docker.maven.plugin>
 
        <!-- Dockerfiles -->
         <docker.maintainer>Debezium community</docker.maintainer>
@@ -88,7 +88,12 @@
 
         <!--Skip long running tests by default-->
         <skipLongRunningTests>true</skipLongRunningTests>
+
+        <!-- Don't skip integration tests by default -->
         <skipITs>false</skipITs>
+
+        <!-- Run the 'default' docker image by default -->
+        <!--docker>default</docker-->
     </properties>
     <modules>
         <module>support/checkstyle</module>
