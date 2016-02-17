@@ -15,7 +15,7 @@ import java.util.function.LongConsumer;
 import io.debezium.annotation.Immutable;
 
 /**
- * A value in a {@link Document} or {@link Array}. Note that {@link #compareTo(Value)} might perform literal comparisons;
+ * A value in a {@link Document} or {@link Array}. Note that {@link Value#compareTo} might perform literal comparisons;
  * to perform semantic comparisons, use {@link #comparable()} to obtain a wrapped value with semantic comparison capability.
  * 
  * @author Randall Hauch
@@ -204,7 +204,7 @@ public interface Value extends Comparable<Value> {
 
     /**
      * Get a Value representation that will allow semantic comparison of values, rather than the literal comparison normally
-     * performed by {@link #compareTo(Value)}.
+     * performed by {@link #compareTo}.
      * 
      * @return the Value that will perform semantic comparisons; never null
      */

@@ -243,7 +243,7 @@ public class DdlParser {
     }
 
     /**
-     * Parse the a DDL line comment. This is generally called by {@link #parseNextStatement(Marker)} for line comments that appear
+     * Parse the a DDL line comment. This is generally called by {@link #parseNextStatement} for line comments that appear
      * between other DDL statements, and is not typically called for comments that appear <i>within</i> DDL statements.
      * 
      * @param marker the start of the statement; never null
@@ -694,7 +694,7 @@ public class DdlParser {
 
     /**
      * Returns the tables keyed by their aliases that appear in a SELECT clause's "FROM" list. This method handles the
-     * {@link #canConsumeJoin(Marker) various standard joins}.
+     * {@link #canConsumeJoin various standard joins}.
      * 
      * @param start the start of the statement
      * @return the map of resolved tables keyed by the alias (or table name) used in the SELECT statement; never null but possibly
