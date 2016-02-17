@@ -139,7 +139,7 @@ public class ZookeeperServer {
      * Set the basic time unit in milliseconds used by ZooKeeper. It is used to do heartbeats and the minimum session timeout will
      * be twice the tickTime.
      * 
-     * @param tickTime the desired value, or non-positive if the default of {@value #DEFAULT_TICK_TIME} be used
+     * @param tickTime the desired value, or non-positive if the default of {@link #DEFAULT_TICK_TIME} be used
      * @return this instance to allow chaining methods; never null
      */
     public ZookeeperServer setTickTime(int tickTime) {

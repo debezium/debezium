@@ -210,6 +210,7 @@
                 </executions>
                 <configuration>
                     <skipTests>${skipITs}</skipTests>
+                    <enableAssertions>true</enableAssertions>
                     <systemPropertyVariables>
                         <!-- Make these available to the tests via system properties -->
                         <database.hostname>${docker.host.address}</database.hostname>
