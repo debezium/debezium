@@ -380,6 +380,7 @@
                 <artifactId>maven-release-plugin</artifactId>
                 <configuration>
                     <pushChanges>false</pushChanges>
+                    <releaseProfiles>docs,assembly,release-sign-artifacts</releaseProfiles>
                 </configuration>
             </plugin>
             <plugin>
@@ -499,7 +500,6 @@
                 <skipLongRunningTests>false</skipLongRunningTests>
             </properties>
         </profile>
-
         <profile>
             <id>performance</id>
             <properties>
@@ -527,10 +527,15 @@
                         </configuration>
                         <executions>
                             <execution>
-                                <id>build-aggregate</id>
-                                <phase>package</phase>
+                                <id>attach-javadocs</id>
                                 <goals>
-                                    <goal>aggregate</goal>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>attach-test-javadocs</id>
+                                <goals>
+                                    <goal>test-jar</goal>
                                 </goals>
                             </execution>
                         </executions>
@@ -564,27 +569,5 @@
                 </plugins>
             </build>
         </profile>
-        <profile>
-            <id>checkstyle</id>
-            <activation>
-                <activeByDefault>false</activeByDefault>
-                <property>
-                    <name>checkstyle</name>
-                </property>
-            </activation>
-            <build>
-                <pluginManagement>
-                    <plugins>
-                    </plugins>
-                </pluginManagement>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-checkstyle-plugin</artifactId>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
     </profiles>
-
 </project>
