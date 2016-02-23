@@ -75,7 +75,7 @@
         <docker.image.tag>0.1</docker.image.tag>
 
         <!-- Kafka -->
-        <version.kafka>0.9.0.0</version.kafka>
+        <version.kafka>0.9.0.1</version.kafka>
         <version.kafka.scala>2.11</version.kafka.scala>
         <version.scala>2.11.7</version.scala>
         <version.curator>2.4.0</version.curator>
