@@ -1,9 +1,4 @@
 <?xml version="1.0"?>
-<!--
-  ~ Copyright 2014 Red Hat, Inc. and/or its affiliates.
-  ~
-  ~ Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
-  -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0                    http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
@@ -84,7 +79,7 @@
         <!--
         By default, we should use the default Docker image. This propery is changed with different profiles.
         -->
-        <docker.image>debezium-mysql57-server</docker.image>
+        <docker.image>debezium/mysql57-it-server</docker.image>
         <docker.skip>false</docker.skip>
     </properties>
     <build>
@@ -100,13 +95,16 @@
                 <images>
                   <image>
                     <!-- A custom Docker image built on top of an "optimized" MySQL installation. -->
-                    <name>debezium-mysql57-server</name>
+                    <name>debezium/mysql57-it-server</name>
                     <alias>database</alias>
                     <build>
                       <assembly>
                         <basedir>/docker-entrypoint-initdb.d</basedir>
                         <dockerFileDir>${project.basedir}/src/test/docker</dockerFileDir>
                       </assembly>
+                      <tags>
+                        <tag>${docker.image.tag}</tag>
+                      </tags>
                     </build>
                     <run>
                       <namingStrategy>alias</namingStrategy>
@@ -248,6 +246,36 @@
     Define several profiles for working with different Docker images (or no Docker whatsoever)
     -->
     <profiles>
+        <profile>
+            <id>assembly</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>default</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                                <configuration>
+                                    <finalName>${project.artifactId}-${project.version}</finalName>
+                                    <attach>true</attach>  <!-- we want attach & deploy these to Maven -->
+                                    <descriptorRefs>
+                                        <descriptorRef>connector-distribution</descriptorRef>
+                                    </descriptorRefs>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
       <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             Do not perform any Docker-related functionality
             To use, specify "-DskipITs" on the Maven command line.
