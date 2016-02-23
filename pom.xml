@@ -92,6 +92,7 @@
     </properties>
     <modules>
         <module>support/checkstyle</module>
+        <module>debezium-assembly-descriptors</module>
         <module>debezium-core</module>
         <module>debezium-embedded</module>
         <module>debezium-connector-mysql</module>
@@ -347,6 +348,24 @@
                     <groupId>org.jolokia</groupId>
                     <artifactId>docker-maven-plugin</artifactId>
                     <version>${version.docker.maven.plugin}</version>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-assembly-plugin</artifactId>
+                    <dependencies>
+                        <dependency>
+                            <groupId>io.debezium</groupId>
+                            <artifactId>debezium-assembly-descriptors</artifactId>
+                            <version>${project.version}</version>
+                        </dependency>
+                    </dependencies>
+                    <executions>
+                        <execution>
+                            <phase>package</phase>
+                            <goals>
+                                <goal>single</goal>
+                            </goals>
+                        </execution>
+                    </executions>
                 </plugin>
             </plugins>
         </pluginManagement>
