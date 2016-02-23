@@ -2,6 +2,10 @@
 
 The Debezium community welcomes anyone that wants to help out in any way, whether that includes reporting problems, helping with documentation, or contributing code changes to fix bugs, add tests, or implement new features. This document outlines the basic steps required to work with and contribute to the Debezium codebase.
 
+### Talk to us
+
+We're still only a few weeks old, but you can talk to us on IRC at [#debezium on Freenode](http://webchat.freenode.net/?channels=debezium) or on our [Google Group](https://groups.google.com/forum/#!forum/debezium).
+
 ### Install the tools
 
 The following software is required to work with the Debezium codebase and build it locally:
