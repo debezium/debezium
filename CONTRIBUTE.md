@@ -4,7 +4,7 @@ The Debezium community welcomes anyone that wants to help out in any way, whethe
 
 ### Talk to us
 
-We're still only a few weeks old, but you can talk to us on IRC at [#debezium on Freenode](http://webchat.freenode.net/?channels=debezium) or on our [Google Group](https://groups.google.com/forum/#!forum/debezium).
+We're still only a few weeks old, but you can talk to us on IRC at [#debezium on Freenode](http://webchat.freenode.net/?channels=debezium) or on our [Google Group](https://groups.google.com/forum/#!forum/debezium). We also [track our issues using JIRA](https://issues.jboss.org/projects/DBZ/issues/).
 
 ### Install the tools
 
@@ -63,7 +63,7 @@ The first command fetches all changes on all branches, while the second actually
 
 ### Making changes
 
-Everything the community does with the codebase -- fixing bugs, adding features, making improvements, adding tests, etc. -- should be described by an issue in our [JIRA](http://issues.jboss.org/browse/DEBEZIUM). If no such issue exists for what you want to do, please create an issue with a meaningful and easy-to-understand description, and assign the issue to yourself. On the other hand, if you're working on an existing issue, simply assign the issue to yourself so that other people know you're working on it.
+Everything the community does with the codebase -- fixing bugs, adding features, making improvements, adding tests, etc. -- should be described by an issue in our [JIRA](https://issues.jboss.org/projects/DBZ/issues/). If no such issue exists for what you want to do, please create an issue with a meaningful and easy-to-understand description, and assign the issue to yourself. On the other hand, if you're working on an existing issue, simply assign the issue to yourself so that other people know you're working on it.
 
 Before you make any changes, be sure to switch to the `master` branch and pull the latest commits on the `master` branch from the upstream repository. Also, it's probably good to run a build and verify all tests pass *before* you make any changes.
 
