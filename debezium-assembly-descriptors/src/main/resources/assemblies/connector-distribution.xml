@@ -14,7 +14,6 @@
           <scope>runtime</scope>
           <useProjectArtifact>false</useProjectArtifact>
           <excludes>
-              <exclude>${project.groupId}:${project.artifactId}:*</exclude>
               <!-- Exclude all Kafka APIs and their dependencies, since they will be available in the runtime -->
               <exclude>org.apache.kafka:*</exclude>
               <exclude>org.xerial.snappy:*</exclude>

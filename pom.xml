@@ -53,8 +53,9 @@
         <version.log4j>1.2.17</version.log4j>
 
         <!-- Databases -->
-        <version.postgresql.9>9.4-1205-jdbc42</version.postgresql.9>
-        <version.mysql>5.1.37</version.mysql>
+        <version.postgresql.driver>9.4-1205-jdbc42</version.postgresql.driver>
+        <version.mysql.server>5.7</version.mysql.server>
+        <version.mysql.driver>5.1.37</version.mysql.driver>
         <version.mysql.binlog>0.2.4</version.mysql.binlog>
 
         <!-- Testing -->
@@ -160,18 +161,18 @@
                 <scope>test</scope>
             </dependency>
 
-            <!-- PostgreSQL -->
+            <!-- PostgreSQL JDBC driver -->
             <dependency>
                 <groupId>org.postgresql</groupId>
                 <artifactId>postgresql</artifactId>
-                <version>${version.postgresql.9}</version>
+                <version>${version.postgresql.driver}</version>
             </dependency>
 
-            <!-- MySQL -->
+            <!-- MySQL JDBC Driver and Binlog reader -->
             <dependency>
                 <groupId>mysql</groupId>
                 <artifactId>mysql-connector-java</artifactId>
-                <version>${version.mysql}</version>
+                <version>${version.mysql.driver}</version>
             </dependency>
             <dependency>
                 <groupId>com.github.shyiko</groupId>
