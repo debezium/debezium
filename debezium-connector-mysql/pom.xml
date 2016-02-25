@@ -102,9 +102,6 @@
                         <basedir>/docker-entrypoint-initdb.d</basedir>
                         <dockerFileDir>${project.basedir}/src/test/docker</dockerFileDir>
                       </assembly>
-                      <tags>
-                        <tag>${docker.image.tag}</tag>
-                      </tags>
                     </build>
                     <run>
                       <namingStrategy>alias</namingStrategy>

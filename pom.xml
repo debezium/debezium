@@ -72,7 +72,6 @@
 
         <!-- Dockerfiles -->
         <docker.maintainer>Debezium community</docker.maintainer>
-        <docker.image.tag>0.1</docker.image.tag>
 
         <!-- Kafka -->
         <version.kafka>0.9.0.1</version.kafka>
@@ -394,7 +393,7 @@
                 <artifactId>maven-release-plugin</artifactId>
                 <configuration>
                     <pushChanges>false</pushChanges>
-                    <releaseProfiles>docs,assembly,release-sign-artifacts</releaseProfiles>
+                    <releaseProfiles>docs,assembly,release-sign-artifacts,release</releaseProfiles>
                 </configuration>
             </plugin>
             <plugin>
@@ -510,6 +509,12 @@
     <profiles>
         <profile>
             <id>assembly</id>
+            <properties>
+                <skipLongRunningTests>false</skipLongRunningTests>
+            </properties>
+        </profile>
+        <profile>
+            <id>release</id>
             <properties>
                 <skipLongRunningTests>false</skipLongRunningTests>
             </properties>
