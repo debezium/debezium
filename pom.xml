@@ -68,7 +68,7 @@
         <version.war.plugin>2.5</version.war.plugin>
         <version.codehaus.helper.plugin>1.8</version.codehaus.helper.plugin>
         <version.google.formatter.plugin>0.3.1</version.google.formatter.plugin>
-        <version.docker.maven.plugin>0.13.9</version.docker.maven.plugin>
+        <version.docker.maven.plugin>0.14.1</version.docker.maven.plugin>
 
         <!-- Dockerfiles -->
         <docker.maintainer>Debezium community</docker.maintainer>
@@ -345,7 +345,7 @@
                     <version>${version.google.formatter.plugin}</version>
                 </plugin>
                 <plugin>
-                    <groupId>org.jolokia</groupId>
+                    <groupId>io.fabric8</groupId>
                     <artifactId>docker-maven-plugin</artifactId>
                     <version>${version.docker.maven.plugin}</version>
                 </plugin>
