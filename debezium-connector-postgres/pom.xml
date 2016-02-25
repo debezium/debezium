@@ -13,22 +13,38 @@
     <packaging>jar</packaging>
     <dependencies>
         <dependency>
-          <groupId>io.debezium</groupId>
-          <artifactId>debezium-core</artifactId>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-core</artifactId>
         </dependency>
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>connect-api</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
+
         <!-- Testing -->
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-core</artifactId>
             <type>test-jar</type>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-embedded</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-embedded</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -56,12 +72,17 @@
         <database.port>5432</database.port>
         <database.user>postgres</database.user>
         <database.password>postgres</database.password>
+        <!--
+        By default, we should use the default Docker image. This propery is changed with different profiles.
+        -->
+        <docker.image>postgres:${version.postgresql.server}</docker.image>
+        <docker.skip>false</docker.skip>
     </properties>
     <build>
        <plugins>
             <!-- Build a Docker image of our PostgreSQL installation, and run it as a container for our integration tests -->
             <plugin>
-                <groupId>org.jolokia</groupId>
+                <groupId>io.fabric8</groupId>
                 <artifactId>docker-maven-plugin</artifactId>
                 <configuration>
                     <watchInterval>500</watchInterval>
@@ -70,21 +91,16 @@
                     <autoPull>always</autoPull>
                     <images>
                         <image>
-                            <name>debezium-pg94-server</name>
+                            <name>postgres:${version.postgresql.server}</name>
                             <alias>database</alias>
-                            <build>
-                                <assembly>
-                                    <basedir>/docker-entrypoint-initdb.d</basedir>
-                                    <dockerFileDir>${project.basedir}/src/test/docker</dockerFileDir>
-                                </assembly>
-                            </build>
                             <run>
                                 <namingStrategy>alias</namingStrategy>
-                                <!--volumes>
+                                <volumes>
                                     <bind>
+                                        <volume>${project.basedir}/src/test/docker/init:/docker-entrypoint-initdb.d</volume>
                                         <volume>${project.build.directory}/data:/var/lib/postgresql/data</volume>
                                     </bind>
-                                </volumes-->
+                                </volumes>
                                 <env>
                                     <POSTGRES_USER>${database.user}</POSTGRES_USER>
                                     <POSTGRES_PASSWORD>${database.password}</POSTGRES_PASSWORD>
@@ -150,13 +166,15 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <skipTests>${skipITs</skipTests>
+                    <skipTests>${skipITs}</skipTests>
+                    <enableAssertions>true</enableAssertions>
                     <systemPropertyVariables>
                         <!-- Make these available to the tests via system properties -->
                         <database.hostname>${docker.host.address}</database.hostname>
                         <database.port>${database.port}</database.port>
                         <database.user>${database.user}</database.user>
                         <database.password>${database.password}</database.password>
+                        <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
@@ -183,4 +201,55 @@
             </testResource>
         </testResources>
      </build>
+    <!--
+    Define several useful profiles
+    -->
+    <profiles>
+        <profile>
+            <id>assembly</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>default</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                                <configuration>
+                                    <finalName>${project.artifactId}-${project.version}</finalName>
+                                    <attach>true</attach>  <!-- we want attach & deploy these to Maven -->
+                                    <descriptorRefs>
+                                        <descriptorRef>connector-distribution</descriptorRef>
+                                    </descriptorRefs>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+              Do not perform any Docker-related functionality
+              To use, specify "-DskipITs" on the Maven command line.
+              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+        <profile>
+            <id>skip-integration-tests</id>
+            <activation>
+              <activeByDefault>false</activeByDefault>
+              <property>
+                <name>skipITs</name>
+              </property>
+            </activation>
+            <properties>
+              <docker.skip>true</docker.skip>
+            </properties>
+        </profile>
+    </profiles>
 </project>
