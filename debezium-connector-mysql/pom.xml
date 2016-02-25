@@ -79,13 +79,13 @@
         <!--
         By default, we should use the default Docker image. This propery is changed with different profiles.
         -->
-        <docker.image>debezium/mysql57-it-server</docker.image>
+        <docker.image>mysql/mysql-server:${version.mysql.server}</docker.image>
         <docker.skip>false</docker.skip>
     </properties>
     <build>
         <plugins>
             <plugin>
-              <groupId>org.jolokia</groupId>
+              <groupId>io.fabric8</groupId>
               <artifactId>docker-maven-plugin</artifactId>
               <configuration>
                 <watchInterval>500</watchInterval>
@@ -94,20 +94,17 @@
                 <autoPull>always</autoPull>
                 <images>
                   <image>
-                    <!-- A custom Docker image built on top of an "optimized" MySQL installation. -->
-                    <name>debezium/mysql57-it-server</name>
+                    <!-- A Docker image using a partial MySQL installation maintained by MySQL team. -->
+                    <name>mysql/mysql-server:${version.mysql.server}</name>
                     <alias>database</alias>
-                    <build>
-                      <assembly>
-                        <basedir>/docker-entrypoint-initdb.d</basedir>
-                        <dockerFileDir>${project.basedir}/src/test/docker</dockerFileDir>
-                      </assembly>
-                      <tags>
-                        <tag>${docker.image.tag}</tag>
-                      </tags>
-                    </build>
                     <run>
                       <namingStrategy>alias</namingStrategy>
+                      <volumes>
+                        <bind>
+                          <volume>${project.basedir}/src/test/docker/server/mysql.cnf:/etc/my.cnf</volume>
+                          <volume>${project.basedir}/src/test/docker/init:/docker-entrypoint-initdb.d</volume>
+                        </bind>
+                      </volumes>
                       <env>
                         <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
                         <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
@@ -129,8 +126,8 @@
                     </run>
                   </image>
                   <image>
-                    <!-- A Docker image using a complete MySQL installation. -->
-                    <name>mysql:5.7</name>
+                    <!-- A Docker image using a complete MySQL installation maintained by Docker team. -->
+                    <name>mysql:${version.mysql.server}</name>
                     <alias>database</alias>
                     <run>
                       <namingStrategy>alias</namingStrategy>
@@ -243,7 +240,7 @@
         </testResources>
     </build>
     <!--
-    Define several profiles for working with different Docker images (or no Docker whatsoever)
+    Define several useful profiles
     -->
     <profiles>
         <profile>
@@ -305,7 +302,7 @@
           </property>
         </activation>
         <properties>
-          <docker.image>mysql:5.7</docker.image>
+          <docker.image>mysql:${version.mysql.server}</docker.image>
           <docker.skip>false</docker.skip>
         </properties>
       </profile>
