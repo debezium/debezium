@@ -3,7 +3,7 @@
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.debezium/debezium/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.debezium/debezium)
 [![Stack Overflow](http://img.shields.io/:stack%20overflow-debezium-brightgreen.svg)](http://stackoverflow.com/questions/tagged/debezium)
 
-Debezium's mailing list is availabl as a Google group [here](https://groups.google.com/forum/#!forum/debezium).
+Debezium's mailing list is available as a Google group [here](https://groups.google.com/forum/#!forum/debezium).
 
 Copyright Debezium Authors. Licensed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 
