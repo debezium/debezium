@@ -4,7 +4,7 @@ The Debezium community welcomes anyone that wants to help out in any way, whethe
 
 ### Talk to us
 
-We're still only a few weeks old, but you can talk to us on IRC at [#debezium on Freenode](http://webchat.freenode.net/?channels=debezium) or on our [Google Group](https://groups.google.com/forum/#!forum/debezium). We also [track our issues using JIRA](https://issues.jboss.org/projects/DBZ/issues/).
+You can talk to us in our [chat room for users](https://gitter.im/debezium/user) or on our [Google Group](https://groups.google.com/forum/#!forum/debezium). If you want to contribute, consider joining the [chat room for developers](https://gitter.im/debezium/dev). We also [track our issues using JIRA](https://issues.jboss.org/projects/DBZ/issues/) and you can [create an account for free](https://developer.jboss.org/register.jspa); please don't create GitHub issues.
 
 ### Install the tools
 
@@ -61,9 +61,25 @@ You will frequently need to get all the of the changes that are made to the upst
 
 The first command fetches all changes on all branches, while the second actually updates your local `master` branch with the latest commits from the `upstream` repository.
 
+### Building locally
+
+To build the source code locally, checkout and update the `master` branch:
+
+    $ git checkout master
+    $ git pull upstream master
+
+Then use Maven to compile everything, run all unit and integration tests, build all artifacts, and install all JAR, ZIP, and TAR files into your local Maven repository:
+
+    $ mvn clean install -Passembly
+
+If you want to skip the integration tests (e.g., if you don't have Docker installed) or the unit tests, you can add `-DskipITs` and/or `-DskipTests` to that command:
+
+    $ mvn clean install -Passembly -DskipITs -DskipTests
+
+
 ### Making changes
 
-Everything the community does with the codebase -- fixing bugs, adding features, making improvements, adding tests, etc. -- should be described by an issue in our [JIRA](https://issues.jboss.org/projects/DBZ/issues/). If no such issue exists for what you want to do, please create an issue with a meaningful and easy-to-understand description, and assign the issue to yourself. On the other hand, if you're working on an existing issue, simply assign the issue to yourself so that other people know you're working on it.
+Everything the community does with the codebase -- fixing bugs, adding features, making improvements, adding tests, etc. -- should be described by an issue in our [JIRA](https://issues.jboss.org/projects/DBZ/issues/). If no such issue exists for what you want to do, please create an issue with a meaningful and easy-to-understand description. If you're new to the project, ask in our [chat room for developers](https://gitter.im/debezium/dev) for the 'developer' JIRA role so you can assign the issue to yourself, which lets other people know you're working on it.
 
 Before you make any changes, be sure to switch to the `master` branch and pull the latest commits on the `master` branch from the upstream repository. Also, it's probably good to run a build and verify all tests pass *before* you make any changes.
 
@@ -71,11 +87,11 @@ Before you make any changes, be sure to switch to the `master` branch and pull t
     $ git pull upstream master
     $ mvn clean install
 
-Once everything builds, create a *topic branch* named with the issue number (e.g,. `DEBEZIUM-1234`):
+Once everything builds, create a *topic branch* named appropriately (we recommend using the issue number, such as `DBZ-1234`):
 
-    $ git checkout -b DEBEZIUM-1234
+    $ git checkout -b DBZ-1234
 
-This branch exists locally and it is here that you should make all of your proposed changes for the issue. As you'll soon see, it will ultimately correspond to a single pull request that the Debezium committers will review and merge (or reject) as a whole. (Some issues are big enough that you may want to make several separate but incremental sets of changes. In that case, you can create subsequent topic branches for the same issue by appending a short suffix to the branch name.)
+This branch exists locally and it is there you should make all of your proposed changes for the issue. As you'll soon see, it will ultimately correspond to a single pull request that the Debezium committers will review and merge (or reject) as a whole. (Some issues are big enough that you may want to make several separate but incremental sets of changes. In that case, you can create subsequent topic branches for the same issue by appending a short suffix to the branch name.)
 
 Your changes should include changes to existing tests or additional unit and/or integration tests that verify your changes work. We recommend frequently running related unit tests (in your IDE or using Maven) to make sure your changes didn't break anything else, and that you also periodically run a complete build using Maven to make sure that everything still works:
 
@@ -87,14 +103,14 @@ Committing is as simple as:
 
     $ git commit .
 
-which should then pop up an editor of your choice in which you should place a good commit message. We do expect that all commit messages begin with a line starting with the JIRA issue and ending with a short phrase that summarizes what changed in the commit. If that phrase is not sufficient to explain your changes, then the first line should be followed by a blank line and one or more paragraphs with additional details. For example:
+which should then pop up an editor of your choice in which you should place a good commit message. _*We do expect that all commit messages begin with a line starting with the JIRA issue and ending with a short phrase that summarizes what changed in the commit.*_ For example:
 
-    DEBEZIUM-1234 Expanded the MySQL integration test and correct a unit test.
+    DBZ-1234 Expanded the MySQL integration test and correct a unit test.
 
-or
+If that phrase is not sufficient to explain your changes, then the first line should be followed by a blank line and one or more paragraphs with additional details. For example:
 
 ```
-DEBEZIUM-1234 Added support for ingesting data from PostgreSQL.
+DBZ-1235 Added support for ingesting data from PostgreSQL.
 
 The new ingest library supports PostgreSQL 9.4 or later. It requires a small plugin to be installed
 on the database server, and the database to be configured so that the ingest component can connect
@@ -108,7 +124,7 @@ If its been more than a day or so since you created your topic branch, we recomm
 
     $ git checkout master
     $ git pull upstream master
-    $ git checkout DEBEZIUM-1234
+    $ git checkout DBZ-1234
     $ git rebase master
 
 If your changes are compatible with the latest changes on `master`, this will complete and there's nothing else to do. However, if your changes affect the same files/lines as other changes have since been merged into the `master` branch, then your changes conflict with the other recent changes on `master`, and you will have to resolve them. The git output will actually tell you you need to do (e.g., fix a particular file, stage the file, and then run `git rebase --continue`), but if you have questions consult Git or GitHub documentation or spend some time reading about Git rebase conflicts on the Internet.
@@ -117,7 +133,7 @@ If your changes are compatible with the latest changes on `master`, this will co
 
 Once you're finished making your changes, your topic branch should have your commit(s) and you should have verified that your branch builds successfully. At this point, you can shared your proposed changes and create a pull request. To do this, first push your topic branch (and its commits) to your fork repository (called `origin`) on GitHub:
 
-    $ git push origin DEBEZIUM-1234
+    $ git push origin DBZ-1234
 
 Then, in a browser go to https://github.com/debezium/debezium, and you should see a small section near the top of the page with a button labeled "Create pull request". GitHub recognized that you pushed a new topic branch to your fork of the upstream repository, and it knows you probably want to create a pull request with those changes. Click on the button, and GitHub will present you with a short form that you should fill out with information about your pull request. The title should start with the JIRA issue and ending with a short phrase that summarizes the changes included in the pull request. (If the pull request contains a single commit, GitHub will automatically prepopulate the title and description fields from the commit message.) 
 
@@ -127,11 +143,11 @@ At this point, you can switch to another issue and another topic branch. The Deb
 
 If the reviewers ask you to make additional changes, simply switch to your topic branch for that pull request:
 
-    $ git checkout DEBEZIUM-1234
+    $ git checkout DBZ-1234
 
 and then make the changes on that branch and either add a new commit or ammend your previous commits. When you've addressed the reviewers' concerns, push your changes to your `origin` repository:
 
-    $ git push origin DEBEZIUM-1234
+    $ git push origin DBZ-1234
 
 GitHub will automatically update the pull request with your latest changes, but we ask that you go to the pull request and add a comment summarizing what you did. This process may continue until the reviewers are satisfied.
 
@@ -139,11 +155,11 @@ By the way, please don't take offense if the reviewers ask you to make additiona
 
 Once your pull request has been merged, feel free to delete your topic branch both in your local repository:
 
-    $ git branch -d DEBEZIUM-1234
+    $ git branch -d DBZ-1234
 
 and in your fork: 
 
-    $ git push origin :DEBEZIUM-1234
+    $ git push origin :DBZ-1234
 
 (This last command is a bit strange, but it basically is pushing an empty branch (the space before the `:` character) to the named branch. Pushing an empty branch is the same thing as removing it.)
 
