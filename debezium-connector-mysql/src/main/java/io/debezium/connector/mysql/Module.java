@@ -16,7 +16,7 @@ import io.debezium.util.IoUtil;
  */
 public class Module {
     
-    private static final Properties INFO = IoUtil.loadProperties(Module.class, "io/debezium/connector/mysql/build.properties");
+    private static final Properties INFO = IoUtil.loadProperties(Module.class, "io/debezium/connector/mysql/build.version");
 
     public static String version() {
         return INFO.getProperty("version");
