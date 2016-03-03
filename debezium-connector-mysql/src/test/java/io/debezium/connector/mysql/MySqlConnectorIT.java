@@ -95,7 +95,32 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         }
         
         Testing.Print.enable();
-        assertThat(consumeAvailableRecords(this::print)).isGreaterThan(0); // expecting at least 1
+        int totalConsumed = consumeAvailableRecords(this::print);  // expecting at least 1
         stopConnector();
+        
+        // Restart the connector and wait for a few seconds (at most) for records that will never arrive ...
+        start(MySqlConnector.class, config);
+        waitForAvailableRecords(2, TimeUnit.SECONDS);
+        totalConsumed += consumeAvailableRecords(this::print);
+        stopConnector();
+        
+        // Create an additional few records ...
+        Testing.Print.disable();
+        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("INSERT INTO products VALUES (default,'roy','old robot',1234.56);");
+                connection.query("SELECT * FROM products", rs->{if (Testing.Print.isEnabled()) connection.print(rs);});
+            }
+        }
+
+        // Restart the connector and wait for a few seconds (at most) for the new record ...
+        Testing.Print.enable();
+        start(MySqlConnector.class, config);
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
+        totalConsumed += consumeAvailableRecords(this::print);
+        stopConnector();
+
+        // We should have seen a total of 30 events, though when they appear may vary ...
+        assertThat(totalConsumed).isEqualTo(30);
     }
 }

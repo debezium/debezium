@@ -83,9 +83,7 @@ public abstract class AbstractConnectorTest implements Testing {
             if (engine != null && engine.isRunning()) {
                 engine.stop();
                 try {
-                    while (!engine.await(5, TimeUnit.SECONDS)) {
-                        // Wait for connector to stop completely ...
-                    }
+                    engine.await(5, TimeUnit.SECONDS);
                 } catch (InterruptedException e) {
                     Thread.interrupted();
                 }
@@ -96,6 +94,15 @@ public abstract class AbstractConnectorTest implements Testing {
                 try {
                     while (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
                         // wait for completion ...
+                    }
+                } catch (InterruptedException e) {
+                    Thread.interrupted();
+                }
+            }
+            if (engine != null && engine.isRunning()) {
+                try {
+                    while (!engine.await(5, TimeUnit.SECONDS)) {
+                        // Wait for connector to stop completely ...
                     }
                 } catch (InterruptedException e) {
                     Thread.interrupted();
