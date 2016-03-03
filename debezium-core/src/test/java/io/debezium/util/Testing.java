@@ -47,7 +47,7 @@ public interface Testing {
         }
 
         public static void disable() {
-            enabled = true;
+            enabled = false;
         }
 
         public static boolean isEnabled() {

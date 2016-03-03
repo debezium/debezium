@@ -469,7 +469,7 @@ public final class EmbeddedEngine implements Runnable {
 
             long started = clock.currentTimeInMillis();
             long timeout = started + commitTimeoutMs;
-            offsetWriter.beginFlush();
+            if ( !offsetWriter.beginFlush() ) return;
             Future<Void> flush = offsetWriter.doFlush(this::completedFlush);
             if (flush == null) return; // no offsets to commit ...
 

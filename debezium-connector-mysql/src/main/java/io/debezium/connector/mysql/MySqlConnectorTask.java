@@ -17,6 +17,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -67,6 +68,8 @@ public final class MySqlConnectorTask extends SourceTask {
                                                                              "slave_relay_log_info", "slave_master_info",
                                                                              "slave_worker_info", "gtid_executed",
                                                                              "server_cost", "engine_cost");
+    private final Set<String> BUILT_IN_DB_NAMES = Collect.unmodifiableSet("mysql", "performance_schema");
+
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final TopicSelector topicSelector;
 
@@ -81,6 +84,7 @@ public final class MySqlConnectorTask extends SourceTask {
     private int maxBatchSize;
     private String serverName;
     private Metronome metronome;
+    private final AtomicBoolean running = new AtomicBoolean(false);
 
     // Used in the methods that process events ...
     private final SourceInfo source = new SourceInfo();
@@ -122,6 +126,7 @@ public final class MySqlConnectorTask extends SourceTask {
                                                                                                                  // prefix
         this.dbHistory.configure(dbHistoryConfig); // validates
         this.dbHistory.start();
+        this.running.set(true);
 
         // Read the configuration ...
         final String user = config.getString(MySqlConnectorConfig.USER);
@@ -145,7 +150,9 @@ public final class MySqlConnectorTask extends SourceTask {
                                                         config.getString(MySqlConnectorConfig.TABLE_WHITELIST),
                                                         config.getString(MySqlConnectorConfig.TABLE_BLACKLIST));
         if (config.getBoolean(MySqlConnectorConfig.TABLES_IGNORE_BUILTIN)) {
-            Predicate<TableId> ignoreBuiltins = (id) -> !BUILT_IN_TABLE_NAMES.contains(id.table().toLowerCase());
+            Predicate<TableId> ignoreBuiltins = (id) -> {
+                return !BUILT_IN_TABLE_NAMES.contains(id.table().toLowerCase()) && !BUILT_IN_DB_NAMES.contains(id.catalog().toLowerCase());
+            };
             tableFilter = ignoreBuiltins.or(tableFilter);
         }
 
@@ -197,7 +204,8 @@ public final class MySqlConnectorTask extends SourceTask {
                 logger.info("Recovering MySQL connector '{}' database schemas from history stored in {}", serverName, dbHistory);
                 DdlParser ddlParser = new MySqlDdlParser();
                 dbHistory.recover(source.partition(), source.offset(), tables, ddlParser);
-                logger.debug("Recovered MySQL connector '{}' database schemas: {}", serverName, tables);
+                tableConverters.loadTables();
+                logger.debug("Recovered MySQL connector '{}' database schemas: {}", serverName, tables.subset(tableFilter));
             } catch (Throwable t) {
                 throw new ConnectException("Failure while recovering database schemas", t);
             }
@@ -229,7 +237,7 @@ public final class MySqlConnectorTask extends SourceTask {
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
         logger.trace("Polling for events from MySQL server '{}'", serverName);
-        while (events.drainTo(batchEvents, maxBatchSize - batchEvents.size()) == 0 || batchEvents.isEmpty()) {
+        while (running.get() && (events.drainTo(batchEvents, maxBatchSize - batchEvents.size()) == 0 || batchEvents.isEmpty())) {
             // No events to process, so sleep for a bit ...
             metronome.pause();
         }
@@ -263,6 +271,8 @@ public final class MySqlConnectorTask extends SourceTask {
                     source.setRowInEvent(0);
                 }
             }
+            
+            if ( !running.get()) break;
 
             // If there is a handler for this event, forward the event to it ...
             EventHandler handler = eventHandlers.get(eventType);
@@ -272,6 +282,12 @@ public final class MySqlConnectorTask extends SourceTask {
         }
         logger.trace("Completed processing {} events from MySQL server '{}'", serverName);
 
+        if (!this.running.get()) {
+            // We're supposed to stop, so return nothing that we might have already processed
+            // so that no records get persisted if DB history has already been stopped ...
+            return null;
+        }
+
         // We've processed them all, so clear the batch and return the records ...
         assert batchEvents.isEmpty();
         return records;
@@ -280,6 +296,10 @@ public final class MySqlConnectorTask extends SourceTask {
     @Override
     public void stop() {
         try {
+            // Signal to the 'poll()' method that it should stop what its doing ...
+            this.running.set(false);
+
+            // Flush and stop the database history ...
             logger.debug("Stopping database history for MySQL server '{}'", serverName);
             dbHistory.stop();
         } catch (Throwable e) {

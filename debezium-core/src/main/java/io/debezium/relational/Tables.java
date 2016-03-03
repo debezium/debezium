@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Schema;
 
@@ -312,6 +313,19 @@ public class Tables {
             return this.tablesByTableId.equals(that.tablesByTableId);
         }
         return false;
+    }
+
+    public Tables subset(Predicate<TableId> filter) {
+        if (filter == null) return this;
+        return lock.read(() -> {
+            Tables result = new Tables();
+            tablesByTableId.forEach((tableId, table) -> {
+                if (filter.test(tableId)) {
+                    result.overwriteTable(table);
+                }
+            });
+            return result;
+        });
     }
 
     @Override
