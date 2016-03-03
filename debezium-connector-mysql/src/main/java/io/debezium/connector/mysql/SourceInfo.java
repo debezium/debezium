@@ -7,6 +7,8 @@ package io.debezium.connector.mysql;
 
 import java.util.Map;
 
+import org.apache.kafka.connect.errors.ConnectException;
+
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.util.Collect;
 
@@ -49,7 +51,7 @@ final class SourceInfo {
     private long binlogPosition = 4;
     private int eventRowNumber = 0;
     private String serverName;
-    private Map<String, ?> sourcePartition;
+    private Map<String, String> sourcePartition;
 
     public SourceInfo() {
     }
@@ -73,7 +75,7 @@ final class SourceInfo {
      * 
      * @return the source partition information; never null
      */
-    public Map<String, ?> partition() {
+    public Map<String, String> partition() {
         return sourcePartition;
     }
 
@@ -133,14 +135,28 @@ final class SourceInfo {
      * Set the source offset, as read from Kafka Connect. This method does nothing if the supplied map is null.
      * 
      * @param sourceOffset the previously-recorded Kafka Connect source offset
+     * @throws ConnectException if any offset parameter values are missing, invalid, or of the wrong type
      */
     public void setOffset(Map<String, ?> sourceOffset) {
         if (sourceOffset != null) {
             // We have previously recorded an offset ...
             binlogFilename = (String) sourceOffset.get(BINLOG_FILENAME_OFFSET_KEY);
-            binlogPosition = (Long) sourceOffset.get(BINLOG_POSITION_OFFSET_KEY);
-            Integer rowNumber = (Integer) sourceOffset.get(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY);
-            eventRowNumber = rowNumber != null ? rowNumber.intValue() : 0;
+            if ( binlogFilename == null ) {
+                throw new ConnectException("Source offset '" + BINLOG_FILENAME_OFFSET_KEY + "' parameter is missing");
+            }
+            binlogPosition = longOffsetValue(sourceOffset, BINLOG_POSITION_OFFSET_KEY);
+            eventRowNumber = (int) longOffsetValue(sourceOffset, BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY);
+        }
+    }
+
+    private long longOffsetValue(Map<String, ?> values, String key) {
+        Object obj = values.get(key);
+        if (obj == null) return 0;
+        if (obj instanceof Number) return ((Number) obj).longValue();
+        try {
+            return Long.parseLong(obj.toString());
+        } catch (NumberFormatException e) {
+            throw new ConnectException("Source offset '" + key + "' parameter value " + obj + " could not be converted to a long");
         }
     }
 
