@@ -76,6 +76,15 @@ final class TableConverters {
         Predicate<TableId> knownTables = (id) -> !unknownTableIds.contains(id); // known if not unknown
         this.tableFilter = tableFilter != null ? tableFilter.and(knownTables) : knownTables;
     }
+    
+    public void loadTables() {
+        // Create TableSchema instances for any existing table ...
+        this.tables.tableIds().forEach(id->{
+            Table table = this.tables.forTable(id);
+            TableSchema schema = schemaBuilder.create(table, false);
+            tableSchemaByTableId.put(id, schema);
+        });
+    }
 
     public void updateTableCommand(Event event, SourceInfo source, Consumer<SourceRecord> recorder) {
         QueryEventData command = event.getData();

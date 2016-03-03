@@ -204,6 +204,7 @@ public final class MySqlConnectorTask extends SourceTask {
                 logger.info("Recovering MySQL connector '{}' database schemas from history stored in {}", serverName, dbHistory);
                 DdlParser ddlParser = new MySqlDdlParser();
                 dbHistory.recover(source.partition(), source.offset(), tables, ddlParser);
+                tableConverters.loadTables();
                 logger.debug("Recovered MySQL connector '{}' database schemas: {}", serverName, tables.subset(tableFilter));
             } catch (Throwable t) {
                 throw new ConnectException("Failure while recovering database schemas", t);
