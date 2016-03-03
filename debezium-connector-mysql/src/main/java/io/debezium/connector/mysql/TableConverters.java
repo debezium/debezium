@@ -8,6 +8,7 @@ package io.debezium.connector.mysql;
 import java.io.Serializable;
 import java.util.BitSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -59,6 +60,7 @@ final class TableConverters {
     private final boolean recordSchemaChangesInSourceRecords;
     private final Predicate<TableId> tableFilter;
     private final Set<String> ignoredQueryStatements = Collect.unmodifiableSet("BEGIN","END","FLUSH PRIVILEGES");
+    private final Set<TableId> unknownTableIds = new HashSet<>();
 
     public TableConverters(TopicSelector topicSelector, DatabaseHistory dbHistory,
             boolean recordSchemaChangesInSourceRecords, Tables tables,
@@ -71,7 +73,8 @@ final class TableConverters {
         this.tables = tables;
         this.ddlParser = new MySqlDdlParser(false); // don't include views
         this.recordSchemaChangesInSourceRecords = recordSchemaChangesInSourceRecords;
-        this.tableFilter = tableFilter != null ? tableFilter : (id) -> true;
+        Predicate<TableId> knownTables = (id) -> !unknownTableIds.contains(id); // known if not unknown
+        this.tableFilter = tableFilter != null ? tableFilter.and(knownTables) : knownTables;
     }
 
     public void updateTableCommand(Event event, SourceInfo source, Consumer<SourceRecord> recorder) {
@@ -141,7 +144,14 @@ final class TableConverters {
             // Just get the current schema, which should be up-to-date ...
             TableId tableId = new TableId(databaseName, null, tableName);
             TableSchema tableSchema = tableSchemaByTableId.get(tableId);
-
+            if (tableSchema == null) {
+                // We are seeing an event for a row that's in a table we don't know about, meaning the table
+                // was created before the binlog was enabled (or before the point we started reading it).
+                if (unknownTableIds.add(tableId)) {
+                    logger.warn("Transaction affects rows in {}, for which no metadata exists. All subsequent changes to rows in this table will be ignored.",
+                                tableId);
+                }
+            }
             // Generate this table's insert, update, and delete converters ...
             Converter converter = new Converter() {
                 @Override
@@ -222,6 +232,8 @@ final class TableConverters {
                         keySchema, key, valueSchema, value);
                 recorder.accept(record);
             }
+        } else if (logger.isDebugEnabled()) {
+            logger.debug("Skipping insert row event: {}", event);
         }
     }
 
@@ -255,6 +267,8 @@ final class TableConverters {
                         keySchema, key, valueSchema, value);
                 recorder.accept(record);
             }
+        } else if (logger.isDebugEnabled()) {
+            logger.debug("Skipping update row event: {}", event);
         }
     }
 
@@ -278,6 +292,8 @@ final class TableConverters {
                         keySchema, key, valueSchema, value);
                 recorder.accept(record);
             }
+        } else if (logger.isDebugEnabled()) {
+            logger.debug("Skipping delete row event: {}", event);
         }
     }
 
