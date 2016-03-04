@@ -103,26 +103,8 @@ public class TableSchemaBuilder {
      * 
      * @param table the table definition; may not be null
      * @return the table schema that can be used for sending rows of data for this table to Kafka Connect; never null
-     * @see #create(Table, boolean)
      */
     public TableSchema create(Table table) {
-        return create(table, false);
-    }
-
-    /**
-     * Create a {@link TableSchema} from the given {@link Table table definition}. The resulting TableSchema will have a
-     * {@link TableSchema#keySchema() key schema} that contains all of the columns that make up the table's primary key,
-     * and a {@link TableSchema#valueSchema() value schema} that contains either all columns from the table or all columns
-     * except those in the table's primary key.
-     * 
-     * @param table the table definition; may not be null
-     * @param includePrimaryKeyColumnsInValue {@code false} if the primary key columns are to be excluded in the value
-     *            {@link Schema} and generated {@link Struct}s, or {@code true} if all of the tables columns are to be included
-     *            in the value {@link Schema} and generated {@link Struct}s
-     * @return the table schema that can be used for sending rows of data for this table to Kafka Connect; never null
-     * @see #create(Table)
-     */
-    public TableSchema create(Table table, boolean includePrimaryKeyColumnsInValue) {
         // Build the schemas ...
         final String tableId = table.id().toString();
         SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(tableId);
@@ -133,22 +115,16 @@ public class TableSchemaBuilder {
                 // The column is part of the primary key, so add it to the PK schema ...
                 addField(keySchemaBuilder, column);
                 hasPrimaryKey.set(true);
-                if (includePrimaryKeyColumnsInValue) {
-                    // also add it to the value schema ...
-                    addField(valSchemaBuilder, column);
-                }
-            } else {
-                // The column is NOT part of the primary key, so add it to the value schema ...
-                addField(valSchemaBuilder, column);
             }
+            // Add the column to the value schema ...
+            addField(valSchemaBuilder, column);
         });
         Schema valSchema = valSchemaBuilder.build();
         Schema keySchema = hasPrimaryKey.get() ? keySchemaBuilder.build() : null;
 
         // Create the generators ...
-        List<Column> valueColumns = includePrimaryKeyColumnsInValue ? table.columns() : table.nonPrimaryKeyColumns();
         Function<Object[], Object> keyGenerator = createKeyGenerator(keySchema, tableId, table.primaryKeyColumns());
-        Function<Object[], Struct> valueGenerator = createValueGenerator(valSchema, tableId, valueColumns);
+        Function<Object[], Struct> valueGenerator = createValueGenerator(valSchema, tableId, table.columns());
 
         // And the table schema ...
         return new TableSchema(keySchema, keyGenerator, valSchema, valueGenerator);
