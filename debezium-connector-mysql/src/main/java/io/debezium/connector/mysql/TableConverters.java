@@ -81,7 +81,7 @@ final class TableConverters {
         // Create TableSchema instances for any existing table ...
         this.tables.tableIds().forEach(id -> {
             Table table = this.tables.forTable(id);
-            TableSchema schema = schemaBuilder.create(table, false);
+            TableSchema schema = schemaBuilder.create(table);
             tableSchemaByTableId.put(id, schema);
         });
     }
@@ -117,7 +117,7 @@ final class TableConverters {
             if (table == null) { // removed
                 tableSchemaByTableId.remove(tableId);
             } else {
-                TableSchema schema = schemaBuilder.create(table, false);
+                TableSchema schema = schemaBuilder.create(table);
                 tableSchemaByTableId.put(tableId, schema);
             }
         });
