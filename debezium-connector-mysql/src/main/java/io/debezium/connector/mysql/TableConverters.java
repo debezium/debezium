@@ -59,7 +59,7 @@ final class TableConverters {
     private final Map<String, Long> tableNumbersByTableName = new HashMap<>();
     private final boolean recordSchemaChangesInSourceRecords;
     private final Predicate<TableId> tableFilter;
-    private final Set<String> ignoredQueryStatements = Collect.unmodifiableSet("BEGIN","END","FLUSH PRIVILEGES");
+    private final Set<String> ignoredQueryStatements = Collect.unmodifiableSet("BEGIN", "END", "FLUSH PRIVILEGES");
     private final Set<TableId> unknownTableIds = new HashSet<>();
 
     public TableConverters(TopicSelector topicSelector, DatabaseHistory dbHistory,
@@ -76,10 +76,10 @@ final class TableConverters {
         Predicate<TableId> knownTables = (id) -> !unknownTableIds.contains(id); // known if not unknown
         this.tableFilter = tableFilter != null ? tableFilter.and(knownTables) : knownTables;
     }
-    
+
     public void loadTables() {
         // Create TableSchema instances for any existing table ...
-        this.tables.tableIds().forEach(id->{
+        this.tables.tableIds().forEach(id -> {
             Table table = this.tables.forTable(id);
             TableSchema schema = schemaBuilder.create(table, false);
             tableSchemaByTableId.put(id, schema);
@@ -90,7 +90,7 @@ final class TableConverters {
         QueryEventData command = event.getData();
         String databaseName = command.getDatabase();
         String ddlStatements = command.getSql();
-        if ( ignoredQueryStatements.contains(ddlStatements) ) return;
+        if (ignoredQueryStatements.contains(ddlStatements)) return;
         logger.debug("Received update table command: {}", event);
         try {
             this.ddlParser.setCurrentSchema(databaseName);
@@ -265,7 +265,7 @@ final class TableConverters {
             logger.debug("Received update row event: {}", event);
             String topic = converter.topic();
             Integer partition = converter.partition();
-            List<Entry<Serializable[],Serializable[]>> rows = update.getRows();
+            List<Entry<Serializable[], Serializable[]>> rows = update.getRows();
             for (int row = 0; row != rows.size(); ++row) {
                 Map.Entry<Serializable[], Serializable[]> changes = rows.get(row);
                 Serializable[] before = changes.getKey();
