@@ -296,7 +296,7 @@ final class TableConverters {
                 Schema keySchema = converter.keySchema();
                 Object key = converter.createKey(values, includedColumns);
                 Schema valueSchema = converter.valueSchema();
-                Struct value = converter.inserted(values, includedColumns);
+                Struct value = converter.deleted(values, includedColumns);
                 SourceRecord record = new SourceRecord(source.partition(), source.offset(row), topic, partition,
                         keySchema, key, valueSchema, value);
                 recorder.accept(record);
