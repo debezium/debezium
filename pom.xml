@@ -365,14 +365,8 @@
                     <version>${version.docker.maven.plugin}</version>
                 </plugin>
                 <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-assembly-plugin</artifactId>
-                    <dependencies>
-                        <dependency>
-                            <groupId>io.debezium</groupId>
-                            <artifactId>debezium-assembly-descriptors</artifactId>
-                            <version>${project.version}</version>
-                        </dependency>
-                    </dependencies>
                     <executions>
                         <execution>
                             <phase>package</phase>
