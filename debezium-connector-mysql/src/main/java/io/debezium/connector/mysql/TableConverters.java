@@ -329,6 +329,7 @@ final class TableConverters {
                     Schema valueSchema = converter.valueSchema();
                     Struct value = converter.deleted(values, includedColumns);
                     if (value != null || key != null) {
+                        if ( value == null ) valueSchema = null;
                         SourceRecord record = new SourceRecord(source.partition(), source.offset(row), topic, partition,
                                 keySchema, key, valueSchema, value);
                         recorder.accept(record);
