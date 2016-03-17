@@ -70,6 +70,9 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     public static Collection<Field> ALL_FIELDS = Collect.arrayListOf(TOPIC, BOOTSTRAP_SERVERS,
                                                                      RECOVERY_POLL_INTERVAL_MS, RECOVERY_POLL_ATTEMPTS);
 
+    private static final String CONSUMER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "consumer.";
+    private static final String PRODUCER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "producer.";
+    
     private final DocumentReader reader = DocumentReader.defaultReader();
     private final Integer partition = new Integer(0);
     private String topicName;
@@ -92,7 +95,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         String bootstrapServers = config.getString(BOOTSTRAP_SERVERS);
         // Copy the relevant portions of the configuration and add useful defaults ...
         String clientAndGroupId = UUID.randomUUID().toString();
-        this.consumerConfig = config.subset("consumer.", true).edit()
+        this.consumerConfig = config.subset(CONSUMER_PREFIX, true).edit()
                                     .withDefault(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
                                     .withDefault(ConsumerConfig.CLIENT_ID_CONFIG, clientAndGroupId)
                                     .withDefault(ConsumerConfig.GROUP_ID_CONFIG, clientAndGroupId)
@@ -104,7 +107,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                                     .withDefault(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
                                     .withDefault(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
                                     .build();
-        this.producerConfig = config.subset("producer.", true).edit()
+        this.producerConfig = config.subset(PRODUCER_PREFIX, true).edit()
                                     .withDefault(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
                                     .withDefault(ProducerConfig.CLIENT_ID_CONFIG, UUID.randomUUID().toString())
                                     .withDefault(ProducerConfig.ACKS_CONFIG, 1)
@@ -116,6 +119,8 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                                     .withDefault(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
                                     .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
                                     .build();
+        logger.info("KafkaDatabaseHistory Consumer config: " + consumerConfig);
+        logger.info("KafkaDatabaseHistory Producer config: " + producerConfig);
     }
 
     @Override
