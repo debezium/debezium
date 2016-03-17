@@ -16,6 +16,9 @@
           <excludes>
               <!-- Exclude all Kafka APIs and their dependencies, since they will be available in the runtime -->
               <exclude>org.apache.kafka:*</exclude>
+              <exclude>org.slf4j:*</exclude>
+              <exclude>log4j:log4j:*</exclude>
+              <exclude>com.fasterxml.jackson.core:jackson-core:*</exclude>
               <exclude>org.xerial.snappy:*</exclude>
               <exclude>net.jpountz.lz4:*</exclude>
           </excludes>

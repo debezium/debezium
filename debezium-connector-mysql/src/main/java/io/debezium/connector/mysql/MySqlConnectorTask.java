@@ -150,10 +150,10 @@ public final class MySqlConnectorTask extends SourceTask {
                                                         config.getString(MySqlConnectorConfig.TABLE_WHITELIST),
                                                         config.getString(MySqlConnectorConfig.TABLE_BLACKLIST));
         if (config.getBoolean(MySqlConnectorConfig.TABLES_IGNORE_BUILTIN)) {
-            Predicate<TableId> ignoreBuiltins = (id) -> {
-                return !BUILT_IN_TABLE_NAMES.contains(id.table().toLowerCase()) && !BUILT_IN_DB_NAMES.contains(id.catalog().toLowerCase());
+            Predicate<TableId> isBuiltin = (id) -> {
+                return BUILT_IN_DB_NAMES.contains(id.catalog().toLowerCase()) || BUILT_IN_TABLE_NAMES.contains(id.table().toLowerCase());
             };
-            tableFilter = ignoreBuiltins.or(tableFilter);
+            tableFilter = tableFilter.and(isBuiltin.negate());
         }
 
         // Create the queue ...
@@ -163,6 +163,7 @@ public final class MySqlConnectorTask extends SourceTask {
         // Set up our handlers for specific kinds of events ...
         tables = new Tables();
         tableConverters = new TableConverters(topicSelector, dbHistory, includeSchemaChanges, tables, tableFilter);
+        eventHandlers.put(EventType.ROTATE, tableConverters::rotateLogs);
         eventHandlers.put(EventType.TABLE_MAP, tableConverters::updateTableMetadata);
         eventHandlers.put(EventType.QUERY, tableConverters::updateTableCommand);
         eventHandlers.put(EventType.EXT_WRITE_ROWS, tableConverters::handleInsert);

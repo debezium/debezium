@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import com.github.shyiko.mysql.binlog.event.DeleteRowsEventData;
 import com.github.shyiko.mysql.binlog.event.Event;
 import com.github.shyiko.mysql.binlog.event.QueryEventData;
+import com.github.shyiko.mysql.binlog.event.RotateEventData;
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
@@ -86,6 +87,17 @@ final class TableConverters {
         });
     }
 
+    public void rotateLogs(Event event, SourceInfo source, Consumer<SourceRecord> recorder) {
+        logger.debug("Rotating logs: {}", event);
+        RotateEventData command = event.getData();
+        if (command != null) {
+            // The logs are being rotated, which means the server was either restarted, or the binlog has transitioned to a new
+            // file. In either case, the table numbers will change, so we need to discard the cache of converters by the table IDs
+            // (e.g., the Map<Long,Converter>). Note, however, that we're NOT clearing out the Map<TableId,TableSchema>.
+            convertersByTableId.clear();
+        }
+    }
+
     public void updateTableCommand(Event event, SourceInfo source, Consumer<SourceRecord> recorder) {
         QueryEventData command = event.getData();
         String databaseName = command.getDatabase();
@@ -142,8 +154,8 @@ final class TableConverters {
     public void updateTableMetadata(Event event, SourceInfo source, Consumer<SourceRecord> recorder) {
         TableMapEventData metadata = event.getData();
         long tableNumber = metadata.getTableId();
+        logger.debug("Received update table metadata event: {}", event);
         if (!convertersByTableId.containsKey(tableNumber)) {
-            logger.debug("Received update table metadata event: {}", event);
             // We haven't seen this table ID, so we need to rebuild our converter functions ...
             String serverName = source.serverName();
             String databaseName = metadata.getDatabase();
@@ -153,6 +165,7 @@ final class TableConverters {
             // Just get the current schema, which should be up-to-date ...
             TableId tableId = new TableId(databaseName, null, tableName);
             TableSchema tableSchema = tableSchemaByTableId.get(tableId);
+            logger.debug("Registering metadata for table {} with table #{}", tableId, tableNumber);
             if (tableSchema == null) {
                 // We are seeing an event for a row that's in a table we don't know about, meaning the table
                 // was created before the binlog was enabled (or before the point we started reading it).
@@ -201,7 +214,7 @@ final class TableConverters {
                 }
 
                 @Override
-                public Struct updated(Serializable[] after, BitSet includedColumns, Serializable[] before,
+                public Struct updated(Serializable[] before, BitSet includedColumns, Serializable[] after,
                                       BitSet includedColumnsBeforeUpdate) {
                     // assume all columns in the table are included, and we'll write out only the after state ...
                     return tableSchema.valueFromColumnData(after);
@@ -218,6 +231,8 @@ final class TableConverters {
             if (previousTableNumber != null) {
                 convertersByTableId.remove(previousTableNumber);
             }
+        } else if (logger.isDebugEnabled()) {
+            logger.debug("Skipping update table metadata event: {}", event);
         }
     }
 
@@ -226,25 +241,30 @@ final class TableConverters {
         long tableNumber = write.getTableId();
         BitSet includedColumns = write.getIncludedColumns();
         Converter converter = convertersByTableId.get(tableNumber);
-        if (tableFilter.test(converter.tableId())) {
-            logger.debug("Received insert row event: {}", event);
-            String topic = converter.topic();
-            Integer partition = converter.partition();
-            List<Serializable[]> rows = write.getRows();
-            for (int row = 0; row != rows.size(); ++row) {
-                Serializable[] values = rows.get(row);
-                Schema keySchema = converter.keySchema();
-                Object key = converter.createKey(values, includedColumns);
-                Schema valueSchema = converter.valueSchema();
-                Struct value = converter.inserted(values, includedColumns);
-                if (value != null || key != null) {
-                    SourceRecord record = new SourceRecord(source.partition(), source.offset(row), topic, partition,
-                            keySchema, key, valueSchema, value);
-                    recorder.accept(record);
+        if (converter != null) {
+            TableId tableId = converter.tableId();
+            if (tableFilter.test(tableId)) {
+                logger.debug("Processing insert row event for {}: {}", tableId, event);
+                String topic = converter.topic();
+                Integer partition = converter.partition();
+                List<Serializable[]> rows = write.getRows();
+                for (int row = 0; row != rows.size(); ++row) {
+                    Serializable[] values = rows.get(row);
+                    Schema keySchema = converter.keySchema();
+                    Object key = converter.createKey(values, includedColumns);
+                    Schema valueSchema = converter.valueSchema();
+                    Struct value = converter.inserted(values, includedColumns);
+                    if (value != null || key != null) {
+                        SourceRecord record = new SourceRecord(source.partition(), source.offset(row), topic, partition,
+                                keySchema, key, valueSchema, value);
+                        recorder.accept(record);
+                    }
                 }
+            } else if (logger.isDebugEnabled()) {
+                logger.debug("Skipping insert row event: {}", event);
             }
-        } else if (logger.isDebugEnabled()) {
-            logger.debug("Skipping insert row event: {}", event);
+        } else {
+            logger.warn("Unable to find converter for table #{} in {}", tableNumber, convertersByTableId);
         }
     }
 
@@ -261,27 +281,32 @@ final class TableConverters {
         BitSet includedColumns = update.getIncludedColumns();
         BitSet includedColumnsBefore = update.getIncludedColumnsBeforeUpdate();
         Converter converter = convertersByTableId.get(tableNumber);
-        if (tableFilter.test(converter.tableId())) {
-            logger.debug("Received update row event: {}", event);
-            String topic = converter.topic();
-            Integer partition = converter.partition();
-            List<Entry<Serializable[], Serializable[]>> rows = update.getRows();
-            for (int row = 0; row != rows.size(); ++row) {
-                Map.Entry<Serializable[], Serializable[]> changes = rows.get(row);
-                Serializable[] before = changes.getKey();
-                Serializable[] after = changes.getValue();
-                Schema keySchema = converter.keySchema();
-                Object key = converter.createKey(after, includedColumns);
-                Schema valueSchema = converter.valueSchema();
-                Struct value = converter.updated(before, includedColumnsBefore, after, includedColumns);
-                if (value != null || key != null) {
-                    SourceRecord record = new SourceRecord(source.partition(), source.offset(row), topic, partition,
-                            keySchema, key, valueSchema, value);
-                    recorder.accept(record);
+        if (converter != null) {
+            TableId tableId = converter.tableId();
+            if (tableFilter.test(tableId)) {
+                logger.debug("Processing update row event for {}: {}", tableId, event);
+                String topic = converter.topic();
+                Integer partition = converter.partition();
+                List<Entry<Serializable[], Serializable[]>> rows = update.getRows();
+                for (int row = 0; row != rows.size(); ++row) {
+                    Map.Entry<Serializable[], Serializable[]> changes = rows.get(row);
+                    Serializable[] before = changes.getKey();
+                    Serializable[] after = changes.getValue();
+                    Schema keySchema = converter.keySchema();
+                    Object key = converter.createKey(after, includedColumns);
+                    Schema valueSchema = converter.valueSchema();
+                    Struct value = converter.updated(before, includedColumnsBefore, after, includedColumns);
+                    if (value != null || key != null) {
+                        SourceRecord record = new SourceRecord(source.partition(), source.offset(row), topic, partition,
+                                keySchema, key, valueSchema, value);
+                        recorder.accept(record);
+                    }
                 }
+            } else if (logger.isDebugEnabled()) {
+                logger.debug("Skipping update row event: {}", event);
             }
-        } else if (logger.isDebugEnabled()) {
-            logger.debug("Skipping update row event: {}", event);
+        } else {
+            logger.warn("Unable to find converter for table #{} in {}", tableNumber, convertersByTableId);
         }
     }
 
@@ -290,25 +315,31 @@ final class TableConverters {
         long tableNumber = deleted.getTableId();
         BitSet includedColumns = deleted.getIncludedColumns();
         Converter converter = convertersByTableId.get(tableNumber);
-        if (tableFilter.test(converter.tableId())) {
-            logger.debug("Received delete row event: {}", event);
-            String topic = converter.topic();
-            Integer partition = converter.partition();
-            List<Serializable[]> rows = deleted.getRows();
-            for (int row = 0; row != rows.size(); ++row) {
-                Serializable[] values = rows.get(row);
-                Schema keySchema = converter.keySchema();
-                Object key = converter.createKey(values, includedColumns);
-                Schema valueSchema = converter.valueSchema();
-                Struct value = converter.deleted(values, includedColumns);
-                if (value != null || key != null) {
-                    SourceRecord record = new SourceRecord(source.partition(), source.offset(row), topic, partition,
-                            keySchema, key, valueSchema, value);
-                    recorder.accept(record);
+        if (converter != null) {
+            TableId tableId = converter.tableId();
+            if (tableFilter.test(tableId)) {
+                logger.debug("Processing delete row event for {}: {}", tableId, event);
+                String topic = converter.topic();
+                Integer partition = converter.partition();
+                List<Serializable[]> rows = deleted.getRows();
+                for (int row = 0; row != rows.size(); ++row) {
+                    Serializable[] values = rows.get(row);
+                    Schema keySchema = converter.keySchema();
+                    Object key = converter.createKey(values, includedColumns);
+                    Schema valueSchema = converter.valueSchema();
+                    Struct value = converter.deleted(values, includedColumns);
+                    if (value != null || key != null) {
+                        if ( value == null ) valueSchema = null;
+                        SourceRecord record = new SourceRecord(source.partition(), source.offset(row), topic, partition,
+                                keySchema, key, valueSchema, value);
+                        recorder.accept(record);
+                    }
                 }
+            } else if (logger.isDebugEnabled()) {
+                logger.debug("Skipping delete row event: {}", event);
             }
-        } else if (logger.isDebugEnabled()) {
-            logger.debug("Skipping delete row event: {}", event);
+        } else {
+            logger.warn("Unable to find converter for table #{} in {}", tableNumber, convertersByTableId);
         }
     }
 
@@ -327,7 +358,7 @@ final class TableConverters {
 
         Struct inserted(Serializable[] row, BitSet includedColumns);
 
-        Struct updated(Serializable[] after, BitSet includedColumns, Serializable[] before, BitSet includedColumnsBeforeUpdate);
+        Struct updated(Serializable[] before, BitSet includedColumns, Serializable[] after, BitSet includedColumnsBeforeUpdate);
 
         Struct deleted(Serializable[] deleted, BitSet includedColumns);
     }

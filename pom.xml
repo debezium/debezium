@@ -45,18 +45,21 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
 
-        <!-- Major dependencies -->
-        <version.jackson>2.4.0</version.jackson>
-
-        <!-- Logging -->
-        <version.org.slf4j>1.7.2</version.org.slf4j>
+        <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
+        <version.kafka>0.9.0.1</version.kafka>
+        <version.kafka.scala>2.11</version.kafka.scala>
+        <version.scala>2.11.7</version.scala>
+        <version.curator>2.4.0</version.curator>
+        <version.zookeeper>3.4.6</version.zookeeper>
+        <version.jackson>2.5.4</version.jackson>
+        <version.org.slf4j>1.7.6</version.org.slf4j>
         <version.log4j>1.2.17</version.log4j>
 
         <!-- Databases -->
         <version.postgresql.driver>9.4-1205-jdbc42</version.postgresql.driver>
         <version.postgresql.server>9.4</version.postgresql.server>
         <version.mysql.server>5.7</version.mysql.server>
-        <version.mysql.driver>5.1.37</version.mysql.driver>
+        <version.mysql.driver>5.1.38</version.mysql.driver>
         <version.mysql.binlog>0.2.4</version.mysql.binlog>
 
         <!-- Testing -->
@@ -74,13 +77,6 @@
 
         <!-- Dockerfiles -->
         <docker.maintainer>Debezium community</docker.maintainer>
-
-        <!-- Kafka -->
-        <version.kafka>0.9.0.1</version.kafka>
-        <version.kafka.scala>2.11</version.kafka.scala>
-        <version.scala>2.11.7</version.scala>
-        <version.curator>2.4.0</version.curator>
-        <version.zookeeper>3.4.6</version.zookeeper>
 
         <!--Skip long running tests by default-->
         <skipLongRunningTests>true</skipLongRunningTests>
