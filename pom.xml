@@ -14,6 +14,7 @@
     <artifactId>debezium-parent</artifactId>
     <version>0.1-SNAPSHOT</version>
     <name>Debezium Parent POM</name>
+    <description>Debezium is an open source change data capture platform</description>
     <packaging>pom</packaging>
     <url>http://debezium.io</url>
     <scm>
@@ -36,6 +37,8 @@
         <developer>
             <id>rhauch</id>
             <name>Randall Hauch</name>
+            <organization>Red Hat</organization>
+            <organizationUrl>http://redhat.com</organizationUrl>
             <timezone>-6</timezone>
         </developer>
     </developers>
@@ -74,6 +77,7 @@
         <version.codehaus.helper.plugin>1.8</version.codehaus.helper.plugin>
         <version.google.formatter.plugin>0.3.1</version.google.formatter.plugin>
         <version.docker.maven.plugin>0.14.1</version.docker.maven.plugin>
+        <version.staging.plugin>1.6.3</version.staging.plugin>
 
         <!-- Dockerfiles -->
         <docker.maintainer>Debezium community</docker.maintainer>
@@ -83,20 +87,29 @@
 
         <!-- Don't skip integration tests by default -->
         <skipITs>false</skipITs>
-
-        <!-- Run the 'default' docker image by default -->
-        <!--docker>default</docker-->
     </properties>
+
     <modules>
         <module>support/checkstyle</module>
         <module>debezium-assembly-descriptors</module>
         <module>debezium-core</module>
         <module>debezium-embedded</module>
         <module>debezium-connector-mysql</module>
-        <!--module>debezium-connector-jdbc</module-->
-        <!--module>debezium-connector-postgres</module-->
-        <!--module>debezium-kafka-connect</module-->
     </modules>
+
+    <distributionManagement>
+      <repository>
+        <id>ossrh</id>
+        <name>Sonatype Staging Repository</name>
+        <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+      </repository>
+      <snapshotRepository>
+        <id>ossrh</id>
+        <name>OSS Sonatype Nexus Snapshots</name>
+        <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+      </snapshotRepository>
+    </distributionManagement>
+
     <dependencyManagement>
         <dependencies>
             <!-- Major dependencies -->
@@ -297,6 +310,11 @@
                     <version>${version.release.plugin}</version>
                 </plugin>
                 <plugin>
+                    <groupId>org.sonatype.plugins</groupId>
+                    <artifactId>nexus-staging-maven-plugin</artifactId>
+                    <version>${version.staging.plugin}</version>
+                </plugin>
+                <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>${version.surefire.plugin}</version>
@@ -392,6 +410,16 @@
                 <configuration>
                     <pushChanges>false</pushChanges>
                     <releaseProfiles>docs,assembly,release-sign-artifacts,release</releaseProfiles>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.sonatype.plugins</groupId>
+                <artifactId>nexus-staging-maven-plugin</artifactId>
+                <extensions>true</extensions>
+                <configuration>
+                    <serverId>ossrh</serverId>
+                    <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                    <autoReleaseAfterClose>false</autoReleaseAfterClose>
                 </configuration>
             </plugin>
             <plugin>
