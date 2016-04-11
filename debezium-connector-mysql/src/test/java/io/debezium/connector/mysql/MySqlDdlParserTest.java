@@ -22,18 +22,22 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
+import io.debezium.relational.ddl.SimpleDdlParserListener;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
 
 public class MySqlDdlParserTest {
-
+    
     private DdlParser parser;
     private Tables tables;
+    private SimpleDdlParserListener listener;
 
     @Before
     public void beforeEach() {
         parser = new MySqlDdlParser();
         tables = new Tables();
+        listener = new SimpleDdlParserListener();
+        parser.addListener(listener);
     }
 
     @Test
@@ -46,6 +50,8 @@ public class MySqlDdlParserTest {
                 + "DROP TABLE foo;" + System.lineSeparator();
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(0); // table created and dropped
+        listener.next().assertCreateTable(TableId.parse("foo")).assertDdlStatement().startsWith("CREATE TABLE foo (");
+        listener.next().assertDropTable(TableId.parse("foo")).assertDdlStatement().isEqualTo("DROP TABLE foo");
     }
 
     @Test
@@ -118,23 +124,31 @@ public class MySqlDdlParserTest {
     public void shouldParseGrantStatement() {
         String ddl = "GRANT ALL PRIVILEGES ON `mysql`.* TO 'mysqluser'@'%'";
         parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(0); // no tables
+        assertThat(listener.total()).isEqualTo(0);
     }
 
     @Test
     public void shouldParseCreateStatements() {
         parser.parse(readFile("ddl/mysql-test-create.ddl"), tables);
         Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(57); // no tables
+        assertThat(listener.total()).isEqualTo(88);
     }
 
     @Test
     public void shouldParseTestStatements() {
         parser.parse(readFile("ddl/mysql-test-statements.ddl"), tables);
         Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(6); // no tables
+        assertThat(listener.total()).isEqualTo(24);
     }
 
     @Test
     public void shouldParseSomeLinesFromCreateStatements() {
         parser.parse(readLines(189,"ddl/mysql-test-create.ddl"), tables);
+        assertThat(tables.size()).isEqualTo(39); // no tables
+        assertThat(listener.total()).isEqualTo(68);
     }
 
     protected String readFile( String classpathResource ) {

@@ -173,6 +173,7 @@ public class DdlParserSql2003 extends DdlParser {
 
         // Update the table definition ...
         databaseTables.overwriteTable(table.create());
+        signal(tableId, Action.CREATE, start);
     }
 
     protected void parseAsSubqueryClause(Marker start, TableEditor table) {
@@ -539,6 +540,7 @@ public class DdlParserSql2003 extends DdlParser {
         
         // Update the table definition ...
         databaseTables.overwriteTable(table.create());
+        signal(tableId, Action.CREATE, start);
     }
 
     protected void parseCreateUnknown(Marker start) {
@@ -595,6 +597,7 @@ public class DdlParserSql2003 extends DdlParser {
         }
 
         databaseTables.overwriteTable(table.create());
+        signal(tableId, Action.ALTER, start);
     }
 
     protected void parseDropColumn(Marker start, TableEditor table) {
@@ -667,6 +670,7 @@ public class DdlParserSql2003 extends DdlParser {
         databaseTables.removeTable(tableId);
         // ignore the rest ...
         consumeRemainingStatement(start);
+        signal(tableId, Action.DROP, start);
     }
 
     protected void parseDropView(Marker start) {
@@ -676,6 +680,7 @@ public class DdlParserSql2003 extends DdlParser {
         databaseTables.removeTable(tableId);
         // ignore the rest ...
         consumeRemainingStatement(start);
+        signal(tableId, Action.DROP, start);
     }
 
     protected void parseDropUnknown(Marker start) {

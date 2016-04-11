@@ -11,8 +11,11 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +41,34 @@ import io.debezium.text.TokenStream.Marker;
  */
 @NotThreadSafe
 public class DdlParser {
+    
+    public static enum Action {
+        CREATE,
+        ALTER,
+        DROP
+    }
+    
+    /**
+     * A listener that will be called with each change operation.
+     */
+    public static interface Listener {
+        /**
+         * Handle an event that changes a table definition.
+         * @param tableId the identifier of the affected table; never null
+         * @param action the operation's action on the table
+         * @param ddlStatement the DDL statement
+         */
+        void handleTableEvent( TableId tableId, Action action, String ddlStatement );
+        
+        /**
+         * Handle an event that changes a table definition.
+         * @param indexName the name of the affected index; never null
+         * @param tableId the identifier of the associated table; never null
+         * @param action the operation's action on the index
+         * @param ddlStatement the DDL statement
+         */
+        void handleIndexEvent( String indexName, TableId tableId, Action action, String ddlStatement );
+    }
 
     protected static interface TokenSet {
         void add(String token);
@@ -58,6 +89,7 @@ public class DdlParser {
     protected final DataTypeParser dataTypeParser = new DataTypeParser();
     protected Tables databaseTables;
     protected TokenStream tokens;
+    private final List<Listener> listeners = new CopyOnWriteArrayList<>();
 
     /**
      * Create a new parser that uses the supplied {@link DataTypeParser}, but that does not include view definitions.
@@ -80,6 +112,31 @@ public class DdlParser {
         initializeDataTypes(dataTypeParser);
         initializeKeywords(keywords::add);
         initializeStatementStarts(statementStarts::add);
+    }
+    
+    /**
+     * Add a listener. This method should not be called more than once with the same listener object, since the result will be
+     * that object will be called multiple times for each event.
+     * @param listener the listener; if null nothing is done
+     */
+    public void addListener( Listener listener ) {
+        if ( listener != null ) listeners.add(listener);
+    }
+    
+    /**
+     * Remove an existing listener.
+     * @param listener the listener; if null nothing is done
+     * @return {@code true} if the listener was removed, or {@code false} otherwise
+     */
+    public boolean removeListener( Listener listener ) {
+        return listener != null ? listeners.remove(listener) : false;
+    }
+
+    /**
+     * Remove all existing listeners.
+     */
+    public void removeListeners() {
+        listeners.clear();
     }
 
     protected void initializeDataTypes(DataTypeParser dataTypeParser) {
@@ -156,6 +213,25 @@ public class DdlParser {
             return resolveTableId(name, tableName);
         }
         return resolveTableId(currentSchema(), name);
+    }
+
+    /**
+     * Parse the next tokens for one or more comma-separated qualified table names. This method uses the schema name that appears in the
+     * token stream, or if none is found the {@link #currentSchema()}, and then calls {@link #resolveTableId(String, String)} with
+     * the values.
+     * 
+     * @param start the start of the statement
+     * @return the resolved {@link TableId}
+     */
+    protected List<TableId> parseQualifiedTableNames(Marker start) {
+        List<TableId> ids = new LinkedList<>();
+        TableId id = parseQualifiedTableName(start);
+        if ( id != null ) ids.add(id);
+        while (tokens.canConsume(',')) {
+            id = parseQualifiedTableName(start);
+            if ( id != null ) ids.add(id);
+        }
+        return ids;
     }
 
     /**
@@ -302,19 +378,50 @@ public class DdlParser {
     protected void parseUnknownStatement(Marker marker) {
         consumeStatement();
     }
-
+    
+    /**
+     * Signal that an action was applied to the identified table.
+     * @param tableId the identifier of the table that is affected; may not be null
+     * @param action the type of operation on the table; may not be null
+     * @param statementStart the start of the statement; may not be null
+     */
+    protected void signal( TableId tableId, Action action, Marker statementStart ) {
+        if ( !listeners.isEmpty() ) {
+            String statement = statement(statementStart);
+            listeners.forEach(listener -> listener.handleTableEvent(tableId,action,statement));
+        }
+    }
+    
+    /**
+     * Signal that an action was applied to the identified table.
+     * @param indexName the name of the affected index; may not be null
+     * @param tableId the identifier of the associated table; may not be null
+     * @param action the type of operation on the index; may not be null
+     * @param statementStart the start of the statement; may not be null
+     */
+    protected void signalIndexChange( String indexName, TableId tableId, Action action, Marker statementStart ) {
+        if ( !listeners.isEmpty() ) {
+            String statement = statement(statementStart);
+            listeners.forEach(listener -> listener.handleIndexEvent(indexName, tableId,action,statement));
+        }
+    }
+    
     protected void debugParsed(Marker statementStart) {
         if (logger.isTraceEnabled()) {
-            String statement = removeLineFeeds(tokens.getContentFrom(statementStart));
+            String statement = statement(statementStart);
             logger.trace("PARSED:  {}", statement);
         }
     }
 
     protected void debugSkipped(Marker statementStart) {
         if (logger.isTraceEnabled()) {
-            String statement = removeLineFeeds(tokens.getContentFrom(statementStart));
+            String statement = statement(statementStart);
             logger.trace("SKIPPED: {}", statement);
         }
+    }
+    
+    protected String statement( Marker statementStart ) {
+        return removeLineFeeds(tokens.getContentFrom(statementStart));
     }
 
     private String removeLineFeeds(String input) {
