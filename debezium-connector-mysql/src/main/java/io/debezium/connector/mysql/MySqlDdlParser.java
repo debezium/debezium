@@ -192,6 +192,7 @@ public class MySqlDdlParser extends DdlParser {
 
         // Update the table definition ...
         databaseTables.overwriteTable(table.create());
+        signal(table.tableId(), Action.CREATE, start);
         debugParsed(start);
     }
 
@@ -677,6 +678,7 @@ public class MySqlDdlParser extends DdlParser {
         // Update the table definition ...
         databaseTables.overwriteTable(table.create());
 
+        signal(table.tableId(), Action.CREATE, start);
         debugParsed(start);
     }
 
@@ -685,7 +687,7 @@ public class MySqlDdlParser extends DdlParser {
             // This is a unique index, and we can mark the index's columns as the primary key iff there is not already
             // a primary key on the table. (Should a PK be created later via an alter, then it will overwrite this.)
             tokens.consume("INDEX");
-            tokens.consume(); // index name
+            String indexName = tokens.consume(); // index name
             if (tokens.canConsume("USING")) {
                 parseIndexType(start);
             }
@@ -697,6 +699,7 @@ public class MySqlDdlParser extends DdlParser {
                     List<String> names = parseIndexColumnNames(start);
                     if (table.columns().stream().allMatch(Column::isRequired)) {
                         databaseTables.overwriteTable(table.setPrimaryKeyNames(names).create());
+                        signalIndexChange(indexName, table.tableId(), Action.CREATE, start);
                     }
                 }
             }
@@ -736,6 +739,7 @@ public class MySqlDdlParser extends DdlParser {
                 parsePartitionOptions(start, table);
             }
             databaseTables.overwriteTable(table.create());
+            signal(table.tableId(), Action.ALTER, start);
             if (newTableName.get() != null) {
                 // the table was renamed ...
                 databaseTables.renameTable(tableId, newTableName.get());
@@ -882,6 +886,8 @@ public class MySqlDdlParser extends DdlParser {
             parseDropTable(marker);
         } else if (tokens.matches("VIEW")) {
             parseDropView(marker);
+        } else if (tokens.matches("INDEX")) {
+            parseDropIndex(marker);
         } else {
             parseDropUnknown(marker);
         }
@@ -891,11 +897,12 @@ public class MySqlDdlParser extends DdlParser {
         tokens.canConsume("TEMPORARY");
         tokens.consume("TABLE");
         tokens.canConsume("IF", "EXISTS");
-        databaseTables.removeTable(parseQualifiedTableName(start));
-        while (tokens.canConsume(',')) {
-            databaseTables.removeTable(parseQualifiedTableName(start));
-        }
+        List<TableId> ids = parseQualifiedTableNames(start);
         tokens.canConsumeAnyOf("RESTRICT", "CASCADE");
+        ids.forEach(tableId->{
+            databaseTables.removeTable(tableId);
+            signal(tableId, Action.DROP, start);
+        });
         debugParsed(start);
     }
 
@@ -907,11 +914,22 @@ public class MySqlDdlParser extends DdlParser {
         }
         tokens.consume("VIEW");
         tokens.canConsume("IF", "EXISTS");
-        databaseTables.removeTable(parseQualifiedTableName(start));
-        while (tokens.canConsume(',')) {
-            databaseTables.removeTable(parseQualifiedTableName(start));
-        }
+        List<TableId> ids = parseQualifiedTableNames(start);
         tokens.canConsumeAnyOf("RESTRICT", "CASCADE");
+        ids.forEach(tableId->{
+            databaseTables.removeTable(tableId);
+            signal(tableId, Action.DROP, start);
+        });
+        debugParsed(start);
+    }
+
+    protected void parseDropIndex(Marker start) {
+        tokens.consume("INDEX");
+        String indexName = tokens.consume(); // index name
+        tokens.consume("ON");
+        TableId tableId = parseQualifiedTableName(start);
+        consumeRemainingStatement(start);
+        signalIndexChange(indexName,tableId,Action.DROP,start);
         debugParsed(start);
     }
 
