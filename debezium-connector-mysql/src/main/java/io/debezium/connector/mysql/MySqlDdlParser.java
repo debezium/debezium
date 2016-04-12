@@ -969,6 +969,7 @@ public class MySqlDdlParser extends DdlParser {
         tokens.consume("TO");
         TableId to = parseQualifiedTableName(start);
         databaseTables.renameTable(from, to);
+        signalAlterTable(from, to, start);
     }
 
     protected List<String> parseColumnNameList(Marker start) {

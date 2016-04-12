@@ -158,7 +158,7 @@ public class MySqlDdlParserTest {
         parser.parse(readFile("ddl/mysql-test-statements.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(6); // no tables
-        assertThat(listener.total()).isEqualTo(46);
+        assertThat(listener.total()).isEqualTo(49);
     }
 
     @Test
