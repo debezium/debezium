@@ -173,7 +173,7 @@ public class DdlParserSql2003 extends DdlParser {
 
         // Update the table definition ...
         databaseTables.overwriteTable(table.create());
-        signal(tableId, Action.CREATE, start);
+        signalCreateTable(tableId, start);
     }
 
     protected void parseAsSubqueryClause(Marker start, TableEditor table) {
@@ -502,15 +502,17 @@ public class DdlParserSql2003 extends DdlParser {
     }
 
     protected void parseCreateView(Marker start) {
-        if ( skipViews ) {
-            // We don't care about the rest ...
-            consumeRemainingStatement(start);
-            debugSkipped(start);
-            return;
-        }
         tokens.canConsume("RECURSIVE");
         tokens.consume("VIEW");
         TableId tableId = parseQualifiedTableName(start);
+        if ( skipViews ) {
+            // We don't care about the rest ...
+            consumeRemainingStatement(start);
+            signalCreateTable(tableId, start);
+            debugSkipped(start);
+            return;
+        }
+
         TableEditor table = databaseTables.editOrCreateTable(tableId);
 
         List<String> columnNames = null;
@@ -540,7 +542,7 @@ public class DdlParserSql2003 extends DdlParser {
         
         // Update the table definition ...
         databaseTables.overwriteTable(table.create());
-        signal(tableId, Action.CREATE, start);
+        signalCreateView(tableId, start);
     }
 
     protected void parseCreateUnknown(Marker start) {
@@ -597,7 +599,7 @@ public class DdlParserSql2003 extends DdlParser {
         }
 
         databaseTables.overwriteTable(table.create());
-        signal(tableId, Action.ALTER, start);
+        signalAlterTable(tableId, null, start); // rename is not supported
     }
 
     protected void parseDropColumn(Marker start, TableEditor table) {
@@ -670,7 +672,7 @@ public class DdlParserSql2003 extends DdlParser {
         databaseTables.removeTable(tableId);
         // ignore the rest ...
         consumeRemainingStatement(start);
-        signal(tableId, Action.DROP, start);
+        signalDropTable(tableId, start);
     }
 
     protected void parseDropView(Marker start) {
@@ -680,7 +682,7 @@ public class DdlParserSql2003 extends DdlParser {
         databaseTables.removeTable(tableId);
         // ignore the rest ...
         consumeRemainingStatement(start);
-        signal(tableId, Action.DROP, start);
+        signalDropView(tableId, start);
     }
 
     protected void parseDropUnknown(Marker start) {
