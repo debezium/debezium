@@ -392,6 +392,17 @@ public class DdlParser {
     }
 
     /**
+     * Signal an alter table event to all listeners.
+     * 
+     * @param id the table identifier; may not be null
+     * @param previousId the previous name of the view if it was renamed, or null if it was not renamed
+     * @param statement the DDL statement; may not be null
+     */
+    protected void signalAlterTable(TableId id, TableId previousId, String statement) {
+        signalEvent(new TableAlteredEvent(id, previousId, statement, false));
+    }
+
+    /**
      * Signal a drop table event to all listeners.
      * 
      * @param id the table identifier; may not be null

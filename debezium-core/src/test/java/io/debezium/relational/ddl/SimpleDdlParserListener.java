@@ -8,6 +8,7 @@ package io.debezium.relational.ddl;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 import static org.fest.assertions.Assertions.assertThat;
 
@@ -166,5 +167,13 @@ public class SimpleDdlParserListener implements DdlParserListener {
     public EventAssert assertNext() {
         assertThat( events.isEmpty()).isFalse();
         return new EventAssert(events.remove(0));
+    }
+
+    /**
+     * Perform an operation on each of the events.
+     * @param eventConsumer the event consumer function; may not be null
+     */
+    public void forEach( Consumer<Event> eventConsumer ) {
+        events.forEach(eventConsumer);
     }
 }

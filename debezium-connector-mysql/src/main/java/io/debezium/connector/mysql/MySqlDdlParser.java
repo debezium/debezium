@@ -969,7 +969,9 @@ public class MySqlDdlParser extends DdlParser {
         tokens.consume("TO");
         TableId to = parseQualifiedTableName(start);
         databaseTables.renameTable(from, to);
-        signalAlterTable(from, to, start);
+        // Signal a separate statement for this table rename action, even though multiple renames might be
+        // performed by a single DDL statement on the token stream ...
+        signalAlterTable(from,to,"RENAME TABLE " + from + " TO " + to);
     }
 
     protected List<String> parseColumnNameList(Marker start) {

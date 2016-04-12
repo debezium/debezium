@@ -22,6 +22,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
+import io.debezium.relational.ddl.DdlParserListener.Event;
 import io.debezium.relational.ddl.SimpleDdlParserListener;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
@@ -159,6 +160,7 @@ public class MySqlDdlParserTest {
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(6); // no tables
         assertThat(listener.total()).isEqualTo(49);
+        // listener.forEach(this::printEvent);
     }
 
     @Test
@@ -166,6 +168,10 @@ public class MySqlDdlParserTest {
         parser.parse(readLines(189,"ddl/mysql-test-create.ddl"), tables);
         assertThat(tables.size()).isEqualTo(39); // no tables
         assertThat(listener.total()).isEqualTo(120);
+    }
+    
+    protected void printEvent( Event event ) {
+        System.out.println(event);
     }
 
     protected String readFile( String classpathResource ) {
