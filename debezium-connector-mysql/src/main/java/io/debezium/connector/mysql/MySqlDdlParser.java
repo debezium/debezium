@@ -910,15 +910,17 @@ public class MySqlDdlParser extends DdlParser {
         tokens.canConsume("TEMPORARY");
         tokens.consume("TABLE");
         tokens.canConsume("IF", "EXISTS");
+        String statementPrefix = statement(start);
         List<TableId> ids = parseQualifiedTableNames(start);
-        tokens.canConsumeAnyOf("RESTRICT", "CASCADE");
+        boolean restrict = tokens.canConsume("RESTRICT");
+        boolean cascade = tokens.canConsume("CASCADE");
         ids.forEach(tableId->{
             databaseTables.removeTable(tableId);
-            signalDropTable(tableId, start);
+            signalDropTable(tableId, statementPrefix + tableId + (restrict ? " RESTRICT" : cascade ? " CASCADE" : "") );
         });
         debugParsed(start);
     }
-
+        
     protected void parseDropView(Marker start) {
         if ( skipViews ) {
             consumeRemainingStatement(start);
@@ -927,11 +929,13 @@ public class MySqlDdlParser extends DdlParser {
         }
         tokens.consume("VIEW");
         tokens.canConsume("IF", "EXISTS");
+        String statementPrefix = statement(start);
         List<TableId> ids = parseQualifiedTableNames(start);
-        tokens.canConsumeAnyOf("RESTRICT", "CASCADE");
+        boolean restrict = tokens.canConsume("RESTRICT");
+        boolean cascade = tokens.canConsume("CASCADE");
         ids.forEach(tableId->{
             databaseTables.removeTable(tableId);
-            signalDropView(tableId, start);
+            signalDropView(tableId, statementPrefix + tableId + (restrict ? " RESTRICT" : cascade ? " CASCADE" : "") );
         });
         debugParsed(start);
     }

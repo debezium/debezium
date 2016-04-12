@@ -413,6 +413,16 @@ public class DdlParser {
     }
 
     /**
+     * Signal a drop table event to all listeners.
+     * 
+     * @param id the table identifier; may not be null
+     * @param statement the statement; may not be null
+     */
+    protected void signalDropTable(TableId id, String statement) {
+        signalEvent(new TableDroppedEvent(id, statement, false));
+    }
+
+    /**
      * Signal a create view event to all listeners.
      * 
      * @param id the table identifier; may not be null
@@ -441,6 +451,16 @@ public class DdlParser {
      */
     protected void signalDropView(TableId id, Marker statementStart) {
         signalEvent(new TableDroppedEvent(id, statement(statementStart), true));
+    }
+
+    /**
+     * Signal a drop view event to all listeners.
+     * 
+     * @param id the table identifier; may not be null
+     * @param statement the statement; may not be null
+     */
+    protected void signalDropView(TableId id, String statement) {
+        signalEvent(new TableDroppedEvent(id, statement, true));
     }
 
     /**

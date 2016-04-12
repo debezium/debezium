@@ -160,7 +160,7 @@ public class MySqlDdlParserTest {
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(6); // no tables
         assertThat(listener.total()).isEqualTo(49);
-        // listener.forEach(this::printEvent);
+        //listener.forEach(this::printEvent);
     }
 
     @Test
