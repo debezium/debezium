@@ -166,12 +166,14 @@ public class MySqlDdlParser extends DdlParser {
                 databaseTables.overwriteTable(tableId, original.columns(), original.primaryKeyColumnNames());
             }
             consumeRemainingStatement(start);
+            signalCreateTable(tableId, start);
             debugParsed(start);
             return;
         }
         if (onlyIfNotExists && databaseTables.forTable(tableId) != null) {
             // The table does exist, so we should do nothing ...
             consumeRemainingStatement(start);
+            signalCreateTable(tableId, start);
             debugParsed(start);
             return;
         }
@@ -192,7 +194,7 @@ public class MySqlDdlParser extends DdlParser {
 
         // Update the table definition ...
         databaseTables.overwriteTable(table.create());
-        signal(table.tableId(), Action.CREATE, start);
+        signalCreateTable(tableId, start);
         debugParsed(start);
     }
 
@@ -596,12 +598,6 @@ public class MySqlDdlParser extends DdlParser {
     }
 
     protected void parseCreateView(Marker start) {
-        if (skipViews) {
-            // We don't care about the rest ...
-            consumeRemainingStatement(start);
-            debugSkipped(start);
-            return;
-        }
         tokens.canConsume("OR", "REPLACE");
         if (tokens.canConsume("ALGORITHM")) {
             tokens.consume('=');
@@ -616,6 +612,14 @@ public class MySqlDdlParser extends DdlParser {
         }
         tokens.consume("VIEW");
         TableId tableId = parseQualifiedTableName(start);
+        if (skipViews) {
+            // We don't care about the rest ...
+            consumeRemainingStatement(start);
+            signalCreateView(tableId, start);
+            debugSkipped(start);
+            return;
+        }
+        
         TableEditor table = databaseTables.editOrCreateTable(tableId);
         if (tokens.matches('(')) {
             List<String> columnNames = parseColumnNameList(start);
@@ -678,35 +682,39 @@ public class MySqlDdlParser extends DdlParser {
         // Update the table definition ...
         databaseTables.overwriteTable(table.create());
 
-        signal(table.tableId(), Action.CREATE, start);
+        signalCreateView(tableId, start);
         debugParsed(start);
     }
 
     protected void parseCreateIndex(Marker start) {
-        if (tokens.canConsume("UNIQUE")) {
+        boolean unique = tokens.canConsume("UNIQUE");
+        tokens.canConsumeAnyOf("FULLTEXT","SPATIAL");
+        tokens.consume("INDEX");
+        String indexName = tokens.consume(); // index name
+        if (tokens.matches("USING")) {
+            parseIndexType(start);
+        }
+        TableId tableId = null;
+        if (tokens.canConsume("ON")) {
+            // Usually this is required, but in some cases ON is not required
+            tableId = parseQualifiedTableName(start);
+        }
+        
+        if ( unique && tableId != null ) {
             // This is a unique index, and we can mark the index's columns as the primary key iff there is not already
             // a primary key on the table. (Should a PK be created later via an alter, then it will overwrite this.)
-            tokens.consume("INDEX");
-            String indexName = tokens.consume(); // index name
-            if (tokens.canConsume("USING")) {
-                parseIndexType(start);
-            }
-            if (tokens.canConsume("ON")) {
-                // Usually this is required, but in some cases ON is not required
-                TableId tableName = parseQualifiedTableName(start);
-                TableEditor table = databaseTables.editTable(tableName);
-                if (table != null && !table.hasPrimaryKey()) {
-                    List<String> names = parseIndexColumnNames(start);
-                    if (table.columns().stream().allMatch(Column::isRequired)) {
-                        databaseTables.overwriteTable(table.setPrimaryKeyNames(names).create());
-                        signalIndexChange(indexName, table.tableId(), Action.CREATE, start);
-                    }
+            TableEditor table = databaseTables.editTable(tableId);
+            if (table != null && !table.hasPrimaryKey()) {
+                List<String> names = parseIndexColumnNames(start);
+                if (table.columns().stream().allMatch(Column::isRequired)) {
+                    databaseTables.overwriteTable(table.setPrimaryKeyNames(names).create());
                 }
             }
         }
+
         // We don't care about any other statements or the rest of this statement ...
         consumeRemainingStatement(start);
-
+        signalCreateIndex(indexName, tableId, start);
         debugParsed(start);
     }
 
@@ -730,6 +738,7 @@ public class MySqlDdlParser extends DdlParser {
         tokens.consume("TABLE");
         TableId tableId = parseQualifiedTableName(start);
         TableEditor table = databaseTables.editTable(tableId);
+        TableId oldTableId = null;
         if (table != null) {
             AtomicReference<TableId> newTableName = new AtomicReference<>(null);
             if (!tokens.matches(terminator()) && !tokens.matches("PARTITION")) {
@@ -739,15 +748,19 @@ public class MySqlDdlParser extends DdlParser {
                 parsePartitionOptions(start, table);
             }
             databaseTables.overwriteTable(table.create());
-            signal(table.tableId(), Action.ALTER, start);
             if (newTableName.get() != null) {
                 // the table was renamed ...
-                databaseTables.renameTable(tableId, newTableName.get());
+                Table renamed = databaseTables.renameTable(tableId, newTableName.get());
+                if ( renamed != null ) {
+                    oldTableId = tableId;
+                    tableId = renamed.id();
+                }
             }
         } else {
             // We don't know about this table ...
             consumeRemainingStatement(start);
         }
+        signalAlterTable(tableId, oldTableId, start);
     }
 
     protected void parseAlterSpecificationList(Marker start, TableEditor table, Consumer<TableId> newTableName) {
@@ -897,15 +910,17 @@ public class MySqlDdlParser extends DdlParser {
         tokens.canConsume("TEMPORARY");
         tokens.consume("TABLE");
         tokens.canConsume("IF", "EXISTS");
+        String statementPrefix = statement(start);
         List<TableId> ids = parseQualifiedTableNames(start);
-        tokens.canConsumeAnyOf("RESTRICT", "CASCADE");
+        boolean restrict = tokens.canConsume("RESTRICT");
+        boolean cascade = tokens.canConsume("CASCADE");
         ids.forEach(tableId->{
             databaseTables.removeTable(tableId);
-            signal(tableId, Action.DROP, start);
+            signalDropTable(tableId, statementPrefix + tableId + (restrict ? " RESTRICT" : cascade ? " CASCADE" : "") );
         });
         debugParsed(start);
     }
-
+        
     protected void parseDropView(Marker start) {
         if ( skipViews ) {
             consumeRemainingStatement(start);
@@ -914,11 +929,13 @@ public class MySqlDdlParser extends DdlParser {
         }
         tokens.consume("VIEW");
         tokens.canConsume("IF", "EXISTS");
+        String statementPrefix = statement(start);
         List<TableId> ids = parseQualifiedTableNames(start);
-        tokens.canConsumeAnyOf("RESTRICT", "CASCADE");
+        boolean restrict = tokens.canConsume("RESTRICT");
+        boolean cascade = tokens.canConsume("CASCADE");
         ids.forEach(tableId->{
             databaseTables.removeTable(tableId);
-            signal(tableId, Action.DROP, start);
+            signalDropView(tableId, statementPrefix + tableId + (restrict ? " RESTRICT" : cascade ? " CASCADE" : "") );
         });
         debugParsed(start);
     }
@@ -929,7 +946,7 @@ public class MySqlDdlParser extends DdlParser {
         tokens.consume("ON");
         TableId tableId = parseQualifiedTableName(start);
         consumeRemainingStatement(start);
-        signalIndexChange(indexName,tableId,Action.DROP,start);
+        signalDropIndex(indexName, tableId, start);
         debugParsed(start);
     }
 
@@ -956,6 +973,9 @@ public class MySqlDdlParser extends DdlParser {
         tokens.consume("TO");
         TableId to = parseQualifiedTableName(start);
         databaseTables.renameTable(from, to);
+        // Signal a separate statement for this table rename action, even though multiple renames might be
+        // performed by a single DDL statement on the token stream ...
+        signalAlterTable(from,to,"RENAME TABLE " + from + " TO " + to);
     }
 
     protected List<String> parseColumnNameList(Marker start) {

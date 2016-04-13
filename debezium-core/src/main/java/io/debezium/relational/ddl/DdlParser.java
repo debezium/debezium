@@ -26,6 +26,11 @@ import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
+import io.debezium.relational.ddl.DdlParserListener.TableAlteredEvent;
+import io.debezium.relational.ddl.DdlParserListener.TableCreatedEvent;
+import io.debezium.relational.ddl.DdlParserListener.TableDroppedEvent;
+import io.debezium.relational.ddl.DdlParserListener.TableIndexCreatedEvent;
+import io.debezium.relational.ddl.DdlParserListener.TableIndexDroppedEvent;
 import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
 import io.debezium.text.Position;
@@ -41,34 +46,6 @@ import io.debezium.text.TokenStream.Marker;
  */
 @NotThreadSafe
 public class DdlParser {
-    
-    public static enum Action {
-        CREATE,
-        ALTER,
-        DROP
-    }
-    
-    /**
-     * A listener that will be called with each change operation.
-     */
-    public static interface Listener {
-        /**
-         * Handle an event that changes a table definition.
-         * @param tableId the identifier of the affected table; never null
-         * @param action the operation's action on the table
-         * @param ddlStatement the DDL statement
-         */
-        void handleTableEvent( TableId tableId, Action action, String ddlStatement );
-        
-        /**
-         * Handle an event that changes a table definition.
-         * @param indexName the name of the affected index; never null
-         * @param tableId the identifier of the associated table; never null
-         * @param action the operation's action on the index
-         * @param ddlStatement the DDL statement
-         */
-        void handleIndexEvent( String indexName, TableId tableId, Action action, String ddlStatement );
-    }
 
     protected static interface TokenSet {
         void add(String token);
@@ -89,7 +66,7 @@ public class DdlParser {
     protected final DataTypeParser dataTypeParser = new DataTypeParser();
     protected Tables databaseTables;
     protected TokenStream tokens;
-    private final List<Listener> listeners = new CopyOnWriteArrayList<>();
+    private final List<DdlParserListener> listeners = new CopyOnWriteArrayList<>();
 
     /**
      * Create a new parser that uses the supplied {@link DataTypeParser}, but that does not include view definitions.
@@ -97,7 +74,7 @@ public class DdlParser {
      * @param terminator the terminator character sequence; may be null if the default terminator ({@code ;}) should be used
      */
     public DdlParser(String terminator) {
-        this(terminator,false);
+        this(terminator, false);
     }
 
     /**
@@ -113,22 +90,24 @@ public class DdlParser {
         initializeKeywords(keywords::add);
         initializeStatementStarts(statementStarts::add);
     }
-    
+
     /**
      * Add a listener. This method should not be called more than once with the same listener object, since the result will be
      * that object will be called multiple times for each event.
+     * 
      * @param listener the listener; if null nothing is done
      */
-    public void addListener( Listener listener ) {
-        if ( listener != null ) listeners.add(listener);
+    public void addListener(DdlParserListener listener) {
+        if (listener != null) listeners.add(listener);
     }
-    
+
     /**
      * Remove an existing listener.
+     * 
      * @param listener the listener; if null nothing is done
      * @return {@code true} if the listener was removed, or {@code false} otherwise
      */
-    public boolean removeListener( Listener listener ) {
+    public boolean removeListener(DdlParserListener listener) {
         return listener != null ? listeners.remove(listener) : false;
     }
 
@@ -216,7 +195,8 @@ public class DdlParser {
     }
 
     /**
-     * Parse the next tokens for one or more comma-separated qualified table names. This method uses the schema name that appears in the
+     * Parse the next tokens for one or more comma-separated qualified table names. This method uses the schema name that appears
+     * in the
      * token stream, or if none is found the {@link #currentSchema()}, and then calls {@link #resolveTableId(String, String)} with
      * the values.
      * 
@@ -226,10 +206,10 @@ public class DdlParser {
     protected List<TableId> parseQualifiedTableNames(Marker start) {
         List<TableId> ids = new LinkedList<>();
         TableId id = parseQualifiedTableName(start);
-        if ( id != null ) ids.add(id);
+        if (id != null) ids.add(id);
         while (tokens.canConsume(',')) {
             id = parseQualifiedTableName(start);
-            if ( id != null ) ids.add(id);
+            if (id != null) ids.add(id);
         }
         return ids;
     }
@@ -378,34 +358,133 @@ public class DdlParser {
     protected void parseUnknownStatement(Marker marker) {
         consumeStatement();
     }
-    
+
     /**
-     * Signal that an action was applied to the identified table.
-     * @param tableId the identifier of the table that is affected; may not be null
-     * @param action the type of operation on the table; may not be null
-     * @param statementStart the start of the statement; may not be null
+     * Signal an event to all listeners.
+     * 
+     * @param event the event; may not be null
      */
-    protected void signal( TableId tableId, Action action, Marker statementStart ) {
-        if ( !listeners.isEmpty() ) {
-            String statement = statement(statementStart);
-            listeners.forEach(listener -> listener.handleTableEvent(tableId,action,statement));
+    protected void signalEvent(DdlParserListener.Event event) {
+        if (event != null && !listeners.isEmpty()) {
+            listeners.forEach(listener -> listener.handle(event));
         }
     }
-    
+
     /**
-     * Signal that an action was applied to the identified table.
-     * @param indexName the name of the affected index; may not be null
-     * @param tableId the identifier of the associated table; may not be null
-     * @param action the type of operation on the index; may not be null
+     * Signal a create table event to all listeners.
+     * 
+     * @param id the table identifier; may not be null
      * @param statementStart the start of the statement; may not be null
      */
-    protected void signalIndexChange( String indexName, TableId tableId, Action action, Marker statementStart ) {
-        if ( !listeners.isEmpty() ) {
-            String statement = statement(statementStart);
-            listeners.forEach(listener -> listener.handleIndexEvent(indexName, tableId,action,statement));
-        }
+    protected void signalCreateTable(TableId id, Marker statementStart) {
+        signalEvent(new TableCreatedEvent(id, statement(statementStart), false));
     }
-    
+
+    /**
+     * Signal an alter table event to all listeners.
+     * 
+     * @param id the table identifier; may not be null
+     * @param previousId the previous name of the view if it was renamed, or null if it was not renamed
+     * @param statementStart the start of the statement; may not be null
+     */
+    protected void signalAlterTable(TableId id, TableId previousId, Marker statementStart) {
+        signalEvent(new TableAlteredEvent(id, previousId, statement(statementStart), false));
+    }
+
+    /**
+     * Signal an alter table event to all listeners.
+     * 
+     * @param id the table identifier; may not be null
+     * @param previousId the previous name of the view if it was renamed, or null if it was not renamed
+     * @param statement the DDL statement; may not be null
+     */
+    protected void signalAlterTable(TableId id, TableId previousId, String statement) {
+        signalEvent(new TableAlteredEvent(id, previousId, statement, false));
+    }
+
+    /**
+     * Signal a drop table event to all listeners.
+     * 
+     * @param id the table identifier; may not be null
+     * @param statementStart the start of the statement; may not be null
+     */
+    protected void signalDropTable(TableId id, Marker statementStart) {
+        signalEvent(new TableDroppedEvent(id, statement(statementStart), false));
+    }
+
+    /**
+     * Signal a drop table event to all listeners.
+     * 
+     * @param id the table identifier; may not be null
+     * @param statement the statement; may not be null
+     */
+    protected void signalDropTable(TableId id, String statement) {
+        signalEvent(new TableDroppedEvent(id, statement, false));
+    }
+
+    /**
+     * Signal a create view event to all listeners.
+     * 
+     * @param id the table identifier; may not be null
+     * @param statementStart the start of the statement; may not be null
+     */
+    protected void signalCreateView(TableId id, Marker statementStart) {
+        signalEvent(new TableCreatedEvent(id, statement(statementStart), true));
+    }
+
+    /**
+     * Signal an alter view event to all listeners.
+     * 
+     * @param id the table identifier; may not be null
+     * @param previousId the previous name of the view if it was renamed, or null if it was not renamed
+     * @param statementStart the start of the statement; may not be null
+     */
+    protected void signalAlterView(TableId id, TableId previousId, Marker statementStart) {
+        signalEvent(new TableAlteredEvent(id, previousId, statement(statementStart), true));
+    }
+
+    /**
+     * Signal a drop view event to all listeners.
+     * 
+     * @param id the table identifier; may not be null
+     * @param statementStart the start of the statement; may not be null
+     */
+    protected void signalDropView(TableId id, Marker statementStart) {
+        signalEvent(new TableDroppedEvent(id, statement(statementStart), true));
+    }
+
+    /**
+     * Signal a drop view event to all listeners.
+     * 
+     * @param id the table identifier; may not be null
+     * @param statement the statement; may not be null
+     */
+    protected void signalDropView(TableId id, String statement) {
+        signalEvent(new TableDroppedEvent(id, statement, true));
+    }
+
+    /**
+     * Signal a create index event to all listeners.
+     * 
+     * @param indexName the name of the index; may not be null
+     * @param id the table identifier; may be null if the index does not apply to a single table
+     * @param statementStart the start of the statement; may not be null
+     */
+    protected void signalCreateIndex(String indexName, TableId id, Marker statementStart) {
+        signalEvent(new TableIndexCreatedEvent(indexName,id, statement(statementStart)));
+    }
+
+    /**
+     * Signal a drop index event to all listeners.
+     * 
+     * @param indexName the name of the index; may not be null
+     * @param id the table identifier; may not be null
+     * @param statementStart the start of the statement; may not be null
+     */
+    protected void signalDropIndex(String indexName, TableId id, Marker statementStart) {
+        signalEvent(new TableIndexDroppedEvent(indexName,id, statement(statementStart)));
+    }
+
     protected void debugParsed(Marker statementStart) {
         if (logger.isTraceEnabled()) {
             String statement = statement(statementStart);
@@ -419,8 +498,8 @@ public class DdlParser {
             logger.trace("SKIPPED: {}", statement);
         }
     }
-    
-    protected String statement( Marker statementStart ) {
+
+    protected String statement(Marker statementStart) {
         return removeLineFeeds(tokens.getContentFrom(statementStart));
     }
 
@@ -704,20 +783,17 @@ public class DdlParser {
             Integer.parseInt(constantValue);
             column.typeName("INTEGER");
             column.jdbcType(Types.INTEGER);
-        } catch (NumberFormatException e) {
-        }
+        } catch (NumberFormatException e) {}
         try {
             Long.parseLong(constantValue);
             column.typeName("BIGINT");
             column.jdbcType(Types.BIGINT);
-        } catch (NumberFormatException e) {
-        }
+        } catch (NumberFormatException e) {}
         try {
             Float.parseFloat(constantValue);
             column.typeName("FLOAT");
             column.jdbcType(Types.FLOAT);
-        } catch (NumberFormatException e) {
-        }
+        } catch (NumberFormatException e) {}
         try {
             Double.parseDouble(constantValue);
             column.typeName("DOUBLE");
@@ -731,25 +807,25 @@ public class DdlParser {
                     continue;
                 } else if (c == '.') {
                     foundDecimalPoint = true;
-                } else if ( Character.isDigit(c) ) {
-                    if ( foundDecimalPoint ) ++scale;
-                    else ++precision;
+                } else if (Character.isDigit(c)) {
+                    if (foundDecimalPoint)
+                        ++scale;
+                    else
+                        ++precision;
                 } else {
                     break;
                 }
             }
             column.length(precision);
             column.scale(scale);
-        } catch (NumberFormatException e) {
-        }
+        } catch (NumberFormatException e) {}
         try {
             BigDecimal decimal = new BigDecimal(constantValue);
             column.typeName("DECIMAL");
             column.jdbcType(Types.DECIMAL);
             column.length(decimal.precision());
             column.scale(decimal.precision());
-        } catch (NumberFormatException e) {
-        }
+        } catch (NumberFormatException e) {}
     }
 
     protected String determineTypeNameForConstant(long value) {
@@ -837,8 +913,7 @@ public class DdlParser {
         if (tokens.canConsume("ON")) {
             try {
                 parseSchemaQualifiedName(start);
-                while (tokens.canConsume(DdlTokenizer.SYMBOL)) {
-                }
+                while (tokens.canConsume(DdlTokenizer.SYMBOL)) {}
                 parseSchemaQualifiedName(start);
                 return true;
             } catch (ParsingException e) {

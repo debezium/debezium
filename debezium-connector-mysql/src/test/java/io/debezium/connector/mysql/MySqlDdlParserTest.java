@@ -22,6 +22,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
+import io.debezium.relational.ddl.DdlParserListener.Event;
 import io.debezium.relational.ddl.SimpleDdlParserListener;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
@@ -50,8 +51,25 @@ public class MySqlDdlParserTest {
                 + "DROP TABLE foo;" + System.lineSeparator();
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(0); // table created and dropped
-        listener.next().assertCreateTable(TableId.parse("foo")).assertDdlStatement().startsWith("CREATE TABLE foo (");
-        listener.next().assertDropTable(TableId.parse("foo")).assertDdlStatement().isEqualTo("DROP TABLE foo");
+        listener.assertNext().createTableNamed("foo").ddlStartsWith("CREATE TABLE foo (");
+        listener.assertNext().dropTableNamed("foo").ddlMatches("DROP TABLE foo");
+    }
+
+    @Test
+    public void shouldParseAlterStatementsAfterCreate() {
+        String ddl1 = "CREATE TABLE foo ( c1 INTEGER NOT NULL, c2 VARCHAR(22) );" + System.lineSeparator();
+        String ddl2 = "ALTER TABLE foo ADD COLUMN c bigint;" + System.lineSeparator();
+        parser.parse(ddl1, tables);
+        parser.parse(ddl2, tables);
+        listener.assertNext().createTableNamed("foo").ddlStartsWith("CREATE TABLE foo (");
+        listener.assertNext().alterTableNamed("foo").ddlStartsWith("ALTER TABLE foo ADD COLUMN c");
+    }
+
+    @Test
+    public void shouldParseAlterStatementsWithoutCreate() {
+        String ddl = "ALTER TABLE foo ADD COLUMN c bigint;" + System.lineSeparator();
+        parser.parse(ddl, tables);
+        listener.assertNext().alterTableNamed("foo").ddlStartsWith("ALTER TABLE foo ADD COLUMN c");
     }
 
     @Test
@@ -133,7 +151,7 @@ public class MySqlDdlParserTest {
         parser.parse(readFile("ddl/mysql-test-create.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(57); // no tables
-        assertThat(listener.total()).isEqualTo(88);
+        assertThat(listener.total()).isEqualTo(144);
     }
 
     @Test
@@ -141,14 +159,19 @@ public class MySqlDdlParserTest {
         parser.parse(readFile("ddl/mysql-test-statements.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(6); // no tables
-        assertThat(listener.total()).isEqualTo(24);
+        assertThat(listener.total()).isEqualTo(49);
+        //listener.forEach(this::printEvent);
     }
 
     @Test
     public void shouldParseSomeLinesFromCreateStatements() {
         parser.parse(readLines(189,"ddl/mysql-test-create.ddl"), tables);
         assertThat(tables.size()).isEqualTo(39); // no tables
-        assertThat(listener.total()).isEqualTo(68);
+        assertThat(listener.total()).isEqualTo(120);
+    }
+    
+    protected void printEvent( Event event ) {
+        System.out.println(event);
     }
 
     protected String readFile( String classpathResource ) {
