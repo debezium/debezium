@@ -76,6 +76,17 @@ public class Predicates {
         return includes(regexPatterns, conversion).negate();
     }
 
+    /**
+     * Create a predicate function that allows only those values are allowed or not disallowed by the supplied predicates.
+     * 
+     * @param allowed the predicate that defines the allowed values; may be null
+     * @param disallowed the predicate that defines the disallowed values; may be null
+     * @return the predicate function; never null
+     */
+    public static <T> Predicate<T> filter( Predicate<T> allowed, Predicate<T> disallowed ) {
+        return allowed != null ? allowed : (disallowed != null ? disallowed : (id)->true);
+    }
+
     public static <R> Predicate<R> not(Predicate<R> predicate) {
         return predicate.negate();
     }

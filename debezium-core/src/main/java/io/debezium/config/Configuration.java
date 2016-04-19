@@ -418,6 +418,178 @@ public interface Configuration {
         B apply(Consumer<B> function);
 
         /**
+         * Apply the function to this builder to change a potentially existing boolean field.
+         * 
+         * @param key the key
+         * @param function the function that computes the new value given a possibly-existing value; may not be null
+         * @return this builder object so methods can be chained together; never null
+         * @throws NumberFormatException if the existing value is not a boolean
+         */
+        default B changeBoolean(String key, Function<Boolean, Boolean> function) {
+            Function<String, String> strFunction = (existingStr) -> {
+                Boolean result = function.apply(existingStr != null ? Boolean.valueOf(existingStr) : null);
+                return result != null ? result.toString() : null;
+            };
+            return changeString(key, strFunction);
+        }
+
+        /**
+         * Apply the function to this builder to change a potentially existing string field.
+         * 
+         * @param key the key
+         * @param function the function that computes the new value given a possibly-existing value; may not be null
+         * @return this builder object so methods can be chained together; never null
+         */
+        B changeString(String key, Function<String, String> function);
+
+        /**
+         * Apply the function to this builder to change a potentially existing double field.
+         * 
+         * @param key the key
+         * @param function the function that computes the new value given a possibly-existing value; may not be null
+         * @return this builder object so methods can be chained together; never null
+         * @throws NumberFormatException if the existing value is not a double
+         */
+        default B changeDouble(String key, Function<Double, Double> function) {
+            Function<String, String> strFunction = (existingStr) -> {
+                Double result = function.apply(existingStr != null ? Double.valueOf(existingStr) : null);
+                return result != null ? result.toString() : null;
+            };
+            return changeString(key, strFunction);
+        }
+
+        /**
+         * Apply the function to this builder to change a potentially existing float field.
+         * 
+         * @param key the key
+         * @param function the function that computes the new value given a possibly-existing value; may not be null
+         * @return this builder object so methods can be chained together; never null
+         * @throws NumberFormatException if the existing value is not a float
+         */
+        default B changeFloat(String key, Function<Float, Float> function) {
+            Function<String, String> strFunction = (existingStr) -> {
+                Float result = function.apply(existingStr != null ? Float.valueOf(existingStr) : null);
+                return result != null ? result.toString() : null;
+            };
+            return changeString(key, strFunction);
+        }
+
+        /**
+         * Apply the function to this builder to change a potentially existing long field.
+         * 
+         * @param key the key
+         * @param function the function that computes the new value given a possibly-existing value; may not be null
+         * @return this builder object so methods can be chained together; never null
+         * @throws NumberFormatException if the existing value is not a long
+         */
+        default B changeLong(String key, Function<Long, Long> function) {
+            Function<String, String> strFunction = (existingStr) -> {
+                Long result = function.apply(existingStr != null ? Long.valueOf(existingStr) : null);
+                return result != null ? result.toString() : null;
+            };
+            return changeString(key, strFunction);
+        }
+        /**
+         * Apply the function to this builder to change a potentially existing integer field.
+         * 
+         * @param key the key
+         * @param function the function that computes the new value given a possibly-existing value; may not be null
+         * @return this builder object so methods can be chained together; never null
+         * @throws NumberFormatException if the existing value is not an integer
+         */
+        default B changeInteger(String key, Function<Integer, Integer> function) {
+            Function<String, String> strFunction = (existingStr) -> {
+                Integer result = function.apply(existingStr != null ? Integer.valueOf(existingStr) : null);
+                return result != null ? result.toString() : null;
+            };
+            return changeString(key, strFunction);
+        }
+
+        /**
+         * Apply the function to this builder to change a potentially existing boolean field.
+         * 
+         * @param field the predefined field for the key
+         * @param function the function that computes the new value given a possibly-existing value; may not be null
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B changeBoolean(Field field, Function<Boolean, Boolean> function) {
+            Function<String, String> strFunction = (existingStr) -> {
+                Boolean result = function.apply(existingStr != null ? Boolean.valueOf(existingStr) : null);
+                return result != null ? result.toString() : null;
+            };
+            return changeString(field, strFunction);
+        }
+
+        /**
+         * Apply the function to this builder to change a potentially existing string field.
+         * 
+         * @param field the predefined field for the key
+         * @param function the function that computes the new value given a possibly-existing value; may not be null
+         * @return this builder object so methods can be chained together; never null
+         */
+        B changeString(Field field, Function<String, String> function);
+
+        /**
+         * Apply the function to this builder to change a potentially existing double field.
+         * 
+         * @param field the predefined field for the key
+         * @param function the function that computes the new value given a possibly-existing value; may not be null
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B changeDouble(Field field, Function<Double, Double> function) {
+            Function<String, String> strFunction = (existingStr) -> {
+                Double result = function.apply(existingStr != null ? Double.valueOf(existingStr) : null);
+                return result != null ? result.toString() : null;
+            };
+            return changeString(field, strFunction);
+        }
+
+        /**
+         * Apply the function to this builder to change a potentially existing float field.
+         * 
+         * @param field the predefined field for the key
+         * @param function the function that computes the new value given a possibly-existing value; may not be null
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B changeFloat(Field field, Function<Float, Float> function) {
+            Function<String, String> strFunction = (existingStr) -> {
+                Float result = function.apply(existingStr != null ? Float.valueOf(existingStr) : null);
+                return result != null ? result.toString() : null;
+            };
+            return changeString(field, strFunction);
+        }
+
+        /**
+         * Apply the function to this builder to change a potentially existing long field.
+         * 
+         * @param field the predefined field for the key
+         * @param function the function that computes the new value given a possibly-existing value; may not be null
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B changeLong(Field field, Function<Long, Long> function) {
+            Function<String, String> strFunction = (existingStr) -> {
+                Long result = function.apply(existingStr != null ? Long.valueOf(existingStr) : null);
+                return result != null ? result.toString() : null;
+            };
+            return changeString(field, strFunction);
+        }
+
+        /**
+         * Apply the function to this builder to change a potentially existing integer field.
+         * 
+         * @param field the predefined field for the key
+         * @param function the function that computes the new value given a possibly-existing value; may not be null
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B changeInteger(Field field, Function<Integer, Integer> function) {
+            Function<String, String> strFunction = (existingStr) -> {
+                Integer result = function.apply(existingStr != null ? Integer.valueOf(existingStr) : null);
+                return result != null ? result.toString() : null;
+            };
+            return changeString(field, strFunction);
+        }
+
+        /**
          * Build and return the immutable configuration.
          * 
          * @return the immutable configuration; never null
@@ -456,6 +628,23 @@ public interface Configuration {
         public Builder apply(Consumer<Builder> function) {
             function.accept(this);
             return this;
+        }
+        
+        @Override
+        public Builder changeString(String key, Function<String, String> function) {
+            return changeString(key,null,function);
+        }
+
+        @Override
+        public Builder changeString(Field field, Function<String, String> function) {
+            return changeString(field.name(),field.defaultValue(),function);
+        }
+
+        protected Builder changeString(String key, String defaultValue, Function<String, String> function) {
+            String existing = props.getProperty(key);
+            if ( existing == null ) existing = defaultValue;
+            String newValue = function.apply(existing);
+            return with(key,newValue);
         }
 
         @Override
@@ -1525,4 +1714,15 @@ public interface Configuration {
             }
         });
     }
+    
+    /**
+     * Call the supplied function for each of the fields.
+     * 
+     * @param function the consumer that takes the field name and the string value extracted from the field; may
+     *            not be null
+     */
+    default <T> void forEach(BiConsumer<String, String> function) {
+        this.asMap().forEach(function);
+    }
+
 }

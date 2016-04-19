@@ -5,9 +5,9 @@
  */
 package io.debezium.jdbc;
 
-import java.util.Properties;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import io.debezium.annotation.Immutable;
@@ -146,19 +146,17 @@ public interface JdbcConfiguration extends Configuration {
      */
     public static Builder copy(Configuration config) {
         return new Builder() {
-            private Properties props = config.asProperties();
+            private Configuration.Builder builder = Configuration.copy(config);
 
             @Override
             public Builder with(String key, String value) {
-                props.setProperty(key, value);
+                builder.with(key, value);
                 return this;
             }
 
             @Override
             public Builder withDefault(String key, String value) {
-                if (!props.containsKey(key)) {
-                    props.setProperty(key, value);
-                }
+                builder.withDefault(key, value);
                 return this;
             }
 
@@ -167,15 +165,27 @@ public interface JdbcConfiguration extends Configuration {
                 function.accept(this);
                 return this;
             }
+            
+            @Override
+            public Builder changeString(Field field, Function<String, String> function) {
+                changeString(field,function);
+                return this;
+            }
+            
+            @Override
+            public Builder changeString(String key, Function<String, String> function) {
+                changeString(key,function);
+                return this;
+            }
 
             @Override
             public JdbcConfiguration build() {
-                return JdbcConfiguration.adapt(Configuration.from(props));
+                return JdbcConfiguration.adapt(builder.build());
             }
 
             @Override
             public String toString() {
-                return props.toString();
+                return builder.toString();
             }
         };
     }
@@ -187,19 +197,17 @@ public interface JdbcConfiguration extends Configuration {
      */
     public static Builder create() {
         return new Builder() {
-            private Properties props = new Properties();
+            private Configuration.Builder builder = Configuration.create();
 
             @Override
             public Builder with(String key, String value) {
-                props.setProperty(key, value);
+                builder.with(key, value);
                 return this;
             }
 
             @Override
             public Builder withDefault(String key, String value) {
-                if (!props.containsKey(key)) {
-                    props.setProperty(key, value);
-                }
+                builder.withDefault(key, value);
                 return this;
             }
 
@@ -208,15 +216,27 @@ public interface JdbcConfiguration extends Configuration {
                 function.accept(this);
                 return this;
             }
+            
+            @Override
+            public Builder changeString(Field field, Function<String, String> function) {
+                changeString(field,function);
+                return this;
+            }
+            
+            @Override
+            public Builder changeString(String key, Function<String, String> function) {
+                changeString(key,function);
+                return this;
+            }
 
             @Override
             public JdbcConfiguration build() {
-                return JdbcConfiguration.adapt(Configuration.from(props));
+                return JdbcConfiguration.adapt(builder.build());
             }
 
             @Override
             public String toString() {
-                return props.toString();
+                return builder.toString();
             }
         };
     }

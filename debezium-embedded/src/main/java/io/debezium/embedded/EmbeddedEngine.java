@@ -14,7 +14,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import org.apache.kafka.connect.connector.ConnectorContext;
@@ -252,7 +252,7 @@ public final class EmbeddedEngine implements Runnable {
     private final ClassLoader classLoader;
     private final Consumer<SourceRecord> consumer;
     private final CompletionCallback completionCallback;
-    private final AtomicBoolean running = new AtomicBoolean(false);
+    private final AtomicReference<Thread> runningThread = new AtomicReference<>();
     private final VariableLatch latch = new VariableLatch(0);
     private final Converter keyConverter;
     private final Converter valueConverter;
@@ -289,7 +289,7 @@ public final class EmbeddedEngine implements Runnable {
      * @return {@code true} if running, or {@code false} otherwise
      */
     protected boolean isRunning() {
-        return this.running.get();
+        return this.runningThread.get() != null;
     }
 
     private void fail(String msg) {
@@ -305,7 +305,8 @@ public final class EmbeddedEngine implements Runnable {
     }
 
     /**
-     * Run this embedded connector and deliver database changes to the registered {@link Consumer}.
+     * Run this embedded connector and deliver database changes to the registered {@link Consumer}. This method blocks until
+     * the connector is stopped.
      * <p>
      * First, the method checks to see if this instance is currently {@link #run() running}, and if so immediately returns.
      * <p>
@@ -316,12 +317,12 @@ public final class EmbeddedEngine implements Runnable {
      * {@link #stop() stopped}.
      * <p>
      * Note that there are two ways to stop a connector running on a thread: calling {@link #stop()} from another thread, or
-     * interrupting the thread (e.g., via {@link ExecutorService#shutdownNow()}). However, interrupting the thread may result
-     * in source records being repeated upon next startup, so {@link #stop()} should always be used when possible.
+     * interrupting the thread (e.g., via {@link ExecutorService#shutdownNow()}).
      */
     @Override
     public void run() {
-        if (running.compareAndSet(false, true)) {
+        if (runningThread.compareAndSet(null, Thread.currentThread())) {
+
             final String engineName = config.getString(ENGINE_NAME);
             final String connectorClassName = config.getString(CONNECTOR_CLASS);
             // Only one thread can be in this part of the method at a time ...
@@ -403,10 +404,12 @@ public final class EmbeddedEngine implements Runnable {
 
                     recordsSinceLastCommit = 0;
                     timeSinceLastCommitMillis = clock.currentTimeInMillis();
-                    while (running.get()) {
+                    while (runningThread.get() != null) {
                         try {
+                            logger.debug("Embedded engine is polling task for records");
                             List<SourceRecord> changeRecords = task.poll(); // blocks until there are values ...
                             if (changeRecords != null && !changeRecords.isEmpty()) {
+                                logger.debug("Received {} records from the task", changeRecords.size());
 
                                 // First forward the records to the connector's consumer ...
                                 for (SourceRecord record : changeRecords) {
@@ -425,6 +428,8 @@ public final class EmbeddedEngine implements Runnable {
                                 // Flush the offsets to storage if necessary ...
                                 recordsSinceLastCommit += changeRecords.size();
                                 maybeFlush(offsetWriter, offsetCommitPolicy, commitTimeoutMs);
+                            } else {
+                                logger.debug("Received no records from the task");
                             }
                         } catch (InterruptedException e) {
                             // This thread was interrupted, which signals that the thread should stop work.
@@ -436,7 +441,15 @@ public final class EmbeddedEngine implements Runnable {
                             break;
                         }
                     }
-                    succeed("Connector '" + connectorClassName + "' completed normally.");
+                    try {
+                        // First stop the task ...
+                        logger.debug("Stopping the task and engine");
+                        task.stop();
+                    } finally {
+                        // Always commit offsets that were captured from the source records we actually processed ...
+                        commitOffsets(offsetWriter, commitTimeoutMs);
+                        succeed("Connector '" + connectorClassName + "' completed normally.");
+                    }
                 } catch (Throwable t) {
                     fail("Error while trying to run connector class '" + connectorClassName + "'", t);
                     return;
@@ -450,7 +463,7 @@ public final class EmbeddedEngine implements Runnable {
                 }
             } finally {
                 latch.countDown();
-                running.set(false);
+                runningThread.set(null);
             }
         }
     }
@@ -466,28 +479,37 @@ public final class EmbeddedEngine implements Runnable {
         // Determine if we need to commit to offset storage ...
         if (policy.performCommit(recordsSinceLastCommit, timeSinceLastCommitMillis,
                                  TimeUnit.MILLISECONDS)) {
+            commitOffsets(offsetWriter, commitTimeoutMs);
+        }
+    }
 
-            long started = clock.currentTimeInMillis();
-            long timeout = started + commitTimeoutMs;
-            if ( !offsetWriter.beginFlush() ) return;
-            Future<Void> flush = offsetWriter.doFlush(this::completedFlush);
-            if (flush == null) return; // no offsets to commit ...
+    /**
+     * Flush offsets to storage.
+     * 
+     * @param offsetWriter the offset storage writer; may not be null
+     * @param commitTimeoutMs the timeout to wait for commit results
+     */
+    protected void commitOffsets(OffsetStorageWriter offsetWriter, long commitTimeoutMs) {
+        long started = clock.currentTimeInMillis();
+        long timeout = started + commitTimeoutMs;
+        if (!offsetWriter.beginFlush()) return;
+        Future<Void> flush = offsetWriter.doFlush(this::completedFlush);
+        if (flush == null) return; // no offsets to commit ...
 
-            // Wait until the offsets are flushed ...
-            try {
-                flush.get(Math.max(timeout - clock.currentTimeInMillis(), 0), TimeUnit.MILLISECONDS);
-                recordsSinceLastCommit = 0;
-                timeSinceLastCommitMillis = clock.currentTimeInMillis();
-            } catch (InterruptedException e) {
-                logger.warn("Flush of {} offsets interrupted, cancelling", this);
-                offsetWriter.cancelFlush();
-            } catch (ExecutionException e) {
-                logger.error("Flush of {} offsets threw an unexpected exception: ", this, e);
-                offsetWriter.cancelFlush();
-            } catch (TimeoutException e) {
-                logger.error("Timed out waiting to flush {} offsets to storage", this);
-                offsetWriter.cancelFlush();
-            }
+        // Wait until the offsets are flushed ...
+        try {
+            flush.get(Math.max(timeout - clock.currentTimeInMillis(), 0), TimeUnit.MILLISECONDS);
+            recordsSinceLastCommit = 0;
+            timeSinceLastCommitMillis = clock.currentTimeInMillis();
+        } catch (InterruptedException e) {
+            logger.warn("Flush of {} offsets interrupted, cancelling", this);
+            offsetWriter.cancelFlush();
+        } catch (ExecutionException e) {
+            logger.error("Flush of {} offsets threw an unexpected exception: ", this, e);
+            offsetWriter.cancelFlush();
+        } catch (TimeoutException e) {
+            logger.error("Timed out waiting to flush {} offsets to storage", this);
+            offsetWriter.cancelFlush();
         }
     }
 
@@ -508,7 +530,15 @@ public final class EmbeddedEngine implements Runnable {
      * @see #await(long, TimeUnit)
      */
     public boolean stop() {
-        return running.getAndSet(false);
+        logger.debug("Stopping the embedded engine");
+        // Signal that the run() method should stop ...
+        Thread thread = this.runningThread.getAndSet(null);
+        if (thread != null) {
+            // Interrupt the thread in case it is blocked while polling the task for records ...
+            thread.interrupt();
+            return true;
+        }
+        return false;
     }
 
     /**

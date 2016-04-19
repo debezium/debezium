@@ -12,6 +12,7 @@ import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -155,6 +156,47 @@ public final class Strings {
         for (int i = 1; i != values.length; ++i) {
             sb.append(delimiter);
             sb.append(values[i]);
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Returns a new String composed of the supplied values joined together with a copy of the specified {@code delimiter}.
+     *
+     * @param delimiter the delimiter that separates each element
+     * @param values the values to join together.
+     * @return a new {@code String} that is composed of the {@code elements} separated by the {@code delimiter}
+     *
+     * @throws NullPointerException If {@code delimiter} or {@code elements} is {@code null}
+     * @see java.lang.String#join
+     */
+    public static <T> String join(CharSequence delimiter, Iterable<T> values) {
+        return join(delimiter,values,v->{
+            return v != null ? v.toString() : "null";
+        });
+    }
+
+    /**
+     * Returns a new String composed of the supplied values joined together with a copy of the specified {@code delimiter}.
+     *
+     * @param delimiter the delimiter that separates each element
+     * @param values the values to join together.
+     * @param conversion the function that converts the supplied values into strings
+     * @return a new {@code String} that is composed of the {@code elements} separated by the {@code delimiter}
+     *
+     * @throws NullPointerException If {@code delimiter} or {@code elements} is {@code null}
+     * @see java.lang.String#join
+     */
+    public static <T> String join(CharSequence delimiter, Iterable<T> values, Function<T,String> conversion ) {
+        Objects.requireNonNull(delimiter);
+        Objects.requireNonNull(values);
+        Iterator<T> iter = values.iterator();
+        if ( !iter.hasNext() ) return "";
+        StringBuilder sb = new StringBuilder();
+        sb.append(iter.next());
+        while ( iter.hasNext() ) {
+            sb.append(delimiter);
+            sb.append(conversion.apply(iter.next()));
         }
         return sb.toString();
     }
