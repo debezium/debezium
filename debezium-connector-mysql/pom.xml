@@ -78,9 +78,9 @@
         <database.user>mysqluser</database.user>
         <database.password>mysqlpw</database.password>
         <!--
-        By default, we should use the default Docker image. This propery is changed with different profiles.
+        By default, we should use the docker image maintained by the MySQL team. This property is changed with different profiles.
         -->
-        <docker.image>mysql/mysql-server:${version.mysql.server}</docker.image>
+        <docker.image>debezium/mysql-server-test-databases</docker.image>
         <docker.skip>false</docker.skip>
     </properties>
     <build>
@@ -96,16 +96,10 @@
                 <images>
                   <image>
                     <!-- A Docker image using a partial MySQL installation maintained by MySQL team. -->
-                    <name>mysql/mysql-server:${version.mysql.server}</name>
+                    <name>debezium/mysql-server-test-databases</name>
                     <alias>database</alias>
                     <run>
                       <namingStrategy>alias</namingStrategy>
-                      <volumes>
-                        <bind>
-                          <volume>${project.basedir}/src/test/docker/server/mysql.cnf:/etc/my.cnf</volume>
-                          <volume>${project.basedir}/src/test/docker/init:/docker-entrypoint-initdb.d</volume>
-                        </bind>
-                      </volumes>
                       <env>
                         <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
                         <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
@@ -125,19 +119,34 @@
                         <time>30000</time> <!-- 30 seconds max -->
                       </wait>
                     </run>
+                    <build>
+                      <from>mysql/mysql-server:${version.mysql.server}</from>
+                      <assembly>
+                        <inline>
+                          <fileSets>
+                            <fileSet>
+                              <directory>${project.basedir}/src/test/docker/server</directory>
+                              <includes>
+                                <include>my.cnf</include>
+                              </includes>
+                              <outputDirectory>etc/mysql</outputDirectory>
+                            </fileSet>
+                            <fileSet>
+                              <directory>${project.basedir}/src/test/docker/init</directory>
+                              <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
+                            </fileSet>
+                          </fileSets>
+                        </inline>
+                        <basedir>/</basedir>
+                      </assembly>
+                    </build>
                   </image>
                   <image>
                     <!-- A Docker image using a complete MySQL installation maintained by Docker team. -->
-                    <name>mysql:${version.mysql.server}</name>
+                    <name>debezium/mysql-test--databases</name>
                     <alias>database</alias>
                     <run>
                       <namingStrategy>alias</namingStrategy>
-                      <volumes>
-                        <bind>
-                          <volume>${project.basedir}/src/test/docker/alt-server:/etc/mysql/conf.d</volume>
-                          <volume>${project.basedir}/src/test/docker/init:/docker-entrypoint-initdb.d</volume>
-                        </bind>
-                      </volumes>
                       <env>
                         <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
                         <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
@@ -157,6 +166,27 @@
                         <time>30000</time>
                       </wait>
                     </run>
+                    <build>
+                      <from>mysql:${version.mysql.server}</from>
+                      <assembly>
+                        <inline>
+                          <fileSets>
+                            <fileSet>
+                              <directory>${project.basedir}/src/test/docker/alt-server</directory>
+                              <includes>
+                                <include>my.cnf</include>
+                              </includes>
+                              <outputDirectory>etc/mysql/conf.d</outputDirectory>
+                            </fileSet>
+                            <fileSet>
+                              <directory>${project.basedir}/src/test/docker/init</directory>
+                              <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
+                            </fileSet>
+                          </fileSets>
+                        </inline>
+                        <basedir>/</basedir>
+                      </assembly>
+                    </build>
                   </image>
                 </images>
               </configuration>
@@ -311,7 +341,7 @@
           </property>
         </activation>
         <properties>
-          <docker.image>mysql:${version.mysql.server}</docker.image>
+          <docker.image>debezium/mysql-test--databases</docker.image>
           <docker.skip>false</docker.skip>
         </properties>
       </profile>
