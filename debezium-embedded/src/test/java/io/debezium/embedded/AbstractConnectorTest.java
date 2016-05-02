@@ -8,9 +8,12 @@ package io.debezium.embedded;
 import static org.junit.Assert.fail;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
@@ -199,7 +202,13 @@ public abstract class AbstractConnectorTest implements Testing {
         // Create the connector ...
         engine = EmbeddedEngine.create()
                                .using(config)
-                               .notifying(consumedLines::add)
+                               .notifying((record)->{
+                                   try {
+                                       consumedLines.put(record);
+                                   } catch ( InterruptedException e ) {
+                                       Thread.interrupted();
+                                   }
+                                })
                                .using(this.getClass().getClassLoader())
                                .using(wrapperCallback)
                                .build();
@@ -255,7 +264,7 @@ public abstract class AbstractConnectorTest implements Testing {
      */
     protected int consumeRecords(int numberOfRecords, Consumer<SourceRecord> recordConsumer) throws InterruptedException {
         int recordsConsumed = 0;
-        for (int i = 0; i != numberOfRecords; ++i) {
+        while ( recordsConsumed < numberOfRecords ) {
             SourceRecord record = consumedLines.poll(pollTimeoutInMs, TimeUnit.MILLISECONDS);
             if (record != null) {
                 ++recordsConsumed;
@@ -265,6 +274,60 @@ public abstract class AbstractConnectorTest implements Testing {
             }
         }
         return recordsConsumed;
+    }
+    
+    protected SourceRecords consumeRecordsByTopic(int numRecords) throws InterruptedException {
+        return consumeRecordsByTopic(numRecords, new SourceRecords());
+    }
+    
+    protected SourceRecords consumeRecordsByTopic(int numRecords, SourceRecords records) throws InterruptedException {
+        consumeRecords(numRecords,records::add);
+        return records;
+    }
+    
+    protected class SourceRecords {
+        private final List<SourceRecord> records = new ArrayList<>();
+        private final Map<String,List<SourceRecord>> recordsByTopic = new HashMap<>();
+        private final Map<String,List<SourceRecord>> ddlRecordsByDbName = new HashMap<>();
+        public void add( SourceRecord record ) {
+            records.add(record);
+            recordsByTopic.compute(record.topic(), (topicName,list)->{
+                if ( list == null ) list = new ArrayList<SourceRecord>();
+                list.add(record);
+                return list;
+            });
+            if ( record.key() instanceof Struct ) {
+                Struct key = (Struct)record.key();
+                if ( key.schema().field("databaseName") != null) {
+                    String dbName = key.getString("databaseName");
+                    ddlRecordsByDbName.compute(dbName, (databaseName,list)->{
+                        if ( list == null ) list = new ArrayList<SourceRecord>();
+                        list.add(record);
+                        return list;
+                    });
+                }
+            }
+        }
+        public List<SourceRecord> ddlRecordsForDatabase( String dbName ) {
+            return ddlRecordsByDbName.get(dbName);
+        }
+        public Set<String> databaseNames() {
+            return ddlRecordsByDbName.keySet();
+        }
+        public List<SourceRecord> recordsForTopic( String topicName ) {
+            return recordsByTopic.get(topicName);
+        }
+        public Set<String> topics() {
+            return recordsByTopic.keySet();
+        }
+        public void print() {
+            Testing.print("" + topics().size() + " topics: " + topics());
+            recordsByTopic.forEach((k,v)->{
+                Testing.print(" - topic:'" + k + "'; # of events = " + v.size());
+            });
+            Testing.print("Records:" );
+            records.forEach(record->AbstractConnectorTest.this.print(record));
+        }
     }
 
     /**
@@ -281,7 +344,7 @@ public abstract class AbstractConnectorTest implements Testing {
         }
         return records.size();
     }
-
+    
     /**
      * Wait for a maximum amount of time until the first record is available.
      * 

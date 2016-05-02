@@ -143,7 +143,7 @@ final class SourceInfo {
         setRowInEvent(eventRowNumber);
         return offset();
     }
-
+    
     /**
      * Set the name of the MySQL binary log file.
      * 

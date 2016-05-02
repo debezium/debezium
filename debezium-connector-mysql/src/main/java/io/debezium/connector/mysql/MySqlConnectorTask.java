@@ -148,6 +148,12 @@ public final class MySqlConnectorTask extends SourceTask {
         maxBatchSize = config.getInteger(MySqlConnectorConfig.MAX_BATCH_SIZE);
         metronome = Metronome.parker(pollIntervalMs, TimeUnit.MILLISECONDS, Clock.SYSTEM);
 
+        // Define the filter used for database names ...
+        Predicate<String> dbFilter = Selectors.databaseSelector()
+                                              .includeDatabases(config.getString(MySqlConnectorConfig.DATABASE_WHITELIST))
+                                              .excludeDatabases(config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST))
+                                              .build();
+
         // Define the filter using the whitelists and blacklists for tables and database names ...
         Predicate<TableId> tableFilter = Selectors.tableSelector()
                                                   .includeDatabases(config.getString(MySqlConnectorConfig.DATABASE_WHITELIST))
@@ -178,7 +184,7 @@ public final class MySqlConnectorTask extends SourceTask {
         // Set up our handlers for specific kinds of events ...
         tables = new Tables();
         tableConverters = new TableConverters(topicSelector, dbHistory, includeSchemaChanges, clock,
-                                              tables, tableFilter, columnFilter, columnMappers);
+                                              dbFilter, tables, tableFilter, columnFilter, columnMappers);
         eventHandlers.put(EventType.ROTATE, tableConverters::rotateLogs);
         eventHandlers.put(EventType.TABLE_MAP, tableConverters::updateTableMetadata);
         eventHandlers.put(EventType.QUERY, tableConverters::updateTableCommand);
