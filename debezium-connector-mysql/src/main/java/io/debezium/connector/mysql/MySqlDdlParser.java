@@ -105,7 +105,7 @@ public class MySqlDdlParser extends DdlParser {
 
     @Override
     protected void initializeStatementStarts(TokenSet statementStartTokens) {
-        statementStartTokens.add("CREATE", "ALTER", "DROP", "INSERT", "SET", "GRANT", "REVOKE", "FLUSH", "TRUNCATE");
+        statementStartTokens.add("CREATE", "ALTER", "DROP", "INSERT", "SET", "GRANT", "REVOKE", "FLUSH", "TRUNCATE", "COMMIT");
     }
 
     @Override

@@ -110,7 +110,7 @@ public class DdlTokenizer implements Tokenizer {
     protected Tokens adapt(CharacterStream input,
                            Tokens output) {
         return (position, startIndex, endIndex, type) -> {
-            output.addToken(position, startIndex, endIndex, retypingFunction.typeOf(type, input.substring(startIndex, endIndex)));
+            output.addToken(position, startIndex, endIndex, retypingFunction.typeOf(type, input.substring(startIndex, endIndex).toUpperCase()));
         };
     }
 
