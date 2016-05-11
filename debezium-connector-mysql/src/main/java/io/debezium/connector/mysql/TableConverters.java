@@ -32,6 +32,8 @@ import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
 
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.relational.ColumnId;
+import io.debezium.relational.ColumnMappers;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
@@ -60,18 +62,22 @@ final class TableConverters {
     private final Map<String, Long> tableNumbersByTableName = new HashMap<>();
     private final boolean recordSchemaChangesInSourceRecords;
     private final Predicate<TableId> tableFilter;
+    private final Predicate<ColumnId> columnFilter;
+    private final ColumnMappers columnMappers;
     private final Set<String> ignoredQueryStatements = Collect.unmodifiableSet("BEGIN", "END", "FLUSH PRIVILEGES");
     private final Set<TableId> unknownTableIds = new HashSet<>();
 
     public TableConverters(TopicSelector topicSelector, DatabaseHistory dbHistory,
             boolean recordSchemaChangesInSourceRecords, Tables tables,
-            Predicate<TableId> tableFilter) {
+            Predicate<TableId> tableFilter, Predicate<ColumnId> columnFilter, ColumnMappers columnSelectors) {
         Objects.requireNonNull(topicSelector, "A topic selector is required");
         Objects.requireNonNull(dbHistory, "Database history storage is required");
         Objects.requireNonNull(tables, "A Tables object is required");
         this.topicSelector = topicSelector;
         this.dbHistory = dbHistory;
         this.tables = tables;
+        this.columnFilter = columnFilter;
+        this.columnMappers = columnSelectors;
         this.ddlParser = new MySqlDdlParser(false); // don't include views
         this.recordSchemaChangesInSourceRecords = recordSchemaChangesInSourceRecords;
         Predicate<TableId> knownTables = (id) -> !unknownTableIds.contains(id); // known if not unknown
@@ -82,7 +88,7 @@ final class TableConverters {
         // Create TableSchema instances for any existing table ...
         this.tables.tableIds().forEach(id -> {
             Table table = this.tables.forTable(id);
-            TableSchema schema = schemaBuilder.create(table);
+            TableSchema schema = schemaBuilder.create(table,columnFilter, columnMappers);
             tableSchemaByTableId.put(id, schema);
         });
     }
@@ -129,7 +135,7 @@ final class TableConverters {
             if (table == null) { // removed
                 tableSchemaByTableId.remove(tableId);
             } else {
-                TableSchema schema = schemaBuilder.create(table);
+                TableSchema schema = schemaBuilder.create(table,columnFilter, columnMappers);
                 tableSchemaByTableId.put(tableId, schema);
             }
         });

@@ -93,23 +93,25 @@ public class MySqlConnectorConfig {
 
     public static final Field TABLE_BLACKLIST = Field.create("table.blacklist")
                                                      .withValidation(MySqlConnectorConfig::validateTableBlacklist)
-                                                     .withDescription("A comma-separated list of table identifiers to be excluded from monitoring, where each identifer is of the form "
-                                                             + "'<databaseName>.<tableName>'.");
+                                                     .withDescription("A comma-separated list of regular expressions that match the fully-qualified names of tables to be excluded from monitoring. "
+                                                             + "Fully-qualified names for tables are of the form "
+                                                             + "'<databaseName>.<tableName>' or '<databaseName>.<schemaName>.<tableName>'");
 
     public static final Field TABLE_WHITELIST = Field.create("table.whitelist")
-                                                     .withDescription("A comma-separated list of table identifiers to be monitored, where each identifer is of the form "
-                                                             + "'<databaseName>.<tableName>'. May not be used with '" + TABLE_BLACKLIST
-                                                             + "'. "
+                                                     .withDescription("A comma-separated list of regular expressions that match the fully-qualified names of tables to be monitored. "
+                                                             + "Fully-qualified names for tables are of the form "
+                                                             + "'<databaseName>.<tableName>' or '<databaseName>.<schemaName>.<tableName>'. "
+                                                             + "May not be used with '" + TABLE_BLACKLIST + "'. "
                                                              + "The named table will be monitored only if its database is allowed by the `database.whitelist` or "
                                                              + "not disallowed by '" + TABLE_BLACKLIST + "'.");
 
     public static final Field DATABASE_WHITELIST = Field.create("database.whitelist")
-                                                        .withDescription("A comma-separated list of database names to be monitored. "
+                                                        .withDescription("A comma-separated list of regular expressions that match database names to be monitored. "
                                                                 + "May not be used with 'database.blacklist'.");
 
     public static final Field DATABASE_BLACKLIST = Field.create("database.blacklist")
                                                         .withValidation(MySqlConnectorConfig::validateDatabaseBlacklist)
-                                                        .withDescription("A comma-separated list of database names to be excluded from monitoring. "
+                                                        .withDescription("A comma-separated list of regular expressions that match database names to be excluded from monitoring. "
                                                                 + "May not be used with '" + DATABASE_WHITELIST + "'.");
 
     public static final Field TABLES_IGNORE_BUILTIN = Field.create("table.ignore.builtin")
@@ -117,13 +119,51 @@ public class MySqlConnectorConfig {
                                                            .withDescription("Flag specifying whether built-in tables should be ignored. This applies regardless of the table whitelist or blacklists.")
                                                            .withDefault(true);
 
+    public static final Field COLUMN_BLACKLIST = Field.create("column.blacklist")
+                                                      .withValidation(MySqlConnectorConfig::validateColumnBlacklist)
+                                                      .withDescription("A comma-separated list of regular expressions that match fully-qualified names of columns to be excluded from monitoring and change messages. "
+                                                              + "Fully-qualified names for columns are of the form "
+                                                              + "'<databaseName>.<tableName>.<columnName>' or '<databaseName>.<schemaName>.<tableName>.<columnName>'.");
+
+    /**
+     * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
+     * have their values truncated to be no longer than the specified number of characters.
+     * 
+     * @param length the maximum length of the column's string values written in source records; must be positive
+     * @return the field; never null
+     */
+    public static final Field TRUNCATE_COLUMN(int length) {
+        if (length <= 0) throw new IllegalArgumentException("The truncation length must be positive");
+        return Field.create("column.truncate.to." + length + ".chars")
+                    .withValidation(Field::isInteger)
+                    .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that should "
+                            + "be truncated to " + length + " characters.");
+    }
+
+    /**
+     * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
+     * have their values masked by the specified number of asterisk ('*') characters.
+     * 
+     * @param length the number of asterisks that should appear in place of the column's string values written in source records;
+     *            must be positive
+     * @return the field; never null
+     */
+    public static final Field MASK_COLUMN(int length) {
+        if (length <= 0) throw new IllegalArgumentException("The mask length must be positive");
+        return Field.create("column.mask.with." + length + ".chars")
+                    .withValidation(Field::isInteger)
+                    .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that should "
+                            + "be masked with " + length + " asterisk ('*') characters.");
+    }
+
     public static Collection<Field> ALL_FIELDS = Collect.arrayListOf(USER, PASSWORD, HOSTNAME, PORT, SERVER_ID,
                                                                      SERVER_NAME, INITIAL_BINLOG_FILENAME,
                                                                      CONNECTION_TIMEOUT_MS, KEEP_ALIVE,
                                                                      MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
                                                                      DATABASE_HISTORY, INCLUDE_SCHEMA_CHANGES,
                                                                      TABLE_WHITELIST, TABLE_BLACKLIST, TABLES_IGNORE_BUILTIN,
-                                                                     DATABASE_WHITELIST, DATABASE_BLACKLIST);
+                                                                     DATABASE_WHITELIST, DATABASE_BLACKLIST,
+                                                                     COLUMN_BLACKLIST);
 
     private static int validateMaxQueueSize(Configuration config, Field field, Consumer<String> problems) {
         int maxQueueSize = config.getInteger(field);
@@ -160,6 +200,11 @@ public class MySqlConnectorConfig {
             problems.accept("May use either '" + TABLE_WHITELIST + "' or '" + TABLE_BLACKLIST + "', but not both.");
             return 1;
         }
+        return 0;
+    }
+
+    private static int validateColumnBlacklist(Configuration config, Field field, Consumer<String> problems) {
+        // String blacklist = config.getString(COLUMN_BLACKLIST);
         return 0;
     }
 

@@ -58,7 +58,7 @@ public abstract class AbstractConnectorTest implements Testing {
     private CountDownLatch latch;
 
     @Before
-    public final void initializeConnectorTestFramework() throws Exception {
+    public final void initializeConnectorTestFramework() {
         resetBeforeEachTest();
         consumedLines = new ArrayBlockingQueue<>(getMaximumEnqueuedRecordCount());
         Testing.Files.delete(OFFSET_STORE_PATH);

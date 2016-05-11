@@ -32,7 +32,7 @@ public class Tables {
      * A filter for tables.
      */
     @FunctionalInterface
-    public static interface TableFilter {
+    public static interface TableNameFilter {
         /**
          * Determine whether the named table should be included.
          * 
@@ -43,14 +43,14 @@ public class Tables {
          * @param tableName the name of the table
          * @return {@code true} if the table should be included, or {@code false} if the table should be excluded
          */
-        boolean test(String catalogName, String schemaName, String tableName);
+        boolean matches(String catalogName, String schemaName, String tableName);
     }
 
     /**
      * A filter for columns.
      */
     @FunctionalInterface
-    public static interface ColumnFilter {
+    public static interface ColumnNameFilter {
         /**
          * Determine whether the named column should be included in the table's {@link Schema} definition.
          * 
@@ -62,7 +62,7 @@ public class Tables {
          * @param columnName the name of the column
          * @return {@code true} if the table should be included, or {@code false} if the table should be excluded
          */
-        boolean test(String catalogName, String schemaName, String tableName, String columnName);
+        boolean matches(String catalogName, String schemaName, String tableName, String columnName);
     }
 
     private final FunctionalReadWriteLock lock = FunctionalReadWriteLock.reentrant();

@@ -5,10 +5,7 @@
  */
 package io.debezium.relational;
 
-import java.util.function.Predicate;
-
 import io.debezium.annotation.Immutable;
-import io.debezium.function.Predicates;
 
 /**
  * Unique identifier for a database table.
@@ -19,69 +16,19 @@ import io.debezium.function.Predicates;
 public final class TableId implements Comparable<TableId> {
 
     /**
-     * Create a predicate function that allows only those {@link TableId}s that are allowed by the database whitelist (or
-     * not disallowed by the database blacklist) and allowed by the table whitelist (or not disallowed by the table blacklist).
-     * Therefore, blacklists are only used if there is no corresponding whitelist.
-     * <p>
-     * Qualified table names are comma-separated strings that are each {@link #parse(String) parsed} into {@link TableId} objects.
-     * 
-     * @param dbWhitelist the comma-separated string listing the names of the databases to be explicitly allowed;
-     *            may be null
-     * @param dbBlacklist the comma-separated string listing the names of the databases to be explicitly disallowed;
-     *            may be null
-     * @param tableWhitelist the comma-separated string listing the qualified names of the tables to be explicitly allowed;
-     *            may be null
-     * @param tableBlacklist the comma-separated string listing the qualified names of the tables to be explicitly disallowed;
-     *            may be null
-     * @return the predicate function; never null
-     */
-    public static Predicate<TableId> filter(String dbWhitelist, String dbBlacklist, String tableWhitelist, String tableBlacklist) {
-        Predicate<TableId> tableExclusions = tableBlacklist == null ? null : Predicates.blacklist(tableBlacklist, TableId::parse);
-        Predicate<TableId> tableInclusions = tableWhitelist == null ? null : Predicates.whitelist(tableWhitelist, TableId::parse);
-        Predicate<TableId> tableFilter = tableInclusions != null ? tableInclusions : tableExclusions;
-        Predicate<String> dbExclusions = dbBlacklist == null ? null : Predicates.blacklist(dbBlacklist);
-        Predicate<String> dbInclusions = dbWhitelist == null ? null : Predicates.whitelist(dbWhitelist);
-        Predicate<String> dbFilter = dbInclusions != null ? dbInclusions : dbExclusions;
-        if (dbFilter != null) {
-            if (tableFilter != null) {
-                return (id) -> dbFilter.test(id.catalog()) && tableFilter.test(id);
-            }
-            return (id) -> dbFilter.test(id.catalog());
-        }
-        if (tableFilter != null) {
-            return tableFilter;
-        }
-        return (id) -> true;
-    }
-
-    /**
-     * Parse the supplied string delimited with a period ({@code .}) character, extracting up to the first 3 parts into a TableID.
-     * If the input contains only two parts, then the first part will be used as the catalog name and the second as the table
-     * name.
-     * 
-     * @param str the input string
-     * @return the table ID, or null if it could not be parsed
-     */
-    public static TableId parse(String str) {
-        return parse(str, '.', true);
-    }
-
-    /**
      * Parse the supplied string, extracting up to the first 3 parts into a TableID.
      * 
-     * @param str the input string
-     * @param delimiter the delimiter between parts
+     * @param parts the parts of the identifier; may not be null
+     * @param numParts the number of parts to use for the table identifier
      * @param useCatalogBeforeSchema {@code true} if the parsed string contains only 2 items and the first should be used as
      *            the catalog and the second as the table name, or {@code false} if the first should be used as the schema and the
-     *            second
-     *            as the table name
+     *            second as the table name
      * @return the table ID, or null if it could not be parsed
      */
-    public static TableId parse(String str, char delimiter, boolean useCatalogBeforeSchema) {
-        String[] parts = str.split("[\\" + delimiter + "]");
-        if (parts.length == 0) return null;
-        if (parts.length == 1) return new TableId(null, null, parts[0]); // table only
-        if (parts.length == 2) {
+    protected static TableId parse(String[] parts, int numParts, boolean useCatalogBeforeSchema) {
+        if (numParts == 0) return null;
+        if (numParts == 1) return new TableId(null, null, parts[0]); // table only
+        if (numParts == 2) {
             if (useCatalogBeforeSchema) return new TableId(parts[0], null, parts[1]); // catalog & table only
             return new TableId(null, parts[0], parts[1]); // catalog & table only
         }

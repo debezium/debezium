@@ -5,10 +5,14 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.junit.Assert.fail;
+
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.DataException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -32,11 +36,14 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
     @Before
     public void beforeEach() {
+        stopConnector();
+        initializeConnectorTestFramework();
         Testing.Files.delete(DB_HISTORY_PATH);
     }
 
     @After
     public void afterEach() {
+        stopConnector();
         Testing.Files.delete(DB_HISTORY_PATH);
     }
     
@@ -94,7 +101,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             }
         }
         
-        Testing.Print.enable();
+        //Testing.Print.enable();
         int totalConsumed = consumeAvailableRecords(this::print);  // expecting at least 1
         stopConnector();
         
@@ -123,4 +130,52 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // We should have seen a total of 30 events, though when they appear may vary ...
         assertThat(totalConsumed).isEqualTo(30);
     }
+
+    @Test
+    public void shouldConsumeEventsWithMaskedAndBlacklistedColumns() throws SQLException {
+        Testing.Files.delete(DB_HISTORY_PATH);
+        // Use the DB configuration to define the connector's configuration ...
+        config = Configuration.create()
+                              .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
+                              .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
+                              .with(MySqlConnectorConfig.USER, "replicator")
+                              .with(MySqlConnectorConfig.PASSWORD, "replpass")
+                              .with(MySqlConnectorConfig.SERVER_ID, 18780)
+                              .with(MySqlConnectorConfig.SERVER_NAME, "kafka-connect-2")
+                              .with(MySqlConnectorConfig.INITIAL_BINLOG_FILENAME, "mysql-bin.000001")
+                              .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+                              .with(MySqlConnectorConfig.DATABASE_WHITELIST, "connector_test")
+                              .with(MySqlConnectorConfig.COLUMN_BLACKLIST, "connector_test.orders.order_number")
+                              .with(MySqlConnectorConfig.MASK_COLUMN(12), "connector_test.customers.email")
+                              .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+                              .build();
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // Wait for records to become available ...
+        //Testing.Print.enable();
+        waitForAvailableRecords(15, TimeUnit.SECONDS);
+        
+        // Now consume the records ...
+        int totalConsumed = consumeAvailableRecords((record)->{
+            print(record);
+            if ( record.topic().endsWith(".orders")) {
+                Struct value = (Struct) record.value();
+                try {
+                    value.get("order_number");
+                    fail("The 'order_number' field was found but should not exist");
+                } catch ( DataException e ) {
+                    // expected
+                }
+            } else if ( record.topic().endsWith(".customers")) {
+                Struct value = (Struct) record.value();
+                assertThat(value.getString("email")).isEqualTo("************");
+            }
+        });
+        stopConnector();
+
+        // We should have seen a total of 27 events, though when they appear may vary ...
+        assertThat(totalConsumed).isEqualTo(27);
+    }
+    
 }

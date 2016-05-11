@@ -9,8 +9,12 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.regex.Pattern;
 
 import io.debezium.annotation.ThreadSafe;
 
@@ -22,6 +26,70 @@ import io.debezium.annotation.ThreadSafe;
  */
 @ThreadSafe
 public final class Strings {
+
+    /**
+     * Generate the set of values that are included in the list.
+     * 
+     * @param input the input string
+     * @param splitter the function that splits the input into multiple items; may not be null
+     * @param factory the factory for creating string items into filter matches; may not be null
+     * @return the list of objects included in the list; never null
+     */
+    public static <T> Set<T> listOf(String input, Function<String, String[]> splitter, Function<String, T> factory) {
+        if ( input == null ) return Collections.emptySet();
+        Set<T> matches = new HashSet<>();
+        for (String item : splitter.apply(input)) {
+            T obj = factory.apply(item);
+            if ( obj != null ) matches.add(obj);
+        }
+        return matches;
+    }
+
+    /**
+     * Generate the set of values that are included in the list delimited by the given delimiter.
+     * 
+     * @param input the input string
+     * @param delimiter the character used to delimit the items in the input
+     * @param factory the factory for creating string items into filter matches; may not be null
+     * @return the list of objects included in the list; never null
+     */
+    public static <T> Set<T> listOf(String input, char delimiter, Function<String, T> factory) {
+        return listOf(input,(str) -> str.split("[" + delimiter + "]"),factory);
+    }
+
+    /**
+     * Generate the set of values that are included in the list separated by commas.
+     * 
+     * @param input the input string
+     * @param factory the factory for creating string items into filter matches; may not be null
+     * @return the list of objects included in the list; never null
+     */
+    public static <T> Set<T> listOf(String input, Function<String, T> factory) {
+        return listOf(input,',',factory);
+    }
+
+    /**
+     * Generate the set of regular expression {@link Pattern}s that are specified in the string containing comma-separated
+     * regular expressions.
+     * 
+     * @param input the input string with comma-separated regular expressions
+     * @return the list of regular expression {@link Pattern}s included in the list; never null
+     */
+    public static Set<Pattern> listOfRegex(String input) {
+        return listOf(input,',',Pattern::compile);
+    }
+
+    /**
+     * Generate the set of regular expression {@link Pattern}s that are specified in the string containing comma-separated
+     * regular expressions.
+     * 
+     * @param input the input string with comma-separated regular expressions
+     * @param regexFlags the flags for {@link Pattern#compile(String, int) compiling regular expressions}
+     * @return the list of regular expression {@link Pattern}s included in the list; never null
+     */
+    public static Set<Pattern> listOfRegex(String input, int regexFlags) {
+        return listOf(input,',',(str)->Pattern.compile(str,regexFlags));
+    }
 
     /**
      * Represents a predicate (boolean-valued function) of one character argument.
