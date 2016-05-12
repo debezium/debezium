@@ -40,6 +40,9 @@ import com.github.shyiko.mysql.binlog.network.AuthenticationException;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
+import io.debezium.relational.ColumnId;
+import io.debezium.relational.ColumnMappers;
+import io.debezium.relational.Selectors;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
@@ -145,10 +148,12 @@ public final class MySqlConnectorTask extends SourceTask {
         metronome = Metronome.parker(pollIntervalMs, TimeUnit.MILLISECONDS, Clock.SYSTEM);
 
         // Define the filter using the whitelists and blacklists for tables and database names ...
-        Predicate<TableId> tableFilter = TableId.filter(config.getString(MySqlConnectorConfig.DATABASE_WHITELIST),
-                                                        config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST),
-                                                        config.getString(MySqlConnectorConfig.TABLE_WHITELIST),
-                                                        config.getString(MySqlConnectorConfig.TABLE_BLACKLIST));
+        Predicate<TableId> tableFilter = Selectors.tableSelector()
+                                                  .includeDatabases(config.getString(MySqlConnectorConfig.DATABASE_WHITELIST))
+                                                  .excludeDatabases(config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST))
+                                                  .includeTables(config.getString(MySqlConnectorConfig.TABLE_WHITELIST))
+                                                  .excludeTables(config.getString(MySqlConnectorConfig.TABLE_BLACKLIST))
+                                                  .build();
         if (config.getBoolean(MySqlConnectorConfig.TABLES_IGNORE_BUILTIN)) {
             Predicate<TableId> isBuiltin = (id) -> {
                 return BUILT_IN_DB_NAMES.contains(id.catalog().toLowerCase()) || BUILT_IN_TABLE_NAMES.contains(id.table().toLowerCase());
@@ -156,13 +161,23 @@ public final class MySqlConnectorTask extends SourceTask {
             tableFilter = tableFilter.and(isBuiltin.negate());
         }
 
+        // Define the filter that excludes blacklisted columns, truncated columns, and masked columns ...
+        Predicate<ColumnId> columnFilter = Selectors.excludeColumns(config.getString(MySqlConnectorConfig.COLUMN_BLACKLIST));
+
+        // Define the truncated, masked, and mapped columns ...
+        ColumnMappers.Builder columnMapperBuilder = ColumnMappers.create();
+        config.forEachMatchingFieldNameWithInteger("column\\.truncate\\.to\\.(\\d+)\\.chars", columnMapperBuilder::truncateStrings);
+        config.forEachMatchingFieldNameWithInteger("column\\.mask\\.with\\.(\\d+)\\.chars", columnMapperBuilder::maskStrings);
+        ColumnMappers columnMappers = columnMapperBuilder.build();
+
         // Create the queue ...
         events = new LinkedBlockingDeque<>(maxQueueSize);
         batchEvents = new ArrayDeque<>(maxBatchSize);
 
         // Set up our handlers for specific kinds of events ...
         tables = new Tables();
-        tableConverters = new TableConverters(topicSelector, dbHistory, includeSchemaChanges, tables, tableFilter);
+        tableConverters = new TableConverters(topicSelector, dbHistory, includeSchemaChanges, tables, tableFilter, columnFilter,
+                columnMappers);
         eventHandlers.put(EventType.ROTATE, tableConverters::rotateLogs);
         eventHandlers.put(EventType.TABLE_MAP, tableConverters::updateTableMetadata);
         eventHandlers.put(EventType.QUERY, tableConverters::updateTableCommand);
@@ -213,15 +228,15 @@ public final class MySqlConnectorTask extends SourceTask {
         } else {
             // initializes this position, though it will be reset when we see the first event (should be a rotate event) ...
             client.setBinlogFilename(initialBinLogFilename);
-            logger.info("Starting MySQL connector from beginning of binlog file {}, position {}",
-                        source.binlogFilename(), source.binlogPosition());
+            logger.info("Starting MySQL connector '{}' from beginning of binlog file {}, position {}",
+                        serverName, source.binlogFilename(), source.binlogPosition());
         }
 
         // Start the log reader, which starts background threads ...
         try {
             logger.debug("Connecting to MySQL server");
             client.connect(timeoutInMilliseconds);
-            logger.debug("Successfully connected to MySQL server and beginning to read binlog");
+            logger.info("Successfully started MySQL Connector '{}' and beginning to read binlog", serverName);
         } catch (TimeoutException e) {
             double seconds = TimeUnit.MILLISECONDS.toSeconds(timeoutInMilliseconds);
             throw new ConnectException("Timed out after " + seconds + " seconds while waiting to connect to the MySQL database at " + host
@@ -272,8 +287,8 @@ public final class MySqlConnectorTask extends SourceTask {
                     source.setRowInEvent(0);
                 }
             }
-            
-            if ( !running.get()) break;
+
+            if (!running.get()) break;
 
             // If there is a handler for this event, forward the event to it ...
             EventHandler handler = eventHandlers.get(eventType);
@@ -297,6 +312,7 @@ public final class MySqlConnectorTask extends SourceTask {
     @Override
     public void stop() {
         try {
+            logger.info("Stopping MySQL Connector '{}'", serverName);
             // Signal to the 'poll()' method that it should stop what its doing ...
             this.running.set(false);
 

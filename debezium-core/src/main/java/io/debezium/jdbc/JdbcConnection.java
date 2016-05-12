@@ -33,8 +33,8 @@ import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
-import io.debezium.relational.Tables.ColumnFilter;
-import io.debezium.relational.Tables.TableFilter;
+import io.debezium.relational.Tables.ColumnNameFilter;
+import io.debezium.relational.Tables.TableNameFilter;
 import io.debezium.util.Collect;
 import io.debezium.util.Strings;
 
@@ -359,7 +359,7 @@ public class JdbcConnection implements AutoCloseable {
      * @throws SQLException if an error occurs while accessing the database metadata
      */
     public void readSchema(Tables tables, String databaseCatalog, String schemaNamePattern,
-                           TableFilter tableFilter, ColumnFilter columnFilter) throws SQLException {
+                           TableNameFilter tableFilter, ColumnNameFilter columnFilter) throws SQLException {
         DatabaseMetaData metadata = conn.getMetaData();
 
         // Read the metadata for the table columns ...
@@ -369,11 +369,11 @@ public class JdbcConnection implements AutoCloseable {
                 String catalogName = rs.getString(1);
                 String schemaName = rs.getString(2);
                 String tableName = rs.getString(3);
-                if (tableFilter == null || tableFilter.test(catalogName, schemaName, tableName)) {
+                if (tableFilter == null || tableFilter.matches(catalogName, schemaName, tableName)) {
                     TableId tableId = new TableId(catalogName, schemaName, tableName);
                     List<Column> cols = columnsByTable.computeIfAbsent(tableId, name -> new ArrayList<>());
                     String columnName = rs.getString(4);
-                    if (columnFilter == null || columnFilter.test(catalogName, schemaName, tableName, columnName)) {
+                    if (columnFilter == null || columnFilter.matches(catalogName, schemaName, tableName, columnName)) {
                         ColumnEditor column = Column.editor().name(columnName);
                         column.jdbcType(rs.getInt(5));
                         column.typeName(rs.getString(6));

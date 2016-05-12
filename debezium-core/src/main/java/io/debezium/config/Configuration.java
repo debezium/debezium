@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -24,6 +26,8 @@ import java.util.function.IntSupplier;
 import java.util.function.LongSupplier;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -439,15 +443,15 @@ public interface Configuration {
             props.setProperty(key, value);
             return this;
         }
-        
+
         @Override
         public Builder withDefault(String key, String value) {
-            if ( !props.containsKey(key)) {
+            if (!props.containsKey(key)) {
                 props.setProperty(key, value);
             }
             return this;
         }
-        
+
         @Override
         public Builder apply(Consumer<Builder> function) {
             function.accept(this);
@@ -478,7 +482,7 @@ public interface Configuration {
     public static Builder copy(Configuration config) {
         return new Builder(config.asProperties());
     }
-    
+
     /**
      * Create a Configuration object that is populated by system properties, per {@link #withSystemProperties(String)}.
      * 
@@ -505,7 +509,7 @@ public interface Configuration {
             public String getString(String key) {
                 return null;
             }
-            
+
             @Override
             public String toString() {
                 return "{}";
@@ -675,15 +679,16 @@ public interface Configuration {
             return from(props);
         }
     }
-    
+
     /**
      * Obtain an editor for a copy of this configuration.
+     * 
      * @return a builder that is populated with this configuration's key-value pairs; never null
      */
     default Builder edit() {
         return copy(this);
     }
-    
+
     /**
      * Determine whether this configuration contains a key-value pair with the given key and the value is non-null
      * 
@@ -756,7 +761,7 @@ public interface Configuration {
      *         such key-value pair in the configuration
      */
     default String getString(Field field, String defaultValue) {
-        return getString(field.name(), ()->field.defaultValue());
+        return getString(field.name(), () -> field.defaultValue());
     }
 
     /**
@@ -861,8 +866,7 @@ public interface Configuration {
         if (value != null) {
             try {
                 return Integer.parseInt(value);
-            } catch (NumberFormatException e) {
-            }
+            } catch (NumberFormatException e) {}
         }
         return defaultValueSupplier != null ? defaultValueSupplier.getAsInt() : null;
     }
@@ -882,8 +886,7 @@ public interface Configuration {
         if (value != null) {
             try {
                 return Long.parseLong(value);
-            } catch (NumberFormatException e) {
-            }
+            } catch (NumberFormatException e) {}
         }
         return defaultValueSupplier != null ? defaultValueSupplier.getAsLong() : null;
     }
@@ -919,7 +922,7 @@ public interface Configuration {
      * @throws NumberFormatException if there is no name-value pair and the field has no default value
      */
     default int getInteger(Field field) {
-        return getInteger(field.name(), ()->Integer.valueOf(field.defaultValue())).intValue();
+        return getInteger(field.name(), () -> Integer.valueOf(field.defaultValue())).intValue();
     }
 
     /**
@@ -933,7 +936,7 @@ public interface Configuration {
      * @throws NumberFormatException if there is no name-value pair and the field has no default value
      */
     default long getLong(Field field) {
-        return getLong(field.name(), ()->Long.valueOf(field.defaultValue())).longValue();
+        return getLong(field.name(), () -> Long.valueOf(field.defaultValue())).longValue();
     }
 
     /**
@@ -947,7 +950,7 @@ public interface Configuration {
      * @throws NumberFormatException if there is no name-value pair and the field has no default value
      */
     default boolean getBoolean(Field field) {
-        return getBoolean(field.name(), ()->Boolean.valueOf(field.defaultValue())).booleanValue();
+        return getBoolean(field.name(), () -> Boolean.valueOf(field.defaultValue())).booleanValue();
     }
 
     /**
@@ -1003,7 +1006,7 @@ public interface Configuration {
      *         could not be parsed as an integer
      */
     default Integer getInteger(Field field, IntSupplier defaultValueSupplier) {
-        return getInteger(field.name(),defaultValueSupplier);
+        return getInteger(field.name(), defaultValueSupplier);
     }
 
     /**
@@ -1017,7 +1020,7 @@ public interface Configuration {
      *         could not be parsed as a long
      */
     default Long getLong(Field field, LongSupplier defaultValueSupplier) {
-        return getLong(field.name(),defaultValueSupplier);
+        return getLong(field.name(), defaultValueSupplier);
     }
 
     /**
@@ -1031,7 +1034,7 @@ public interface Configuration {
      *         could not be parsed as a boolean value
      */
     default Boolean getBoolean(Field field, BooleanSupplier defaultValueSupplier) {
-        return getBoolean(field.name(),defaultValueSupplier);
+        return getBoolean(field.name(), defaultValueSupplier);
     }
 
     /**
@@ -1044,7 +1047,7 @@ public interface Configuration {
      * @return the configuration value, or the {@code defaultValue} if there is no such key-value pair in the configuration
      */
     default String getString(Field field, Supplier<String> defaultValueSupplier) {
-        return getString(field.name(),defaultValueSupplier);
+        return getString(field.name(), defaultValueSupplier);
     }
 
     /**
@@ -1075,14 +1078,14 @@ public interface Configuration {
         if (className != null) {
             ClassLoader classloader = classloaderSupplier != null ? classloaderSupplier.get() : getClass().getClassLoader();
             try {
-                Class<? extends T> clazz = (Class<? extends T>)classloader.loadClass(className);
+                Class<? extends T> clazz = (Class<? extends T>) classloader.loadClass(className);
                 return clazz.newInstance();
             } catch (ClassNotFoundException e) {
-                LoggerFactory.getLogger(getClass()).error("Unable to find class {}",className,e);
+                LoggerFactory.getLogger(getClass()).error("Unable to find class {}", className, e);
             } catch (InstantiationException e) {
-                LoggerFactory.getLogger(getClass()).error("Unable to instantiate class {}",className,e);
+                LoggerFactory.getLogger(getClass()).error("Unable to instantiate class {}", className, e);
             } catch (IllegalAccessException e) {
-                LoggerFactory.getLogger(getClass()).error("Unable to access class {}",className,e);
+                LoggerFactory.getLogger(getClass()).error("Unable to access class {}", className, e);
             }
         }
         return null;
@@ -1099,6 +1102,7 @@ public interface Configuration {
     default <T> T getInstance(Field field, Class<T> clazz) {
         return getInstance(field, clazz, () -> getClass().getClassLoader());
     }
+
     /**
      * Get an instance of the class given by the value in the configuration associated with the given field.
      * 
@@ -1115,14 +1119,14 @@ public interface Configuration {
         if (className != null) {
             ClassLoader classloader = classloaderSupplier != null ? classloaderSupplier.get() : getClass().getClassLoader();
             try {
-                Class<? extends T> clazz = (Class<? extends T>)classloader.loadClass(className);
+                Class<? extends T> clazz = (Class<? extends T>) classloader.loadClass(className);
                 return clazz.newInstance();
             } catch (ClassNotFoundException e) {
-                LoggerFactory.getLogger(getClass()).error("Unable to find class {}",className,e);
+                LoggerFactory.getLogger(getClass()).error("Unable to find class {}", className, e);
             } catch (InstantiationException e) {
-                LoggerFactory.getLogger(getClass()).error("Unable to instantiate class {}",className,e);
+                LoggerFactory.getLogger(getClass()).error("Unable to instantiate class {}", className, e);
             } catch (IllegalAccessException e) {
-                LoggerFactory.getLogger(getClass()).error("Unable to access class {}",className,e);
+                LoggerFactory.getLogger(getClass()).error("Unable to access class {}", className, e);
             }
         }
         return null;
@@ -1177,7 +1181,7 @@ public interface Configuration {
                 String oldKey = newToOld.get(key);
                 return Configuration.this.getString(oldKey);
             }
-            
+
             @Override
             public String toString() {
                 return asProperties().toString();
@@ -1206,7 +1210,7 @@ public interface Configuration {
             public String getString(String key) {
                 return matcher.test(key) ? Configuration.this.getString(key) : null;
             }
-            
+
             @Override
             public String toString() {
                 return asProperties().toString();
@@ -1222,7 +1226,7 @@ public interface Configuration {
     default boolean isEmpty() {
         return keys().isEmpty();
     }
-    
+
     /**
      * Get a copy of these configuration properties as a Properties object.
      * 
@@ -1236,13 +1240,13 @@ public interface Configuration {
         });
         return props;
     }
-    
+
     /**
      * Get a copy of these configuration properties as a Properties object.
      * 
      * @return the properties object; never null
      */
-    default Map<String,String> asMap() {
+    default Map<String, String> asMap() {
         Map<String, String> props = new HashMap<>();
         keys().forEach(key -> {
             String value = getString(key);
@@ -1298,7 +1302,8 @@ public interface Configuration {
     }
 
     /**
-     * Validate the supplied fields in this configuration.
+     * Validate the supplied fields in this configuration. Extra fields not described by the supplied {@code fields} parameter
+     * are not validated.
      * 
      * @param fields the fields
      * @param problems the consumer to be called with each problem; never null
@@ -1306,23 +1311,218 @@ public interface Configuration {
      */
     default boolean validate(Iterable<Field> fields, Consumer<String> problems) {
         boolean valid = true;
-        for ( Field field : fields ) {
-            if ( !field.validate(this,problems) ) valid = false;
+        for (Field field : fields) {
+            if (!field.validate(this, problems)) valid = false;
         }
         return valid;
     }
 
     /**
-     * Validate the supplied fields in this configuration.
+     * Validate the supplied fields in this configuration. Extra fields not described by the supplied {@code fields} parameter
+     * are not validated.
+     * 
      * @param fields the fields
      * @param problems the consumer to be called with each problem; never null
      * @return {@code true} if the value is considered valid, or {@code false} if it is not valid
      */
     default boolean validate(Field[] fields, Consumer<String> problems) {
         boolean valid = true;
-        for ( Field field : fields ) {
-            if ( !field.validate(this,problems) ) valid = false;
+        for (Field field : fields) {
+            if (!field.validate(this, problems)) valid = false;
         }
         return valid;
+    }
+
+    /**
+     * Apply the given function to all fields whose names match the given regular expression.
+     * 
+     * @param regex the regular expression string; may not be null
+     * @param function the consumer that takes the name and value of matching fields; may not be null
+     */
+    default void forEachMatchingFieldName(String regex, BiConsumer<String, String> function) {
+        forEachMatchingFieldName(Pattern.compile(regex), function);
+    }
+
+    /**
+     * Apply the given function to all fields whose names match the given regular expression.
+     * 
+     * @param regex the regular expression string; may not be null
+     * @param function the consumer that takes the name and value of matching fields; may not be null
+     */
+    default void forEachMatchingFieldName(Pattern regex, BiConsumer<String, String> function) {
+        this.asMap().forEach((fieldName, fieldValue) -> {
+            if (regex.matcher(fieldName).matches()) {
+                function.accept(fieldName, fieldValue);
+            }
+        });
+    }
+
+    /**
+     * For all fields whose names match the given regular expression, extract an integer from the first group in the regular
+     * expression and call the supplied function.
+     * 
+     * @param regex the regular expression string; may not be null
+     * @param function the consumer that takes the value of matching field and the integer extracted from the field name; may not
+     *            be null
+     */
+    default <T> void forEachMatchingFieldNameWithInteger(String regex, BiConsumer<String, Integer> function) {
+        forEachMatchingFieldNameWithInteger(Pattern.compile(regex), 1, function);
+    }
+
+    /**
+     * For all fields whose names match the given regular expression, extract an integer from the first group in the regular
+     * expression and call the supplied function.
+     * 
+     * @param regex the regular expression string; may not be null
+     * @param groupNumber the number of the regular expression group containing the integer to be extracted; must be positive
+     * @param function the consumer that takes the value of matching field and the integer extracted from the field name; may not
+     *            be null
+     */
+    default <T> void forEachMatchingFieldNameWithInteger(String regex, int groupNumber, BiConsumer<String, Integer> function) {
+        forEachMatchingFieldNameWithInteger(Pattern.compile(regex), groupNumber, function);
+    }
+
+    /**
+     * For all fields whose names match the given regular expression, extract an integer from the first group in the regular
+     * expression and call the supplied function.
+     * 
+     * @param regex the regular expression string; may not be null
+     * @param groupNumber the number of the regular expression group containing the integer to be extracted; must be positive
+     * @param function the consumer that takes the value of matching field and the integer extracted from the field name; may not
+     *            be null
+     */
+    default <T> void forEachMatchingFieldNameWithInteger(Pattern regex, int groupNumber, BiConsumer<String, Integer> function) {
+        BiFunction<String, String, Integer> extractor = (fieldName, strValue) -> {
+            try {
+                return Integer.parseInt(strValue);
+            } catch (NumberFormatException e) {
+                LoggerFactory.getLogger(getClass()).error("Unexpected value {} extracted from configuration field '{}' using regex '{}'",
+                                                          strValue, fieldName, regex);
+                return null;
+            }
+        };
+        forEachMatchingFieldName(regex, groupNumber, extractor, function);
+    }
+
+    /**
+     * For all fields whose names match the given regular expression, extract a boolean value from the first group in the regular
+     * expression and call the supplied function.
+     * 
+     * @param regex the regular expression string; may not be null
+     * @param function the consumer that takes the value of matching field and the boolean extracted from the field name; may not
+     *            be null
+     */
+    default <T> void forEachMatchingFieldNameWithBoolean(String regex, BiConsumer<String, Boolean> function) {
+        forEachMatchingFieldNameWithBoolean(Pattern.compile(regex), 1, function);
+    }
+
+    /**
+     * For all fields whose names match the given regular expression, extract a boolean value from the first group in the regular
+     * expression and call the supplied function.
+     * 
+     * @param regex the regular expression string; may not be null
+     * @param groupNumber the number of the regular expression group containing the boolean to be extracted; must be positive
+     * @param function the consumer that takes the value of matching field and the boolean extracted from the field name; may not
+     *            be null
+     */
+    default <T> void forEachMatchingFieldNameWithBoolean(String regex, int groupNumber, BiConsumer<String, Boolean> function) {
+        forEachMatchingFieldNameWithBoolean(Pattern.compile(regex), groupNumber, function);
+    }
+
+    /**
+     * For all fields whose names match the given regular expression, extract a boolean value from the first group in the regular
+     * expression and call the supplied function.
+     * 
+     * @param regex the regular expression string; may not be null
+     * @param groupNumber the number of the regular expression group containing the boolean to be extracted; must be positive
+     * @param function the consumer that takes the value of matching field and the boolean extracted from the field name; may not
+     *            be null
+     */
+    default <T> void forEachMatchingFieldNameWithBoolean(Pattern regex, int groupNumber, BiConsumer<String, Boolean> function) {
+        BiFunction<String, String, Boolean> extractor = (fieldName, strValue) -> {
+            try {
+                return Boolean.parseBoolean(strValue);
+            } catch (NumberFormatException e) {
+                LoggerFactory.getLogger(getClass()).error("Unexpected value {} extracted from configuration field '{}' using regex '{}'",
+                                                          strValue, fieldName, regex);
+                return null;
+            }
+        };
+        forEachMatchingFieldName(regex, groupNumber, extractor, function);
+    }
+
+    /**
+     * For all fields whose names match the given regular expression, extract a string value from the first group in the regular
+     * expression and call the supplied function.
+     * 
+     * @param regex the regular expression string; may not be null
+     * @param function the consumer that takes the value of matching field and the string value extracted from the field name; may
+     *            not be null
+     */
+    default <T> void forEachMatchingFieldNameWithString(String regex, BiConsumer<String, String> function) {
+        forEachMatchingFieldNameWithString(Pattern.compile(regex), 1, function);
+    }
+
+    /**
+     * For all fields whose names match the given regular expression, extract a string value from the first group in the regular
+     * expression and call the supplied function.
+     * 
+     * @param regex the regular expression string; may not be null
+     * @param groupNumber the number of the regular expression group containing the string value to be extracted; must be positive
+     * @param function the consumer that takes the value of matching field and the string value extracted from the field name; may
+     *            not be null
+     */
+    default <T> void forEachMatchingFieldNameWithString(String regex, int groupNumber, BiConsumer<String, String> function) {
+        forEachMatchingFieldNameWithString(Pattern.compile(regex), groupNumber, function);
+    }
+
+    /**
+     * For all fields whose names match the given regular expression, extract a string value from the first group in the regular
+     * expression and call the supplied function.
+     * 
+     * @param regex the regular expression string; may not be null
+     * @param groupNumber the number of the regular expression group containing the string value to be extracted; must be positive
+     * @param function the consumer that takes the value of matching field and the string value extracted from the field name; may
+     *            not be null
+     */
+    default <T> void forEachMatchingFieldNameWithString(Pattern regex, int groupNumber, BiConsumer<String, String> function) {
+        forEachMatchingFieldName(regex, groupNumber, (fieldName, value) -> value, function);
+    }
+
+    /**
+     * For all fields whose names match the given regular expression, extract a value from the specified group in the regular
+     * expression and call the supplied function.
+     * 
+     * @param regex the regular expression string; may not be null
+     * @param groupNumber the number of the regular expression group containing the string value to be extracted; must be positive
+     * @param groupExtractor the function that extracts the value from the group
+     * @param function the consumer that takes the value of matching field and the value extracted from the field name; may
+     *            not be null
+     */
+    default <T> void forEachMatchingFieldName(String regex, int groupNumber, BiFunction<String, String, T> groupExtractor,
+                                              BiConsumer<String, T> function) {
+        forEachMatchingFieldName(Pattern.compile(regex), groupNumber, groupExtractor, function);
+    }
+
+    /**
+     * For all fields whose names match the given regular expression, extract a value from the specified group in the regular
+     * expression and call the supplied function.
+     * 
+     * @param regex the regular expression string; may not be null
+     * @param groupNumber the number of the regular expression group containing the string value to be extracted; must be positive
+     * @param groupExtractor the function that extracts the value from the group
+     * @param function the consumer that takes the value of matching field and the value extracted from the field name; may
+     *            not be null
+     */
+    default <T> void forEachMatchingFieldName(Pattern regex, int groupNumber, BiFunction<String, String, T> groupExtractor,
+                                              BiConsumer<String, T> function) {
+        this.asMap().forEach((fieldName, fieldValue) -> {
+            Matcher matcher = regex.matcher(fieldName);
+            if (matcher.matches()) {
+                String groupValue = matcher.group(groupNumber);
+                T extractedValue = groupExtractor.apply(fieldName, groupValue);
+                if (extractedValue != null) function.accept(fieldValue, extractedValue);
+            }
+        });
     }
 }

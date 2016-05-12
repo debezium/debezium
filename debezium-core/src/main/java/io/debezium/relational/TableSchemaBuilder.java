@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Date;
 import org.apache.kafka.connect.data.Decimal;
@@ -87,7 +88,8 @@ public class TableSchemaBuilder {
         Schema valueSchema = schemaBuilder.build();
 
         // And a generator that can be used to create values from rows in the result set ...
-        Function<Object[], Struct> valueGenerator = createValueGenerator(valueSchema, name, columns);
+        TableId id = new TableId(null, null, name);
+        Function<Object[], Struct> valueGenerator = createValueGenerator(valueSchema, id, columns, null, null);
 
         // Finally create our result object with no primary key or key generator ...
         return new TableSchema(null, null, valueSchema, valueGenerator);
@@ -105,26 +107,47 @@ public class TableSchemaBuilder {
      * @return the table schema that can be used for sending rows of data for this table to Kafka Connect; never null
      */
     public TableSchema create(Table table) {
+        return create(table, null, null);
+    }
+
+    /**
+     * Create a {@link TableSchema} from the given {@link Table table definition}. The resulting TableSchema will have a
+     * {@link TableSchema#keySchema() key schema} that contains all of the columns that make up the table's primary key,
+     * and a {@link TableSchema#valueSchema() value schema} that contains only those columns that are not in the table's primary
+     * key.
+     * <p>
+     * This is equivalent to calling {@code create(table,false)}.
+     * 
+     * @param table the table definition; may not be null
+     * @param filter the filter that specifies whether columns in the table should be included; may be null if all columns
+     *            are to be included
+     * @param mappers the mapping functions for columns; may be null if none of the columns are to be mapped to different values
+     * @return the table schema that can be used for sending rows of data for this table to Kafka Connect; never null
+     */
+    public TableSchema create(Table table, Predicate<ColumnId> filter, ColumnMappers mappers) {
         // Build the schemas ...
-        final String tableId = table.id().toString();
-        SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(tableId);
-        SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(tableId + "/pk");
+        final TableId tableId = table.id();
+        final String tableIdStr = tableId.toString();
+        SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(tableIdStr);
+        SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(tableIdStr + "/pk");
         AtomicBoolean hasPrimaryKey = new AtomicBoolean(false);
         table.columns().forEach(column -> {
             if (table.isPrimaryKeyColumn(column.name())) {
-                // The column is part of the primary key, so add it to the PK schema ...
+                // The column is part of the primary key, so ALWAYS add it to the PK schema ...
                 addField(keySchemaBuilder, column);
                 hasPrimaryKey.set(true);
             }
-            // Add the column to the value schema ...
-            addField(valSchemaBuilder, column);
+            if (filter == null || filter.test(new ColumnId(tableId, column.name()))) {
+                // Add the column to the value schema only if the column has not been filtered ...
+                addField(valSchemaBuilder, column);
+            }
         });
         Schema valSchema = valSchemaBuilder.build();
         Schema keySchema = hasPrimaryKey.get() ? keySchemaBuilder.build() : null;
 
         // Create the generators ...
         Function<Object[], Object> keyGenerator = createKeyGenerator(keySchema, tableId, table.primaryKeyColumns());
-        Function<Object[], Struct> valueGenerator = createValueGenerator(valSchema, tableId, table.columns());
+        Function<Object[], Struct> valueGenerator = createValueGenerator(valSchema, tableId, table.columns(), filter, mappers);
 
         // And the table schema ...
         return new TableSchema(keySchema, keyGenerator, valSchema, valueGenerator);
@@ -139,23 +162,26 @@ public class TableSchemaBuilder {
      * @param columns the column definitions for the table that defines the row; may not be null
      * @return the key-generating function, or null if there is no key schema
      */
-    protected Function<Object[], Object> createKeyGenerator(Schema schema, String columnSetName, List<Column> columns) {
+    protected Function<Object[], Object> createKeyGenerator(Schema schema, TableId columnSetName, List<Column> columns) {
         if (schema != null) {
             int[] recordIndexes = indexesForColumns(columns);
             Field[] fields = fieldsForColumns(schema, columns);
             int numFields = recordIndexes.length;
-            ValueConverter[] converters = convertersForColumns(schema, columns);
+            ValueConverter[] converters = convertersForColumns(schema, columnSetName, columns, null, null);
             return (row) -> {
                 Struct result = new Struct(schema);
                 for (int i = 0; i != numFields; ++i) {
                     Object value = row[recordIndexes[i]];
-                    value = value == null ? value : converters[i].convert(value);
-                    try {
-                        result.put(fields[i], value);
-                    } catch (DataException e) {
-                        Column col = columns.get(i);
-                        LOGGER.error("Failed to properly convert key value for '" + columnSetName + "." + col.name() + "' of type "
-                                + col.typeName() + ":", e);
+                    ValueConverter converter = converters[i];
+                    if (converter != null) {
+                        value = value == null ? value : converter.convert(value);
+                        try {
+                            result.put(fields[i], value);
+                        } catch (DataException e) {
+                            Column col = columns.get(i);
+                            LOGGER.error("Failed to properly convert key value for '" + columnSetName + "." + col.name() + "' of type "
+                                    + col.typeName() + ":", e);
+                        }
                     }
                 }
                 return result;
@@ -169,27 +195,38 @@ public class TableSchemaBuilder {
      * 
      * @param schema the Kafka Connect schema for the value; may be null if there is no known schema, in which case the generator
      *            will be null
-     * @param columnSetName the name for the set of columns, used in error messages; may not be null
+     * @param tableId the table identifier; may not be null
      * @param columns the column definitions for the table that defines the row; may not be null
+     * @param filter the filter that specifies whether columns in the table should be included; may be null if all columns
+     *            are to be included
+     * @param mappers the mapping functions for columns; may be null if none of the columns are to be mapped to different values
      * @return the value-generating function, or null if there is no value schema
      */
-    protected Function<Object[], Struct> createValueGenerator(Schema schema, String columnSetName, List<Column> columns) {
+    protected Function<Object[], Struct> createValueGenerator(Schema schema, TableId tableId, List<Column> columns,
+                                                              Predicate<ColumnId> filter, ColumnMappers mappers) {
         if (schema != null) {
             int[] recordIndexes = indexesForColumns(columns);
             Field[] fields = fieldsForColumns(schema, columns);
             int numFields = recordIndexes.length;
-            ValueConverter[] converters = convertersForColumns(schema, columns);
+            ValueConverter[] converters = convertersForColumns(schema, tableId, columns, filter, mappers);
+            AtomicBoolean traceMessage = new AtomicBoolean(true);
             return (row) -> {
                 Struct result = new Struct(schema);
                 for (int i = 0; i != numFields; ++i) {
                     Object value = row[recordIndexes[i]];
-                    if (value != null) value = converters[i].convert(value);
-                    try {
-                        result.put(fields[i], value);
-                    } catch (DataException e) {
+                    ValueConverter converter = converters[i];
+                    if (converter != null) {
+                        if (value != null) value = converter.convert(value);
+                        try {
+                            result.put(fields[i], value);
+                        } catch (DataException e) {
+                            Column col = columns.get(i);
+                            LOGGER.error("Failed to properly convert data value for '" + tableId + "." + col.name() + "' of type "
+                                    + col.typeName() + ":", e);
+                        }
+                    } else if (traceMessage.getAndSet(false)) {
                         Column col = columns.get(i);
-                        LOGGER.error("Failed to properly convert data value for '" + columnSetName + "." + col.name() + "' of type "
-                                + col.typeName() + ":", e);
+                        LOGGER.trace("Excluding '" + tableId + "." + col.name() + "' of type " + col.typeName());
                     }
                 }
                 return result;
@@ -211,37 +248,46 @@ public class TableSchemaBuilder {
         Field[] fields = new Field[columns.size()];
         AtomicInteger i = new AtomicInteger(0);
         columns.forEach(column -> {
-            Field field = schema.field(column.name());
-            assert field != null;
+            Field field = schema.field(column.name());  // may be null if the field is unused ...
             fields[i.getAndIncrement()] = field;
         });
         return fields;
     }
 
-    protected ValueConverter[] convertersForColumns(Schema schema, List<Column> columns) {
+    /**
+     * Obtain the array of converters for each column in a row. A converter might be null if the column is not be included in
+     * the records.
+     * 
+     * @param schema the schema; may not be null
+     * @param tableId the identifier of the table that contains the columns
+     * @param columns the columns in the row; may not be null
+     * @param filter the filter that specifies whether columns in the table should be included; may be null if all columns
+     *            are to be included
+     * @param mappers the mapping functions for columns; may be null if none of the columns are to be mapped to different values
+     * @return the converters for each column in the rows; never null
+     */
+    protected ValueConverter[] convertersForColumns(Schema schema, TableId tableId, List<Column> columns,
+                                                    Predicate<ColumnId> filter, ColumnMappers mappers) {
         ValueConverter[] converters = new ValueConverter[columns.size()];
         AtomicInteger i = new AtomicInteger(0);
         columns.forEach(column -> {
             Field field = schema.field(column.name());
-            ValueConverter converter = createValueConverterFor(column, field);
-            assert converter != null;
-            converters[i.getAndIncrement()] = converter;
+            ValueConverter converter = null;
+            if (filter == null || filter.test(new ColumnId(tableId, column.name()))) {
+                ValueConverter valueConverter = createValueConverterFor(column, field);
+                assert valueConverter != null;
+                if (mappers != null) {
+                    ValueConverter mappingConverter = mappers.mapperFor(tableId, column);
+                    if (mappingConverter != null) {
+                        converter = (value) -> mappingConverter.convert(valueConverter.convert(value));
+                    }
+                }
+                if (converter == null) converter = valueConverter;
+                assert converter != null;
+            }
+            converters[i.getAndIncrement()] = converter; // may be null if not included
         });
         return converters;
-    }
-
-    /**
-     * A function that converts from a column data value into a Kafka Connect object that is compliant with the Kafka Connect
-     * {@link Schema}'s corresponding {@link Field}.
-     */
-    protected static interface ValueConverter {
-        /**
-         * Convert the column's data value into the Kafka Connect object.
-         * 
-         * @param data the column data value; never null
-         * @return the Kafka Connect object
-         */
-        Object convert(Object data);
     }
 
     /**
