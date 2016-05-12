@@ -3,9 +3,8 @@
  * 
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.relational;
+package io.debezium.relational.mapping;
 
-import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -14,7 +13,14 @@ import java.util.function.Predicate;
 import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.annotation.Immutable;
+import io.debezium.config.Configuration;
 import io.debezium.function.Predicates;
+import io.debezium.relational.Column;
+import io.debezium.relational.ColumnId;
+import io.debezium.relational.Selectors;
+import io.debezium.relational.Table;
+import io.debezium.relational.TableId;
+import io.debezium.relational.ValueConverter;
 import io.debezium.util.Strings;
 
 /**
@@ -68,7 +74,21 @@ public class ColumnMappers {
          * @return this object so that methods can be chained together; never null
          */
         public Builder map(String fullyQualifiedColumnNames, Class<ColumnMapper> mapperClass) {
-            return map(fullyQualifiedColumnNames, instantiateMapper(mapperClass));
+            return map(fullyQualifiedColumnNames,mapperClass,null);
+        }
+
+        /**
+         * Set a mapping function for the columns with fully-qualified names that match the given comma-separated list of regular
+         * expression patterns.
+         * 
+         * @param fullyQualifiedColumnNames the comma-separated list of fully-qualified column names; may not be null
+         * @param mapperClass the Java class that implements {@code BiFunction<Column, Object, Object>} and that
+         *            will be used to map actual values into values used in the output record; may not be null
+         * @param config the configuration to pass to the {@link ColumnMapper} instance; may be null
+         * @return this object so that methods can be chained together; never null
+         */
+        public Builder map(String fullyQualifiedColumnNames, Class<ColumnMapper> mapperClass, Configuration config) {
+            return map(fullyQualifiedColumnNames, instantiateMapper(mapperClass, config));
         }
 
         /**
@@ -80,15 +100,7 @@ public class ColumnMappers {
          * @return this object so that methods can be chained together; never null
          */
         public Builder truncateStrings(String fullyQualifiedColumnNames, int maxLength) {
-            return map(fullyQualifiedColumnNames, (column) -> {
-                return (value) -> {
-                    if (value instanceof String) {
-                        String str = (String) value;
-                        if (str.length() > maxLength) return str.substring(0, maxLength);
-                    }
-                    return value;
-                };
-            });
+            return map(fullyQualifiedColumnNames, new TruncateStrings(maxLength));
         }
 
         /**
@@ -125,22 +137,7 @@ public class ColumnMappers {
          * @return this object so that methods can be chained together; never null
          */
         public Builder maskStrings(String fullyQualifiedColumnNames, String maskValue) {
-            return map(fullyQualifiedColumnNames, (column) -> {
-                switch (column.jdbcType()) {
-                    case Types.CHAR: // variable-length
-                    case Types.VARCHAR: // variable-length
-                    case Types.LONGVARCHAR: // variable-length
-                    case Types.CLOB: // variable-length
-                    case Types.NCHAR: // fixed-length
-                    case Types.NVARCHAR: // fixed-length
-                    case Types.LONGNVARCHAR: // fixed-length
-                    case Types.NCLOB: // fixed-length
-                    case Types.DATALINK:
-                        return (input) -> maskValue;
-                    default:
-                        return (input) -> input;
-                }
-            });
+            return map(fullyQualifiedColumnNames, new MaskStrings(maskValue));
         }
 
         /**
@@ -153,8 +150,23 @@ public class ColumnMappers {
          *            an existing mapping function should be removed
          * @return this object so that methods can be chained together; never null
          */
-        @SuppressWarnings("unchecked")
         public Builder map(String fullyQualifiedColumnNames, String mapperClassName) {
+            return map(fullyQualifiedColumnNames,mapperClassName,null);
+        }
+
+        /**
+         * Set a mapping function for the columns with fully-qualified names that match the given comma-separated list of regular
+         * expression patterns.
+         * 
+         * @param fullyQualifiedColumnNames the comma-separated list of fully-qualified column names; may not be null
+         * @param mapperClassName the name of the Java class that implements {@code BiFunction<Column, Object, Object>} and that
+         *            will be used to map actual values into values used in the output record; null if
+         *            an existing mapping function should be removed
+         * @param config the configuration to pass to the {@link ColumnMapper} instance; may be null
+         * @return this object so that methods can be chained together; never null
+         */
+        @SuppressWarnings("unchecked")
+        public Builder map(String fullyQualifiedColumnNames, String mapperClassName, Configuration config) {
             Class<ColumnMapper> mapperClass = null;
             if (mapperClassName != null) {
                 try {
@@ -167,7 +179,7 @@ public class ColumnMappers {
                             e);
                 }
             }
-            return map(fullyQualifiedColumnNames, mapperClass);
+            return map(fullyQualifiedColumnNames, mapperClass, config);
         }
 
         /**
@@ -194,8 +206,8 @@ public class ColumnMappers {
      * @param column the column; may not be null
      * @return the mapping function, or null if there is no mapping function
      */
-    public ValueConverter mapperFor(Table table, Column column) {
-        return mapperFor(table.id(),column);
+    public ValueConverter mappingConverterFor(Table table, Column column) {
+        return mappingConverterFor(table.id(), column);
     }
 
     /**
@@ -205,11 +217,23 @@ public class ColumnMappers {
      * @param column the column; may not be null
      * @return the mapping function, or null if there is no mapping function
      */
-    public ValueConverter mapperFor(TableId tableId, Column column) {
+    public ValueConverter mappingConverterFor(TableId tableId, Column column) {
+        ColumnMapper mapper = mapperFor(tableId,column);
+        return mapper != null ? mapper.create(column) : null;
+    }
+
+    /**
+     * Get the value mapping function for the given column.
+     * 
+     * @param tableId the identifier of the table to which the column belongs; may not be null
+     * @param column the column; may not be null
+     * @return the mapping function, or null if there is no mapping function
+     */
+    public ColumnMapper mapperFor(TableId tableId, Column column) {
         ColumnId id = new ColumnId(tableId, column.name());
         Optional<MapperRule> matchingRule = rules.stream().filter(rule -> rule.matches(id)).findFirst();
         if (matchingRule.isPresent()) {
-            return matchingRule.get().mapper.create(column);
+            return matchingRule.get().mapper;
         }
         return null;
     }
@@ -229,13 +253,19 @@ public class ColumnMappers {
         }
     }
 
-    protected static <T> T instantiateMapper(Class<T> clazz) {
+    protected static ColumnMapper instantiateMapper(Class<ColumnMapper> clazz, Configuration config) {
         try {
-            return clazz.newInstance();
+             ColumnMapper mapper = clazz.newInstance();
+             if ( config != null ) {
+                 mapper.initialize(config);
+             }
+             return mapper;
         } catch (InstantiationException e) {
             throw new ConnectException("Unable to instantiate column mapper class " + clazz.getName() + ": " + e.getMessage(), e);
         } catch (IllegalAccessException e) {
             throw new ConnectException("Unable to access column mapper class " + clazz.getName() + ": " + e.getMessage(), e);
+        } catch (Throwable e) {
+            throw new ConnectException("Unable to initialize the column mapper class " + clazz.getName() + ": " + e.getMessage(), e);
         }
     }
 }

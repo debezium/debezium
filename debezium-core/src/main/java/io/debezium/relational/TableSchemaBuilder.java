@@ -41,6 +41,8 @@ import io.debezium.data.Bits;
 import io.debezium.data.IsoTime;
 import io.debezium.data.IsoTimestamp;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.relational.mapping.ColumnMapper;
+import io.debezium.relational.mapping.ColumnMappers;
 
 /**
  * Builder that constructs {@link TableSchema} instances for {@link Table} definitions.
@@ -84,7 +86,7 @@ public class TableSchemaBuilder {
 
         // Create a schema that represents these columns ...
         SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(name);
-        columns.forEach(column -> addField(schemaBuilder, column));
+        columns.forEach(column -> addField(schemaBuilder, column, null));
         Schema valueSchema = schemaBuilder.build();
 
         // And a generator that can be used to create values from rows in the result set ...
@@ -134,12 +136,13 @@ public class TableSchemaBuilder {
         table.columns().forEach(column -> {
             if (table.isPrimaryKeyColumn(column.name())) {
                 // The column is part of the primary key, so ALWAYS add it to the PK schema ...
-                addField(keySchemaBuilder, column);
+                addField(keySchemaBuilder, column, null);
                 hasPrimaryKey.set(true);
             }
             if (filter == null || filter.test(new ColumnId(tableId, column.name()))) {
                 // Add the column to the value schema only if the column has not been filtered ...
-                addField(valSchemaBuilder, column);
+                ColumnMapper mapper = mappers == null ? null : mappers.mapperFor(tableId, column);
+                addField(valSchemaBuilder, column, mapper);
             }
         });
         Schema valSchema = valSchemaBuilder.build();
@@ -248,7 +251,7 @@ public class TableSchemaBuilder {
         Field[] fields = new Field[columns.size()];
         AtomicInteger i = new AtomicInteger(0);
         columns.forEach(column -> {
-            Field field = schema.field(column.name());  // may be null if the field is unused ...
+            Field field = schema.field(column.name()); // may be null if the field is unused ...
             fields[i.getAndIncrement()] = field;
         });
         return fields;
@@ -277,7 +280,7 @@ public class TableSchemaBuilder {
                 ValueConverter valueConverter = createValueConverterFor(column, field);
                 assert valueConverter != null;
                 if (mappers != null) {
-                    ValueConverter mappingConverter = mappers.mapperFor(tableId, column);
+                    ValueConverter mappingConverter = mappers.mappingConverterFor(tableId, column);
                     if (mappingConverter != null) {
                         converter = (value) -> mappingConverter.convert(valueConverter.convert(value));
                     }
@@ -295,9 +298,11 @@ public class TableSchemaBuilder {
      * 
      * @param builder the schema builder; never null
      * @param column the column definition
+     * @param mapper the mapping function for the column; may be null if the columns is not to be mapped to different values
      */
-    protected void addField(SchemaBuilder builder, Column column) {
-        addField(builder, column.name(), column.jdbcType(), column.typeName(), column.length(), column.scale(), column.isOptional());
+    protected void addField(SchemaBuilder builder, Column column, ColumnMapper mapper) {
+        addField(builder, column.name(), column.jdbcType(), column.typeName(), column.length(),
+                 column.scale(), column.isOptional(), mapper);
     }
 
     /**
@@ -307,16 +312,19 @@ public class TableSchemaBuilder {
      * this method and delegate to this method before and/or after the custom logic. Similar behavior should be addressed
      * in a specialized {@link #createValueConverterFor(Column, Field)} as well.
      * 
-     * @param builder the schema builder; never null
+     * @param parentBuilder the builder for the schema used to {@link SchemaBuilder#field(String, Schema) define} the new field;
+     *            never null
      * @param columnName the name of the column
      * @param jdbcType the column's {@link Types JDBC type}
      * @param typeName the column's DBMS-specific type name
      * @param columnLength the length of the column
      * @param columnScale the scale of the column values, or 0 if not a decimal value
      * @param optional {@code true} if the column is optional, or {@code false} if the column is known to always have a value
+     * @param mapper the mapping function for the column; may be null if the columns is not to be mapped to different values
      */
-    protected void addField(SchemaBuilder builder, String columnName, int jdbcType, String typeName, int columnLength,
-                            int columnScale, boolean optional) {
+    protected void addField(SchemaBuilder parentBuilder, String columnName, int jdbcType, String typeName, int columnLength,
+                            int columnScale, boolean optional, ColumnMapper mapper) {
+        SchemaBuilder fieldBuilder = null;
         switch (jdbcType) {
             case Types.NULL:
                 LOGGER.warn("Unexpected JDBC type: NULL");
@@ -325,106 +333,101 @@ public class TableSchemaBuilder {
             // Single- and multi-bit values ...
             case Types.BIT:
                 if (columnLength > 1) {
-                    SchemaBuilder bitBuilder = Bits.builder();
-                    if (optional) bitBuilder.optional();
-                    builder.field(columnName, bitBuilder.build());
+                    fieldBuilder = Bits.builder();
+                    fieldBuilder.parameter("length", Integer.toString(columnLength));
                     break;
                 }
                 // otherwise, it is just one bit so use a boolean ...
             case Types.BOOLEAN:
-                builder.field(columnName, optional ? Schema.OPTIONAL_BOOLEAN_SCHEMA : Schema.BOOLEAN_SCHEMA);
+                fieldBuilder = SchemaBuilder.bool();
                 break;
 
-            // Binary values ...
+            // Fixed-length binary values ...
             case Types.BLOB:
             case Types.BINARY:
+                fieldBuilder = SchemaBuilder.bytes();
+                break;
+
+            // Variable-length binary values ...
             case Types.VARBINARY:
             case Types.LONGVARBINARY:
-                builder.field(columnName, optional ? Schema.OPTIONAL_BYTES_SCHEMA : Schema.BYTES_SCHEMA);
+                fieldBuilder = SchemaBuilder.bytes();
                 break;
 
             // Numeric integers
             case Types.TINYINT:
                 // values are an 8-bit unsigned integer value between 0 and 255
-                builder.field(columnName, optional ? Schema.OPTIONAL_INT8_SCHEMA : Schema.INT8_SCHEMA);
+                fieldBuilder = SchemaBuilder.int8();
                 break;
             case Types.SMALLINT:
                 // values are a 16-bit signed integer value between -32768 and 32767
-                builder.field(columnName, optional ? Schema.OPTIONAL_INT16_SCHEMA : Schema.INT16_SCHEMA);
+                fieldBuilder = SchemaBuilder.int16();
                 break;
             case Types.INTEGER:
                 // values are a 32-bit signed integer value between - 2147483648 and 2147483647
-                builder.field(columnName, optional ? Schema.OPTIONAL_INT32_SCHEMA : Schema.INT32_SCHEMA);
+                fieldBuilder = SchemaBuilder.int32();
                 break;
             case Types.BIGINT:
                 // values are a 64-bit signed integer value between -9223372036854775808 and 9223372036854775807
-                builder.field(columnName, optional ? Schema.OPTIONAL_INT64_SCHEMA : Schema.INT64_SCHEMA);
+                fieldBuilder = SchemaBuilder.int64();
                 break;
 
             // Numeric decimal numbers
             case Types.REAL:
                 // values are single precision floating point number which supports 7 digits of mantissa.
-                builder.field(columnName, optional ? Schema.OPTIONAL_FLOAT32_SCHEMA : Schema.FLOAT32_SCHEMA);
+                fieldBuilder = SchemaBuilder.float32();
                 break;
             case Types.FLOAT:
             case Types.DOUBLE:
                 // values are double precision floating point number which supports 15 digits of mantissa.
-                builder.field(columnName, optional ? Schema.OPTIONAL_FLOAT64_SCHEMA : Schema.OPTIONAL_FLOAT64_SCHEMA);
+                fieldBuilder = SchemaBuilder.float64();
                 break;
             case Types.NUMERIC:
             case Types.DECIMAL:
                 // values are fixed-precision decimal values with exact precision.
                 // Use Kafka Connect's arbitrary precision decimal type and use the column's specified scale ...
-                SchemaBuilder decBuilder = Decimal.builder(columnScale);
-                if (optional) decBuilder.optional();
-                builder.field(columnName, decBuilder.build());
+                fieldBuilder = Decimal.builder(columnScale);
                 break;
 
-            // String values
-            case Types.CHAR: // variable-length
-            case Types.VARCHAR: // variable-length
-            case Types.LONGVARCHAR: // variable-length
-            case Types.CLOB: // variable-length
-            case Types.NCHAR: // fixed-length
-            case Types.NVARCHAR: // fixed-length
-            case Types.LONGNVARCHAR: // fixed-length
-            case Types.NCLOB: // fixed-length
+            // Fixed-length string values
+            case Types.CHAR:
+            case Types.NCHAR:
+            case Types.NVARCHAR:
+            case Types.LONGNVARCHAR:
+            case Types.NCLOB:
+                fieldBuilder = SchemaBuilder.string();
+                break;
+                
+            // Variable-length string values
+            case Types.VARCHAR:
+            case Types.LONGVARCHAR:
+            case Types.CLOB:
             case Types.DATALINK:
             case Types.SQLXML:
-                builder.field(columnName, optional ? Schema.OPTIONAL_STRING_SCHEMA : Schema.STRING_SCHEMA);
+                fieldBuilder = SchemaBuilder.string();
                 break;
 
             // Date and time values
             case Types.DATE:
-                SchemaBuilder dateBuilder = Date.builder();
-                if (optional) dateBuilder.optional();
-                builder.field(columnName, dateBuilder.build());
+                fieldBuilder = Date.builder();
                 break;
             case Types.TIME:
-                SchemaBuilder timeBuilder = Time.builder();
-                if (optional) timeBuilder.optional();
-                builder.field(columnName, timeBuilder.build());
+                fieldBuilder = Time.builder();
                 break;
             case Types.TIMESTAMP:
-                SchemaBuilder timestampBuilder = Timestamp.builder();
-                if (optional) timestampBuilder.optional();
-                builder.field(columnName, timestampBuilder.build());
+                fieldBuilder = Timestamp.builder();
                 break;
             case Types.TIME_WITH_TIMEZONE:
-                SchemaBuilder offsetTimeBuilder = IsoTime.builder();
-                if (optional) offsetTimeBuilder.optional();
-                builder.field(columnName, offsetTimeBuilder.build());
+                fieldBuilder = IsoTime.builder();
                 break;
             case Types.TIMESTAMP_WITH_TIMEZONE:
-                SchemaBuilder tsWithTzBuilder = IsoTimestamp.builder();
-                if (optional) tsWithTzBuilder.optional();
-                builder.field(columnName, tsWithTzBuilder.build());
+                fieldBuilder = IsoTimestamp.builder();
                 break;
 
             // Other types ...
             case Types.ROWID:
                 // often treated as a string, but we'll generalize and treat it as a byte array
-                builder.field(columnName, optional ? Schema.OPTIONAL_BYTES_SCHEMA : Schema.BYTES_SCHEMA);
+                fieldBuilder = SchemaBuilder.bytes();
                 break;
 
             // Unhandled types
@@ -436,29 +439,39 @@ public class TableSchemaBuilder {
             case Types.REF_CURSOR:
             case Types.STRUCT:
             default:
-                addOtherField(builder, columnName, jdbcType, typeName, columnLength, columnScale, optional);
+                fieldBuilder = addOtherField(columnName, jdbcType, typeName, columnLength, columnScale, optional, mapper);
                 break;
+        }
+        if (fieldBuilder != null) {
+            if (mapper != null) {
+                // Let the mapper add properties to the schema ...
+                mapper.alterFieldSchema(fieldBuilder);
+            }
+            if (optional) fieldBuilder.optional();
+            parentBuilder.field(columnName, fieldBuilder.build());
         }
     }
 
     /**
-     * Add to the supplied {@link SchemaBuilder} a field for the column with the given information.
+     * Return a {@link SchemaBuilder} for a field for the column with the given information.
      * <p>
      * Subclasses that wish to override or extend the mappings of JDBC/DBMS types to Kafka Connect value types can override
      * this method and delegate to this method before and/or after the custom logic. Similar behavior should be addressed
-     * in a specialized {@link #addField(SchemaBuilder, String, int, String, int, int, boolean)} as well.
+     * in a specialized {@link #addField(SchemaBuilder, String, int, String, int, int, boolean, ColumnMapper)} as well.
      * 
-     * @param builder the schema builder; never null
      * @param columnName the name of the column
      * @param jdbcType the column's {@link Types JDBC type}
      * @param typeName the column's DBMS-specific type name
      * @param columnLength the length of the column
      * @param columnScale the scale of the column values, or 0 if not a decimal value
      * @param optional {@code true} if the column is optional, or {@code false} if the column is known to always have a value
+     * @param mapper the mapping function for the column; may be null if the columns is not to be mapped to different values
+     * @return the {@link SchemaBuilder} for the new field, ready to be {@link SchemaBuilder#build() build}; may be null
      */
-    protected void addOtherField(SchemaBuilder builder, String columnName, int jdbcType, String typeName, int columnLength,
-                                 int columnScale, boolean optional) {
+    protected SchemaBuilder addOtherField(String columnName, int jdbcType, String typeName, int columnLength,
+                                          int columnScale, boolean optional, ColumnMapper mapper) {
         LOGGER.warn("Unexpected JDBC type: {}", jdbcType);
+        return null;
     }
 
     /**
@@ -856,8 +869,13 @@ public class TableSchemaBuilder {
         java.util.Date date = null;
         if (data instanceof java.sql.Date) {
             // JDBC specification indicates that this will be the nominal object for this JDBC type.
-            // Contains only date info, with all time values set to all zeros (e.g. midnight)
-            date = (java.sql.Date) data;
+            // Contains only date info, with all time values set to all zeros (e.g. midnight).
+            // However, the java.sql.Date object *may* contain timezone information for some DBMS+Driver combinations.
+            // Therefore, first convert it to a local LocalDate, then to a LocalDateTime at midnight, and then to an
+            // instant in UTC ...
+            java.sql.Date sqlDate = (java.sql.Date) data;
+            LocalDate localDate = sqlDate.toLocalDate();
+            date = java.util.Date.from(localDate.atStartOfDay().toInstant(ZoneOffset.UTC));
         } else if (data instanceof java.util.Date) {
             // Possible that some implementations might use this. We should be prepared to ignore any time,
             // information by truncating to days and creating a new java.util.Date ...

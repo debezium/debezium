@@ -5,6 +5,8 @@
  */
 package io.debezium.embedded;
 
+import static org.junit.Assert.fail;
+
 import java.nio.file.Path;
 import java.util.LinkedList;
 import java.util.List;
@@ -20,6 +22,8 @@ import java.util.function.Consumer;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.json.JsonConverter;
+import org.apache.kafka.connect.json.JsonDeserializer;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
@@ -27,6 +31,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import static org.fest.assertions.Assertions.assertThat;
 
@@ -56,9 +65,24 @@ public abstract class AbstractConnectorTest implements Testing {
     protected long pollTimeoutInMs = TimeUnit.SECONDS.toMillis(5);
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     private CountDownLatch latch;
+    private JsonConverter keyJsonConverter = new JsonConverter();
+    private JsonConverter valueJsonConverter = new JsonConverter();
+    private JsonDeserializer keyJsonDeserializer = new JsonDeserializer();
+    private JsonDeserializer valueJsonDeserializer = new JsonDeserializer();
 
     @Before
     public final void initializeConnectorTestFramework() {
+        keyJsonConverter = new JsonConverter();
+        valueJsonConverter = new JsonConverter();
+        keyJsonDeserializer = new JsonDeserializer();
+        valueJsonDeserializer = new JsonDeserializer();
+        Configuration converterConfig = Configuration.create().build();
+        Configuration deserializerConfig = Configuration.create().build();
+        keyJsonConverter.configure(converterConfig.asMap(), true);
+        valueJsonConverter.configure(converterConfig.asMap(), false);
+        keyJsonDeserializer.configure(deserializerConfig.asMap(), true);
+        valueJsonDeserializer.configure(deserializerConfig.asMap(), false);
+
         resetBeforeEachTest();
         consumedLines = new ArrayBlockingQueue<>(getMaximumEnqueuedRecordCount());
         Testing.Files.delete(OFFSET_STORE_PATH);
@@ -306,6 +330,51 @@ public abstract class AbstractConnectorTest implements Testing {
         append(record.value(), sb);
         sb.append("}");
         Testing.print(sb.toString());
+    }
+
+    protected void printJson(SourceRecord record) {
+        JsonNode keyJson = null;
+        JsonNode valueJson = null;
+        try {
+            // First serialize and deserialize the key ...
+            byte[] keyBytes = keyJsonConverter.fromConnectData(record.topic(), record.keySchema(), record.key());
+            keyJson = keyJsonDeserializer.deserialize(record.topic(), keyBytes);
+            // then the value ...
+            byte[] valueBytes = valueJsonConverter.fromConnectData(record.topic(), record.valueSchema(), record.value());
+            valueJson = valueJsonDeserializer.deserialize(record.topic(), valueBytes);
+            // And finally get ready to print it ...
+            JsonNodeFactory nodeFactory = new JsonNodeFactory(false);
+            ObjectNode message = nodeFactory.objectNode();
+            message.set("key", keyJson);
+            message.set("value", valueJson);
+            Testing.print("Message on topic '" + record.topic() + "':");
+            Testing.print(prettyJson(message));
+        } catch (Throwable t) {
+            Testing.printError(t);
+            Testing.print("Problem with message on topic '" + record.topic() + "':");
+            if ( keyJson != null ) {
+                Testing.print("valid key = " + prettyJson(keyJson));
+            } else {
+                Testing.print("invalid key");
+            }
+            if ( valueJson != null ) {
+                Testing.print("valid value = " + prettyJson(valueJson));
+            } else {
+                Testing.print("invalid value");
+            }
+            fail(t.getMessage());
+        }
+    }
+
+    protected String prettyJson(JsonNode json) {
+        try {
+            return new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(json);
+        } catch (Throwable t) {
+            Testing.printError(t);
+            fail(t.getMessage());
+            assert false : "Will not get here";
+            return null;
+        }
     }
 
     protected void append(Object obj, StringBuilder sb) {

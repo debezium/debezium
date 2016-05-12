@@ -33,7 +33,6 @@ import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.relational.ColumnId;
-import io.debezium.relational.ColumnMappers;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
@@ -41,6 +40,7 @@ import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.HistoryRecord;
+import io.debezium.relational.mapping.ColumnMappers;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Collect;
 
