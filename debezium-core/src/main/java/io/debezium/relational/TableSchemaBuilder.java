@@ -301,40 +301,16 @@ public class TableSchemaBuilder {
      * @param mapper the mapping function for the column; may be null if the columns is not to be mapped to different values
      */
     protected void addField(SchemaBuilder builder, Column column, ColumnMapper mapper) {
-        addField(builder, column.name(), column.jdbcType(), column.typeName(), column.length(),
-                 column.scale(), column.isOptional(), mapper);
-    }
-
-    /**
-     * Add to the supplied {@link SchemaBuilder} a field for the column with the given information.
-     * <p>
-     * Subclasses that wish to override or extend the mappings of JDBC/DBMS types to Kafka Connect value types can override
-     * this method and delegate to this method before and/or after the custom logic. Similar behavior should be addressed
-     * in a specialized {@link #createValueConverterFor(Column, Field)} as well.
-     * 
-     * @param parentBuilder the builder for the schema used to {@link SchemaBuilder#field(String, Schema) define} the new field;
-     *            never null
-     * @param columnName the name of the column
-     * @param jdbcType the column's {@link Types JDBC type}
-     * @param typeName the column's DBMS-specific type name
-     * @param columnLength the length of the column
-     * @param columnScale the scale of the column values, or 0 if not a decimal value
-     * @param optional {@code true} if the column is optional, or {@code false} if the column is known to always have a value
-     * @param mapper the mapping function for the column; may be null if the columns is not to be mapped to different values
-     */
-    protected void addField(SchemaBuilder parentBuilder, String columnName, int jdbcType, String typeName, int columnLength,
-                            int columnScale, boolean optional, ColumnMapper mapper) {
         SchemaBuilder fieldBuilder = null;
-        switch (jdbcType) {
+        switch (column.jdbcType()) {
             case Types.NULL:
                 LOGGER.warn("Unexpected JDBC type: NULL");
                 break;
 
             // Single- and multi-bit values ...
             case Types.BIT:
-                if (columnLength > 1) {
+                if (column.length() > 1) {
                     fieldBuilder = Bits.builder();
-                    fieldBuilder.parameter("length", Integer.toString(columnLength));
                     break;
                 }
                 // otherwise, it is just one bit so use a boolean ...
@@ -386,7 +362,7 @@ public class TableSchemaBuilder {
             case Types.DECIMAL:
                 // values are fixed-precision decimal values with exact precision.
                 // Use Kafka Connect's arbitrary precision decimal type and use the column's specified scale ...
-                fieldBuilder = Decimal.builder(columnScale);
+                fieldBuilder = Decimal.builder(column.scale());
                 break;
 
             // Fixed-length string values
@@ -439,16 +415,16 @@ public class TableSchemaBuilder {
             case Types.REF_CURSOR:
             case Types.STRUCT:
             default:
-                fieldBuilder = addOtherField(columnName, jdbcType, typeName, columnLength, columnScale, optional, mapper);
+                fieldBuilder = addOtherField(column, mapper);
                 break;
         }
         if (fieldBuilder != null) {
             if (mapper != null) {
                 // Let the mapper add properties to the schema ...
-                mapper.alterFieldSchema(fieldBuilder);
+                mapper.alterFieldSchema(column,fieldBuilder);
             }
-            if (optional) fieldBuilder.optional();
-            parentBuilder.field(columnName, fieldBuilder.build());
+            if (column.isOptional()) fieldBuilder.optional();
+            builder.field(column.name(), fieldBuilder.build());
         }
     }
 
@@ -457,20 +433,14 @@ public class TableSchemaBuilder {
      * <p>
      * Subclasses that wish to override or extend the mappings of JDBC/DBMS types to Kafka Connect value types can override
      * this method and delegate to this method before and/or after the custom logic. Similar behavior should be addressed
-     * in a specialized {@link #addField(SchemaBuilder, String, int, String, int, int, boolean, ColumnMapper)} as well.
+     * in a specialized {@link #addField(SchemaBuilder, Column, ColumnMapper)} as well.
      * 
-     * @param columnName the name of the column
-     * @param jdbcType the column's {@link Types JDBC type}
-     * @param typeName the column's DBMS-specific type name
-     * @param columnLength the length of the column
-     * @param columnScale the scale of the column values, or 0 if not a decimal value
-     * @param optional {@code true} if the column is optional, or {@code false} if the column is known to always have a value
+     * @param column the column
      * @param mapper the mapping function for the column; may be null if the columns is not to be mapped to different values
      * @return the {@link SchemaBuilder} for the new field, ready to be {@link SchemaBuilder#build() build}; may be null
      */
-    protected SchemaBuilder addOtherField(String columnName, int jdbcType, String typeName, int columnLength,
-                                          int columnScale, boolean optional, ColumnMapper mapper) {
-        LOGGER.warn("Unexpected JDBC type: {}", jdbcType);
+    protected SchemaBuilder addOtherField(Column column, ColumnMapper mapper) {
+        LOGGER.warn("Unexpected JDBC type: {}", column.jdbcType());
         return null;
     }
 

@@ -8,7 +8,6 @@ package io.debezium.relational.mapping;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
 import io.debezium.annotation.Immutable;
-import io.debezium.config.Configuration;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
 
@@ -34,25 +33,19 @@ public class TruncateStrings implements ColumnMapper {
 
     @Override
     public ValueConverter create(Column column) {
-        return converter;
+        return isTruncationPossible(column) ? converter : ValueConverter.passthrough();
     }
 
     @Override
-    public void alterFieldSchema(SchemaBuilder schemaBuilder) {
-        Configuration params = Configuration.from(schemaBuilder.parameters());
-        Integer length = params.getInteger("length");
-        if ( length != null && converter.maxLength < length ) {
-            // Overwrite the parameter ...
-            schemaBuilder.parameter("length",Integer.toString(converter.maxLength));
+    public void alterFieldSchema(Column column, SchemaBuilder schemaBuilder) {
+        if (isTruncationPossible(column)) {
+            schemaBuilder.parameter("truncateLength", Integer.toString(converter.maxLength));
         }
-        Integer maxLength = params.getInteger("maxLength");
-        if ( maxLength != null && converter.maxLength < maxLength ) {
-            // Overwrite the parameter ...
-            schemaBuilder.parameter("maxLength",Integer.toString(converter.maxLength));
-        }
-        if ( maxLength == null && length == null ) {
-            schemaBuilder.parameter("maxLength",Integer.toString(converter.maxLength));
-        }
+    }
+
+    protected boolean isTruncationPossible(Column column) {
+        // Possible when the length is unknown or greater than the max truncation length ...
+        return column.length() < 0 || column.length() > converter.maxLength;
     }
 
     @Immutable
