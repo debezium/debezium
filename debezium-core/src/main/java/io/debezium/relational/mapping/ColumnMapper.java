@@ -38,9 +38,10 @@ public interface ColumnMapper {
     
     /**
      * Optionally annotate the schema with properties to better capture the mapping behavior.
+     * @param column the column definition; never null
      * @param schemaBuilder the builder for the {@link Field}'s schema; never null
      */
-    default void alterFieldSchema( SchemaBuilder schemaBuilder) {
+    default void alterFieldSchema(Column column, SchemaBuilder schemaBuilder) {
         // do nothing
     }
 }

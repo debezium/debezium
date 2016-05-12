@@ -52,7 +52,7 @@ public class MaskStrings implements ColumnMapper {
     }
 
     @Override
-    public void alterFieldSchema(SchemaBuilder schemaBuilder) {
+    public void alterFieldSchema(Column column, SchemaBuilder schemaBuilder) {
         schemaBuilder.parameter("masked", "true");
     }
 
