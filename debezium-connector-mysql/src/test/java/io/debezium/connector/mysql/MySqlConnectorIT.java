@@ -102,7 +102,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
         
         records.ddlRecordsForDatabase("connector_test").forEach(this::print);
-        //records.ddlRecordsForDatabase("readbinlog_test").forEach(this::print);
+
+        // Check that all records are valid, can be serialized and deserialized ...
+        records.forEach(this::validate);
         
         // Make sure there are no more ...
         Testing.Print.disable();
@@ -200,6 +202,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertThat(records.recordsForTopic("kafka-connect-2.connector_test.customers").size()).isEqualTo(4);
         assertThat(records.recordsForTopic("kafka-connect-2.connector_test.orders").size()).isEqualTo(5);
         assertThat(records.topics().size()).isEqualTo(4);
+
+        // Check that all records are valid, can be serialized and deserialized ...
+        records.forEach(this::validate);
         
         // More records may have been written (if this method were run after the others), but we don't care ...
         stopConnector();

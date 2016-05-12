@@ -24,7 +24,9 @@ import java.util.function.Consumer;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.json.JsonDeserializer;
 import org.apache.kafka.connect.source.SourceConnector;
@@ -202,13 +204,13 @@ public abstract class AbstractConnectorTest implements Testing {
         // Create the connector ...
         engine = EmbeddedEngine.create()
                                .using(config)
-                               .notifying((record)->{
+                               .notifying((record) -> {
                                    try {
                                        consumedLines.put(record);
                                    } catch ( InterruptedException e ) {
                                        Thread.interrupted();
                                    }
-                                })
+                               })
                                .using(this.getClass().getClassLoader())
                                .using(wrapperCallback)
                                .build();
@@ -319,6 +321,12 @@ public abstract class AbstractConnectorTest implements Testing {
         }
         public Set<String> topics() {
             return recordsByTopic.keySet();
+        }
+        public void forEachInTopic(String topic, Consumer<SourceRecord> consumer) {
+            recordsForTopic(topic).forEach(consumer);
+        }
+        public void forEach( Consumer<SourceRecord> consumer) {
+            records.forEach(consumer);
         }
         public void print() {
             Testing.print("" + topics().size() + " topics: " + topics());
@@ -436,6 +444,100 @@ public abstract class AbstractConnectorTest implements Testing {
         assertThat(record.valueSchema()).isNull();
     }
 
+    /**
+     * Assert that the supplied {@link Struct} is {@link Struct#validate() valid} and its {@link Struct#schema() schema}
+     * matches that of the supplied {@code schema}.
+     * 
+     * @param value the value with a schema; may not be null
+     */
+    protected void assertSchemaMatchesStruct(SchemaAndValue value) {
+        Object val = value.value();
+        assertThat(val).isInstanceOf(Struct.class);
+        assertSchemaMatchesStruct((Struct) val, value.schema());
+    }
+
+    /**
+     * Assert that the supplied {@link Struct} is {@link Struct#validate() valid} and its {@link Struct#schema() schema}
+     * matches that of the supplied {@code schema}.
+     * 
+     * @param struct the {@link Struct} to validate; may not be null
+     * @param schema the expected schema of the {@link Struct}; may not be null
+     */
+    protected void assertSchemaMatchesStruct(Struct struct, Schema schema) {
+        // First validate the struct itself ...
+        try {
+            struct.validate();
+        } catch (DataException e) {
+            throw new AssertionError("The struct '" + struct + "' failed to validate", e);
+        }
+
+        Schema actualSchema = struct.schema();
+        assertThat(actualSchema).isEqualTo(schema);
+        assertFieldsInSchema(struct,schema);
+    }
+
+    private void assertFieldsInSchema(Struct struct, Schema schema ) {
+        schema.fields().forEach(field->{
+            Object val1 = struct.get(field);
+            Object val2 = struct.get(field.name());
+            assertThat(val1).isSameAs(val2);
+            if ( val1 instanceof Struct ) {
+                assertFieldsInSchema((Struct)val1,field.schema());
+            }
+        });
+    }
+    
+    /**
+     * Validate that a {@link SourceRecord}'s key and value can each be converted to a byte[] and then back to an equivalent
+     * {@link SourceRecord}.
+     * 
+     * @param record the record to validate; may not be null
+     */
+    protected void validate(SourceRecord record) {
+        print(record);
+
+        JsonNode keyJson = null;
+        JsonNode valueJson = null;
+        SchemaAndValue keyWithSchema = null;
+        SchemaAndValue valueWithSchema = null;
+        try {
+            // First serialize and deserialize the key ...
+            byte[] keyBytes = keyJsonConverter.fromConnectData(record.topic(), record.keySchema(), record.key());
+            keyJson = keyJsonDeserializer.deserialize(record.topic(), keyBytes);
+            keyWithSchema = keyJsonConverter.toConnectData(record.topic(), keyBytes);
+            assertThat(keyWithSchema.schema()).isEqualTo(record.keySchema());
+            assertThat(keyWithSchema.value()).isEqualTo(record.key());
+            assertSchemaMatchesStruct(keyWithSchema);
+
+            // then the value ...
+            byte[] valueBytes = valueJsonConverter.fromConnectData(record.topic(), record.valueSchema(), record.value());
+            valueJson = valueJsonDeserializer.deserialize(record.topic(), valueBytes);
+            valueWithSchema = valueJsonConverter.toConnectData(record.topic(), valueBytes);
+            assertThat(valueWithSchema.schema()).isEqualTo(record.valueSchema());
+            assertThat(valueWithSchema.value()).isEqualTo(record.value());
+            assertSchemaMatchesStruct(valueWithSchema);
+        } catch (Throwable t) {
+            Testing.printError(t);
+            Testing.print("Problem with message on topic '" + record.topic() + "':");
+            if (keyJson != null) {
+                Testing.print("valid key = " + prettyJson(keyJson));
+            } else if (keyWithSchema != null) {
+                Testing.print("valid key with schema = " + keyWithSchema);
+            } else {
+                Testing.print("invalid key");
+            }
+            if (valueJson != null) {
+                Testing.print("valid value = " + prettyJson(valueJson));
+            } else if (valueWithSchema != null) {
+                Testing.print("valid value with schema = " + valueWithSchema);
+            } else {
+                Testing.print("invalid value");
+            }
+            if (t instanceof AssertionError) throw t;
+            fail(t.getMessage());
+        }
+    }
+
     protected void print(SourceRecord record) {
         StringBuilder sb = new StringBuilder("SourceRecord{");
         sb.append("sourcePartition=").append(record.sourcePartition());
@@ -470,12 +572,12 @@ public abstract class AbstractConnectorTest implements Testing {
         } catch (Throwable t) {
             Testing.printError(t);
             Testing.print("Problem with message on topic '" + record.topic() + "':");
-            if ( keyJson != null ) {
+            if (keyJson != null) {
                 Testing.print("valid key = " + prettyJson(keyJson));
             } else {
                 Testing.print("invalid key");
             }
-            if ( valueJson != null ) {
+            if (valueJson != null) {
                 Testing.print("valid value = " + prettyJson(valueJson));
             } else {
                 Testing.print("invalid value");
