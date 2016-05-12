@@ -153,7 +153,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         start(MySqlConnector.class, config);
 
         // Wait for records to become available ...
-        //Testing.Print.enable();
+        Testing.Print.enable();
         waitForAvailableRecords(15, TimeUnit.SECONDS);
         
         // Now consume the records ...
@@ -166,10 +166,12 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                     fail("The 'order_number' field was found but should not exist");
                 } catch ( DataException e ) {
                     // expected
+                    printJson(record);
                 }
             } else if ( record.topic().endsWith(".customers")) {
                 Struct value = (Struct) record.value();
                 assertThat(value.getString("email")).isEqualTo("************");
+                printJson(record);
             }
         });
         stopConnector();
