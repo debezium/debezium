@@ -150,7 +150,7 @@ public class MySqlDdlParserTest {
     public void shouldParseCreateStatements() {
         parser.parse(readFile("ddl/mysql-test-create.ddl"), tables);
         Testing.print(tables);
-        assertThat(tables.size()).isEqualTo(57); // no tables
+        assertThat(tables.size()).isEqualTo(57);
         assertThat(listener.total()).isEqualTo(144);
     }
 
@@ -158,7 +158,7 @@ public class MySqlDdlParserTest {
     public void shouldParseTestStatements() {
         parser.parse(readFile("ddl/mysql-test-statements.ddl"), tables);
         Testing.print(tables);
-        assertThat(tables.size()).isEqualTo(6); // no tables
+        assertThat(tables.size()).isEqualTo(6);
         assertThat(listener.total()).isEqualTo(49);
         //listener.forEach(this::printEvent);
     }
@@ -166,12 +166,28 @@ public class MySqlDdlParserTest {
     @Test
     public void shouldParseSomeLinesFromCreateStatements() {
         parser.parse(readLines(189,"ddl/mysql-test-create.ddl"), tables);
-        assertThat(tables.size()).isEqualTo(39); // no tables
+        assertThat(tables.size()).isEqualTo(39);
         assertThat(listener.total()).isEqualTo(120);
+    }
+
+    @Test
+    public void shouldParseMySql56InitializationStatements() {
+        parser.parse(readLines(1,"ddl/mysql-test-init-5.6.ddl"), tables);
+        assertThat(tables.size()).isEqualTo(85); // 1 table
+        assertThat(listener.total()).isEqualTo(112);
+        listener.forEach(this::printEvent);
+    }
+
+    @Test
+    public void shouldParseMySql57InitializationStatements() {
+        parser.parse(readLines(1,"ddl/mysql-test-init-5.7.ddl"), tables);
+        assertThat(tables.size()).isEqualTo(123);
+        assertThat(listener.total()).isEqualTo(125);
+        listener.forEach(this::printEvent);
     }
     
     protected void printEvent( Event event ) {
-        System.out.println(event);
+        Testing.print(event);
     }
 
     protected String readFile( String classpathResource ) {
