@@ -578,7 +578,9 @@ public class MySqlDdlParser extends DdlParser {
     protected void parseReferenceDefinition(Marker start) {
         tokens.consume("REFERENCES");
         parseSchemaQualifiedName(start); // table name
-        parseColumnNameList(start);
+        if (tokens.matches('(')) {
+            parseColumnNameList(start);
+        }
         if (tokens.canConsume("MATCH")) {
             tokens.consumeAnyOf("FULL", "PARTIAL", "SIMPLE");
             if (tokens.canConsume("ON")) {

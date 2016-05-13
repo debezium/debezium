@@ -239,6 +239,29 @@ public class ReadBinLogIT implements Testing {
                                                  .removedRow("Jamie", 19, any(), any()));
     }
 
+    /**
+     * Test case that is normally commented out since it is only useful to print out the DDL statements recorded by
+     * the binlog during a MySQL server initialization and startup.
+     * 
+     * @throws Exception if there are problems
+     */
+    @Ignore
+    @Test
+    public void shouldCaptureQueryEventData() throws Exception {
+        // Testing.Print.enable();
+        startClient(client -> {
+            client.setBinlogFilename("mysql-bin.000001");
+            client.setBinlogPosition(4);
+        });
+        counters.consumeAll(5, TimeUnit.SECONDS);
+        List<QueryEventData> allQueryEvents = recordedEventData(QueryEventData.class, -1);
+        allQueryEvents.forEach(event -> {
+            String sql = event.getSql();
+            if (sql.equalsIgnoreCase("BEGIN") || sql.equalsIgnoreCase("COMMIT")) return;
+            System.out.println(event.getSql());
+        });
+    }
+
     @Test
     public void shouldQueryInformationSchema() throws Exception {
         // long tableId = writeRows.getTableId();
