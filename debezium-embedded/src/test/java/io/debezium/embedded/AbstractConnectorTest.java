@@ -318,6 +318,35 @@ public abstract class AbstractConnectorTest implements Testing {
         assertThat(consumedLines.isEmpty()).isTrue();
     }
 
+    protected void assertKey(SourceRecord record, String pkField, int pk) {
+        Struct key = (Struct) record.key();
+        assertThat(key.get(pkField)).isEqualTo(pk);
+    }
+
+    protected void assertTombstone(SourceRecord record) {
+        assertThat(record.key()).isNotNull();
+        assertThat(record.keySchema()).isNotNull();
+        assertThat(record.value()).isNull();
+        assertThat(record.valueSchema()).isNull();
+    }
+
+    protected void assertTombstone(SourceRecord record, String pkField, int pk) {
+        assertKey(record,pkField,pk);
+        assertTombstone(record);
+    }
+
+    protected void assertInsert(SourceRecord record, String pkField, int pk) {
+        assertKey(record,pkField,pk);
+        assertThat(record.key()).isNotNull();
+        assertThat(record.keySchema()).isNotNull();
+        assertThat(record.value()).isNotNull();
+        assertThat(record.valueSchema()).isNotNull();
+    }
+
+    protected void assertUpdate(SourceRecord record, String pkField, int pk) {
+        assertInsert(record,pkField,pk);    // currently the same as an insert
+    }
+
     protected void print(SourceRecord record) {
         StringBuilder sb = new StringBuilder("SourceRecord{");
         sb.append("sourcePartition=").append(record.sourcePartition());
@@ -399,8 +428,7 @@ public abstract class AbstractConnectorTest implements Testing {
                 append(field.schema(), sb);
             }
             sb.append('}');
-        }
-        if (obj instanceof Struct) {
+        } else if (obj instanceof Struct) {
             Struct s = (Struct) obj;
             sb.append('{');
             boolean first = true;

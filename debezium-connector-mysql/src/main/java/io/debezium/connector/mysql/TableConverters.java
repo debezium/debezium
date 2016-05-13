@@ -307,6 +307,17 @@ final class TableConverters {
                                 keySchema, key, valueSchema, value);
                         recorder.accept(record);
                     }
+
+                    // Check whether the key for this record changed in the update ...
+                    Object oldKey = converter.createKey(before, includedColumns);
+                    if ( key != null && !Objects.equals(key, oldKey)) {
+                        // The key has indeed changed, so also send a delete/tombstone event for the old key ...
+                        value = converter.deleted(before, includedColumnsBefore);
+                        if ( value == null ) valueSchema = null;
+                        SourceRecord record = new SourceRecord(source.partition(), source.offset(row), topic, partition,
+                                keySchema, oldKey, valueSchema, value);
+                        recorder.accept(record);
+                    }
                 }
             } else if (logger.isDebugEnabled()) {
                 logger.debug("Skipping update row event: {}", event);

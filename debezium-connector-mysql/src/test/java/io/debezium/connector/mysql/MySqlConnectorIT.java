@@ -9,10 +9,13 @@ import static org.junit.Assert.fail;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -115,22 +118,37 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         Testing.Print.disable();
         try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
             try (JdbcConnection connection = db.connect()) {
-                connection.execute("INSERT INTO products VALUES (default,'roy','old robot',1234.56);");
+                connection.execute("INSERT INTO products VALUES (1001,'roy','old robot',1234.56);");
                 connection.query("SELECT * FROM products", rs->{if (Testing.Print.isEnabled()) connection.print(rs);});
             }
         }
 
         // Restart the connector and wait for a few seconds (at most) for the new record ...
-        Testing.Print.enable();
+        //Testing.Print.enable();
         start(MySqlConnector.class, config);
         waitForAvailableRecords(5, TimeUnit.SECONDS);
         totalConsumed += consumeAvailableRecords(this::print);
+
+        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("UPDATE products SET id=2001, description='really old robot' WHERE id=1001");
+                connection.query("SELECT * FROM products", rs->{if (Testing.Print.isEnabled()) connection.print(rs);});
+            }
+        }
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
+        List<SourceRecord> deletes = new ArrayList<>();
+        totalConsumed += consumeAvailableRecords(deletes::add);
         stopConnector();
+        
+        // Verify that the update of a record where the pk changes results in an update and a delete event ...
+        assertThat(deletes.size()).isEqualTo(2);
+        assertInsert(deletes.get(0),"id",2001);
+        assertTombstone(deletes.get(1),"id",1001);
 
-        // We should have seen a total of 30 events, though when they appear may vary ...
-        assertThat(totalConsumed).isEqualTo(30);
+        // We should have seen a total of 32 events, though when they appear may vary ...
+        assertThat(totalConsumed).isEqualTo(32);
     }
-
+    
     @Test
     public void shouldConsumeEventsWithMaskedAndBlacklistedColumns() throws SQLException {
         Testing.Files.delete(DB_HISTORY_PATH);
@@ -153,7 +171,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         start(MySqlConnector.class, config);
 
         // Wait for records to become available ...
-        Testing.Print.enable();
+        //Testing.Print.enable();
         waitForAvailableRecords(15, TimeUnit.SECONDS);
         
         // Now consume the records ...
