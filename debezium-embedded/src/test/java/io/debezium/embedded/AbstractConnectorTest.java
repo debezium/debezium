@@ -331,7 +331,7 @@ public abstract class AbstractConnectorTest implements Testing {
             }
             sb.append('}');
         }
-        if (obj instanceof Struct) {
+        else if (obj instanceof Struct) {
             Struct s = (Struct) obj;
             sb.append('{');
             boolean first = true;
