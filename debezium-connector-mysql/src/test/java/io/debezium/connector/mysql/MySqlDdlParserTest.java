@@ -139,6 +139,85 @@ public class MySqlDdlParserTest {
     }
 
     @Test
+    public void shouldParseCreateTableStatementWithCharacterSetForTable() {
+        String ddl = "CREATE TABLE t ( col1 VARCHAR(25) ) DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_general_ci; ";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table t = tables.forTable(new TableId(null, null, "t"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("col1");
+        assertThat(t.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t, "col1", "VARCHAR", Types.VARCHAR, 25, -1, true, false, false);
+
+        ddl = "CREATE TABLE t2 ( col1 VARCHAR(25) ) DEFAULT CHARSET utf8 DEFAULT COLLATE utf8_general_ci; ";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(2);
+        Table t2 = tables.forTable(new TableId(null, null, "t2"));
+        assertThat(t2).isNotNull();
+        assertThat(t2.columnNames()).containsExactly("col1");
+        assertThat(t2.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t2, "col1", "VARCHAR", Types.VARCHAR, 25, -1, true, false, false);
+
+        ddl = "CREATE TABLE t3 ( col1 VARCHAR(25) ) CHARACTER SET utf8 COLLATE utf8_general_ci; ";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(3);
+        Table t3 = tables.forTable(new TableId(null, null, "t3"));
+        assertThat(t3).isNotNull();
+        assertThat(t3.columnNames()).containsExactly("col1");
+        assertThat(t3.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t3, "col1", "VARCHAR", Types.VARCHAR, 25, -1, true, false, false);
+
+        ddl = "CREATE TABLE t4 ( col1 VARCHAR(25) ) CHARSET utf8 COLLATE utf8_general_ci; ";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(4);
+        Table t4 = tables.forTable(new TableId(null, null, "t4"));
+        assertThat(t4).isNotNull();
+        assertThat(t4.columnNames()).containsExactly("col1");
+        assertThat(t4.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t4, "col1", "VARCHAR", Types.VARCHAR, 25, -1, true, false, false);
+    }
+
+    @Test
+    public void shouldParseCreateTableStatementWithCharacterSetForColumns() {
+        String ddl = "CREATE TABLE t ( col1 VARCHAR(25) CHARACTER SET greek ); ";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table t = tables.forTable(new TableId(null, null, "t"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("col1");
+        assertThat(t.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t, "col1", "VARCHAR CHARACTER SET greek", Types.VARCHAR, 25, -1, true, false, false);
+    }
+
+    @Test
+    public void shouldParseAlterTableStatementThatAddsCharacterSetForColumns() {
+        String ddl = "CREATE TABLE t ( col1 VARCHAR(25) ); ";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table t = tables.forTable(new TableId(null, null, "t"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("col1");
+        assertThat(t.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t, "col1", "VARCHAR", Types.VARCHAR, 25, -1, true, false, false);
+
+        ddl = "ALTER TABLE t MODIFY col1 VARCHAR(50) CHARACTER SET greek;";
+        parser.parse(ddl, tables);
+        Table t2 = tables.forTable(new TableId(null, null, "t"));
+        assertThat(t2).isNotNull();
+        assertThat(t2.columnNames()).containsExactly("col1");
+        assertThat(t2.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t2, "col1", "VARCHAR CHARACTER SET greek", Types.VARCHAR, 50, -1, true, false, false);
+
+        ddl = "ALTER TABLE t MODIFY col1 VARCHAR(75) CHARSET utf8;";
+        parser.parse(ddl, tables);
+        Table t3 = tables.forTable(new TableId(null, null, "t"));
+        assertThat(t3).isNotNull();
+        assertThat(t3.columnNames()).containsExactly("col1");
+        assertThat(t3.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t3, "col1", "VARCHAR CHARSET utf8", Types.VARCHAR, 75, -1, true, false, false);
+    }
+
+    @Test
     public void shouldParseGrantStatement() {
         String ddl = "GRANT ALL PRIVILEGES ON `mysql`.* TO 'mysqluser'@'%'";
         parser.parse(ddl, tables);

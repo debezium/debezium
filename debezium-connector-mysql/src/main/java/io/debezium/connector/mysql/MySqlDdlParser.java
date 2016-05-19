@@ -80,6 +80,10 @@ public class MySqlDdlParser extends DdlParser {
         dataTypes.register(Types.BLOB, "VARCHAR(L) BINARY [CHARACTER SET charset_name] [COLLATE collation_name]");
         dataTypes.register(Types.VARCHAR, "CHAR[(L)] [CHARACTER SET charset_name] [COLLATE collation_name]");
         dataTypes.register(Types.VARCHAR, "VARCHAR(L) [CHARACTER SET charset_name] [COLLATE collation_name]");
+        dataTypes.register(Types.BLOB, "CHAR[(L)] BINARY [CHARSET charset_name] [COLLATE collation_name]");
+        dataTypes.register(Types.BLOB, "VARCHAR(L) BINARY [CHARSET charset_name] [COLLATE collation_name]");
+        dataTypes.register(Types.VARCHAR, "CHAR[(L)] [CHARSET charset_name] [COLLATE collation_name]");
+        dataTypes.register(Types.VARCHAR, "VARCHAR(L) [CHARSET charset_name] [COLLATE collation_name]");
         dataTypes.register(Types.CHAR, "BINARY[(L)]");
         dataTypes.register(Types.VARBINARY, "VARBINARY(L)");
         dataTypes.register(Types.BLOB, "TINYBLOB");
@@ -96,6 +100,16 @@ public class MySqlDdlParser extends DdlParser {
         dataTypes.register(Types.VARCHAR, "LONGTEXT [CHARACTER SET charset_name] [COLLATE collation_name]");
         dataTypes.register(Types.CHAR, "ENUM(...) [CHARACTER SET charset_name] [COLLATE collation_name]");
         dataTypes.register(Types.CHAR, "SET(...) [CHARACTER SET charset_name] [COLLATE collation_name]");
+        dataTypes.register(Types.BLOB, "TINYTEXT BINARY [CHARSET charset_name] [COLLATE collation_name]");
+        dataTypes.register(Types.BLOB, "TEXT BINARY [CHARSET charset_name] [COLLATE collation_name]");
+        dataTypes.register(Types.BLOB, "MEDIUMTEXT BINARY [CHARSET charset_name] [COLLATE collation_name]");
+        dataTypes.register(Types.BLOB, "LONGTEXT BINARY [CHARSET charset_name] [COLLATE collation_name]");
+        dataTypes.register(Types.VARCHAR, "TINYTEXT [CHARSET charset_name] [COLLATE collation_name]");
+        dataTypes.register(Types.VARCHAR, "TEXT [CHARSET charset_name] [COLLATE collation_name]");
+        dataTypes.register(Types.VARCHAR, "MEDIUMTEXT [CHARSET charset_name] [COLLATE collation_name]");
+        dataTypes.register(Types.VARCHAR, "LONGTEXT [CHARSET charset_name] [COLLATE collation_name]");
+        dataTypes.register(Types.CHAR, "ENUM(...) [CHARSET charset_name] [COLLATE collation_name]");
+        dataTypes.register(Types.CHAR, "SET(...) [CHARSET charset_name] [COLLATE collation_name]");
         dataTypes.register(Types.OTHER, "JSON");
     }
 
@@ -839,12 +853,16 @@ public class MySqlDdlParser extends DdlParser {
             newTableName.accept(newTableId);
         } else if (tokens.canConsume("ORDER", "BY")) {
             consumeCommaSeparatedValueList(start); // this should not affect the order of the columns in the table
-        } else if (tokens.canConsume("CONVERT", "TO", "CHARACTER", "SET")) {
+        } else if (tokens.canConsume("CONVERT", "TO", "CHARACTER", "SET")
+                || tokens.canConsume("CONVERT", "TO", "CHARSET")) {
             tokens.consume(); // charset name
             if (tokens.canConsume("COLLATE")) {
                 tokens.consume(); // collation name
             }
-        } else if (tokens.canConsume("CHARACTER", "SET") || tokens.canConsume("DEFAULT", "CHARACTER", "SET")) {
+        } else if (tokens.canConsume("CHARACTER", "SET")
+                || tokens.canConsume("CHARSET")
+                || tokens.canConsume("DEFAULT", "CHARACTER", "SET")
+                || tokens.canConsume("DEFAULT", "CHARSET")) {
             tokens.canConsume('=');
             tokens.consume(); // charset name
             if (tokens.canConsume("COLLATE")) {
