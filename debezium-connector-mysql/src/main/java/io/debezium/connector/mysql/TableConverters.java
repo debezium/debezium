@@ -18,6 +18,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
@@ -40,7 +41,7 @@ import io.debezium.relational.TableSchema;
 import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
 import io.debezium.relational.history.DatabaseHistory;
-import io.debezium.relational.history.HistoryRecord;
+import io.debezium.relational.history.HistoryRecord.Fields;
 import io.debezium.relational.mapping.ColumnMappers;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Clock;
@@ -53,6 +54,32 @@ import io.debezium.util.Collect;
 @NotThreadSafe
 final class TableConverters {
 
+    protected static final Schema SCHEMA_CHANGE_RECORD_KEY_SCHEMA = SchemaBuilder.struct()
+                                                                                 .name("io.debezium.connector.mysql.SchemaRecordKey")
+                                                                                 .field(Fields.DATABASE_NAME, Schema.STRING_SCHEMA)
+                                                                                 .build();
+
+    protected static final Schema SCHEMA_CHANGE_RECORD_VALUE_SCHEMA = SchemaBuilder.struct()
+                                                                                   .name("io.debezium.connector.mysql.SchemaRecordKey")
+                                                                                   .field(Fields.SOURCE, SourceInfo.SCHEMA)
+                                                                                   .field(Fields.DATABASE_NAME, Schema.STRING_SCHEMA)
+                                                                                   .field(Fields.DDL_STATEMENTS, Schema.STRING_SCHEMA)
+                                                                                   .build();
+
+    public Struct schemaChangeRecordKey(String databaseName) {
+        Struct result = new Struct(SCHEMA_CHANGE_RECORD_KEY_SCHEMA);
+        result.put(Fields.DATABASE_NAME, databaseName);
+        return result;
+    }
+
+    public Struct schemaChangeRecordValue(SourceInfo source, String databaseName, String ddlStatements) {
+        Struct result = new Struct(SCHEMA_CHANGE_RECORD_VALUE_SCHEMA);
+        result.put(Fields.SOURCE, source.struct());
+        result.put(Fields.DATABASE_NAME, databaseName);
+        result.put(Fields.DDL_STATEMENTS, ddlStatements);
+        return result;
+    }
+
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final DatabaseHistory dbHistory;
     private final TopicSelector topicSelector;
@@ -63,6 +90,7 @@ final class TableConverters {
     private final Map<Long, Converter> convertersByTableId = new HashMap<>();
     private final Map<String, Long> tableNumbersByTableName = new HashMap<>();
     private final boolean recordSchemaChangesInSourceRecords;
+    private final Predicate<String> dbFilter;
     private final Predicate<TableId> tableFilter;
     private final Predicate<ColumnId> columnFilter;
     private final ColumnMappers columnMappers;
@@ -71,15 +99,17 @@ final class TableConverters {
     private final Clock clock;
 
     public TableConverters(TopicSelector topicSelector, DatabaseHistory dbHistory,
-            boolean recordSchemaChangesInSourceRecords, Clock clock, Tables tables,
+            boolean recordSchemaChangesInSourceRecords, Clock clock, Predicate<String> dbFilter, Tables tables,
             Predicate<TableId> tableFilter, Predicate<ColumnId> columnFilter, ColumnMappers columnSelectors) {
         Objects.requireNonNull(topicSelector, "A topic selector is required");
         Objects.requireNonNull(dbHistory, "Database history storage is required");
         Objects.requireNonNull(tables, "A Tables object is required");
         Objects.requireNonNull(clock, "A Clock object is required");
+        Objects.requireNonNull(dbFilter, "A database filter object is required");
         this.topicSelector = topicSelector;
         this.dbHistory = dbHistory;
         this.clock = clock;
+        this.dbFilter = dbFilter;
         this.tables = tables;
         this.columnFilter = columnFilter;
         this.columnMappers = columnSelectors;
@@ -124,12 +154,17 @@ final class TableConverters {
             // Record the DDL statement so that we can later recover them if needed ...
             dbHistory.record(source.partition(), source.offset(), databaseName, tables, ddlStatements);
 
-            if (recordSchemaChangesInSourceRecords) {
+            if (recordSchemaChangesInSourceRecords && dbFilter.test(databaseName)) {
                 String serverName = source.serverName();
                 String topicName = topicSelector.getTopic(serverName);
-                HistoryRecord historyRecord = new HistoryRecord(source.partition(), source.offset(), databaseName, ddlStatements);
-                recorder.accept(new SourceRecord(source.partition(), source.offset(), topicName, 0,
-                        Schema.STRING_SCHEMA, databaseName, Schema.STRING_SCHEMA, historyRecord.document().toString()));
+                Integer partition = 0;
+                Struct key = schemaChangeRecordKey(databaseName);
+                Struct value = schemaChangeRecordValue(source, databaseName, ddlStatements);
+                SourceRecord record = new SourceRecord(source.partition(), source.offset(),
+                        topicName, partition,
+                        SCHEMA_CHANGE_RECORD_KEY_SCHEMA, key,
+                        SCHEMA_CHANGE_RECORD_VALUE_SCHEMA, value);
+                recorder.accept(record);
             }
         }
 

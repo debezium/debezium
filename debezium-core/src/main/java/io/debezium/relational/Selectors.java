@@ -33,14 +33,74 @@ public class Selectors {
      * 
      * @return the builder; never null
      */
+    public static DatabaseSelectionPredicateBuilder databaseSelector() {
+        return new DatabaseSelectionPredicateBuilder();
+    }
+
+    /**
+     * A builder of a database predicate.
+     */
+    public static class DatabaseSelectionPredicateBuilder {
+        private Predicate<String> dbInclusions;
+        private Predicate<String> dbExclusions;
+
+        /**
+         * Specify the names of the databases that should be included. This method will override previously included and
+         * {@link #excludeDatabases(String) excluded} databases.
+         * 
+         * @param databaseNames the comma-separated list of database names to include; may be null or empty
+         * @return this builder so that methods can be chained together; never null
+         */
+        public DatabaseSelectionPredicateBuilder includeDatabases(String databaseNames) {
+            if (databaseNames == null || databaseNames.trim().isEmpty()) {
+                dbInclusions = null;
+            } else {
+                dbInclusions = Predicates.includes(databaseNames);
+            }
+            return this;
+        }
+
+        /**
+         * Specify the names of the databases that should be excluded. This method will override previously {@link
+         * #excludeDatabases(String) excluded} databases, although {@link #includeDatabases(String) including databases} overrides
+         * exclusions.
+         * 
+         * @param databaseNames the comma-separated list of database names to exclude; may be null or empty
+         * @return this builder so that methods can be chained together; never null
+         */
+        public DatabaseSelectionPredicateBuilder excludeDatabases(String databaseNames) {
+            if (databaseNames == null || databaseNames.trim().isEmpty()) {
+                dbExclusions = null;
+            } else {
+                dbExclusions = Predicates.excludes(databaseNames);
+            }
+            return this;
+        }
+
+        /**
+         * Build the {@link Predicate} that determines whether a database identified by its name is to be included.
+         * 
+         * @return the table selection predicate; never null
+         * @see #includeDatabases(String)
+         * @see #excludeDatabases(String)
+         */
+        public Predicate<String> build() {
+            Predicate<String> dbFilter = dbInclusions != null ? dbInclusions : dbExclusions;
+            return dbFilter != null ? dbFilter : (id) -> true;
+        }
+    }
+
+    /**
+     * Obtain a new {@link TableSelectionPredicateBuilder builder} for a table selection predicate.
+     * 
+     * @return the builder; never null
+     */
     public static TableSelectionPredicateBuilder tableSelector() {
         return new TableSelectionPredicateBuilder();
     }
 
     /**
-     * A builder of {@link Selectors}.
-     * 
-     * @author Randall Hauch
+     * A builder of a table predicate.
      */
     public static class TableSelectionPredicateBuilder {
         private Predicate<String> dbInclusions;

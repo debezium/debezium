@@ -9,7 +9,6 @@ import static org.junit.Assert.fail;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -49,7 +48,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         stopConnector();
         Testing.Files.delete(DB_HISTORY_PATH);
     }
-    
+
     /**
      * Verifies that the connector doesn't run with an invalid configuration. This does not actually connect to the MySQL server.
      */
@@ -70,15 +69,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldStartAndPollShouldReturnSourceRecordsFromDatabase() throws SQLException {
-        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
-            try (JdbcConnection connection = db.connect()) {
-                connection.query("SELECT * FROM products", rs->{if (Testing.Print.isEnabled()) connection.print(rs);});
-                connection.execute("INSERT INTO products VALUES (default,'robot','Toy robot',1.304);");
-                connection.query("SELECT * FROM products", rs->{if (Testing.Print.isEnabled()) connection.print(rs);});
-            }
-        }
-
+    public void shouldConsumeAllEventsFromDatabase() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = Configuration.create()
                               .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
@@ -90,70 +81,99 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.INITIAL_BINLOG_FILENAME, "mysql-bin.000001")
                               .with(MySqlConnectorConfig.DATABASE_WHITELIST, "connector_test")
                               .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+                              .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                               .build();
         // Start the connector ...
         start(MySqlConnector.class, config);
+        //waitForAvailableRecords(10, TimeUnit.SECONDS);
 
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
+        // Consume the first records due to startup and initialization of the database ...
+        //Testing.Print.enable();
+        SourceRecords records = consumeRecordsByTopic(6+9+9+4+5);
+        assertThat(records.recordsForTopic("kafka-connect").size()).isEqualTo(6);
+        assertThat(records.recordsForTopic("kafka-connect.connector_test.products").size()).isEqualTo(9);
+        assertThat(records.recordsForTopic("kafka-connect.connector_test.products_on_hand").size()).isEqualTo(9);
+        assertThat(records.recordsForTopic("kafka-connect.connector_test.customers").size()).isEqualTo(4);
+        assertThat(records.recordsForTopic("kafka-connect.connector_test.orders").size()).isEqualTo(5);
+        assertThat(records.topics().size()).isEqualTo(5);
+        assertThat(records.databaseNames().size()).isEqualTo(1);
+        assertThat(records.ddlRecordsForDatabase("connector_test").size()).isEqualTo(6);
+        assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
+        
+        records.ddlRecordsForDatabase("connector_test").forEach(this::print);
 
+        // Check that all records are valid, can be serialized and deserialized ...
+        records.forEach(this::validate);
+        
+        // Make sure there are no more ...
+        Testing.Print.disable();
+        waitForAvailableRecords(3, TimeUnit.SECONDS);
+        int totalConsumed = consumeAvailableRecords(this::print);
+        assertThat(totalConsumed).isEqualTo(0);
+        stopConnector();
+        
+        // Make some changes to data only ...
         try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
             try (JdbcConnection connection = db.connect()) {
-                connection.execute("INSERT INTO products VALUES (default,'harrison','real robot',134.82);");
-                connection.query("SELECT * FROM products", rs->{if (Testing.Print.isEnabled()) connection.print(rs);});
+                connection.query("SELECT * FROM products", rs -> {
+                    if (Testing.Print.isEnabled()) connection.print(rs);
+                });
+                connection.execute("INSERT INTO products VALUES (default,'robot','Toy robot',1.304);");
+                connection.query("SELECT * FROM products", rs -> {
+                    if (Testing.Print.isEnabled()) connection.print(rs);
+                });
             }
         }
-        
-        //Testing.Print.enable();
-        int totalConsumed = consumeAvailableRecords(this::print);  // expecting at least 1
-        stopConnector();
-        
-        // Restart the connector and wait for a few seconds (at most) for records that will never arrive ...
+
+        // Restart the connector and read the insert record ...
         start(MySqlConnector.class, config);
-        waitForAvailableRecords(2, TimeUnit.SECONDS);
-        totalConsumed += consumeAvailableRecords(this::print);
-        stopConnector();
+        records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic("kafka-connect.connector_test.products").size()).isEqualTo(1);
+        assertThat(records.topics().size()).isEqualTo(1);
         
         // Create an additional few records ...
-        Testing.Print.disable();
         try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("INSERT INTO products VALUES (1001,'roy','old robot',1234.56);");
-                connection.query("SELECT * FROM products", rs->{if (Testing.Print.isEnabled()) connection.print(rs);});
+                connection.query("SELECT * FROM products", rs -> {
+                    if (Testing.Print.isEnabled()) connection.print(rs);
+                });
             }
         }
+        
+        // And consume the one insert ...
+        records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic("kafka-connect.connector_test.products").size()).isEqualTo(1);
+        assertThat(records.topics().size()).isEqualTo(1);
+        List<SourceRecord> inserts = records.recordsForTopic("kafka-connect.connector_test.products");
+        assertInsert(inserts.get(0), "id", 1001);
 
-        // Restart the connector and wait for a few seconds (at most) for the new record ...
-        //Testing.Print.enable();
-        start(MySqlConnector.class, config);
-        waitForAvailableRecords(5, TimeUnit.SECONDS);
-        totalConsumed += consumeAvailableRecords(this::print);
-
+        // Update one of the records by changing its primary key ...
         try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("UPDATE products SET id=2001, description='really old robot' WHERE id=1001");
-                connection.query("SELECT * FROM products", rs->{if (Testing.Print.isEnabled()) connection.print(rs);});
+                connection.query("SELECT * FROM products", rs -> {
+                    if (Testing.Print.isEnabled()) connection.print(rs);
+                });
             }
         }
-        waitForAvailableRecords(5, TimeUnit.SECONDS);
-        List<SourceRecord> deletes = new ArrayList<>();
-        totalConsumed += consumeAvailableRecords(deletes::add);
-        stopConnector();
-        
-        // Verify that the update of a record where the pk changes results in
-        // 1 update, 1 delete, and 1 tombstone event ...
-        assertThat(deletes.size()).isEqualTo(3);
-        assertInsert(deletes.get(0),"id",2001);
-        assertDelete(deletes.get(1),"id",1001);
-        assertTombstone(deletes.get(2),"id",1001);
+        // And consume the update of the PK, which is one insert followed by a delete followed by a tombstone ...
+        records = consumeRecordsByTopic(3);
+        List<SourceRecord> updates = records.recordsForTopic("kafka-connect.connector_test.products");
+        assertThat(updates.size()).isEqualTo(3);
+        assertInsert(updates.get(0), "id", 2001);
+        assertDelete(updates.get(1), "id", 1001);
+        assertTombstone(updates.get(2), "id", 1001);
 
-        // We should have seen a total of 33 events, though when they appear may vary ...
-        assertThat(totalConsumed).isEqualTo(33);
+        // Stop the connector ...
+        stopConnector();
     }
-    
+
     @Test
-    public void shouldConsumeEventsWithMaskedAndBlacklistedColumns() throws SQLException {
+    public void shouldConsumeEventsWithMaskedAndBlacklistedColumns() throws SQLException, InterruptedException {
         Testing.Files.delete(DB_HISTORY_PATH);
+        
         // Use the DB configuration to define the connector's configuration ...
         config = Configuration.create()
                               .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
@@ -167,42 +187,52 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.DATABASE_WHITELIST, "connector_test")
                               .with(MySqlConnectorConfig.COLUMN_BLACKLIST, "connector_test.orders.order_number")
                               .with(MySqlConnectorConfig.MASK_COLUMN(12), "connector_test.customers.email")
+                              .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                               .build();
+
         // Start the connector ...
         start(MySqlConnector.class, config);
 
-        // Wait for records to become available ...
-        //Testing.Print.enable();
-        waitForAvailableRecords(15, TimeUnit.SECONDS);
+        // Consume the first records due to startup and initialization of the database ...
+        // Testing.Print.enable();
+        SourceRecords records = consumeRecordsByTopic(9+9+4+5);
+        assertThat(records.recordsForTopic("kafka-connect-2.connector_test.products").size()).isEqualTo(9);
+        assertThat(records.recordsForTopic("kafka-connect-2.connector_test.products_on_hand").size()).isEqualTo(9);
+        assertThat(records.recordsForTopic("kafka-connect-2.connector_test.customers").size()).isEqualTo(4);
+        assertThat(records.recordsForTopic("kafka-connect-2.connector_test.orders").size()).isEqualTo(5);
+        assertThat(records.topics().size()).isEqualTo(4);
+
+        // Check that all records are valid, can be serialized and deserialized ...
+        records.forEach(this::validate);
         
-        // Now consume the records ...
-        int totalConsumed = consumeAvailableRecords((record)->{
+        // More records may have been written (if this method were run after the others), but we don't care ...
+        stopConnector();
+
+        // Check that the orders.order_number is not present ...
+        records.recordsForTopic("kafka-connect-2.connector_test.orders").forEach(record->{
             print(record);
-            if ( record.topic().endsWith(".orders")) {
-                Struct value = (Struct) record.value();
-                try {
-                    value.get("order_number");
-                    fail("The 'order_number' field was found but should not exist");
-                } catch ( DataException e ) {
-                    // expected
-                    printJson(record);
-                }
-            } else if ( record.topic().endsWith(".customers")) {
-                Struct value = (Struct) record.value();
-                if ( value.getStruct("after") != null ) {
-                    assertThat(value.getStruct("after").getString("email")).isEqualTo("************");
-                }
-                if ( value.getStruct("before") != null ) {
-                    assertThat(value.getStruct("before").getString("email")).isEqualTo("************");
-                }
+            Struct value = (Struct) record.value();
+            try {
+                value.get("order_number");
+                fail("The 'order_number' field was found but should not exist");
+            } catch (DataException e) {
+                // expected
                 printJson(record);
             }
         });
-        stopConnector();
-
-        // We should have seen a total of 27 events, though when they appear may vary ...
-        assertThat(totalConsumed).isEqualTo(27);
+        
+        // Check that the customer.email is masked ...
+        records.recordsForTopic("kafka-connect-2.connector_test.customers").forEach(record->{
+            Struct value = (Struct) record.value();
+            if (value.getStruct("after") != null) {
+                assertThat(value.getStruct("after").getString("email")).isEqualTo("************");
+            }
+            if (value.getStruct("before") != null) {
+                assertThat(value.getStruct("before").getString("email")).isEqualTo("************");
+            }
+            printJson(record);
+        });
     }
-    
+
 }
