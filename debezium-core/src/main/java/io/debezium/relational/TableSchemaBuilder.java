@@ -145,7 +145,7 @@ public class TableSchemaBuilder {
                 addField(valSchemaBuilder, column, mapper);
             }
         });
-        Schema valSchema = valSchemaBuilder.build();
+        Schema valSchema = valSchemaBuilder.optional().build();
         Schema keySchema = hasPrimaryKey.get() ? keySchemaBuilder.build() : null;
 
         // Create the generators ...

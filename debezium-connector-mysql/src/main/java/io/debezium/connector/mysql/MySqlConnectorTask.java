@@ -87,6 +87,7 @@ public final class MySqlConnectorTask extends SourceTask {
     private int maxBatchSize;
     private String serverName;
     private Metronome metronome;
+    private final Clock clock = Clock.system();
     private final AtomicBoolean running = new AtomicBoolean(false);
 
     // Used in the methods that process events ...
@@ -176,8 +177,8 @@ public final class MySqlConnectorTask extends SourceTask {
 
         // Set up our handlers for specific kinds of events ...
         tables = new Tables();
-        tableConverters = new TableConverters(topicSelector, dbHistory, includeSchemaChanges, tables, tableFilter, columnFilter,
-                columnMappers);
+        tableConverters = new TableConverters(topicSelector, dbHistory, includeSchemaChanges, clock,
+                                              tables, tableFilter, columnFilter, columnMappers);
         eventHandlers.put(EventType.ROTATE, tableConverters::rotateLogs);
         eventHandlers.put(EventType.TABLE_MAP, tableConverters::updateTableMetadata);
         eventHandlers.put(EventType.QUERY, tableConverters::updateTableCommand);
