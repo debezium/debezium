@@ -140,13 +140,15 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         totalConsumed += consumeAvailableRecords(deletes::add);
         stopConnector();
         
-        // Verify that the update of a record where the pk changes results in an update and a delete event ...
-        assertThat(deletes.size()).isEqualTo(2);
+        // Verify that the update of a record where the pk changes results in
+        // 1 update, 1 delete, and 1 tombstone event ...
+        assertThat(deletes.size()).isEqualTo(3);
         assertInsert(deletes.get(0),"id",2001);
-        assertTombstone(deletes.get(1),"id",1001);
+        assertDelete(deletes.get(1),"id",1001);
+        assertTombstone(deletes.get(2),"id",1001);
 
-        // We should have seen a total of 32 events, though when they appear may vary ...
-        assertThat(totalConsumed).isEqualTo(32);
+        // We should have seen a total of 33 events, though when they appear may vary ...
+        assertThat(totalConsumed).isEqualTo(33);
     }
     
     @Test
@@ -188,7 +190,12 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 }
             } else if ( record.topic().endsWith(".customers")) {
                 Struct value = (Struct) record.value();
-                assertThat(value.getString("email")).isEqualTo("************");
+                if ( value.getStruct("after") != null ) {
+                    assertThat(value.getStruct("after").getString("email")).isEqualTo("************");
+                }
+                if ( value.getStruct("before") != null ) {
+                    assertThat(value.getStruct("before").getString("email")).isEqualTo("************");
+                }
                 printJson(record);
             }
         });

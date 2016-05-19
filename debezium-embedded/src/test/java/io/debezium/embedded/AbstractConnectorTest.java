@@ -40,6 +40,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
+import io.debezium.data.Envelope.FieldName;
+import io.debezium.data.Envelope.Operation;
 import io.debezium.embedded.EmbeddedEngine.CompletionCallback;
 import io.debezium.function.BooleanConsumer;
 import io.debezium.util.Testing;
@@ -323,11 +325,40 @@ public abstract class AbstractConnectorTest implements Testing {
         assertThat(key.get(pkField)).isEqualTo(pk);
     }
 
-    protected void assertTombstone(SourceRecord record) {
+    protected void assertInsert(SourceRecord record, String pkField, int pk) {
+        assertKey(record,pkField,pk);
         assertThat(record.key()).isNotNull();
         assertThat(record.keySchema()).isNotNull();
-        assertThat(record.value()).isNull();
-        assertThat(record.valueSchema()).isNull();
+        assertThat(record.valueSchema()).isNotNull();
+        Struct value = (Struct) record.value();
+        assertThat(value).isNotNull();
+        assertThat(value.get(FieldName.OPERATION)).isEqualTo(Operation.CREATE);
+        assertThat(value.get(FieldName.AFTER)).isNotNull();
+        assertThat(value.get(FieldName.BEFORE)).isNull();
+    }
+
+    protected void assertUpdate(SourceRecord record, String pkField, int pk) {
+        assertKey(record,pkField,pk);
+        assertThat(record.key()).isNotNull();
+        assertThat(record.keySchema()).isNotNull();
+        assertThat(record.valueSchema()).isNotNull();
+        Struct value = (Struct) record.value();
+        assertThat(value).isNotNull();
+        assertThat(value.get(FieldName.OPERATION)).isEqualTo(Operation.UPDATE);
+        assertThat(value.get(FieldName.AFTER)).isNotNull();
+        //assertThat(value.get(FieldName.BEFORE)).isNull(); // may be null
+    }
+
+    protected void assertDelete(SourceRecord record, String pkField, int pk) {
+        assertKey(record,pkField,pk);
+        assertThat(record.key()).isNotNull();
+        assertThat(record.keySchema()).isNotNull();
+        assertThat(record.valueSchema()).isNotNull();
+        Struct value = (Struct) record.value();
+        assertThat(value).isNotNull();
+        assertThat(value.get(FieldName.OPERATION)).isEqualTo(Operation.DELETE);
+        assertThat(value.get(FieldName.BEFORE)).isNotNull();
+        assertThat(value.get(FieldName.AFTER)).isNull();
     }
 
     protected void assertTombstone(SourceRecord record, String pkField, int pk) {
@@ -335,16 +366,11 @@ public abstract class AbstractConnectorTest implements Testing {
         assertTombstone(record);
     }
 
-    protected void assertInsert(SourceRecord record, String pkField, int pk) {
-        assertKey(record,pkField,pk);
+    protected void assertTombstone(SourceRecord record) {
         assertThat(record.key()).isNotNull();
         assertThat(record.keySchema()).isNotNull();
-        assertThat(record.value()).isNotNull();
-        assertThat(record.valueSchema()).isNotNull();
-    }
-
-    protected void assertUpdate(SourceRecord record, String pkField, int pk) {
-        assertInsert(record,pkField,pk);    // currently the same as an insert
+        assertThat(record.value()).isNull();
+        assertThat(record.valueSchema()).isNull();
     }
 
     protected void print(SourceRecord record) {

@@ -7,6 +7,9 @@ package io.debezium.connector.mysql;
 
 import java.util.Map;
 
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.annotation.NotThreadSafe;
@@ -46,6 +49,17 @@ final class SourceInfo {
     public static final String BINLOG_FILENAME_OFFSET_KEY = "file";
     public static final String BINLOG_POSITION_OFFSET_KEY = "pos";
     public static final String BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY = "row";
+
+    /**
+     * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition()} and {@link #offset()} information.
+     */
+    public static final Schema SCHEMA = SchemaBuilder.struct()
+                                                     .name("io.debezium.connector.mysql.Source")
+                                                     .field(SERVER_PARTITION_KEY, Schema.STRING_SCHEMA)
+                                                     .field(BINLOG_FILENAME_OFFSET_KEY, Schema.STRING_SCHEMA)
+                                                     .field(BINLOG_POSITION_OFFSET_KEY, Schema.INT64_SCHEMA)
+                                                     .field(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, Schema.INT32_SCHEMA)
+                                                     .build();
 
     private String binlogFilename;
     private long binlogPosition = 4;
@@ -89,6 +103,33 @@ final class SourceInfo {
         return Collect.hashMapOf(BINLOG_FILENAME_OFFSET_KEY, binlogFilename,
                                  BINLOG_POSITION_OFFSET_KEY, binlogPosition,
                                  BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, eventRowNumber);
+    }
+
+    /**
+     * Get a {@link Schema} representation of the source {@link #partition()} and {@link #offset()} information.
+     * 
+     * @return the source partition and offset {@link Schema}; never null
+     * @see #struct()
+     */
+    public Schema schema() {
+        return SCHEMA;
+    }
+
+    /**
+     * Get a {@link Struct} representation of the source {@link #partition()} and {@link #offset()} information. The Struct
+     * complies with the {@link #SCHEMA} for the MySQL connector.
+     * 
+     * @return the source partition and offset {@link Struct}; never null
+     * @see #schema()
+     */
+    public Struct struct() {
+        assert serverName != null;
+        Struct result = new Struct(SCHEMA);
+        result.put(SERVER_PARTITION_KEY, serverName);
+        result.put(BINLOG_FILENAME_OFFSET_KEY, binlogFilename);
+        result.put(BINLOG_POSITION_OFFSET_KEY, binlogPosition);
+        result.put(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, eventRowNumber);
+        return result;
     }
 
     /**
@@ -141,7 +182,7 @@ final class SourceInfo {
         if (sourceOffset != null) {
             // We have previously recorded an offset ...
             binlogFilename = (String) sourceOffset.get(BINLOG_FILENAME_OFFSET_KEY);
-            if ( binlogFilename == null ) {
+            if (binlogFilename == null) {
                 throw new ConnectException("Source offset '" + BINLOG_FILENAME_OFFSET_KEY + "' parameter is missing");
             }
             binlogPosition = longOffsetValue(sourceOffset, BINLOG_POSITION_OFFSET_KEY);

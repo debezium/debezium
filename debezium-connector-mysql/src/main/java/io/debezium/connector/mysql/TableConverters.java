@@ -32,6 +32,7 @@ import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
 
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.data.Envelope;
 import io.debezium.relational.ColumnId;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -42,6 +43,7 @@ import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.relational.mapping.ColumnMappers;
 import io.debezium.text.ParsingException;
+import io.debezium.util.Clock;
 import io.debezium.util.Collect;
 
 /**
@@ -66,15 +68,18 @@ final class TableConverters {
     private final ColumnMappers columnMappers;
     private final Set<String> ignoredQueryStatements = Collect.unmodifiableSet("BEGIN", "END", "FLUSH PRIVILEGES");
     private final Set<TableId> unknownTableIds = new HashSet<>();
+    private final Clock clock;
 
     public TableConverters(TopicSelector topicSelector, DatabaseHistory dbHistory,
-            boolean recordSchemaChangesInSourceRecords, Tables tables,
+            boolean recordSchemaChangesInSourceRecords, Clock clock, Tables tables,
             Predicate<TableId> tableFilter, Predicate<ColumnId> columnFilter, ColumnMappers columnSelectors) {
         Objects.requireNonNull(topicSelector, "A topic selector is required");
         Objects.requireNonNull(dbHistory, "Database history storage is required");
         Objects.requireNonNull(tables, "A Tables object is required");
+        Objects.requireNonNull(clock, "A Clock object is required");
         this.topicSelector = topicSelector;
         this.dbHistory = dbHistory;
+        this.clock = clock;
         this.tables = tables;
         this.columnFilter = columnFilter;
         this.columnMappers = columnSelectors;
@@ -88,7 +93,7 @@ final class TableConverters {
         // Create TableSchema instances for any existing table ...
         this.tables.tableIds().forEach(id -> {
             Table table = this.tables.forTable(id);
-            TableSchema schema = schemaBuilder.create(table,columnFilter, columnMappers);
+            TableSchema schema = schemaBuilder.create(table, columnFilter, columnMappers);
             tableSchemaByTableId.put(id, schema);
         });
     }
@@ -135,7 +140,7 @@ final class TableConverters {
             if (table == null) { // removed
                 tableSchemaByTableId.remove(tableId);
             } else {
-                TableSchema schema = schemaBuilder.create(table,columnFilter, columnMappers);
+                TableSchema schema = schemaBuilder.create(table, columnFilter, columnMappers);
                 tableSchemaByTableId.put(tableId, schema);
             }
         });
@@ -180,6 +185,13 @@ final class TableConverters {
                                 tableId);
                 }
             }
+            // Specify the envelope structure for this table's messages ...
+            Envelope envelope = Envelope.defineSchema()
+                                        .withName(topicName)
+                                        .withRecord(tableSchema.valueSchema())
+                                        .withSource(SourceInfo.SCHEMA)
+                                        .build();
+
             // Generate this table's insert, update, and delete converters ...
             Converter converter = new Converter() {
                 @Override
@@ -195,6 +207,11 @@ final class TableConverters {
                 @Override
                 public Integer partition() {
                     return null;
+                }
+
+                @Override
+                public Envelope envelope() {
+                    return envelope;
                 }
 
                 @Override
@@ -214,22 +231,9 @@ final class TableConverters {
                 }
 
                 @Override
-                public Struct inserted(Serializable[] row, BitSet includedColumns) {
+                public Struct createValue(Serializable[] row, BitSet includedColumns) {
                     // assume all columns in the table are included ...
                     return tableSchema.valueFromColumnData(row);
-                }
-
-                @Override
-                public Struct updated(Serializable[] before, BitSet includedColumns, Serializable[] after,
-                                      BitSet includedColumnsBeforeUpdate) {
-                    // assume all columns in the table are included, and we'll write out only the after state ...
-                    return tableSchema.valueFromColumnData(after);
-                }
-
-                @Override
-                public Struct deleted(Serializable[] deleted, BitSet includedColumns) {
-                    // We current write out null to signal that the row was removed ...
-                    return null; // tableSchema.valueFromColumnData(row);
                 }
             };
             convertersByTableId.put(tableNumber, converter);
@@ -252,17 +256,21 @@ final class TableConverters {
             if (tableFilter.test(tableId)) {
                 logger.debug("Processing insert row event for {}: {}", tableId, event);
                 String topic = converter.topic();
-                Integer partition = converter.partition();
+                Integer partitionNum = converter.partition();
                 List<Serializable[]> rows = write.getRows();
+                Long ts = clock.currentTimeInMillis();
                 for (int row = 0; row != rows.size(); ++row) {
                     Serializable[] values = rows.get(row);
                     Schema keySchema = converter.keySchema();
                     Object key = converter.createKey(values, includedColumns);
-                    Schema valueSchema = converter.valueSchema();
-                    Struct value = converter.inserted(values, includedColumns);
+                    Struct value = converter.createValue(values, includedColumns);
                     if (value != null || key != null) {
-                        SourceRecord record = new SourceRecord(source.partition(), source.offset(row), topic, partition,
-                                keySchema, key, valueSchema, value);
+                        Envelope envelope = converter.envelope();
+                        Map<String, ?> partition = source.partition();
+                        Map<String, ?> offset = source.offset(row);
+                        Struct origin = source.struct();
+                        SourceRecord record = new SourceRecord(partition, offset, topic, partitionNum,
+                                keySchema, key, envelope.schema(), envelope.create(value, origin, ts));
                         recorder.accept(record);
                     }
                 }
@@ -292,7 +300,8 @@ final class TableConverters {
             if (tableFilter.test(tableId)) {
                 logger.debug("Processing update row event for {}: {}", tableId, event);
                 String topic = converter.topic();
-                Integer partition = converter.partition();
+                Integer partitionNum = converter.partition();
+                Long ts = clock.currentTimeInMillis();
                 List<Entry<Serializable[], Serializable[]>> rows = update.getRows();
                 for (int row = 0; row != rows.size(); ++row) {
                     Map.Entry<Serializable[], Serializable[]> changes = rows.get(row);
@@ -300,23 +309,34 @@ final class TableConverters {
                     Serializable[] after = changes.getValue();
                     Schema keySchema = converter.keySchema();
                     Object key = converter.createKey(after, includedColumns);
-                    Schema valueSchema = converter.valueSchema();
-                    Struct value = converter.updated(before, includedColumnsBefore, after, includedColumns);
-                    if (value != null || key != null) {
-                        SourceRecord record = new SourceRecord(source.partition(), source.offset(row), topic, partition,
-                                keySchema, key, valueSchema, value);
-                        recorder.accept(record);
-                    }
-
-                    // Check whether the key for this record changed in the update ...
                     Object oldKey = converter.createKey(before, includedColumns);
-                    if ( key != null && !Objects.equals(key, oldKey)) {
-                        // The key has indeed changed, so also send a delete/tombstone event for the old key ...
-                        value = converter.deleted(before, includedColumnsBefore);
-                        if ( value == null ) valueSchema = null;
-                        SourceRecord record = new SourceRecord(source.partition(), source.offset(row), topic, partition,
-                                keySchema, oldKey, valueSchema, value);
-                        recorder.accept(record);
+                    Struct valueBefore = converter.createValue(before, includedColumnsBefore);
+                    Struct valueAfter = converter.createValue(after, includedColumns);
+                    if (valueAfter != null || key != null) {
+                        Envelope envelope = converter.envelope();
+                        Map<String, ?> partition = source.partition();
+                        Map<String, ?> offset = source.offset(row);
+                        Struct origin = source.struct();
+                        if (key != null && !Objects.equals(key, oldKey)) {
+                            // The key has indeed changed, so first send a create event ...
+                            SourceRecord record = new SourceRecord(partition, offset, topic, partitionNum,
+                                    keySchema, key, envelope.schema(), envelope.create(valueAfter, origin, ts));
+                            recorder.accept(record);
+
+                            // then send a delete event for the old key ...
+                            record = new SourceRecord(partition, offset, topic, partitionNum,
+                                    keySchema, oldKey, envelope.schema(), envelope.delete(valueBefore, origin, ts));
+                            recorder.accept(record);
+
+                            // Send a tombstone event for the old key ...
+                            record = new SourceRecord(partition, offset, topic, partitionNum, keySchema, oldKey, null, null);
+                            recorder.accept(record);
+                        } else {
+                            // The key has not changed, so a simple update is fine ...
+                            SourceRecord record = new SourceRecord(partition, offset, topic, partitionNum,
+                                    keySchema, key, envelope.schema(), envelope.update(valueBefore, valueAfter, origin, ts));
+                            recorder.accept(record);
+                        }
                     }
                 }
             } else if (logger.isDebugEnabled()) {
@@ -337,18 +357,25 @@ final class TableConverters {
             if (tableFilter.test(tableId)) {
                 logger.debug("Processing delete row event for {}: {}", tableId, event);
                 String topic = converter.topic();
-                Integer partition = converter.partition();
+                Integer partitionNum = converter.partition();
+                Long ts = clock.currentTimeInMillis();
                 List<Serializable[]> rows = deleted.getRows();
                 for (int row = 0; row != rows.size(); ++row) {
                     Serializable[] values = rows.get(row);
                     Schema keySchema = converter.keySchema();
                     Object key = converter.createKey(values, includedColumns);
-                    Schema valueSchema = converter.valueSchema();
-                    Struct value = converter.deleted(values, includedColumns);
+                    Struct value = converter.createValue(values, includedColumns);
                     if (value != null || key != null) {
-                        if ( value == null ) valueSchema = null;
-                        SourceRecord record = new SourceRecord(source.partition(), source.offset(row), topic, partition,
-                                keySchema, key, valueSchema, value);
+                        Envelope envelope = converter.envelope();
+                        Map<String, ?> partition = source.partition();
+                        Map<String, ?> offset = source.offset(row);
+                        Struct origin = source.struct();
+                        SourceRecord record = new SourceRecord(partition, offset, topic, partitionNum,
+                                keySchema, key, envelope.schema(), envelope.delete(value, origin, ts));
+                        recorder.accept(record);
+                        // And send a tombstone ...
+                        record = new SourceRecord(partition, offset, topic, partitionNum,
+                                keySchema, key, null, null);
                         recorder.accept(record);
                     }
                 }
@@ -371,12 +398,10 @@ final class TableConverters {
 
         Schema valueSchema();
 
+        Envelope envelope();
+
         Object createKey(Serializable[] row, BitSet includedColumns);
 
-        Struct inserted(Serializable[] row, BitSet includedColumns);
-
-        Struct updated(Serializable[] before, BitSet includedColumns, Serializable[] after, BitSet includedColumnsBeforeUpdate);
-
-        Struct deleted(Serializable[] deleted, BitSet includedColumns);
+        Struct createValue(Serializable[] row, BitSet includedColumns);
     }
 }
