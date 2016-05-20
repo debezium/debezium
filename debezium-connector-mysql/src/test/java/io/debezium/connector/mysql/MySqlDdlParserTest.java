@@ -28,7 +28,7 @@ import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
 
 public class MySqlDdlParserTest {
-    
+
     private DdlParser parser;
     private Tables tables;
     private SimpleDdlParserListener listener;
@@ -109,6 +109,32 @@ public class MySqlDdlParserTest {
     }
 
     @Test
+    public void shouldParseCreateTableStatementWithMultipleColumnsForPrimaryKey() {
+        String ddl = "CREATE TABLE shop ("
+                + " id BIGINT(20) NOT NULL AUTO_INCREMENT,"
+                + " version BIGINT(20) NOT NULL,"
+                + " name VARCHAR(255) NOT NULL,"
+                + " owner VARCHAR(255) NOT NULL,"
+                + " phone_number VARCHAR(255) NOT NULL,"
+                + " primary key (id, name)"
+                + " );";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table foo = tables.forTable(new TableId(null, null, "shop"));
+        assertThat(foo).isNotNull();
+        assertThat(foo.columnNames()).containsExactly("id", "version", "name", "owner", "phone_number");
+        assertThat(foo.primaryKeyColumnNames()).containsExactly("id", "name");
+        assertColumn(foo, "id", "BIGINT", Types.BIGINT, 20, -1, false, true, true);
+        assertColumn(foo, "version", "BIGINT", Types.BIGINT, 20, -1, false, false, false);
+        assertColumn(foo, "name", "VARCHAR", Types.VARCHAR, 255, -1, false, false, false);
+        assertColumn(foo, "owner", "VARCHAR", Types.VARCHAR, 255, -1, false, false, false);
+        assertColumn(foo, "phone_number", "VARCHAR", Types.VARCHAR, 255, -1, false, false, false);
+
+        parser.parse("DROP TABLE shop", tables);
+        assertThat(tables.size()).isEqualTo(0);
+    }
+
+    @Test
     public void shouldParseCreateUserTable() {
         String ddl = "CREATE TABLE IF NOT EXISTS user (   Host char(60) binary DEFAULT '' NOT NULL, User char(32) binary DEFAULT '' NOT NULL, Select_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Insert_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Update_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Delete_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Create_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Drop_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Reload_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Shutdown_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Process_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, File_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Grant_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, References_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Index_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Alter_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Show_db_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Super_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Create_tmp_table_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Lock_tables_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Execute_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Repl_slave_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Repl_client_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Create_view_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Show_view_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Create_routine_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Alter_routine_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Create_user_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Event_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Trigger_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Create_tablespace_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, ssl_type enum('','ANY','X509', 'SPECIFIED') COLLATE utf8_general_ci DEFAULT '' NOT NULL, ssl_cipher BLOB NOT NULL, x509_issuer BLOB NOT NULL, x509_subject BLOB NOT NULL, max_questions int(11) unsigned DEFAULT 0  NOT NULL, max_updates int(11) unsigned DEFAULT 0  NOT NULL, max_connections int(11) unsigned DEFAULT 0  NOT NULL, max_user_connections int(11) unsigned DEFAULT 0  NOT NULL, plugin char(64) DEFAULT 'mysql_native_password' NOT NULL, authentication_string TEXT, password_expired ENUM('N', 'Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, password_last_changed timestamp NULL DEFAULT NULL, password_lifetime smallint unsigned NULL DEFAULT NULL, account_locked ENUM('N', 'Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, PRIMARY KEY Host (Host,User) ) engine=MyISAM CHARACTER SET utf8 COLLATE utf8_bin comment='Users and global privileges';";
         parser.parse(ddl, tables);
@@ -121,7 +147,7 @@ public class MySqlDdlParserTest {
         parser.parse("DROP TABLE user", tables);
         assertThat(tables.size()).isEqualTo(0);
     }
-    
+
     @Test
     public void shouldParseCreateTableStatementWithSignedTypes() {
         String ddl = "CREATE TABLE foo ( " + System.lineSeparator()
@@ -239,19 +265,19 @@ public class MySqlDdlParserTest {
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(6);
         assertThat(listener.total()).isEqualTo(49);
-        //listener.forEach(this::printEvent);
+        // listener.forEach(this::printEvent);
     }
 
     @Test
     public void shouldParseSomeLinesFromCreateStatements() {
-        parser.parse(readLines(189,"ddl/mysql-test-create.ddl"), tables);
+        parser.parse(readLines(189, "ddl/mysql-test-create.ddl"), tables);
         assertThat(tables.size()).isEqualTo(39);
         assertThat(listener.total()).isEqualTo(120);
     }
 
     @Test
     public void shouldParseMySql56InitializationStatements() {
-        parser.parse(readLines(1,"ddl/mysql-test-init-5.6.ddl"), tables);
+        parser.parse(readLines(1, "ddl/mysql-test-init-5.6.ddl"), tables);
         assertThat(tables.size()).isEqualTo(85); // 1 table
         assertThat(listener.total()).isEqualTo(112);
         listener.forEach(this::printEvent);
@@ -259,21 +285,21 @@ public class MySqlDdlParserTest {
 
     @Test
     public void shouldParseMySql57InitializationStatements() {
-        parser.parse(readLines(1,"ddl/mysql-test-init-5.7.ddl"), tables);
+        parser.parse(readLines(1, "ddl/mysql-test-init-5.7.ddl"), tables);
         assertThat(tables.size()).isEqualTo(123);
         assertThat(listener.total()).isEqualTo(125);
         listener.forEach(this::printEvent);
     }
-    
-    protected void printEvent( Event event ) {
+
+    protected void printEvent(Event event) {
         Testing.print(event);
     }
 
-    protected String readFile( String classpathResource ) {
-        try ( InputStream stream = getClass().getClassLoader().getResourceAsStream(classpathResource); ) {
+    protected String readFile(String classpathResource) {
+        try (InputStream stream = getClass().getClassLoader().getResourceAsStream(classpathResource);) {
             assertThat(stream).isNotNull();
             return IoUtil.read(stream);
-        } catch ( IOException e ) {
+        } catch (IOException e) {
             fail("Unable to read '" + classpathResource + "'");
         }
         assert false : "should never get here";
@@ -283,21 +309,22 @@ public class MySqlDdlParserTest {
     /**
      * Reads the lines starting with a given line number from the specified file on the classpath. Any lines preceding the
      * given line number will be included as empty lines, meaning the line numbers will match the input file.
+     * 
      * @param startingLineNumber the 1-based number designating the first line to be included
      * @param classpathResource the path to the file on the classpath
      * @return the string containing the subset of the file contents; never null but possibly empty
      */
-    protected String readLines( int startingLineNumber, String classpathResource ) {
-        try ( InputStream stream = getClass().getClassLoader().getResourceAsStream(classpathResource); ) {
+    protected String readLines(int startingLineNumber, String classpathResource) {
+        try (InputStream stream = getClass().getClassLoader().getResourceAsStream(classpathResource);) {
             assertThat(stream).isNotNull();
             StringBuilder sb = new StringBuilder();
             AtomicInteger counter = new AtomicInteger();
-            IoUtil.readLines(stream,line->{
+            IoUtil.readLines(stream, line -> {
                 if (counter.incrementAndGet() >= startingLineNumber) sb.append(line);
                 sb.append(System.lineSeparator());
             });
             return sb.toString();
-        } catch ( IOException e ) {
+        } catch (IOException e) {
             fail("Unable to read '" + classpathResource + "'");
         }
         assert false : "should never get here";
