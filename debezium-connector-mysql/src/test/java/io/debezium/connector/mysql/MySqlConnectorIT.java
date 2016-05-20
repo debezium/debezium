@@ -89,7 +89,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         //waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         // Consume the first records due to startup and initialization of the database ...
-        //Testing.Print.enable();
         SourceRecords records = consumeRecordsByTopic(6+9+9+4+5);
         assertThat(records.recordsForTopic("kafka-connect").size()).isEqualTo(6);
         assertThat(records.recordsForTopic("kafka-connect.connector_test.products").size()).isEqualTo(9);
@@ -107,7 +106,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         records.forEach(this::validate);
         
         // Make sure there are no more ...
-        Testing.Print.disable();
         waitForAvailableRecords(3, TimeUnit.SECONDS);
         int totalConsumed = consumeAvailableRecords(this::print);
         assertThat(totalConsumed).isEqualTo(0);
@@ -165,9 +163,66 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertInsert(updates.get(0), "id", 2001);
         assertDelete(updates.get(1), "id", 1001);
         assertTombstone(updates.get(2), "id", 1001);
-        
-        //Testing.Print.enable();
-        //updates.forEach(this::printJson);
+
+        // Update one of the records with no schema change ...
+        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("UPDATE products SET weight=1345.67 WHERE id=2001");
+                connection.query("SELECT * FROM products", rs -> {
+                    if (Testing.Print.isEnabled()) connection.print(rs);
+                });
+            }
+        }
+
+        // And consume the one update ...
+        records = consumeRecordsByTopic(1);
+        assertThat(records.topics().size()).isEqualTo(1);
+        updates = records.recordsForTopic("kafka-connect.connector_test.products");
+        assertThat(updates.size()).isEqualTo(1);
+        assertUpdate(updates.get(0), "id", 2001);
+        updates.forEach(this::validate);
+
+        // Add a column with default to the 'products' table and explicitly update one record ...
+        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("ALTER TABLE products ADD COLUMN volume FLOAT NOT NULL, ADD COLUMN alias VARCHAR(30) NOT NULL AFTER description");
+                connection.execute("UPDATE products SET volume=13.5 WHERE id=2001");
+                connection.query("SELECT * FROM products", rs -> {
+                    if (Testing.Print.isEnabled()) connection.print(rs);
+                });
+            }
+        }
+
+        // And consume the one schema change event and one update event ...
+        records = consumeRecordsByTopic(2);
+        assertThat(records.topics().size()).isEqualTo(2);
+        assertThat(records.recordsForTopic("kafka-connect").size()).isEqualTo(1);
+        updates = records.recordsForTopic("kafka-connect.connector_test.products");
+        assertThat(updates.size()).isEqualTo(1);
+        assertUpdate(updates.get(0), "id", 2001);
+        updates.forEach(this::validate);
+
+        // Testing.Print.enable();
+        // records.forEach(this::printJson);
+
+        // To ensure that the server doesn't generate more events than we're expecting, do something completely different
+        // with a different table and then read that event: Change the products on hand for one product ...
+        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("UPDATE products_on_hand SET quantity=20 WHERE product_id=109");
+                connection.query("SELECT * FROM products_on_hand", rs -> {
+                    if (Testing.Print.isEnabled()) connection.print(rs);
+                });
+            }
+        }
+
+        // And consume the one update ...
+        records = consumeRecordsByTopic(1);
+        assertThat(records.topics().size()).isEqualTo(1);
+        updates = records.recordsForTopic("kafka-connect.connector_test.products_on_hand");
+        assertThat(updates.size()).isEqualTo(1);
+        assertUpdate(updates.get(0), "product_id", 109);
+        updates.forEach(this::validate);
 
         // Stop the connector ...
         stopConnector();

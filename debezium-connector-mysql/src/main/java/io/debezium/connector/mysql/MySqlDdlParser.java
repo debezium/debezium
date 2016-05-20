@@ -439,6 +439,13 @@ public class MySqlDdlParser extends DdlParser {
             // Obtain the column editor ...
             String columnName = tokens.consume();
             parseCreateColumn(start, table, columnName);
+            
+            // ALTER TABLE allows reordering the columns after the definition ...
+            if (tokens.canConsume("FIRST")) {
+                table.reorderColumn(columnName, null);
+            } else if (tokens.canConsume("AFTER")) {
+                table.reorderColumn(columnName, tokens.consume());
+            }
         }
     }
 
