@@ -165,6 +165,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertInsert(updates.get(0), "id", 2001);
         assertDelete(updates.get(1), "id", 1001);
         assertTombstone(updates.get(2), "id", 1001);
+        
+        //Testing.Print.enable();
+        //updates.forEach(this::printJson);
 
         // Stop the connector ...
         stopConnector();

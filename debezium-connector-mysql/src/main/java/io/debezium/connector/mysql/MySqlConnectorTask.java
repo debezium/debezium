@@ -274,6 +274,8 @@ public final class MySqlConnectorTask extends SourceTask {
 
             // Update the source offset info ...
             EventHeader eventHeader = event.getHeader();
+            source.setBinlogTimestamp(eventHeader.getTimestamp());
+            source.setBinlogServerId(eventHeader.getServerId());
             EventType eventType = eventHeader.getEventType();
             if (eventType == EventType.ROTATE) {
                 EventData eventData = event.getData();
