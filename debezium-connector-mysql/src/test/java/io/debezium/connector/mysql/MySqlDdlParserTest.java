@@ -244,6 +244,43 @@ public class MySqlDdlParserTest {
     }
 
     @Test
+    public void shouldParseAlterTableStatementAddColumns() {
+        String ddl = "CREATE TABLE t ( col1 VARCHAR(25) ); ";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table t = tables.forTable(new TableId(null, null, "t"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("col1");
+        assertThat(t.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t, "col1", "VARCHAR", Types.VARCHAR, 25, -1, true, false, false);
+        assertThat(t.columnWithName("col1").position()).isEqualTo(1);
+
+        ddl = "ALTER TABLE t ADD col2 VARCHAR(50) NOT NULL;";
+        parser.parse(ddl, tables);
+        Table t2 = tables.forTable(new TableId(null, null, "t"));
+        assertThat(t2).isNotNull();
+        assertThat(t2.columnNames()).containsExactly("col1","col2");
+        assertThat(t2.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t2, "col1", "VARCHAR", Types.VARCHAR, 25, -1, true, false, false);
+        assertColumn(t2, "col2", "VARCHAR", Types.VARCHAR, 50, -1, false, false, false);
+        assertThat(t2.columnWithName("col1").position()).isEqualTo(1);
+        assertThat(t2.columnWithName("col2").position()).isEqualTo(2);
+
+        ddl = "ALTER TABLE t ADD col3 FLOAT NOT NULL AFTER col1;";
+        parser.parse(ddl, tables);
+        Table t3 = tables.forTable(new TableId(null, null, "t"));
+        assertThat(t3).isNotNull();
+        assertThat(t3.columnNames()).containsExactly("col1","col3", "col2");
+        assertThat(t3.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t3, "col1", "VARCHAR", Types.VARCHAR, 25, -1, true, false, false);
+        assertColumn(t3, "col3", "FLOAT", Types.FLOAT, -1, -1, false, false, false);
+        assertColumn(t3, "col2", "VARCHAR", Types.VARCHAR, 50, -1, false, false, false);
+        assertThat(t3.columnWithName("col1").position()).isEqualTo(1);
+        assertThat(t3.columnWithName("col3").position()).isEqualTo(2);
+        assertThat(t3.columnWithName("col2").position()).isEqualTo(3);
+    }
+
+    @Test
     public void shouldParseGrantStatement() {
         String ddl = "GRANT ALL PRIVILEGES ON `mysql`.* TO 'mysqluser'@'%'";
         parser.parse(ddl, tables);
