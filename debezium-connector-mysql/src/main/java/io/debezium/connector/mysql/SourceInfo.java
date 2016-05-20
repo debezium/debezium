@@ -45,17 +45,22 @@ import io.debezium.util.Collect;
 @NotThreadSafe
 final class SourceInfo {
 
+    public static final String SERVER_ID_KEY = "server-id";
+    public static final String SERVER_NAME_KEY = "name";
     public static final String SERVER_PARTITION_KEY = "server";
     public static final String BINLOG_FILENAME_OFFSET_KEY = "file";
     public static final String BINLOG_POSITION_OFFSET_KEY = "pos";
     public static final String BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY = "row";
+    public static final String BINLOG_EVENT_TIMESTAMP_KEY = "ts";
 
     /**
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition()} and {@link #offset()} information.
      */
     public static final Schema SCHEMA = SchemaBuilder.struct()
                                                      .name("io.debezium.connector.mysql.Source")
-                                                     .field(SERVER_PARTITION_KEY, Schema.STRING_SCHEMA)
+                                                     .field(SERVER_NAME_KEY, Schema.STRING_SCHEMA)
+                                                     .field(SERVER_ID_KEY, Schema.INT64_SCHEMA)
+                                                     .field(BINLOG_EVENT_TIMESTAMP_KEY, Schema.INT64_SCHEMA)
                                                      .field(BINLOG_FILENAME_OFFSET_KEY, Schema.STRING_SCHEMA)
                                                      .field(BINLOG_POSITION_OFFSET_KEY, Schema.INT64_SCHEMA)
                                                      .field(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, Schema.INT32_SCHEMA)
@@ -65,6 +70,8 @@ final class SourceInfo {
     private long binlogPosition = 4;
     private int eventRowNumber = 0;
     private String serverName;
+    private long serverId = 0;
+    private long binlogTs = 0;
     private Map<String, String> sourcePartition;
 
     public SourceInfo() {
@@ -125,10 +132,12 @@ final class SourceInfo {
     public Struct struct() {
         assert serverName != null;
         Struct result = new Struct(SCHEMA);
-        result.put(SERVER_PARTITION_KEY, serverName);
+        result.put(SERVER_NAME_KEY, serverName);
+        result.put(SERVER_ID_KEY, serverId);
         result.put(BINLOG_FILENAME_OFFSET_KEY, binlogFilename);
         result.put(BINLOG_POSITION_OFFSET_KEY, binlogPosition);
         result.put(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, eventRowNumber);
+        result.put(BINLOG_EVENT_TIMESTAMP_KEY, binlogTs);
         return result;
     }
 
@@ -170,6 +179,24 @@ final class SourceInfo {
      */
     public void setRowInEvent(int rowNumber) {
         this.eventRowNumber = rowNumber;
+    }
+
+    /**
+     * Set the server ID as found within the MySQL binary log file.
+     * 
+     * @param serverId the server ID found within the binary log file
+     */
+    public void setBinlogServerId(long serverId) {
+        this.serverId = serverId;
+    }
+
+    /**
+     * Set the timestamp as found within the MySQL binary log file.
+     * 
+     * @param timestamp the timestamp found within the binary log file
+     */
+    public void setBinlogTimestamp(long timestamp) {
+        this.binlogTs = timestamp;
     }
 
     /**
