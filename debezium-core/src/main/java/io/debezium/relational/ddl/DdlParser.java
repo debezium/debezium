@@ -26,6 +26,8 @@ import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
+import io.debezium.relational.ddl.DdlParserListener.DatabaseAlteredEvent;
+import io.debezium.relational.ddl.DdlParserListener.DatabaseCreatedEvent;
 import io.debezium.relational.ddl.DdlParserListener.TableAlteredEvent;
 import io.debezium.relational.ddl.DdlParserListener.TableCreatedEvent;
 import io.debezium.relational.ddl.DdlParserListener.TableDroppedEvent;
@@ -128,7 +130,11 @@ public class DdlParser {
         statementStartTokens.add("CREATE", "ALTER", "DROP", "INSERT", "SET", "GRANT", "REVOKE");
     }
 
-    protected final String terminator() {
+    /**
+     * The token used to terminate a DDL statement.
+     * @return the terminating token; never null
+     */
+    public final String terminator() {
         return terminator;
     }
 
@@ -368,6 +374,37 @@ public class DdlParser {
         if (event != null && !listeners.isEmpty()) {
             listeners.forEach(listener -> listener.handle(event));
         }
+    }
+
+    /**
+     * Signal a create database event to all listeners.
+     * 
+     * @param databaseName the database name; may not be null
+     * @param statementStart the start of the statement; may not be null
+     */
+    protected void signalCreateDatabase(String databaseName, Marker statementStart) {
+        signalEvent(new DatabaseCreatedEvent(databaseName, statement(statementStart)));
+    }
+
+    /**
+     * Signal an alter database event to all listeners.
+     * 
+     * @param databaseName the database name; may not be null
+     * @param previousDatabaseName the previous name of the database if it was renamed, or null if it was not renamed
+     * @param statementStart the start of the statement; may not be null
+     */
+    protected void signalAlterDatabase(String databaseName, String previousDatabaseName, Marker statementStart) {
+        signalEvent(new DatabaseAlteredEvent(databaseName, previousDatabaseName, statement(statementStart)));
+    }
+
+    /**
+     * Signal a drop database event to all listeners.
+     * 
+     * @param databaseName the database name; may not be null
+     * @param statementStart the start of the statement; may not be null
+     */
+    protected void signalDropDatabase(String databaseName, Marker statementStart) {
+        signalEvent(new DatabaseCreatedEvent(databaseName, statement(statementStart)));
     }
 
     /**

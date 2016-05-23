@@ -5,6 +5,7 @@
  */
 package io.debezium.relational.ddl;
 
+import io.debezium.annotation.Immutable;
 import io.debezium.relational.TableId;
 
 /**
@@ -32,11 +33,13 @@ public interface DdlParserListener {
     public static enum EventType {
         CREATE_TABLE, ALTER_TABLE, DROP_TABLE,
         CREATE_INDEX, DROP_INDEX,
+        CREATE_DATABASE, ALTER_DATABASE, DROP_DATABASE,
     }
 
     /**
      * The base class for all concrete events.
      */
+    @Immutable
     public static abstract class Event {
         private final String statement;
         private final EventType type;
@@ -66,6 +69,7 @@ public interface DdlParserListener {
     /**
      * The base class for all table-related events.
      */
+    @Immutable
     public static abstract class TableEvent extends Event {
         private final TableId tableId;
         private final boolean isView;
@@ -101,6 +105,7 @@ public interface DdlParserListener {
     /**
      * An event describing the creation (or replacement) of a table.
      */
+    @Immutable
     public static class TableCreatedEvent extends TableEvent {
         public TableCreatedEvent(TableId tableId, String ddlStatement, boolean isView) {
             super(EventType.CREATE_TABLE, tableId, ddlStatement, isView);
@@ -110,6 +115,7 @@ public interface DdlParserListener {
     /**
      * An event describing the altering of a table.
      */
+    @Immutable
     public static class TableAlteredEvent extends TableEvent {
         private final TableId previousTableId;
 
@@ -138,6 +144,7 @@ public interface DdlParserListener {
     /**
      * An event describing the dropping of a table.
      */
+    @Immutable
     public static class TableDroppedEvent extends TableEvent {
         public TableDroppedEvent(TableId tableId, String ddlStatement, boolean isView) {
             super(EventType.DROP_TABLE, tableId, ddlStatement, isView);
@@ -147,6 +154,7 @@ public interface DdlParserListener {
     /**
      * The abstract base class for all index-related events.
      */
+    @Immutable
     public static abstract class TableIndexEvent extends Event {
         private final TableId tableId;
         private final String indexName;
@@ -185,6 +193,7 @@ public interface DdlParserListener {
     /**
      * An event describing the creation of an index on a table.
      */
+    @Immutable
     public static class TableIndexCreatedEvent extends TableIndexEvent {
         public TableIndexCreatedEvent(String indexName, TableId tableId, String ddlStatement) {
             super(EventType.CREATE_INDEX, indexName, tableId, ddlStatement);
@@ -194,9 +203,84 @@ public interface DdlParserListener {
     /**
      * An event describing the dropping of an index on a table.
      */
+    @Immutable
     public static class TableIndexDroppedEvent extends TableIndexEvent {
         public TableIndexDroppedEvent(String indexName, TableId tableId, String ddlStatement) {
             super(EventType.DROP_INDEX, indexName, tableId, ddlStatement);
         }
     }
+    
+    /**
+     * The base class for all table-related events.
+     */
+    @Immutable
+    public static abstract class DatabaseEvent extends Event {
+        private final String databaseName;
+
+        public DatabaseEvent(EventType type, String databaseName, String ddlStatement) {
+            super(type, ddlStatement);
+            this.databaseName = databaseName;
+        }
+
+        /**
+         * Get the database name affected by this event.
+         * @return the database name; never null
+         */
+        public String databaseName() {
+            return databaseName;
+        }
+        
+        @Override
+        public String toString() {
+            return databaseName() + " => " + statement();
+        }
+    }
+
+    /**
+     * An event describing the creation of a database.
+     */
+    @Immutable
+    public static class DatabaseCreatedEvent extends DatabaseEvent {
+        public DatabaseCreatedEvent(String databaseName, String ddlStatement) {
+            super(EventType.CREATE_DATABASE, databaseName, ddlStatement);
+        }
+    }
+
+    /**
+     * An event describing the altering of a database.
+     */
+    @Immutable
+    public static class DatabaseAlteredEvent extends DatabaseEvent {
+        private final String previousDatabaseName;
+        public DatabaseAlteredEvent(String databaseName, String previousDatabaseName, String ddlStatement) {
+            super(EventType.ALTER_DATABASE, databaseName, ddlStatement);
+            this.previousDatabaseName = previousDatabaseName;
+        }
+        /**
+         * If the table was renamed, then get the old identifier of the table before it was renamed.
+         * @return the table's previous identifier; may be null if the alter did not affect the table's identifier
+         */
+        public String previousDatabaseName() {
+            return previousDatabaseName;
+        }
+
+        @Override
+        public String toString() {
+            if ( previousDatabaseName != null ) {
+                return databaseName() + " (was " + previousDatabaseName() + ") => " + statement();
+            }
+            return databaseName() + " => " + statement();
+        }
+    }
+
+    /**
+     * An event describing the dropping of a database.
+     */
+    @Immutable
+    public static class DatabaseDroppedEvent extends DatabaseEvent {
+        public DatabaseDroppedEvent(String databaseName, String ddlStatement) {
+            super(EventType.DROP_DATABASE, databaseName, ddlStatement);
+        }
+    }
+
 }

@@ -86,9 +86,10 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                               .build();
         // Start the connector ...
         start(MySqlConnector.class, config);
-        //waitForAvailableRecords(10, TimeUnit.SECONDS);
 
-        // Consume the first records due to startup and initialization of the database ...
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
         SourceRecords records = consumeRecordsByTopic(6+9+9+4+5);
         assertThat(records.recordsForTopic("kafka-connect").size()).isEqualTo(6);
         assertThat(records.recordsForTopic("kafka-connect.connector_test.products").size()).isEqualTo(9);
@@ -99,19 +100,22 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertThat(records.databaseNames().size()).isEqualTo(1);
         assertThat(records.ddlRecordsForDatabase("connector_test").size()).isEqualTo(6);
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
-        
         records.ddlRecordsForDatabase("connector_test").forEach(this::print);
 
         // Check that all records are valid, can be serialized and deserialized ...
         records.forEach(this::validate);
         
-        // Make sure there are no more ...
+        // ---------------------------------------------------------------------------------------------------------------
+        // Stopping the connector does not lose events recorded when connector is not running
+        // ---------------------------------------------------------------------------------------------------------------
+
+        // Make sure there are no more events and then stop the connector ...
         waitForAvailableRecords(3, TimeUnit.SECONDS);
         int totalConsumed = consumeAvailableRecords(this::print);
         assertThat(totalConsumed).isEqualTo(0);
         stopConnector();
         
-        // Make some changes to data only ...
+        // Make some changes to data only while the connector is stopped ...
         try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
             try (JdbcConnection connection = db.connect()) {
                 connection.query("SELECT * FROM products", rs -> {
@@ -130,7 +134,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertThat(records.recordsForTopic("kafka-connect.connector_test.products").size()).isEqualTo(1);
         assertThat(records.topics().size()).isEqualTo(1);
         
-        // Create an additional few records ...
+        // ---------------------------------------------------------------------------------------------------------------
+        // Simple INSERT
+        // ---------------------------------------------------------------------------------------------------------------
         try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("INSERT INTO products VALUES (1001,'roy','old robot',1234.56);");
@@ -147,7 +153,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         List<SourceRecord> inserts = records.recordsForTopic("kafka-connect.connector_test.products");
         assertInsert(inserts.get(0), "id", 1001);
 
-        // Update one of the records by changing its primary key ...
+        // ---------------------------------------------------------------------------------------------------------------
+        // Changing the primary key of a row should result in 3 events: INSERT, DELETE, and TOMBSTONE
+        // ---------------------------------------------------------------------------------------------------------------
         try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("UPDATE products SET id=2001, description='really old robot' WHERE id=1001");
@@ -164,7 +172,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertDelete(updates.get(1), "id", 1001);
         assertTombstone(updates.get(2), "id", 1001);
 
-        // Update one of the records with no schema change ...
+        // ---------------------------------------------------------------------------------------------------------------
+        // Simple UPDATE (with no schema changes)
+        // ---------------------------------------------------------------------------------------------------------------
         try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("UPDATE products SET weight=1345.67 WHERE id=2001");
@@ -182,10 +192,13 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertUpdate(updates.get(0), "id", 2001);
         updates.forEach(this::validate);
 
+        // ---------------------------------------------------------------------------------------------------------------
+        // Change our schema with a fully-qualified name; we should still see this event
+        // ---------------------------------------------------------------------------------------------------------------
         // Add a column with default to the 'products' table and explicitly update one record ...
         try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
             try (JdbcConnection connection = db.connect()) {
-                connection.execute("ALTER TABLE products ADD COLUMN volume FLOAT NOT NULL, ADD COLUMN alias VARCHAR(30) NOT NULL AFTER description");
+                connection.execute("ALTER TABLE connector_test.products ADD COLUMN volume FLOAT NOT NULL, ADD COLUMN alias VARCHAR(30) NOT NULL AFTER description");
                 connection.execute("UPDATE products SET volume=13.5 WHERE id=2001");
                 connection.query("SELECT * FROM products", rs -> {
                     if (Testing.Print.isEnabled()) connection.print(rs);
@@ -202,11 +215,32 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertUpdate(updates.get(0), "id", 2001);
         updates.forEach(this::validate);
 
-        // Testing.Print.enable();
-        // records.forEach(this::printJson);
+        // ---------------------------------------------------------------------------------------------------------------
+        // DBZ-55 Change our schema using a different database and a fully-qualified name; we should still see this event
+        // ---------------------------------------------------------------------------------------------------------------
+        // Connect to a different database, but use the fully qualified name for a table in our database ...
+        try (MySQLConnection db = MySQLConnection.forTestDatabase("emptydb");) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("CREATE TABLE connector_test.stores ("
+                        + " id INT(11) PRIMARY KEY NOT NULL AUTO_INCREMENT,"
+                        + " first_name VARCHAR(255) NOT NULL,"
+                        + " last_name VARCHAR(255) NOT NULL,"
+                        + " email VARCHAR(255) NOT NULL );");
+            }
+        }
 
-        // To ensure that the server doesn't generate more events than we're expecting, do something completely different
-        // with a different table and then read that event: Change the products on hand for one product ...
+        // And consume the one schema change event only ...
+        records = consumeRecordsByTopic(1);
+        assertThat(records.topics().size()).isEqualTo(1);
+        assertThat(records.recordsForTopic("kafka-connect").size()).isEqualTo(1);
+        //Testing.Print.enable();
+        records.recordsForTopic("kafka-connect").forEach(this::validate);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Make sure there are no additional events
+        // ---------------------------------------------------------------------------------------------------------------
+        
+        // Do something completely different with a table we've not modified yet and then read that event.
         try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("UPDATE products_on_hand SET quantity=20 WHERE product_id=109");
@@ -216,7 +250,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             }
         }
 
-        // And consume the one update ...
+        // And make sure we consume that one update ...
         records = consumeRecordsByTopic(1);
         assertThat(records.topics().size()).isEqualTo(1);
         updates = records.recordsForTopic("kafka-connect.connector_test.products_on_hand");
@@ -224,7 +258,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertUpdate(updates.get(0), "product_id", 109);
         updates.forEach(this::validate);
 
+        // ---------------------------------------------------------------------------------------------------------------
         // Stop the connector ...
+        // ---------------------------------------------------------------------------------------------------------------
         stopConnector();
     }
 
