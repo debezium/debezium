@@ -40,6 +40,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
+import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.HistoryRecord.Fields;
 import io.debezium.relational.mapping.ColumnMappers;
@@ -84,6 +85,7 @@ final class TableConverters {
     private final DatabaseHistory dbHistory;
     private final TopicSelector topicSelector;
     private final MySqlDdlParser ddlParser;
+    private final DdlChanges ddlChanges;
     private final Tables tables;
     private final TableSchemaBuilder schemaBuilder = new TableSchemaBuilder();
     private final Map<TableId, TableSchema> tableSchemaByTableId = new HashMap<>();
@@ -114,6 +116,8 @@ final class TableConverters {
         this.columnFilter = columnFilter;
         this.columnMappers = columnSelectors;
         this.ddlParser = new MySqlDdlParser(false); // don't include views
+        this.ddlChanges = new DdlChanges(this.ddlParser.terminator());
+        this.ddlParser.addListener(ddlChanges);
         this.recordSchemaChangesInSourceRecords = recordSchemaChangesInSourceRecords;
         Predicate<TableId> knownTables = (id) -> !unknownTableIds.contains(id); // known if not unknown
         this.tableFilter = tableFilter != null ? tableFilter.and(knownTables) : knownTables;
@@ -141,31 +145,67 @@ final class TableConverters {
 
     public void updateTableCommand(Event event, SourceInfo source, Consumer<SourceRecord> recorder) {
         QueryEventData command = event.getData();
+        // The command's database is the one that the client was using when submitting the DDL statements,
+        // and that might not be the database(s) affected by the DDL statements ...
         String databaseName = command.getDatabase();
         String ddlStatements = command.getSql();
         if (ignoredQueryStatements.contains(ddlStatements)) return;
         logger.debug("Received update table command: {}", event);
         try {
+            this.ddlChanges.reset();
             this.ddlParser.setCurrentSchema(databaseName);
             this.ddlParser.parse(ddlStatements, tables);
         } catch (ParsingException e) {
             logger.error("Error parsing DDL statement and updating tables: {}", ddlStatements, e);
         } finally {
-            // Record the DDL statement so that we can later recover them if needed ...
-            dbHistory.record(source.partition(), source.offset(), databaseName, tables, ddlStatements);
+            if (recordSchemaChangesInSourceRecords) {
 
-            if (recordSchemaChangesInSourceRecords && dbFilter.test(databaseName)) {
-                String serverName = source.serverName();
-                String topicName = topicSelector.getTopic(serverName);
-                Integer partition = 0;
-                Struct key = schemaChangeRecordKey(databaseName);
-                Struct value = schemaChangeRecordValue(source, databaseName, ddlStatements);
-                SourceRecord record = new SourceRecord(source.partition(), source.offset(),
-                        topicName, partition,
-                        SCHEMA_CHANGE_RECORD_KEY_SCHEMA, key,
-                        SCHEMA_CHANGE_RECORD_VALUE_SCHEMA, value);
-                recorder.accept(record);
+                // We are supposed to _also_ record the schema changes as SourceRecords, but these need to be filtered
+                // by database. Unfortunately, the databaseName on the event might not be the same database as that
+                // being modified by the DDL statements (since the DDL statements can have fully-qualified names).
+                // Therefore, we have to look at each statement to figure out which database it applies and then
+                // record the DDL statements (still in the same order) to those databases.
+                
+                if ( !ddlChanges.isEmpty() && ddlChanges.applyToMoreDatabasesThan(databaseName) ) {
+                    
+                    // We understood at least some of the DDL statements and can figure out to which database they apply.
+                    // They also apply to more databases than 'databaseName', so we need to apply the DDL statements in
+                    // the same order they were read for each _affected_ database, grouped together if multiple apply
+                    // to the same _affected_ database...
+                    ddlChanges.groupStatementStringsByDatabase((dbName, statements) -> {
+                        if (dbFilter.test(dbName)) {
+                            String serverName = source.serverName();
+                            String topicName = topicSelector.getTopic(serverName);
+                            Integer partition = 0;
+                            Struct key = schemaChangeRecordKey(databaseName);
+                            Struct value = schemaChangeRecordValue(source, dbName, statements);
+                            SourceRecord record = new SourceRecord(source.partition(), source.offset(),
+                                    topicName, partition,
+                                    SCHEMA_CHANGE_RECORD_KEY_SCHEMA, key,
+                                    SCHEMA_CHANGE_RECORD_VALUE_SCHEMA, value);
+                            recorder.accept(record);
+                        }
+                    });
+                } else if (dbFilter.test(databaseName)) {
+                    // Either all of the statements applied to 'databaseName', or we didn't understand any of the statements.
+                    // But the database filter includes 'databaseName' so we should forward all of the statements ...
+                    String serverName = source.serverName();
+                    String topicName = topicSelector.getTopic(serverName);
+                    Integer partition = 0;
+                    Struct key = schemaChangeRecordKey(databaseName);
+                    Struct value = schemaChangeRecordValue(source, databaseName, ddlStatements);
+                    SourceRecord record = new SourceRecord(source.partition(), source.offset(),
+                            topicName, partition,
+                            SCHEMA_CHANGE_RECORD_KEY_SCHEMA, key,
+                            SCHEMA_CHANGE_RECORD_VALUE_SCHEMA, value);
+                    recorder.accept(record);
+                }
             }
+
+            // Record the DDL statement so that we can later recover them if needed. We do this _after_ writing the
+            // schema change records so that failure recovery (which is based on of the history) won't lose
+            // schema change records.
+            dbHistory.record(source.partition(), source.offset(), databaseName, tables, ddlStatements);
         }
 
         // Figure out what changed ...

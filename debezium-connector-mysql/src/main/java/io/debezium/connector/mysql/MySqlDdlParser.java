@@ -148,7 +148,7 @@ public class MySqlDdlParser extends DdlParser {
         } else if (tokens.matches("VIEW")) {
             parseCreateView(marker);
         } else if (tokens.matchesAnyOf("DATABASE", "SCHEMA")) {
-            parseCreateUnknown(marker);
+            parseCreateDatabase(marker);
         } else if (tokens.matchesAnyOf("EVENT")) {
             parseCreateUnknown(marker);
         } else if (tokens.matchesAnyOf("FUNCTION", "PROCEDURE")) {
@@ -166,6 +166,31 @@ public class MySqlDdlParser extends DdlParser {
             sequentially(this::parseCreateView,
                          this::parseCreateUnknown);
         }
+    }
+    
+    protected void parseCreateDatabase(Marker start) {
+        tokens.consumeAnyOf("DATABASE","SCHEMA");
+        tokens.canConsume("IF","NOT","EXISTS");
+        String dbName = tokens.consume();
+        consumeRemainingStatement(start);
+        signalCreateDatabase(dbName, start);
+        debugParsed(start);
+    }
+
+    protected void parseAlterDatabase(Marker start) {
+        tokens.consumeAnyOf("DATABASE","SCHEMA");
+        String dbName = tokens.consume();
+        consumeRemainingStatement(start);
+        signalAlterDatabase(dbName, null, start);
+        debugParsed(start);
+    }
+
+    protected void parseDropDatabase(Marker start) {
+        tokens.consumeAnyOf("DATABASE","SCHEMA");
+        tokens.canConsume("IF","EXISTS");
+        String dbName = tokens.consume();
+        signalDropDatabase(dbName, start);
+        debugParsed(start);
     }
 
     protected void parseCreateTable(Marker start) {
@@ -751,6 +776,8 @@ public class MySqlDdlParser extends DdlParser {
         if (tokens.matches("TABLE") || tokens.matches("IGNORE", "TABLE")) {
             parseAlterTable(marker);
             debugParsed(marker);
+        } else if (tokens.matchesAnyOf("DATABASE", "SCHEMA")) {
+            parseAlterDatabase(marker);
         } else {
             parseAlterUnknown(marker);
         }
@@ -928,6 +955,8 @@ public class MySqlDdlParser extends DdlParser {
             parseDropView(marker);
         } else if (tokens.matches("INDEX")) {
             parseDropIndex(marker);
+        } else if (tokens.matchesAnyOf("DATABASE", "SCHEMA")) {
+            parseDropDatabase(marker);
         } else {
             parseDropUnknown(marker);
         }

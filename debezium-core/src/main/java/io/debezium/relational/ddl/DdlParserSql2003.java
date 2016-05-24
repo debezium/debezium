@@ -131,9 +131,36 @@ public class DdlParserSql2003 extends DdlParser {
         } else if (tokens.matches("VIEW") || tokens.matches("RECURSIVE", "VIEW")) {
             parseCreateView(marker);
             debugParsed(marker);
+        } else if (tokens.matchesAnyOf("DATABASE", "SCHEMA")) {
+            parseCreateDatabase(marker);
         } else {
             parseCreateUnknown(marker);
         }
+    }
+
+    protected void parseCreateDatabase(Marker start) {
+        tokens.consumeAnyOf("DATABASE","SCHEMA");
+        tokens.canConsume("IF","NOT","EXISTS");
+        String dbName = tokens.consume();
+        consumeRemainingStatement(start);
+        signalCreateDatabase(dbName, start);
+        debugParsed(start);
+    }
+
+    protected void parseAlterDatabase(Marker start) {
+        tokens.consumeAnyOf("DATABASE","SCHEMA");
+        String dbName = tokens.consume();
+        consumeRemainingStatement(start);
+        signalAlterDatabase(dbName, null, start);
+        debugParsed(start);
+    }
+
+    protected void parseDropDatabase(Marker start) {
+        tokens.consumeAnyOf("DATABASE","SCHEMA");
+        tokens.canConsume("IF","EXISTS");
+        String dbName = tokens.consume();
+        signalDropDatabase(dbName, start);
+        debugParsed(start);
     }
 
     protected void parseCreateTable(Marker start) {
@@ -555,6 +582,8 @@ public class DdlParserSql2003 extends DdlParser {
         if (tokens.matches("TABLE") || tokens.matches("IGNORE", "TABLE")) {
             parseAlterTable(marker);
             debugParsed(marker);
+        } else if (tokens.matchesAnyOf("DATABASE", "SCHEMA")) {
+            parseAlterDatabase(marker);
         } else {
             parseAlterUnknown(marker);
         }
@@ -659,6 +688,8 @@ public class DdlParserSql2003 extends DdlParser {
         } else if (tokens.matches("VIEW")) {
             parseDropView(marker);
             debugParsed(marker);
+        } else if (tokens.matchesAnyOf("DATABASE", "SCHEMA")) {
+            parseDropDatabase(marker);
         } else {
             parseDropUnknown(marker);
         }

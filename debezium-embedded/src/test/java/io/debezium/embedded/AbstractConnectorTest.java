@@ -273,6 +273,10 @@ public abstract class AbstractConnectorTest implements Testing {
                 if (recordConsumer != null) {
                     recordConsumer.accept(record);
                 }
+                if ( Testing.Debug.isEnabled() ) {
+                    Testing.debug("Consumed record " + recordsConsumed + " / " + numberOfRecords + " (" + (numberOfRecords-recordsConsumed) + " more)");
+                    debug(record);
+                }
             }
         }
         return recordsConsumed;
@@ -501,6 +505,17 @@ public abstract class AbstractConnectorTest implements Testing {
         SchemaAndValue keyWithSchema = null;
         SchemaAndValue valueWithSchema = null;
         try {
+            // The key should never be null ...
+            assertThat(record.key()).isNotNull();
+            assertThat(record.keySchema()).isNotNull();
+            
+            // If the value is not null there must be a schema; otherwise, the schema should also be null ...
+            if ( record.value() == null ) {
+                assertThat(record.valueSchema()).isNull();
+            } else {
+                assertThat(record.valueSchema()).isNotNull();
+            }
+            
             // First serialize and deserialize the key ...
             byte[] keyBytes = keyJsonConverter.fromConnectData(record.topic(), record.keySchema(), record.key());
             keyJson = keyJsonDeserializer.deserialize(record.topic(), keyBytes);
@@ -538,7 +553,7 @@ public abstract class AbstractConnectorTest implements Testing {
         }
     }
 
-    protected void print(SourceRecord record) {
+    protected String printToString(SourceRecord record) {
         StringBuilder sb = new StringBuilder("SourceRecord{");
         sb.append("sourcePartition=").append(record.sourcePartition());
         sb.append(", sourceOffset=").append(record.sourceOffset());
@@ -549,7 +564,15 @@ public abstract class AbstractConnectorTest implements Testing {
         sb.append(", value=");
         append(record.value(), sb);
         sb.append("}");
-        Testing.print(sb.toString());
+        return sb.toString();
+    }
+
+    protected void print(SourceRecord record) {
+        Testing.print(printToString(record));
+    }
+
+    protected void debug(SourceRecord record) {
+        Testing.debug(printToString(record));
     }
 
     protected void printJson(SourceRecord record) {

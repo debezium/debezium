@@ -40,7 +40,7 @@ public interface DatabaseHistory {
      * @param position the point in history where these DDL changes were made, which may be used when
      *            {@link #recover(Map, Map, Tables, DdlParser) recovering} the schema to some point in history; may not be
      *            null
-     * @param databaseName the name of the database whose schema is being changed; may not be null
+     * @param databaseName the name of the database whose schema is being changed; may be null
      * @param schema the current definition of the database schema; may not be null
      * @param ddl the DDL statements that describe the changes to the database schema; may not be null
      */
