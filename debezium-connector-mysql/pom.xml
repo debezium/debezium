@@ -12,18 +12,6 @@
     <name>Debezium Connector for MySQL</name>
     <packaging>jar</packaging>
 
-    <repositories>
-        <repository>
-            <id>confluent</id>
-            <name>Confluent</name>
-            <url>http://packages.confluent.io/maven/</url>
-            <snapshots>
-                <enabled>true</enabled>
-                <updatePolicy>never</updatePolicy>
-            </snapshots>
-        </repository>
-    </repositories>
-
     <dependencies>
         <dependency>
             <groupId>io.debezium</groupId>
@@ -41,8 +29,6 @@
         <dependency>
             <groupId>io.confluent</groupId>
             <artifactId>kafka-connect-avro-converter</artifactId>
-            <!-- check new release version at https://github.com/confluentinc/schema-registry/releases -->
-            <version>2.1.0-alpha1</version>
         </dependency>
 
         <dependency>

@@ -50,6 +50,7 @@
         <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
         <version.kafka>0.9.0.1</version.kafka>
         <version.kafka.scala>2.11</version.kafka.scala>
+        <version.confluent.platform>2.1.0-alpha1</version.confluent.platform>
         <version.scala>2.11.7</version.scala>
         <version.curator>2.4.0</version.curator>
         <version.zookeeper>3.4.6</version.zookeeper>
@@ -109,6 +110,18 @@
       </snapshotRepository>
     </distributionManagement>
 
+    <repositories>
+        <repository>
+            <id>confluent</id>
+            <name>Confluent</name>
+            <url>http://packages.confluent.io/maven/</url>
+            <snapshots>
+                <enabled>true</enabled>
+                <updatePolicy>never</updatePolicy>
+            </snapshots>
+        </repository>
+    </repositories>
+
     <dependencyManagement>
         <dependencies>
             <!-- Major dependencies -->
@@ -167,6 +180,13 @@
                 <groupId>org.apache.curator</groupId>
                 <artifactId>curator-test</artifactId>
                 <version>${version.curator}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.confluent</groupId>
+                <artifactId>kafka-connect-avro-converter</artifactId>
+                <!-- check new release version at https://github.com/confluentinc/schema-registry/releases -->
+                <version>${version.confluent.platform}</version>
                 <scope>test</scope>
             </dependency>
 
