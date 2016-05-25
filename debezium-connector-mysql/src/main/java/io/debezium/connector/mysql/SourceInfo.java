@@ -45,7 +45,10 @@ import io.debezium.util.Collect;
 @NotThreadSafe
 final class SourceInfo {
 
-    public static final String SERVER_ID_KEY = "server-id";
+    // Avro Schema doesn't allow "-" to be included as field name, use "_" instead.
+    // Ref https://issues.apache.org/jira/browse/AVRO-838.
+    public static final String SERVER_ID_KEY = "server_id";
+
     public static final String SERVER_NAME_KEY = "name";
     public static final String SERVER_PARTITION_KEY = "server";
     public static final String BINLOG_FILENAME_OFFSET_KEY = "file";
