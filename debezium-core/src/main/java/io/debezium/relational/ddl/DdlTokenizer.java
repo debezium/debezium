@@ -49,7 +49,8 @@ public class DdlTokenizer implements Tokenizer {
     public static final int DOUBLE_QUOTED_STRING = 16;
     /**
      * The {@link Token#type() token type} for tokens that consist of all the characters
-     * between "/*" and "&#42;/", between "//" and the next line terminator (e.g., '\n', '\r' or "\r\n"), or between "--" and
+     * between "/*" and "&#42;/", between "//" and the next line terminator (e.g., '\n', '\r' or "\r\n"), between "#" and
+     * the next line terminator (e.g., '\n', '\r' or "\r\n"), or between "--" and
      * the next line terminator (e.g., '\n', '\r' or "\r\n").
      */
     public static final int COMMENT = 32;
@@ -110,13 +111,15 @@ public class DdlTokenizer implements Tokenizer {
     protected Tokens adapt(CharacterStream input,
                            Tokens output) {
         return (position, startIndex, endIndex, type) -> {
-            output.addToken(position, startIndex, endIndex, retypingFunction.typeOf(type, input.substring(startIndex, endIndex).toUpperCase()));
+            output.addToken(position, startIndex, endIndex,
+                            retypingFunction.typeOf(type, input.substring(startIndex, endIndex).toUpperCase()));
         };
     }
 
     @Override
     public void tokenize(CharacterStream input,
-                         Tokens tokens) throws ParsingException {
+                         Tokens tokens)
+            throws ParsingException {
         tokens = adapt(input, tokens);
         int startIndex;
         int endIndex;
@@ -129,6 +132,30 @@ public class DdlTokenizer implements Tokenizer {
                 case '\r':
                     // Just skip these whitespace characters ...
                     break;
+
+                // ==============================================================================================
+                // DDL Comments token = "#"
+                // ==============================================================================================
+                case '#': {
+                    startIndex = input.index();
+                    Position startPosition = input.position(startIndex);
+                    // End-of-line comment ...
+                    boolean foundLineTerminator = false;
+                    while (input.hasNext()) {
+                        c = input.next();
+                        if (c == '\n' || c == '\r') {
+                            foundLineTerminator = true;
+                            break;
+                        }
+                    }
+                    endIndex = input.index(); // the token won't include the '\n' or '\r' character(s)
+                    if (!foundLineTerminator) ++endIndex; // must point beyond last char
+                    if (c == '\r' && input.isNext('\n')) input.next();
+                    if (useComments) {
+                        tokens.addToken(startPosition, startIndex, endIndex, COMMENT);
+                    }
+                    break;
+                }
                 // ==============================================================================================
                 // DDL Comments token = "--"
                 // ==============================================================================================
@@ -161,7 +188,7 @@ public class DdlTokenizer implements Tokenizer {
                     }
                     break;
                 }
-                    // ==============================================================================================
+                // ==============================================================================================
                 case '(':
                 case ')':
                 case '{':
