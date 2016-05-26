@@ -18,6 +18,18 @@ public final class TableId implements Comparable<TableId> {
     /**
      * Parse the supplied string, extracting up to the first 3 parts into a TableID.
      * 
+     * @param str the string representation of the table identifier; may not be null
+     * @return the table ID, or null if it could not be parsed
+     */
+    public static TableId parse(String str) {
+        String[] parts = str.split("[\\" + '.' + "]");
+        if ( parts.length < 0 ) return null;
+        return TableId.parse(parts, parts.length, true);
+    }
+
+    /**
+     * Parse the supplied string, extracting up to the first 3 parts into a TableID.
+     * 
      * @param parts the parts of the identifier; may not be null
      * @param numParts the number of parts to use for the table identifier
      * @param useCatalogBeforeSchema {@code true} if the parsed string contains only 2 items and the first should be used as

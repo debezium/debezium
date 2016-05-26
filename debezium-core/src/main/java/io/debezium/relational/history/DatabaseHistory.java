@@ -19,15 +19,16 @@ import io.debezium.relational.ddl.DdlParser;
  * @author Randall Hauch
  */
 public interface DatabaseHistory {
-    
+
     public static final String CONFIGURATION_FIELD_PREFIX_STRING = "database.history.";
-    
+
     /**
      * Configure this instance.
+     * 
      * @param config the configuration for this history store
      */
     void configure(Configuration config);
-    
+
     /**
      * Start the history.
      */
@@ -54,11 +55,12 @@ public interface DatabaseHistory {
      * 
      * @param source the information about the source database; may not be null
      * @param position the point in history at which the {@link Tables database schema} should be recovered; may not be null
-     * @param schema the definition of the schema for the named {@code database}; may not be null
+     * @param schema the table definitions that should be changed to reflect the database schema at the desired point in history;
+     *            may not be null
      * @param ddlParser the DDL parser that can be used to apply DDL statements to the given {@code schema}; may not be null
      */
     void recover(Map<String, ?> source, Map<String, ?> position, Tables schema, DdlParser ddlParser);
-    
+
     /**
      * Stop recording history and release any resources acquired since {@link #configure(Configuration)}.
      */

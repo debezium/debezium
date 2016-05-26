@@ -54,8 +54,12 @@ public class Predicates {
         Set<Pattern> patterns = Strings.listOfRegex(regexPatterns,Pattern.CASE_INSENSITIVE);
         return (t) -> {
             String str = conversion.apply(t);
-            for ( Pattern p : patterns ) {
-                if ( p.matcher(str).matches()) return true;
+            if ( str != null ) {
+                for ( Pattern p : patterns ) {
+                    if ( p.matcher(str).matches()) return true;
+                }
+            } else {
+                int x =0;
             }
             return false;
         };

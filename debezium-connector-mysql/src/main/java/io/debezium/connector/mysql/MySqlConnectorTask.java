@@ -12,14 +12,12 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
-import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -40,15 +38,7 @@ import com.github.shyiko.mysql.binlog.network.AuthenticationException;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
-import io.debezium.relational.ColumnId;
-import io.debezium.relational.Selectors;
-import io.debezium.relational.TableId;
-import io.debezium.relational.Tables;
-import io.debezium.relational.ddl.DdlParser;
-import io.debezium.relational.history.DatabaseHistory;
-import io.debezium.relational.mapping.ColumnMappers;
 import io.debezium.util.Clock;
-import io.debezium.util.Collect;
 import io.debezium.util.Metronome;
 
 /**
@@ -60,35 +50,21 @@ import io.debezium.util.Metronome;
 @NotThreadSafe
 public final class MySqlConnectorTask extends SourceTask {
 
-    private final Set<String> BUILT_IN_TABLE_NAMES = Collect.unmodifiableSet("db", "user", "func", "plugin", "tables_priv",
-                                                                             "columns_priv", "help_topic", "help_category",
-                                                                             "help_relation", "help_keyword",
-                                                                             "time_zone_name", "time_zone", "time_zone_transition",
-                                                                             "time_zone_transition_type", "time_zone_leap_second",
-                                                                             "proc", "procs_priv", "general_log", "event",
-                                                                             "ndb_binlog_index",
-                                                                             "innodb_table_stats", "innodb_index_stats",
-                                                                             "slave_relay_log_info", "slave_master_info",
-                                                                             "slave_worker_info", "gtid_executed",
-                                                                             "server_cost", "engine_cost");
-    private final Set<String> BUILT_IN_DB_NAMES = Collect.unmodifiableSet("mysql", "performance_schema");
-
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final TopicSelector topicSelector;
-
-    // These are all effectively constants between start(...) and stop(...)
-    private DatabaseHistory dbHistory;
-    private EnumMap<EventType, EventHandler> eventHandlers = new EnumMap<>(EventType.class);
-    private Tables tables;
-    private TableConverters tableConverters;
-    private BinaryLogClient client;
-    private BlockingQueue<Event> events;
-    private Queue<Event> batchEvents;
-    private int maxBatchSize;
-    private String serverName;
-    private Metronome metronome;
     private final Clock clock = Clock.system();
     private final AtomicBoolean running = new AtomicBoolean(false);
+
+    // These are all effectively constants between start(...) and stop(...)
+    private MySqlSchema dbSchema;
+    private String serverName;
+    private int maxBatchSize;
+    private BlockingQueue<Event> events;
+    private Queue<Event> batchEvents;
+    private EnumMap<EventType, EventHandler> eventHandlers = new EnumMap<>(EventType.class);
+    private TableConverters tableConverters;
+    private Metronome metronome;
+    private BinaryLogClient client;
 
     // Used in the methods that process events ...
     private final SourceInfo source = new SourceInfo();
@@ -100,7 +76,7 @@ public final class MySqlConnectorTask extends SourceTask {
      */
     public MySqlConnectorTask() {
         this.topicSelector = TopicSelector.defaultSelector();
-        this.dbHistory = null; // delay creating the history until startup, which is only allowed by default constructor
+        this.dbSchema = null; // delay creating the history until startup, which is only allowed by default constructor
     }
 
     @Override
@@ -121,15 +97,8 @@ public final class MySqlConnectorTask extends SourceTask {
         }
 
         // Create and configure the database history ...
-        this.dbHistory = config.getInstance(MySqlConnectorConfig.DATABASE_HISTORY, DatabaseHistory.class);
-        if (this.dbHistory == null) {
-            throw new ConnectException("Unable to instantiate the database history class " +
-                    config.getString(MySqlConnectorConfig.DATABASE_HISTORY));
-        }
-        Configuration dbHistoryConfig = config.subset(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING, false); // do not remove
-                                                                                                                 // prefix
-        this.dbHistory.configure(dbHistoryConfig); // validates
-        this.dbHistory.start();
+        this.dbSchema = new MySqlSchema(config);
+        this.dbSchema.start();
         this.running.set(true);
 
         // Read the configuration ...
@@ -148,43 +117,12 @@ public final class MySqlConnectorTask extends SourceTask {
         maxBatchSize = config.getInteger(MySqlConnectorConfig.MAX_BATCH_SIZE);
         metronome = Metronome.parker(pollIntervalMs, TimeUnit.MILLISECONDS, Clock.SYSTEM);
 
-        // Define the filter used for database names ...
-        Predicate<String> dbFilter = Selectors.databaseSelector()
-                                              .includeDatabases(config.getString(MySqlConnectorConfig.DATABASE_WHITELIST))
-                                              .excludeDatabases(config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST))
-                                              .build();
-
-        // Define the filter using the whitelists and blacklists for tables and database names ...
-        Predicate<TableId> tableFilter = Selectors.tableSelector()
-                                                  .includeDatabases(config.getString(MySqlConnectorConfig.DATABASE_WHITELIST))
-                                                  .excludeDatabases(config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST))
-                                                  .includeTables(config.getString(MySqlConnectorConfig.TABLE_WHITELIST))
-                                                  .excludeTables(config.getString(MySqlConnectorConfig.TABLE_BLACKLIST))
-                                                  .build();
-        if (config.getBoolean(MySqlConnectorConfig.TABLES_IGNORE_BUILTIN)) {
-            Predicate<TableId> isBuiltin = (id) -> {
-                return BUILT_IN_DB_NAMES.contains(id.catalog().toLowerCase()) || BUILT_IN_TABLE_NAMES.contains(id.table().toLowerCase());
-            };
-            tableFilter = tableFilter.and(isBuiltin.negate());
-        }
-
-        // Define the filter that excludes blacklisted columns, truncated columns, and masked columns ...
-        Predicate<ColumnId> columnFilter = Selectors.excludeColumns(config.getString(MySqlConnectorConfig.COLUMN_BLACKLIST));
-
-        // Define the truncated, masked, and mapped columns ...
-        ColumnMappers.Builder columnMapperBuilder = ColumnMappers.create();
-        config.forEachMatchingFieldNameWithInteger("column\\.truncate\\.to\\.(\\d+)\\.chars", columnMapperBuilder::truncateStrings);
-        config.forEachMatchingFieldNameWithInteger("column\\.mask\\.with\\.(\\d+)\\.chars", columnMapperBuilder::maskStrings);
-        ColumnMappers columnMappers = columnMapperBuilder.build();
-
         // Create the queue ...
         events = new LinkedBlockingDeque<>(maxQueueSize);
         batchEvents = new ArrayDeque<>(maxBatchSize);
 
         // Set up our handlers for specific kinds of events ...
-        tables = new Tables();
-        tableConverters = new TableConverters(topicSelector, dbHistory, includeSchemaChanges, clock,
-                                              dbFilter, tables, tableFilter, columnFilter, columnMappers);
+        tableConverters = new TableConverters(topicSelector, dbSchema, clock, includeSchemaChanges);
         eventHandlers.put(EventType.ROTATE, tableConverters::rotateLogs);
         eventHandlers.put(EventType.TABLE_MAP, tableConverters::updateTableMetadata);
         eventHandlers.put(EventType.QUERY, tableConverters::updateTableCommand);
@@ -207,6 +145,13 @@ public final class MySqlConnectorTask extends SourceTask {
 
         // Check if we've already processed some of the log for this database ...
         source.setServerName(serverName);
+        
+        // We use the initial binlog filename configuration property to know whether to perform a snapshot
+        // or to start with that (or the previous) binlog position...
+        if ( initialBinLogFilename == null || initialBinLogFilename.trim().isEmpty() ) {
+            // No initial binlog filename was specified, so perform a snapshot ...
+        }
+        
         // Get the offsets for our partition ...
         Map<String, ?> offsets = context.offsetStorageReader().offset(source.partition());
         if (offsets != null) {
@@ -224,11 +169,9 @@ public final class MySqlConnectorTask extends SourceTask {
             // to our Tables object. Each of those DDL messages is keyed by the database name, and contains a single string
             // of DDL. However, we should consume no further than offset we recovered above.
             try {
-                logger.info("Recovering MySQL connector '{}' database schemas from history stored in {}", serverName, dbHistory);
-                DdlParser ddlParser = new MySqlDdlParser();
-                dbHistory.recover(source.partition(), source.offset(), tables, ddlParser);
-                tableConverters.loadTables();
-                logger.debug("Recovered MySQL connector '{}' database schemas: {}", serverName, tables.subset(tableFilter));
+                logger.info("Recovering MySQL connector '{}' database schemas from history stored in {}", serverName, dbSchema.historyLocation());
+                dbSchema.loadHistory(source);
+                logger.debug("Recovered MySQL connector '{}' database schemas: {}", serverName, dbSchema.tables());
             } catch (Throwable t) {
                 throw new ConnectException("Failure while recovering database schemas", t);
             }
@@ -327,7 +270,7 @@ public final class MySqlConnectorTask extends SourceTask {
 
             // Flush and stop the database history ...
             logger.debug("Stopping database history for MySQL server '{}'", serverName);
-            dbHistory.stop();
+            dbSchema.shutdown();
         } catch (Throwable e) {
             logger.error("Unexpected error shutting down the database history", e);
         } finally {
