@@ -89,6 +89,7 @@ public class DdlTokenizer implements Tokenizer {
         int typeOf(int type, String token);
     }
 
+    private final boolean removeQuotes = true;
     private final boolean useComments;
     private final TokenTypeFunction retypingFunction;
 
@@ -231,10 +232,17 @@ public class DdlTokenizer implements Tokenizer {
                         throw new ParsingException(startingPosition, msg);
                     }
                     endIndex = input.index() + 1; // beyond last character read
+                    if ( removeQuotes && endIndex - startIndex > 1 ) {
+                        // At least one quoted character, so remove the quotes ...
+                        startIndex += 1;
+                        endIndex -= 1;
+                    }
                     tokens.addToken(startingPosition, startIndex, endIndex, DOUBLE_QUOTED_STRING);
                     break;
-                case '\u2019': // '’':
-                case '\'':
+                case '`':       // back-quote character
+                case '\u2018': // left single-quote character
+                case '\u2019': // right single-quote character
+                case '\'':     // single-quote character
                     char quoteChar = c;
                     startIndex = input.index();
                     startingPosition = input.position(startIndex);
@@ -242,7 +250,7 @@ public class DdlTokenizer implements Tokenizer {
                     while (input.hasNext()) {
                         c = input.next();
                         if ((c == '\\' || c == quoteChar) && input.isNext(quoteChar)) {
-                            c = input.next(); // consume the ' character since it is escaped
+                            c = input.next(); // consume the character since it is escaped
                         } else if (c == quoteChar) {
                             foundClosingQuote = true;
                             break;
@@ -254,6 +262,11 @@ public class DdlTokenizer implements Tokenizer {
                         throw new ParsingException(startingPosition, msg);
                     }
                     endIndex = input.index() + 1; // beyond last character read
+                    if ( removeQuotes && endIndex - startIndex > 1 ) {
+                        // At least one quoted character, so remove the quotes ...
+                        startIndex += 1;
+                        endIndex -= 1;
+                    }
                     tokens.addToken(startingPosition, startIndex, endIndex, SINGLE_QUOTED_STRING);
                     break;
                 case '/':

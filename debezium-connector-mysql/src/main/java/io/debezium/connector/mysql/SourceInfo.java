@@ -55,6 +55,7 @@ final class SourceInfo {
     public static final String BINLOG_POSITION_OFFSET_KEY = "pos";
     public static final String BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY = "row";
     public static final String BINLOG_EVENT_TIMESTAMP_KEY = "ts";
+    public static final String BINLOG_SNAPSHOT_KEY = "snapshot";
 
     /**
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition()} and {@link #offset()} information.
@@ -67,6 +68,7 @@ final class SourceInfo {
                                                      .field(BINLOG_FILENAME_OFFSET_KEY, Schema.STRING_SCHEMA)
                                                      .field(BINLOG_POSITION_OFFSET_KEY, Schema.INT64_SCHEMA)
                                                      .field(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, Schema.INT32_SCHEMA)
+                                                     .field(BINLOG_SNAPSHOT_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
                                                      .build();
 
     private String binlogFilename;
@@ -76,6 +78,7 @@ final class SourceInfo {
     private long serverId = 0;
     private long binlogTs = 0;
     private Map<String, String> sourcePartition;
+    private boolean snapshot = false;
 
     public SourceInfo() {
     }
@@ -110,6 +113,12 @@ final class SourceInfo {
      * @return a copy of the current offset; never null
      */
     public Map<String, ?> offset() {
+        if ( isSnapshotInEffect() ) {
+            return Collect.hashMapOf(BINLOG_FILENAME_OFFSET_KEY, binlogFilename,
+                                     BINLOG_POSITION_OFFSET_KEY, binlogPosition,
+                                     BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, eventRowNumber,
+                                     BINLOG_SNAPSHOT_KEY,true);
+        }
         return Collect.hashMapOf(BINLOG_FILENAME_OFFSET_KEY, binlogFilename,
                                  BINLOG_POSITION_OFFSET_KEY, binlogPosition,
                                  BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, eventRowNumber);
@@ -141,6 +150,9 @@ final class SourceInfo {
         result.put(BINLOG_POSITION_OFFSET_KEY, binlogPosition);
         result.put(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, eventRowNumber);
         result.put(BINLOG_EVENT_TIMESTAMP_KEY, binlogTs);
+        if (isSnapshotInEffect()) {
+            result.put(BINLOG_SNAPSHOT_KEY, true);
+        }
         return result;
     }
 
@@ -154,6 +166,14 @@ final class SourceInfo {
     public Map<String, ?> offset(int eventRowNumber) {
         setRowInEvent(eventRowNumber);
         return offset();
+    }
+    
+    /**
+     * Determine whether a snapshot is currently in effect.
+     * @return {@code true} if a snapshot is in effect, or {@code false} otherwise
+     */
+    public boolean isSnapshotInEffect() {
+        return snapshot;
     }
     
     /**
@@ -200,6 +220,20 @@ final class SourceInfo {
      */
     public void setBinlogTimestamp(long timestamp) {
         this.binlogTs = timestamp;
+    }
+    
+    /**
+     * Denote that a snapshot is being (or has been) started.
+     */
+    public void startSnapshot() {
+        this.snapshot = true;
+    }
+
+    /**
+     * Denote that a snapshot is being (or has been) started.
+     */
+    public void completeSnapshot() {
+        this.snapshot = false;
     }
 
     /**
@@ -265,5 +299,22 @@ final class SourceInfo {
      */
     public String serverName() {
         return serverName;
+    }
+    
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        if ( binlogFilename == null ) {
+            sb.append("<latest>");
+        } else {
+            if ( "".equals(binlogFilename) ) {
+                sb.append("earliest binlog file and position");
+            } else {
+                sb.append("binlog file '").append(binlogFilename).append("'");
+                sb.append(", pos=").append(binlogPosition());
+                sb.append(", row=").append(eventRowNumber());
+            }
+        }
+        return sb.toString();
     }
 }

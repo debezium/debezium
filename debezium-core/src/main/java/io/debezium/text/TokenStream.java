@@ -1557,10 +1557,10 @@ public class TokenStream {
     public boolean matchesAnyOf(int firstTypeOption,
                                 int... additionalTypeOptions) throws IllegalStateException {
         if (completed) return false;
-        int currentType = currentToken().type();
-        if (currentType == firstTypeOption) return true;
+        Token current = currentToken();
+        if (current.matches(firstTypeOption)) return true;
         for (int nextTypeOption : additionalTypeOptions) {
-            if (currentType == nextTypeOption) return true;
+            if (current.matches(nextTypeOption)) return true;
         }
         return false;
     }
@@ -1574,9 +1574,9 @@ public class TokenStream {
      */
     public boolean matchesAnyOf(int[] typeOptions) throws IllegalStateException {
         if (completed) return false;
-        int currentType = currentToken().type();
+        Token current = currentToken();
         for (int nextTypeOption : typeOptions) {
-            if (currentType == nextTypeOption) return true;
+            if (current.matches(nextTypeOption)) return true;
         }
         return false;
     }

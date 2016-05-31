@@ -719,7 +719,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
      * @return This document, to allow for chaining methods
      */
     Document removeAll();
-
+    
     /**
      * Sets on this object all name/value pairs from the supplied object. If the supplied object is null, this method does
      * nothing.
@@ -1138,6 +1138,16 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
      *         is less than, equal to, or greater than the specified object.
      */
     int compareToWithoutFieldOrder(Document that);
+
+    /**
+     * Compare this Document to the specified Document, without regard to the order of the fields and only using the fields
+     * that are in both documents.
+     * 
+     * @param that the other Document to be compared to this object
+     * @return a negative integer, zero, or a positive integer as this object
+     *         is less than, equal to, or greater than the specified object.
+     */
+    int compareToUsingSimilarFields(Document that);
 
     /**
      * Compare this Document to the specified Document, optionally comparing the fields in the same order.

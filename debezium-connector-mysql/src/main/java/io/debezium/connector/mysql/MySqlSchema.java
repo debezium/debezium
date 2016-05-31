@@ -5,9 +5,11 @@
  */
 package io.debezium.connector.mysql;
 
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -16,6 +18,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
@@ -153,6 +156,77 @@ public class MySqlSchema {
     }
 
     /**
+     * Load the schema for the databases using JDBC database metadata. If there are changes relative to any
+     * table definitions that existed when this method is called, those changes are recorded in the database history
+     * and the {@link #schemaFor(TableId) schemas} for the affected tables are updated.
+     * 
+     * @param jdbc the JDBC connection; may not be null
+     * @param source the source information that should be recorded with the history; may not be null
+     * @throws SQLException if there is a failure reading the JDBC database metadata
+     */
+    public void loadFromDatabase(JdbcConnection jdbc, SourceInfo source) throws SQLException {
+        changeTablesAndRecordInHistory(source, () -> {
+            jdbc.readSchema(tables(), null, null, filters.tableNameFilter(), null, true);
+            return null;
+        });
+    }
+
+    /**
+     * Apply the given function to change or alter the current set of table definitions, and record the new state of the table
+     * definitions in the database history by dropping tables that were removed and dropping and re-creating tables that were
+     * changed.
+     * <p>
+     * This method is written this way so that the complex logic can be easily tested without actually requiring a database.
+     * 
+     * @param source the source information that should be recorded with the history; may not be null
+     * @param changeFunction the function that changes the table definitions and returns {@code true} if at least one table
+     *            definition was modified in some way; may not be null
+     * @throws SQLException if there is a failure reading the JDBC database metadata
+     */
+    protected void changeTablesAndRecordInHistory(SourceInfo source, Callable<Void> changeFunction) throws SQLException {
+        StringBuilder ddl = new StringBuilder();
+
+        // Drain from the table definitions any existing changes so we can track what changes were made ...
+        tables().drainChanges();
+
+        // Make a copy of the table definitions in case something goes wrong ...
+        Tables copy = tables().clone();
+
+        // Now apply the changes ...
+        try {
+            changeFunction.call();
+        } catch (Exception e) {
+            this.tables = copy;
+            if ( e instanceof SQLException) throw (SQLException)e;
+            this.logger.error("Unexpected error whle changing model of MySQL schemas: {}",e.getMessage(),e);
+        }
+
+        // At least one table has changed or was removed, so first refresh the Kafka Connect schemas ...
+        refreshSchemas();
+
+        // For each table definition that changed, record a DROP TABLE and CREATE TABLE to the history ...
+        tables().drainChanges().forEach(changedTableId -> {
+            Table table = tables().forTable(changedTableId);
+            appendDropTableStatement(ddl, table.id());
+            if (table != null) {
+                // The table definition was found, so recreate it ...
+                appendCreateTableStatement(ddl, table);
+            }
+        });
+
+        // Finally record the DDL statements into the history ...
+        dbHistory.record(source.partition(), source.offset(), "", tables(), ddl.toString());
+    }
+
+    protected void appendDropTableStatement(StringBuilder sb, TableId tableId) {
+        sb.append("DROP TABLE ").append(tableId).append(" IF EXISTS;").append(System.lineSeparator());
+    }
+
+    protected void appendCreateTableStatement(StringBuilder sb, Table table) {
+        sb.append("CREATE TABLE ").append(table.id()).append(';').append(System.lineSeparator());
+    }
+
+    /**
      * Load the database schema information using the previously-recorded history, and stop reading the history when the
      * the history reaches the supplied starting point.
      * 
@@ -220,10 +294,12 @@ public class MySqlSchema {
                     // to the same _affected_ database...
                     ddlChanges.groupStatementStringsByDatabase((dbName, ddl) -> {
                         if (filters.databaseFilter().test(dbName)) {
-                            statementConsumer.consume(databaseName, ddlStatements);
+                            if ( dbName == null ) dbName = "";
+                            statementConsumer.consume(dbName, ddlStatements);
                         }
                     });
                 } else if (filters.databaseFilter().test(databaseName)) {
+                    if ( databaseName == null ) databaseName = "";
                     statementConsumer.consume(databaseName, ddlStatements);
                 }
             }

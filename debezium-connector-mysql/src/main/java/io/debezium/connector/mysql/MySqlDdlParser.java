@@ -119,7 +119,7 @@ public class MySqlDdlParser extends DdlParser {
 
     @Override
     protected void initializeStatementStarts(TokenSet statementStartTokens) {
-        statementStartTokens.add("CREATE", "ALTER", "DROP", "INSERT", "SET", "GRANT", "REVOKE", "FLUSH", "TRUNCATE", "COMMIT");
+        statementStartTokens.add("CREATE", "ALTER", "DROP", "INSERT", "SET", "GRANT", "REVOKE", "FLUSH", "TRUNCATE", "COMMIT", "USE");
     }
 
     @Override
@@ -134,6 +134,8 @@ public class MySqlDdlParser extends DdlParser {
             parseDrop(marker);
         } else if (tokens.matches("RENAME")) {
             parseRename(marker);
+        } else if (tokens.matches("USE")) {
+            parseUse(marker);
         } else {
             parseUnknownStatement(marker);
         }
@@ -1032,6 +1034,12 @@ public class MySqlDdlParser extends DdlParser {
         // Signal a separate statement for this table rename action, even though multiple renames might be
         // performed by a single DDL statement on the token stream ...
         signalAlterTable(from,to,"RENAME TABLE " + from + " TO " + to);
+    }
+
+    protected void parseUse(Marker marker) {
+        tokens.consume("USE");
+        String dbName = tokens.consume();
+        setCurrentSchema(dbName);
     }
 
     protected List<String> parseColumnNameList(Marker start) {

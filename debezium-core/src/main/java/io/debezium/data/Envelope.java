@@ -9,9 +9,11 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
 
 /**
  * An immutable descriptor for the structure of Debezium message envelopes. An {@link Envelope} can be created for each message
@@ -25,23 +27,36 @@ public final class Envelope {
     /**
      * The constants for the values for the {@link FieldName#OPERATION operation} field in the message envelope.
      */
-    public static final class Operation {
+    public static enum Operation {
         /**
          * The operation that read the current state of a record, most typically during snapshots.
          */
-        public static final String READ = "r";
+        READ("r"),
         /**
          * An operation that resulted in a new record being created in the source.
          */
-        public static final String CREATE = "c";
+        CREATE("c"),
         /**
          * An operation that resulted in an existing record being updated in the source.
          */
-        public static final String UPDATE = "u";
+        UPDATE("u"),
         /**
          * An operation that resulted in an existing record being removed from or deleted in the source.
          */
-        public static final String DELETE = "d";
+        DELETE("d");
+        private final String code;
+        private Operation(String code) {
+            this.code = code;
+        }
+        public static Operation forCode( String code ) {
+            for ( Operation op : Operation.values()) {
+                if ( op.code().equalsIgnoreCase(code)) return op;
+            }
+            return null;
+        }
+        public String code() {
+            return code;
+        }
     }
 
     /**
@@ -227,7 +242,7 @@ public final class Envelope {
      */
     public Struct read(Struct record, Struct source, Long timestamp) {
         Struct struct = new Struct(schema);
-        struct.put(FieldName.OPERATION, Operation.READ);
+        struct.put(FieldName.OPERATION, Operation.READ.code());
         struct.put(FieldName.AFTER, record);
         if (source != null) struct.put(FieldName.SOURCE, source);
         if (timestamp != null) struct.put(FieldName.TIMESTAMP, timestamp);
@@ -244,7 +259,7 @@ public final class Envelope {
      */
     public Struct create(Struct record, Struct source, Long timestamp) {
         Struct struct = new Struct(schema);
-        struct.put(FieldName.OPERATION, Operation.CREATE);
+        struct.put(FieldName.OPERATION, Operation.CREATE.code());
         struct.put(FieldName.AFTER, record);
         if (source != null) struct.put(FieldName.SOURCE, source);
         if (timestamp != null) struct.put(FieldName.TIMESTAMP, timestamp);
@@ -262,7 +277,7 @@ public final class Envelope {
      */
     public Struct update(Struct before, Struct after, Struct source, Long timestamp) {
         Struct struct = new Struct(schema);
-        struct.put(FieldName.OPERATION, Operation.UPDATE);
+        struct.put(FieldName.OPERATION, Operation.UPDATE.code());
         if (before != null) struct.put(FieldName.BEFORE, before);
         struct.put(FieldName.AFTER, after);
         if (source != null) struct.put(FieldName.SOURCE, source);
@@ -280,11 +295,24 @@ public final class Envelope {
      */
     public Struct delete(Struct before, Struct source, Long timestamp) {
         Struct struct = new Struct(schema);
-        struct.put(FieldName.OPERATION, Operation.DELETE);
+        struct.put(FieldName.OPERATION, Operation.DELETE.code());
         if (before != null) struct.put(FieldName.BEFORE, before);
         if (source != null) struct.put(FieldName.SOURCE, source);
         if (timestamp != null) struct.put(FieldName.TIMESTAMP, timestamp);
         return struct;
     }
 
+    /**
+     * Obtain the operation for the given source record.
+     * @param record the source record; may not be null
+     * @return the operation, or null if no valid operation was found in the record
+     */
+    public static Operation operationFor(SourceRecord record) {
+        Struct value = (Struct) record.value();
+        Field opField = value.schema().field(FieldName.OPERATION);
+        if (opField != null) {
+            return Operation.forCode(value.getString(opField.name()));
+        }
+        return null;
+    }
 }

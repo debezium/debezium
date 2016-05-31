@@ -5,8 +5,6 @@
  */
 package io.debezium.embedded;
 
-import static org.junit.Assert.fail;
-
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -26,7 +24,6 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.json.JsonDeserializer;
 import org.apache.kafka.connect.source.SourceConnector;
@@ -37,18 +34,13 @@ import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-
 import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
-import io.debezium.data.Envelope.FieldName;
-import io.debezium.data.Envelope.Operation;
+import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.EmbeddedEngine.CompletionCallback;
 import io.debezium.function.BooleanConsumer;
+import io.debezium.relational.history.HistoryRecord;
 import io.debezium.util.Testing;
 
 /**
@@ -207,7 +199,7 @@ public abstract class AbstractConnectorTest implements Testing {
                                .notifying((record) -> {
                                    try {
                                        consumedLines.put(record);
-                                   } catch ( InterruptedException e ) {
+                                   } catch (InterruptedException e) {
                                        Thread.interrupted();
                                    }
                                })
@@ -266,79 +258,90 @@ public abstract class AbstractConnectorTest implements Testing {
      */
     protected int consumeRecords(int numberOfRecords, Consumer<SourceRecord> recordConsumer) throws InterruptedException {
         int recordsConsumed = 0;
-        while ( recordsConsumed < numberOfRecords ) {
+        while (recordsConsumed < numberOfRecords) {
             SourceRecord record = consumedLines.poll(pollTimeoutInMs, TimeUnit.MILLISECONDS);
             if (record != null) {
                 ++recordsConsumed;
                 if (recordConsumer != null) {
                     recordConsumer.accept(record);
                 }
-                if ( Testing.Debug.isEnabled() ) {
-                    Testing.debug("Consumed record " + recordsConsumed + " / " + numberOfRecords + " (" + (numberOfRecords-recordsConsumed) + " more)");
+                if (Testing.Debug.isEnabled()) {
+                    Testing.debug("Consumed record " + recordsConsumed + " / " + numberOfRecords + " ("
+                            + (numberOfRecords - recordsConsumed) + " more)");
                     debug(record);
+                } else if (Testing.Print.isEnabled()) {
+                    Testing.print("Consumed record " + recordsConsumed + " / " + numberOfRecords + " ("
+                            + (numberOfRecords - recordsConsumed) + " more)");
+                    print(record);
                 }
             }
         }
         return recordsConsumed;
     }
-    
+
     protected SourceRecords consumeRecordsByTopic(int numRecords) throws InterruptedException {
         return consumeRecordsByTopic(numRecords, new SourceRecords());
     }
-    
+
     protected SourceRecords consumeRecordsByTopic(int numRecords, SourceRecords records) throws InterruptedException {
-        consumeRecords(numRecords,records::add);
+        consumeRecords(numRecords, records::add);
         return records;
     }
-    
+
     protected class SourceRecords {
         private final List<SourceRecord> records = new ArrayList<>();
-        private final Map<String,List<SourceRecord>> recordsByTopic = new HashMap<>();
-        private final Map<String,List<SourceRecord>> ddlRecordsByDbName = new HashMap<>();
-        public void add( SourceRecord record ) {
+        private final Map<String, List<SourceRecord>> recordsByTopic = new HashMap<>();
+        private final Map<String, List<SourceRecord>> ddlRecordsByDbName = new HashMap<>();
+
+        public void add(SourceRecord record) {
             records.add(record);
-            recordsByTopic.compute(record.topic(), (topicName,list)->{
-                if ( list == null ) list = new ArrayList<SourceRecord>();
-                list.add(record);
-                return list;
-            });
-            if ( record.key() instanceof Struct ) {
-                Struct key = (Struct)record.key();
-                if ( key.schema().field("databaseName") != null) {
-                    String dbName = key.getString("databaseName");
-                    ddlRecordsByDbName.compute(dbName, (databaseName,list)->{
-                        if ( list == null ) list = new ArrayList<SourceRecord>();
-                        list.add(record);
-                        return list;
-                    });
+            recordsByTopic.computeIfAbsent(record.topic(), (topicName) -> new ArrayList<SourceRecord>()).add(record);
+            String dbName = getAffectedDatabase(record);
+            if (dbName != null) ddlRecordsByDbName.computeIfAbsent(dbName, key -> new ArrayList<>()).add(record);
+        }
+
+        protected String getAffectedDatabase(SourceRecord record) {
+            Struct value = (Struct) record.value();
+            if (value != null) {
+                Field dbField = value.schema().field(HistoryRecord.Fields.DATABASE_NAME);
+                if (dbField != null) {
+                    return value.getString(dbField.name());
                 }
             }
+            return null;
         }
-        public List<SourceRecord> ddlRecordsForDatabase( String dbName ) {
+
+        public List<SourceRecord> ddlRecordsForDatabase(String dbName) {
             return ddlRecordsByDbName.get(dbName);
         }
+
         public Set<String> databaseNames() {
             return ddlRecordsByDbName.keySet();
         }
-        public List<SourceRecord> recordsForTopic( String topicName ) {
+
+        public List<SourceRecord> recordsForTopic(String topicName) {
             return recordsByTopic.get(topicName);
         }
+
         public Set<String> topics() {
             return recordsByTopic.keySet();
         }
+
         public void forEachInTopic(String topic, Consumer<SourceRecord> consumer) {
             recordsForTopic(topic).forEach(consumer);
         }
-        public void forEach( Consumer<SourceRecord> consumer) {
+
+        public void forEach(Consumer<SourceRecord> consumer) {
             records.forEach(consumer);
         }
+
         public void print() {
             Testing.print("" + topics().size() + " topics: " + topics());
-            recordsByTopic.forEach((k,v)->{
+            recordsByTopic.forEach((k, v) -> {
                 Testing.print(" - topic:'" + k + "'; # of events = " + v.size());
             });
-            Testing.print("Records:" );
-            records.forEach(record->AbstractConnectorTest.this.print(record));
+            Testing.print("Records:");
+            records.forEach(record -> AbstractConnectorTest.this.print(record));
         }
     }
 
@@ -356,7 +359,7 @@ public abstract class AbstractConnectorTest implements Testing {
         }
         return records.size();
     }
-    
+
     /**
      * Wait for a maximum amount of time until the first record is available.
      * 
@@ -396,56 +399,27 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     protected void assertKey(SourceRecord record, String pkField, int pk) {
-        Struct key = (Struct) record.key();
-        assertThat(key.get(pkField)).isEqualTo(pk);
+        VerifyRecord.hasValidKey(record, pkField, pk);
     }
 
     protected void assertInsert(SourceRecord record, String pkField, int pk) {
-        assertKey(record,pkField,pk);
-        assertThat(record.key()).isNotNull();
-        assertThat(record.keySchema()).isNotNull();
-        assertThat(record.valueSchema()).isNotNull();
-        Struct value = (Struct) record.value();
-        assertThat(value).isNotNull();
-        assertThat(value.get(FieldName.OPERATION)).isEqualTo(Operation.CREATE);
-        assertThat(value.get(FieldName.AFTER)).isNotNull();
-        assertThat(value.get(FieldName.BEFORE)).isNull();
+        VerifyRecord.isValidInsert(record, pkField, pk);
     }
 
     protected void assertUpdate(SourceRecord record, String pkField, int pk) {
-        assertKey(record,pkField,pk);
-        assertThat(record.key()).isNotNull();
-        assertThat(record.keySchema()).isNotNull();
-        assertThat(record.valueSchema()).isNotNull();
-        Struct value = (Struct) record.value();
-        assertThat(value).isNotNull();
-        assertThat(value.get(FieldName.OPERATION)).isEqualTo(Operation.UPDATE);
-        assertThat(value.get(FieldName.AFTER)).isNotNull();
-        //assertThat(value.get(FieldName.BEFORE)).isNull(); // may be null
+        VerifyRecord.isValidUpdate(record, pkField, pk);
     }
 
     protected void assertDelete(SourceRecord record, String pkField, int pk) {
-        assertKey(record,pkField,pk);
-        assertThat(record.key()).isNotNull();
-        assertThat(record.keySchema()).isNotNull();
-        assertThat(record.valueSchema()).isNotNull();
-        Struct value = (Struct) record.value();
-        assertThat(value).isNotNull();
-        assertThat(value.get(FieldName.OPERATION)).isEqualTo(Operation.DELETE);
-        assertThat(value.get(FieldName.BEFORE)).isNotNull();
-        assertThat(value.get(FieldName.AFTER)).isNull();
+        VerifyRecord.isValidDelete(record, pkField, pk);
     }
 
     protected void assertTombstone(SourceRecord record, String pkField, int pk) {
-        assertKey(record,pkField,pk);
-        assertTombstone(record);
+        VerifyRecord.isValidTombstone(record, pkField, pk);
     }
 
     protected void assertTombstone(SourceRecord record) {
-        assertThat(record.key()).isNotNull();
-        assertThat(record.keySchema()).isNotNull();
-        assertThat(record.value()).isNull();
-        assertThat(record.valueSchema()).isNull();
+        VerifyRecord.isValidTombstone(record);
     }
 
     /**
@@ -455,9 +429,7 @@ public abstract class AbstractConnectorTest implements Testing {
      * @param value the value with a schema; may not be null
      */
     protected void assertSchemaMatchesStruct(SchemaAndValue value) {
-        Object val = value.value();
-        assertThat(val).isInstanceOf(Struct.class);
-        assertSchemaMatchesStruct((Struct) val, value.schema());
+        VerifyRecord.schemaMatchesStruct(value);
     }
 
     /**
@@ -468,29 +440,9 @@ public abstract class AbstractConnectorTest implements Testing {
      * @param schema the expected schema of the {@link Struct}; may not be null
      */
     protected void assertSchemaMatchesStruct(Struct struct, Schema schema) {
-        // First validate the struct itself ...
-        try {
-            struct.validate();
-        } catch (DataException e) {
-            throw new AssertionError("The struct '" + struct + "' failed to validate", e);
-        }
-
-        Schema actualSchema = struct.schema();
-        assertThat(actualSchema).isEqualTo(schema);
-        assertFieldsInSchema(struct,schema);
+        VerifyRecord.schemaMatchesStruct(struct, schema);
     }
 
-    private void assertFieldsInSchema(Struct struct, Schema schema ) {
-        schema.fields().forEach(field->{
-            Object val1 = struct.get(field);
-            Object val2 = struct.get(field.name());
-            assertThat(val1).isSameAs(val2);
-            if ( val1 instanceof Struct ) {
-                assertFieldsInSchema((Struct)val1,field.schema());
-            }
-        });
-    }
-    
     /**
      * Validate that a {@link SourceRecord}'s key and value can each be converted to a byte[] and then back to an equivalent
      * {@link SourceRecord}.
@@ -498,193 +450,14 @@ public abstract class AbstractConnectorTest implements Testing {
      * @param record the record to validate; may not be null
      */
     protected void validate(SourceRecord record) {
-        print(record);
-
-        JsonNode keyJson = null;
-        JsonNode valueJson = null;
-        SchemaAndValue keyWithSchema = null;
-        SchemaAndValue valueWithSchema = null;
-        try {
-            // The key should never be null ...
-            assertThat(record.key()).isNotNull();
-            assertThat(record.keySchema()).isNotNull();
-            
-            // If the value is not null there must be a schema; otherwise, the schema should also be null ...
-            if ( record.value() == null ) {
-                assertThat(record.valueSchema()).isNull();
-            } else {
-                assertThat(record.valueSchema()).isNotNull();
-            }
-            
-            // First serialize and deserialize the key ...
-            byte[] keyBytes = keyJsonConverter.fromConnectData(record.topic(), record.keySchema(), record.key());
-            keyJson = keyJsonDeserializer.deserialize(record.topic(), keyBytes);
-            keyWithSchema = keyJsonConverter.toConnectData(record.topic(), keyBytes);
-            assertThat(keyWithSchema.schema()).isEqualTo(record.keySchema());
-            assertThat(keyWithSchema.value()).isEqualTo(record.key());
-            assertSchemaMatchesStruct(keyWithSchema);
-
-            // then the value ...
-            byte[] valueBytes = valueJsonConverter.fromConnectData(record.topic(), record.valueSchema(), record.value());
-            valueJson = valueJsonDeserializer.deserialize(record.topic(), valueBytes);
-            valueWithSchema = valueJsonConverter.toConnectData(record.topic(), valueBytes);
-            assertThat(valueWithSchema.schema()).isEqualTo(record.valueSchema());
-            assertThat(valueWithSchema.value()).isEqualTo(record.value());
-            assertSchemaMatchesStruct(valueWithSchema);
-        } catch (Throwable t) {
-            Testing.printError(t);
-            Testing.print("Problem with message on topic '" + record.topic() + "':");
-            if (keyJson != null) {
-                Testing.print("valid key = " + prettyJson(keyJson));
-            } else if (keyWithSchema != null) {
-                Testing.print("valid key with schema = " + keyWithSchema);
-            } else {
-                Testing.print("invalid key");
-            }
-            if (valueJson != null) {
-                Testing.print("valid value = " + prettyJson(valueJson));
-            } else if (valueWithSchema != null) {
-                Testing.print("valid value with schema = " + valueWithSchema);
-            } else {
-                Testing.print("invalid value");
-            }
-            if (t instanceof AssertionError) throw t;
-            fail(t.getMessage());
-        }
-    }
-
-    protected String printToString(SourceRecord record) {
-        StringBuilder sb = new StringBuilder("SourceRecord{");
-        sb.append("sourcePartition=").append(record.sourcePartition());
-        sb.append(", sourceOffset=").append(record.sourceOffset());
-        sb.append(", topic=").append(record.topic());
-        sb.append(", kafkaPartition=").append(record.kafkaPartition());
-        sb.append(", key=");
-        append(record.key(), sb);
-        sb.append(", value=");
-        append(record.value(), sb);
-        sb.append("}");
-        return sb.toString();
+        VerifyRecord.isValid(record);
     }
 
     protected void print(SourceRecord record) {
-        Testing.print(printToString(record));
+        VerifyRecord.print(record);
     }
 
     protected void debug(SourceRecord record) {
-        Testing.debug(printToString(record));
-    }
-
-    protected void printJson(SourceRecord record) {
-        JsonNode keyJson = null;
-        JsonNode valueJson = null;
-        try {
-            // First serialize and deserialize the key ...
-            byte[] keyBytes = keyJsonConverter.fromConnectData(record.topic(), record.keySchema(), record.key());
-            keyJson = keyJsonDeserializer.deserialize(record.topic(), keyBytes);
-            // then the value ...
-            byte[] valueBytes = valueJsonConverter.fromConnectData(record.topic(), record.valueSchema(), record.value());
-            valueJson = valueJsonDeserializer.deserialize(record.topic(), valueBytes);
-            // And finally get ready to print it ...
-            JsonNodeFactory nodeFactory = new JsonNodeFactory(false);
-            ObjectNode message = nodeFactory.objectNode();
-            message.set("key", keyJson);
-            message.set("value", valueJson);
-            Testing.print("Message on topic '" + record.topic() + "':");
-            Testing.print(prettyJson(message));
-        } catch (Throwable t) {
-            Testing.printError(t);
-            Testing.print("Problem with message on topic '" + record.topic() + "':");
-            if (keyJson != null) {
-                Testing.print("valid key = " + prettyJson(keyJson));
-            } else {
-                Testing.print("invalid key");
-            }
-            if (valueJson != null) {
-                Testing.print("valid value = " + prettyJson(valueJson));
-            } else {
-                Testing.print("invalid value");
-            }
-            fail(t.getMessage());
-        }
-    }
-
-    protected String prettyJson(JsonNode json) {
-        try {
-            return new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(json);
-        } catch (Throwable t) {
-            Testing.printError(t);
-            fail(t.getMessage());
-            assert false : "Will not get here";
-            return null;
-        }
-    }
-
-    protected void append(Object obj, StringBuilder sb) {
-        if (obj == null) {
-            sb.append("null");
-        } else if (obj instanceof Schema) {
-            Schema schema = (Schema) obj;
-            sb.append('{');
-            sb.append("name=").append(schema.name());
-            sb.append(", type=").append(schema.type());
-            sb.append(", optional=").append(schema.isOptional());
-            sb.append(", fields=");
-            boolean first = true;
-            for (Field field : schema.fields()) {
-                if (first)
-                    first = false;
-                else
-                    sb.append(", ");
-                sb.append("name=").append(field.name());
-                sb.append(", index=").append(field.index());
-                sb.append(", schema=");
-                append(field.schema(), sb);
-            }
-            sb.append('}');
-        } else if (obj instanceof Struct) {
-            Struct s = (Struct) obj;
-            sb.append('{');
-            boolean first = true;
-            for (Field field : s.schema().fields()) {
-                if (first)
-                    first = false;
-                else
-                    sb.append(", ");
-                sb.append(field.name()).append('=');
-                append(s.get(field), sb);
-            }
-            sb.append('}');
-        } else if (obj instanceof Map<?, ?>) {
-            Map<?, ?> map = (Map<?, ?>) obj;
-            sb.append('{');
-            boolean first = true;
-            for (Map.Entry<?, ?> entry : map.entrySet()) {
-                if (first)
-                    first = false;
-                else
-                    sb.append(", ");
-                append(entry.getKey(), sb);
-                sb.append('=');
-                append(entry.getValue(), sb);
-            }
-            sb.append('}');
-        } else if (obj instanceof List<?>) {
-            List<?> list = (List<?>) obj;
-            sb.append('[');
-            boolean first = true;
-            for (Object value : list) {
-                if (first)
-                    first = false;
-                else
-                    sb.append(", ");
-                append(value, sb);
-            }
-            sb.append(']');
-        } else if (obj instanceof String) {
-            sb.append('"').append(obj.toString()).append('"');
-        } else {
-            sb.append(obj.toString());
-        }
+        VerifyRecord.debug(record);
     }
 }

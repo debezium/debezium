@@ -289,6 +289,18 @@ public class MySqlDdlParserTest {
     }
 
     @Test
+    public void shouldParseStatementsWithQuotedIdentifiers() {
+        parser.parse(readFile("ddl/mysql-quoted.ddl"), tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(4);
+        assertThat(listener.total()).isEqualTo(10);
+        assertThat(tables.forTable("connector_test_ro",null,"products")).isNotNull();
+        assertThat(tables.forTable("connector_test_ro",null,"products_on_hand")).isNotNull();
+        assertThat(tables.forTable("connector_test_ro",null,"customers")).isNotNull();
+        assertThat(tables.forTable("connector_test_ro",null,"orders")).isNotNull();
+    }
+
+    @Test
     public void shouldParseCreateStatements() {
         parser.parse(readFile("ddl/mysql-test-create.ddl"), tables);
         Testing.print(tables);

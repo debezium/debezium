@@ -58,8 +58,6 @@ public class Predicates {
                 for ( Pattern p : patterns ) {
                     if ( p.matcher(str).matches()) return true;
                 }
-            } else {
-                int x =0;
             }
             return false;
         };

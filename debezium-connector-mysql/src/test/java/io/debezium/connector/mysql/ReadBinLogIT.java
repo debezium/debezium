@@ -44,6 +44,7 @@ import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
 import com.github.shyiko.mysql.binlog.event.XidEventData;
 import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer;
+import com.github.shyiko.mysql.binlog.network.ServerException;
 
 import static org.fest.assertions.Assertions.assertThat;
 
@@ -125,6 +126,16 @@ public class ReadBinLogIT implements Testing {
         counters.consume(2, EventType.QUERY);
         counters.reset();
     }
+    
+    @Ignore
+    @Test( expected = ServerException.class)
+    public void shouldFailToConnectToInvalidBinlogFile() throws Exception {
+        Testing.Print.enable();
+        startClient(client -> {
+            client.setBinlogFilename("invalid-mysql-binlog.filename.000001");
+        });
+    }
+
 
     @Ignore
     @Test
