@@ -48,7 +48,7 @@ public final class MySqlTaskContext {
         this.source.setServerName(serverName());
 
         // Set up the MySQL schema ...
-        this.dbSchema = new MySqlSchema(config);
+        this.dbSchema = new MySqlSchema(config, serverName());
         this.dbSchema.start();
 
         // Set up the record processor ...
@@ -108,7 +108,11 @@ public final class MySqlTaskContext {
     }
 
     public String serverName() {
-        return config.getString(MySqlConnectorConfig.SERVER_NAME);
+        String serverName = config.getString(MySqlConnectorConfig.SERVER_NAME);
+        if ( serverName == null ) {
+            serverName = hostname() + ":" + port();
+        }
+        return serverName;
     }
 
     public String username() {

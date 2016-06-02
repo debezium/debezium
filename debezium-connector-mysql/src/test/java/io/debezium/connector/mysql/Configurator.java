@@ -77,7 +77,8 @@ public class Configurator {
     }
 
     public MySqlSchema createSchemas() {
-        return new MySqlSchema(configBuilder.build());
+        Configuration config = configBuilder.build();
+        return new MySqlSchema(config,config.getString(MySqlConnectorConfig.SERVER_NAME));
     }
 
 }

@@ -19,6 +19,7 @@ import static org.fest.assertions.Assertions.assertThat;
 
 public class TableSchemaBuilderTest {
 
+    private final String prefix = "";
     private final TableId id = new TableId("catalog", "schema", "table");
     private final Object[] data = new Object[] { "c1value", 3.142d, java.sql.Date.valueOf("2001-10-31"), 4 };
     private Table table;
@@ -68,19 +69,19 @@ public class TableSchemaBuilderTest {
 
     @Test(expected = NullPointerException.class)
     public void shouldFailToBuildTableSchemaFromNullTable() {
-        new TableSchemaBuilder().create(null);
+        new TableSchemaBuilder().create(prefix,null);
     }
 
     @Test
     public void shouldBuildTableSchemaFromTable() {
-        schema = new TableSchemaBuilder().create(table);
+        schema = new TableSchemaBuilder().create(prefix,table);
         assertThat(schema).isNotNull();
     }
 
     @Test
     public void shouldBuildTableSchemaFromTableWithoutPrimaryKey() {
         table = table.edit().setPrimaryKeyNames().create();
-        schema = new TableSchemaBuilder().create(table);
+        schema = new TableSchemaBuilder().create(prefix,table);
         assertThat(schema).isNotNull();
         // Check the keys ...
         assertThat(schema.keySchema()).isNull();

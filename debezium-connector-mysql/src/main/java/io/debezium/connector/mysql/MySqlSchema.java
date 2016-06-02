@@ -59,20 +59,23 @@ public class MySqlSchema {
     private final DatabaseHistory dbHistory;
     private final TableSchemaBuilder schemaBuilder;
     private final DdlChanges ddlChanges;
+    private final String serverName;
     private Tables tables;
 
     /**
      * Create a schema component given the supplied {@link MySqlConnectorConfig MySQL connector configuration}.
      * 
      * @param config the connector configuration, which is presumed to be valid
+     * @param serverName the name of the server
      */
-    public MySqlSchema(Configuration config) {
+    public MySqlSchema(Configuration config, String serverName) {
         this.filters = new Filters(config);
         this.ddlParser = new MySqlDdlParser(false);
         this.tables = new Tables();
         this.ddlChanges = new DdlChanges(this.ddlParser.terminator());
         this.ddlParser.addListener(ddlChanges);
         this.schemaBuilder = new TableSchemaBuilder();
+        this.serverName = serverName;
 
         // Create and configure the database history ...
         this.dbHistory = config.getInstance(MySqlConnectorConfig.DATABASE_HISTORY, DatabaseHistory.class);
@@ -247,7 +250,7 @@ public class MySqlSchema {
         // Create TableSchema instances for any existing table ...
         this.tables.tableIds().forEach(id -> {
             Table table = this.tables.forTable(id);
-            TableSchema schema = schemaBuilder.create(table, filters.columnFilter(), filters.columnMappers());
+            TableSchema schema = schemaBuilder.create(serverName,table, filters.columnFilter(), filters.columnMappers());
             tableSchemaByTableId.put(id, schema);
         });
     }
@@ -317,7 +320,7 @@ public class MySqlSchema {
             if (table == null) { // removed
                 tableSchemaByTableId.remove(tableId);
             } else {
-                TableSchema schema = schemaBuilder.create(table, filters.columnFilter(), filters.columnMappers());
+                TableSchema schema = schemaBuilder.create(serverName, table, filters.columnFilter(), filters.columnMappers());
                 tableSchemaByTableId.put(tableId, schema);
             }
         });

@@ -30,6 +30,16 @@ public class SchemaUtil {
      * @param field the field; may not be null
      * @return the JSON string representation
      */
+    public static String asString(Object field) {
+        return new RecordWriter().append(field).toString();
+    }
+
+    /**
+     * Obtain a JSON string representation of the specified field.
+     * 
+     * @param field the field; may not be null
+     * @return the JSON string representation
+     */
     public static String asString(Field field) {
         return new RecordWriter().append(field).toString();
     }

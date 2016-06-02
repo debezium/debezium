@@ -105,11 +105,12 @@ public class TableSchemaBuilder {
      * <p>
      * This is equivalent to calling {@code create(table,false)}.
      * 
+     * @param schemaPrefix the prefix added to the table identifier to construct the schema names; may be null if there is no prefix
      * @param table the table definition; may not be null
      * @return the table schema that can be used for sending rows of data for this table to Kafka Connect; never null
      */
-    public TableSchema create(Table table) {
-        return create(table, null, null);
+    public TableSchema create(String schemaPrefix, Table table) {
+        return create(schemaPrefix, table, null, null);
     }
 
     /**
@@ -120,18 +121,20 @@ public class TableSchemaBuilder {
      * <p>
      * This is equivalent to calling {@code create(table,false)}.
      * 
+     * @param schemaPrefix the prefix added to the table identifier to construct the schema names; may be null if there is no prefix
      * @param table the table definition; may not be null
      * @param filter the filter that specifies whether columns in the table should be included; may be null if all columns
      *            are to be included
      * @param mappers the mapping functions for columns; may be null if none of the columns are to be mapped to different values
      * @return the table schema that can be used for sending rows of data for this table to Kafka Connect; never null
      */
-    public TableSchema create(Table table, Predicate<ColumnId> filter, ColumnMappers mappers) {
+    public TableSchema create(String schemaPrefix, Table table, Predicate<ColumnId> filter, ColumnMappers mappers) {
+        if ( schemaPrefix == null ) schemaPrefix = "";
         // Build the schemas ...
         final TableId tableId = table.id();
         final String tableIdStr = tableId.toString();
-        SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(tableIdStr);
-        SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(tableIdStr + "/pk");
+        SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(schemaPrefix + tableIdStr + ".Value");
+        SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(schemaPrefix + tableIdStr + ".Key");
         AtomicBoolean hasPrimaryKey = new AtomicBoolean(false);
         table.columns().forEach(column -> {
             if (table.isPrimaryKeyColumn(column.name())) {
