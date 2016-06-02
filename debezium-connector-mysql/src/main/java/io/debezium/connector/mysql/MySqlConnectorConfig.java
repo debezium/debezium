@@ -82,8 +82,8 @@ public class MySqlConnectorConfig {
                                                             .withDescription("Whether the connector should publish changes in the database schema to a Kafka topic with "
                                                                     + "the same name as the database server ID. Each schema change will be recorded using a key that "
                                                                     + "contains the database name and whose value includes the DDL statement(s)."
-                                                                    + "The default is 'false'. This is independent of how the connector internally records database history.")
-                                                            .withDefault(false)
+                                                                    + "The default is 'true'. This is independent of how the connector internally records database history.")
+                                                            .withDefault(true)
                                                             .withValidation(Field::isBoolean);
 
     public static final Field TABLE_BLACKLIST = Field.create("table.blacklist")

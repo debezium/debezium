@@ -73,6 +73,7 @@ public class SnapshotReaderIT {
                             .with(MySqlConnectorConfig.SERVER_ID, 18911)
                             .with(MySqlConnectorConfig.SERVER_NAME, LOGICAL_NAME)
                             .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
+                            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                             .with(MySqlConnectorConfig.DATABASE_WHITELIST, DB_NAME)
                             .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                             .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
