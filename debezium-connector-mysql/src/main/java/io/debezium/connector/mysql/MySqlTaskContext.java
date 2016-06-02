@@ -15,6 +15,8 @@ import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcConnection.ConnectionFactory;
 import io.debezium.util.Clock;
+import io.debezium.util.LoggingContext;
+import io.debezium.util.LoggingContext.PreviousContext;
 
 /**
  * A Kafka Connect source task reads the MySQL binary log and generate the corresponding data change events.
@@ -96,7 +98,7 @@ public final class MySqlTaskContext {
         dbSchema.loadHistory(startingPoint);
         recordProcessor.regenerate();
     }
-    
+
     public Clock clock() {
         return clock;
     }
@@ -157,21 +159,23 @@ public final class MySqlTaskContext {
         String value = config.getString(MySqlConnectorConfig.SNAPSHOT_MODE);
         return SnapshotMode.parse(value, MySqlConnectorConfig.SNAPSHOT_MODE.defaultValue());
     }
-    
+
     public boolean useMinimalSnapshotLocking() {
         return config.getBoolean(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING);
     }
 
     public void start() {
-        // Start the MySQL database history, which simply starts up resources but does not recover the history to a specific
-        // point.
+        // First, configure the logging context for the thread that created this context object ...
+        this.configureLoggingContext("task");
+
+        // Start the MySQL database history, which simply starts up resources but does not recover the history to a specific point
         dbSchema().start();
     }
 
     public void shutdown() {
         try {
             // Flush and stop the database history ...
-            logger.debug("Stopping database history for MySQL server '{}'", serverName());
+            logger.debug("Stopping database history");
             dbSchema.shutdown();
         } catch (Throwable e) {
             logger.error("Unexpected error shutting down the database history", e);
@@ -182,6 +186,28 @@ public final class MySqlTaskContext {
                 logger.error("Unexpected error shutting down the database connection", e);
             }
         }
+    }
+
+    /**
+     * Configure the logger's Mapped Diagnostic Context (MDC) properties for the thread making this call.
+     * @param contextName the name of the context; may not be null
+     * @return the previous MDC context; never null
+     * @throws IllegalArgumentException if {@code contextName} is null
+     */
+    public PreviousContext configureLoggingContext(String contextName) {
+        return LoggingContext.forConnector("MySQL", serverName(), contextName);
+    }
+    
+    /**
+     * Run the supplied function in the temporary connector MDC context, and when complete always return the MDC context to its
+     * state before this method was called.
+     * 
+     * @param contextName the name of the context; may not be null
+     * @param operation the function to run in the new MDC context; may not be null
+     * @throws IllegalArgumentException if any of the parameters are null
+     */
+    public void temporaryLoggingContext(String contextName, Runnable operation) {
+        LoggingContext.temporarilyForConnector("MySQL", serverName(), contextName, operation);
     }
 
 }

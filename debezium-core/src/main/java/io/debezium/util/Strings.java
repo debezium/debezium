@@ -7,6 +7,8 @@ package io.debezium.util;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
+import java.math.BigDecimal;
+import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -36,11 +38,11 @@ public final class Strings {
      * @return the list of objects included in the list; never null
      */
     public static <T> Set<T> listOf(String input, Function<String, String[]> splitter, Function<String, T> factory) {
-        if ( input == null ) return Collections.emptySet();
+        if (input == null) return Collections.emptySet();
         Set<T> matches = new HashSet<>();
         for (String item : splitter.apply(input)) {
             T obj = factory.apply(item);
-            if ( obj != null ) matches.add(obj);
+            if (obj != null) matches.add(obj);
         }
         return matches;
     }
@@ -54,7 +56,7 @@ public final class Strings {
      * @return the list of objects included in the list; never null
      */
     public static <T> Set<T> listOf(String input, char delimiter, Function<String, T> factory) {
-        return listOf(input,(str) -> str.split("[" + delimiter + "]"),factory);
+        return listOf(input, (str) -> str.split("[" + delimiter + "]"), factory);
     }
 
     /**
@@ -65,7 +67,7 @@ public final class Strings {
      * @return the list of objects included in the list; never null
      */
     public static <T> Set<T> listOf(String input, Function<String, T> factory) {
-        return listOf(input,',',factory);
+        return listOf(input, ',', factory);
     }
 
     /**
@@ -76,7 +78,7 @@ public final class Strings {
      * @return the list of regular expression {@link Pattern}s included in the list; never null
      */
     public static Set<Pattern> listOfRegex(String input) {
-        return listOf(input,',',Pattern::compile);
+        return listOf(input, ',', Pattern::compile);
     }
 
     /**
@@ -88,7 +90,7 @@ public final class Strings {
      * @return the list of regular expression {@link Pattern}s included in the list; never null
      */
     public static Set<Pattern> listOfRegex(String input, int regexFlags) {
-        return listOf(input,',',(str)->Pattern.compile(str,regexFlags));
+        return listOf(input, ',', (str) -> Pattern.compile(str, regexFlags));
     }
 
     /**
@@ -111,7 +113,7 @@ public final class Strings {
      * @param content the string content that is to be split
      * @return the list of lines; never null but may be an empty (unmodifiable) list if the supplied content is null or empty
      */
-    public static List<String> splitLines( final String content ) {
+    public static List<String> splitLines(final String content) {
         if (content == null || content.length() == 0) return Collections.emptyList();
         String[] lines = content.split("[\\r]?\\n");
         return Arrays.asList(lines);
@@ -410,8 +412,7 @@ public final class Strings {
         if (value != null) {
             try {
                 return Integer.parseInt(value);
-            } catch (NumberFormatException e) {
-            }
+            } catch (NumberFormatException e) {}
         }
         return defaultValue;
     }
@@ -427,8 +428,7 @@ public final class Strings {
         if (value != null) {
             try {
                 return Long.parseLong(value);
-            } catch (NumberFormatException e) {
-            }
+            } catch (NumberFormatException e) {}
         }
         return defaultValue;
     }
@@ -444,8 +444,7 @@ public final class Strings {
         if (value != null) {
             try {
                 return Double.parseDouble(value);
-            } catch (NumberFormatException e) {
-            }
+            } catch (NumberFormatException e) {}
         }
         return defaultValue;
     }
@@ -461,10 +460,44 @@ public final class Strings {
         if (value != null) {
             try {
                 return Boolean.parseBoolean(value);
-            } catch (NumberFormatException e) {
-            }
+            } catch (NumberFormatException e) {}
         }
         return defaultValue;
+    }
+
+    /**
+     * For the given duration in milliseconds, obtain a readable representation of the form {@code HHH:MM:SS.mmm}, where
+     * <dl>
+     * <dt>HHH</dt>
+     * <dd>is the number of hours written in at least 2 digits (e.g., "03")</dd>
+     * <dt>MM</dt>
+     * <dd>is the number of hours written in at least 2 digits (e.g., "05")</dd>
+     * <dt>SS</dt>
+     * <dd>is the number of hours written in at least 2 digits (e.g., "09")</dd>
+     * <dt>mmm</dt>
+     * <dd>is the fractional part of seconds, written with 1-3 digits (any trailing zeros are dropped)</dd>
+     * </dl>
+     * 
+     * @param durationInMillis the duration in milliseconds
+     * @return the readable duration.
+     */
+    public static String duration(long durationInMillis) {
+        // Calculate how many seconds, and don't lose any information ...
+        BigDecimal bigSeconds = new BigDecimal(Math.abs(durationInMillis)).divide(new BigDecimal(1000));
+        // Calculate the minutes, and round to lose the seconds
+        int minutes = bigSeconds.intValue() / 60;
+        // Remove the minutes from the seconds, to just have the remainder of seconds
+        double dMinutes = minutes;
+        double seconds = bigSeconds.doubleValue() - dMinutes * 60;
+        // Now compute the number of full hours, and change 'minutes' to hold the remaining minutes
+        int hours = minutes / 60;
+        minutes = minutes - (hours * 60);
+
+        // Format the string, and have at least 2 digits for the hours, minutes and whole seconds,
+        // and between 3 and 6 digits for the fractional part of the seconds...
+        String result = new DecimalFormat("######00").format(hours) + ':' + new DecimalFormat("00").format(minutes) + ':'
+                + new DecimalFormat("00.0##").format(seconds);
+        return result;
     }
 
     private Strings() {

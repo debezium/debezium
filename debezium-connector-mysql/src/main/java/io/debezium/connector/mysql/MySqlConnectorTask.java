@@ -60,7 +60,7 @@ public final class MySqlConnectorTask extends SourceTask {
             throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }
 
-        // Create the task and set our running flag ...
+        // Create and start the task context ...
         this.taskContext = new MySqlTaskContext(config);
         this.taskContext.start();
 
@@ -133,13 +133,13 @@ public final class MySqlConnectorTask extends SourceTask {
 
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
-        logger.trace("Polling for events from MySQL connector");
+        logger.trace("Polling for events");
         return currentReader.poll();
     }
 
     @Override
     public void stop() {
-        logger.info("Stopping MySQL Connector");
+        logger.info("Stopping MySQL connector task");
         // We need to explicitly stop both readers, in this order. If we were to instead call 'currentReader.stop()', there
         // is a chance without synchronization that we'd miss the transition and stop only the snapshot reader. And stopping both
         // is far simpler and more efficient than synchronizing ...
@@ -155,7 +155,7 @@ public final class MySqlConnectorTask extends SourceTask {
                 } catch (Throwable e) {
                     logger.error("Unexpected error shutting down the database history and/or closing JDBC connections", e);
                 } finally {
-                    logger.info("Stopped connector to MySQL server '{}'", taskContext.serverName());
+                    logger.info("Connector task successfully stopped");
                 }
             }
         }
