@@ -161,7 +161,7 @@ public class RecordMakers {
 
         String topicName = topicSelector.getTopic(id);
         Envelope envelope = Envelope.defineSchema()
-                                    .withName(topicName)
+                                    .withName(topicName + ".Envelope")
                                     .withRecord(schema.schemaFor(id).valueSchema())
                                     .withSource(SourceInfo.SCHEMA)
                                     .build();

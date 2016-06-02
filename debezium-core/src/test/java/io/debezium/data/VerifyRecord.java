@@ -26,6 +26,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import io.confluent.connect.avro.AvroConverter;
+import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.util.Testing;
@@ -42,6 +44,10 @@ public class VerifyRecord {
     private static final JsonDeserializer keyJsonDeserializer = new JsonDeserializer();
     private static final JsonDeserializer valueJsonDeserializer = new JsonDeserializer();
 
+    private static final MockSchemaRegistryClient schemaRegistry = new MockSchemaRegistryClient();
+    private static final AvroConverter avroKeyConverter = new AvroConverter(schemaRegistry);
+    private static final AvroConverter avroValueConverter = new AvroConverter(schemaRegistry);
+    
     static {
         Map<String,Object> config = new HashMap<>();
         config.put("schemas.enable",Boolean.TRUE.toString());
@@ -50,6 +56,11 @@ public class VerifyRecord {
         keyJsonDeserializer.configure(config, true);
         valueJsonConverter.configure(config, false);
         valueJsonDeserializer.configure(config, false);
+
+        config = new HashMap<>();
+        config.put("schema.registry.url","http://fake-url");
+        avroKeyConverter.configure(config, false);
+        avroValueConverter.configure(config, false);
     }
 
     /**
@@ -263,6 +274,8 @@ public class VerifyRecord {
         JsonNode valueJson = null;
         SchemaAndValue keyWithSchema = null;
         SchemaAndValue valueWithSchema = null;
+        SchemaAndValue avroKeyWithSchema = null;
+        SchemaAndValue avroValueWithSchema = null;
         try {
             // The key should never be null ...
             assertThat(record.key()).isNotNull();
@@ -290,22 +303,43 @@ public class VerifyRecord {
             assertThat(valueWithSchema.schema()).isEqualTo(record.valueSchema());
             assertThat(valueWithSchema.value()).isEqualTo(record.value());
             schemaMatchesStruct(valueWithSchema);
+            
+            // Serialize and deserialize the key using the Avro converter, and check that we got the same result ...
+            byte[] avroKeyBytes = avroValueConverter.fromConnectData(record.topic(), record.keySchema(), record.key());
+            avroKeyWithSchema = avroValueConverter.toConnectData(record.topic(), avroKeyBytes);
+            assertThat(keyWithSchema.schema()).isEqualTo(record.keySchema());
+            assertThat(keyWithSchema.value()).isEqualTo(record.key());
+            schemaMatchesStruct(keyWithSchema);
+
+            // Serialize and deserialize the value using the Avro converter, and check that we got the same result ...
+            byte[] avroValueBytes = avroValueConverter.fromConnectData(record.topic(), record.valueSchema(), record.value());
+            avroValueWithSchema = avroValueConverter.toConnectData(record.topic(), avroValueBytes);
+            assertThat(valueWithSchema.schema()).isEqualTo(record.valueSchema());
+            assertThat(valueWithSchema.value()).isEqualTo(record.value());
+            schemaMatchesStruct(valueWithSchema);
+            
         } catch (Throwable t) {
-            Testing.printError(t);
+            Testing.Print.enable();
             Testing.print("Problem with message on topic '" + record.topic() + "':");
-            if (keyJson != null) {
+            Testing.printError(t);
+            if (keyJson == null ){
+                Testing.print("error deserializing key from JSON: " + SchemaUtil.asString(record.key()));
+            } else if (keyWithSchema == null ){
+                Testing.print("error using JSON converter on key: " + prettyJson(keyJson));
+            } else if (avroKeyWithSchema == null ){
+                Testing.print("error using Avro converter on key: " + prettyJson(keyJson));
+            } else {
                 Testing.print("valid key = " + prettyJson(keyJson));
-            } else if (keyWithSchema != null) {
-                Testing.print("valid key with schema = " + keyWithSchema);
-            } else {
-                Testing.print("invalid key");
             }
-            if (valueJson != null) {
-                Testing.print("valid value = " + prettyJson(valueJson));
-            } else if (valueWithSchema != null) {
-                Testing.print("valid value with schema = " + valueWithSchema);
+
+            if (valueJson == null ){
+                Testing.print("error deserializing value from JSON: " + SchemaUtil.asString(record.value()));
+            } else if (valueWithSchema == null ){
+                Testing.print("error using JSON converter on value: " + prettyJson(valueJson));
+            } else if (avroValueWithSchema == null ){
+                Testing.print("error using Avro converter on value: " + prettyJson(valueJson));
             } else {
-                Testing.print("invalid value");
+                Testing.print("valid key = " + prettyJson(keyJson));
             }
             if (t instanceof AssertionError) throw t;
             fail(t.getMessage());
