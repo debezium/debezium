@@ -5,12 +5,15 @@
  */
 package io.debezium.connector.mysql;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
+
+import com.github.shyiko.mysql.binlog.GtidSet;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.util.Collect;
@@ -34,9 +37,9 @@ import io.debezium.util.Collect;
  * 
  * <pre>
  * {
- *     "file" = "mysql-bin.000003",
- *     "pos" = 105586,
- *     "row" = 0
+ *         "file" = "mysql-bin.000003",
+ *         "pos" = 105586,
+ *         "row" = 0
  * }
  * </pre>
  * 
@@ -51,6 +54,7 @@ final class SourceInfo {
 
     public static final String SERVER_NAME_KEY = "name";
     public static final String SERVER_PARTITION_KEY = "server";
+    public static final String BINLOG_GTID_KEY = "gtid";
     public static final String BINLOG_FILENAME_OFFSET_KEY = "file";
     public static final String BINLOG_POSITION_OFFSET_KEY = "pos";
     public static final String BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY = "row";
@@ -65,12 +69,14 @@ final class SourceInfo {
                                                      .field(SERVER_NAME_KEY, Schema.STRING_SCHEMA)
                                                      .field(SERVER_ID_KEY, Schema.INT64_SCHEMA)
                                                      .field(BINLOG_EVENT_TIMESTAMP_KEY, Schema.INT64_SCHEMA)
+                                                     .field(BINLOG_GTID_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(BINLOG_FILENAME_OFFSET_KEY, Schema.STRING_SCHEMA)
                                                      .field(BINLOG_POSITION_OFFSET_KEY, Schema.INT64_SCHEMA)
                                                      .field(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, Schema.INT32_SCHEMA)
                                                      .field(BINLOG_SNAPSHOT_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
                                                      .build();
 
+    private GtidSet binlogGtids;
     private String binlogFilename;
     private long binlogPosition = 4;
     private int eventRowNumber = 0;
@@ -113,15 +119,17 @@ final class SourceInfo {
      * @return a copy of the current offset; never null
      */
     public Map<String, ?> offset() {
-        if ( isSnapshotInEffect() ) {
-            return Collect.hashMapOf(BINLOG_FILENAME_OFFSET_KEY, binlogFilename,
-                                     BINLOG_POSITION_OFFSET_KEY, binlogPosition,
-                                     BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, eventRowNumber,
-                                     BINLOG_SNAPSHOT_KEY,true);
+        Map<String, Object> map = new HashMap<>();
+        if (binlogGtids != null) {
+            map.put(BINLOG_GTID_KEY, binlogGtids.toString());
         }
-        return Collect.hashMapOf(BINLOG_FILENAME_OFFSET_KEY, binlogFilename,
-                                 BINLOG_POSITION_OFFSET_KEY, binlogPosition,
-                                 BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, eventRowNumber);
+        map.put(BINLOG_FILENAME_OFFSET_KEY, binlogFilename);
+        map.put(BINLOG_POSITION_OFFSET_KEY, binlogPosition);
+        map.put(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, eventRowNumber);
+        if (isSnapshotInEffect()) {
+            map.put(BINLOG_SNAPSHOT_KEY, true);
+        }
+        return map;
     }
 
     /**
@@ -146,6 +154,9 @@ final class SourceInfo {
         Struct result = new Struct(SCHEMA);
         result.put(SERVER_NAME_KEY, serverName);
         result.put(SERVER_ID_KEY, serverId);
+        if (binlogGtids != null) {
+            result.put(BINLOG_GTID_KEY, binlogGtids.toString());
+        }
         result.put(BINLOG_FILENAME_OFFSET_KEY, binlogFilename);
         result.put(BINLOG_POSITION_OFFSET_KEY, binlogPosition);
         result.put(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, eventRowNumber);
@@ -167,15 +178,25 @@ final class SourceInfo {
         setRowInEvent(eventRowNumber);
         return offset();
     }
-    
+
     /**
      * Determine whether a snapshot is currently in effect.
+     * 
      * @return {@code true} if a snapshot is in effect, or {@code false} otherwise
      */
     public boolean isSnapshotInEffect() {
         return snapshot;
     }
-    
+
+    /**
+     * Set the GTID range for the MySQL binary log file.
+     * 
+     * @param gtids the string representation of the binlog GTIDs; may not be null
+     */
+    public void setGtids(String gtids) {
+        this.binlogGtids = gtids != null && !gtids.trim().isEmpty() ? new GtidSet(gtids) : null;
+    }
+
     /**
      * Set the name of the MySQL binary log file.
      * 
@@ -221,7 +242,7 @@ final class SourceInfo {
     public void setBinlogTimestamp(long timestamp) {
         this.binlogTs = timestamp;
     }
-    
+
     /**
      * Denote that a snapshot is being (or has been) started.
      */
@@ -245,6 +266,7 @@ final class SourceInfo {
     public void setOffset(Map<String, ?> sourceOffset) {
         if (sourceOffset != null) {
             // We have previously recorded an offset ...
+            setGtids((String) sourceOffset.get(BINLOG_GTID_KEY)); // may be null
             binlogFilename = (String) sourceOffset.get(BINLOG_FILENAME_OFFSET_KEY);
             if (binlogFilename == null) {
                 throw new ConnectException("Source offset '" + BINLOG_FILENAME_OFFSET_KEY + "' parameter is missing");
@@ -263,6 +285,15 @@ final class SourceInfo {
         } catch (NumberFormatException e) {
             throw new ConnectException("Source offset '" + key + "' parameter value " + obj + " could not be converted to a long");
         }
+    }
+
+    /**
+     * Get the string representation of the GTID range for the MySQL binary log file.
+     * 
+     * @return the string representation of the binlog GTID ranges; may be null
+     */
+    public String gtidSet() {
+        return this.binlogGtids != null ? this.binlogGtids.toString() : null;
     }
 
     /**
@@ -292,27 +323,36 @@ final class SourceInfo {
     public int eventRowNumber() {
         return eventRowNumber;
     }
-    
+
     /**
      * Get the logical identifier of the database that is the source of the events.
+     * 
      * @return the database name; null if it has not been {@link #setServerName(String) set}
      */
     public String serverName() {
         return serverName;
     }
-    
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        if ( binlogFilename == null ) {
-            sb.append("<latest>");
+        if (binlogGtids != null) {
+            sb.append("GTIDs ");
+            sb.append(binlogGtids);
+            sb.append(" and binlog file '").append(binlogFilename).append("'");
+            sb.append(", pos=").append(binlogPosition());
+            sb.append(", row=").append(eventRowNumber());
         } else {
-            if ( "".equals(binlogFilename) ) {
-                sb.append("earliest binlog file and position");
+            if (binlogFilename == null) {
+                sb.append("<latest>");
             } else {
-                sb.append("binlog file '").append(binlogFilename).append("'");
-                sb.append(", pos=").append(binlogPosition());
-                sb.append(", row=").append(eventRowNumber());
+                if ("".equals(binlogFilename)) {
+                    sb.append("earliest binlog file and position");
+                } else {
+                    sb.append("binlog file '").append(binlogFilename).append("'");
+                    sb.append(", pos=").append(binlogPosition());
+                    sb.append(", row=").append(eventRowNumber());
+                }
             }
         }
         return sb.toString();

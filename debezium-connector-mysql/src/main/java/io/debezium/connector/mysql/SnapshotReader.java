@@ -188,7 +188,7 @@ public class SnapshotReader extends AbstractReader {
                 if (rs.next()) {
                     source.setBinlogFilename(rs.getString(1));
                     source.setBinlogPosition(rs.getLong(2));
-                    // source.setBinlogGtid(rs.getString(2));// GTID
+                    source.setGtids(rs.getString(5));// GTIDs
                     source.startSnapshot();
                 }
             });

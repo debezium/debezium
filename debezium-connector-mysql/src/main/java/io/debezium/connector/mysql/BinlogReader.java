@@ -25,12 +25,14 @@ import com.github.shyiko.mysql.binlog.event.EventData;
 import com.github.shyiko.mysql.binlog.event.EventHeader;
 import com.github.shyiko.mysql.binlog.event.EventHeaderV4;
 import com.github.shyiko.mysql.binlog.event.EventType;
+import com.github.shyiko.mysql.binlog.event.GtidEventData;
 import com.github.shyiko.mysql.binlog.event.QueryEventData;
 import com.github.shyiko.mysql.binlog.event.RotateEventData;
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
 import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer;
+import com.github.shyiko.mysql.binlog.event.deserialization.GtidEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.network.AuthenticationException;
 
 import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
@@ -73,6 +75,7 @@ public class BinlogReader extends AbstractReader {
         // Set up the event deserializer with additional type(s) ...
         EventDeserializer eventDeserializer = new EventDeserializer();
         eventDeserializer.setEventDataDeserializer(EventType.STOP, new StopEventDataDeserializer());
+        eventDeserializer.setEventDataDeserializer(EventType.GTID, new GtidEventDataDeserializer());
         client.setEventDeserializer(eventDeserializer);
     }
 
@@ -90,6 +93,7 @@ public class BinlogReader extends AbstractReader {
         eventHandlers.put(EventType.EXT_DELETE_ROWS, this::handleDelete);
 
         // And set the client to start from that point ...
+        client.setGtidSet(source.gtidSet()); // may be null
         client.setBinlogFilename(source.binlogFilename());
         client.setBinlogPosition(source.binlogPosition());
         // The event row number will be used when processing the first event ...
@@ -161,6 +165,16 @@ public class BinlogReader extends AbstractReader {
                 source.setBinlogPosition(nextBinlogPosition);
                 source.setRowInEvent(0);
             }
+        }
+        if (eventType == EventType.GTID) {
+            EventData eventData = event.getData();
+            GtidEventData gtidEventData;
+            if (eventData instanceof EventDeserializer.EventDataWrapper) {
+                gtidEventData = (GtidEventData) ((EventDeserializer.EventDataWrapper) eventData).getInternal();
+            } else {
+                gtidEventData = (GtidEventData) eventData;
+            }
+            source.setGtids(gtidEventData.getGtid());
         }
 
         // If there is a handler for this event, forward the event to it ...
