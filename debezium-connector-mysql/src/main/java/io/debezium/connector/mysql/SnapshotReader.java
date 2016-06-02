@@ -19,6 +19,8 @@ import io.debezium.function.Predicates;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.util.Clock;
+import io.debezium.util.Strings;
 
 /**
  * A component that performs a snapshot of a MySQL server, and records the schema changes in {@link MySqlSchema}.
@@ -127,13 +129,15 @@ public class SnapshotReader extends AbstractReader {
      * Perform the snapshot using the same logic as the "mysqldump" utility.
      */
     protected void execute() {
-        logger.info("Starting snapshot for MySQL server {}", context.serverName());
+        context.configureLoggingContext("snapshot");
+        logger.info("Starting snapshot");
         final AtomicReference<String> sql = new AtomicReference<>();
         final JdbcConnection mysql = context.jdbc();
         final MySqlSchema schema = context.dbSchema();
         final Filters filters = schema.filters();
         final SourceInfo source = context.source();
-        final long ts = context.clock().currentTimeInMillis();
+        final Clock clock = context.clock();
+        final long ts = clock.currentTimeInMillis();
         try {
             // ------
             // STEP 0
@@ -148,6 +152,7 @@ public class SnapshotReader extends AbstractReader {
             // See: https://dev.mysql.com/doc/refman/5.7/en/set-transaction.html
             // See: https://dev.mysql.com/doc/refman/5.7/en/innodb-transaction-isolation-levels.html
             // See: https://dev.mysql.com/doc/refman/5.7/en/innodb-consistent-read.html
+            logger.info("Step 0: disabling autocommit and enabling repeatable read transactions");
             mysql.setAutoCommit(false);
             sql.set("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
             mysql.execute(sql.get());
@@ -157,6 +162,7 @@ public class SnapshotReader extends AbstractReader {
             // ------
             // First, start a transaction and request that a consistent MVCC snapshot is obtained immediately.
             // See http://dev.mysql.com/doc/refman/5.7/en/commit.html
+            logger.info("Step 1: start transaction with consistent snapshot");
             sql.set("START TRANSACTION WITH CONSISTENT SNAPSHOT");
             mysql.execute(sql.get());
 
@@ -166,6 +172,8 @@ public class SnapshotReader extends AbstractReader {
             // Obtain read lock on all tables. This statement closes all open tables and locks all tables
             // for all databases with a global read lock, and it prevents ALL updates while we have this lock.
             // It also ensures that everything we do while we have this lock will be consistent.
+            long lockAcquired = clock.currentTimeInMillis();
+            logger.info("Step 2: flush and obtain global read lock (preventing writes to database)");
             sql.set("FLUSH TABLES WITH READ LOCK");
             mysql.execute(sql.get());
 
@@ -174,6 +182,7 @@ public class SnapshotReader extends AbstractReader {
             // ------
             // Obtain the binlog position and update the SourceInfo in the context. This means that all source records generated
             // as part of the snapshot will contain the binlog position of the snapshot.
+            logger.info("Step 3: read binlog position of MySQL master");
             sql.set("SHOW MASTER STATUS");
             mysql.query(sql.get(), rs -> {
                 if (rs.next()) {
@@ -191,6 +200,7 @@ public class SnapshotReader extends AbstractReader {
             // STEP 4
             // ------
             // Get the list of databases ...
+            logger.info("Step 4: read list of available databases");
             final List<String> databaseNames = new ArrayList<>();
             sql.set("SHOW DATABASES");
             mysql.query(sql.get(), rs -> {
@@ -205,6 +215,7 @@ public class SnapshotReader extends AbstractReader {
             // Get the list of table IDs for each database. We can't use a prepared statement with MySQL, so we have to
             // build the SQL statement each time. Although in other cases this might lead to SQL injection, in our case
             // we are reading the database names from the database and not taking them from the user ...
+            logger.info("Step 5: read list of available tables in each database");
             final List<TableId> tableIds = new ArrayList<>();
             final Map<String,List<TableId>> tableIdsByDbName = new HashMap<>();
             for (String dbName : databaseNames) {
@@ -225,6 +236,7 @@ public class SnapshotReader extends AbstractReader {
             // ------
             // Transform the current schema so that it reflects the *current* state of the MySQL server's contents.
             // First, get the DROP TABLE and CREATE TABLE statement (with keys and constraint definitions) for our tables ...
+            logger.info("Step 6: generating DROP and CREATE statements to reflect current database schemas");
             final List<String> ddlStatements = new ArrayList<>();
             // Add DROP TABLE statements for all tables that we knew about AND those tables found in the databases ...
             Set<TableId> allTableIds = new HashSet<>(schema.tables().tableIds());
@@ -253,6 +265,7 @@ public class SnapshotReader extends AbstractReader {
                 }
             }
             // Finally, apply the DDL statements to the schema and then update the record maker...
+            logger.debug("Step 6b: applying DROP and CREATE statements to connector's table model");
             String ddlStatementsStr = String.join(";" + System.lineSeparator(), ddlStatements);
             schema.applyDdl(source, null, ddlStatementsStr, this::enqueueSchemaChanges);
             context.makeRecord().regenerate();
@@ -266,17 +279,25 @@ public class SnapshotReader extends AbstractReader {
                 // should still use the MVCC snapshot obtained when we started our transaction (since we started it
                 // "...with consistent snapshot"). So, since we're only doing very simple SELECT without WHERE predicates,
                 // we can release the lock now ...
+                logger.info("Step 7: releasing global read lock to enable MySQL writes");
                 sql.set("UNLOCK TABLES");
                 mysql.execute(sql.get());
                 unlocked = true;
+                long lockReleased = clock.currentTimeInMillis();
+                logger.info("Writes to MySQL prevented for a total of {}", Strings.duration(lockReleased-lockAcquired));
             }
 
             // ------
             // STEP 8
             // ------
             // Dump all of the tables and generate source records ...
+            logger.info("Step 8: scanning contents of {} tables",tableIds.size());
+            long startScan = clock.currentTimeInMillis();
             AtomicBoolean interrupted = new AtomicBoolean(false);
+            int counter = 0;
             for (TableId tableId : tableIds) {
+                long start = clock.currentTimeInMillis();
+                logger.debug("Step 8.{}: scanning table '{}'; {} tables remain",++counter,tableId,tableIds.size()-counter);
                 sql.set("SELECT * FROM " + tableId);
                 mysql.query(sql.get(), rs -> {
                     RecordsForTable recordMaker = context.makeRecord().forTable(tableId, null, super::enqueueRecord);
@@ -300,16 +321,23 @@ public class SnapshotReader extends AbstractReader {
                     }
                 });
                 if ( interrupted.get() ) break;
+                long stop = clock.currentTimeInMillis();
+                logger.info("Step 8.{}: scanned table '{}' in {}",counter,tableId,Strings.duration(stop-start));
             }
+            long stop = clock.currentTimeInMillis();
+            logger.info("Step 8: scanned contents of {} tables in {}",tableIds.size(),Strings.duration(stop-startScan));
 
             // ------
             // STEP 9
             // ------
             // Release the read lock if we have not yet done so ...
             if (!unlocked) {
+                logger.info("Step 9: releasing global read lock to enable MySQL writes");
                 sql.set("UNLOCK TABLES");
                 mysql.execute(sql.get());
                 unlocked = true;
+                long lockReleased = clock.currentTimeInMillis();
+                logger.info("Writes to MySQL prevented for a total of {}", Strings.duration(lockReleased-lockAcquired));
             }
 
             // -------
@@ -317,15 +345,18 @@ public class SnapshotReader extends AbstractReader {
             // -------
             if (interrupted.get()) {
                 // We were interrupted while reading the tables, so roll back the transaction and return immediately ...
+                logger.info("Step 10: rolling back transaction after request to stop");
                 sql.set("ROLLBACK");
                 mysql.execute(sql.get());
                 return;
             }
             // Otherwise, commit our transaction
+            logger.info("Step 10: committing transaction");
             sql.set("COMMIT");
             mysql.execute(sql.get());
 
             try {
+                logger.info("Step 11: recording completion of snapshot");
                 // Mark the source as having completed the snapshot. Because of this, **subsequent** source records
                 // produced by the connector (to any topic) will have a normal (not snapshot) offset ...
                 source.completeSnapshot();
@@ -338,7 +369,8 @@ public class SnapshotReader extends AbstractReader {
             } finally {
                 // Set the completion flag ...
                 super.completeSuccessfully();
-                logger.info("Completed snapshot for MySQL server {}", context.serverName());
+                stop = clock.currentTimeInMillis();
+                logger.info("Completed snapshot in {}", Strings.duration(stop-ts));
             }
         } catch (Throwable e) {
             failed(e, "Aborting snapshot after running '" + sql.get() + "': " + e.getMessage());

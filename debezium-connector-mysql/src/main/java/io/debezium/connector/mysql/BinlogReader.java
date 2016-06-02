@@ -18,7 +18,6 @@ import java.util.concurrent.TimeoutException;
 import org.apache.kafka.connect.errors.ConnectException;
 
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
-import com.github.shyiko.mysql.binlog.BinaryLogClient.AbstractLifecycleListener;
 import com.github.shyiko.mysql.binlog.BinaryLogClient.LifecycleListener;
 import com.github.shyiko.mysql.binlog.event.DeleteRowsEventData;
 import com.github.shyiko.mysql.binlog.event.Event;
@@ -68,17 +67,7 @@ public class BinlogReader extends AbstractReader {
         client.setServerId(context.serverId());
         client.setKeepAlive(context.config().getBoolean(MySqlConnectorConfig.KEEP_ALIVE));
         client.registerEventListener(this::handleEvent);
-        client.registerLifecycleListener(new AbstractLifecycleListener(){
-            @Override
-            public void onCommunicationFailure(BinaryLogClient client, Exception ex) {
-                failed(ex,"Stopped reading binlog due to error: " + ex.getMessage());
-            }
-            @Override
-            public void onEventDeserializationFailure(BinaryLogClient client, Exception ex) {
-                failed(ex,"Stopped reading binlog due to error: " + ex.getMessage());
-            }
-        });
-        client.registerLifecycleListener(new TraceLifecycleListener());
+        client.registerLifecycleListener(new ReaderThreadLifecycleListener());
         if (logger.isDebugEnabled()) client.registerEventListener(this::logEvent);
 
         // Set up the event deserializer with additional type(s) ...
@@ -104,24 +93,22 @@ public class BinlogReader extends AbstractReader {
         client.setBinlogFilename(source.binlogFilename());
         client.setBinlogPosition(source.binlogPosition());
         // The event row number will be used when processing the first event ...
-        logger.info("Reading from MySQL {} starting at {}",context.serverName(), source);
 
         // Start the log reader, which starts background threads ...
         long timeoutInMilliseconds = context.timeoutInMilliseconds();
         try {
-            logger.debug("Binlog reader connecting to MySQL server '{}'", context.serverName());
+            logger.debug("Attempting to establish binlog reader connection with timeout of {} ms", timeoutInMilliseconds);
             client.connect(context.timeoutInMilliseconds());
-            logger.info("Successfully started reading MySQL binlog");
         } catch (TimeoutException e) {
             double seconds = TimeUnit.MILLISECONDS.toSeconds(timeoutInMilliseconds);
-            throw new ConnectException("Timed out after " + seconds + " seconds while waiting to connect to the MySQL database at " +
-                    context.username() + ":" + context.port() + " with user '" + context.username() + "'", e);
+            throw new ConnectException("Timed out after " + seconds + " seconds while waiting to connect to MySQL at " +
+                    context.hostname() + ":" + context.port() + " with user '" + context.username() + "'", e);
         } catch (AuthenticationException e) {
-            throw new ConnectException("Failed to authenticate to the MySQL database at " + context.hostname() + ":" +
-                    context.port() + " with user '" + context.username() + "'", e);
+            throw new ConnectException("Failed to authenticate to the MySQL database at " +
+                    context.hostname() + ":" + context.port() + " with user '" + context.username() + "'", e);
         } catch (Throwable e) {
-            throw new ConnectException("Unable to connect to the MySQL database at " + context.hostname() + ":" + context.port() +
-                    " with user '" + context.username() + "': " + e.getMessage(), e);
+            throw new ConnectException("Unable to connect to the MySQL database at " +
+                    context.hostname() + ":" + context.port() + " with user '" + context.username() + "': " + e.getMessage(), e);
         }
 
     }
@@ -129,9 +116,8 @@ public class BinlogReader extends AbstractReader {
     @Override
     protected void doStop() {
         try {
-            logger.debug("Binlog reader disconnecting from MySQL server '{}'", context.serverName());
+            logger.debug("Stopping binlog reader");
             client.disconnect();
-            logger.info("Stopped connector to MySQL server '{}'", context.serverName());
         } catch (IOException e) {
             logger.error("Unexpected error when disconnecting from the MySQL binary log reader", e);
         }
@@ -142,7 +128,7 @@ public class BinlogReader extends AbstractReader {
     }
 
     protected void logEvent(Event event) {
-        //logger.debug("Received event: {}", event);
+        logger.trace("Received event: {}", event);
     }
 
     protected void ignoreEvent(Event event) {
@@ -344,25 +330,31 @@ public class BinlogReader extends AbstractReader {
         }
     }
 
-    protected final class TraceLifecycleListener implements LifecycleListener {
+    protected final class ReaderThreadLifecycleListener implements LifecycleListener {
         @Override
         public void onDisconnect(BinaryLogClient client) {
-            logger.debug("MySQL Connector disconnected");
+            context.temporaryLoggingContext("binlog", () -> {
+                logger.info("Stopped reading binlog and closed connection");
+            });
         }
 
         @Override
         public void onConnect(BinaryLogClient client) {
-            logger.info("MySQL Connector connected");
+            // Set up the MDC logging context for this thread ...
+            context.configureLoggingContext("binlog");
+
+            // The event row number will be used when processing the first event ...
+            logger.info("Connected to MySQL binlog at {}:{}, starting at {}", context.hostname(), context.port(), source);
         }
 
         @Override
         public void onCommunicationFailure(BinaryLogClient client, Exception ex) {
-            logger.error("MySQL Connector communication failure", ex);
+            BinlogReader.this.failed(ex);
         }
 
         @Override
         public void onEventDeserializationFailure(BinaryLogClient client, Exception ex) {
-            logger.error("MySQL Connector received event deserialization failure", ex);
+            BinlogReader.this.failed(ex);
         }
     }
 }
