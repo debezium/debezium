@@ -42,7 +42,7 @@ public class MetadataIT implements Testing {
                                  + ")");
             conn.execute("SELECT * FROM person");
             Tables tables = new Tables();
-            conn.readSchema(tables, "readbinlog_test", null, null, null);
+            conn.readSchema(tables, "readbinlog_test", null, null, null, true);
             //System.out.println(tables);
             assertThat(tables.size()).isEqualTo(1);
             Table person = tables.forTable("readbinlog_test", null, "person");
@@ -104,7 +104,7 @@ public class MetadataIT implements Testing {
                                  + ")");
             conn.execute("SELECT * FROM product");
             tables = new Tables();
-            conn.readSchema(tables, "readbinlog_test", null, null, null);
+            conn.readSchema(tables, "readbinlog_test", null, null, null, true);
             // System.out.println(tables);
             assertThat(tables.size()).isEqualTo(2);
             Table product = tables.forTable("readbinlog_test", null, "product");
@@ -148,7 +148,7 @@ public class MetadataIT implements Testing {
                                  + ")");
             conn.execute("SELECT * FROM purchased");
             tables = new Tables();
-            conn.readSchema(tables, "readbinlog_test", null, null, null);
+            conn.readSchema(tables, "readbinlog_test", null, null, null, true);
             //System.out.println(tables);
             assertThat(tables.size()).isEqualTo(3);
             Table purchased = tables.forTable("readbinlog_test", null, "purchased");

@@ -53,3 +53,9 @@ This will use the `mysql:5.7` image to start a new container named `database` wh
 The second volume mount, namely `-v src/test/docker/init:/docker-entrypoint-initdb.d`, makes available all of our existing scripts inside the `src/test/docker/init` directory so that they are run upon server initialization.
 
 The command also defines the same `mysql` database and uses the same username and password(s) as our integration test MySQL container.
+
+### Use MySQL client
+
+The following command can be used to manually start up a Docker container to run the MySQL command line client:
+
+    $ docker run -it --link database:mysql --rm mysql:5.7 sh -c 'exec mysql -h"$MYSQL_PORT_3306_TCP_ADDR" -P"$MYSQL_PORT_3306_TCP_PORT" -uroot -p"$MYSQL_ENV_MYSQL_ROOT_PASSWORD"'

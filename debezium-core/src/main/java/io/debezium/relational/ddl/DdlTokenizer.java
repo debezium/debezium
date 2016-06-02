@@ -49,7 +49,8 @@ public class DdlTokenizer implements Tokenizer {
     public static final int DOUBLE_QUOTED_STRING = 16;
     /**
      * The {@link Token#type() token type} for tokens that consist of all the characters
-     * between "/*" and "&#42;/", between "//" and the next line terminator (e.g., '\n', '\r' or "\r\n"), or between "--" and
+     * between "/*" and "&#42;/", between "//" and the next line terminator (e.g., '\n', '\r' or "\r\n"), between "#" and
+     * the next line terminator (e.g., '\n', '\r' or "\r\n"), or between "--" and
      * the next line terminator (e.g., '\n', '\r' or "\r\n").
      */
     public static final int COMMENT = 32;
@@ -88,6 +89,7 @@ public class DdlTokenizer implements Tokenizer {
         int typeOf(int type, String token);
     }
 
+    private final boolean removeQuotes = true;
     private final boolean useComments;
     private final TokenTypeFunction retypingFunction;
 
@@ -110,13 +112,15 @@ public class DdlTokenizer implements Tokenizer {
     protected Tokens adapt(CharacterStream input,
                            Tokens output) {
         return (position, startIndex, endIndex, type) -> {
-            output.addToken(position, startIndex, endIndex, retypingFunction.typeOf(type, input.substring(startIndex, endIndex).toUpperCase()));
+            output.addToken(position, startIndex, endIndex,
+                            retypingFunction.typeOf(type, input.substring(startIndex, endIndex).toUpperCase()));
         };
     }
 
     @Override
     public void tokenize(CharacterStream input,
-                         Tokens tokens) throws ParsingException {
+                         Tokens tokens)
+            throws ParsingException {
         tokens = adapt(input, tokens);
         int startIndex;
         int endIndex;
@@ -129,6 +133,30 @@ public class DdlTokenizer implements Tokenizer {
                 case '\r':
                     // Just skip these whitespace characters ...
                     break;
+
+                // ==============================================================================================
+                // DDL Comments token = "#"
+                // ==============================================================================================
+                case '#': {
+                    startIndex = input.index();
+                    Position startPosition = input.position(startIndex);
+                    // End-of-line comment ...
+                    boolean foundLineTerminator = false;
+                    while (input.hasNext()) {
+                        c = input.next();
+                        if (c == '\n' || c == '\r') {
+                            foundLineTerminator = true;
+                            break;
+                        }
+                    }
+                    endIndex = input.index(); // the token won't include the '\n' or '\r' character(s)
+                    if (!foundLineTerminator) ++endIndex; // must point beyond last char
+                    if (c == '\r' && input.isNext('\n')) input.next();
+                    if (useComments) {
+                        tokens.addToken(startPosition, startIndex, endIndex, COMMENT);
+                    }
+                    break;
+                }
                 // ==============================================================================================
                 // DDL Comments token = "--"
                 // ==============================================================================================
@@ -161,7 +189,7 @@ public class DdlTokenizer implements Tokenizer {
                     }
                     break;
                 }
-                    // ==============================================================================================
+                // ==============================================================================================
                 case '(':
                 case ')':
                 case '{':
@@ -204,10 +232,17 @@ public class DdlTokenizer implements Tokenizer {
                         throw new ParsingException(startingPosition, msg);
                     }
                     endIndex = input.index() + 1; // beyond last character read
+                    if ( removeQuotes && endIndex - startIndex > 1 ) {
+                        // At least one quoted character, so remove the quotes ...
+                        startIndex += 1;
+                        endIndex -= 1;
+                    }
                     tokens.addToken(startingPosition, startIndex, endIndex, DOUBLE_QUOTED_STRING);
                     break;
-                case '\u2019': // '’':
-                case '\'':
+                case '`':       // back-quote character
+                case '\u2018': // left single-quote character
+                case '\u2019': // right single-quote character
+                case '\'':     // single-quote character
                     char quoteChar = c;
                     startIndex = input.index();
                     startingPosition = input.position(startIndex);
@@ -215,7 +250,7 @@ public class DdlTokenizer implements Tokenizer {
                     while (input.hasNext()) {
                         c = input.next();
                         if ((c == '\\' || c == quoteChar) && input.isNext(quoteChar)) {
-                            c = input.next(); // consume the ' character since it is escaped
+                            c = input.next(); // consume the character since it is escaped
                         } else if (c == quoteChar) {
                             foundClosingQuote = true;
                             break;
@@ -227,6 +262,11 @@ public class DdlTokenizer implements Tokenizer {
                         throw new ParsingException(startingPosition, msg);
                     }
                     endIndex = input.index() + 1; // beyond last character read
+                    if ( removeQuotes && endIndex - startIndex > 1 ) {
+                        // At least one quoted character, so remove the quotes ...
+                        startIndex += 1;
+                        endIndex -= 1;
+                    }
                     tokens.addToken(startingPosition, startIndex, endIndex, SINGLE_QUOTED_STRING);
                     break;
                 case '/':

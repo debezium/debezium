@@ -8,6 +8,7 @@ package io.debezium.relational.history;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -49,13 +50,16 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
 
     @Override
     public void configure(Configuration config) {
-        super.configure(config);
-        if (!config.validate(ALL_FIELDS, logger::error)) {
-            throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
-        }
-        config.validate(ALL_FIELDS, logger::error);
-        super.configure(config);
-        path = Paths.get(config.getString(FILE_PATH));
+        lock.write(() -> {
+            super.configure(config);
+            if (!config.validate(ALL_FIELDS, logger::error)) {
+                throw new ConnectException(
+                        "Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
+            }
+            config.validate(ALL_FIELDS, logger::error);
+            super.configure(config);
+            path = Paths.get(config.getString(FILE_PATH));
+        });
     }
 
     @Override
@@ -65,7 +69,11 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
                 String line = writer.write(record.document());
                 if (!Files.exists(path)) {
                     Files.createDirectories(path.getParent());
-                    Files.createFile(path);
+                    try {
+                        Files.createFile(path);
+                    } catch (FileAlreadyExistsException e) {
+                        // do nothing
+                    }
                 }
                 Files.write(path, Collect.arrayListOf(line), UTF8, StandardOpenOption.APPEND);
             } catch (IOException e) {

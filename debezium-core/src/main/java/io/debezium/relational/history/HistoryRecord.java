@@ -40,7 +40,7 @@ public class HistoryRecord {
 
     public boolean isAtOrBefore(HistoryRecord other) {
         if (other == this) return true;
-        return this.position().compareToWithoutFieldOrder(other.position()) <= 0
+        return this.position().compareToUsingSimilarFields(other.position()) <= 0
                 && source().equals(other.source());
     }
 

@@ -32,7 +32,7 @@ import io.debezium.util.Testing;
  */
 public class MySqlConnectorIT extends AbstractConnectorTest {
 
-    private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history.txt").toAbsolutePath();
+    private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
 
     private Configuration config;
 
@@ -45,8 +45,11 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
     @After
     public void afterEach() {
-        stopConnector();
-        Testing.Files.delete(DB_HISTORY_PATH);
+        try {
+            stopConnector();
+        } finally {
+            Testing.Files.delete(DB_HISTORY_PATH);
+        }
     }
 
     /**
@@ -69,36 +72,37 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldConsumeAllEventsFromDatabase() throws SQLException, InterruptedException {
+    public void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = Configuration.create()
                               .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
                               .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
-                              .with(MySqlConnectorConfig.USER, "replicator")
-                              .with(MySqlConnectorConfig.PASSWORD, "replpass")
+                              .with(MySqlConnectorConfig.USER, "snapper")
+                              .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                               .with(MySqlConnectorConfig.SERVER_ID, 18765)
                               .with(MySqlConnectorConfig.SERVER_NAME, "kafka-connect")
-                              .with(MySqlConnectorConfig.INITIAL_BINLOG_FILENAME, "mysql-bin.000001")
+                              .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                               .with(MySqlConnectorConfig.DATABASE_WHITELIST, "connector_test")
                               .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                               .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+                              .with("database.useSSL",false) // eliminates MySQL driver warning about SSL connections
                               .build();
         // Start the connector ...
         start(MySqlConnector.class, config);
-
+        
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        SourceRecords records = consumeRecordsByTopic(6+9+9+4+5);
-        assertThat(records.recordsForTopic("kafka-connect").size()).isEqualTo(6);
+        SourceRecords records = consumeRecordsByTopic(5+9+9+4+1);   // 1 schema change record
+        assertThat(records.recordsForTopic("kafka-connect").size()).isEqualTo(1);
         assertThat(records.recordsForTopic("kafka-connect.connector_test.products").size()).isEqualTo(9);
         assertThat(records.recordsForTopic("kafka-connect.connector_test.products_on_hand").size()).isEqualTo(9);
         assertThat(records.recordsForTopic("kafka-connect.connector_test.customers").size()).isEqualTo(4);
         assertThat(records.recordsForTopic("kafka-connect.connector_test.orders").size()).isEqualTo(5);
         assertThat(records.topics().size()).isEqualTo(5);
         assertThat(records.databaseNames().size()).isEqualTo(1);
-        assertThat(records.ddlRecordsForDatabase("connector_test").size()).isEqualTo(6);
+        assertThat(records.ddlRecordsForDatabase("connector_test").size()).isEqualTo(1);
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
         records.ddlRecordsForDatabase("connector_test").forEach(this::print);
 
@@ -127,12 +131,17 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 });
             }
         }
+        
+        //Testing.Print.enable();
 
         // Restart the connector and read the insert record ...
+        Testing.print("*** Restarting connector after inserts were made");
         start(MySqlConnector.class, config);
         records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic("kafka-connect.connector_test.products").size()).isEqualTo(1);
         assertThat(records.topics().size()).isEqualTo(1);
+        
+        Testing.print("*** Done with inserts and restart");
         
         // ---------------------------------------------------------------------------------------------------------------
         // Simple INSERT
@@ -153,6 +162,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         List<SourceRecord> inserts = records.recordsForTopic("kafka-connect.connector_test.products");
         assertInsert(inserts.get(0), "id", 1001);
 
+        Testing.print("*** Done with simple insert");
+
         // ---------------------------------------------------------------------------------------------------------------
         // Changing the primary key of a row should result in 3 events: INSERT, DELETE, and TOMBSTONE
         // ---------------------------------------------------------------------------------------------------------------
@@ -171,6 +182,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertInsert(updates.get(0), "id", 2001);
         assertDelete(updates.get(1), "id", 1001);
         assertTombstone(updates.get(2), "id", 1001);
+        
+        Testing.print("*** Done with PK change");
 
         // ---------------------------------------------------------------------------------------------------------------
         // Simple UPDATE (with no schema changes)
@@ -191,6 +204,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertThat(updates.size()).isEqualTo(1);
         assertUpdate(updates.get(0), "id", 2001);
         updates.forEach(this::validate);
+
+        Testing.print("*** Done with simple update");
 
         // ---------------------------------------------------------------------------------------------------------------
         // Change our schema with a fully-qualified name; we should still see this event
@@ -215,6 +230,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertUpdate(updates.get(0), "id", 2001);
         updates.forEach(this::validate);
 
+        Testing.print("*** Done with schema change (same db and fully-qualified name)");
+
         // ---------------------------------------------------------------------------------------------------------------
         // DBZ-55 Change our schema using a different database and a fully-qualified name; we should still see this event
         // ---------------------------------------------------------------------------------------------------------------
@@ -233,8 +250,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         records = consumeRecordsByTopic(1);
         assertThat(records.topics().size()).isEqualTo(1);
         assertThat(records.recordsForTopic("kafka-connect").size()).isEqualTo(1);
-        //Testing.Print.enable();
         records.recordsForTopic("kafka-connect").forEach(this::validate);
+
+        Testing.print("*** Done with PK change (different db and fully-qualified name)");
 
         // ---------------------------------------------------------------------------------------------------------------
         // Make sure there are no additional events
@@ -258,6 +276,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertUpdate(updates.get(0), "product_id", 109);
         updates.forEach(this::validate);
 
+        Testing.print("*** Done with verifying no additional events");
+
         // ---------------------------------------------------------------------------------------------------------------
         // Stop the connector ...
         // ---------------------------------------------------------------------------------------------------------------
@@ -272,17 +292,18 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         config = Configuration.create()
                               .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
                               .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
-                              .with(MySqlConnectorConfig.USER, "replicator")
-                              .with(MySqlConnectorConfig.PASSWORD, "replpass")
+                              .with(MySqlConnectorConfig.USER, "snapper")
+                              .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                               .with(MySqlConnectorConfig.SERVER_ID, 18780)
                               .with(MySqlConnectorConfig.SERVER_NAME, "kafka-connect-2")
-                              .with(MySqlConnectorConfig.INITIAL_BINLOG_FILENAME, "mysql-bin.000001")
+                              .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                               .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                              .with(MySqlConnectorConfig.DATABASE_WHITELIST, "connector_test")
-                              .with(MySqlConnectorConfig.COLUMN_BLACKLIST, "connector_test.orders.order_number")
-                              .with(MySqlConnectorConfig.MASK_COLUMN(12), "connector_test.customers.email")
+                              .with(MySqlConnectorConfig.DATABASE_WHITELIST, "connector_test_ro")
+                              .with(MySqlConnectorConfig.COLUMN_BLACKLIST, "connector_test_ro.orders.order_number")
+                              .with(MySqlConnectorConfig.MASK_COLUMN(12), "connector_test_ro.customers.email")
                               .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+                              .with("database.useSSL",false) // eliminates MySQL driver warning about SSL connections
                               .build();
 
         // Start the connector ...
@@ -291,10 +312,10 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Consume the first records due to startup and initialization of the database ...
         // Testing.Print.enable();
         SourceRecords records = consumeRecordsByTopic(9+9+4+5);
-        assertThat(records.recordsForTopic("kafka-connect-2.connector_test.products").size()).isEqualTo(9);
-        assertThat(records.recordsForTopic("kafka-connect-2.connector_test.products_on_hand").size()).isEqualTo(9);
-        assertThat(records.recordsForTopic("kafka-connect-2.connector_test.customers").size()).isEqualTo(4);
-        assertThat(records.recordsForTopic("kafka-connect-2.connector_test.orders").size()).isEqualTo(5);
+        assertThat(records.recordsForTopic("kafka-connect-2.connector_test_ro.products").size()).isEqualTo(9);
+        assertThat(records.recordsForTopic("kafka-connect-2.connector_test_ro.products_on_hand").size()).isEqualTo(9);
+        assertThat(records.recordsForTopic("kafka-connect-2.connector_test_ro.customers").size()).isEqualTo(4);
+        assertThat(records.recordsForTopic("kafka-connect-2.connector_test_ro.orders").size()).isEqualTo(5);
         assertThat(records.topics().size()).isEqualTo(4);
 
         // Check that all records are valid, can be serialized and deserialized ...
@@ -304,7 +325,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         stopConnector();
 
         // Check that the orders.order_number is not present ...
-        records.recordsForTopic("kafka-connect-2.connector_test.orders").forEach(record->{
+        records.recordsForTopic("kafka-connect-2.connector_test_ro.orders").forEach(record->{
             print(record);
             Struct value = (Struct) record.value();
             try {
@@ -312,12 +333,11 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 fail("The 'order_number' field was found but should not exist");
             } catch (DataException e) {
                 // expected
-                printJson(record);
             }
         });
         
         // Check that the customer.email is masked ...
-        records.recordsForTopic("kafka-connect-2.connector_test.customers").forEach(record->{
+        records.recordsForTopic("kafka-connect-2.connector_test_ro.customers").forEach(record->{
             Struct value = (Struct) record.value();
             if (value.getStruct("after") != null) {
                 assertThat(value.getStruct("after").getString("email")).isEqualTo("************");
@@ -325,7 +345,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             if (value.getStruct("before") != null) {
                 assertThat(value.getStruct("before").getString("email")).isEqualTo("************");
             }
-            printJson(record);
+            print(record);
         });
     }
 

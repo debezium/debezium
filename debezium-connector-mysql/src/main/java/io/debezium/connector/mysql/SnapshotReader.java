@@ -1,0 +1,366 @@
+/*
+ * Copyright Debezium Authors.
+ * 
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+package io.debezium.connector.mysql;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
+import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
+import io.debezium.function.Predicates;
+import io.debezium.jdbc.JdbcConnection;
+import io.debezium.relational.Table;
+import io.debezium.relational.TableId;
+
+/**
+ * A component that performs a snapshot of a MySQL server, and records the schema changes in {@link MySqlSchema}.
+ * 
+ * @author Randall Hauch
+ */
+public class SnapshotReader extends AbstractReader {
+
+    private boolean minimalBlocking = true;
+    private RecordRecorder recorder;
+    private volatile Thread thread;
+    private volatile Runnable onSuccessfulCompletion;
+
+    /**
+     * Create a snapshot reader.
+     * 
+     * @param context the task context in which this reader is running; may not be null
+     */
+    public SnapshotReader(MySqlTaskContext context) {
+        super(context);
+        recorder = this::recordRowAsRead;
+    }
+
+    /**
+     * Set the non-blocking function that should be called upon successful completion of the snapshot, which is after the
+     * snapshot generates its final record <em>and</em> all such records have been {@link #poll() polled}.
+     * 
+     * @param onSuccessfulCompletion the function; may be null
+     * @return this object for method chaining; never null
+     */
+    public SnapshotReader onSuccessfulCompletion(Runnable onSuccessfulCompletion) {
+        this.onSuccessfulCompletion = onSuccessfulCompletion;
+        return this;
+    }
+
+    /**
+     * Set whether this reader's {@link #execute() execution} should block other transactions as minimally as possible by
+     * releasing the read lock as early as possible. Although the snapshot process should obtain a consistent snapshot even
+     * when releasing the lock as early as possible, it may be desirable to explicitly hold onto the read lock until execution
+     * completes. In such cases, holding onto the lock will prevent all updates to the database during the snapshot process.
+     * 
+     * @param minimalBlocking {@code true} if the lock is to be released as early as possible, or {@code false} if the lock
+     *            is to be held for the entire {@link #execute() execution}
+     * @return this object for method chaining; never null
+     */
+    public SnapshotReader useMinimalBlocking(boolean minimalBlocking) {
+        this.minimalBlocking = minimalBlocking;
+        return this;
+    }
+
+    /**
+     * Set this reader's {@link #execute() execution} to produce a {@link io.debezium.data.Envelope.Operation#READ} event for each
+     * row.
+     * 
+     * @return this object for method chaining; never null
+     */
+    public SnapshotReader generateReadEvents() {
+        recorder = this::recordRowAsRead;
+        return this;
+    }
+
+    /**
+     * Set this reader's {@link #execute() execution} to produce a {@link io.debezium.data.Envelope.Operation#CREATE} event for
+     * each row.
+     * 
+     * @return this object for method chaining; never null
+     */
+    public SnapshotReader generateInsertEvents() {
+        recorder = this::recordRowAsInsert;
+        return this;
+    }
+
+    /**
+     * Start the snapshot and return immediately. Once started, the records read from the database can be retrieved using
+     * {@link #poll()} until that method returns {@code null}.
+     */
+    @Override
+    protected void doStart() {
+        thread = new Thread(this::execute, "mysql-snapshot-" + context.serverName());
+        // TODO: Use MDC logging
+        thread.start();
+    }
+
+    /**
+     * Stop the snapshot from running.
+     */
+    @Override
+    protected void doStop() {
+        thread.interrupt();
+    }
+
+    @Override
+    protected void doCleanup() {
+        this.thread = null;
+        logger.trace("Completed writing all snapshot records");
+
+        try {
+            // Call the completion function to say that we've successfully completed
+            if (onSuccessfulCompletion != null) onSuccessfulCompletion.run();
+        } catch (Throwable e) {
+            logger.error("Error calling completion function after completing snapshot");
+        }
+    }
+
+    /**
+     * Perform the snapshot using the same logic as the "mysqldump" utility.
+     */
+    protected void execute() {
+        logger.info("Starting snapshot for MySQL server {}", context.serverName());
+        final AtomicReference<String> sql = new AtomicReference<>();
+        final JdbcConnection mysql = context.jdbc();
+        final MySqlSchema schema = context.dbSchema();
+        final Filters filters = schema.filters();
+        final SourceInfo source = context.source();
+        final long ts = context.clock().currentTimeInMillis();
+        try {
+            // ------
+            // STEP 0
+            // ------
+            // Set the transaction isolation level to REPEATABLE READ. This is the default, but the default can be changed
+            // which is why we explicitly set it here.
+            //
+            // With REPEATABLE READ, all SELECT queries within the scope of a transaction (which we don't yet have) will read
+            // from the same MVCC snapshot. Thus each plain (non-locking) SELECT statements within the same transaction are
+            // consistent also with respect to each other.
+            //
+            // See: https://dev.mysql.com/doc/refman/5.7/en/set-transaction.html
+            // See: https://dev.mysql.com/doc/refman/5.7/en/innodb-transaction-isolation-levels.html
+            // See: https://dev.mysql.com/doc/refman/5.7/en/innodb-consistent-read.html
+            mysql.setAutoCommit(false);
+            sql.set("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
+            mysql.execute(sql.get());
+
+            // ------
+            // STEP 1
+            // ------
+            // First, start a transaction and request that a consistent MVCC snapshot is obtained immediately.
+            // See http://dev.mysql.com/doc/refman/5.7/en/commit.html
+            sql.set("START TRANSACTION WITH CONSISTENT SNAPSHOT");
+            mysql.execute(sql.get());
+
+            // ------
+            // STEP 2
+            // ------
+            // Obtain read lock on all tables. This statement closes all open tables and locks all tables
+            // for all databases with a global read lock, and it prevents ALL updates while we have this lock.
+            // It also ensures that everything we do while we have this lock will be consistent.
+            sql.set("FLUSH TABLES WITH READ LOCK");
+            mysql.execute(sql.get());
+
+            // ------
+            // STEP 3
+            // ------
+            // Obtain the binlog position and update the SourceInfo in the context. This means that all source records generated
+            // as part of the snapshot will contain the binlog position of the snapshot.
+            sql.set("SHOW MASTER STATUS");
+            mysql.query(sql.get(), rs -> {
+                if (rs.next()) {
+                    source.setBinlogFilename(rs.getString(1));
+                    source.setBinlogPosition(rs.getLong(2));
+                    // source.setBinlogGtid(rs.getString(2));// GTID
+                    source.startSnapshot();
+                }
+            });
+
+            // From this point forward, all source records produced by this connector will have an offset that includes a
+            // "snapshot" field (with value of "true").
+
+            // ------
+            // STEP 4
+            // ------
+            // Get the list of databases ...
+            final List<String> databaseNames = new ArrayList<>();
+            sql.set("SHOW DATABASES");
+            mysql.query(sql.get(), rs -> {
+                while (rs.next()) {
+                    databaseNames.add(rs.getString(1));
+                }
+            });
+
+            // ------
+            // STEP 5
+            // ------
+            // Get the list of table IDs for each database. We can't use a prepared statement with MySQL, so we have to
+            // build the SQL statement each time. Although in other cases this might lead to SQL injection, in our case
+            // we are reading the database names from the database and not taking them from the user ...
+            final List<TableId> tableIds = new ArrayList<>();
+            final Map<String,List<TableId>> tableIdsByDbName = new HashMap<>();
+            for (String dbName : databaseNames) {
+                sql.set("SHOW TABLES IN " + dbName);
+                mysql.query(sql.get(), rs -> {
+                    while (rs.next()) {
+                        TableId id = new TableId(dbName, null, rs.getString(1));
+                        if (filters.tableFilter().test(id)) {
+                            tableIds.add(id);
+                            tableIdsByDbName.computeIfAbsent(dbName, k->new ArrayList<>()).add(id);
+                        }
+                    }
+                });
+            }
+
+            // ------
+            // STEP 6
+            // ------
+            // Transform the current schema so that it reflects the *current* state of the MySQL server's contents.
+            // First, get the DROP TABLE and CREATE TABLE statement (with keys and constraint definitions) for our tables ...
+            final List<String> ddlStatements = new ArrayList<>();
+            // Add DROP TABLE statements for all tables that we knew about AND those tables found in the databases ...
+            Set<TableId> allTableIds = new HashSet<>(schema.tables().tableIds());
+            allTableIds.addAll(tableIds);
+            allTableIds.forEach(tableId->{
+                ddlStatements.add("DROP TABLE IF EXISTS " + tableId);
+            });
+            // Add a DROP DATABASE statement for each database that we no longer know about ...
+            schema.tables().tableIds().stream().map(TableId::catalog)
+                  .filter(Predicates.not(databaseNames::contains))
+                  .forEach(missingDbName -> {
+                      ddlStatements.add("DROP DATABASE IF EXISTS " + missingDbName);
+                  });
+            // Now process all of our tables for each database ...
+            for ( Map.Entry<String, List<TableId>> entry : tableIdsByDbName.entrySet() ) {
+                String dbName = entry.getKey();
+                // First drop, create, and then use the named database ...
+                ddlStatements.add("DROP DATABASE IF EXISTS " + dbName);
+                ddlStatements.add("CREATE DATABASE " + dbName);
+                ddlStatements.add("USE " + dbName);
+                for ( TableId tableId : entry.getValue() ) {
+                    sql.set("SHOW CREATE TABLE " + tableId);
+                    mysql.query(sql.get(), rs -> {
+                        if (rs.next()) ddlStatements.add(rs.getString(2)); // CREATE TABLE statement
+                    });
+                }
+            }
+            // Finally, apply the DDL statements to the schema and then update the record maker...
+            String ddlStatementsStr = String.join(";" + System.lineSeparator(), ddlStatements);
+            schema.applyDdl(source, null, ddlStatementsStr, this::enqueueSchemaChanges);
+            context.makeRecord().regenerate();
+
+            // ------
+            // STEP 7
+            // ------
+            boolean unlocked = false;
+            if (minimalBlocking) {
+                // We are doing minimal blocking, then we should release the read lock now. All subsequent SELECT
+                // should still use the MVCC snapshot obtained when we started our transaction (since we started it
+                // "...with consistent snapshot"). So, since we're only doing very simple SELECT without WHERE predicates,
+                // we can release the lock now ...
+                sql.set("UNLOCK TABLES");
+                mysql.execute(sql.get());
+                unlocked = true;
+            }
+
+            // ------
+            // STEP 8
+            // ------
+            // Dump all of the tables and generate source records ...
+            AtomicBoolean interrupted = new AtomicBoolean(false);
+            for (TableId tableId : tableIds) {
+                sql.set("SELECT * FROM " + tableId);
+                mysql.query(sql.get(), rs -> {
+                    RecordsForTable recordMaker = context.makeRecord().forTable(tableId, null, super::enqueueRecord);
+                    if (recordMaker != null) {
+                        try {
+                            // The table is included in the connector's filters, so process all of the table records ...
+                            final Table table = schema.tableFor(tableId);
+                            final int numColumns = table.columns().size();
+                            final Object[] row = new Object[numColumns];
+                            while (rs.next()) {
+                                for (int i = 0, j=1; i != numColumns; ++i,++j) {
+                                    row[i] = rs.getObject(j);
+                                }
+                                recorder.recordRow(recordMaker, row, ts); // has no row number!
+                            }
+                        } catch (InterruptedException e) {
+                            Thread.interrupted();
+                            logger.info("Stopping the snapshot after thread interruption");
+                            interrupted.set(true);
+                        }
+                    }
+                });
+                if ( interrupted.get() ) break;
+            }
+
+            // ------
+            // STEP 9
+            // ------
+            // Release the read lock if we have not yet done so ...
+            if (!unlocked) {
+                sql.set("UNLOCK TABLES");
+                mysql.execute(sql.get());
+                unlocked = true;
+            }
+
+            // -------
+            // STEP 10
+            // -------
+            if (interrupted.get()) {
+                // We were interrupted while reading the tables, so roll back the transaction and return immediately ...
+                sql.set("ROLLBACK");
+                mysql.execute(sql.get());
+                return;
+            }
+            // Otherwise, commit our transaction
+            sql.set("COMMIT");
+            mysql.execute(sql.get());
+
+            try {
+                // Mark the source as having completed the snapshot. Because of this, **subsequent** source records
+                // produced by the connector (to any topic) will have a normal (not snapshot) offset ...
+                source.completeSnapshot();
+
+                // Record **ONE** more source record without a snapshot in effect so that if no other changes were recorded
+                // by the database and the connector stopped, upon next startup the connector would not perform another
+                // snapshot. Rather than write out a nonsense record to any topics for one of our tables, write an meaningless
+                // DDL statement to the database history ...
+                schema.applyDdl(source, null, "", this::enqueueSchemaChanges);
+            } finally {
+                // Set the completion flag ...
+                super.completeSuccessfully();
+                logger.info("Completed snapshot for MySQL server {}", context.serverName());
+            }
+        } catch (Throwable e) {
+            failed(e, "Aborting snapshot after running '" + sql.get() + "': " + e.getMessage());
+        }
+    }
+    
+    protected void enqueueSchemaChanges( String dbName, String ddlStatements ) {
+        if (context.includeSchemaChangeRecords() &&
+                context.makeRecord().schemaChanges(dbName, ddlStatements, super::enqueueRecord) > 0) {
+            logger.debug("Recorded DDL statements for database '{}': {}", dbName, ddlStatements);
+        }
+    }
+
+    protected void recordRowAsRead(RecordsForTable recordMaker, Object[] row, long ts) throws InterruptedException {
+        recordMaker.read(row, ts);
+    }
+
+    protected void recordRowAsInsert(RecordsForTable recordMaker, Object[] row, long ts) throws InterruptedException {
+        recordMaker.create(row, ts);
+    }
+
+    protected static interface RecordRecorder {
+        void recordRow(RecordsForTable recordMaker, Object[] row, long ts) throws InterruptedException;
+    }
+}

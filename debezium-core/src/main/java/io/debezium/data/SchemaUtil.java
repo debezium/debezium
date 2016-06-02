@@ -12,6 +12,7 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Schema.Type;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
 
 /**
  * Utilities for obtaining JSON string representations of {@link Schema}, {@link Struct}, and {@link Field} objects.
@@ -30,9 +31,7 @@ public class SchemaUtil {
      * @return the JSON string representation
      */
     public static String asString(Field field) {
-        StringBuilder sb = new StringBuilder();
-        append(field, sb);
-        return sb.toString();
+        return new RecordWriter().append(field).toString();
     }
 
     /**
@@ -42,9 +41,7 @@ public class SchemaUtil {
      * @return the JSON string representation
      */
     public static String asString(Struct struct) {
-        StringBuilder sb = new StringBuilder();
-        append(struct, sb);
-        return sb.toString();
+        return new RecordWriter().append(struct).toString();
     }
 
     /**
@@ -54,106 +51,184 @@ public class SchemaUtil {
      * @return the JSON string representation
      */
     public static String asString(Schema schema) {
-        StringBuilder sb = new StringBuilder();
-        append(schema, sb);
-        return sb.toString();
+        return new RecordWriter().append(schema).toString();
     }
 
-    protected static void append(Object obj, StringBuilder sb) {
-        if (obj == null) {
-            sb.append("null");
-        } else if (obj instanceof Schema) {
-            Schema schema = (Schema) obj;
-            sb.append('{');
-            if (schema.name() != null) {
-                appendFirst(sb, "name", schema.name());
-                appendAdditional(sb, "type", schema.type());
-            } else {
-                appendFirst(sb, "type", schema.type());
-            }
-            appendAdditional(sb, "optional", schema.isOptional());
-            if (schema.doc() != null) appendAdditional(sb, "doc", schema.doc());
-            if (schema.version() != null) appendAdditional(sb, "version", schema.version());
-            switch (schema.type()) {
-                case STRUCT:
-                    appendAdditional(sb, "fields", schema.fields());
-                    break;
-                case MAP:
-                    appendAdditional(sb, "key", schema.keySchema());
-                    appendAdditional(sb, "value", schema.valueSchema());
-                    break;
-                case ARRAY:
-                    appendAdditional(sb, "value", schema.valueSchema());
-                    break;
-                default:
-            }
-            sb.append('}');
-        } else if (obj instanceof Struct) {
-            Struct s = (Struct) obj;
-            sb.append('{');
-            boolean first = true;
-            for (Field field : s.schema().fields()) {
-                if (first)
-                    first = false;
-                else
-                    sb.append(", ");
-                appendFirst(sb, field.name(), s.get(field));
-            }
-            sb.append('}');
-        } else if (obj instanceof Map<?, ?>) {
-            Map<?, ?> map = (Map<?, ?>) obj;
-            sb.append('{');
-            boolean first = true;
-            for (Map.Entry<?, ?> entry : map.entrySet()) {
-                if (first)
-                    first = false;
-                else
-                    sb.append(", ");
-                sb.append("{ ");
-                appendFirst(sb, "key", entry.getKey());
-                appendAdditional(sb, "value", entry.getValue());
-                sb.append(" } ");
-            }
-            sb.append('}');
-        } else if (obj instanceof List<?>) {
-            List<?> list = (List<?>) obj;
-            sb.append('[');
-            boolean first = true;
-            for (Object value : list) {
-                if (first)
-                    first = false;
-                else
-                    sb.append(", ");
-                append(value, sb);
-            }
-            sb.append(']');
-        } else if (obj instanceof Field) {
-            Field f = (Field) obj;
-            sb.append('{');
-            appendFirst(sb, "name", f.name());
-            appendAdditional(sb, "index", f.index());
-            appendAdditional(sb, "schema", f.schema());
-            sb.append('}');
-        } else if (obj instanceof String) {
-            sb.append('"').append(obj.toString()).append('"');
-        } else if (obj instanceof Type) {
-            sb.append('"').append(obj.toString()).append('"');
-        } else {
-            sb.append(obj.toString());
+    /**
+     * Obtain a JSON string representation of the specified {@link SourceRecord}.
+     * 
+     * @param record the {@link SourceRecord}; may not be null
+     * @return the JSON string representation
+     */
+    public static String asString(SourceRecord record) {
+        return new RecordWriter().append(record).toString();
+    }
+
+    /**
+     * Obtain a JSON string representation of the specified field.
+     * 
+     * @param field the field; may not be null
+     * @return the JSON string representation
+     */
+    public static String asDetailedString(Field field) {
+        return new RecordWriter().append(field).toString();
+    }
+
+    /**
+     * Obtain a JSON string representation of the specified {@link Struct}.
+     * 
+     * @param struct the {@link Struct}; may not be null
+     * @return the JSON string representation
+     */
+    public static String asDetailedString(Struct struct) {
+        return new RecordWriter().append(struct).toString();
+    }
+
+    /**
+     * Obtain a JSON string representation of the specified {@link Schema}.
+     * 
+     * @param schema the {@link Schema}; may not be null
+     * @return the JSON string representation
+     */
+    public static String asDetailedString(Schema schema) {
+        return new RecordWriter().append(schema).toString();
+    }
+
+    /**
+     * Obtain a JSON string representation of the specified {@link SourceRecord}.
+     * 
+     * @param record the {@link SourceRecord}; may not be null
+     * @return the JSON string representation
+     */
+    public static String asDetailedString(SourceRecord record) {
+        return new RecordWriter().append(record).toString();
+    }
+
+    protected static class RecordWriter {
+        private final StringBuilder sb = new StringBuilder();
+        private boolean detailed = false;
+
+        public RecordWriter detailed(boolean detailed) {
+            this.detailed = detailed;
+            return this;
         }
-    }
 
-    protected static void appendFirst(StringBuilder sb, String name, Object value) {
-        append(name, sb);
-        sb.append(" : ");
-        append(value, sb);
-    }
+        @Override
+        public String toString() {
+            return sb.toString();
+        }
 
-    protected static void appendAdditional(StringBuilder sb, String name, Object value) {
-        sb.append(", ");
-        append(name, sb);
-        sb.append(" : ");
-        append(value, sb);
+        public RecordWriter append(Object obj) {
+            if (obj == null) {
+                sb.append("null");
+            } else if (obj instanceof Schema) {
+                Schema schema = (Schema) obj;
+                sb.append('{');
+                if (schema.name() != null) {
+                    appendFirst("name", schema.name());
+                    appendAdditional("type", schema.type());
+                } else {
+                    appendFirst("type", schema.type());
+                }
+                appendAdditional("optional", schema.isOptional());
+                if (schema.doc() != null) appendAdditional("doc", schema.doc());
+                if (schema.version() != null) appendAdditional("version", schema.version());
+                switch (schema.type()) {
+                    case STRUCT:
+                        appendAdditional("fields", schema.fields());
+                        break;
+                    case MAP:
+                        appendAdditional("key", schema.keySchema());
+                        appendAdditional("value", schema.valueSchema());
+                        break;
+                    case ARRAY:
+                        appendAdditional("value", schema.valueSchema());
+                        break;
+                    default:
+                }
+                sb.append('}');
+            } else if (obj instanceof Struct) {
+                Struct s = (Struct) obj;
+                sb.append('{');
+                boolean first = true;
+                for (Field field : s.schema().fields()) {
+                    if (first)
+                        first = false;
+                    else
+                        sb.append(", ");
+                    appendFirst(field.name(), s.get(field));
+                }
+                sb.append('}');
+            } else if (obj instanceof Map<?, ?>) {
+                Map<?, ?> map = (Map<?, ?>) obj;
+                sb.append('{');
+                boolean first = true;
+                for (Map.Entry<?, ?> entry : map.entrySet()) {
+                    if (first) {
+                        appendFirst(entry.getKey().toString(), entry.getValue());
+                        first = false;
+                    } else {
+                        appendAdditional(entry.getKey().toString(), entry.getValue());
+                    }
+                }
+                sb.append('}');
+            } else if (obj instanceof List<?>) {
+                List<?> list = (List<?>) obj;
+                sb.append('[');
+                boolean first = true;
+                for (Object value : list) {
+                    if (first)
+                        first = false;
+                    else
+                        sb.append(", ");
+                    append(value);
+                }
+                sb.append(']');
+            } else if (obj instanceof Field) {
+                Field f = (Field) obj;
+                sb.append('{');
+                appendFirst("name", f.name());
+                appendAdditional("index", f.index());
+                appendAdditional("schema", f.schema());
+                sb.append('}');
+            } else if (obj instanceof String) {
+                sb.append('"').append(obj.toString()).append('"');
+            } else if (obj instanceof Type) {
+                sb.append('"').append(obj.toString()).append('"');
+            } else if (obj instanceof SourceRecord) {
+                SourceRecord record = (SourceRecord) obj;
+                sb.append('{');
+                appendFirst("sourcePartition", record.sourcePartition());
+                appendAdditional("sourceOffset", record.sourceOffset());
+                appendAdditional("topic", record.topic());
+                appendAdditional("kafkaPartition", record.kafkaPartition());
+                if (detailed) {
+                    appendAdditional("keySchema", record.keySchema());
+                }
+                appendAdditional("key", record.key());
+                if (detailed) {
+                    appendAdditional("valueSchema", record.valueSchema());
+                }
+                appendAdditional("value", record.value());
+                sb.append('}');
+            } else {
+                sb.append(obj.toString());
+            }
+            return this;
+        }
+
+        protected void appendFirst(String name, Object value) {
+            append(name);
+            sb.append(" : ");
+            append(value);
+        }
+
+        protected void appendAdditional(String name, Object value) {
+            sb.append(", ");
+            append(name);
+            sb.append(" : ");
+            append(value);
+        }
     }
 
 }

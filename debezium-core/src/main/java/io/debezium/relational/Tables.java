@@ -26,7 +26,20 @@ import io.debezium.util.FunctionalReadWriteLock;
  * @author Randall Hauch
  */
 @ThreadSafe
-public class Tables {
+public final class Tables {
+
+    /**
+     * Create a {@link TableNameFilter} for the given {@link Predicate Predicate<TableId>}.
+     * @param predicate the {@link TableId} predicate filter;  may be null
+     * @return the TableNameFilter; never null
+     */
+    public static TableNameFilter filterFor( Predicate<TableId> predicate) {
+        if ( predicate == null ) return (catalogName, schemaName, tableName)->true;
+        return (catalogName, schemaName, tableName)->{
+            TableId id = new TableId(catalogName, schemaName, tableName);
+            return predicate.test(id);
+        };
+    }
 
     /**
      * A filter for tables.
@@ -74,6 +87,15 @@ public class Tables {
      */
     public Tables() {
     }
+    
+    protected Tables( Tables other) {
+        this.tablesByTableId.putAll(other.tablesByTableId);
+    }
+    
+    @Override
+    public Tables clone() {
+        return new Tables(this);
+    }
 
     /**
      * Get the number of tables that are in this object.
@@ -103,11 +125,13 @@ public class Tables {
     public Table overwriteTable(TableId tableId, List<Column> columnDefs, List<String> primaryKeyColumnNames) {
         return lock.write(() -> {
             TableImpl updated = new TableImpl(tableId, columnDefs, primaryKeyColumnNames);
-            try {
-                return tablesByTableId.put(tableId, updated);
-            } finally {
+            TableImpl existing = tablesByTableId.get(tableId);
+            if ( existing == null || !existing.equals(updated) ) {
+                // Our understanding of the table has changed ...
                 changes.add(tableId);
+                tablesByTableId.put(tableId,updated);
             }
+            return tablesByTableId.get(tableId);
         });
     }
 

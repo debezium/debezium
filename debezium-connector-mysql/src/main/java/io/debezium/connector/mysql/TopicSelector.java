@@ -6,6 +6,7 @@
 package io.debezium.connector.mysql;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.relational.TableId;
 
 /**
  * A function that determines the name of topics for data and metadata.
@@ -17,62 +18,74 @@ public interface TopicSelector {
     /**
      * Get the default topic selector logic, which uses a '.' delimiter character when needed.
      * 
+     * @param prefix the name of the prefix to be used for all topics; may not be null and must not terminate in the
+     *            {@code delimiter}
      * @return the topic selector; never null
      */
-    static TopicSelector defaultSelector() {
-        return defaultSelector(".");
+    static TopicSelector defaultSelector(String prefix) {
+        return defaultSelector(prefix,".");
     }
 
     /**
      * Get the default topic selector logic, which uses the supplied delimiter character when needed.
      * 
+     * @param prefix the name of the prefix to be used for all topics; may not be null and must not terminate in the
+     *            {@code delimiter}
      * @param delimiter the string delineating the server, database, and table names; may not be null
      * @return the topic selector; never null
      */
-    static TopicSelector defaultSelector(String delimiter) {
+    static TopicSelector defaultSelector(String prefix, String delimiter) {
         return new TopicSelector() {
             /**
              * Get the name of the topic for the given server, database, and table names. This method returns
              * "{@code <serverName>}".
              * 
-             * @param serverName the name of the database server; may not be null
              * @return the topic name; never null
              */
             @Override
-            public String getTopic(String serverName) {
-                return serverName;
+            public String getPrimaryTopic() {
+                return prefix;
             }
+
             /**
              * Get the name of the topic for the given server name. This method returns
-             * "{@code <serverName>.<databaseName>.<tableName>}".
+             * "{@code <prefix>.<databaseName>.<tableName>}".
              * 
-             * @param serverName the name of the database server; may not be null
              * @param databaseName the name of the database; may not be null
              * @param tableName the name of the table; may not be null
              * @return the topic name; never null
              */
             @Override
-            public String getTopic(String serverName, String databaseName, String tableName) {
-                return String.join(delimiter, serverName, databaseName, tableName);
+            public String getTopic(String databaseName, String tableName) {
+                return String.join(delimiter, prefix, databaseName, tableName);
             }
+
         };
     }
 
     /**
      * Get the name of the topic for the given server name.
      * 
-     * @param serverName the name of the database server; may not be null
+     * @param tableId the identifier of the table; may not be null
+     * @return the topic name; never null
+     */
+    default String getTopic(TableId tableId) {
+        return getTopic(tableId.catalog(),tableId.table());
+    }
+
+    /**
+     * Get the name of the topic for the given server name.
+     * 
      * @param databaseName the name of the database; may not be null
      * @param tableName the name of the table; may not be null
      * @return the topic name; never null
      */
-    String getTopic(String serverName, String databaseName, String tableName);
+    String getTopic(String databaseName, String tableName);
 
     /**
-     * Get the name of the topic for the given server, database, and table names.
+     * Get the name of the primary topic.
      * 
-     * @param serverName the name of the database server; may not be null
      * @return the topic name; never null
      */
-    String getTopic(String serverName);
+    String getPrimaryTopic();
 }

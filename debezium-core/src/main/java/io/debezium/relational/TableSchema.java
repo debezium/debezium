@@ -5,12 +5,14 @@
  */
 package io.debezium.relational;
 
+import java.util.Objects;
 import java.util.function.Function;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.annotation.Immutable;
+import io.debezium.data.SchemaUtil;
 
 /**
  * Defines the Kafka Connect {@link Schema} functionality associated with a given {@link Table table definition}, and which can
@@ -107,5 +109,25 @@ public class TableSchema {
      */
     public Struct valueFromColumnData(Object[] columnData) {
         return columnData == null ? null : valueGenerator.apply(columnData);
+    }
+    
+    @Override
+    public int hashCode() {
+        return valueSchema().hashCode();
+    }
+    
+    @Override
+    public boolean equals(Object obj) {
+        if ( obj == this ) return true;
+        if ( obj instanceof TableSchema ) {
+            TableSchema that = (TableSchema)obj;
+            return Objects.equals(this.keySchema(),that.keySchema()) && Objects.equals(this.valueSchema(),that.valueSchema());
+        }
+        return false;
+    }
+    
+    @Override
+    public String toString() {
+        return "{ key : " + SchemaUtil.asString(keySchema()) + ", value : " + SchemaUtil.asString(valueSchema()) + " }";
     }
 }

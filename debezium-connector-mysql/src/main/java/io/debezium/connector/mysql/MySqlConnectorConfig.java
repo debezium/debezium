@@ -47,11 +47,6 @@ public class MySqlConnectorConfig {
                                                .withValidation(Field::isPositiveInteger)
                                                .withDefault(MySqlConnectorConfig::randomServerId);
 
-    public static final Field INITIAL_BINLOG_FILENAME = Field.create("database.binlog")
-                                                             .withDescription("The name of the first binlog filename that should be processed by this connector. "
-                                                                     + "This should include the basename and extension.")
-                                                             .withValidation(Field::isRequired);
-
     public static final Field CONNECTION_TIMEOUT_MS = Field.create("connect.timeout.ms")
                                                            .withDescription("Maximum time in milliseconds to wait after trying to connect to the database before timing out.")
                                                            .withDefault(30 * 1000)
@@ -87,8 +82,8 @@ public class MySqlConnectorConfig {
                                                             .withDescription("Whether the connector should publish changes in the database schema to a Kafka topic with "
                                                                     + "the same name as the database server ID. Each schema change will be recorded using a key that "
                                                                     + "contains the database name and whose value includes the DDL statement(s)."
-                                                                    + "The default is 'false'. This is independent of how the connector internally records database history.")
-                                                            .withDefault(false)
+                                                                    + "The default is 'true'. This is independent of how the connector internally records database history.")
+                                                            .withDefault(true)
                                                             .withValidation(Field::isBoolean);
 
     public static final Field TABLE_BLACKLIST = Field.create("table.blacklist")
@@ -125,6 +120,26 @@ public class MySqlConnectorConfig {
                                                               + "Fully-qualified names for columns are of the form "
                                                               + "'<databaseName>.<tableName>.<columnName>' or '<databaseName>.<schemaName>.<tableName>.<columnName>'.");
 
+    public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
+                                                   .withDescription("The criteria for running a snapshot upon startup of the connector. "
+                                                           + "Options include: "
+                                                           + "'when_needed' to specify that the connector run a snapshot upon startup whenever it deems it necessary; "
+                                                           + "'initial' (the default) to specify the connector can run a snapshot only when no offsets are available for the logical server name; and "
+                                                           + "'never' to specify the connector should never run a snapshot and that upon first startup the connector should read from the beginning of the binlog. "
+                                                           + "The 'never' mode should be used with care, and only when the binlog is known to contain all history.")
+                                                   .withDefault(SnapshotMode.INITIAL.getValue())
+                                                   .withValidation(MySqlConnectorConfig::validateSnapshotMode);
+
+    public static final Field SNAPSHOT_MINIMAL_LOCKING = Field.create("snapshot.minimal.locks")
+                                                   .withDescription("Controls how long the connector holds onto the global read lock while it is performing a snapshot. The default is 'true', "
+                                                           + "which means the connector holds the global read lock (and thus prevents any updates) for just the initial portion of the snapshot "
+                                                           + "while the database schemas and other metadata are being read. The remaining work in a snapshot involves selecting all rows from "
+                                                           + "each table, and this can be done using the snapshot process' REPEATABLE READ transaction even when the lock is no longer held and "
+                                                           + "other operations are updating the database. However, in some cases it may be desirable to block all writes for the entire duration "
+                                                           + "of the snapshot; in such cases set this property to 'false'.")
+                                                   .withDefault(true)
+                                                   .withValidation(Field::isBoolean);
+
     /**
      * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
      * have their values truncated to be no longer than the specified number of characters.
@@ -157,13 +172,69 @@ public class MySqlConnectorConfig {
     }
 
     public static Collection<Field> ALL_FIELDS = Collect.arrayListOf(USER, PASSWORD, HOSTNAME, PORT, SERVER_ID,
-                                                                     SERVER_NAME, INITIAL_BINLOG_FILENAME,
+                                                                     SERVER_NAME,
                                                                      CONNECTION_TIMEOUT_MS, KEEP_ALIVE,
                                                                      MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
                                                                      DATABASE_HISTORY, INCLUDE_SCHEMA_CHANGES,
                                                                      TABLE_WHITELIST, TABLE_BLACKLIST, TABLES_IGNORE_BUILTIN,
                                                                      DATABASE_WHITELIST, DATABASE_BLACKLIST,
-                                                                     COLUMN_BLACKLIST);
+                                                                     COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING);
+
+    /**
+     * The set of predefined SnapshotMode options or aliases.
+     */
+    public static enum SnapshotMode {
+        /**
+         * Forwards each event as a structured Kafka Connect message.
+         */
+        WHEN_NEEDED("when_needed"), INITIAL("initial"), NEVER("never");
+
+        private final String value;
+
+        private SnapshotMode(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         * 
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static SnapshotMode parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+            for (SnapshotMode option : SnapshotMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         * 
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static SnapshotMode parse(String value, String defaultValue) {
+            SnapshotMode mode = parse(value);
+            if (mode == null && defaultValue != null) mode = parse(defaultValue);
+            return mode;
+        }
+    }
+
+    private static int validateSnapshotMode(Configuration config, Field field, Consumer<String> problems) {
+        String str = config.getString(field).trim();
+        SnapshotMode option = SnapshotMode.parse(str);
+        if (option != null) return 0;
+        problems.accept("'" + str + "' is not a predefined option for '" + field.name() + "'");
+        return 1;
+    }
 
     private static int validateMaxQueueSize(Configuration config, Field field, Consumer<String> problems) {
         int maxQueueSize = config.getInteger(field);
