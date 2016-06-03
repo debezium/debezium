@@ -37,11 +37,14 @@ import io.debezium.util.Collect;
  * 
  * <pre>
  * {
+ *         "gtids" = "3E11FA47-71CA-11E1-9E33-C80AA9429562:1-5",
  *         "file" = "mysql-bin.000003",
  *         "pos" = 105586,
  *         "row" = 0
  * }
  * </pre>
+ * 
+ * Note that the "{@code gtid}" field is present only when GTIDs are enabled.
  * 
  * @author Randall Hauch
  */
@@ -54,7 +57,7 @@ final class SourceInfo {
 
     public static final String SERVER_NAME_KEY = "name";
     public static final String SERVER_PARTITION_KEY = "server";
-    public static final String BINLOG_GTID_KEY = "gtid";
+    public static final String BINLOG_GTID_KEY = "gtids";
     public static final String BINLOG_FILENAME_OFFSET_KEY = "file";
     public static final String BINLOG_POSITION_OFFSET_KEY = "pos";
     public static final String BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY = "row";
