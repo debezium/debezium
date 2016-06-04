@@ -86,9 +86,9 @@ public class SourceInfoTest {
 
     protected Document positionWithGtids(String gtids, boolean snapshot) {
         if (snapshot) {
-            return Document.create(SourceInfo.BINLOG_GTID_KEY, gtids, SourceInfo.BINLOG_SNAPSHOT_KEY, true);
+            return Document.create(SourceInfo.GTID_KEY, gtids, SourceInfo.SNAPSHOT_KEY, true);
         }
-        return Document.create(SourceInfo.BINLOG_GTID_KEY, gtids);
+        return Document.create(SourceInfo.GTID_KEY, gtids);
     }
 
     protected Document positionWithoutGtids(String filename, int position, int row) {
@@ -100,7 +100,7 @@ public class SourceInfoTest {
             return Document.create(SourceInfo.BINLOG_FILENAME_OFFSET_KEY, filename,
                                    SourceInfo.BINLOG_POSITION_OFFSET_KEY, position,
                                    SourceInfo.BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, row,
-                                   SourceInfo.BINLOG_SNAPSHOT_KEY, true);
+                                   SourceInfo.SNAPSHOT_KEY, true);
         }
         return Document.create(SourceInfo.BINLOG_FILENAME_OFFSET_KEY, filename,
                                SourceInfo.BINLOG_POSITION_OFFSET_KEY, position,

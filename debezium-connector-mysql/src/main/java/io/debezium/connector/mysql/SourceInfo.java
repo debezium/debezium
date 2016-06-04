@@ -56,12 +56,12 @@ final class SourceInfo {
 
     public static final String SERVER_NAME_KEY = "name";
     public static final String SERVER_PARTITION_KEY = "server";
-    public static final String BINLOG_GTID_KEY = "gtids";
+    public static final String GTID_KEY = "gtids";
     public static final String BINLOG_FILENAME_OFFSET_KEY = "file";
     public static final String BINLOG_POSITION_OFFSET_KEY = "pos";
     public static final String BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY = "row";
-    public static final String BINLOG_EVENT_TIMESTAMP_KEY = "ts";
-    public static final String BINLOG_SNAPSHOT_KEY = "snapshot";
+    public static final String TIMESTAMP_KEY = "ts";
+    public static final String SNAPSHOT_KEY = "snapshot";
 
     /**
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition()} and {@link #offset()} information.
@@ -70,12 +70,12 @@ final class SourceInfo {
                                                      .name("io.debezium.connector.mysql.Source")
                                                      .field(SERVER_NAME_KEY, Schema.STRING_SCHEMA)
                                                      .field(SERVER_ID_KEY, Schema.INT64_SCHEMA)
-                                                     .field(BINLOG_EVENT_TIMESTAMP_KEY, Schema.INT64_SCHEMA)
-                                                     .field(BINLOG_GTID_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                                                     .field(TIMESTAMP_KEY, Schema.INT64_SCHEMA)
+                                                     .field(GTID_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(BINLOG_FILENAME_OFFSET_KEY, Schema.STRING_SCHEMA)
                                                      .field(BINLOG_POSITION_OFFSET_KEY, Schema.INT64_SCHEMA)
                                                      .field(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, Schema.INT32_SCHEMA)
-                                                     .field(BINLOG_SNAPSHOT_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
+                                                     .field(SNAPSHOT_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
                                                      .build();
 
     private GtidSet binlogGtids;
@@ -123,15 +123,15 @@ final class SourceInfo {
     public Map<String, ?> offset() {
         Map<String, Object> map = new HashMap<>();
         if (binlogGtids != null) {
-            map.put(BINLOG_GTID_KEY, binlogGtids.toString());
+            map.put(GTID_KEY, binlogGtids.toString());
         }
         if (serverId != 0 ) map.put(SERVER_ID_KEY, serverId);
-        if (binlogTs != 0 ) map.put(BINLOG_EVENT_TIMESTAMP_KEY, binlogTs);
+        if (binlogTs != 0 ) map.put(TIMESTAMP_KEY, binlogTs);
         map.put(BINLOG_FILENAME_OFFSET_KEY, binlogFilename);
         map.put(BINLOG_POSITION_OFFSET_KEY, binlogPosition);
         map.put(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, eventRowNumber);
         if (isSnapshotInEffect()) {
-            map.put(BINLOG_SNAPSHOT_KEY, true);
+            map.put(SNAPSHOT_KEY, true);
         }
         return map;
     }
@@ -159,14 +159,14 @@ final class SourceInfo {
         result.put(SERVER_NAME_KEY, serverName);
         result.put(SERVER_ID_KEY, serverId);
         if (binlogGtids != null) {
-            result.put(BINLOG_GTID_KEY, binlogGtids.toString());
+            result.put(GTID_KEY, binlogGtids.toString());
         }
         result.put(BINLOG_FILENAME_OFFSET_KEY, binlogFilename);
         result.put(BINLOG_POSITION_OFFSET_KEY, binlogPosition);
         result.put(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, eventRowNumber);
-        result.put(BINLOG_EVENT_TIMESTAMP_KEY, binlogTs);
+        result.put(TIMESTAMP_KEY, binlogTs);
         if (isSnapshotInEffect()) {
-            result.put(BINLOG_SNAPSHOT_KEY, true);
+            result.put(SNAPSHOT_KEY, true);
         }
         return result;
     }
@@ -270,7 +270,7 @@ final class SourceInfo {
     public void setOffset(Map<String, ?> sourceOffset) {
         if (sourceOffset != null) {
             // We have previously recorded an offset ...
-            setGtids((String) sourceOffset.get(BINLOG_GTID_KEY)); // may be null
+            setGtids((String) sourceOffset.get(GTID_KEY)); // may be null
             binlogFilename = (String) sourceOffset.get(BINLOG_FILENAME_OFFSET_KEY);
             if (binlogFilename == null) {
                 throw new ConnectException("Source offset '" + BINLOG_FILENAME_OFFSET_KEY + "' parameter is missing");
@@ -379,8 +379,8 @@ final class SourceInfo {
      * @return {@code true} if the recorded position is at or before the desired position; or {@code false} otherwise
      */
     public static boolean isPositionAtOrBefore(Document recorded, Document desired) {
-        String recordedGtidSetStr = recorded.getString(BINLOG_GTID_KEY);
-        String desiredGtidSetStr = desired.getString(BINLOG_GTID_KEY);
+        String recordedGtidSetStr = recorded.getString(GTID_KEY);
+        String desiredGtidSetStr = desired.getString(GTID_KEY);
         if (desiredGtidSetStr != null) {
             // The desired position uses GTIDs, so we ideally compare using GTIDs ...
             if (recordedGtidSetStr != null) {
@@ -389,7 +389,7 @@ final class SourceInfo {
                 GtidSet desiredGtidSet = new GtidSet(desiredGtidSetStr);
                 if ( recordedGtidSet.equals(desiredGtidSet)) {
                     // They are exactly the same, which means the recorded position exactly matches the desired ...
-                    if ( !recorded.has(BINLOG_SNAPSHOT_KEY) && desired.has(BINLOG_SNAPSHOT_KEY)) {
+                    if ( !recorded.has(SNAPSHOT_KEY) && desired.has(SNAPSHOT_KEY)) {
                         // the desired is in snapshot mode, but the recorded is not. So the recorded is *after* the desired ...
                         return false;
                     }
@@ -419,8 +419,8 @@ final class SourceInfo {
         if ( recordedServerId != desiredServerId ) {
             // These are from different servers, and their binlog coordinates are not related. So the only thing we can do
             // is compare timestamps, and we have to assume that the server timestamps can be compared ...
-            long recordedTimestamp = recorded.getLong(BINLOG_EVENT_TIMESTAMP_KEY,0);
-            long desiredTimestamp = recorded.getLong(BINLOG_EVENT_TIMESTAMP_KEY,0);
+            long recordedTimestamp = recorded.getLong(TIMESTAMP_KEY,0);
+            long desiredTimestamp = recorded.getLong(TIMESTAMP_KEY,0);
             return recordedTimestamp <= desiredTimestamp;
         }
         
