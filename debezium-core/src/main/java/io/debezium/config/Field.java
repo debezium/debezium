@@ -14,6 +14,8 @@ import java.util.function.LongSupplier;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import javax.lang.model.SourceVersion;
+
 import io.debezium.annotation.Immutable;
 
 /**
@@ -393,6 +395,13 @@ public final class Field {
     @Override
     public String toString() {
         return name();
+    }
+
+    public static int isClassName(Configuration config, Field field, Consumer<String> problems) {
+        String value = config.getString(field);
+        if (value == null || SourceVersion.isName(value)) return 0;
+        problems.accept("The '" + field.name() + "' field must contain a valid name of a Java class.");
+        return 1;
     }
 
     public static int isRequired(Configuration config, Field field, Consumer<String> problems) {

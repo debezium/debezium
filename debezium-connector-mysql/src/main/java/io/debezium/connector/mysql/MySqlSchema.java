@@ -27,6 +27,7 @@ import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.ddl.DdlChanges.DatabaseStatementStringConsumer;
 import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Collect;
 
@@ -50,6 +51,8 @@ import io.debezium.util.Collect;
  */
 @NotThreadSafe
 public class MySqlSchema {
+
+    private static final HistoryRecordComparator HISTORY_COMPARATOR = HistoryRecordComparator.usingPositions(SourceInfo::isPositionAtOrBefore);
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final Set<String> ignoredQueryStatements = Collect.unmodifiableSet("BEGIN", "END", "FLUSH PRIVILEGES");
@@ -85,7 +88,7 @@ public class MySqlSchema {
         }
         // Do not remove the prefix from the subset of config properties ...
         Configuration dbHistoryConfig = config.subset(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING, false);
-        this.dbHistory.configure(dbHistoryConfig); // validates
+        this.dbHistory.configure(dbHistoryConfig,HISTORY_COMPARATOR); // validates
     }
 
     /**

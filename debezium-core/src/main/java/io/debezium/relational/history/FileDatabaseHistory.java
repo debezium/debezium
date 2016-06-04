@@ -49,15 +49,14 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
     private Path path;
 
     @Override
-    public void configure(Configuration config) {
+    public void configure(Configuration config, HistoryRecordComparator comparator) {
         lock.write(() -> {
-            super.configure(config);
             if (!config.validate(ALL_FIELDS, logger::error)) {
                 throw new ConnectException(
                         "Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
             }
             config.validate(ALL_FIELDS, logger::error);
-            super.configure(config);
+            super.configure(config,comparator);
             path = Paths.get(config.getString(FILE_PATH));
         });
     }

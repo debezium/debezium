@@ -76,7 +76,7 @@ public class KafkaDatabaseHistoryTest {
                               .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
                               .with(KafkaDatabaseHistory.TOPIC, topicName)
                               .build();
-        history.configure(config);
+        history.configure(config,null);
         history.start();
 
         DdlParser recoveryParser = new DdlParserSql2003();
@@ -123,7 +123,7 @@ public class KafkaDatabaseHistoryTest {
         // Stop the history (which should stop the producer) ...
         history.stop();
         history = new KafkaDatabaseHistory();
-        history.configure(config);
+        history.configure(config, null);
         // no need to start
 
         // Recover from the very beginning to just past the first change ...

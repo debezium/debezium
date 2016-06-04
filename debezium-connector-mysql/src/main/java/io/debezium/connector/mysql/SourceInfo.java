@@ -13,9 +13,8 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 
-import com.github.shyiko.mysql.binlog.GtidSet;
-
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.document.Document;
 import io.debezium.util.Collect;
 
 /**
@@ -126,6 +125,8 @@ final class SourceInfo {
         if (binlogGtids != null) {
             map.put(BINLOG_GTID_KEY, binlogGtids.toString());
         }
+        if (serverId != 0 ) map.put(SERVER_ID_KEY, serverId);
+        if (binlogTs != 0 ) map.put(BINLOG_EVENT_TIMESTAMP_KEY, binlogTs);
         map.put(BINLOG_FILENAME_OFFSET_KEY, binlogFilename);
         map.put(BINLOG_POSITION_OFFSET_KEY, binlogPosition);
         map.put(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, eventRowNumber);
@@ -359,5 +360,91 @@ final class SourceInfo {
             }
         }
         return sb.toString();
+    }
+
+    /**
+     * Determine whether the first {@link #offset() offset} is at or before the point in time of the second
+     * offset, where the offsets are given in JSON representation of the maps returned by {@link #offset()}.
+     * <p>
+     * This logic makes a significant assumption: once a MySQL server/cluster has GTIDs enabled, they will
+     * never be disabled. This is the only way to compare a position with a GTID to a position without a GTID,
+     * and we conclude that any position with a GTID is *after* the position without.
+     * <p>
+     * When both positions have GTIDs, then we compare the positions by using only the GTIDs. Of course, if the
+     * GTIDs are the same, then we also look at whether they have snapshots enabled.
+     * 
+     * @param recorded the position obtained from recorded history; never null
+     * @param desired the desired position that we want to obtain, which should be after some recorded positions,
+     *            at some recorded positions, and before other recorded positions; never null
+     * @return {@code true} if the recorded position is at or before the desired position; or {@code false} otherwise
+     */
+    public static boolean isPositionAtOrBefore(Document recorded, Document desired) {
+        String recordedGtidSetStr = recorded.getString(BINLOG_GTID_KEY);
+        String desiredGtidSetStr = desired.getString(BINLOG_GTID_KEY);
+        if (desiredGtidSetStr != null) {
+            // The desired position uses GTIDs, so we ideally compare using GTIDs ...
+            if (recordedGtidSetStr != null) {
+                // Both have GTIDs, so base the comparison entirely on the GTID sets.
+                GtidSet recordedGtidSet = new GtidSet(recordedGtidSetStr);
+                GtidSet desiredGtidSet = new GtidSet(desiredGtidSetStr);
+                if ( recordedGtidSet.equals(desiredGtidSet)) {
+                    // They are exactly the same, which means the recorded position exactly matches the desired ...
+                    if ( !recorded.has(BINLOG_SNAPSHOT_KEY) && desired.has(BINLOG_SNAPSHOT_KEY)) {
+                        // the desired is in snapshot mode, but the recorded is not. So the recorded is *after* the desired ...
+                        return false;
+                    }
+                    // In all other cases (even when recorded is in snapshot mode), recorded is before or at desired ...
+                    return true;
+                }
+                // The GTIDs are not an exact match, so figure out if recorded is a subset of the desired ...
+                return recordedGtidSet.isSubsetOf(desiredGtidSet);
+            }
+            // The desired position did use GTIDs while the recorded did not use GTIDs. So, we assume that the
+            // recorded position is older since GTIDs are often enabled but rarely disabled. And if they are disabled,
+            // it is likely that the desired position would not include GTIDs as we would be trying to read the binlog of a
+            // server that no longer has GTIDs. And if they are enabled, disabled, and re-enabled, per
+            // https://dev.mysql.com/doc/refman/5.7/en/replication-gtids-failover.html all properly configured slaves that
+            // use GTIDs should always have the complete set of GTIDs copied from the master, in which case
+            // again we know that recorded not having GTIDs is before the desired position ...
+            return true;
+        } else if (recordedGtidSetStr != null) {
+            // The recorded has a GTID but the desired does not, so per the previous paragraph we assume that previous
+            // is not at or before ...
+            return false;
+        }
+
+        // Both positions are missing GTIDs. Look at the servers ...
+        int recordedServerId = recorded.getInteger(SERVER_ID_KEY,0);
+        int desiredServerId = recorded.getInteger(SERVER_ID_KEY,0);
+        if ( recordedServerId != desiredServerId ) {
+            // These are from different servers, and their binlog coordinates are not related. So the only thing we can do
+            // is compare timestamps, and we have to assume that the server timestamps can be compared ...
+            long recordedTimestamp = recorded.getLong(BINLOG_EVENT_TIMESTAMP_KEY,0);
+            long desiredTimestamp = recorded.getLong(BINLOG_EVENT_TIMESTAMP_KEY,0);
+            return recordedTimestamp <= desiredTimestamp;
+        }
+        
+        // First compare the MySQL binlog filenames that include the numeric suffix and therefore are lexicographically
+        // comparable ...
+        String recordedFilename = recorded.getString(BINLOG_FILENAME_OFFSET_KEY);
+        String desiredFilename = desired.getString(BINLOG_FILENAME_OFFSET_KEY);
+        assert recordedFilename != null;
+        int diff = recordedFilename.compareToIgnoreCase(desiredFilename);
+        if ( diff > 0 ) return false;
+
+        // The filenames are the same, so compare the positions ...
+        int recordedPosition = recorded.getInteger(BINLOG_POSITION_OFFSET_KEY, -1);
+        int desiredPosition = desired.getInteger(BINLOG_POSITION_OFFSET_KEY, -1);
+        diff = recordedPosition - desiredPosition;
+        if ( diff > 0 ) return false;
+        
+        // The positions are the same, so compare the row number ...
+        int recordedRow = recorded.getInteger(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, -1);
+        int desiredRow = desired.getInteger(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, -1);
+        diff = recordedRow - desiredRow;
+        if ( diff > 0 ) return false;
+
+        // The binlog coordinates are the same ...
+        return true;
     }
 }
