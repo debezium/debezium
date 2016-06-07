@@ -21,15 +21,17 @@ import io.debezium.relational.ddl.DdlParser;
  */
 public abstract class AbstractDatabaseHistory implements DatabaseHistory {
 
-    protected Configuration config;
     protected final Logger logger = LoggerFactory.getLogger(getClass());
+    protected Configuration config;
+    private HistoryRecordComparator comparator = HistoryRecordComparator.INSTANCE;
 
     protected AbstractDatabaseHistory() {
     }
-
+    
     @Override
-    public void configure(Configuration config) {
+    public void configure(Configuration config, HistoryRecordComparator comparator) {
         this.config = config;
+        this.comparator = comparator != null ? comparator : HistoryRecordComparator.INSTANCE;
     }
     
     @Override
@@ -46,7 +48,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     public final void recover(Map<String, ?> source, Map<String, ?> position, Tables schema, DdlParser ddlParser) {
         HistoryRecord stopPoint = new HistoryRecord(source, position, null, null);
         recoverRecords(schema,ddlParser,recovered->{
-            if (recovered.isAtOrBefore(stopPoint)) {
+            if (comparator.isAtOrBefore(recovered,stopPoint)) {
                 String ddl = recovered.ddl();
                 if (ddl != null) {
                     ddlParser.setCurrentSchema(recovered.databaseName()); // may be null

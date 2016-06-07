@@ -83,8 +83,8 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     private int pollIntervalMs = -1;
 
     @Override
-    public void configure(Configuration config) {
-        super.configure(config);
+    public void configure(Configuration config, HistoryRecordComparator comparator) {
+        super.configure(config,comparator);
         if (!config.validate(ALL_FIELDS, logger::error)) {
             throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }

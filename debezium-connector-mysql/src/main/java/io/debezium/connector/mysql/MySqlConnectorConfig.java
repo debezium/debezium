@@ -76,7 +76,8 @@ public class MySqlConnectorConfig {
                                                       .withDescription("The name of the DatabaseHistory class that should be used to store and recover database schema changes. "
                                                               + "The configuration properties for the history are prefixed with the '"
                                                               + DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING + "' string.")
-                                                      .withDefault(KafkaDatabaseHistory.class.getName());
+                                                      .withDefault(KafkaDatabaseHistory.class.getName())
+                                                      .withValidation(Field::isClassName);
 
     public static final Field INCLUDE_SCHEMA_CHANGES = Field.create("include.schema.changes")
                                                             .withDescription("Whether the connector should publish changes in the database schema to a Kafka topic with "

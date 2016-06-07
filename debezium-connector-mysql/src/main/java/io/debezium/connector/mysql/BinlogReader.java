@@ -25,12 +25,14 @@ import com.github.shyiko.mysql.binlog.event.EventData;
 import com.github.shyiko.mysql.binlog.event.EventHeader;
 import com.github.shyiko.mysql.binlog.event.EventHeaderV4;
 import com.github.shyiko.mysql.binlog.event.EventType;
+import com.github.shyiko.mysql.binlog.event.GtidEventData;
 import com.github.shyiko.mysql.binlog.event.QueryEventData;
 import com.github.shyiko.mysql.binlog.event.RotateEventData;
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
 import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer;
+import com.github.shyiko.mysql.binlog.event.deserialization.GtidEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.network.AuthenticationException;
 
 import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
@@ -73,6 +75,7 @@ public class BinlogReader extends AbstractReader {
         // Set up the event deserializer with additional type(s) ...
         EventDeserializer eventDeserializer = new EventDeserializer();
         eventDeserializer.setEventDataDeserializer(EventType.STOP, new StopEventDataDeserializer());
+        eventDeserializer.setEventDataDeserializer(EventType.GTID, new GtidEventDataDeserializer());
         client.setEventDeserializer(eventDeserializer);
     }
 
@@ -85,11 +88,13 @@ public class BinlogReader extends AbstractReader {
         eventHandlers.put(EventType.ROTATE, this::handleRotateLogsEvent);
         eventHandlers.put(EventType.TABLE_MAP, this::handleUpdateTableMetadata);
         eventHandlers.put(EventType.QUERY, this::handleQueryEvent);
+        eventHandlers.put(EventType.GTID, this::handleGtidEvent);
         eventHandlers.put(EventType.EXT_WRITE_ROWS, this::handleInsert);
         eventHandlers.put(EventType.EXT_UPDATE_ROWS, this::handleUpdate);
         eventHandlers.put(EventType.EXT_DELETE_ROWS, this::handleDelete);
 
         // And set the client to start from that point ...
+        client.setGtidSet(source.gtidSet()); // may be null
         client.setBinlogFilename(source.binlogFilename());
         client.setBinlogPosition(source.binlogPosition());
         // The event row number will be used when processing the first event ...
@@ -138,9 +143,10 @@ public class BinlogReader extends AbstractReader {
     protected void handleEvent(Event event) {
         if (event == null) return;
 
-        // Update the source offset info ...
+        // Update the source offset info. Note that the client returns the value in *milliseconds*, even though the binlog
+        // contains only *seconds* precision ...
         EventHeader eventHeader = event.getHeader();
-        source.setBinlogTimestamp(eventHeader.getTimestamp());
+        source.setBinlogTimestampSeconds(eventHeader.getTimestamp()/1000L); // client returns milliseconds, we record seconds
         source.setBinlogServerId(eventHeader.getServerId());
         EventType eventType = eventHeader.getEventType();
         if (eventType == EventType.ROTATE) {
@@ -172,6 +178,15 @@ public class BinlogReader extends AbstractReader {
             eventHandlers.clear();
             logger.info("Stopped processing binlog events due to thread interruption");
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    protected <T extends EventData> T unwrapData(Event event) {
+        EventData eventData = event.getData();
+        if (eventData instanceof EventDeserializer.EventDataWrapper) {
+            eventData = ((EventDeserializer.EventDataWrapper) eventData).getInternal();
+        }
+        return (T)eventData;
     }
 
     /**
@@ -212,9 +227,21 @@ public class BinlogReader extends AbstractReader {
      */
     protected void handleRotateLogsEvent(Event event) {
         logger.debug("Rotating logs: {}", event);
-        RotateEventData command = event.getData();
+        RotateEventData command = unwrapData(event);
         assert command != null;
         recordMakers.clear();
+    }
+
+    /**
+     * Handle the supplied event with a {@link GtidEventData} that signals the beginning of a GTID transaction.
+     * 
+     * @param event the GTID event to be processed; may not be null
+     */
+    protected void handleGtidEvent(Event event) {
+        logger.debug("GTID transaction: {}", event);
+        GtidEventData gtidEvent = unwrapData(event);
+        source.setGtid(gtidEvent.getGtid());
+        source.setGtidSet(client.getGtidSet());
     }
 
     /**
@@ -224,7 +251,7 @@ public class BinlogReader extends AbstractReader {
      * @param event the database change data event to be processed; may not be null
      */
     protected void handleQueryEvent(Event event) {
-        QueryEventData command = event.getData();
+        QueryEventData command = unwrapData(event);
         logger.debug("Received update table command: {}", event);
         context.dbSchema().applyDdl(context.source(), command.getDatabase(), command.getSql(), (dbName, statements) -> {
             if (recordSchemaChangesInSourceRecords && recordMakers.schemaChanges(dbName, statements, super::enqueueRecord) > 0) {
@@ -248,7 +275,7 @@ public class BinlogReader extends AbstractReader {
      * @param event the update event; never null
      */
     protected void handleUpdateTableMetadata(Event event) {
-        TableMapEventData metadata = event.getData();
+        TableMapEventData metadata = unwrapData(event);
         long tableNumber = metadata.getTableId();
         String databaseName = metadata.getDatabase();
         String tableName = metadata.getTable();
@@ -267,7 +294,7 @@ public class BinlogReader extends AbstractReader {
      * @throws InterruptedException if this thread is interrupted while blocking
      */
     protected void handleInsert(Event event) throws InterruptedException {
-        WriteRowsEventData write = event.getData();
+        WriteRowsEventData write = unwrapData(event);
         long tableNumber = write.getTableId();
         BitSet includedColumns = write.getIncludedColumns();
         RecordsForTable recordMaker = recordMakers.forTable(tableNumber, includedColumns, super::enqueueRecord);
@@ -288,7 +315,7 @@ public class BinlogReader extends AbstractReader {
      * @throws InterruptedException if this thread is interrupted while blocking
      */
     protected void handleUpdate(Event event) throws InterruptedException {
-        UpdateRowsEventData update = event.getData();
+        UpdateRowsEventData update = unwrapData(event);
         long tableNumber = update.getTableId();
         BitSet includedColumns = update.getIncludedColumns();
         // BitSet includedColumnsBefore = update.getIncludedColumnsBeforeUpdate();
@@ -316,7 +343,7 @@ public class BinlogReader extends AbstractReader {
      * @throws InterruptedException if this thread is interrupted while blocking
      */
     protected void handleDelete(Event event) throws InterruptedException {
-        DeleteRowsEventData deleted = event.getData();
+        DeleteRowsEventData deleted = unwrapData(event);
         long tableNumber = deleted.getTableId();
         BitSet includedColumns = deleted.getIncludedColumns();
         RecordsForTable recordMaker = recordMakers.forTable(tableNumber, includedColumns, super::enqueueRecord);

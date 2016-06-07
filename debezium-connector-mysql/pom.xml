@@ -147,6 +147,53 @@
                     </build>
                   </image>
                   <image>
+                    <!-- A Docker image using a partial MySQL installation maintained by MySQL team. -->
+                    <name>debezium/mysql-server-gtids-test-databases</name>
+                    <alias>database</alias>
+                    <run>
+                      <namingStrategy>alias</namingStrategy>
+                      <env>
+                        <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
+                        <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
+                        <MYSQL_USER>${database.user}</MYSQL_USER>
+                        <MYSQL_PASSWORD>${database.password}</MYSQL_PASSWORD>
+                      </env>
+                      <ports>
+                        <port>${database.port}:3306</port>
+                      </ports>
+                      <log>
+                        <prefix>mysql</prefix>
+                        <enabled>true</enabled>
+                        <color>yellow</color>
+                      </log>
+                      <wait>
+                        <log>MySQL init process done. Ready for start up.</log>
+                        <time>30000</time> <!-- 30 seconds max -->
+                      </wait>
+                    </run>
+                    <build>
+                      <from>mysql/mysql-server:${version.mysql.server}</from>
+                      <assembly>
+                        <inline>
+                          <fileSets>
+                            <fileSet>
+                              <directory>${project.basedir}/src/test/docker/server-gtids</directory>
+                              <includes>
+                                <include>my.cnf</include>
+                              </includes>
+                              <outputDirectory>etc/mysql</outputDirectory>
+                            </fileSet>
+                            <fileSet>
+                              <directory>${project.basedir}/src/test/docker/init</directory>
+                              <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
+                            </fileSet>
+                          </fileSets>
+                        </inline>
+                        <basedir>/</basedir>
+                      </assembly>
+                    </build>
+                  </image>
+                  <image>
                     <!-- A Docker image using a complete MySQL installation maintained by Docker team. -->
                     <name>debezium/mysql-test--databases</name>
                     <alias>database</alias>
@@ -347,6 +394,23 @@
         </activation>
         <properties>
           <docker.image>debezium/mysql-test--databases</docker.image>
+          <docker.skip>false</docker.skip>
+        </properties>
+      </profile>
+      <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            Use the Docker image for MySQL configured to use GTIDs.
+            To use, specify "-Dgtid-mysql" or -Pgtid-mysql on the Maven command line.
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+      <profile>
+        <id>gtid-mysql</id>
+        <activation>
+          <activeByDefault>false</activeByDefault>
+          <property>
+            <name>gtid-mysql</name>
+          </property>
+        </activation>
+        <properties>
+          <docker.image>debezium/mysql-server-gtids-test-databases</docker.image>
           <docker.skip>false</docker.skip>
         </properties>
       </profile>

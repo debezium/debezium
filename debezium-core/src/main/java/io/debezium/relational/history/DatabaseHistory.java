@@ -26,8 +26,11 @@ public interface DatabaseHistory {
      * Configure this instance.
      * 
      * @param config the configuration for this history store
+     * @param comparator the function that should be used to compare history records during
+     *            {@link #recover(Map, Map, Tables, DdlParser) recovery}; may be null if the
+     *            {@link HistoryRecordComparator#INSTANCE default comparator} is to be used
      */
-    void configure(Configuration config);
+    void configure(Configuration config, HistoryRecordComparator comparator);
 
     /**
      * Start the history.
@@ -62,7 +65,7 @@ public interface DatabaseHistory {
     void recover(Map<String, ?> source, Map<String, ?> position, Tables schema, DdlParser ddlParser);
 
     /**
-     * Stop recording history and release any resources acquired since {@link #configure(Configuration)}.
+     * Stop recording history and release any resources acquired since {@link #configure(Configuration, HistoryRecordComparator)}.
      */
     void stop();
 }
