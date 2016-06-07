@@ -7,8 +7,13 @@ package io.debezium.data;
 
 import static org.junit.Assert.fail;
 
+import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -47,18 +52,18 @@ public class VerifyRecord {
     private static final MockSchemaRegistryClient schemaRegistry = new MockSchemaRegistryClient();
     private static final AvroConverter avroKeyConverter = new AvroConverter(schemaRegistry);
     private static final AvroConverter avroValueConverter = new AvroConverter(schemaRegistry);
-    
+
     static {
-        Map<String,Object> config = new HashMap<>();
-        config.put("schemas.enable",Boolean.TRUE.toString());
-        config.put("schemas.cache.size",100);
+        Map<String, Object> config = new HashMap<>();
+        config.put("schemas.enable", Boolean.TRUE.toString());
+        config.put("schemas.cache.size", 100);
         keyJsonConverter.configure(config, true);
         keyJsonDeserializer.configure(config, true);
         valueJsonConverter.configure(config, false);
         valueJsonDeserializer.configure(config, false);
 
         config = new HashMap<>();
-        config.put("schema.registry.url","http://fake-url");
+        config.put("schema.registry.url", "http://fake-url");
         avroKeyConverter.configure(config, false);
         avroValueConverter.configure(config, false);
     }
@@ -276,73 +281,97 @@ public class VerifyRecord {
         SchemaAndValue valueWithSchema = null;
         SchemaAndValue avroKeyWithSchema = null;
         SchemaAndValue avroValueWithSchema = null;
+        String msg = null;
         try {
             // The key should never be null ...
+            msg = "checking key is not null";
             assertThat(record.key()).isNotNull();
             assertThat(record.keySchema()).isNotNull();
 
             // If the value is not null there must be a schema; otherwise, the schema should also be null ...
             if (record.value() == null) {
+                msg = "checking value schema is null";
                 assertThat(record.valueSchema()).isNull();
             } else {
+                msg = "checking value schema is not null";
                 assertThat(record.valueSchema()).isNotNull();
             }
 
             // First serialize and deserialize the key ...
+            msg = "serializing key using JSON converter";
             byte[] keyBytes = keyJsonConverter.fromConnectData(record.topic(), record.keySchema(), record.key());
+            msg = "deserializing key using JSON deserializer";
             keyJson = keyJsonDeserializer.deserialize(record.topic(), keyBytes);
+            msg = "deserializing key using JSON converter";
             keyWithSchema = keyJsonConverter.toConnectData(record.topic(), keyBytes);
+            msg = "comparing key schema to that serialized/deserialized with JSON converter";
             assertThat(keyWithSchema.schema()).isEqualTo(record.keySchema());
+            msg = "comparing key to that serialized/deserialized with JSON converter";
             assertThat(keyWithSchema.value()).isEqualTo(record.key());
+            msg = "comparing key to its schema";
             schemaMatchesStruct(keyWithSchema);
 
             // then the value ...
+            msg = "serializing value using JSON converter";
             byte[] valueBytes = valueJsonConverter.fromConnectData(record.topic(), record.valueSchema(), record.value());
+            msg = "deserializing value using JSON deserializer";
             valueJson = valueJsonDeserializer.deserialize(record.topic(), valueBytes);
+            msg = "deserializing value using JSON converter";
             valueWithSchema = valueJsonConverter.toConnectData(record.topic(), valueBytes);
-            assertThat(valueWithSchema.schema()).isEqualTo(record.valueSchema());
-            assertThat(valueWithSchema.value()).isEqualTo(record.value());
+            msg = "comparing value schema to that serialized/deserialized with JSON converter";
+            assertEquals(valueWithSchema.schema(),record.valueSchema());
+            msg = "comparing value to that serialized/deserialized with JSON converter";
+            assertEquals(valueWithSchema.value(),record.value());
+            msg = "comparing value to its schema";
             schemaMatchesStruct(valueWithSchema);
-            
+
             // Serialize and deserialize the key using the Avro converter, and check that we got the same result ...
+            msg = "serializing key using Avro converter";
             byte[] avroKeyBytes = avroValueConverter.fromConnectData(record.topic(), record.keySchema(), record.key());
+            msg = "deserializing key using Avro converter";
             avroKeyWithSchema = avroValueConverter.toConnectData(record.topic(), avroKeyBytes);
-            assertThat(keyWithSchema.schema()).isEqualTo(record.keySchema());
-            assertThat(keyWithSchema.value()).isEqualTo(record.key());
+            msg = "comparing key schema to that serialized/deserialized with Avro converter";
+            assertEquals(keyWithSchema.schema(),record.keySchema());
+            msg = "comparing key to that serialized/deserialized with Avro converter";
+            assertEquals(keyWithSchema.value(),record.key());
+            msg = "comparing key to its schema";
             schemaMatchesStruct(keyWithSchema);
 
             // Serialize and deserialize the value using the Avro converter, and check that we got the same result ...
+            msg = "serializing value using Avro converter";
             byte[] avroValueBytes = avroValueConverter.fromConnectData(record.topic(), record.valueSchema(), record.value());
+            msg = "deserializing value using Avro converter";
             avroValueWithSchema = avroValueConverter.toConnectData(record.topic(), avroValueBytes);
-            assertThat(valueWithSchema.schema()).isEqualTo(record.valueSchema());
-            assertThat(valueWithSchema.value()).isEqualTo(record.value());
+            msg = "comparing value schema to that serialized/deserialized with Avro converter";
+            assertEquals(valueWithSchema.schema(),record.valueSchema());
+            msg = "comparing value to that serialized/deserialized with Avro converter";
+            assertEquals(valueWithSchema.value(),record.value());
+            msg = "comparing value to its schema";
             schemaMatchesStruct(valueWithSchema);
-            
+
         } catch (Throwable t) {
             Testing.Print.enable();
             Testing.print("Problem with message on topic '" + record.topic() + "':");
             Testing.printError(t);
-            if (keyJson == null ){
-                Testing.print("error deserializing key from JSON: " + SchemaUtil.asString(record.key()));
-            } else if (keyWithSchema == null ){
-                Testing.print("error using JSON converter on key: " + prettyJson(keyJson));
-            } else if (avroKeyWithSchema == null ){
-                Testing.print("error using Avro converter on key: " + prettyJson(keyJson));
-            } else {
-                Testing.print("valid key = " + prettyJson(keyJson));
+            Testing.print("error " + msg);
+            Testing.print("  key: " + SchemaUtil.asString(record.key()));
+            Testing.print("  key deserialized from JSON: " + prettyJson(keyJson));
+            if (keyWithSchema != null) {
+                Testing.print("  key to/from JSON: " + SchemaUtil.asString(keyWithSchema.value()));
             }
-
-            if (valueJson == null ){
-                Testing.print("error deserializing value from JSON: " + SchemaUtil.asString(record.value()));
-            } else if (valueWithSchema == null ){
-                Testing.print("error using JSON converter on value: " + prettyJson(valueJson));
-            } else if (avroValueWithSchema == null ){
-                Testing.print("error using Avro converter on value: " + prettyJson(valueJson));
-            } else {
-                Testing.print("valid key = " + prettyJson(keyJson));
+            if (avroKeyWithSchema != null) {
+                Testing.print("  key to/from Avro: " + SchemaUtil.asString(avroKeyWithSchema.value()));
+            }
+            Testing.print("  value: " + SchemaUtil.asString(record.value()));
+            Testing.print("  value deserialized from JSON: " + prettyJson(valueJson));
+            if (valueWithSchema != null) {
+                Testing.print("  value to/from JSON: " + SchemaUtil.asString(valueWithSchema.value()));
+            }
+            if (avroValueWithSchema != null) {
+                Testing.print("  value to/from Avro: " + SchemaUtil.asString(avroValueWithSchema.value()));
             }
             if (t instanceof AssertionError) throw t;
-            fail(t.getMessage());
+            fail("error " + msg + ": " + t.getMessage());
         }
     }
 
@@ -390,5 +419,135 @@ public class VerifyRecord {
             return null;
         }
     }
+    
+    // The remaining methods are needed simply because of the KAFKA-3803, so our comparisons cannot rely upon Struct.equals
+    
+    protected static void assertEquals( Object o1, Object o2 ) {
+        // assertThat(o1).isEqualTo(o2);
+        if ( !equals(o1,o2) ) {
+            fail(SchemaUtil.asString(o1) + " was not equal to " + SchemaUtil.asString(o2));
+        }
+    }
+    
+    @SuppressWarnings("unchecked")
+    protected static boolean equals( Object o1, Object o2 ) {
+        if ( o1 == o2 ) return true;
+        if (o1 == null) return o2 == null ? true : false;
+        if (o2 == null ) return false;
+        if ( o1 instanceof ByteBuffer ) {
+            o1 = ((ByteBuffer)o1).array();
+        }
+        if ( o2 instanceof ByteBuffer ) {
+            o2 = ((ByteBuffer)o2).array();
+        }
+        if ( o1 instanceof byte[] && o2 instanceof byte[] ) {
+            boolean result = Arrays.equals((byte[])o1,(byte[])o2);
+            return result;
+        }
+        if ( o1 instanceof Object[] && o2 instanceof Object[] ) {
+            boolean result = deepEquals((Object[])o1,(Object[])o2);
+            return result;
+        }
+        if ( o1 instanceof Map && o2 instanceof Map ) {
+            Map<String,Object> m1 = (Map<String,Object>)o1;
+            Map<String,Object> m2 = (Map<String,Object>)o2;
+            if ( !m1.keySet().equals(m2.keySet())) return false;
+            for ( Map.Entry<String, Object> entry : m1.entrySet()) {
+                Object v1 = entry.getValue();
+                Object v2 = m2.get(entry.getKey());
+                if ( !equals(v1,v2) ) return false;
+            }
+            return true;
+        }
+        if ( o1 instanceof Collection && o2 instanceof Collection ) {
+            Collection<Object> m1 = (Collection<Object>)o1;
+            Collection<Object> m2 = (Collection<Object>)o2;
+            if ( m1.size() != m2.size() ) return false;
+            Iterator<?> iter1 = m1.iterator();
+            Iterator<?> iter2 = m2.iterator();
+            while ( iter1.hasNext() && iter2.hasNext() ) {
+                if ( !equals(iter1.next(),iter2.next()) ) return false;
+            }
+            return true;
+        }
+        if ( o1 instanceof Struct && o2 instanceof Struct ) {
+            // Unfortunately, the Struct.equals() method has a bug in that it is not using Arrays.deepEquals(...) to
+            // compare values in two Struct objects. The result is that the equals only works if the values of the
+            // first level Struct are non arrays; otherwise, the array values are compared using == and that obviously
+            // does not work for non-primitive values.
+            Struct struct1 = (Struct) o1;
+            Struct struct2 = (Struct) o2;
+            if (! Objects.equals(struct1.schema(),struct2.schema()) ) {
+                return false;
+            }
+            Object[] array1 = valuesFor(struct1);
+            Object[] array2 = valuesFor(struct2);
+            boolean result = deepEquals(array1, array2);
+            return result;
+        }
+        return Objects.equals(o1, o2);
+    }
+    
+    private static Object[] valuesFor( Struct struct ) {
+        Object[] array = new Object[struct.schema().fields().size()];
+        int index = 0;
+        for ( Field field : struct.schema().fields() ) {
+            array[index] = struct.get(field);
+            ++index;
+        }
+        return array;
+    }
 
+    private static boolean deepEquals(Object[] a1, Object[] a2) {
+        if (a1 == a2)
+            return true;
+        if (a1 == null || a2==null)
+            return false;
+        int length = a1.length;
+        if (a2.length != length)
+            return false;
+
+        for (int i = 0; i < length; i++) {
+            Object e1 = a1[i];
+            Object e2 = a2[i];
+
+            if (e1 == e2)
+                continue;
+            if (e1 == null)
+                return false;
+
+            // Figure out whether the two elements are equal
+            boolean eq = deepEquals0(e1, e2);
+
+            if (!eq)
+                return false;
+        }
+        return true;
+    }
+
+    private static boolean deepEquals0(Object e1, Object e2) {
+        assert e1 != null;
+        boolean eq;
+        if (e1 instanceof Object[] && e2 instanceof Object[])
+            eq = deepEquals ((Object[]) e1, (Object[]) e2);
+        else if (e1 instanceof byte[] && e2 instanceof byte[])
+            eq = Arrays.equals((byte[]) e1, (byte[]) e2);
+        else if (e1 instanceof short[] && e2 instanceof short[])
+            eq = Arrays.equals((short[]) e1, (short[]) e2);
+        else if (e1 instanceof int[] && e2 instanceof int[])
+            eq = Arrays.equals((int[]) e1, (int[]) e2);
+        else if (e1 instanceof long[] && e2 instanceof long[])
+            eq = Arrays.equals((long[]) e1, (long[]) e2);
+        else if (e1 instanceof char[] && e2 instanceof char[])
+            eq = Arrays.equals((char[]) e1, (char[]) e2);
+        else if (e1 instanceof float[] && e2 instanceof float[])
+            eq = Arrays.equals((float[]) e1, (float[]) e2);
+        else if (e1 instanceof double[] && e2 instanceof double[])
+            eq = Arrays.equals((double[]) e1, (double[]) e2);
+        else if (e1 instanceof boolean[] && e2 instanceof boolean[])
+            eq = Arrays.equals((boolean[]) e1, (boolean[]) e2);
+        else
+            eq = equals(e1,e2);
+        return eq;
+    }
 }

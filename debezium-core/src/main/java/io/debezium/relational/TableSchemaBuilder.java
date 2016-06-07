@@ -6,6 +6,7 @@
 package io.debezium.relational;
 
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
@@ -105,7 +106,8 @@ public class TableSchemaBuilder {
      * <p>
      * This is equivalent to calling {@code create(table,false)}.
      * 
-     * @param schemaPrefix the prefix added to the table identifier to construct the schema names; may be null if there is no prefix
+     * @param schemaPrefix the prefix added to the table identifier to construct the schema names; may be null if there is no
+     *            prefix
      * @param table the table definition; may not be null
      * @return the table schema that can be used for sending rows of data for this table to Kafka Connect; never null
      */
@@ -121,7 +123,8 @@ public class TableSchemaBuilder {
      * <p>
      * This is equivalent to calling {@code create(table,false)}.
      * 
-     * @param schemaPrefix the prefix added to the table identifier to construct the schema names; may be null if there is no prefix
+     * @param schemaPrefix the prefix added to the table identifier to construct the schema names; may be null if there is no
+     *            prefix
      * @param table the table definition; may not be null
      * @param filter the filter that specifies whether columns in the table should be included; may be null if all columns
      *            are to be included
@@ -129,7 +132,7 @@ public class TableSchemaBuilder {
      * @return the table schema that can be used for sending rows of data for this table to Kafka Connect; never null
      */
     public TableSchema create(String schemaPrefix, Table table, Predicate<ColumnId> filter, ColumnMappers mappers) {
-        if ( schemaPrefix == null ) schemaPrefix = "";
+        if (schemaPrefix == null) schemaPrefix = "";
         // Build the schemas ...
         final TableId tableId = table.id();
         final String tableIdStr = tableId.toString();
@@ -285,7 +288,10 @@ public class TableSchemaBuilder {
                 if (mappers != null) {
                     ValueConverter mappingConverter = mappers.mappingConverterFor(tableId, column);
                     if (mappingConverter != null) {
-                        converter = (value) -> mappingConverter.convert(valueConverter.convert(value));
+                        converter = (value) -> {
+                            if (value != null) value = valueConverter.convert(value);
+                            return mappingConverter.convert(value);
+                        };
                     }
                 }
                 if (converter == null) converter = valueConverter;
@@ -376,7 +382,7 @@ public class TableSchemaBuilder {
             case Types.NCLOB:
                 fieldBuilder = SchemaBuilder.string();
                 break;
-                
+
             // Variable-length string values
             case Types.VARCHAR:
             case Types.LONGVARCHAR:
@@ -424,7 +430,7 @@ public class TableSchemaBuilder {
         if (fieldBuilder != null) {
             if (mapper != null) {
                 // Let the mapper add properties to the schema ...
-                mapper.alterFieldSchema(column,fieldBuilder);
+                mapper.alterFieldSchema(column, fieldBuilder);
             }
             if (column.isOptional()) fieldBuilder.optional();
             builder.field(column.name(), fieldBuilder.build());
@@ -450,6 +456,14 @@ public class TableSchemaBuilder {
     /**
      * Create a {@link ValueConverter} that can be used to convert row values for the given column into the Kafka Connect value
      * object described by the {@link Field field definition}.
+     * <p>
+     * Subclasses can override this method to specialize the behavior. The subclass method should do custom checks and
+     * conversions,
+     * and then delegate to this method implementation to handle all other cases.
+     * <p>
+     * Alternatively, subclasses can leave this method as-is and instead override one of the lower-level type-specific methods
+     * that this method calls (e.g., {@link #convertBinary(Column, Field, Object)},
+     * {@link #convertTinyInt(Column, Field, Object)}, etc.).
      * 
      * @param column the column describing the input values; never null
      * @param fieldDefn the definition for the field in a Kafka Connect {@link Schema} describing the output of the function;
@@ -461,94 +475,38 @@ public class TableSchemaBuilder {
             case Types.NULL:
                 return (data) -> null;
             case Types.BIT:
+                return (data) -> convertBit(column, fieldDefn, data);
             case Types.BOOLEAN:
-                return (data) -> {
-                    if (data instanceof Boolean) return (Boolean) data;
-                    if (data instanceof Short) return ((Short) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
-                    if (data instanceof Integer) return ((Integer) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
-                    if (data instanceof Long) return ((Long) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
-                    return handleUnknownData(column, fieldDefn, data);
-                };
+                return (data) -> convertBoolean(column, fieldDefn, data);
 
             // Binary values ...
             case Types.BLOB:
             case Types.BINARY:
             case Types.VARBINARY:
             case Types.LONGVARBINARY:
-                return (data) -> (byte[]) data;
+                return (data) -> convertBinary(column, fieldDefn, data);
 
             // Numeric integers
             case Types.TINYINT:
-                return (data) -> {
-                    if (data instanceof Byte) return (Byte) data;
-                    if (data instanceof Boolean) return ((Boolean) data).booleanValue() ? (byte) 1 : (byte) 0;
-                    return handleUnknownData(column, fieldDefn, data);
-                };
+                return (data) -> convertTinyInt(column, fieldDefn, data);
             case Types.SMALLINT:
-                return (data) -> {
-                    if (data instanceof Short) return (Short) data;
-                    if (data instanceof Integer) return new Short(((Integer) data).shortValue());
-                    if (data instanceof Long) return new Short(((Long) data).shortValue());
-                    return handleUnknownData(column, fieldDefn, data);
-                };
+                return (data) -> convertSmallInt(column, fieldDefn, data);
             case Types.INTEGER:
-                return (data) -> {
-                    if (data instanceof Integer) return (Integer) data;
-                    if (data instanceof Short) return new Integer(((Short) data).intValue());
-                    if (data instanceof Long) return new Integer(((Long) data).intValue());
-                    return handleUnknownData(column, fieldDefn, data);
-                };
+                return (data) -> convertInteger(column, fieldDefn, data);
             case Types.BIGINT:
-                return (data) -> {
-                    if (data instanceof Long) return (Long) data;
-                    if (data instanceof Integer) return new Long(((Integer) data).longValue());
-                    if (data instanceof Short) return new Long(((Short) data).longValue());
-                    return handleUnknownData(column, fieldDefn, data);
-                };
+                return (data) -> convertBigInt(column, fieldDefn, data);
 
             // Numeric decimal numbers
             case Types.FLOAT:
+                return (data) -> convertFloat(column, fieldDefn, data);
             case Types.DOUBLE:
-                return (data) -> {
-                    if (data instanceof Double) return (Double) data;
-                    if (data instanceof Float) return new Double(((Float) data).doubleValue());
-                    if (data instanceof Integer) return new Double(((Integer) data).doubleValue());
-                    if (data instanceof Long) return new Double(((Long) data).doubleValue());
-                    if (data instanceof Short) return new Double(((Short) data).doubleValue());
-                    return handleUnknownData(column, fieldDefn, data);
-                };
+                return (data) -> convertDouble(column, fieldDefn, data);
             case Types.REAL:
-                return (data) -> {
-                    if (data instanceof Float) return (Float) data;
-                    if (data instanceof Double) return new Float(((Double) data).floatValue());
-                    if (data instanceof Integer) return new Float(((Integer) data).floatValue());
-                    if (data instanceof Long) return new Float(((Long) data).floatValue());
-                    if (data instanceof Short) return new Float(((Short) data).floatValue());
-                    return handleUnknownData(column, fieldDefn, data);
-                };
+                return (data) -> convertReal(column, fieldDefn, data);
             case Types.NUMERIC:
+                return (data) -> convertNumeric(column, fieldDefn, data);
             case Types.DECIMAL:
-                return (data) -> {
-                    BigDecimal decimal = null;
-                    if (data instanceof BigDecimal)
-                        decimal = (BigDecimal) data;
-                    else if (data instanceof Boolean)
-                        decimal = new BigDecimal(((Boolean) data).booleanValue() ? 1 : 0);
-                    else if (data instanceof Short)
-                        decimal = new BigDecimal(((Short) data).intValue());
-                    else if (data instanceof Integer)
-                        decimal = new BigDecimal(((Integer) data).intValue());
-                    else if (data instanceof Long)
-                        decimal = BigDecimal.valueOf(((Long) data).longValue());
-                    else if (data instanceof Float)
-                        decimal = BigDecimal.valueOf(((Float) data).doubleValue());
-                    else if (data instanceof Double)
-                        decimal = BigDecimal.valueOf(((Double) data).doubleValue());
-                    else {
-                        handleUnknownData(column, fieldDefn, data);
-                    }
-                    return decimal;
-                };
+                return (data) -> convertDecimal(column, fieldDefn, data);
 
             // String values
             case Types.CHAR: // variable-length
@@ -561,26 +519,23 @@ public class TableSchemaBuilder {
             case Types.NCLOB: // fixed-length
             case Types.DATALINK:
             case Types.SQLXML:
-                return (data) -> data.toString();
+                return (data) -> convertString(column, fieldDefn, data);
 
             // Date and time values
             case Types.DATE:
-                return (data) -> convertDate(fieldDefn, data);
+                return (data) -> convertDate(column, fieldDefn, data);
             case Types.TIME:
-                return (data) -> convertTime(fieldDefn, data);
+                return (data) -> convertTime(column, fieldDefn, data);
             case Types.TIMESTAMP:
-                return (data) -> convertTimestamp(fieldDefn, data);
+                return (data) -> convertTimestamp(column, fieldDefn, data);
             case Types.TIME_WITH_TIMEZONE:
-                return (data) -> convertTimeWithZone(fieldDefn, data);
+                return (data) -> convertTimeWithZone(column, fieldDefn, data);
             case Types.TIMESTAMP_WITH_TIMEZONE:
-                return (data) -> convertTimestampWithZone(fieldDefn, data);
+                return (data) -> convertTimestampWithZone(column, fieldDefn, data);
 
             // Other types ...
             case Types.ROWID:
-                return (data) -> {
-                    java.sql.RowId rowId = (java.sql.RowId) data;
-                    return rowId.getBytes();
-                };
+                return (data) -> convertRowId(column, fieldDefn, data);
 
             // Unhandled types
             case Types.ARRAY:
@@ -620,11 +575,13 @@ public class TableSchemaBuilder {
      * This method handles several types of objects, including {@link OffsetDateTime}, {@link java.sql.Timestamp},
      * {@link java.util.Date}, {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}.
      * 
+     * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
      * @return the converted value, or null if the conversion could not be made
      */
-    protected Object convertTimestampWithZone(Field fieldDefn, Object data) {
+    protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
+        if (data == null) return null;
         OffsetDateTime dateTime = null;
         if (data instanceof OffsetDateTime) {
             // JDBC specification indicates that this will be the canonical object for this JDBC type.
@@ -679,11 +636,13 @@ public class TableSchemaBuilder {
      * {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}. If any of the types have date components, those date
      * components are ignored.
      * 
+     * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
      * @return the converted value, or null if the conversion could not be made
      */
-    protected Object convertTimeWithZone(Field fieldDefn, Object data) {
+    protected Object convertTimeWithZone(Column column, Field fieldDefn, Object data) {
+        if (data == null) return null;
         OffsetTime time = null;
         if (data instanceof OffsetTime) {
             // JDBC specification indicates that this will be the canonical object for this JDBC type.
@@ -731,11 +690,13 @@ public class TableSchemaBuilder {
      * but no time zone info. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such
      * as {@link java.util.Date}, {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}.
      * 
+     * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
      * @return the converted value, or null if the conversion could not be made
      */
-    protected Object convertTimestamp(Field fieldDefn, Object data) {
+    protected Object convertTimestamp(Column column, Field fieldDefn, Object data) {
+        if (data == null) return null;
         java.util.Date date = null;
         if (data instanceof java.sql.Timestamp) {
             // JDBC specification indicates that this will be the canonical object for this JDBC type.
@@ -782,11 +743,13 @@ public class TableSchemaBuilder {
      * {@link java.util.Date}, {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}. If any of the types might
      * have date components, those date components are ignored.
      * 
+     * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
      * @return the converted value, or null if the conversion could not be made
      */
-    protected Object convertTime(Field fieldDefn, Object data) {
+    protected Object convertTime(Column column, Field fieldDefn, Object data) {
+        if (data == null) return null;
         java.util.Date date = null;
         if (data instanceof java.sql.Time) {
             // JDBC specification indicates that this will be the canonical object for this JDBC type.
@@ -834,11 +797,13 @@ public class TableSchemaBuilder {
      * {@link java.util.Date}, {@link java.time.LocalDate}, and {@link java.time.LocalDateTime}. If any of the types might
      * have time components, those time components are ignored.
      * 
+     * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
      * @return the converted value, or null if the conversion could not be made
      */
-    protected Object convertDate(Field fieldDefn, Object data) {
+    protected Object convertDate(Column column, Field fieldDefn, Object data) {
+        if (data == null) return null;
         java.util.Date date = null;
         if (data instanceof java.sql.Date) {
             // JDBC specification indicates that this will be the nominal object for this JDBC type.
@@ -881,5 +846,287 @@ public class TableSchemaBuilder {
         LOGGER.warn("Unexpected JDBC DATE value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
                     fieldDefn.schema(), value.getClass(), value);
         return null;
+    }
+
+    /**
+     * Converts a value object for an expected JDBC type of {@link Types#BLOB}, {@link Types#BINARY},
+     * {@link Types#VARBINARY}, {@link Types#LONGVARBINARY}.
+     * <p>
+     * Per the JDBC specification, databases should return {@link java.sql.Date} instances that have no notion of time or
+     * time zones. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such as
+     * {@link java.util.Date}, {@link java.time.LocalDate}, and {@link java.time.LocalDateTime}. If any of the types might
+     * have time components, those time components are ignored.
+     * 
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @return the converted value, or null if the conversion could not be made
+     */
+    protected Object convertBinary(Column column, Field fieldDefn, Object data) {
+        if (data == null) return null;
+        if (data instanceof char[]) {
+            data = new String((char[]) data); // convert to string
+        }
+        if (data instanceof String) {
+            // This was encoded as a hexadecimal string, but we receive it as a normal string ...
+            data = ((String) data).getBytes();
+        }
+        if (data instanceof byte[]) {
+            return ByteBuffer.wrap((byte[])data);
+        }
+        // An unexpected value
+        return unexpectedBinary(data, fieldDefn);
+    }
+
+    /**
+     * Handle the unexpected value from a row with a column type of {@link Types#BLOB}, {@link Types#BINARY},
+     * {@link Types#VARBINARY}, {@link Types#LONGVARBINARY}.
+     * 
+     * @param value the binary value for which no conversion was found; never null
+     * @param fieldDefn the field definition in the Kafka Connect schema; never null
+     * @return the converted value, or null
+     * @see #convertBinary(Column, Field, Object)
+     */
+    protected byte[] unexpectedBinary(Object value, Field fieldDefn) {
+        LOGGER.warn("Unexpected JDBC BINARY value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
+                    fieldDefn.schema(), value.getClass(), value);
+        return null;
+    }
+
+    /**
+     * Converts a value object for an expected JDBC type of {@link Types#TINYINT}.
+     * 
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @return the converted value, or null if the conversion could not be made
+     */
+    protected Object convertTinyInt(Column column, Field fieldDefn, Object data) {
+        if (data == null) return null;
+        if (data instanceof Byte) return data;
+        if (data instanceof Boolean) return ((Boolean) data).booleanValue() ? (byte) 1 : (byte) 0;
+        return handleUnknownData(column, fieldDefn, data);
+    }
+
+    /**
+     * Converts a value object for an expected JDBC type of {@link Types#SMALLINT}.
+     * 
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @return the converted value, or null if the conversion could not be made
+     */
+    protected Object convertSmallInt(Column column, Field fieldDefn, Object data) {
+        if (data == null) return null;
+        if (data instanceof Short) return data;
+        if (data instanceof Integer) return new Short(((Integer) data).shortValue());
+        if (data instanceof Long) return new Short(((Long) data).shortValue());
+        return handleUnknownData(column, fieldDefn, data);
+    }
+
+    /**
+     * Converts a value object for an expected JDBC type of {@link Types#INTEGER}.
+     * 
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @return the converted value, or null if the conversion could not be made
+     */
+    protected Object convertInteger(Column column, Field fieldDefn, Object data) {
+        if (data == null) return null;
+        if (data instanceof Integer) return data;
+        if (data instanceof Short) return new Integer(((Short) data).intValue());
+        if (data instanceof Long) return new Integer(((Long) data).intValue());
+        return handleUnknownData(column, fieldDefn, data);
+    }
+
+    /**
+     * Converts a value object for an expected JDBC type of {@link Types#INTEGER}.
+     * 
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @return the converted value, or null if the conversion could not be made
+     */
+    protected Object convertBigInt(Column column, Field fieldDefn, Object data) {
+        if (data == null) return null;
+        if (data instanceof Long) return data;
+        if (data instanceof Integer) return new Long(((Integer) data).longValue());
+        if (data instanceof Short) return new Long(((Short) data).longValue());
+        return handleUnknownData(column, fieldDefn, data);
+    }
+
+    /**
+     * Converts a value object for an expected JDBC type of {@link Types#FLOAT}.
+     * 
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @return the converted value, or null if the conversion could not be made
+     */
+    protected Object convertFloat(Column column, Field fieldDefn, Object data) {
+        return convertDouble(column, fieldDefn, data);
+    }
+
+    /**
+     * Converts a value object for an expected JDBC type of {@link Types#DOUBLE}.
+     * 
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @return the converted value, or null if the conversion could not be made
+     */
+    protected Object convertDouble(Column column, Field fieldDefn, Object data) {
+        if (data == null) return null;
+        if (data instanceof Double) return data;
+        if (data instanceof Float) return new Double(((Float) data).doubleValue());
+        if (data instanceof Integer) return new Double(((Integer) data).doubleValue());
+        if (data instanceof Long) return new Double(((Long) data).doubleValue());
+        if (data instanceof Short) return new Double(((Short) data).doubleValue());
+        return handleUnknownData(column, fieldDefn, data);
+    }
+
+    /**
+     * Converts a value object for an expected JDBC type of {@link Types#REAL}.
+     * 
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @return the converted value, or null if the conversion could not be made
+     */
+    protected Object convertReal(Column column, Field fieldDefn, Object data) {
+        if (data == null) return null;
+        if (data instanceof Float) return data;
+        if (data instanceof Double) return new Float(((Double) data).floatValue());
+        if (data instanceof Integer) return new Float(((Integer) data).floatValue());
+        if (data instanceof Long) return new Float(((Long) data).floatValue());
+        if (data instanceof Short) return new Float(((Short) data).floatValue());
+        return handleUnknownData(column, fieldDefn, data);
+    }
+
+    /**
+     * Converts a value object for an expected JDBC type of {@link Types#NUMERIC}.
+     * 
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @return the converted value, or null if the conversion could not be made
+     */
+    protected Object convertNumeric(Column column, Field fieldDefn, Object data) {
+        BigDecimal decimal = null;
+        if (data instanceof BigDecimal)
+            decimal = (BigDecimal) data;
+        else if (data instanceof Boolean)
+            decimal = new BigDecimal(((Boolean) data).booleanValue() ? 1 : 0);
+        else if (data instanceof Short)
+            decimal = new BigDecimal(((Short) data).intValue());
+        else if (data instanceof Integer)
+            decimal = new BigDecimal(((Integer) data).intValue());
+        else if (data instanceof Long)
+            decimal = BigDecimal.valueOf(((Long) data).longValue());
+        else if (data instanceof Float)
+            decimal = BigDecimal.valueOf(((Float) data).doubleValue());
+        else if (data instanceof Double)
+            decimal = BigDecimal.valueOf(((Double) data).doubleValue());
+        else {
+            return handleUnknownData(column, fieldDefn, data);
+        }
+        return decimal;
+    }
+
+    /**
+     * Converts a value object for an expected JDBC type of {@link Types#NUMERIC}.
+     * 
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @return the converted value, or null if the conversion could not be made
+     */
+    protected Object convertDecimal(Column column, Field fieldDefn, Object data) {
+        if (data == null) return null;
+        BigDecimal decimal = null;
+        if (data instanceof BigDecimal)
+            decimal = (BigDecimal) data;
+        else if (data instanceof Boolean)
+            decimal = new BigDecimal(((Boolean) data).booleanValue() ? 1 : 0);
+        else if (data instanceof Short)
+            decimal = new BigDecimal(((Short) data).intValue());
+        else if (data instanceof Integer)
+            decimal = new BigDecimal(((Integer) data).intValue());
+        else if (data instanceof Long)
+            decimal = BigDecimal.valueOf(((Long) data).longValue());
+        else if (data instanceof Float)
+            decimal = BigDecimal.valueOf(((Float) data).doubleValue());
+        else if (data instanceof Double)
+            decimal = BigDecimal.valueOf(((Double) data).doubleValue());
+        else {
+            return handleUnknownData(column, fieldDefn, data);
+        }
+        return decimal;
+    }
+
+    /**
+     * Converts a value object for an expected JDBC type of {@link Types#CHAR}, {@link Types#VARCHAR},
+     * {@link Types#LONGVARCHAR}, {@link Types#CLOB}, {@link Types#NCHAR}, {@link Types#NVARCHAR}, {@link Types#LONGNVARCHAR},
+     * {@link Types#NCLOB}, {@link Types#DATALINK}, and {@link Types#SQLXML}.
+     * 
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @return the converted value, or null if the conversion could not be made
+     */
+    protected Object convertString(Column column, Field fieldDefn, Object data) {
+        return data == null ? null : data.toString();
+    }
+
+    /**
+     * Converts a value object for an expected JDBC type of {@link Types#ROWID}.
+     * 
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @return the converted value, or null if the conversion could not be made
+     */
+    protected Object convertRowId(Column column, Field fieldDefn, Object data) {
+        if (data == null) return null;
+        if (data instanceof java.sql.RowId) {
+            java.sql.RowId row = (java.sql.RowId)data;
+            return ByteBuffer.wrap(row.getBytes());
+        }
+        return handleUnknownData(column, fieldDefn, data);
+    }
+
+    /**
+     * Converts a value object for an expected JDBC type of {@link Types#BIT}.
+     * 
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @return the converted value, or null if the conversion could not be made
+     */
+    protected Object convertBit(Column column, Field fieldDefn, Object data) {
+        if (data == null) return null;
+        if (data instanceof Boolean) return data;
+        if (data instanceof Short) return ((Short) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
+        if (data instanceof Integer) return ((Integer) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
+        if (data instanceof Long) return ((Long) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
+        return handleUnknownData(column, fieldDefn, data);
+    }
+
+    /**
+     * Converts a value object for an expected JDBC type of {@link Types#BOOLEAN}.
+     * 
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @return the converted value, or null if the conversion could not be made
+     */
+    protected Object convertBoolean(Column column, Field fieldDefn, Object data) {
+        if (data == null) return null;
+        if (data instanceof Boolean) return data;
+        if (data instanceof Short) return ((Short) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
+        if (data instanceof Integer) return ((Integer) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
+        if (data instanceof Long) return ((Long) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
+        return handleUnknownData(column, fieldDefn, data);
     }
 }

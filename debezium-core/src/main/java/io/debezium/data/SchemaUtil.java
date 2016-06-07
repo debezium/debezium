@@ -5,6 +5,8 @@
  */
 package io.debezium.data;
 
+import java.nio.ByteBuffer;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
@@ -169,6 +171,11 @@ public class SchemaUtil {
                     appendFirst(field.name(), s.get(field));
                 }
                 sb.append('}');
+            } else if (obj instanceof ByteBuffer) {
+                ByteBuffer b = (ByteBuffer) obj;
+                sb.append('"').append(Base64.getEncoder().encode(b.array())).append('"');
+            } else if (obj instanceof byte[]) {
+                sb.append('"').append(Base64.getEncoder().encode((byte[])obj)).append('"');
             } else if (obj instanceof Map<?, ?>) {
                 Map<?, ?> map = (Map<?, ?>) obj;
                 sb.append('{');
