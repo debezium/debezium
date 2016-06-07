@@ -86,9 +86,9 @@ public class SourceInfoTest {
 
     protected Document positionWithGtids(String gtids, boolean snapshot) {
         if (snapshot) {
-            return Document.create(SourceInfo.GTID_KEY, gtids, SourceInfo.SNAPSHOT_KEY, true);
+            return Document.create(SourceInfo.GTID_SET_KEY, gtids, SourceInfo.SNAPSHOT_KEY, true);
         }
-        return Document.create(SourceInfo.GTID_KEY, gtids);
+        return Document.create(SourceInfo.GTID_SET_KEY, gtids);
     }
 
     protected Document positionWithoutGtids(String filename, int position, int row) {

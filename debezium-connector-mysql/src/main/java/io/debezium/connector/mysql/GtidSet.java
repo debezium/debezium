@@ -7,6 +7,7 @@ package io.debezium.connector.mysql;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.TreeMap;
@@ -111,11 +112,17 @@ public final class GtidSet {
                 intervals.add(new Interval(interval.getStart(), interval.getEnd()));
             });
             Collections.sort(this.intervals);
-        }
-
-        protected UUIDSet(String uuid, LinkedList<Interval> intervals) {
-            this.uuid = uuid;
-            this.intervals = intervals;
+            if ( this.intervals.size() > 1 ) {
+                // Collapse adjacent intervals ...
+                for ( int i=intervals.size()-1; i!=0; --i) {
+                    Interval before = this.intervals.get(i-1);
+                    Interval after = this.intervals.get(i);
+                    if ( (before.getEnd() + 1) == after.getStart() ) {
+                        this.intervals.set(i-1,new Interval(before.getStart(),after.getEnd()));
+                        this.intervals.remove(i);
+                    }
+                }
+            }
         }
 
         /**
@@ -218,17 +225,41 @@ public final class GtidSet {
             StringBuilder sb = new StringBuilder();
             if (sb.length() != 0) sb.append(',');
             sb.append(uuid).append(':');
-            sb.append(intervals.getFirst().getStart());
-            sb.append(intervals.getLast().getEnd());
+            Iterator<Interval> iter = intervals.iterator();
+            if ( iter.hasNext() ) sb.append(iter.next());
+            while ( iter.hasNext() ) {
+                sb.append(':');
+                sb.append(iter.next());
+            }
             return sb.toString();
         }
     }
 
     @Immutable
-    public static class Interval extends com.github.shyiko.mysql.binlog.GtidSet.Interval {
+    public static class Interval implements Comparable<Interval> {
+
+        private final long start;
+        private final long end;
 
         public Interval(long start, long end) {
-            super(start, end);
+            this.start = start;
+            this.end = end;
+        }
+
+        /**
+         * Get the starting transaction number in this interval.
+         * @return this interval's first transaction number
+         */
+        public long getStart() {
+            return start;
+        }
+
+        /**
+         * Get the ending transaction number in this interval.
+         * @return this interval's last transaction number
+         */
+        public long getEnd() {
+            return end;
         }
 
         /**
@@ -243,6 +274,15 @@ public final class GtidSet {
             if (other == this) return true;
             if (other == null) return false;
             return this.getStart() >= other.getStart() && this.getEnd() <= other.getEnd();
+        }
+        
+        @Override
+        public int compareTo(Interval that) {
+            if ( that == this ) return 0;
+            long diff = this.start - that.start;
+            if ( diff > Integer.MAX_VALUE ) return Integer.MAX_VALUE;
+            if ( diff < Integer.MIN_VALUE ) return Integer.MIN_VALUE;
+            return (int) diff;
         }
 
         @Override

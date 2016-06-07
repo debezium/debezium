@@ -45,15 +45,18 @@ public final class Envelope {
          */
         DELETE("d");
         private final String code;
+
         private Operation(String code) {
             this.code = code;
         }
-        public static Operation forCode( String code ) {
-            for ( Operation op : Operation.values()) {
-                if ( op.code().equalsIgnoreCase(code)) return op;
+
+        public static Operation forCode(String code) {
+            for (Operation op : Operation.values()) {
+                if (op.code().equalsIgnoreCase(code)) return op;
             }
             return null;
         }
+
         public String code() {
             return code;
         }
@@ -81,11 +84,13 @@ public final class Envelope {
          */
         public static final String SOURCE = "source";
         /**
-         * The {@code ts} field is used to store the information about the local time at which the connector processed/generated
-         * the event. Note that the accuracy of the timestamp is not defined, and the values may not always be monotonically
-         * increasing.
+         * The {@code ts_ms} field is used to store the information about the local time at which the connector
+         * processed/generated the event. The timestamp values are the number of milliseconds past epoch (January 1, 1970), and
+         * determined by the {@link System#currentTimeMillis() JVM current time in milliseconds}. Note that the <em>accuracy</em>
+         * of the timestamp value depends on the JVM's system clock and all of its assumptions, limitations, conditions, and
+         * variations.
          */
-        public static final String TIMESTAMP = "ts";
+        public static final String TIMESTAMP = "ts_ms";
     }
 
     /**
@@ -304,6 +309,7 @@ public final class Envelope {
 
     /**
      * Obtain the operation for the given source record.
+     * 
      * @param record the source record; may not be null
      * @return the operation, or null if no valid operation was found in the record
      */

@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -110,7 +111,14 @@ public final class MySqlConnectorTask extends SourceTask {
             } else {
                 // We are allowed to use snapshots, and that is the best way to start ...
                 startWithSnapshot = true;
+                // The snapshot will determine if GTIDs are set
             }
+        }
+
+        if (!startWithSnapshot && source.gtidSet() == null && isGtidModeEnabled()) {
+            // The snapshot will properly determine the GTID set, but we're not starting with a snapshot and GTIDs were not
+            // previously used but the MySQL server has them enabled ...
+            source.setGtidSet("");
         }
 
         // Set up the readers ...
@@ -174,6 +182,25 @@ public final class MySqlConnectorTask extends SourceTask {
      * @return {@code true} if the server has the binlog coordinates, or {@code false} otherwise
      */
     protected boolean isBinlogAvailable() {
+        String gtidStr = taskContext.source().gtidSet();
+        if ( gtidStr != null) {
+            if ( gtidStr.trim().isEmpty() ) return true; // start at beginning ...
+            String availableGtidStr = knownGtidSet();
+            if ( availableGtidStr == null || availableGtidStr.trim().isEmpty() ) {
+                // Last offsets had GTIDs but the server does not use them ...
+                logger.info("Connector used GTIDs previously, but MySQL does not know of any GTIDs or they are not enabled");
+                return false;
+            }
+            // GTIDs are enabled, and we used them previously ...
+            GtidSet gtidSet = new GtidSet(gtidStr);
+            GtidSet availableGtidSet = new GtidSet(knownGtidSet());
+            if ( gtidSet.isSubsetOf(availableGtidSet)) {
+                return true;
+            }
+            logger.info("Connector last known GTIDs are {}, but MySQL has {}",gtidSet,availableGtidSet);
+            return false;
+        }
+        
         String binlogFilename = taskContext.source().binlogFilename();
         if (binlogFilename == null) return true; // start at current position
         if (binlogFilename.equals("")) return true; // start at beginning
@@ -181,6 +208,7 @@ public final class MySqlConnectorTask extends SourceTask {
         // Accumulate the available binlog filenames ...
         List<String> logNames = new ArrayList<>();
         try {
+            logger.info("Stop 0: Get all known binlogs from MySQL");
             taskContext.jdbc().query("SHOW BINARY LOGS", rs -> {
                 while (rs.next()) {
                     logNames.add(rs.getString(1));
@@ -191,6 +219,50 @@ public final class MySqlConnectorTask extends SourceTask {
         }
 
         // And compare with the one we're supposed to use ...
-        return logNames.stream().anyMatch(binlogFilename::equals);
+        boolean found = logNames.stream().anyMatch(binlogFilename::equals);
+        if ( !found ) {
+            logger.info("Connector requires binlog file '{}', but MySQL only has {}",binlogFilename,String.join(", ",logNames));
+        }
+        return found;
+    }
+
+    /**
+     * Determine whether the MySQL server has GTIDs enabled.
+     * 
+     * @return {@code false} if the server's {@code gtid_mode} is set and is {@code OFF}, or {@code true} otherwise
+     */
+    protected boolean isGtidModeEnabled() {
+        AtomicReference<String> mode = new AtomicReference<String>("off");
+        try {
+            taskContext.jdbc().query("SHOW GLOBAL VARIABLES LIKE 'GTID_MODE'", rs -> {
+                if (rs.next()) {
+                    mode.set(rs.getString(1));
+                }
+            });
+        } catch (SQLException e) {
+            throw new ConnectException("Unexpected error while connnecting to MySQL and looking at GTID mode: " + e.getMessage());
+        }
+
+        return !"OFF".equalsIgnoreCase(mode.get());
+    }
+
+    /**
+     * Determine the available GTID set for MySQL.
+     * 
+     * @return the string representation of MySQL's GTID sets.
+     */
+    protected String knownGtidSet() {
+        AtomicReference<String> gtidSetStr = new AtomicReference<String>();
+        try {
+            taskContext.jdbc().query("SHOW MASTER STATUS", rs -> {
+                if (rs.next()) {
+                    gtidSetStr.set(rs.getString(5));// GTID set, may be null, blank, or contain a GTID set
+                }
+            });
+        } catch (SQLException e) {
+            throw new ConnectException("Unexpected error while connnecting to MySQL and looking at GTID mode: " + e.getMessage());
+        }
+
+        return gtidSetStr.get();
     }
 }

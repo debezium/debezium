@@ -14,6 +14,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.data.Envelope;
 import io.debezium.document.Document;
 import io.debezium.util.Collect;
 
@@ -26,7 +27,7 @@ import io.debezium.util.Collect;
  * 
  * <pre>
  * {
- *     "db" : "myDatabase"
+ *     "server" : "production-server"
  * }
  * </pre>
  * 
@@ -36,14 +37,40 @@ import io.debezium.util.Collect;
  * 
  * <pre>
  * {
- *         "gtids" = "3E11FA47-71CA-11E1-9E33-C80AA9429562:1-5",
- *         "file" = "mysql-bin.000003",
- *         "pos" = 105586,
- *         "row" = 0
+ *     "server_id": 112233,
+ *     "ts_sec": 1465236179,
+ *     "gtids" = "db58b0ae-2c10-11e6-b284-0242ac110002:1-199",
+ *     "file" = "mysql-bin.000003",
+ *     "pos" = 105586,
+ *     "row" = 0,
+ *     "snapshot": true
  * }
  * </pre>
  * 
- * Note that the "{@code gtid}" field is present only when GTIDs are enabled.
+ * The "{@code gtids}" field only appears in offsets produced when GTIDs are enabled. The "{@code snapshot}" field only appears in
+ * offsets produced when the connector is in the middle of a snapshot. And finally, the "{@code ts}" field contains the
+ * <em>seconds</em> since Unix epoch (since Jan 1, 1970) of the MySQL event; the message {@link Envelope envelopes} also have a
+ * timestamp, but that timestamp is the <em>milliseconds</em> since since Jan 1, 1970.
+ * 
+ * The {@link #struct() source} struct appears in each message envelope and contains MySQL information about the event. It is
+ * a mixture the field from the {@link #partition() partition} (which is renamed in the source to make more sense), most of
+ * the fields from the {@link #offset() offset} (with the exception of {@code gtids}), and, when GTIDs are enabled, the
+ * GTID of the transaction in which the event occurs. Like with the offset, the "{@code snapshot}" field only appears for
+ * events produced when the connector is in the middle of a snapshot. Here's a JSON-like representation of the source for
+ * an event that corresponds to the above partition and offset:
+ * 
+ * <pre>
+ * {
+ *     "name": "production-server",
+ *     "server_id": 112233,
+ *     "ts_sec": 1465236179,
+ *     "gtid": "db58b0ae-2c10-11e6-b284-0242ac110002:199",
+ *     "file": "mysql-bin.000003",
+ *     "pos" = 105586,
+ *     "row": 0,
+ *     "snapshot": true
+ * }
+ * </pre>
  * 
  * @author Randall Hauch
  */
@@ -56,11 +83,12 @@ final class SourceInfo {
 
     public static final String SERVER_NAME_KEY = "name";
     public static final String SERVER_PARTITION_KEY = "server";
-    public static final String GTID_KEY = "gtids";
+    public static final String GTID_SET_KEY = "gtids";
+    public static final String GTID_KEY = "gtid";
     public static final String BINLOG_FILENAME_OFFSET_KEY = "file";
     public static final String BINLOG_POSITION_OFFSET_KEY = "pos";
     public static final String BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY = "row";
-    public static final String TIMESTAMP_KEY = "ts";
+    public static final String TIMESTAMP_KEY = "ts_sec";
     public static final String SNAPSHOT_KEY = "snapshot";
 
     /**
@@ -78,13 +106,14 @@ final class SourceInfo {
                                                      .field(SNAPSHOT_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
                                                      .build();
 
-    private GtidSet binlogGtids;
+    private String gtidSet;
+    private String binlogGtid;
     private String binlogFilename;
     private long binlogPosition = 4;
     private int eventRowNumber = 0;
     private String serverName;
     private long serverId = 0;
-    private long binlogTs = 0;
+    private long binlogTimestampSeconds = 0;
     private Map<String, String> sourcePartition;
     private boolean snapshot = false;
 
@@ -122,11 +151,11 @@ final class SourceInfo {
      */
     public Map<String, ?> offset() {
         Map<String, Object> map = new HashMap<>();
-        if (binlogGtids != null) {
-            map.put(GTID_KEY, binlogGtids.toString());
+        if (serverId != 0) map.put(SERVER_ID_KEY, serverId);
+        if (binlogTimestampSeconds != 0) map.put(TIMESTAMP_KEY, binlogTimestampSeconds);
+        if (gtidSet != null) {
+            map.put(GTID_SET_KEY, gtidSet);
         }
-        if (serverId != 0 ) map.put(SERVER_ID_KEY, serverId);
-        if (binlogTs != 0 ) map.put(TIMESTAMP_KEY, binlogTs);
         map.put(BINLOG_FILENAME_OFFSET_KEY, binlogFilename);
         map.put(BINLOG_POSITION_OFFSET_KEY, binlogPosition);
         map.put(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, eventRowNumber);
@@ -158,13 +187,14 @@ final class SourceInfo {
         Struct result = new Struct(SCHEMA);
         result.put(SERVER_NAME_KEY, serverName);
         result.put(SERVER_ID_KEY, serverId);
-        if (binlogGtids != null) {
-            result.put(GTID_KEY, binlogGtids.toString());
+        // Don't put the GTID Set into the struct; only the current GTID is fine ...
+        if (binlogGtid != null) {
+            result.put(GTID_KEY, binlogGtid);
         }
         result.put(BINLOG_FILENAME_OFFSET_KEY, binlogFilename);
         result.put(BINLOG_POSITION_OFFSET_KEY, binlogPosition);
         result.put(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, eventRowNumber);
-        result.put(TIMESTAMP_KEY, binlogTs);
+        result.put(TIMESTAMP_KEY, binlogTimestampSeconds);
         if (isSnapshotInEffect()) {
             result.put(SNAPSHOT_KEY, true);
         }
@@ -193,12 +223,23 @@ final class SourceInfo {
     }
 
     /**
-     * Set the GTID range for the MySQL binary log file.
+     * Set the latest GTID from the MySQL binary log file.
      * 
-     * @param gtids the string representation of the binlog GTIDs; may not be null
+     * @param gtid the string representation of a specific GTID; may not be null
      */
-    public void setGtids(String gtids) {
-        this.binlogGtids = gtids != null && !gtids.trim().isEmpty() ? new GtidSet(gtids) : null;
+    public void setGtid(String gtid) {
+        this.binlogGtid = gtid;
+    }
+
+    /**
+     * Set the set of GTIDs known to the MySQL server.
+     * 
+     * @param gtidSet the string representation of GTID set; may not be null
+     */
+    public void setGtidSet(String gtidSet) {
+        if (gtidSet != null && !gtidSet.trim().isEmpty()) {
+            this.gtidSet = gtidSet;
+        }
     }
 
     /**
@@ -239,12 +280,12 @@ final class SourceInfo {
     }
 
     /**
-     * Set the timestamp as found within the MySQL binary log file.
+     * Set the number of <em>seconds</em> since Unix epoch (January 1, 1970) as found within the MySQL binary log file.
      * 
-     * @param timestamp the timestamp found within the binary log file
+     * @param timestampInSeconds the timestamp in <em>seconds</em> found within the binary log file
      */
-    public void setBinlogTimestamp(long timestamp) {
-        this.binlogTs = timestamp;
+    public void setBinlogTimestampSeconds(long timestampInSeconds) {
+        this.binlogTimestampSeconds = timestampInSeconds / 1000;
     }
 
     /**
@@ -270,7 +311,7 @@ final class SourceInfo {
     public void setOffset(Map<String, ?> sourceOffset) {
         if (sourceOffset != null) {
             // We have previously recorded an offset ...
-            setGtids((String) sourceOffset.get(GTID_KEY)); // may be null
+            setGtidSet((String) sourceOffset.get(GTID_SET_KEY)); // may be null
             binlogFilename = (String) sourceOffset.get(BINLOG_FILENAME_OFFSET_KEY);
             if (binlogFilename == null) {
                 throw new ConnectException("Source offset '" + BINLOG_FILENAME_OFFSET_KEY + "' parameter is missing");
@@ -297,7 +338,7 @@ final class SourceInfo {
      * @return the string representation of the binlog GTID ranges; may be null
      */
     public String gtidSet() {
-        return this.binlogGtids != null ? this.binlogGtids.toString() : null;
+        return this.gtidSet != null ? this.gtidSet.toString() : null;
     }
 
     /**
@@ -340,9 +381,9 @@ final class SourceInfo {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        if (binlogGtids != null) {
+        if (gtidSet != null) {
             sb.append("GTIDs ");
-            sb.append(binlogGtids);
+            sb.append(gtidSet);
             sb.append(" and binlog file '").append(binlogFilename).append("'");
             sb.append(", pos=").append(binlogPosition());
             sb.append(", row=").append(eventRowNumber());
@@ -379,17 +420,17 @@ final class SourceInfo {
      * @return {@code true} if the recorded position is at or before the desired position; or {@code false} otherwise
      */
     public static boolean isPositionAtOrBefore(Document recorded, Document desired) {
-        String recordedGtidSetStr = recorded.getString(GTID_KEY);
-        String desiredGtidSetStr = desired.getString(GTID_KEY);
+        String recordedGtidSetStr = recorded.getString(GTID_SET_KEY);
+        String desiredGtidSetStr = desired.getString(GTID_SET_KEY);
         if (desiredGtidSetStr != null) {
             // The desired position uses GTIDs, so we ideally compare using GTIDs ...
             if (recordedGtidSetStr != null) {
                 // Both have GTIDs, so base the comparison entirely on the GTID sets.
                 GtidSet recordedGtidSet = new GtidSet(recordedGtidSetStr);
                 GtidSet desiredGtidSet = new GtidSet(desiredGtidSetStr);
-                if ( recordedGtidSet.equals(desiredGtidSet)) {
+                if (recordedGtidSet.equals(desiredGtidSet)) {
                     // They are exactly the same, which means the recorded position exactly matches the desired ...
-                    if ( !recorded.has(SNAPSHOT_KEY) && desired.has(SNAPSHOT_KEY)) {
+                    if (!recorded.has(SNAPSHOT_KEY) && desired.has(SNAPSHOT_KEY)) {
                         // the desired is in snapshot mode, but the recorded is not. So the recorded is *after* the desired ...
                         return false;
                     }
@@ -414,35 +455,35 @@ final class SourceInfo {
         }
 
         // Both positions are missing GTIDs. Look at the servers ...
-        int recordedServerId = recorded.getInteger(SERVER_ID_KEY,0);
-        int desiredServerId = recorded.getInteger(SERVER_ID_KEY,0);
-        if ( recordedServerId != desiredServerId ) {
+        int recordedServerId = recorded.getInteger(SERVER_ID_KEY, 0);
+        int desiredServerId = recorded.getInteger(SERVER_ID_KEY, 0);
+        if (recordedServerId != desiredServerId) {
             // These are from different servers, and their binlog coordinates are not related. So the only thing we can do
             // is compare timestamps, and we have to assume that the server timestamps can be compared ...
-            long recordedTimestamp = recorded.getLong(TIMESTAMP_KEY,0);
-            long desiredTimestamp = recorded.getLong(TIMESTAMP_KEY,0);
+            long recordedTimestamp = recorded.getLong(TIMESTAMP_KEY, 0);
+            long desiredTimestamp = recorded.getLong(TIMESTAMP_KEY, 0);
             return recordedTimestamp <= desiredTimestamp;
         }
-        
+
         // First compare the MySQL binlog filenames that include the numeric suffix and therefore are lexicographically
         // comparable ...
         String recordedFilename = recorded.getString(BINLOG_FILENAME_OFFSET_KEY);
         String desiredFilename = desired.getString(BINLOG_FILENAME_OFFSET_KEY);
         assert recordedFilename != null;
         int diff = recordedFilename.compareToIgnoreCase(desiredFilename);
-        if ( diff > 0 ) return false;
+        if (diff > 0) return false;
 
         // The filenames are the same, so compare the positions ...
         int recordedPosition = recorded.getInteger(BINLOG_POSITION_OFFSET_KEY, -1);
         int desiredPosition = desired.getInteger(BINLOG_POSITION_OFFSET_KEY, -1);
         diff = recordedPosition - desiredPosition;
-        if ( diff > 0 ) return false;
-        
+        if (diff > 0) return false;
+
         // The positions are the same, so compare the row number ...
         int recordedRow = recorded.getInteger(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, -1);
         int desiredRow = desired.getInteger(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, -1);
         diff = recordedRow - desiredRow;
-        if ( diff > 0 ) return false;
+        if (diff > 0) return false;
 
         // The binlog coordinates are the same ...
         return true;
