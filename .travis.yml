@@ -20,7 +20,7 @@ after_install:
   - docker ps -a
 
 script: 
-  - mvn clean install -DskipLongRunningTests=false
+  - mvn clean install -Passembly
 
 notifications:
   webhooks:
