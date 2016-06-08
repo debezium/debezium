@@ -79,10 +79,13 @@
         work on all platforms. We'll set some of these as system properties during integration testing.
         -->
         <database.port>3306</database.port>
+        <database.gtid.port>3306</database.gtid.port>
+        <database.alt.port>3306</database.alt.port>
         <database.user>mysqluser</database.user>
         <database.password>mysqlpw</database.password>
         <!--
         By default, we should use the docker image maintained by the MySQL team. This property is changed with different profiles.
+        However, we run one container with GTIDs and one without.
         -->
         <docker.image>debezium/mysql-server-test-databases</docker.image>
         <docker.skip>false</docker.skip>
@@ -148,7 +151,7 @@
                   <image>
                     <!-- A Docker image using a partial MySQL installation maintained by MySQL team. -->
                     <name>debezium/mysql-server-gtids-test-databases</name>
-                    <alias>database</alias>
+                    <alias>database-gtids</alias>
                     <run>
                       <namingStrategy>alias</namingStrategy>
                       <env>
@@ -158,12 +161,12 @@
                         <MYSQL_PASSWORD>${database.password}</MYSQL_PASSWORD>
                       </env>
                       <ports>
-                        <port>${database.port}:3306</port>
+                        <port>${database.gtid.port}:3306</port>
                       </ports>
                       <log>
-                        <prefix>mysql</prefix>
+                        <prefix>mysql-gtids</prefix>
                         <enabled>true</enabled>
-                        <color>yellow</color>
+                        <color>cyan</color>
                       </log>
                       <wait>
                         <log>MySQL init process done. Ready for start up.</log>
@@ -195,7 +198,7 @@
                   <image>
                     <!-- A Docker image using a complete MySQL installation maintained by Docker team. -->
                     <name>debezium/mysql-test--databases</name>
-                    <alias>database</alias>
+                    <alias>database-alt</alias>
                     <run>
                       <namingStrategy>alias</namingStrategy>
                       <env>
@@ -205,15 +208,15 @@
                         <MYSQL_PASSWORD>${database.password}</MYSQL_PASSWORD>
                       </env>
                       <ports>
-                        <port>${database.port}:3306</port>
+                        <port>${database.alt.port}:3306</port>
                       </ports>
                       <log>
                         <prefix>alt-mysql</prefix>
                         <enabled>true</enabled>
-                        <color>yellow</color>
+                        <color>magenta</color>
                       </log>
                       <wait>
-                        <log>Version: \'5\.7\.11-log\'  socket: \'/var/run/mysqld/mysqld\.sock\'  port: 3306  MySQL Community Server \(GPL\)</log>
+                        <log>socket: \'/var/run/mysqld/mysqld\.sock\'  port: 3306  MySQL Community Server \(GPL\)</log>
                         <time>30000</time>
                       </wait>
                     </run>
@@ -325,11 +328,27 @@
     Define several useful profiles
     -->
     <profiles>
+        <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+              This assembly profile is used during official builds. In addition to 
+              compiling, and running the unit and integration tests like the non-assembly
+              profiles, this provfile creates additional (like the connector plugin archives),
+              starts up all three Docker containers (normal MySQL, MySQL+GTIDs, and alt-MySQL)
+              and runs the integration tests against each of them.
+
+              To use, specify "-Passembly" on the Maven command line.
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
         <profile>
             <id>assembly</id>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
+            <properties>
+              <!-- Run multiple images at the same time, but use different ports for all MySQL servers -->
+              <docker.image>debezium/mysql-server-test-databases,debezium/mysql-server-gtids-test-databases,debezium/mysql-test--databases</docker.image>
+              <database.port>3306</database.port>
+              <database.gtid.port>4306</database.gtid.port>
+              <database.alt.port>5306</database.alt.port>
+            </properties>
             <build>
                 <plugins>
                     <plugin>
@@ -358,6 +377,62 @@
                                 </configuration>
                             </execution>
                         </executions>
+                    </plugin>
+                    <!-- Override the failsafe plugin to run the integration tests twice -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <executions>
+                            <!-- First run the integration tests with the non-GTID server -->
+                            <execution>
+                                <id>integration-test-mysql</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                </goals>
+                            </execution>
+                            <!-- Then run the integration tests with the GTID server on different port -->
+                            <execution>
+                                <id>integration-test-mysql-gtids</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                </goals>
+                                <configuration>
+                                    <systemPropertyVariables>
+                                        <database.port>${database.gtid.port}</database.port>
+                                    </systemPropertyVariables>
+                                </configuration>
+                            </execution>
+                            <!-- Then run the integration tests with the Docker's MySQL server (without GTIDs) on different port -->
+                            <execution>
+                                <id>integration-test-alt-mysql</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                </goals>
+                                <configuration>
+                                    <systemPropertyVariables>
+                                        <database.port>${database.alt.port}</database.port>
+                                    </systemPropertyVariables>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>verify</id>
+                                <goals>
+                                    <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <skipTests>${skipITs}</skipTests>
+                            <enableAssertions>true</enableAssertions>
+                            <systemPropertyVariables>
+                                <!-- Make these available to the tests via system properties -->
+                                <database.hostname>${docker.host.address}</database.hostname>
+                                <database.port>${database.port}</database.port>
+                                <database.user>${database.user}</database.user>
+                                <database.password>${database.password}</database.password>
+                                <skipLongRunningTests>false</skipLongRunningTests>
+                            </systemPropertyVariables>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>
@@ -393,7 +468,6 @@
         </activation>
         <properties>
           <docker.image>debezium/mysql-test--databases</docker.image>
-          <docker.skip>false</docker.skip>
         </properties>
       </profile>
       <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -410,7 +484,6 @@
         </activation>
         <properties>
           <docker.image>debezium/mysql-server-gtids-test-databases</docker.image>
-          <docker.skip>false</docker.skip>
         </properties>
       </profile>
     </profiles>
