@@ -172,3 +172,24 @@ VALUES (default, '2016-01-16', 1001, 1, 102),
        (default, '2016-02-18', 1004, 3, 109),
        (default, '2016-02-19', 1002, 2, 106),
        (default, '2016-02-21', 1003, 1, 107);
+
+
+
+# ----------------------------------------------------------------------------------------------------------------
+# DATABASE:  regression_test
+# ----------------------------------------------------------------------------------------------------------------
+# The integration test for this database expects to scans all of the binlog events associated with this database
+# without error or problems. The integration test does not modify any records in this database, so this script
+# must contain all operations to these tables.
+#
+CREATE DATABASE regression_test;
+USE regression_test;
+
+# DBZ-61 handle binary value recorded as hex string value
+CREATE TABLE t1464075356413_testtable6 (
+  pk_column int auto_increment NOT NULL,
+  varbinary_col varbinary(20) NOT NULL,
+  PRIMARY KEY(pk_column)
+);
+INSERT INTO t1464075356413_testtable6 (pk_column, varbinary_col)
+VALUES(default, 0x4D7953514C)
