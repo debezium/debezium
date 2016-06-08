@@ -22,7 +22,7 @@ A *unit test* is a JUnit test class named `*Test.java` or `Test*.java` that neve
 
 An *integration test* is a JUnit test class named `*IT.java` or `IT*.java` that uses a MySQL database server running in a custom Docker container based upon the [mysql/mysql-server:5.7](https://hub.docker.com/r/mysql/mysql-server/) Docker image maintained by the MySQL team. The build will automatically start the MySQL container before the integration tests are run and automatically stop and remove it after all of the integration tests complete (regardless of whether they suceed or fail). All databases used in the integration tests are defined and populated using `*.sql` files and `*.sh` scripts in the `src/test/docker/init` directory, which are copied into the Docker image and run in lexicographical order by MySQL upon startup. Multiple test methods within a single integration test class can reuse the same database, but generally each integration test class should use its own dedicated database(s).
 
-Running `mvn install` will compile all code and run the unit tests. If there are any compile problems or any of the unit tests fail, the build will stop immediately. Otherwise, the command will continue to create the module's artifacts, create the Docker image with MySQL and custom scripts, start the Docker container, run the integration tests, stop the container (even if there are integration test failures), and run checkstyle on the code. If there are still no problems, the build will then install the module's artifacts into the local Maven repository.
+Running `mvn install` will compile all code and run the unit and integration tests. If there are any compile problems or any of the unit tests fail, the build will stop immediately. Otherwise, the command will continue to create the module's artifacts, create the Docker image with MySQL and custom scripts, start the Docker container, run the integration tests, stop the container (even if there are integration test failures), and run checkstyle on the code. If there are still no problems, the build will then install the module's artifacts into the local Maven repository.
 
 You should always default to using `mvn install`, especially prior to committing changes to Git. However, there are a few situations where you may want to run a different Maven command.
 
@@ -56,14 +56,10 @@ For example, you can define these properties by passing these arguments to the J
 
     -Ddatabase.dbname=<DATABASE_NAME> -Ddatabase.hostname=<DOCKER_HOST> -Ddatabase.port=3306 -Ddatabase.user=mysqluser -Ddatabase.password=mysqlpw
 
-When you are finished running the integration tests from your IDE, you have to stop and remove the Docker container (conveniently named "database") before you can run the next build:
+When you are finished running the integration tests from your IDE, you have to stop and remove the Docker container before you can run the next build:
 
     $ mvn docker:stop
 
-or using Docker directly:
-
-    $ docker stop database
-    $ docker rm database
 
 Please note that when running the MySQL database Docker container, the output is written to the Maven build output and includes several lines with `[Warning] Using a password on the command line interface can be insecure.` You can ignore these warnings, since we don't need a secure database server for our transient database testing.
 
@@ -75,14 +71,23 @@ Sometimes you may want to inspect the state of the database(s) after one or more
 
 ### Stopping the Docker container
 
-This instructs Maven to run the normal Maven lifecycle through `integration-test`, and to stop before the `post-integration-test` phase when the Docker container is normally shut down and removed. Be aware that you will need to manually stop and remove the container (conveniently named "database") before running the build again:
+This instructs Maven to run the normal Maven lifecycle through `integration-test`, and to stop before the `post-integration-test` phase when the Docker container is normally shut down and removed. Be aware that you will need to manually stop and remove the container before running the build again:
 
     $ mvn docker:stop
 
-or using Docker directly:
+### Using MySQL with GTIDs
 
-    $ docker stop database
-    $ docker rm database
+By default the build will run a MySQL server instance that is not configured to use GTIDs. However, we've provided a Maven profile that will instead run all the same integration tests against a MySQL instance that does use GTIDs. Simply use the `gtid-mysql` profile on each of your normal Maven commands. For example, to run a build:
+
+    $ mvn clean install -Pgtid-mysql
+
+or to manually start the Docker container and keep it running:
+
+    $ mvn docker:start -Pgtid-mysql
+
+or to stop and remove the Docker container:
+
+    $ mvn docker:stop -Pgtid-mysql
 
 ### Using an alternative MySQL Server
 
@@ -101,4 +106,9 @@ or to manually start the Docker container and keep it running:
 or to stop and remove the Docker container:
 
     $ mvn docker:start -Palt-mysql
+
+### Testing all MySQL configurations
+
+In Debezium builds, the `assembly` profile is used when issuing a release or in our continuous integration builds. In addition to the normal steps, it also creates several additional artifacts (including the connector plugin's ZIP and TAR archives) and runs the whole
+integration test suite once for _each_ of the MySQL configurations. If you want to make sure that your changes work on all MySQL configurations, add `-Passembly` to your Maven commands.
 
