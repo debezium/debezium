@@ -29,6 +29,7 @@ import io.debezium.util.Testing;
 public class MySqlSchemaTest {
 
     private static final Path TEST_FILE_PATH = Testing.Files.createTestingPath("dbHistory.log");
+    private static final String SERVER_NAME = "test-server";
 
     private Configurator build;
     private MySqlSchema mysql;
@@ -55,7 +56,7 @@ public class MySqlSchemaTest {
 
     @Test
     public void shouldApplyDdlStatementsAndRecover() {
-        mysql = build.storeDatabaseHistoryInFile(TEST_FILE_PATH).createSchemas();
+        mysql = build.storeDatabaseHistoryInFile(TEST_FILE_PATH).serverName(SERVER_NAME).createSchemas();
         mysql.start();
 
         // Testing.Print.enable();
@@ -74,6 +75,7 @@ public class MySqlSchemaTest {
     @Test
     public void shouldLoadSystemAndNonSystemTablesAndConsumeOnlyFilteredDatabases() {
         mysql = build.storeDatabaseHistoryInFile(TEST_FILE_PATH)
+                .serverName(SERVER_NAME)
                      .includeDatabases("connector_test")
                      .excludeBuiltInTables()
                      .createSchemas();
@@ -99,6 +101,7 @@ public class MySqlSchemaTest {
     @Test
     public void shouldLoadSystemAndNonSystemTablesAndConsumeAllDatabases() {
         mysql = build.storeDatabaseHistoryInFile(TEST_FILE_PATH)
+                     .serverName(SERVER_NAME)
                      .includeDatabases("connector_test")
                      .includeBuiltInTables()
                      .createSchemas();
@@ -124,7 +127,10 @@ public class MySqlSchemaTest {
     protected void assertTableIncluded(String fullyQualifiedTableName) {
         TableId tableId = TableId.parse(fullyQualifiedTableName);
         assertThat(mysql.tables().forTable(tableId)).isNotNull();
-        assertThat(mysql.schemaFor(tableId)).isNotNull();
+        TableSchema tableSchema = mysql.schemaFor(tableId);
+        assertThat(tableSchema).isNotNull();
+        assertThat(tableSchema.keySchema().name()).isEqualTo(SERVER_NAME + "." + fullyQualifiedTableName + ".Key");
+        assertThat(tableSchema.valueSchema().name()).isEqualTo(SERVER_NAME + "." + fullyQualifiedTableName + ".Value");
     }
 
     protected void assertTableExcluded(String fullyQualifiedTableName) {

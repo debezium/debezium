@@ -63,6 +63,7 @@ public class MySqlSchema {
     private final TableSchemaBuilder schemaBuilder;
     private final DdlChanges ddlChanges;
     private final String serverName;
+    private final String schemaPrefix;
     private Tables tables;
 
     /**
@@ -78,7 +79,13 @@ public class MySqlSchema {
         this.ddlChanges = new DdlChanges(this.ddlParser.terminator());
         this.ddlParser.addListener(ddlChanges);
         this.schemaBuilder = new TableSchemaBuilder();
+        if ( serverName != null ) serverName = serverName.trim();
         this.serverName = serverName;
+        if ( this.serverName == null || serverName.isEmpty() ) {
+            this.schemaPrefix = "";
+        } else {
+            this.schemaPrefix = serverName.endsWith(".") ? serverName : serverName + ".";
+        }
 
         // Create and configure the database history ...
         this.dbHistory = config.getInstance(MySqlConnectorConfig.DATABASE_HISTORY, DatabaseHistory.class);
@@ -253,7 +260,7 @@ public class MySqlSchema {
         // Create TableSchema instances for any existing table ...
         this.tables.tableIds().forEach(id -> {
             Table table = this.tables.forTable(id);
-            TableSchema schema = schemaBuilder.create(serverName,table, filters.columnFilter(), filters.columnMappers());
+            TableSchema schema = schemaBuilder.create(schemaPrefix, table, filters.columnFilter(), filters.columnMappers());
             tableSchemaByTableId.put(id, schema);
         });
     }
@@ -323,7 +330,7 @@ public class MySqlSchema {
             if (table == null) { // removed
                 tableSchemaByTableId.remove(tableId);
             } else {
-                TableSchema schema = schemaBuilder.create(serverName, table, filters.columnFilter(), filters.columnMappers());
+                TableSchema schema = schemaBuilder.create(schemaPrefix, table, filters.columnFilter(), filters.columnMappers());
                 tableSchemaByTableId.put(tableId, schema);
             }
         });
