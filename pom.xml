@@ -62,7 +62,7 @@
         <version.postgresql.driver>9.4-1205-jdbc42</version.postgresql.driver>
         <version.postgresql.server>9.4</version.postgresql.server>
         <version.mysql.server>5.7</version.mysql.server>
-        <version.mysql.driver>5.1.38</version.mysql.driver>
+        <version.mysql.driver>5.1.39</version.mysql.driver>
         <version.mysql.binlog>0.3.1</version.mysql.binlog>
 
         <!-- Testing -->
