@@ -30,6 +30,10 @@ public class Configurator {
         return this;
     }
 
+    public Configurator serverName(String serverName) {
+        return with(MySqlConnectorConfig.SERVER_NAME, serverName);
+    }
+
     public Configurator includeDatabases(String regexList) {
         return with(MySqlConnectorConfig.DATABASE_WHITELIST, regexList);
     }
