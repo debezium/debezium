@@ -79,25 +79,80 @@ This performs the following steps:
 3. push those artifacts into a staging repository at Maven Central; and
 4. close the staging repository
 
-At this point, the staging repository contains all the artifacts for the release, and we need to check that they are valid. Only then can we release the artfifacts.
+At this point, the staging repository contains all the artifacts for the release, and we need to check that they are valid. The staging repository has already been _closed_ (meaning nothing more can be pushed to the staging repository), but it hasn't yet been _released_ (when its contents get uploaded into Maven Central).
+
+Before we _release_ the staging repository, we need to first need to review and verify the artifacts.
+
+### Reviewing the staged artifacts
+
+Go to Sonotype's Nexus Repository Manager at https://oss.sonatype.org/ and log in with an account that has privilege to release Debezium artifacts. In the left hand panel, click on the "Staging Repositories". Then type "debezium" in the search box to locate the staging repository, which should be _closed_ but not _released_. 
+
+Select the staging repository to see the details, including the staging repository's URL, in the lower portion of the window. Briefly navigate the staged repository contents to verify all modules exist and have the proper versions. You can even look at the POM files or view the details of a file (including its SHA1 and MD5 hash values) using this tool.
+
+Before continuing, using this lower frame of the window to collect the following pieces of information:
+
+* In the "Settings" tab, locate the URL of the staging repository, which might look something like this: `https://oss.sonatype.org/content/repositories/iodebezium-1002`
+* In the "Content" tab, navigate to, select, and obtain the MD5 hash of the `...-plugin.tar.gz` file for each connector. (Do _not_ select the `...-plugin.tar.gz.md5` file, since the Repository Manager does not show the contents of the file.)
+
+### Validating the staged artifacts
+
+At this time, the best way to verify the staged artifacts are valid is to locally update the [Debezium Docker images](https://github.com/debezium/docker-images) used in the [Debezium tutorial](http://debezium.io/docs/tutorial) to use the latest connector plugins, and then to run through tutorial using those locally-built Docker images.
+
+This [GitHub repository](https://github.com/debezium/docker-images) containing the Docker images contains separate Dockerfiles for each major and minor release of Debezium. Start by checking out and getting the latest commits from the [Debezium Docker images](https://github.com/debezium/docker-images) repository and creating a topic branch (using an appropriate branch name):
+
+    $ git checkout master
+    $ git pull upstream master
+    $ git checkout -b <branch-name>
+
+For Debezium patch releases, we simply update the Dockerfiles that correspond to the minor release's parent. For example, when 0.2 was released, we created new Docker images by copying and updating the images from 0.1. However, when 0.2.1 was released, we simply updated the 0.2 Docker images.
+
+Currently, the only Docker image that contains Debezium code is the [Connect service image](https://github.com/debezium/docker-images/connect), which means this is the only Dockerfile that you will need to change to point to the Maven staging repository. To do this, edit the Dockerfile for the Connect service, and:
+
+* change the `DEBEZIUM_VERSION` environment variable value to match the _major.minor.patch_ version number for the release (e.g., `0.2.1`)
+* temporarily replace the Maven Central repository URL with that URL of the staging repository created in [Perform the Release](#perform-the-release), which again looks something like `https://oss.sonatype.org/content/repositories/iodebezium-1002`.
+* update the MD5 literal string used to check the `...-plugin.tar.gz` file
+
+After all of the Docker files have been created or updated, go to the top of your local Git repository and run the following command to build the Docker images:
+
+    $ ./build-debezium.sh 0.2
+
+or using the correct Debezium version. After this successfully builds the images, run through the tutorial, being sure to use the same Docker image label (e.g., `0.2`) that you just built.
+
+When the tutorial can be successfully run with the new version, edit the Dockerfile for the Connect service to again use the official Maven Central repository URL. You can commit the changes locally 
+
+    $ git commit -m "Updated Docker images for release 0.2.1" .
+    $ git push origin <branch-name>
+    
+and create a new pull request (or if rerunning the release process update your existing pull request), but do not merge the pull request yet.
+
+If you discover any problems, log issues for the problems and fix them in the code base. Then start this process over from the beginning (though you can force-update the changes to your still-unmerged pull request for the Docker images.
+
+#### Updating the Java version
+
+If you need to update the base Docker image for the JDK to use a different JDK version, then:
+
+1. create a new folder under `jdk8` for the new Java versoin by copying the folder for the most recent existing JDK version,
+2. edit the Dockerfile to use the specific version of the JDK and save the file,
+3. run the `./build-java.sh` script to locally build the new `debezium/jdk:<version>` Docker image,
+4. update all of the Docker images for Zookeeper, Kafka, and Debezium services to use the new base image,
+5. re-run the `./build-debezium.sh <version>` command to make sure everything builds,
+6. commit the changes locally and add to your still-unmerged pull request.
 
 ## Releasing the artifacts
 
-Go to Sonotype's Nexus Repository Manager at https://oss.sonatype.org/ and log in with an account that has privilege to release Debezium artifacts. In the left hand panel, click on the "Staging Repositories". Then type "debezium" in the search box to locate the recently-closed staging repository.
+Once you have verified that the artifacts in the staging repository are acceptable, the next step is to _release_ the staging repository so that its artfacts are then pushed into the Maven Central repository.
+
+Go back to Sonotype's Nexus Repository Manager at https://oss.sonatype.org/ and log in with an account that has privilege to release Debezium artifacts. In the left hand panel, click on the "Staging Repositories". Then type "debezium" in the search box to locate the closed staging repository that you've verified.
 
 Select the staging repository (by checking the box) and press the "Release" button. Enter a description in the dialog box, and press "OK" to release the artifacts to Maven Central. You may need to press the "Refresh" button a few times until the staging repository disappears.
 
-It may take some time for the artifacts to actually be [visible in Maven Central](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22io.debezium%22).
+It may take some time for the artifacts to actually be [visible in Maven Central search](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22io.debezium%22) or [directly in Maven Central](https://repo1.maven.org/maven2/io/debezium/debezium-core/).
 
-## Update the Docker images
+## Merge your pull request to update the Docker images
 
-Once the artifacts are available on Maven Central, check out and get the latest commits from the [Debezium Docker images](https://github.com/debezium/docker-images) repository:
+Only after the artifacts are available on Maven Central can you merge the pull request for the Debezium Docker images. As soon as your changes are merged, Docker Hub will automatically build and deploy the Docker images that were previously configured. If you've just released a patch release and only updated existing Docker images, then you can proceed to [updating the documentation and blog](#update-the-documentation-and-blog).
 
-    $ git pull upstream
-
-Create a topic branch and add new Docker images that use the latest release. For major and minor releases, be sure to create new versions of the images rather than update old images.
-
-When you're changes are complete, simply create a pull-request to the [Debezium Docker images](https://github.com/debezium/docker-images) repository as usual. When that pull request is merged Docker Hub will automatically build the images and make them available on our [Debezium Docker Hub](https://hub.docker.com/r/debezium/).
+Otherwise, for major and minor releases your pull request should have added new Docker images, and you need to log into [Debezium's Docker Hub organization](https://hub.docker.com/r/debezium/) and add/update the build settings for each of the affected images.
 
 ## Update the documentation and blog
 
