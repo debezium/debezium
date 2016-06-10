@@ -4,7 +4,7 @@ All notable changes are documented in this file. Release numbers follow [Semanti
 
 ## 0.2.1
 
-June 10, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12329465)
+June 10, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12330752)
 
 ### Backwards-incompatible changes
 
