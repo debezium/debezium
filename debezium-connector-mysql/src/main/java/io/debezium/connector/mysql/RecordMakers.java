@@ -7,7 +7,6 @@ package io.debezium.connector.mysql;
 
 import java.util.BitSet;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -152,7 +151,8 @@ public class RecordMakers {
      */
     public boolean assign(long tableNumber, TableId id) {
         Long existingTableNumber = tableNumbersByTableId.get(id);
-        if ( existingTableNumber != null && existingTableNumber.longValue() == tableNumber && convertersByTableNumber.containsKey(tableNumber)) {
+        if (existingTableNumber != null && existingTableNumber.longValue() == tableNumber
+                && convertersByTableNumber.containsKey(tableNumber)) {
             // This is the exact same table number for the same table, so do nothing ...
             return true;
         }
@@ -171,7 +171,7 @@ public class RecordMakers {
         Converter converter = new Converter() {
 
             @Override
-            public int read(SourceInfo source, Object[] row, int rowNumber, BitSet includedColumns, long ts,
+            public int read(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
                             BlockingConsumer<SourceRecord> consumer)
                     throws InterruptedException {
                 Object key = tableSchema.keyFromColumnData(row);
@@ -179,7 +179,7 @@ public class RecordMakers {
                 if (value != null || key != null) {
                     Schema keySchema = tableSchema.keySchema();
                     Map<String, ?> partition = source.partition();
-                    Map<String, ?> offset = source.offset(rowNumber);
+                    Map<String, ?> offset = source.offset(rowNumber, numberOfRows);
                     Struct origin = source.struct();
                     SourceRecord record = new SourceRecord(partition, offset, topicName, partitionNum,
                             keySchema, key, envelope.schema(), envelope.read(value, origin, ts));
@@ -190,7 +190,7 @@ public class RecordMakers {
             }
 
             @Override
-            public int insert(SourceInfo source, Object[] row, int rowNumber, BitSet includedColumns, long ts,
+            public int insert(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
                               BlockingConsumer<SourceRecord> consumer)
                     throws InterruptedException {
                 Object key = tableSchema.keyFromColumnData(row);
@@ -198,7 +198,7 @@ public class RecordMakers {
                 if (value != null || key != null) {
                     Schema keySchema = tableSchema.keySchema();
                     Map<String, ?> partition = source.partition();
-                    Map<String, ?> offset = source.offset(rowNumber);
+                    Map<String, ?> offset = source.offset(rowNumber, numberOfRows);
                     Struct origin = source.struct();
                     SourceRecord record = new SourceRecord(partition, offset, topicName, partitionNum,
                             keySchema, key, envelope.schema(), envelope.create(value, origin, ts));
@@ -209,7 +209,7 @@ public class RecordMakers {
             }
 
             @Override
-            public int update(SourceInfo source, Object[] before, Object[] after, int rowNumber, BitSet includedColumns, long ts,
+            public int update(SourceInfo source, Object[] before, Object[] after, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
                               BlockingConsumer<SourceRecord> consumer)
                     throws InterruptedException {
                 int count = 0;
@@ -220,7 +220,7 @@ public class RecordMakers {
                     Struct valueBefore = tableSchema.valueFromColumnData(before);
                     Schema keySchema = tableSchema.keySchema();
                     Map<String, ?> partition = source.partition();
-                    Map<String, ?> offset = source.offset(rowNumber);
+                    Map<String, ?> offset = source.offset(rowNumber, numberOfRows);
                     Struct origin = source.struct();
                     if (key != null && !Objects.equals(key, oldKey)) {
                         // The key has indeed changed, so first send a create event ...
@@ -251,7 +251,7 @@ public class RecordMakers {
             }
 
             @Override
-            public int delete(SourceInfo source, Object[] row, int rowNumber, BitSet includedColumns, long ts,
+            public int delete(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
                               BlockingConsumer<SourceRecord> consumer)
                     throws InterruptedException {
                 int count = 0;
@@ -260,7 +260,7 @@ public class RecordMakers {
                 if (value != null || key != null) {
                     Schema keySchema = tableSchema.keySchema();
                     Map<String, ?> partition = source.partition();
-                    Map<String, ?> offset = source.offset(rowNumber);
+                    Map<String, ?> offset = source.offset(rowNumber, numberOfRows);
                     Struct origin = source.struct();
                     // Send a delete message ...
                     SourceRecord record = new SourceRecord(partition, offset, topicName, partitionNum,
@@ -275,7 +275,7 @@ public class RecordMakers {
                 }
                 return count;
             }
-            
+
             @Override
             public String toString() {
                 return "RecordMaker.Converter(" + id + ")";
@@ -307,17 +307,20 @@ public class RecordMakers {
     }
 
     protected static interface Converter {
-        int read(SourceInfo source, Object[] row, int rowNumber, BitSet includedColumns, long ts, BlockingConsumer<SourceRecord> consumer)
+        int read(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
+                 BlockingConsumer<SourceRecord> consumer)
                 throws InterruptedException;
 
-        int insert(SourceInfo source, Object[] row, int rowNumber, BitSet includedColumns, long ts, BlockingConsumer<SourceRecord> consumer)
-                throws InterruptedException;
-
-        int update(SourceInfo source, Object[] before, Object[] after, int rowNumber, BitSet includedColumns, long ts,
+        int insert(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
                    BlockingConsumer<SourceRecord> consumer)
                 throws InterruptedException;
 
-        int delete(SourceInfo source, Object[] row, int rowNumber, BitSet includedColumns, long ts, BlockingConsumer<SourceRecord> consumer)
+        int update(SourceInfo source, Object[] before, Object[] after, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
+                   BlockingConsumer<SourceRecord> consumer)
+                throws InterruptedException;
+
+        int delete(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
+                   BlockingConsumer<SourceRecord> consumer)
                 throws InterruptedException;
 
     }
@@ -346,7 +349,7 @@ public class RecordMakers {
          * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
          */
         public int read(Object[] row, long ts) throws InterruptedException {
-            return read(row, ts, 0);
+            return read(row, ts, 0, 1);
         }
 
         /**
@@ -356,29 +359,12 @@ public class RecordMakers {
          *            {@link MySqlSchema}.
          * @param ts the timestamp for this row
          * @param rowNumber the number of this row; must be 0 or more
+         * @param numberOfRows the total number of rows to be read; must be 1 or more
          * @return the number of records produced; will be 0 or more
          * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
          */
-        public int read(Object[] row, long ts, int rowNumber) throws InterruptedException {
-            return converter.read(source, row, rowNumber, includedColumns, ts, consumer);
-        }
-
-        /**
-         * Produce a {@link io.debezium.data.Envelope.Operation#READ read} record for each of the rows.
-         * 
-         * @param rows the rows, with values in the same order as the columns in the {@link Table} definition in the
-         *            {@link MySqlSchema}.
-         * @param ts the timestamp for this row
-         * @return the number of records produced; will be 0 or more
-         * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
-         */
-        public int readEach(Iterable<? extends Object[]> rows, long ts) throws InterruptedException {
-            int result = 0;
-            int rowNumber = -1;
-            for (Iterator<? extends Object[]> iterator = rows.iterator(); iterator.hasNext();) {
-                result += read(iterator.next(), ts, ++rowNumber);
-            }
-            return result;
+        public int read(Object[] row, long ts, int rowNumber, int numberOfRows) throws InterruptedException {
+            return converter.read(source, row, rowNumber, numberOfRows, includedColumns, ts, consumer);
         }
 
         /**
@@ -391,7 +377,7 @@ public class RecordMakers {
          * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
          */
         public int create(Object[] row, long ts) throws InterruptedException {
-            return create(row, ts, 0);
+            return create(row, ts, 0, 1);
         }
 
         /**
@@ -401,29 +387,12 @@ public class RecordMakers {
          *            {@link MySqlSchema}.
          * @param ts the timestamp for this row
          * @param rowNumber the number of this row; must be 0 or more
+         * @param numberOfRows the total number of rows to be read; must be 1 or more
          * @return the number of records produced; will be 0 or more
          * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
          */
-        public int create(Object[] row, long ts, int rowNumber) throws InterruptedException {
-            return converter.insert(source, row, rowNumber, includedColumns, ts, consumer);
-        }
-
-        /**
-         * Produce a {@link io.debezium.data.Envelope.Operation#CREATE create} record for each of the rows.
-         * 
-         * @param rows the rows, with values in the same order as the columns in the {@link Table} definition in the
-         *            {@link MySqlSchema}.
-         * @param ts the timestamp for this row
-         * @return the number of records produced; will be 0 or more
-         * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
-         */
-        public int createEach(Iterable<? extends Object[]> rows, long ts) throws InterruptedException {
-            int result = 0;
-            int rowNumber = -1;
-            for (Iterator<? extends Object[]> iterator = rows.iterator(); iterator.hasNext();) {
-                result += create(iterator.next(), ts, ++rowNumber);
-            }
-            return result;
+        public int create(Object[] row, long ts, int rowNumber, int numberOfRows) throws InterruptedException {
+            return converter.insert(source, row, rowNumber, numberOfRows, includedColumns, ts, consumer);
         }
 
         /**
@@ -438,7 +407,7 @@ public class RecordMakers {
          * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
          */
         public int update(Object[] before, Object[] after, long ts) throws InterruptedException {
-            return update(before, after, ts, 0);
+            return update(before, after, ts, 0, 1);
         }
 
         /**
@@ -450,11 +419,12 @@ public class RecordMakers {
          *            definition in the {@link MySqlSchema}
          * @param ts the timestamp for this row
          * @param rowNumber the number of this row; must be 0 or more
+         * @param numberOfRows the total number of rows to be read; must be 1 or more
          * @return the number of records produced; will be 0 or more
          * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
          */
-        public int update(Object[] before, Object[] after, long ts, int rowNumber) throws InterruptedException {
-            return converter.update(source, before, after, rowNumber, includedColumns, ts, consumer);
+        public int update(Object[] before, Object[] after, long ts, int rowNumber, int numberOfRows) throws InterruptedException {
+            return converter.update(source, before, after, rowNumber, numberOfRows, includedColumns, ts, consumer);
         }
 
         /**
@@ -467,7 +437,7 @@ public class RecordMakers {
          * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
          */
         public int delete(Object[] row, long ts) throws InterruptedException {
-            return delete(row, ts, 0);
+            return delete(row, ts, 0, 1);
         }
 
         /**
@@ -477,29 +447,12 @@ public class RecordMakers {
          *            {@link MySqlSchema}.
          * @param ts the timestamp for this row
          * @param rowNumber the number of this row; must be 0 or more
+         * @param numberOfRows the total number of rows to be read; must be 1 or more
          * @return the number of records produced; will be 0 or more
          * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
          */
-        public int delete(Object[] row, long ts, int rowNumber) throws InterruptedException {
-            return converter.delete(source, row, rowNumber, includedColumns, ts, consumer);
-        }
-
-        /**
-         * Produce a {@link io.debezium.data.Envelope.Operation#DELETE delete} record for each of the rows.
-         * 
-         * @param rows the rows, with values in the same order as the columns in the {@link Table} definition in the
-         *            {@link MySqlSchema}.
-         * @param ts the timestamp for this row
-         * @return the number of records produced; will be 0 or more
-         * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
-         */
-        public int deleteEach(Iterable<? extends Object[]> rows, long ts) throws InterruptedException {
-            int result = 0;
-            int rowNumber = -1;
-            for (Iterator<? extends Object[]> iterator = rows.iterator(); iterator.hasNext();) {
-                result += delete(iterator.next(), ts, ++rowNumber);
-            }
-            return result;
+        public int delete(Object[] row, long ts, int rowNumber, int numberOfRows) throws InterruptedException {
+            return converter.delete(source, row, rowNumber, numberOfRows, includedColumns, ts, consumer);
         }
     }
 }
