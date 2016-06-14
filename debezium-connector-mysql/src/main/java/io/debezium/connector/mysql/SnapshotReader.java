@@ -186,9 +186,11 @@ public class SnapshotReader extends AbstractReader {
             sql.set("SHOW MASTER STATUS");
             mysql.query(sql.get(), rs -> {
                 if (rs.next()) {
-                    source.setBinlogFilename(rs.getString(1));
-                    source.setBinlogPosition(rs.getLong(2));
-                    source.setGtidSet(rs.getString(5));// GTID set, may be null, blank, or contain a GTID set
+                    String binlogFilename = rs.getString(1);
+                    long binlogPosition = rs.getLong(2);
+                    String gtidSet = rs.getString(5);// GTID set, may be null, blank, or contain a GTID set
+                    source.setBinlogStartPoint(binlogFilename, binlogPosition);
+                    source.setGtidSet(gtidSet);
                     source.startSnapshot();
                 }
             });

@@ -107,7 +107,7 @@ public final class MySqlConnectorTask extends SourceTask {
             if (taskContext.isSnapshotNeverAllowed()) {
                 // We're not allowed to take a snapshot, so instead we have to assume that the binlog contains the
                 // full history of the database.
-                source.setBinlogFilename("");// start from the beginning of the binlog
+                source.setBinlogStartPoint("", 0L);// start from the beginning of the binlog
             } else {
                 // We are allowed to use snapshots, and that is the best way to start ...
                 startWithSnapshot = true;

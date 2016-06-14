@@ -52,6 +52,7 @@ public class BinlogReader extends AbstractReader {
     private final SourceInfo source;
     private final EnumMap<EventType, BlockingConsumer<Event>> eventHandlers = new EnumMap<>(EventType.class);
     private BinaryLogClient client;
+    private int startingRowNumber = 0;
 
     /**
      * Create a binlog reader.
@@ -93,12 +94,15 @@ public class BinlogReader extends AbstractReader {
         eventHandlers.put(EventType.EXT_UPDATE_ROWS, this::handleUpdate);
         eventHandlers.put(EventType.EXT_DELETE_ROWS, this::handleDelete);
 
-        // And set the client to start from that point ...
+        // The 'source' object holds the starting point in the binlog where we should start reading,
+        // set set the client to start from that point ...
         client.setGtidSet(source.gtidSet()); // may be null
         client.setBinlogFilename(source.binlogFilename());
-        client.setBinlogPosition(source.binlogPosition());
-        // The event row number will be used when processing the first event ...
+        client.setBinlogPosition(source.nextBinlogPosition());
 
+        // Set the starting row number, which is the next row number to be read ...
+        startingRowNumber = source.nextEventRowNumber();
+        
         // Start the log reader, which starts background threads ...
         long timeoutInMilliseconds = context.timeoutInMilliseconds();
         try {
@@ -157,21 +161,19 @@ public class BinlogReader extends AbstractReader {
             } else {
                 rotateEventData = (RotateEventData) eventData;
             }
-            source.setBinlogFilename(rotateEventData.getBinlogFilename());
-            source.setBinlogPosition(rotateEventData.getBinlogPosition());
-            source.setRowInEvent(0);
+            source.setBinlogStartPoint(rotateEventData.getBinlogFilename(), rotateEventData.getBinlogPosition());
         } else if (eventHeader instanceof EventHeaderV4) {
             EventHeaderV4 trackableEventHeader = (EventHeaderV4) eventHeader;
-            long nextBinlogPosition = trackableEventHeader.getNextPosition();
-            if (nextBinlogPosition > 0) {
-                source.setBinlogPosition(nextBinlogPosition);
-                source.setRowInEvent(0);
-            }
+            source.setEventPosition(trackableEventHeader.getPosition(), trackableEventHeader.getEventLength());
         }
 
         // If there is a handler for this event, forward the event to it ...
         try {
+            // Forward the event to the handler ...
             eventHandlers.getOrDefault(eventType, this::ignoreEvent).accept(event);
+            
+            // And after that event has been processed, always set the starting row number to 0 ...
+            startingRowNumber = 0;
         } catch (InterruptedException e) {
             // Most likely because this reader was stopped and our thread was interrupted ...
             Thread.interrupted();
@@ -301,7 +303,11 @@ public class BinlogReader extends AbstractReader {
         if (recordMaker != null) {
             List<Serializable[]> rows = write.getRows();
             Long ts = context.clock().currentTimeInMillis();
-            int count = recordMaker.createEach(rows, ts);
+            int count = 0;
+            int numRows = rows.size();
+            for (int row = startingRowNumber; row != numRows; ++row) {
+                count += recordMaker.create(rows.get(row), ts, row, numRows);
+            }
             logger.debug("Recorded {} insert records for event: {}", count, event);
         } else {
             logger.debug("Skipping insert row event: {}", event);
@@ -324,11 +330,12 @@ public class BinlogReader extends AbstractReader {
             List<Entry<Serializable[], Serializable[]>> rows = update.getRows();
             Long ts = context.clock().currentTimeInMillis();
             int count = 0;
-            for (int row = 0; row != rows.size(); ++row) {
+            int numRows = rows.size();
+            for (int row = startingRowNumber; row != numRows; ++row) {
                 Map.Entry<Serializable[], Serializable[]> changes = rows.get(row);
                 Serializable[] before = changes.getKey();
                 Serializable[] after = changes.getValue();
-                count += recordMaker.update(before, after, ts, row);
+                count += recordMaker.update(before, after, ts, row, numRows);
             }
             logger.debug("Recorded {} update records for event: {}", count, event);
         } else {
@@ -350,7 +357,11 @@ public class BinlogReader extends AbstractReader {
         if (recordMaker != null) {
             List<Serializable[]> rows = deleted.getRows();
             Long ts = context.clock().currentTimeInMillis();
-            int count = recordMaker.deleteEach(rows, ts);
+            int count = 0;
+            int numRows = rows.size();
+            for (int row = startingRowNumber; row != numRows; ++row) {
+                count += recordMaker.delete(rows.get(row), ts, row, numRows);
+            }
             logger.debug("Recorded {} delete records for event: {}", count, event);
         } else {
             logger.debug("Skipping delete row event: {}", event);
