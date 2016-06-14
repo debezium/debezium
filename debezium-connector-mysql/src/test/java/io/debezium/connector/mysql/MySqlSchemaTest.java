@@ -60,8 +60,7 @@ public class MySqlSchemaTest {
         mysql.start();
 
         // Testing.Print.enable();
-        source.setBinlogFilename("binlog-001");
-        source.setBinlogPosition(400);
+        source.setBinlogStartPoint("binlog-001",400);
         mysql.applyDdl(source, "db1", readFile("ddl/mysql-products.ddl"), this::printStatements);
 
         // Check that we have tables ...
@@ -81,11 +80,10 @@ public class MySqlSchemaTest {
                      .createSchemas();
         mysql.start();
 
-        source.setBinlogFilename("binlog-001");
-        source.setBinlogPosition(400);
+        source.setBinlogStartPoint("binlog-001",400);
         mysql.applyDdl(source, "mysql", readFile("ddl/mysql-test-init-5.7.ddl"), this::printStatements);
 
-        source.setBinlogPosition(1000);
+        source.setBinlogStartPoint("binlog-001",1000);
         mysql.applyDdl(source, "db1", readFile("ddl/mysql-products.ddl"), this::printStatements);
 
         // Check that we have tables ...
@@ -107,11 +105,10 @@ public class MySqlSchemaTest {
                      .createSchemas();
         mysql.start();
 
-        source.setBinlogFilename("binlog-001");
-        source.setBinlogPosition(400);
+        source.setBinlogStartPoint("binlog-001",400);
         mysql.applyDdl(source, "mysql", readFile("ddl/mysql-test-init-5.7.ddl"), this::printStatements);
 
-        source.setBinlogPosition(1000);
+        source.setBinlogStartPoint("binlog-001",1000);
         mysql.applyDdl(source, "db1", readFile("ddl/mysql-products.ddl"), this::printStatements);
 
         // Check that we have tables ...

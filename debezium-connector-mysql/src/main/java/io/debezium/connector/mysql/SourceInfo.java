@@ -33,16 +33,18 @@ import io.debezium.util.Collect;
  * 
  * <p>
  * The {@link #offset() source offset} information describes how much of the database's binary log the source the change detector
- * has processed. Here's a JSON-like representation of an example:
+ * has already processed, and it includes the {@link #binlogFilename() binlog filename}, the {@link #nextBinlogPosition() next
+ * position} in the binlog to start reading, and the {@link #nextEventRowNumber() next event row number}. Here's a JSON-like
+ * representation of an example:
  * 
  * <pre>
  * {
  *     "server_id": 112233,
- *     "ts_sec": 1465236179,
- *     "gtids" = "db58b0ae-2c10-11e6-b284-0242ac110002:1-199",
- *     "file" = "mysql-bin.000003",
- *     "pos" = 105586,
- *     "row" = 0,
+ *     "ts_sec": 1465937,
+ *     "gtid": "db58b0ae-2c10-11e6-b284-0242ac110002:199",
+ *     "file": "mysql-bin.000003",
+ *     "pos" = 990,
+ *     "row": 0,
  *     "snapshot": true
  * }
  * </pre>
@@ -53,20 +55,21 @@ import io.debezium.util.Collect;
  * timestamp, but that timestamp is the <em>milliseconds</em> since since Jan 1, 1970.
  * 
  * The {@link #struct() source} struct appears in each message envelope and contains MySQL information about the event. It is
- * a mixture the field from the {@link #partition() partition} (which is renamed in the source to make more sense), most of
- * the fields from the {@link #offset() offset} (with the exception of {@code gtids}), and, when GTIDs are enabled, the
- * GTID of the transaction in which the event occurs. Like with the offset, the "{@code snapshot}" field only appears for
- * events produced when the connector is in the middle of a snapshot. Here's a JSON-like representation of the source for
- * an event that corresponds to the above partition and offset:
+ * a mixture the field from the {@link #partition() partition} (which is renamed in the source to make more sense), the
+ * {@link #lastBinlogPosition() position} of the event (and {@link #lastEventRowNumber() row number} within the event) inside
+ * the {@link #binlogFilename() binlog file}. When GTIDs are enabled, it also includes the GTID of the transaction in which the
+ * event occurs. Like with the offset, the "{@code snapshot}" field only appears for events produced when the connector is in the
+ * middle of a snapshot. Here's a JSON-like representation of the source for an event that corresponds to the above partition and
+ * offset:
  * 
  * <pre>
  * {
  *     "name": "production-server",
  *     "server_id": 112233,
- *     "ts_sec": 1465236179,
+ *     "ts_sec": 1465937,
  *     "gtid": "db58b0ae-2c10-11e6-b284-0242ac110002:199",
  *     "file": "mysql-bin.000003",
- *     "pos" = 105586,
+ *     "pos" = 1081,
  *     "row": 0,
  *     "snapshot": true
  * }
@@ -109,8 +112,10 @@ final class SourceInfo {
     private String gtidSet;
     private String binlogGtid;
     private String binlogFilename;
-    private long binlogPosition = 4;
-    private int eventRowNumber = 0;
+    private long lastBinlogPosition = 0;
+    private int lastEventRowNumber = 0;
+    private long nextBinlogPosition = 4;
+    private int nextEventRowNumber = 0;
     private String serverName;
     private long serverId = 0;
     private long binlogTimestampSeconds = 0;
@@ -150,6 +155,32 @@ final class SourceInfo {
      * @return a copy of the current offset; never null
      */
     public Map<String, ?> offset() {
+        return offsetUsingPosition(nextBinlogPosition);
+    }
+
+    /**
+     * Set the current row number within a given event, and then get the Kafka Connect detail about the source "offset", which
+     * describes the position within the source where we have last read.
+     * 
+     * @param eventRowNumber the 0-based row number within the event being processed
+     * @param totalNumberOfRows the total number of rows within the event being processed
+     * @return a copy of the current offset; never null
+     */
+    public Map<String, ?> offset(int eventRowNumber, int totalNumberOfRows) {
+        if (eventRowNumber < (totalNumberOfRows - 1)) {
+            // This is not the last row, so our offset should record the next row to be used ...
+            this.lastEventRowNumber = eventRowNumber;
+            this.nextEventRowNumber = eventRowNumber + 1;
+            // so write out the offset with the position of this event
+            return offsetUsingPosition(lastBinlogPosition);
+        }
+        // This is the last row, so write out the offset that has the position of the next event ...
+        this.lastEventRowNumber = this.nextEventRowNumber;
+        this.nextEventRowNumber = 0;
+        return offsetUsingPosition(nextBinlogPosition);
+    }
+
+    private Map<String, ?> offsetUsingPosition( long binlogPosition ) {
         Map<String, Object> map = new HashMap<>();
         if (serverId != 0) map.put(SERVER_ID_KEY, serverId);
         if (binlogTimestampSeconds != 0) map.put(TIMESTAMP_KEY, binlogTimestampSeconds);
@@ -158,7 +189,7 @@ final class SourceInfo {
         }
         map.put(BINLOG_FILENAME_OFFSET_KEY, binlogFilename);
         map.put(BINLOG_POSITION_OFFSET_KEY, binlogPosition);
-        map.put(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, eventRowNumber);
+        map.put(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, nextEventRowNumber);
         if (isSnapshotInEffect()) {
             map.put(SNAPSHOT_KEY, true);
         }
@@ -192,25 +223,13 @@ final class SourceInfo {
             result.put(GTID_KEY, binlogGtid);
         }
         result.put(BINLOG_FILENAME_OFFSET_KEY, binlogFilename);
-        result.put(BINLOG_POSITION_OFFSET_KEY, binlogPosition);
-        result.put(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, eventRowNumber);
+        result.put(BINLOG_POSITION_OFFSET_KEY, lastBinlogPosition);
+        result.put(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, lastEventRowNumber);
         result.put(TIMESTAMP_KEY, binlogTimestampSeconds);
         if (isSnapshotInEffect()) {
             result.put(SNAPSHOT_KEY, true);
         }
         return result;
-    }
-
-    /**
-     * Set the current row number within a given event, and then get the Kafka Connect detail about the source "offset", which
-     * describes the position within the source where we have last read.
-     * 
-     * @param eventRowNumber the 0-based row number within the last event that was successfully processed
-     * @return a copy of the current offset; never null
-     */
-    public Map<String, ?> offset(int eventRowNumber) {
-        setRowInEvent(eventRowNumber);
-        return offset();
     }
 
     /**
@@ -246,28 +265,27 @@ final class SourceInfo {
      * Set the name of the MySQL binary log file.
      * 
      * @param binlogFilename the name of the binary log file; may not be null
+     * @param positionOfFirstEvent the position in the binary log file to begin processing
      */
-    public void setBinlogFilename(String binlogFilename) {
+    public void setBinlogStartPoint(String binlogFilename, long positionOfFirstEvent) {
         this.binlogFilename = binlogFilename;
+        this.nextBinlogPosition = positionOfFirstEvent;
+        this.lastBinlogPosition = this.nextBinlogPosition;
+        this.nextEventRowNumber = 0;
+        this.lastEventRowNumber = 0;
     }
 
     /**
-     * Set the position within the MySQL binary log file.
+     * Set the position within the MySQL binary log file of the <em>current event</em>.
      * 
-     * @param binlogPosition the position within the binary log file
+     * @param positionOfCurrentEvent the position within the binary log file of the current event
+     * @param eventSizeInBytes the size in bytes of this event
      */
-    public void setBinlogPosition(long binlogPosition) {
-        this.binlogPosition = binlogPosition;
-    }
-
-    /**
-     * Set the index of the row within the event appearing at the {@link #binlogPosition() position} within the
-     * {@link #binlogFilename() binary log file}.
-     * 
-     * @param rowNumber the 0-based row number
-     */
-    public void setRowInEvent(int rowNumber) {
-        this.eventRowNumber = rowNumber;
+    public void setEventPosition(long positionOfCurrentEvent, long eventSizeInBytes) {
+        this.lastBinlogPosition = positionOfCurrentEvent;
+        this.nextBinlogPosition = positionOfCurrentEvent + eventSizeInBytes;
+        this.nextEventRowNumber = 0;
+        this.lastEventRowNumber = 0;
     }
 
     /**
@@ -316,8 +334,10 @@ final class SourceInfo {
             if (binlogFilename == null) {
                 throw new ConnectException("Source offset '" + BINLOG_FILENAME_OFFSET_KEY + "' parameter is missing");
             }
-            binlogPosition = longOffsetValue(sourceOffset, BINLOG_POSITION_OFFSET_KEY);
-            eventRowNumber = (int) longOffsetValue(sourceOffset, BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY);
+            nextBinlogPosition = longOffsetValue(sourceOffset, BINLOG_POSITION_OFFSET_KEY);
+            nextEventRowNumber = (int) longOffsetValue(sourceOffset, BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY);
+            lastBinlogPosition = nextBinlogPosition;
+            lastEventRowNumber = nextEventRowNumber;
         }
     }
 
@@ -344,29 +364,50 @@ final class SourceInfo {
     /**
      * Get the name of the MySQL binary log file that has been processed.
      * 
-     * @return the name of the binary log file; null if it has not been {@link #setBinlogFilename(String) set}
+     * @return the name of the binary log file; null if it has not been {@link #setBinlogStartPoint(String, long) set}
      */
     public String binlogFilename() {
         return binlogFilename;
     }
 
     /**
-     * Get the position within the MySQL binary log file that has been processed.
+     * Get the position within the MySQL binary log file of the next event to be processed.
      * 
-     * @return the position within the binary log file; null if it has not been {@link #setBinlogPosition(long) set}
+     * @return the position within the binary log file; null if it has not been {@link #setBinlogStartPoint(String, long) set}
      */
-    public long binlogPosition() {
-        return binlogPosition;
+    public long nextBinlogPosition() {
+        return nextBinlogPosition;
     }
 
     /**
-     * Get the row within the event at the {@link #binlogPosition() position} within the {@link #binlogFilename() binary log file}
+     * Get the position within the MySQL binary log file of the most recently processed event.
+     * 
+     * @return the position within the binary log file; null if it has not been {@link #setBinlogStartPoint(String, long) set}
+     */
+    public long lastBinlogPosition() {
+        return lastBinlogPosition;
+    }
+
+    /**
+     * Get the next row within the event at the {@link #nextBinlogPosition() position} within the {@link #binlogFilename() binary
+     * log file}
      * .
      * 
      * @return the 0-based row number
      */
-    public int eventRowNumber() {
-        return eventRowNumber;
+    public int nextEventRowNumber() {
+        return nextEventRowNumber;
+    }
+
+    /**
+     * Get the previous row within the event at the {@link #lastBinlogPosition() position} within the {@link #binlogFilename()
+     * binary log file}
+     * .
+     * 
+     * @return the 0-based row number
+     */
+    public int lastEventRowNumber() {
+        return lastEventRowNumber;
     }
 
     /**
@@ -385,8 +426,8 @@ final class SourceInfo {
             sb.append("GTIDs ");
             sb.append(gtidSet);
             sb.append(" and binlog file '").append(binlogFilename).append("'");
-            sb.append(", pos=").append(binlogPosition());
-            sb.append(", row=").append(eventRowNumber());
+            sb.append(", pos=").append(nextBinlogPosition());
+            sb.append(", row=").append(nextEventRowNumber());
         } else {
             if (binlogFilename == null) {
                 sb.append("<latest>");
@@ -395,8 +436,8 @@ final class SourceInfo {
                     sb.append("earliest binlog file and position");
                 } else {
                     sb.append("binlog file '").append(binlogFilename).append("'");
-                    sb.append(", pos=").append(binlogPosition());
-                    sb.append(", row=").append(eventRowNumber());
+                    sb.append(", pos=").append(nextBinlogPosition());
+                    sb.append(", row=").append(nextEventRowNumber());
                 }
             }
         }

@@ -22,6 +22,7 @@ import org.junit.Test;
 import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.history.FileDatabaseHistory;
@@ -283,6 +284,56 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         stopConnector();
     }
+
+    @Test
+    public void shouldConsumeEventsWithNoSnapshot() throws SQLException, InterruptedException {
+        Testing.Files.delete(DB_HISTORY_PATH);
+        
+        // Use the DB configuration to define the connector's configuration ...
+        config = Configuration.create()
+                              .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
+                              .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
+                              .with(MySqlConnectorConfig.USER, "snapper")
+                              .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
+                              .with(MySqlConnectorConfig.SERVER_ID, 18780)
+                              .with(MySqlConnectorConfig.SERVER_NAME, "kafka-connect-2")
+                              .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
+                              .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+                              .with(MySqlConnectorConfig.DATABASE_WHITELIST, "connector_test_ro")
+                              .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.name().toLowerCase())
+                              .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                              .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+                              .with("database.useSSL",false) // eliminates MySQL driver warning about SSL connections
+                              .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // Consume the first records due to startup and initialization of the database ...
+        // Testing.Print.enable();
+        SourceRecords records = consumeRecordsByTopic(9+9+4+5+6);   // 6 DDL changes
+        assertThat(records.recordsForTopic("kafka-connect-2.connector_test_ro.products").size()).isEqualTo(9);
+        assertThat(records.recordsForTopic("kafka-connect-2.connector_test_ro.products_on_hand").size()).isEqualTo(9);
+        assertThat(records.recordsForTopic("kafka-connect-2.connector_test_ro.customers").size()).isEqualTo(4);
+        assertThat(records.recordsForTopic("kafka-connect-2.connector_test_ro.orders").size()).isEqualTo(5);
+        assertThat(records.topics().size()).isEqualTo(4+1);
+        assertThat(records.ddlRecordsForDatabase("connector_test_ro").size()).isEqualTo(6);
+
+        // Check that all records are valid, can be serialized and deserialized ...
+        records.forEach(this::validate);
+        
+        // More records may have been written (if this method were run after the others), but we don't care ...
+        stopConnector();
+
+        records.recordsForTopic("kafka-connect-2.connector_test_ro.orders").forEach(record->{
+            print(record);
+        });
+        
+        records.recordsForTopic("kafka-connect-2.connector_test_ro.customers").forEach(record->{
+            print(record);
+        });
+    }
+
 
     @Test
     public void shouldConsumeEventsWithMaskedAndBlacklistedColumns() throws SQLException, InterruptedException {
