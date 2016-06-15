@@ -179,7 +179,7 @@ public class RecordMakers {
                 if (value != null || key != null) {
                     Schema keySchema = tableSchema.keySchema();
                     Map<String, ?> partition = source.partition();
-                    Map<String, ?> offset = source.offset(rowNumber, numberOfRows);
+                    Map<String, ?> offset = source.offsetForRow(rowNumber, numberOfRows);
                     Struct origin = source.struct();
                     SourceRecord record = new SourceRecord(partition, offset, topicName, partitionNum,
                             keySchema, key, envelope.schema(), envelope.read(value, origin, ts));
@@ -198,7 +198,7 @@ public class RecordMakers {
                 if (value != null || key != null) {
                     Schema keySchema = tableSchema.keySchema();
                     Map<String, ?> partition = source.partition();
-                    Map<String, ?> offset = source.offset(rowNumber, numberOfRows);
+                    Map<String, ?> offset = source.offsetForRow(rowNumber, numberOfRows);
                     Struct origin = source.struct();
                     SourceRecord record = new SourceRecord(partition, offset, topicName, partitionNum,
                             keySchema, key, envelope.schema(), envelope.create(value, origin, ts));
@@ -220,7 +220,7 @@ public class RecordMakers {
                     Struct valueBefore = tableSchema.valueFromColumnData(before);
                     Schema keySchema = tableSchema.keySchema();
                     Map<String, ?> partition = source.partition();
-                    Map<String, ?> offset = source.offset(rowNumber, numberOfRows);
+                    Map<String, ?> offset = source.offsetForRow(rowNumber, numberOfRows);
                     Struct origin = source.struct();
                     if (key != null && !Objects.equals(key, oldKey)) {
                         // The key has indeed changed, so first send a create event ...
@@ -260,7 +260,7 @@ public class RecordMakers {
                 if (value != null || key != null) {
                     Schema keySchema = tableSchema.keySchema();
                     Map<String, ?> partition = source.partition();
-                    Map<String, ?> offset = source.offset(rowNumber, numberOfRows);
+                    Map<String, ?> offset = source.offsetForRow(rowNumber, numberOfRows);
                     Struct origin = source.struct();
                     // Send a delete message ...
                     SourceRecord record = new SourceRecord(partition, offset, topicName, partitionNum,

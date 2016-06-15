@@ -161,12 +161,14 @@ final class SourceInfo {
     /**
      * Set the current row number within a given event, and then get the Kafka Connect detail about the source "offset", which
      * describes the position within the source where we have last read.
+     * <p>
+     * This method should always be called before {@link #struct()}.
      * 
      * @param eventRowNumber the 0-based row number within the event being processed
      * @param totalNumberOfRows the total number of rows within the event being processed
      * @return a copy of the current offset; never null
      */
-    public Map<String, ?> offset(int eventRowNumber, int totalNumberOfRows) {
+    public Map<String, ?> offsetForRow(int eventRowNumber, int totalNumberOfRows) {
         if (eventRowNumber < (totalNumberOfRows - 1)) {
             // This is not the last row, so our offset should record the next row to be used ...
             this.lastEventRowNumber = eventRowNumber;
@@ -180,7 +182,7 @@ final class SourceInfo {
         return offsetUsingPosition(nextBinlogPosition);
     }
 
-    private Map<String, ?> offsetUsingPosition( long binlogPosition ) {
+    private Map<String, ?> offsetUsingPosition(long binlogPosition) {
         Map<String, Object> map = new HashMap<>();
         if (serverId != 0) map.put(SERVER_ID_KEY, serverId);
         if (binlogTimestampSeconds != 0) map.put(TIMESTAMP_KEY, binlogTimestampSeconds);
@@ -209,6 +211,8 @@ final class SourceInfo {
     /**
      * Get a {@link Struct} representation of the source {@link #partition()} and {@link #offset()} information. The Struct
      * complies with the {@link #SCHEMA} for the MySQL connector.
+     * <p>
+     * This method should always be called after {@link #offsetForRow(int, int)}.
      * 
      * @return the source partition and offset {@link Struct}; never null
      * @see #schema()
@@ -284,8 +288,8 @@ final class SourceInfo {
     public void setEventPosition(long positionOfCurrentEvent, long eventSizeInBytes) {
         this.lastBinlogPosition = positionOfCurrentEvent;
         this.nextBinlogPosition = positionOfCurrentEvent + eventSizeInBytes;
-        this.nextEventRowNumber = 0;
-        this.lastEventRowNumber = 0;
+        // Don't set anything else, since the row numbers are set in the offset(int,int) method called at least once
+        // for each processed event
     }
 
     /**
@@ -338,6 +342,7 @@ final class SourceInfo {
             nextEventRowNumber = (int) longOffsetValue(sourceOffset, BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY);
             lastBinlogPosition = nextBinlogPosition;
             lastEventRowNumber = nextEventRowNumber;
+            snapshot = booleanOffsetValue(sourceOffset, SNAPSHOT_KEY);
         }
     }
 
@@ -350,6 +355,13 @@ final class SourceInfo {
         } catch (NumberFormatException e) {
             throw new ConnectException("Source offset '" + key + "' parameter value " + obj + " could not be converted to a long");
         }
+    }
+
+    private boolean booleanOffsetValue(Map<String, ?> values, String key) {
+        Object obj = values.get(key);
+        if (obj == null) return false;
+        if (obj instanceof Boolean) return ((Boolean) obj).booleanValue();
+        return Boolean.parseBoolean(obj.toString());
     }
 
     /**
