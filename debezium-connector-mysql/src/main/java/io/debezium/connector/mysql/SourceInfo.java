@@ -120,7 +120,8 @@ final class SourceInfo {
     private long serverId = 0;
     private long binlogTimestampSeconds = 0;
     private Map<String, String> sourcePartition;
-    private boolean snapshot = false;
+    private boolean lastSnapshot = true;
+    private boolean nextSnapshot = false;
 
     public SourceInfo() {
     }
@@ -230,7 +231,7 @@ final class SourceInfo {
         result.put(BINLOG_POSITION_OFFSET_KEY, lastBinlogPosition);
         result.put(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, lastEventRowNumber);
         result.put(TIMESTAMP_KEY, binlogTimestampSeconds);
-        if (isSnapshotInEffect()) {
+        if (lastSnapshot) {
             result.put(SNAPSHOT_KEY, true);
         }
         return result;
@@ -242,7 +243,7 @@ final class SourceInfo {
      * @return {@code true} if a snapshot is in effect, or {@code false} otherwise
      */
     public boolean isSnapshotInEffect() {
-        return snapshot;
+        return nextSnapshot;
     }
 
     /**
@@ -314,14 +315,24 @@ final class SourceInfo {
      * Denote that a snapshot is being (or has been) started.
      */
     public void startSnapshot() {
-        this.snapshot = true;
+        this.lastSnapshot = true;
+        this.nextSnapshot = true;
+    }
+
+    /**
+     * Denote that a snapshot will be complete after one last record.
+     */
+    public void markLastSnapshot() {
+        this.lastSnapshot = true;
+        this.nextSnapshot = false;
     }
 
     /**
      * Denote that a snapshot is being (or has been) started.
      */
     public void completeSnapshot() {
-        this.snapshot = false;
+        this.lastSnapshot = true;
+        this.nextSnapshot = true;
     }
 
     /**
@@ -342,7 +353,8 @@ final class SourceInfo {
             nextEventRowNumber = (int) longOffsetValue(sourceOffset, BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY);
             lastBinlogPosition = nextBinlogPosition;
             lastEventRowNumber = nextEventRowNumber;
-            snapshot = booleanOffsetValue(sourceOffset, SNAPSHOT_KEY);
+            nextSnapshot = booleanOffsetValue(sourceOffset, SNAPSHOT_KEY);
+            lastSnapshot = nextSnapshot;
         }
     }
 
