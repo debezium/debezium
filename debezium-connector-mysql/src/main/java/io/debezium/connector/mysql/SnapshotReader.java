@@ -8,6 +8,7 @@ package io.debezium.connector.mysql;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -219,7 +220,7 @@ public class SnapshotReader extends AbstractReader {
             // we are reading the database names from the database and not taking them from the user ...
             logger.info("Step 5: read list of available tables in each database");
             final List<TableId> tableIds = new ArrayList<>();
-            final Map<String,List<TableId>> tableIdsByDbName = new HashMap<>();
+            final Map<String, List<TableId>> tableIdsByDbName = new HashMap<>();
             for (String dbName : databaseNames) {
                 sql.set("SHOW TABLES IN " + dbName);
                 mysql.query(sql.get(), rs -> {
@@ -227,7 +228,7 @@ public class SnapshotReader extends AbstractReader {
                         TableId id = new TableId(dbName, null, rs.getString(1));
                         if (filters.tableFilter().test(id)) {
                             tableIds.add(id);
-                            tableIdsByDbName.computeIfAbsent(dbName, k->new ArrayList<>()).add(id);
+                            tableIdsByDbName.computeIfAbsent(dbName, k -> new ArrayList<>()).add(id);
                         }
                     }
                 });
@@ -243,7 +244,7 @@ public class SnapshotReader extends AbstractReader {
             // Add DROP TABLE statements for all tables that we knew about AND those tables found in the databases ...
             Set<TableId> allTableIds = new HashSet<>(schema.tables().tableIds());
             allTableIds.addAll(tableIds);
-            allTableIds.forEach(tableId->{
+            allTableIds.forEach(tableId -> {
                 ddlStatements.add("DROP TABLE IF EXISTS " + tableId);
             });
             // Add a DROP DATABASE statement for each database that we no longer know about ...
@@ -253,13 +254,13 @@ public class SnapshotReader extends AbstractReader {
                       ddlStatements.add("DROP DATABASE IF EXISTS " + missingDbName);
                   });
             // Now process all of our tables for each database ...
-            for ( Map.Entry<String, List<TableId>> entry : tableIdsByDbName.entrySet() ) {
+            for (Map.Entry<String, List<TableId>> entry : tableIdsByDbName.entrySet()) {
                 String dbName = entry.getKey();
                 // First drop, create, and then use the named database ...
                 ddlStatements.add("DROP DATABASE IF EXISTS " + dbName);
                 ddlStatements.add("CREATE DATABASE " + dbName);
                 ddlStatements.add("USE " + dbName);
-                for ( TableId tableId : entry.getValue() ) {
+                for (TableId tableId : entry.getValue()) {
                     sql.set("SHOW CREATE TABLE " + tableId);
                     mysql.query(sql.get(), rs -> {
                         if (rs.next()) ddlStatements.add(rs.getString(2)); // CREATE TABLE statement
@@ -286,48 +287,61 @@ public class SnapshotReader extends AbstractReader {
                 mysql.execute(sql.get());
                 unlocked = true;
                 long lockReleased = clock.currentTimeInMillis();
-                logger.info("Writes to MySQL prevented for a total of {}", Strings.duration(lockReleased-lockAcquired));
+                logger.info("Writes to MySQL prevented for a total of {}", Strings.duration(lockReleased - lockAcquired));
             }
 
             // ------
             // STEP 8
             // ------
             // Dump all of the tables and generate source records ...
-            logger.info("Step 8: scanning contents of {} tables",tableIds.size());
+            logger.info("Step 8: scanning contents of {} tables", tableIds.size());
             long startScan = clock.currentTimeInMillis();
             AtomicBoolean interrupted = new AtomicBoolean(false);
             int counter = 0;
-            for (TableId tableId : tableIds) {
+            Iterator<TableId> tableIdIter = tableIds.iterator();
+            while (tableIdIter.hasNext()) {
+                TableId tableId = tableIdIter.next();
+                boolean isLastTable = tableIdIter.hasNext() == false;
                 long start = clock.currentTimeInMillis();
-                logger.debug("Step 8.{}: scanning table '{}'; {} tables remain",++counter,tableId,tableIds.size()-counter);
+                logger.debug("Step 8.{}: scanning table '{}'; {} tables remain", ++counter, tableId, tableIds.size() - counter);
                 sql.set("SELECT * FROM " + tableId);
                 mysql.query(sql.get(), rs -> {
                     RecordsForTable recordMaker = context.makeRecord().forTable(tableId, null, super::enqueueRecord);
                     if (recordMaker != null) {
+                        boolean completed = false;
                         try {
                             // The table is included in the connector's filters, so process all of the table records ...
                             final Table table = schema.tableFor(tableId);
                             final int numColumns = table.columns().size();
                             final Object[] row = new Object[numColumns];
                             while (rs.next()) {
-                                for (int i = 0, j=1; i != numColumns; ++i,++j) {
+                                for (int i = 0, j = 1; i != numColumns; ++i, ++j) {
                                     row[i] = rs.getObject(j);
+                                }
+                                if ( isLastTable && rs.isLast() ) {
+                                    // This is the last record, so mark the offset as having completed the snapshot
+                                    // but the SourceInfo.struct() will still be marked as being part of the snapshot ...
+                                    source.markLastSnapshot();
                                 }
                                 recorder.recordRow(recordMaker, row, ts); // has no row number!
                             }
+                            if (isLastTable) completed = true;
                         } catch (InterruptedException e) {
                             Thread.interrupted();
-                            logger.info("Stopping the snapshot after thread interruption");
-                            interrupted.set(true);
+                            if (!completed) {
+                                // We were not able to finish all rows in all tables ...
+                                logger.info("Stopping the snapshot after thread interruption");
+                                interrupted.set(true);
+                            }
                         }
                     }
                 });
-                if ( interrupted.get() ) break;
+                if (interrupted.get()) break;
                 long stop = clock.currentTimeInMillis();
-                logger.info("Step 8.{}: scanned table '{}' in {}",counter,tableId,Strings.duration(stop-start));
+                logger.info("Step 8.{}: scanned table '{}' in {}", counter, tableId, Strings.duration(stop - start));
             }
             long stop = clock.currentTimeInMillis();
-            logger.info("Step 8: scanned contents of {} tables in {}",tableIds.size(),Strings.duration(stop-startScan));
+            logger.info("Step 8: scanned contents of {} tables in {}", tableIds.size(), Strings.duration(stop - startScan));
 
             // ------
             // STEP 9
@@ -339,7 +353,7 @@ public class SnapshotReader extends AbstractReader {
                 mysql.execute(sql.get());
                 unlocked = true;
                 long lockReleased = clock.currentTimeInMillis();
-                logger.info("Writes to MySQL prevented for a total of {}", Strings.duration(lockReleased-lockAcquired));
+                logger.info("Writes to MySQL prevented for a total of {}", Strings.duration(lockReleased - lockAcquired));
             }
 
             // -------
@@ -358,28 +372,21 @@ public class SnapshotReader extends AbstractReader {
             mysql.execute(sql.get());
 
             try {
-                logger.info("Step 11: recording completion of snapshot");
-                // Mark the source as having completed the snapshot. Because of this, **subsequent** source records
-                // produced by the connector (to any topic) will have a normal (not snapshot) offset ...
+                // Mark the source as having completed the snapshot. This will ensure the `source` field on records
+                // are not denoted as a snapshot ...
                 source.completeSnapshot();
-
-                // Record **ONE** more source record without a snapshot in effect so that if no other changes were recorded
-                // by the database and the connector stopped, upon next startup the connector would not perform another
-                // snapshot. Rather than write out a nonsense record to any topics for one of our tables, write an meaningless
-                // DDL statement to the database history ...
-                schema.applyDdl(source, null, "", this::enqueueSchemaChanges);
             } finally {
                 // Set the completion flag ...
                 super.completeSuccessfully();
                 stop = clock.currentTimeInMillis();
-                logger.info("Completed snapshot in {}", Strings.duration(stop-ts));
+                logger.info("Completed snapshot in {}", Strings.duration(stop - ts));
             }
         } catch (Throwable e) {
             failed(e, "Aborting snapshot after running '" + sql.get() + "': " + e.getMessage());
         }
     }
-    
-    protected void enqueueSchemaChanges( String dbName, String ddlStatements ) {
+
+    protected void enqueueSchemaChanges(String dbName, String ddlStatements) {
         if (context.includeSchemaChangeRecords() &&
                 context.makeRecord().schemaChanges(dbName, ddlStatements, super::enqueueRecord) > 0) {
             logger.debug("Recorded DDL statements for database '{}': {}", dbName, ddlStatements);

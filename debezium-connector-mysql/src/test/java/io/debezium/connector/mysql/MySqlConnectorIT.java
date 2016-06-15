@@ -23,6 +23,7 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.data.Envelope;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.history.FileDatabaseHistory;
@@ -92,6 +93,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Start the connector ...
         start(MySqlConnector.class, config);
         
+        //Testing.Print.enable();
+
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
@@ -109,6 +112,15 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         // Check that all records are valid, can be serialized and deserialized ...
         records.forEach(this::validate);
+        
+        // Check that the last record has snapshots disabled in the offset, but not in the source
+        List<SourceRecord> allRecords = records.allRecordsInOrder();
+        SourceRecord last = allRecords.get(allRecords.size()-1);
+        SourceRecord secondToLast = allRecords.get(allRecords.size()-2);
+        assertThat(secondToLast.sourceOffset().containsKey(SourceInfo.SNAPSHOT_KEY)).isTrue();
+        assertThat(last.sourceOffset().containsKey(SourceInfo.SNAPSHOT_KEY)).isFalse(); // not snapshot
+        assertThat(((Struct)secondToLast.value()).getStruct(Envelope.FieldName.SOURCE).getBoolean(SourceInfo.SNAPSHOT_KEY)).isTrue();
+        assertThat(((Struct)last.value()).getStruct(Envelope.FieldName.SOURCE).getBoolean(SourceInfo.SNAPSHOT_KEY)).isTrue();
         
         // ---------------------------------------------------------------------------------------------------------------
         // Stopping the connector does not lose events recorded when connector is not running
