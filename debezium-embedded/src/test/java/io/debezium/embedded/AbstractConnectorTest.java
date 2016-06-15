@@ -7,6 +7,7 @@ package io.debezium.embedded;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -333,6 +334,10 @@ public abstract class AbstractConnectorTest implements Testing {
 
         public void forEach(Consumer<SourceRecord> consumer) {
             records.forEach(consumer);
+        }
+        
+        public List<SourceRecord> allRecordsInOrder() {
+            return Collections.unmodifiableList(records);
         }
 
         public void print() {
