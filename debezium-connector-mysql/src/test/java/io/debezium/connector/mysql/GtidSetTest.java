@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import java.util.LinkedList;
+
 import org.junit.Test;
 
 import static org.fest.assertions.Assertions.assertThat;
@@ -84,14 +86,14 @@ public class GtidSetTest {
     
     protected void asertFirstInterval( String uuid, int start, int end) {
         UUIDSet set = gtids.forServerWithId(uuid);
-        Interval interval = set.getFirstInterval();
+        Interval interval = set.getIntervals().iterator().next();
         assertThat(interval.getStart()).isEqualTo(start);
         assertThat(interval.getEnd()).isEqualTo(end);
     }
     
     protected void asertLastInterval( String uuid, int start, int end) {
         UUIDSet set = gtids.forServerWithId(uuid);
-        Interval interval = set.getLastInterval();
+        Interval interval = new LinkedList<>(set.getIntervals()).getLast();
         assertThat(interval.getStart()).isEqualTo(start);
         assertThat(interval.getEnd()).isEqualTo(end);
     }
