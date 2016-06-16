@@ -5,10 +5,12 @@
  */
 package io.debezium.connector.mysql;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -23,7 +25,6 @@ import io.debezium.annotation.Immutable;
 @Immutable
 public final class GtidSet {
 
-    private final String orderedString;
     private final Map<String, UUIDSet> uuidSetsByServerId = new TreeMap<>(); // sorts on keys
 
     /**
@@ -38,7 +39,6 @@ public final class GtidSet {
             if (sb.length() != 0) sb.append(',');
             sb.append(uuidSet.toString());
         });
-        orderedString = sb.toString();
     }
 
     /**
@@ -67,19 +67,19 @@ public final class GtidSet {
      * @return {@code true} if all of the GTIDs in this set are completely contained within the supplied set of GTIDs, or
      *         {@code false} otherwise
      */
-    public boolean isSubsetOf(GtidSet other) {
+    public boolean isContainedWithin(GtidSet other) {
         if (other == null) return false;
         if (this.equals(other)) return true;
         for (UUIDSet uuidSet : uuidSetsByServerId.values()) {
             UUIDSet thatSet = other.forServerWithId(uuidSet.getUUID());
-            if (!uuidSet.isSubsetOf(thatSet)) return false;
+            if (!uuidSet.isContainedWithin(thatSet)) return false;
         }
         return true;
     }
 
     @Override
     public int hashCode() {
-        return orderedString.hashCode();
+        return uuidSetsByServerId.keySet().hashCode();
     }
 
     @Override
@@ -87,14 +87,18 @@ public final class GtidSet {
         if (obj == this) return true;
         if (obj instanceof GtidSet) {
             GtidSet that = (GtidSet) obj;
-            return this.orderedString.equalsIgnoreCase(that.orderedString);
+            return this.uuidSetsByServerId.equals(that.uuidSetsByServerId);
         }
         return false;
     }
 
     @Override
     public String toString() {
-        return orderedString;
+        List<String> gtids = new ArrayList<String>();
+        for (UUIDSet uuidSet : uuidSetsByServerId.values()) {
+            gtids.add(uuidSet.toString());
+        }
+        return String.join(",",gtids);
     }
 
     /**
@@ -139,37 +143,8 @@ public final class GtidSet {
          * 
          * @return the immutable transaction intervals; never null
          */
-        public Collection<Interval> getIntervals() {
-            return Collections.unmodifiableCollection(intervals);
-        }
-
-        /**
-         * Get the first interval of transaction numbers for this server.
-         * 
-         * @return the first interval, or {@code null} if there is none
-         */
-        public Interval getFirstInterval() {
-            return intervals.isEmpty() ? null : intervals.getFirst();
-        }
-
-        /**
-         * Get the last interval of transaction numbers for this server.
-         * 
-         * @return the last interval, or {@code null} if there is none
-         */
-        public Interval getLastInterval() {
-            return intervals.isEmpty() ? null : intervals.getLast();
-        }
-
-        /**
-         * Get the interval that contains the full range (and possibly more) of all of the individual intervals for this server.
-         * 
-         * @return the complete interval comprised of the {@link Interval#getStart() start} of the {@link #getFirstInterval()
-         *         first interval} and the {@link Interval#getEnd() end} of the {@link #getLastInterval()}, or {@code null} if
-         *         this server has no intervals at all
-         */
-        public Interval getCompleteInterval() {
-            return intervals.isEmpty() ? null : new Interval(getFirstInterval().getStart(), getLastInterval().getEnd());
+        public List<Interval> getIntervals() {
+            return Collections.unmodifiableList(intervals);
         }
 
         /**
@@ -180,7 +155,7 @@ public final class GtidSet {
          * @return {@code true} if this server's transaction numbers are a subset of the transaction numbers of the supplied set,
          *         or false otherwise
          */
-        public boolean isSubsetOf(UUIDSet other) {
+        public boolean isContainedWithin(UUIDSet other) {
             if (other == null) return false;
             if (!this.getUUID().equalsIgnoreCase(other.getUUID())) {
                 // Not even the same server ...
@@ -195,7 +170,7 @@ public final class GtidSet {
             for (Interval thisInterval : this.intervals) {
                 boolean found = false;
                 for (Interval otherInterval : other.intervals) {
-                    if (thisInterval.isSubsetOf(otherInterval)) {
+                    if (thisInterval.isContainedWithin(otherInterval)) {
                         found = true;
                         break;
                     }
@@ -270,7 +245,7 @@ public final class GtidSet {
          *         {@link #getStart() start} and the {@link #getEnd() end} is less than or equal to the supplied interval's
          *         {@link #getEnd() end}, or {@code false} otherwise
          */
-        public boolean isSubsetOf(Interval other) {
+        public boolean isContainedWithin(Interval other) {
             if (other == this) return true;
             if (other == null) return false;
             return this.getStart() >= other.getStart() && this.getEnd() <= other.getEnd();
@@ -293,8 +268,8 @@ public final class GtidSet {
         @Override
         public boolean equals(Object obj) {
             if (this == obj) return true;
-            if (obj instanceof com.github.shyiko.mysql.binlog.GtidSet.Interval) {
-                com.github.shyiko.mysql.binlog.GtidSet.Interval that = (com.github.shyiko.mysql.binlog.GtidSet.Interval) obj;
+            if (obj instanceof Interval) {
+                Interval that = (Interval) obj;
                 return this.getStart() == that.getStart() && this.getEnd() == that.getEnd();
             }
             return false;
@@ -302,7 +277,7 @@ public final class GtidSet {
 
         @Override
         public String toString() {
-            return getStart() == getEnd() ? Long.toString(getStart()) : "" + getStart() + "-" + getEnd();
+            return "" + getStart() + "-" + getEnd();
         }
     }
 }

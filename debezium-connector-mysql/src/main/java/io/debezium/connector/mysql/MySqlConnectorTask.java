@@ -194,7 +194,7 @@ public final class MySqlConnectorTask extends SourceTask {
             // GTIDs are enabled, and we used them previously ...
             GtidSet gtidSet = new GtidSet(gtidStr);
             GtidSet availableGtidSet = new GtidSet(knownGtidSet());
-            if ( gtidSet.isSubsetOf(availableGtidSet)) {
+            if ( gtidSet.isContainedWithin(availableGtidSet)) {
                 return true;
             }
             logger.info("Connector last known GTIDs are {}, but MySQL has {}",gtidSet,availableGtidSet);

@@ -503,7 +503,7 @@ final class SourceInfo {
                     return true;
                 }
                 // The GTIDs are not an exact match, so figure out if recorded is a subset of the desired ...
-                return recordedGtidSet.isSubsetOf(desiredGtidSet);
+                return recordedGtidSet.isContainedWithin(desiredGtidSet);
             }
             // The desired position did use GTIDs while the recorded did not use GTIDs. So, we assume that the
             // recorded position is older since GTIDs are often enabled but rarely disabled. And if they are disabled,
