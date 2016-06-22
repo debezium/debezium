@@ -4,7 +4,22 @@ All notable changes are documented in this file. Release numbers follow [Semanti
 
 ## 0.3
 
-June 10, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12329661)
+July xx, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12329661)
+
+
+## 0.2.2
+
+June 22, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/versions/12330862)
+
+### Backwards-incompatible changes
+
+* Removed several methods in the `GtidSet` class inside the MySQL connector. The class was introduced in 0.2. This change will only affect applications explicitly using the class (by reusing the MySQL connector JAR), and will not affect how the MySQL connector works. [DBZ-79](https://issues.jboss.org/projects/DBZ/issues/DBZ-79)
+* The `source` field within each MySQL change event now contains the binlog position of that event (rather than the next event). Events persisted by earlier versions of the connector are unaffected. This change _may_ adversely clients that are directly using the position within the `source` field. [DBZ-71](https://issues.jboss.org/projects/DBZ/issues/DBZ-71)
+
+### Fixes
+
+* Correct how the MySQL connector records offsets with multi-row MySQL events so that, even if the connector experiences a non-graceful shutdown (i.e., crash) after committing the offset of _some_ of the rows from such an event, upon restart the connector will resume with the remaining rows in that multi-row event. Previously, the connector might incorrectly restart at the next event. [DBZ-73](https://issues.jboss.org/projects/DBZ/issues/DBZ-73)
+* Shutdown of the MySQL connector immediately after a snapshot completes (before another change event is reccorded) will now be properly marked as complete. [DBZ-77](https://issues.jboss.org/projects/DBZ/issues/DBZ-77)
 
 
 
