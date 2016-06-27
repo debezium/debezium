@@ -340,6 +340,14 @@ public class MySqlDdlParserTest {
         listener.forEach(this::printEvent);
     }
 
+    @Test
+    public void shouldParseTicketMonsterLiquibaseStatements() {
+        parser.parse(readLines(1, "ddl/mysql-ticketmonster-liquibase.ddl"), tables);
+        assertThat(tables.size()).isEqualTo(7);
+        assertThat(listener.total()).isEqualTo(16);
+        listener.forEach(this::printEvent);
+    }
+
     protected void printEvent(Event event) {
         Testing.print(event);
     }
