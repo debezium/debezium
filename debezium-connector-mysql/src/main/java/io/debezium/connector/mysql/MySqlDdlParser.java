@@ -631,10 +631,15 @@ public class MySqlDdlParser extends DdlParser {
         }
         if (tokens.canConsume("MATCH")) {
             tokens.consumeAnyOf("FULL", "PARTIAL", "SIMPLE");
-            if (tokens.canConsume("ON")) {
-                tokens.consumeAnyOf("DELETE", "UPDATE");
-                parseReferenceOption(start);
-            }
+        }
+        if (tokens.canConsume("ON","DELETE")) {
+            parseReferenceOption(start);
+        }
+        if (tokens.canConsume("ON","UPDATE")) {
+            parseReferenceOption(start);
+        }
+        if (tokens.canConsume("ON","DELETE")) { // in case ON UPDATE is first
+            parseReferenceOption(start);
         }
     }
 
