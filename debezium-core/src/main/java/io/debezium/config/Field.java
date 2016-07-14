@@ -411,6 +411,11 @@ public final class Field {
         return 1;
     }
 
+    public static int isOptional(Configuration config, Field field, Consumer<String> problems) {
+        // optional fields are valid whether or not there is a value
+        return 0;
+    }
+
     public static int isBoolean(Configuration config, Field field, Consumer<String> problems) {
         String value = config.getString(field);
         if (value == null ||

@@ -245,7 +245,7 @@ public final class Envelope {
      * @param timestamp the timestamp for this message; may be null
      * @return the read message; never null
      */
-    public Struct read(Struct record, Struct source, Long timestamp) {
+    public Struct read(Object record, Struct source, Long timestamp) {
         Struct struct = new Struct(schema);
         struct.put(FieldName.OPERATION, Operation.READ.code());
         struct.put(FieldName.AFTER, record);
@@ -262,7 +262,7 @@ public final class Envelope {
      * @param timestamp the timestamp for this message; may be null
      * @return the create message; never null
      */
-    public Struct create(Struct record, Struct source, Long timestamp) {
+    public Struct create(Object record, Struct source, Long timestamp) {
         Struct struct = new Struct(schema);
         struct.put(FieldName.OPERATION, Operation.CREATE.code());
         struct.put(FieldName.AFTER, record);
@@ -280,7 +280,7 @@ public final class Envelope {
      * @param timestamp the timestamp for this message; may be null
      * @return the update message; never null
      */
-    public Struct update(Struct before, Struct after, Struct source, Long timestamp) {
+    public Struct update(Object before, Struct after, Struct source, Long timestamp) {
         Struct struct = new Struct(schema);
         struct.put(FieldName.OPERATION, Operation.UPDATE.code());
         if (before != null) struct.put(FieldName.BEFORE, before);
@@ -298,7 +298,7 @@ public final class Envelope {
      * @param timestamp the timestamp for this message; may be null
      * @return the delete message; never null
      */
-    public Struct delete(Struct before, Struct source, Long timestamp) {
+    public Struct delete(Object before, Struct source, Long timestamp) {
         Struct struct = new Struct(schema);
         struct.put(FieldName.OPERATION, Operation.DELETE.code());
         if (before != null) struct.put(FieldName.BEFORE, before);

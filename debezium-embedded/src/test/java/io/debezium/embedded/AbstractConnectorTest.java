@@ -42,6 +42,7 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.EmbeddedEngine.CompletionCallback;
 import io.debezium.function.BooleanConsumer;
 import io.debezium.relational.history.HistoryRecord;
+import io.debezium.util.LoggingContext;
 import io.debezium.util.Testing;
 
 /**
@@ -72,6 +73,7 @@ public abstract class AbstractConnectorTest implements Testing {
 
     @Before
     public final void initializeConnectorTestFramework() {
+        LoggingContext.forConnector(getClass().getSimpleName(),"","test");
         keyJsonConverter = new JsonConverter();
         valueJsonConverter = new JsonConverter();
         keyJsonDeserializer = new JsonDeserializer();
@@ -86,6 +88,7 @@ public abstract class AbstractConnectorTest implements Testing {
         resetBeforeEachTest();
         consumedLines = new ArrayBlockingQueue<>(getMaximumEnqueuedRecordCount());
         Testing.Files.delete(OFFSET_STORE_PATH);
+        OFFSET_STORE_PATH.getParent().toFile().mkdirs();
     }
 
     /**
@@ -103,11 +106,12 @@ public abstract class AbstractConnectorTest implements Testing {
      */
     public void stopConnector(BooleanConsumer callback) {
         try {
+            logger.info("Stopping the connector");
             // Try to stop the connector ...
             if (engine != null && engine.isRunning()) {
                 engine.stop();
                 try {
-                    engine.await(5, TimeUnit.SECONDS);
+                    engine.await(8, TimeUnit.SECONDS);
                 } catch (InterruptedException e) {
                     Thread.interrupted();
                 }
@@ -192,6 +196,7 @@ public abstract class AbstractConnectorTest implements Testing {
             } finally {
                 latch.countDown();
             }
+            Testing.debug("Stopped connector");
         };
 
         // Create the connector ...
@@ -211,7 +216,10 @@ public abstract class AbstractConnectorTest implements Testing {
         // Submit the connector for asynchronous execution ...
         assertThat(executor).isNull();
         executor = Executors.newFixedThreadPool(1);
-        executor.execute(engine);
+        executor.execute(()->{
+            LoggingContext.forConnector(getClass().getSimpleName(),"","engine");
+            engine.run();
+        });
     }
 
     /**
@@ -280,10 +288,25 @@ public abstract class AbstractConnectorTest implements Testing {
         return recordsConsumed;
     }
 
+    /**
+     * Try to consume and capture exactly the specified number of records from the connector.
+     * 
+     * @param numRecords the number of records that should be consumed
+     * @return the collector into which the records were captured; never null
+     * @throws InterruptedException if the thread was interrupted while waiting for a record to be returned
+     */
     protected SourceRecords consumeRecordsByTopic(int numRecords) throws InterruptedException {
         return consumeRecordsByTopic(numRecords, new SourceRecords());
     }
 
+    /**
+     * Try to consume and capture exactly the specified number of records from the connector.
+     * 
+     * @param numRecords the number of records that should be consumed
+     * @param records the collector into which all consumed messages should be placed
+     * @return the actual number of records that were consumed
+     * @throws InterruptedException if the thread was interrupted while waiting for a record to be returned
+     */
     protected SourceRecords consumeRecordsByTopic(int numRecords, SourceRecords records) throws InterruptedException {
         consumeRecords(numRecords, records::add);
         return records;
@@ -312,18 +335,36 @@ public abstract class AbstractConnectorTest implements Testing {
             return null;
         }
 
+        /**
+         * Get the DDL events for the named database.
+         * @param dbName the name of the database; may not be null
+         * @return the DDL-related events; never null but possibly empty
+         */
         public List<SourceRecord> ddlRecordsForDatabase(String dbName) {
             return ddlRecordsByDbName.get(dbName);
         }
 
+        /**
+         * Get the names of the databases that were affected by the DDL statements.
+         * @return the set of database names; never null but possibly empty
+         */
         public Set<String> databaseNames() {
             return ddlRecordsByDbName.keySet();
         }
 
+        /**
+         * Get the records on the given topic.
+         * @param topicName the name of the topic.
+         * @return the records for the topic; possibly null if there were no records produced on the topic
+         */
         public List<SourceRecord> recordsForTopic(String topicName) {
             return recordsByTopic.get(topicName);
         }
 
+        /**
+         * Get the set of topics for which records were received.
+         * @return the names of the topics; never null
+         */
         public Set<String> topics() {
             return recordsByTopic.keySet();
         }

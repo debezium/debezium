@@ -5,6 +5,7 @@
  */
 package io.debezium.util;
 
+import java.util.Collections;
 import java.util.Map;
 
 import org.slf4j.MDC;
@@ -33,23 +34,25 @@ public class LoggingContext {
 
     private LoggingContext() {
     }
-    
+
     /**
      * A snapshot of an MDC context that can be {@link #restore()}.
      */
     public static final class PreviousContext {
-        private final Map<String,String> context;
+        private static final Map<String, String> EMPTY_CONTEXT = Collections.emptyMap();
+        private final Map<String, String> context;
+
         @SuppressWarnings("unchecked")
         protected PreviousContext() {
-            context = MDC.getCopyOfContextMap();
+            Map<String, String> context = MDC.getCopyOfContextMap();
+            this.context = context != null ? context : EMPTY_CONTEXT;
         }
+
         /**
          * Restore this logging context.
          */
         public void restore() {
-            for ( Map.Entry<String, String> entry : context.entrySet() ) {
-                MDC.put(entry.getKey(), entry.getValue());
-            }
+            MDC.setContextMap(context);
         }
     }
 
@@ -72,7 +75,7 @@ public class LoggingContext {
         MDC.put(CONNECTOR_CONTEXT, contextName);
         return previous;
     }
-    
+
     /**
      * Run the supplied function in the temporary connector MDC context, and when complete always return the MDC context to its
      * state before this method was called.
@@ -90,11 +93,11 @@ public class LoggingContext {
         if (operation == null) throw new IllegalArgumentException("The operation may not be null");
         PreviousContext previous = new PreviousContext();
         try {
-            forConnector(connectorType,connectorName,contextName);
+            forConnector(connectorType, connectorName, contextName);
             operation.run();
         } finally {
             previous.restore();
         }
     }
-    
+
 }

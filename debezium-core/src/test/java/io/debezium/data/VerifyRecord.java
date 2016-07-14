@@ -203,12 +203,18 @@ public class VerifyRecord {
      * Assert that the supplied {@link Struct} is {@link Struct#validate() valid} and its {@link Struct#schema() schema}
      * matches that of the supplied {@code schema}.
      * 
-     * @param value the value with a schema; may not be null
+     * @param schemaAndValue the value with a schema; may not be null
      */
-    public static void schemaMatchesStruct(SchemaAndValue value) {
-        Object val = value.value();
-        assertThat(val).isInstanceOf(Struct.class);
-        fieldsInSchema((Struct) val, value.schema());
+    public static void schemaMatchesStruct(SchemaAndValue schemaAndValue) {
+        Object value = schemaAndValue.value();
+        if (value == null) {
+            // The schema should also be null ...
+            assertThat(schemaAndValue.schema()).isNull();
+        } else {
+            // Both value and schema should exist and be valid ...
+            assertThat(value).isInstanceOf(Struct.class);
+            fieldsInSchema((Struct) value, schemaAndValue.schema());
+        }
     }
 
     /**
@@ -319,9 +325,9 @@ public class VerifyRecord {
             msg = "deserializing value using JSON converter";
             valueWithSchema = valueJsonConverter.toConnectData(record.topic(), valueBytes);
             msg = "comparing value schema to that serialized/deserialized with JSON converter";
-            assertEquals(valueWithSchema.schema(),record.valueSchema());
+            assertEquals(valueWithSchema.schema(), record.valueSchema());
             msg = "comparing value to that serialized/deserialized with JSON converter";
-            assertEquals(valueWithSchema.value(),record.value());
+            assertEquals(valueWithSchema.value(), record.value());
             msg = "comparing value to its schema";
             schemaMatchesStruct(valueWithSchema);
 
@@ -331,9 +337,9 @@ public class VerifyRecord {
             msg = "deserializing key using Avro converter";
             avroKeyWithSchema = avroValueConverter.toConnectData(record.topic(), avroKeyBytes);
             msg = "comparing key schema to that serialized/deserialized with Avro converter";
-            assertEquals(keyWithSchema.schema(),record.keySchema());
+            assertEquals(keyWithSchema.schema(), record.keySchema());
             msg = "comparing key to that serialized/deserialized with Avro converter";
-            assertEquals(keyWithSchema.value(),record.key());
+            assertEquals(keyWithSchema.value(), record.key());
             msg = "comparing key to its schema";
             schemaMatchesStruct(keyWithSchema);
 
@@ -343,9 +349,9 @@ public class VerifyRecord {
             msg = "deserializing value using Avro converter";
             avroValueWithSchema = avroValueConverter.toConnectData(record.topic(), avroValueBytes);
             msg = "comparing value schema to that serialized/deserialized with Avro converter";
-            assertEquals(valueWithSchema.schema(),record.valueSchema());
+            assertEquals(valueWithSchema.schema(), record.valueSchema());
             msg = "comparing value to that serialized/deserialized with Avro converter";
-            assertEquals(valueWithSchema.value(),record.value());
+            assertEquals(valueWithSchema.value(), record.value());
             msg = "comparing value to its schema";
             schemaMatchesStruct(valueWithSchema);
 
@@ -419,65 +425,65 @@ public class VerifyRecord {
             return null;
         }
     }
-    
+
     // The remaining methods are needed simply because of the KAFKA-3803, so our comparisons cannot rely upon Struct.equals
-    
-    protected static void assertEquals( Object o1, Object o2 ) {
+
+    protected static void assertEquals(Object o1, Object o2) {
         // assertThat(o1).isEqualTo(o2);
-        if ( !equals(o1,o2) ) {
+        if (!equals(o1, o2)) {
             fail(SchemaUtil.asString(o1) + " was not equal to " + SchemaUtil.asString(o2));
         }
     }
-    
+
     @SuppressWarnings("unchecked")
-    protected static boolean equals( Object o1, Object o2 ) {
-        if ( o1 == o2 ) return true;
+    protected static boolean equals(Object o1, Object o2) {
+        if (o1 == o2) return true;
         if (o1 == null) return o2 == null ? true : false;
-        if (o2 == null ) return false;
-        if ( o1 instanceof ByteBuffer ) {
-            o1 = ((ByteBuffer)o1).array();
+        if (o2 == null) return false;
+        if (o1 instanceof ByteBuffer) {
+            o1 = ((ByteBuffer) o1).array();
         }
-        if ( o2 instanceof ByteBuffer ) {
-            o2 = ((ByteBuffer)o2).array();
+        if (o2 instanceof ByteBuffer) {
+            o2 = ((ByteBuffer) o2).array();
         }
-        if ( o1 instanceof byte[] && o2 instanceof byte[] ) {
-            boolean result = Arrays.equals((byte[])o1,(byte[])o2);
+        if (o1 instanceof byte[] && o2 instanceof byte[]) {
+            boolean result = Arrays.equals((byte[]) o1, (byte[]) o2);
             return result;
         }
-        if ( o1 instanceof Object[] && o2 instanceof Object[] ) {
-            boolean result = deepEquals((Object[])o1,(Object[])o2);
+        if (o1 instanceof Object[] && o2 instanceof Object[]) {
+            boolean result = deepEquals((Object[]) o1, (Object[]) o2);
             return result;
         }
-        if ( o1 instanceof Map && o2 instanceof Map ) {
-            Map<String,Object> m1 = (Map<String,Object>)o1;
-            Map<String,Object> m2 = (Map<String,Object>)o2;
-            if ( !m1.keySet().equals(m2.keySet())) return false;
-            for ( Map.Entry<String, Object> entry : m1.entrySet()) {
+        if (o1 instanceof Map && o2 instanceof Map) {
+            Map<String, Object> m1 = (Map<String, Object>) o1;
+            Map<String, Object> m2 = (Map<String, Object>) o2;
+            if (!m1.keySet().equals(m2.keySet())) return false;
+            for (Map.Entry<String, Object> entry : m1.entrySet()) {
                 Object v1 = entry.getValue();
                 Object v2 = m2.get(entry.getKey());
-                if ( !equals(v1,v2) ) return false;
+                if (!equals(v1, v2)) return false;
             }
             return true;
         }
-        if ( o1 instanceof Collection && o2 instanceof Collection ) {
-            Collection<Object> m1 = (Collection<Object>)o1;
-            Collection<Object> m2 = (Collection<Object>)o2;
-            if ( m1.size() != m2.size() ) return false;
+        if (o1 instanceof Collection && o2 instanceof Collection) {
+            Collection<Object> m1 = (Collection<Object>) o1;
+            Collection<Object> m2 = (Collection<Object>) o2;
+            if (m1.size() != m2.size()) return false;
             Iterator<?> iter1 = m1.iterator();
             Iterator<?> iter2 = m2.iterator();
-            while ( iter1.hasNext() && iter2.hasNext() ) {
-                if ( !equals(iter1.next(),iter2.next()) ) return false;
+            while (iter1.hasNext() && iter2.hasNext()) {
+                if (!equals(iter1.next(), iter2.next())) return false;
             }
             return true;
         }
-        if ( o1 instanceof Struct && o2 instanceof Struct ) {
+        if (o1 instanceof Struct && o2 instanceof Struct) {
             // Unfortunately, the Struct.equals() method has a bug in that it is not using Arrays.deepEquals(...) to
             // compare values in two Struct objects. The result is that the equals only works if the values of the
             // first level Struct are non arrays; otherwise, the array values are compared using == and that obviously
             // does not work for non-primitive values.
             Struct struct1 = (Struct) o1;
             Struct struct2 = (Struct) o2;
-            if (! Objects.equals(struct1.schema(),struct2.schema()) ) {
+            if (!Objects.equals(struct1.schema(), struct2.schema())) {
                 return false;
             }
             Object[] array1 = valuesFor(struct1);
@@ -487,11 +493,11 @@ public class VerifyRecord {
         }
         return Objects.equals(o1, o2);
     }
-    
-    private static Object[] valuesFor( Struct struct ) {
+
+    private static Object[] valuesFor(Struct struct) {
         Object[] array = new Object[struct.schema().fields().size()];
         int index = 0;
-        for ( Field field : struct.schema().fields() ) {
+        for (Field field : struct.schema().fields()) {
             array[index] = struct.get(field);
             ++index;
         }
@@ -501,7 +507,7 @@ public class VerifyRecord {
     private static boolean deepEquals(Object[] a1, Object[] a2) {
         if (a1 == a2)
             return true;
-        if (a1 == null || a2==null)
+        if (a1 == null || a2 == null)
             return false;
         int length = a1.length;
         if (a2.length != length)
@@ -529,7 +535,7 @@ public class VerifyRecord {
         assert e1 != null;
         boolean eq;
         if (e1 instanceof Object[] && e2 instanceof Object[])
-            eq = deepEquals ((Object[]) e1, (Object[]) e2);
+            eq = deepEquals((Object[]) e1, (Object[]) e2);
         else if (e1 instanceof byte[] && e2 instanceof byte[])
             eq = Arrays.equals((byte[]) e1, (byte[]) e2);
         else if (e1 instanceof short[] && e2 instanceof short[])
@@ -547,7 +553,7 @@ public class VerifyRecord {
         else if (e1 instanceof boolean[] && e2 instanceof boolean[])
             eq = Arrays.equals((boolean[]) e1, (boolean[]) e2);
         else
-            eq = equals(e1,e2);
+            eq = equals(e1, e2);
         return eq;
     }
 }
