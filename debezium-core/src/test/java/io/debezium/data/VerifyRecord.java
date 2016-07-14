@@ -19,6 +19,7 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.data.Schema.Type;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.json.JsonDeserializer;
@@ -35,6 +36,7 @@ import io.confluent.connect.avro.AvroConverter;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
+import io.debezium.util.AvroValidator;
 import io.debezium.util.Testing;
 
 /**
@@ -331,6 +333,10 @@ public class VerifyRecord {
             msg = "comparing value to its schema";
             schemaMatchesStruct(valueWithSchema);
 
+            // Make sure the schema names are valid Avro schema names ...
+            validateSchemaNames(record.keySchema());
+            validateSchemaNames(record.valueSchema());
+
             // Serialize and deserialize the key using the Avro converter, and check that we got the same result ...
             msg = "serializing key using Avro converter";
             byte[] avroKeyBytes = avroValueConverter.fromConnectData(record.topic(), record.keySchema(), record.key());
@@ -378,6 +384,34 @@ public class VerifyRecord {
             }
             if (t instanceof AssertionError) throw t;
             fail("error " + msg + ": " + t.getMessage());
+        }
+    }
+
+    protected static void validateSchemaNames(Schema schema) {
+        if (schema == null) return;
+        String schemaName = schema.name();
+        if (schemaName != null && !AvroValidator.isValidFullname(schemaName)) {
+            fail("Kafka schema '" + schemaName + "' is not a valid Avro schema name");
+        }
+        if (schema.type() == Type.STRUCT) {
+            schema.fields().forEach(field -> {
+                validateSubSchemaNames(schema, field);
+            });
+        }
+    }
+
+    protected static void validateSubSchemaNames(Schema parentSchema, Field field) {
+        if (field == null) return;
+        Schema subSchema = field.schema();
+        String subSchemaName = subSchema.name();
+        if (subSchemaName != null && !AvroValidator.isValidFullname(subSchemaName)) {
+            fail("Kafka schema '" + parentSchema.name() + "' contains a subschema for '" + field.name() + "' named '" + subSchema.name()
+                    + "' that is not a valid Avro schema name");
+        }
+        if (subSchema.type() == Type.STRUCT) {
+            subSchema.fields().forEach(child -> {
+                validateSubSchemaNames(parentSchema, child);
+            });
         }
     }
 

@@ -25,6 +25,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.relational.history.HistoryRecord.Fields;
+import io.debezium.util.AvroValidator;
 
 /**
  * A component that makes {@link SourceRecord}s for tables.
@@ -33,24 +34,15 @@ import io.debezium.relational.history.HistoryRecord.Fields;
  */
 public class RecordMakers {
 
-    protected static final Schema SCHEMA_CHANGE_RECORD_KEY_SCHEMA = SchemaBuilder.struct()
-                                                                                 .name("io.debezium.connector.mysql.SchemaChangeKey")
-                                                                                 .field(Fields.DATABASE_NAME, Schema.STRING_SCHEMA)
-                                                                                 .build();
-
-    protected static final Schema SCHEMA_CHANGE_RECORD_VALUE_SCHEMA = SchemaBuilder.struct()
-                                                                                   .name("io.debezium.connector.mysql.SchemaChangeValue")
-                                                                                   .field(Fields.SOURCE, SourceInfo.SCHEMA)
-                                                                                   .field(Fields.DATABASE_NAME, Schema.STRING_SCHEMA)
-                                                                                   .field(Fields.DDL_STATEMENTS, Schema.STRING_SCHEMA)
-                                                                                   .build();
-
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final MySqlSchema schema;
     private final SourceInfo source;
     private final TopicSelector topicSelector;
     private final Map<Long, Converter> convertersByTableNumber = new HashMap<>();
     private final Map<TableId, Long> tableNumbersByTableId = new HashMap<>();
+    private final Schema schemaChangeKeySchema;
+    private final Schema schemaChangeValueSchema;
+    private final AvroValidator schemaNameValidator = AvroValidator.create(logger);
 
     /**
      * Create the record makers using the supplied components.
@@ -63,6 +55,16 @@ public class RecordMakers {
         this.schema = schema;
         this.source = source;
         this.topicSelector = topicSelector;
+        this.schemaChangeKeySchema = SchemaBuilder.struct()
+                                                  .name(schemaNameValidator.validate("io.debezium.connector.mysql.SchemaChangeKey"))
+                                                  .field(Fields.DATABASE_NAME, Schema.STRING_SCHEMA)
+                                                  .build();
+        this.schemaChangeValueSchema = SchemaBuilder.struct()
+                                                    .name(schemaNameValidator.validate("io.debezium.connector.mysql.SchemaChangeValue"))
+                                                    .field(Fields.SOURCE, SourceInfo.SCHEMA)
+                                                    .field(Fields.DATABASE_NAME, Schema.STRING_SCHEMA)
+                                                    .field(Fields.DDL_STATEMENTS, Schema.STRING_SCHEMA)
+                                                    .build();
     }
 
     /**
@@ -106,9 +108,7 @@ public class RecordMakers {
         Struct key = schemaChangeRecordKey(databaseName);
         Struct value = schemaChangeRecordValue(databaseName, ddlStatements);
         SourceRecord record = new SourceRecord(source.partition(), source.offset(),
-                topicName, partition,
-                SCHEMA_CHANGE_RECORD_KEY_SCHEMA, key,
-                SCHEMA_CHANGE_RECORD_VALUE_SCHEMA, value);
+                topicName, partition, schemaChangeKeySchema, key, schemaChangeValueSchema, value);
         try {
             consumer.accept(record);
             return 1;
@@ -161,7 +161,7 @@ public class RecordMakers {
 
         String topicName = topicSelector.getTopic(id);
         Envelope envelope = Envelope.defineSchema()
-                                    .withName(topicName + ".Envelope")
+                                    .withName(schemaNameValidator.validate(topicName + ".Envelope"))
                                     .withRecord(schema.schemaFor(id).valueSchema())
                                     .withSource(SourceInfo.SCHEMA)
                                     .build();
@@ -209,7 +209,8 @@ public class RecordMakers {
             }
 
             @Override
-            public int update(SourceInfo source, Object[] before, Object[] after, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
+            public int update(SourceInfo source, Object[] before, Object[] after, int rowNumber, int numberOfRows, BitSet includedColumns,
+                              long ts,
                               BlockingConsumer<SourceRecord> consumer)
                     throws InterruptedException {
                 int count = 0;
@@ -293,13 +294,13 @@ public class RecordMakers {
     }
 
     protected Struct schemaChangeRecordKey(String databaseName) {
-        Struct result = new Struct(SCHEMA_CHANGE_RECORD_KEY_SCHEMA);
+        Struct result = new Struct(schemaChangeKeySchema);
         result.put(Fields.DATABASE_NAME, databaseName);
         return result;
     }
 
     protected Struct schemaChangeRecordValue(String databaseName, String ddlStatements) {
-        Struct result = new Struct(SCHEMA_CHANGE_RECORD_VALUE_SCHEMA);
+        Struct result = new Struct(schemaChangeValueSchema);
         result.put(Fields.SOURCE, source.struct());
         result.put(Fields.DATABASE_NAME, databaseName);
         result.put(Fields.DDL_STATEMENTS, ddlStatements);

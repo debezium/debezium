@@ -78,7 +78,7 @@ public class RecordMakersTest {
         assertThat(key.schema()).isSameAs(record.keySchema());
         assertThat(key.get("_id")).isEqualTo(objId.toString());
         assertThat(value.schema()).isSameAs(record.valueSchema());
-        //assertThat(value.getString(FieldName.BEFORE)).isNull();
+        // assertThat(value.getString(FieldName.BEFORE)).isNull();
         assertThat(value.getString(FieldName.AFTER)).isEqualTo(obj.toJson(WRITER_SETTINGS));
         assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.CREATE.code());
         assertThat(value.getInt64(FieldName.TIMESTAMP)).isEqualTo(1002L);
@@ -108,7 +108,7 @@ public class RecordMakersTest {
         assertThat(key.schema()).isSameAs(record.keySchema());
         assertThat(key.get("_id")).isEqualTo(objId.toString());
         assertThat(value.schema()).isSameAs(record.valueSchema());
-        //assertThat(value.getString(FieldName.BEFORE)).isNull();
+        // assertThat(value.getString(FieldName.BEFORE)).isNull();
         assertThat(value.getString(FieldName.AFTER)).isNull();
         assertThat(value.getString("patch")).isEqualTo(obj.toJson(WRITER_SETTINGS));
         assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.UPDATE.code());
@@ -146,7 +146,7 @@ public class RecordMakersTest {
         Struct actualSource = value.getStruct(FieldName.SOURCE);
         Struct expectedSource = source.lastOffsetStruct("rs0", collectionId);
         assertThat(actualSource).isEqualTo(expectedSource);
-        
+
         SourceRecord tombstone = produced.get(1);
         Struct key2 = (Struct) tombstone.key();
         assertThat(key2.schema()).isSameAs(tombstone.keySchema());

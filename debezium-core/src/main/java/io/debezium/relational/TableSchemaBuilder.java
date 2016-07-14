@@ -65,10 +65,14 @@ public class TableSchemaBuilder {
     private static final Logger LOGGER = LoggerFactory.getLogger(TableSchemaBuilder.class);
     private static final LocalDate EPOCH_DAY = LocalDate.ofEpochDay(0);
 
+    private final Function<String,String> schemaNameValidator;
+    
     /**
      * Create a new instance of the builder.
+     * @param schemaNameValidator the validation function for schema names; may not be null
      */
-    public TableSchemaBuilder() {
+    public TableSchemaBuilder(Function<String,String> schemaNameValidator) {
+        this.schemaNameValidator = schemaNameValidator;
     }
 
     /**
@@ -86,7 +90,8 @@ public class TableSchemaBuilder {
         JdbcConnection.columnsFor(resultSet, columns::add);
 
         // Create a schema that represents these columns ...
-        SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(name);
+        String schemaName = schemaNameValidator.apply(name);
+        SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(schemaName);
         columns.forEach(column -> addField(schemaBuilder, column, null));
         Schema valueSchema = schemaBuilder.build();
 
@@ -136,8 +141,8 @@ public class TableSchemaBuilder {
         // Build the schemas ...
         final TableId tableId = table.id();
         final String tableIdStr = tableId.toString();
-        SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(schemaPrefix + tableIdStr + ".Value");
-        SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(schemaPrefix + tableIdStr + ".Key");
+        SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(schemaNameValidator.apply(schemaPrefix + tableIdStr + ".Value"));
+        SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(schemaNameValidator.apply(schemaPrefix + tableIdStr + ".Key"));
         AtomicBoolean hasPrimaryKey = new AtomicBoolean(false);
         table.columns().forEach(column -> {
             if (table.isPrimaryKeyColumn(column.name())) {
