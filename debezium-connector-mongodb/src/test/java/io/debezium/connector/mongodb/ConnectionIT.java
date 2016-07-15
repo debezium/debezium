@@ -30,8 +30,6 @@ public class ConnectionIT extends AbstractMongoIT {
 
     @Test
     public void shouldCreateMovieDatabase() {
-        //Testing.Print.enable();
-        //Testing.Debug.enable();
         Testing.print("Configuration: " + config);
 
         String dbName = "dbA";

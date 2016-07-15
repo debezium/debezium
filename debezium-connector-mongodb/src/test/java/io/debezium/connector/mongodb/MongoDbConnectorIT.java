@@ -46,6 +46,8 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
 
     @Before
     public void beforeEach() {
+        Testing.Debug.disable();
+        Testing.Print.disable();
         stopConnector();
         initializeConnectorTestFramework();
     }
@@ -79,8 +81,6 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
 
     @Test
     public void shouldConsumeAllEventsFromDatabase() throws InterruptedException, IOException {
-        Testing.Debug.enable();
-        Testing.Print.enable();
         
         // Use the DB configuration to define the connector's configuration ...
         config = Configuration.create()
