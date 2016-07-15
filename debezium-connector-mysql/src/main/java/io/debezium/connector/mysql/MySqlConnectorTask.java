@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
+import io.debezium.util.LoggingContext.PreviousContext;
 
 /**
  * A Kafka Connect source task reads the MySQL binary log and generate the corresponding data change events.
@@ -63,110 +64,122 @@ public final class MySqlConnectorTask extends SourceTask {
 
         // Create and start the task context ...
         this.taskContext = new MySqlTaskContext(config);
-        this.taskContext.start();
+        PreviousContext prevLoggingContext = this.taskContext.configureLoggingContext("task");
+        try {
+            this.taskContext.start();
 
-        // Get the offsets for our partition ...
-        boolean startWithSnapshot = false;
-        boolean snapshotEventsAreInserts = true;
-        final SourceInfo source = taskContext.source();
-        Map<String, ?> offsets = context.offsetStorageReader().offset(taskContext.source().partition());
-        if (offsets != null) {
-            // Set the position in our source info ...
-            source.setOffset(offsets);
+            // Get the offsets for our partition ...
+            boolean startWithSnapshot = false;
+            boolean snapshotEventsAreInserts = true;
+            final SourceInfo source = taskContext.source();
+            Map<String, ?> offsets = context.offsetStorageReader().offset(taskContext.source().partition());
+            if (offsets != null) {
+                // Set the position in our source info ...
+                source.setOffset(offsets);
 
-            // Before anything else, recover the database history to the specified binlog coordinates ...
-            taskContext.loadHistory(source);
+                // Before anything else, recover the database history to the specified binlog coordinates ...
+                taskContext.loadHistory(source);
 
-            if (source.isSnapshotInEffect()) {
-                // The last offset was an incomplete snapshot that we cannot recover from...
-                if (taskContext.isSnapshotNeverAllowed()) {
-                    // No snapshots are allowed
-                    String msg = "The connector previously stopped while taking a snapshot, but now the connector is configured "
-                            + "to never allow snapshots. Reconfigure the connector to use snapshots initially or when needed.";
-                    throw new ConnectException(msg);
-                }
-                // Otherwise, restart a new snapshot ...
-                startWithSnapshot = true;
-            } else {
-                // No snapshot was in effect, so we should just start reading from the binlog ...
-                startWithSnapshot = false;
-
-                // But check to see if the server still has those binlog coordinates ...
-                if (!isBinlogAvailable()) {
-                    if (!taskContext.isSnapshotAllowedWhenNeeded()) {
-                        String msg = "The connector is trying to read binlog starting at " + source + ", but this is no longer "
-                                + "available on the server. Reconfigure the connector to use a snapshot when needed.";
+                if (source.isSnapshotInEffect()) {
+                    // The last offset was an incomplete snapshot that we cannot recover from...
+                    if (taskContext.isSnapshotNeverAllowed()) {
+                        // No snapshots are allowed
+                        String msg = "The connector previously stopped while taking a snapshot, but now the connector is configured "
+                                + "to never allow snapshots. Reconfigure the connector to use snapshots initially or when needed.";
                         throw new ConnectException(msg);
                     }
+                    // Otherwise, restart a new snapshot ...
                     startWithSnapshot = true;
+                } else {
+                    // No snapshot was in effect, so we should just start reading from the binlog ...
+                    startWithSnapshot = false;
+
+                    // But check to see if the server still has those binlog coordinates ...
+                    if (!isBinlogAvailable()) {
+                        if (!taskContext.isSnapshotAllowedWhenNeeded()) {
+                            String msg = "The connector is trying to read binlog starting at " + source + ", but this is no longer "
+                                    + "available on the server. Reconfigure the connector to use a snapshot when needed.";
+                            throw new ConnectException(msg);
+                        }
+                        startWithSnapshot = true;
+                    }
+                }
+
+            } else {
+                // We have no recorded offsets ...
+                if (taskContext.isSnapshotNeverAllowed()) {
+                    // We're not allowed to take a snapshot, so instead we have to assume that the binlog contains the
+                    // full history of the database.
+                    source.setBinlogStartPoint("", 0L);// start from the beginning of the binlog
+                } else {
+                    // We are allowed to use snapshots, and that is the best way to start ...
+                    startWithSnapshot = true;
+                    // The snapshot will determine if GTIDs are set
                 }
             }
 
-        } else {
-            // We have no recorded offsets ...
-            if (taskContext.isSnapshotNeverAllowed()) {
-                // We're not allowed to take a snapshot, so instead we have to assume that the binlog contains the
-                // full history of the database.
-                source.setBinlogStartPoint("", 0L);// start from the beginning of the binlog
-            } else {
-                // We are allowed to use snapshots, and that is the best way to start ...
-                startWithSnapshot = true;
-                // The snapshot will determine if GTIDs are set
+            if (!startWithSnapshot && source.gtidSet() == null && isGtidModeEnabled()) {
+                // The snapshot will properly determine the GTID set, but we're not starting with a snapshot and GTIDs were not
+                // previously used but the MySQL server has them enabled ...
+                source.setGtidSet("");
             }
-        }
 
-        if (!startWithSnapshot && source.gtidSet() == null && isGtidModeEnabled()) {
-            // The snapshot will properly determine the GTID set, but we're not starting with a snapshot and GTIDs were not
-            // previously used but the MySQL server has them enabled ...
-            source.setGtidSet("");
-        }
+            // Set up the readers ...
+            this.binlogReader = new BinlogReader(taskContext);
+            if (startWithSnapshot) {
+                // We're supposed to start with a snapshot, so set that up ...
+                this.snapshotReader = new SnapshotReader(taskContext);
+                this.snapshotReader.onSuccessfulCompletion(this::transitionToReadBinlog);
+                this.snapshotReader.useMinimalBlocking(taskContext.useMinimalSnapshotLocking());
+                if (snapshotEventsAreInserts) this.snapshotReader.generateInsertEvents();
+                this.currentReader = this.snapshotReader;
+            } else {
+                // Just starting to read the binlog ...
+                this.currentReader = this.binlogReader;
+            }
 
-        // Set up the readers ...
-        this.binlogReader = new BinlogReader(taskContext);
-        if (startWithSnapshot) {
-            // We're supposed to start with a snapshot, so set that up ...
-            this.snapshotReader = new SnapshotReader(taskContext);
-            this.snapshotReader.onSuccessfulCompletion(this::transitionToReadBinlog);
-            this.snapshotReader.useMinimalBlocking(taskContext.useMinimalSnapshotLocking());
-            if (snapshotEventsAreInserts) this.snapshotReader.generateInsertEvents();
-            this.currentReader = this.snapshotReader;
-        } else {
-            // Just starting to read the binlog ...
-            this.currentReader = this.binlogReader;
+            // And start our first reader ...
+            this.currentReader.start();
+        } finally {
+            prevLoggingContext.restore();
         }
-
-        // And start our first reader ...
-        this.currentReader.start();
     }
 
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
-        logger.trace("Polling for events");
-        return currentReader.poll();
+        PreviousContext prevLoggingContext = this.taskContext.configureLoggingContext("task");
+        try {
+            logger.trace("Polling for events");
+            return currentReader.poll();
+        } finally {
+            prevLoggingContext.restore();
+        }
     }
 
     @Override
     public void stop() {
         if (context != null) {
-            logger.info("Stopping MySQL connector task");
+            PreviousContext prevLoggingContext = this.taskContext.configureLoggingContext("task");
             // We need to explicitly stop both readers, in this order. If we were to instead call 'currentReader.stop()', there
             // is a chance without synchronization that we'd miss the transition and stop only the snapshot reader. And stopping
             // both
             // is far simpler and more efficient than synchronizing ...
             try {
-                if ( this.snapshotReader != null ) this.snapshotReader.stop();
+                logger.info("Stopping MySQL connector task");
+                if (this.snapshotReader != null) this.snapshotReader.stop();
             } finally {
                 try {
-                    if (this.binlogReader != null ) this.binlogReader.stop();
+                    if (this.binlogReader != null) this.binlogReader.stop();
                 } finally {
                     try {
                         // Flush and stop database history, close all JDBC connections ...
-                        if (this.taskContext != null ) taskContext.shutdown();
+                        if (this.taskContext != null) taskContext.shutdown();
                     } catch (Throwable e) {
                         logger.error("Unexpected error shutting down the database history and/or closing JDBC connections", e);
                     } finally {
                         context = null;
                         logger.info("Connector task successfully stopped");
+                        prevLoggingContext.restore();
                     }
                 }
             }

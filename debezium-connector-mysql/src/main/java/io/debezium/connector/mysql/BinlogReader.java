@@ -102,24 +102,33 @@ public class BinlogReader extends AbstractReader {
 
         // Set the starting row number, which is the next row number to be read ...
         startingRowNumber = source.nextEventRowNumber();
-        
-        // Start the log reader, which starts background threads ...
-        long timeoutInMilliseconds = context.timeoutInMilliseconds();
-        try {
-            logger.debug("Attempting to establish binlog reader connection with timeout of {} ms", timeoutInMilliseconds);
-            client.connect(context.timeoutInMilliseconds());
-        } catch (TimeoutException e) {
-            double seconds = TimeUnit.MILLISECONDS.toSeconds(timeoutInMilliseconds);
-            throw new ConnectException("Timed out after " + seconds + " seconds while waiting to connect to MySQL at " +
-                    context.hostname() + ":" + context.port() + " with user '" + context.username() + "'", e);
-        } catch (AuthenticationException e) {
-            throw new ConnectException("Failed to authenticate to the MySQL database at " +
-                    context.hostname() + ":" + context.port() + " with user '" + context.username() + "'", e);
-        } catch (Throwable e) {
-            throw new ConnectException("Unable to connect to the MySQL database at " +
-                    context.hostname() + ":" + context.port() + " with user '" + context.username() + "': " + e.getMessage(), e);
-        }
 
+        // Start the log reader, which starts background threads ...
+        if (isRunning()) {
+            long timeoutInMilliseconds = context.timeoutInMilliseconds();
+            long started = context.clock().currentTimeInMillis();
+            try {
+                logger.debug("Attempting to establish binlog reader connection with timeout of {} ms", timeoutInMilliseconds);
+                client.connect(context.timeoutInMilliseconds());
+            } catch (TimeoutException e) {
+                // If the client thread is interrupted *before* the client could connect, the client throws a timeout exception
+                // The only way we can distinguish this is if we get the timeout exception before the specified timeout has
+                // elapsed, so we simply check this (within 10%) ...
+                long duration = context.clock().currentTimeInMillis() - started;
+                if (duration > (0.9 * context.timeoutInMilliseconds())) {
+                    double actualSeconds = TimeUnit.MILLISECONDS.toSeconds(duration);
+                    throw new ConnectException("Timed out after " + actualSeconds + " seconds while waiting to connect to MySQL at " +
+                            context.hostname() + ":" + context.port() + " with user '" + context.username() + "'", e);
+                }
+                // Otherwise, we were told to shutdown, so we don't care about the timeout exception
+            } catch (AuthenticationException e) {
+                throw new ConnectException("Failed to authenticate to the MySQL database at " +
+                        context.hostname() + ":" + context.port() + " with user '" + context.username() + "'", e);
+            } catch (Throwable e) {
+                throw new ConnectException("Unable to connect to the MySQL database at " +
+                        context.hostname() + ":" + context.port() + " with user '" + context.username() + "': " + e.getMessage(), e);
+            }
+        }
     }
 
     @Override
@@ -150,7 +159,7 @@ public class BinlogReader extends AbstractReader {
         // Update the source offset info. Note that the client returns the value in *milliseconds*, even though the binlog
         // contains only *seconds* precision ...
         EventHeader eventHeader = event.getHeader();
-        source.setBinlogTimestampSeconds(eventHeader.getTimestamp()/1000L); // client returns milliseconds, we record seconds
+        source.setBinlogTimestampSeconds(eventHeader.getTimestamp() / 1000L); // client returns milliseconds, we record seconds
         source.setBinlogServerId(eventHeader.getServerId());
         EventType eventType = eventHeader.getEventType();
         if (eventType == EventType.ROTATE) {
@@ -171,7 +180,7 @@ public class BinlogReader extends AbstractReader {
         try {
             // Forward the event to the handler ...
             eventHandlers.getOrDefault(eventType, this::ignoreEvent).accept(event);
-            
+
             // And after that event has been processed, always set the starting row number to 0 ...
             startingRowNumber = 0;
         } catch (InterruptedException e) {
@@ -188,7 +197,7 @@ public class BinlogReader extends AbstractReader {
         if (eventData instanceof EventDeserializer.EventDataWrapper) {
             eventData = ((EventDeserializer.EventDataWrapper) eventData).getInternal();
         }
-        return (T)eventData;
+        return (T) eventData;
     }
 
     /**
