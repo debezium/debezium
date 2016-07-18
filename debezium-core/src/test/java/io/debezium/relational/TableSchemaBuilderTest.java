@@ -5,6 +5,8 @@
  */
 package io.debezium.relational;
 
+import static org.junit.Assert.fail;
+
 import java.sql.Types;
 
 import org.apache.kafka.connect.data.Date;
@@ -17,6 +19,8 @@ import org.junit.Test;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import io.debezium.util.AvroValidator;
+
 public class TableSchemaBuilderTest {
 
     private final String prefix = "";
@@ -28,9 +32,13 @@ public class TableSchemaBuilderTest {
     private Column c3;
     private Column c4;
     private TableSchema schema;
+    private AvroValidator validator;
 
     @Before
     public void beforeEach() {
+        validator = AvroValidator.create((original,replacement, conflict)->{
+            fail("Should not have come across an invalid schema name");
+        });
         schema = null;
         table = Table.editor()
                      .tableId(id)
@@ -69,19 +77,19 @@ public class TableSchemaBuilderTest {
 
     @Test(expected = NullPointerException.class)
     public void shouldFailToBuildTableSchemaFromNullTable() {
-        new TableSchemaBuilder().create(prefix,null);
+        new TableSchemaBuilder(validator::validate).create(prefix,null);
     }
 
     @Test
     public void shouldBuildTableSchemaFromTable() {
-        schema = new TableSchemaBuilder().create(prefix,table);
+        schema = new TableSchemaBuilder(validator::validate).create(prefix,table);
         assertThat(schema).isNotNull();
     }
 
     @Test
     public void shouldBuildTableSchemaFromTableWithoutPrimaryKey() {
         table = table.edit().setPrimaryKeyNames().create();
-        schema = new TableSchemaBuilder().create(prefix,table);
+        schema = new TableSchemaBuilder(validator::validate).create(prefix,table);
         assertThat(schema).isNotNull();
         // Check the keys ...
         assertThat(schema.keySchema()).isNull();

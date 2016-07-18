@@ -122,7 +122,7 @@ public class SnapshotReader extends AbstractReader {
             // Call the completion function to say that we've successfully completed
             if (onSuccessfulCompletion != null) onSuccessfulCompletion.run();
         } catch (Throwable e) {
-            logger.error("Error calling completion function after completing snapshot");
+            logger.error("Error calling completion function after completing snapshot", e);
         }
     }
 
@@ -190,7 +190,7 @@ public class SnapshotReader extends AbstractReader {
                     String binlogFilename = rs.getString(1);
                     long binlogPosition = rs.getLong(2);
                     source.setBinlogStartPoint(binlogFilename, binlogPosition);
-                    if ( rs.getMetaData().getColumnCount() > 4 ) {
+                    if (rs.getMetaData().getColumnCount() > 4) {
                         // This column exists only in MySQL 5.6.5 or later ...
                         String gtidSet = rs.getString(5);// GTID set, may be null, blank, or contain a GTID set
                         source.setGtidSet(gtidSet);
@@ -321,7 +321,7 @@ public class SnapshotReader extends AbstractReader {
                                 for (int i = 0, j = 1; i != numColumns; ++i, ++j) {
                                     row[i] = rs.getObject(j);
                                 }
-                                if ( isLastTable && rs.isLast() ) {
+                                if (isLastTable && rs.isLast()) {
                                     // This is the last record, so mark the offset as having completed the snapshot
                                     // but the SourceInfo.struct() will still be marked as being part of the snapshot ...
                                     source.markLastSnapshot();

@@ -46,7 +46,7 @@ public class MySqlTaskContextIT {
         username = "snapper";
         password = "snapperpass";
         serverId = 18965;
-        serverName = "logical-server-name";
+        serverName = "logical_server_name";
         databaseName = "connector_test_ro";
         Testing.Files.delete(DB_HISTORY_PATH);
     }

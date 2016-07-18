@@ -35,7 +35,7 @@ public class SnapshotReaderIT {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-snapshot.txt").toAbsolutePath();
     private static final String DB_NAME = "connector_test_ro";
-    private static final String LOGICAL_NAME = "logical-server-name";
+    private static final String LOGICAL_NAME = "logical_server_name";
     
     private Configuration config;
     private MySqlTaskContext context;

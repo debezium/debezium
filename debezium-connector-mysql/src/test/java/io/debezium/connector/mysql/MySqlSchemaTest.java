@@ -20,6 +20,7 @@ import static org.fest.assertions.Assertions.assertThat;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
+import io.debezium.util.AvroValidator;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
 
@@ -29,7 +30,7 @@ import io.debezium.util.Testing;
 public class MySqlSchemaTest {
 
     private static final Path TEST_FILE_PATH = Testing.Files.createTestingPath("dbHistory.log");
-    private static final String SERVER_NAME = "test-server";
+    private static final String SERVER_NAME = "testServer";
 
     private Configurator build;
     private MySqlSchema mysql;
@@ -126,8 +127,8 @@ public class MySqlSchemaTest {
         assertThat(mysql.tables().forTable(tableId)).isNotNull();
         TableSchema tableSchema = mysql.schemaFor(tableId);
         assertThat(tableSchema).isNotNull();
-        assertThat(tableSchema.keySchema().name()).isEqualTo(SERVER_NAME + "." + fullyQualifiedTableName + ".Key");
-        assertThat(tableSchema.valueSchema().name()).isEqualTo(SERVER_NAME + "." + fullyQualifiedTableName + ".Value");
+        assertThat(tableSchema.keySchema().name()).isEqualTo(AvroValidator.validFullname(SERVER_NAME + "." + fullyQualifiedTableName + ".Key"));
+        assertThat(tableSchema.valueSchema().name()).isEqualTo(AvroValidator.validFullname(SERVER_NAME + "." + fullyQualifiedTableName + ".Value"));
     }
 
     protected void assertTableExcluded(String fullyQualifiedTableName) {

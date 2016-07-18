@@ -21,6 +21,7 @@ import org.bson.types.BSONTimestamp;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.util.AvroValidator;
 import io.debezium.util.Collect;
 
 /**
@@ -82,17 +83,17 @@ public final class SourceInfo {
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition(String)} and {@link #lastOffset}
      * information.
      */
-    public static final Schema SOURCE_SCHEMA = SchemaBuilder.struct()
-                                                            .name("io.debezium.connector.mongo.Source")
-                                                            .version(SCHEMA_VERSION)
-                                                            .field(SERVER_NAME, Schema.STRING_SCHEMA)
-                                                            .field(REPLICA_SET_NAME, Schema.STRING_SCHEMA)
-                                                            .field(NAMESPACE, Schema.STRING_SCHEMA)
-                                                            .field(TIMESTAMP, Schema.INT32_SCHEMA)
-                                                            .field(ORDER, Schema.INT32_SCHEMA)
-                                                            .field(OPERATION_ID, Schema.OPTIONAL_INT64_SCHEMA)
-                                                            .field(INITIAL_SYNC, Schema.OPTIONAL_BOOLEAN_SCHEMA)
-                                                            .build();
+    private final Schema SOURCE_SCHEMA = SchemaBuilder.struct()
+                                                      .name(AvroValidator.defaultValidator().validate("io.debezium.connector.mongo.Source"))
+                                                      .version(SCHEMA_VERSION)
+                                                      .field(SERVER_NAME, Schema.STRING_SCHEMA)
+                                                      .field(REPLICA_SET_NAME, Schema.STRING_SCHEMA)
+                                                      .field(NAMESPACE, Schema.STRING_SCHEMA)
+                                                      .field(TIMESTAMP, Schema.INT32_SCHEMA)
+                                                      .field(ORDER, Schema.INT32_SCHEMA)
+                                                      .field(OPERATION_ID, Schema.OPTIONAL_INT64_SCHEMA)
+                                                      .field(INITIAL_SYNC, Schema.OPTIONAL_BOOLEAN_SCHEMA)
+                                                      .build();
 
     private final ConcurrentMap<String, Map<String, String>> sourcePartitionsByReplicaSetName = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, Position> positionsByReplicaSetName = new ConcurrentHashMap<>();
@@ -160,7 +161,7 @@ public final class SourceInfo {
             return Collect.hashMapOf(SERVER_ID_KEY, serverName, REPLICA_SET_NAME, rsName);
         });
     }
-    
+
     /**
      * Get the MongoDB timestamp of the last offset position for the replica set.
      * 
@@ -230,9 +231,10 @@ public final class SourceInfo {
         positionsByReplicaSetName.put(replicaSetName, position);
         return offsetStructFor(replicaSetName, namespace, position, initialSyncReplicaSets.contains(replicaSetName));
     }
-    
+
     /**
      * Utility to extract the {@link BsonTimestamp timestamp} value from the event.
+     * 
      * @param oplogEvent the event
      * @return the timestamp, or null if the event is null or there is no {@code ts} field
      */

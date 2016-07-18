@@ -169,9 +169,6 @@ public final class MySqlTaskContext {
     }
 
     public void start() {
-        // First, configure the logging context for the thread that created this context object ...
-        this.configureLoggingContext("task");
-
         // Start the MySQL database history, which simply starts up resources but does not recover the history to a specific point
         dbSchema().start();
     }

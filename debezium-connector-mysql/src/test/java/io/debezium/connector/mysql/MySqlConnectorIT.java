@@ -82,7 +82,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                               .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                              .with(MySqlConnectorConfig.SERVER_NAME, "kafka-connect")
+                              .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
                               .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                               .with(MySqlConnectorConfig.DATABASE_WHITELIST, "connector_test")
                               .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
@@ -99,11 +99,11 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
         SourceRecords records = consumeRecordsByTopic(5+9+9+4+1);   // 1 schema change record
-        assertThat(records.recordsForTopic("kafka-connect").size()).isEqualTo(1);
-        assertThat(records.recordsForTopic("kafka-connect.connector_test.products").size()).isEqualTo(9);
-        assertThat(records.recordsForTopic("kafka-connect.connector_test.products_on_hand").size()).isEqualTo(9);
-        assertThat(records.recordsForTopic("kafka-connect.connector_test.customers").size()).isEqualTo(4);
-        assertThat(records.recordsForTopic("kafka-connect.connector_test.orders").size()).isEqualTo(5);
+        assertThat(records.recordsForTopic("myServer").size()).isEqualTo(1);
+        assertThat(records.recordsForTopic("myServer.connector_test.products").size()).isEqualTo(9);
+        assertThat(records.recordsForTopic("myServer.connector_test.products_on_hand").size()).isEqualTo(9);
+        assertThat(records.recordsForTopic("myServer.connector_test.customers").size()).isEqualTo(4);
+        assertThat(records.recordsForTopic("myServer.connector_test.orders").size()).isEqualTo(5);
         assertThat(records.topics().size()).isEqualTo(5);
         assertThat(records.databaseNames().size()).isEqualTo(1);
         assertThat(records.ddlRecordsForDatabase("connector_test").size()).isEqualTo(1);
@@ -151,7 +151,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         Testing.print("*** Restarting connector after inserts were made");
         start(MySqlConnector.class, config);
         records = consumeRecordsByTopic(1);
-        assertThat(records.recordsForTopic("kafka-connect.connector_test.products").size()).isEqualTo(1);
+        assertThat(records.recordsForTopic("myServer.connector_test.products").size()).isEqualTo(1);
         assertThat(records.topics().size()).isEqualTo(1);
         
         Testing.print("*** Done with inserts and restart");
@@ -170,9 +170,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         
         // And consume the one insert ...
         records = consumeRecordsByTopic(1);
-        assertThat(records.recordsForTopic("kafka-connect.connector_test.products").size()).isEqualTo(1);
+        assertThat(records.recordsForTopic("myServer.connector_test.products").size()).isEqualTo(1);
         assertThat(records.topics().size()).isEqualTo(1);
-        List<SourceRecord> inserts = records.recordsForTopic("kafka-connect.connector_test.products");
+        List<SourceRecord> inserts = records.recordsForTopic("myServer.connector_test.products");
         assertInsert(inserts.get(0), "id", 1001);
 
         Testing.print("*** Done with simple insert");
@@ -190,7 +190,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         }
         // And consume the update of the PK, which is one insert followed by a delete followed by a tombstone ...
         records = consumeRecordsByTopic(3);
-        List<SourceRecord> updates = records.recordsForTopic("kafka-connect.connector_test.products");
+        List<SourceRecord> updates = records.recordsForTopic("myServer.connector_test.products");
         assertThat(updates.size()).isEqualTo(3);
         assertInsert(updates.get(0), "id", 2001);
         assertDelete(updates.get(1), "id", 1001);
@@ -213,7 +213,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // And consume the one update ...
         records = consumeRecordsByTopic(1);
         assertThat(records.topics().size()).isEqualTo(1);
-        updates = records.recordsForTopic("kafka-connect.connector_test.products");
+        updates = records.recordsForTopic("myServer.connector_test.products");
         assertThat(updates.size()).isEqualTo(1);
         assertUpdate(updates.get(0), "id", 2001);
         updates.forEach(this::validate);
@@ -237,8 +237,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // And consume the one schema change event and one update event ...
         records = consumeRecordsByTopic(2);
         assertThat(records.topics().size()).isEqualTo(2);
-        assertThat(records.recordsForTopic("kafka-connect").size()).isEqualTo(1);
-        updates = records.recordsForTopic("kafka-connect.connector_test.products");
+        assertThat(records.recordsForTopic("myServer").size()).isEqualTo(1);
+        updates = records.recordsForTopic("myServer.connector_test.products");
         assertThat(updates.size()).isEqualTo(1);
         assertUpdate(updates.get(0), "id", 2001);
         updates.forEach(this::validate);
@@ -262,8 +262,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // And consume the one schema change event only ...
         records = consumeRecordsByTopic(1);
         assertThat(records.topics().size()).isEqualTo(1);
-        assertThat(records.recordsForTopic("kafka-connect").size()).isEqualTo(1);
-        records.recordsForTopic("kafka-connect").forEach(this::validate);
+        assertThat(records.recordsForTopic("myServer").size()).isEqualTo(1);
+        records.recordsForTopic("myServer").forEach(this::validate);
 
         Testing.print("*** Done with PK change (different db and fully-qualified name)");
 
@@ -284,7 +284,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // And make sure we consume that one update ...
         records = consumeRecordsByTopic(1);
         assertThat(records.topics().size()).isEqualTo(1);
-        updates = records.recordsForTopic("kafka-connect.connector_test.products_on_hand");
+        updates = records.recordsForTopic("myServer.connector_test.products_on_hand");
         assertThat(updates.size()).isEqualTo(1);
         assertUpdate(updates.get(0), "product_id", 109);
         updates.forEach(this::validate);
@@ -308,7 +308,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                               .with(MySqlConnectorConfig.SERVER_ID, 18780)
-                              .with(MySqlConnectorConfig.SERVER_NAME, "kafka-connect-2")
+                              .with(MySqlConnectorConfig.SERVER_NAME, "myServer1")
                               .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                               .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                               .with(MySqlConnectorConfig.DATABASE_WHITELIST, "connector_test_ro")
@@ -324,10 +324,10 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Consume the first records due to startup and initialization of the database ...
         // Testing.Print.enable();
         SourceRecords records = consumeRecordsByTopic(9+9+4+5+6);   // 6 DDL changes
-        assertThat(records.recordsForTopic("kafka-connect-2.connector_test_ro.products").size()).isEqualTo(9);
-        assertThat(records.recordsForTopic("kafka-connect-2.connector_test_ro.products_on_hand").size()).isEqualTo(9);
-        assertThat(records.recordsForTopic("kafka-connect-2.connector_test_ro.customers").size()).isEqualTo(4);
-        assertThat(records.recordsForTopic("kafka-connect-2.connector_test_ro.orders").size()).isEqualTo(5);
+        assertThat(records.recordsForTopic("myServer1.connector_test_ro.products").size()).isEqualTo(9);
+        assertThat(records.recordsForTopic("myServer1.connector_test_ro.products_on_hand").size()).isEqualTo(9);
+        assertThat(records.recordsForTopic("myServer1.connector_test_ro.customers").size()).isEqualTo(4);
+        assertThat(records.recordsForTopic("myServer1.connector_test_ro.orders").size()).isEqualTo(5);
         assertThat(records.topics().size()).isEqualTo(4+1);
         assertThat(records.ddlRecordsForDatabase("connector_test_ro").size()).isEqualTo(6);
 
@@ -337,11 +337,11 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // More records may have been written (if this method were run after the others), but we don't care ...
         stopConnector();
 
-        records.recordsForTopic("kafka-connect-2.connector_test_ro.orders").forEach(record->{
+        records.recordsForTopic("myServer1.connector_test_ro.orders").forEach(record->{
             print(record);
         });
         
-        records.recordsForTopic("kafka-connect-2.connector_test_ro.customers").forEach(record->{
+        records.recordsForTopic("myServer1.connector_test_ro.customers").forEach(record->{
             print(record);
         });
     }
@@ -358,7 +358,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                               .with(MySqlConnectorConfig.SERVER_ID, 18780)
-                              .with(MySqlConnectorConfig.SERVER_NAME, "kafka-connect-2")
+                              .with(MySqlConnectorConfig.SERVER_NAME, "myServer2")
                               .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                               .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                               .with(MySqlConnectorConfig.DATABASE_WHITELIST, "connector_test_ro")
@@ -375,10 +375,10 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Consume the first records due to startup and initialization of the database ...
         // Testing.Print.enable();
         SourceRecords records = consumeRecordsByTopic(9+9+4+5);
-        assertThat(records.recordsForTopic("kafka-connect-2.connector_test_ro.products").size()).isEqualTo(9);
-        assertThat(records.recordsForTopic("kafka-connect-2.connector_test_ro.products_on_hand").size()).isEqualTo(9);
-        assertThat(records.recordsForTopic("kafka-connect-2.connector_test_ro.customers").size()).isEqualTo(4);
-        assertThat(records.recordsForTopic("kafka-connect-2.connector_test_ro.orders").size()).isEqualTo(5);
+        assertThat(records.recordsForTopic("myServer2.connector_test_ro.products").size()).isEqualTo(9);
+        assertThat(records.recordsForTopic("myServer2.connector_test_ro.products_on_hand").size()).isEqualTo(9);
+        assertThat(records.recordsForTopic("myServer2.connector_test_ro.customers").size()).isEqualTo(4);
+        assertThat(records.recordsForTopic("myServer2.connector_test_ro.orders").size()).isEqualTo(5);
         assertThat(records.topics().size()).isEqualTo(4);
 
         // Check that all records are valid, can be serialized and deserialized ...
@@ -388,7 +388,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         stopConnector();
 
         // Check that the orders.order_number is not present ...
-        records.recordsForTopic("kafka-connect-2.connector_test_ro.orders").forEach(record->{
+        records.recordsForTopic("myServer2.connector_test_ro.orders").forEach(record->{
             print(record);
             Struct value = (Struct) record.value();
             try {
@@ -400,7 +400,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         });
         
         // Check that the customer.email is masked ...
-        records.recordsForTopic("kafka-connect-2.connector_test_ro.customers").forEach(record->{
+        records.recordsForTopic("myServer2.connector_test_ro.customers").forEach(record->{
             Struct value = (Struct) record.value();
             if (value.getStruct("after") != null) {
                 assertThat(value.getStruct("after").getString("email")).isEqualTo("************");

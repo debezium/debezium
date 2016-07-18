@@ -29,6 +29,7 @@ import io.debezium.relational.ddl.DdlChanges.DatabaseStatementStringConsumer;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.text.ParsingException;
+import io.debezium.util.AvroValidator;
 import io.debezium.util.Collect;
 
 /**
@@ -55,6 +56,7 @@ public class MySqlSchema {
     private static final HistoryRecordComparator HISTORY_COMPARATOR = HistoryRecordComparator.usingPositions(SourceInfo::isPositionAtOrBefore);
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
+    private final AvroValidator schemaNameValidator = AvroValidator.create(logger);
     private final Set<String> ignoredQueryStatements = Collect.unmodifiableSet("BEGIN", "END", "FLUSH PRIVILEGES");
     private final MySqlDdlParser ddlParser;
     private final Map<TableId, TableSchema> tableSchemaByTableId = new HashMap<>();
@@ -78,7 +80,7 @@ public class MySqlSchema {
         this.tables = new Tables();
         this.ddlChanges = new DdlChanges(this.ddlParser.terminator());
         this.ddlParser.addListener(ddlChanges);
-        this.schemaBuilder = new TableSchemaBuilder();
+        this.schemaBuilder = new TableSchemaBuilder(schemaNameValidator::validate);
         if ( serverName != null ) serverName = serverName.trim();
         this.serverName = serverName;
         if ( this.serverName == null || serverName.isEmpty() ) {

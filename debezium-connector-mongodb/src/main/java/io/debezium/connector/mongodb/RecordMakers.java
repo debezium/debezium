@@ -24,6 +24,7 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.function.BlockingConsumer;
+import io.debezium.util.AvroValidator;
 
 /**
  * A component that makes {@link SourceRecord}s for {@link CollectionId collections} and submits them to a consumer.
@@ -41,6 +42,7 @@ public class RecordMakers {
     }
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
+    private final AvroValidator schemaNameValidator = AvroValidator.create(logger);
     private final SourceInfo source;
     private final TopicSelector topicSelector;
     private final Map<CollectionId, RecordsForCollection> recordMakerByCollectionId = new HashMap<>();
@@ -71,7 +73,7 @@ public class RecordMakers {
     public RecordsForCollection forCollection(CollectionId collectionId) {
         return recordMakerByCollectionId.computeIfAbsent(collectionId, id -> {
             String topicName = topicSelector.getTopic(collectionId);
-            return new RecordsForCollection(collectionId, source, topicName, valueTransformer, recorder);
+            return new RecordsForCollection(collectionId, source, topicName, schemaNameValidator, valueTransformer, recorder);
         });
     }
 
@@ -89,7 +91,7 @@ public class RecordMakers {
         private final Function<Document, String> valueTransformer;
         private final BlockingConsumer<SourceRecord> recorder;
 
-        protected RecordsForCollection(CollectionId collectionId, SourceInfo source, String topicName,
+        protected RecordsForCollection(CollectionId collectionId, SourceInfo source, String topicName, AvroValidator validator,
                 Function<Document, String> valueTransformer, BlockingConsumer<SourceRecord> recorder) {
             this.sourcePartition = source.partition(collectionId.replicaSetName());
             this.collectionId = collectionId;
@@ -97,14 +99,14 @@ public class RecordMakers {
             this.source = source;
             this.topicName = topicName;
             this.keySchema = SchemaBuilder.struct()
-                                          .name(topicName + ".Key")
+                                          .name(validator.validate(topicName + ".Key"))
                                           .field("_id", Schema.STRING_SCHEMA)
                                           .build();
             this.valueSchema = SchemaBuilder.struct()
-                                            .name(topicName + ".Envelope")
+                                            .name(validator.validate(topicName + ".Envelope"))
                                             .field(FieldName.AFTER, Schema.OPTIONAL_STRING_SCHEMA)
                                             .field("patch", Schema.OPTIONAL_STRING_SCHEMA)
-                                            .field(FieldName.SOURCE, SourceInfo.SOURCE_SCHEMA)
+                                            .field(FieldName.SOURCE, source.schema())
                                             .field(FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
                                             .field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
                                             .build();
