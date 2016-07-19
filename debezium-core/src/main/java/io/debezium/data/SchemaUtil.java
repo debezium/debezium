@@ -83,7 +83,7 @@ public class SchemaUtil {
      * @return the JSON string representation
      */
     public static String asDetailedString(Field field) {
-        return new RecordWriter().append(field).toString();
+        return new RecordWriter().detailed(true).append(field).toString();
     }
 
     /**
@@ -93,7 +93,7 @@ public class SchemaUtil {
      * @return the JSON string representation
      */
     public static String asDetailedString(Struct struct) {
-        return new RecordWriter().append(struct).toString();
+        return new RecordWriter().detailed(true).append(struct).toString();
     }
 
     /**
@@ -103,7 +103,7 @@ public class SchemaUtil {
      * @return the JSON string representation
      */
     public static String asDetailedString(Schema schema) {
-        return new RecordWriter().append(schema).toString();
+        return new RecordWriter().detailed(true).append(schema).toString();
     }
 
     /**
@@ -113,7 +113,7 @@ public class SchemaUtil {
      * @return the JSON string representation
      */
     public static String asDetailedString(SourceRecord record) {
-        return new RecordWriter().append(record).toString();
+        return new RecordWriter().detailed(true).append(record).toString();
     }
 
     protected static class RecordWriter {
