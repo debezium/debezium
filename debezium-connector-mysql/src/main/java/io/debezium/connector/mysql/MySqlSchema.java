@@ -11,14 +11,20 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
+import org.apache.kafka.connect.data.Date;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Time;
+import org.apache.kafka.connect.data.Timestamp;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDataDeserializer;
+
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.jdbc.TimeZoneAdapter;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
@@ -70,6 +76,18 @@ public class MySqlSchema {
 
     /**
      * Create a schema component given the supplied {@link MySqlConnectorConfig MySQL connector configuration}.
+     * <p>
+     * This component sets up a {@link TimeZoneAdapter} that is specific to how the MySQL Binary Log client library
+     * works. The {@link AbstractRowsEventDataDeserializer} class has various methods to instantiate the
+     * {@link java.util.Date}, {@link java.sql.Date}, {@link java.sql.Time}, and {@link java.sql.Timestamp} temporal values,
+     * where the values for {@link java.util.Date}, {@link java.sql.Date}, and {@link java.sql.Time} are all in terms of
+     * the <em>local time zone</em> (since it uses {@link java.util.Calendar#getInstance()}), but where the
+     * {@link java.sql.Timestamp} values are created differently using the milliseconds past epoch and therefore in terms of
+     * the <em>UTC time zone</em>.
+     * <p>
+     * And, because Kafka Connect {@link Time}, {@link Date}, and {@link Timestamp} logical
+     * schema types all expect the {@link java.util.Date} to be in terms of the <em>UTC time zone</em>, the
+     * {@link TimeZoneAdapter} also needs to produce {@link java.util.Date} values that will be correct in UTC.
      * 
      * @param config the connector configuration, which is presumed to be valid
      * @param serverName the name of the server
@@ -80,10 +98,18 @@ public class MySqlSchema {
         this.tables = new Tables();
         this.ddlChanges = new DdlChanges(this.ddlParser.terminator());
         this.ddlParser.addListener(ddlChanges);
-        this.schemaBuilder = new TableSchemaBuilder(schemaNameValidator::validate);
-        if ( serverName != null ) serverName = serverName.trim();
+
+        // Specific to how the MySQL Binary Log client library creates temporal values ...
+        TimeZoneAdapter tzAdapter = TimeZoneAdapter.create()
+                                                   .withLocalZoneForUtilDate()
+                                                   .withLocalZoneForSqlDate()
+                                                   .withLocalZoneForSqlTime()
+                                                   .withUtcZoneForSqlTimestamp()
+                                                   .withUtcTargetZone();
+        this.schemaBuilder = new TableSchemaBuilder(tzAdapter, schemaNameValidator::validate);
+        if (serverName != null) serverName = serverName.trim();
         this.serverName = serverName;
-        if ( this.serverName == null || serverName.isEmpty() ) {
+        if (this.serverName == null || serverName.isEmpty()) {
             this.schemaPrefix = "";
         } else {
             this.schemaPrefix = serverName.endsWith(".") ? serverName : serverName + ".";
@@ -97,7 +123,7 @@ public class MySqlSchema {
         }
         // Do not remove the prefix from the subset of config properties ...
         Configuration dbHistoryConfig = config.subset(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING, false);
-        this.dbHistory.configure(dbHistoryConfig,HISTORY_COMPARATOR); // validates
+        this.dbHistory.configure(dbHistoryConfig, HISTORY_COMPARATOR); // validates
     }
 
     /**
@@ -212,8 +238,8 @@ public class MySqlSchema {
             changeFunction.call();
         } catch (Exception e) {
             this.tables = copy;
-            if ( e instanceof SQLException) throw (SQLException)e;
-            this.logger.error("Unexpected error whle changing model of MySQL schemas: {}",e.getMessage(),e);
+            if (e instanceof SQLException) throw (SQLException) e;
+            this.logger.error("Unexpected error whle changing model of MySQL schemas: {}", e.getMessage(), e);
         }
 
         // At least one table has changed or was removed, so first refresh the Kafka Connect schemas ...
@@ -309,12 +335,12 @@ public class MySqlSchema {
                     // to the same _affected_ database...
                     ddlChanges.groupStatementStringsByDatabase((dbName, ddl) -> {
                         if (filters.databaseFilter().test(dbName)) {
-                            if ( dbName == null ) dbName = "";
+                            if (dbName == null) dbName = "";
                             statementConsumer.consume(dbName, ddlStatements);
                         }
                     });
                 } else if (filters.databaseFilter().test(databaseName)) {
-                    if ( databaseName == null ) databaseName = "";
+                    if (databaseName == null) databaseName = "";
                     statementConsumer.consume(databaseName, ddlStatements);
                 }
             }
