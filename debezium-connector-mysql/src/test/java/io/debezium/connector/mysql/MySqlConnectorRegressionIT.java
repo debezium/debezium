@@ -61,23 +61,24 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                               .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.toString())
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                              .with("database.useSSL",false) // eliminates MySQL driver warning about SSL connections
+                              .with("database.useSSL", false) // eliminates MySQL driver warning about SSL connections
                               .build();
         // Start the connector ...
         start(MySqlConnector.class, config);
-        
+
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        //Testing.Debug.enable();
-        SourceRecords records = consumeRecordsByTopic(2+1);   // 2 schema change record, 1 insert
+        // Testing.Debug.enable();
+        SourceRecords records = consumeRecordsByTopic(3 + 2); // 3 schema change record, 2 inserts
         stopConnector();
         assertThat(records).isNotNull();
-        assertThat(records.recordsForTopic("regression").size()).isEqualTo(2);
+        assertThat(records.recordsForTopic("regression").size()).isEqualTo(3);
         assertThat(records.recordsForTopic("regression.regression_test.t1464075356413_testtable6").size()).isEqualTo(1);
-        assertThat(records.topics().size()).isEqualTo(2);
+        assertThat(records.recordsForTopic("regression.regression_test.dbz84_integer_types_table").size()).isEqualTo(1);
+        assertThat(records.topics().size()).isEqualTo(3);
         assertThat(records.databaseNames().size()).isEqualTo(1);
-        assertThat(records.ddlRecordsForDatabase("regression_test").size()).isEqualTo(2);
+        assertThat(records.ddlRecordsForDatabase("regression_test").size()).isEqualTo(3);
         assertThat(records.ddlRecordsForDatabase("connector_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
         records.ddlRecordsForDatabase("regression_test").forEach(this::print);

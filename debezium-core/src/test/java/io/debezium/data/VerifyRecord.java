@@ -17,9 +17,9 @@ import java.util.Objects;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Schema.Type;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.data.Schema.Type;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.json.JsonDeserializer;
@@ -291,15 +291,23 @@ public class VerifyRecord {
         SchemaAndValue avroValueWithSchema = null;
         String msg = null;
         try {
-            // The key should never be null ...
-            msg = "checking key is not null";
-            assertThat(record.key()).isNotNull();
-            assertThat(record.keySchema()).isNotNull();
+            // The key can be null for tables that do not have a primary or unique key ...
+            if (record.key() != null) {
+                msg = "checking key is not null";
+                assertThat(record.key()).isNotNull();
+                assertThat(record.keySchema()).isNotNull();
+            } else {
+                msg = "checking key schema and key are both null";
+                assertThat(record.key()).isNull();
+                assertThat(record.keySchema()).isNull();
+            }
 
             // If the value is not null there must be a schema; otherwise, the schema should also be null ...
             if (record.value() == null) {
                 msg = "checking value schema is null";
                 assertThat(record.valueSchema()).isNull();
+                msg = "checking key is not null when value is null";
+                assertThat(record.key()).isNotNull();
             } else {
                 msg = "checking value schema is not null";
                 assertThat(record.valueSchema()).isNotNull();

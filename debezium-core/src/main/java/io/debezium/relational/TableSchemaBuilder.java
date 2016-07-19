@@ -141,8 +141,10 @@ public class TableSchemaBuilder {
         // Build the schemas ...
         final TableId tableId = table.id();
         final String tableIdStr = tableId.toString();
-        SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(schemaNameValidator.apply(schemaPrefix + tableIdStr + ".Value"));
-        SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(schemaNameValidator.apply(schemaPrefix + tableIdStr + ".Key"));
+        final String schemaNamePrefix = schemaPrefix + tableIdStr;
+        LOGGER.debug("Mapping table '{}' to schemas under '{}'", tableId, schemaNamePrefix);
+        SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(schemaNameValidator.apply(schemaNamePrefix + ".Value"));
+        SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(schemaNameValidator.apply(schemaNamePrefix + ".Key"));
         AtomicBoolean hasPrimaryKey = new AtomicBoolean(false);
         table.columns().forEach(column -> {
             if (table.isPrimaryKeyColumn(column.name())) {
@@ -158,6 +160,11 @@ public class TableSchemaBuilder {
         });
         Schema valSchema = valSchemaBuilder.optional().build();
         Schema keySchema = hasPrimaryKey.get() ? keySchemaBuilder.build() : null;
+
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Mapped primary key for table '{}' to schema: {}", tableId, SchemaUtil.asDetailedString(keySchema));
+            LOGGER.debug("Mapped columns for table '{}' to schema: {}", tableId, SchemaUtil.asDetailedString(valSchema));
+        }
 
         // Create the generators ...
         Function<Object[], Object> keyGenerator = createKeyGenerator(keySchema, tableId, table.primaryKeyColumns());
@@ -439,6 +446,11 @@ public class TableSchemaBuilder {
             }
             if (column.isOptional()) fieldBuilder.optional();
             builder.field(column.name(), fieldBuilder.build());
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("- field '{}' ({}{}) from column {}", column.name(), builder.isOptional() ? "OPTIONAL " : "",
+                             fieldBuilder.type(),
+                             column);
+            }
         }
     }
 
