@@ -41,6 +41,7 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.data.Bits;
 import io.debezium.data.IsoTime;
 import io.debezium.data.IsoTimestamp;
+import io.debezium.data.SchemaUtil;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.mapping.ColumnMapper;
 import io.debezium.relational.mapping.ColumnMappers;
@@ -62,16 +63,27 @@ import io.debezium.relational.mapping.ColumnMappers;
 @Immutable
 public class TableSchemaBuilder {
 
+    private static final Short SHORT_TRUE = new Short((short) 1);
+    private static final Short SHORT_FALSE = new Short((short) 0);
+    private static final Integer INTEGER_TRUE = new Integer(1);
+    private static final Integer INTEGER_FALSE = new Integer(0);
+    private static final Long LONG_TRUE = new Long(1L);
+    private static final Long LONG_FALSE = new Long(0L);
+    private static final Float FLOAT_TRUE = new Float(1.0);
+    private static final Float FLOAT_FALSE = new Float(0.0);
+    private static final Double DOUBLE_TRUE = new Double(1.0d);
+    private static final Double DOUBLE_FALSE = new Double(0.0d);
     private static final Logger LOGGER = LoggerFactory.getLogger(TableSchemaBuilder.class);
     private static final LocalDate EPOCH_DAY = LocalDate.ofEpochDay(0);
 
-    private final Function<String,String> schemaNameValidator;
-    
+    private final Function<String, String> schemaNameValidator;
+
     /**
      * Create a new instance of the builder.
+     * 
      * @param schemaNameValidator the validation function for schema names; may not be null
      */
-    public TableSchemaBuilder(Function<String,String> schemaNameValidator) {
+    public TableSchemaBuilder(Function<String, String> schemaNameValidator) {
         this.schemaNameValidator = schemaNameValidator;
     }
 
@@ -889,7 +901,7 @@ public class TableSchemaBuilder {
             data = ((String) data).getBytes();
         }
         if (data instanceof byte[]) {
-            return ByteBuffer.wrap((byte[])data);
+            return ByteBuffer.wrap((byte[]) data);
         }
         // An unexpected value
         return unexpectedBinary(data, fieldDefn);
@@ -919,10 +931,7 @@ public class TableSchemaBuilder {
      * @return the converted value, or null if the conversion could not be made
      */
     protected Object convertTinyInt(Column column, Field fieldDefn, Object data) {
-        if (data == null) return null;
-        if (data instanceof Byte) return data;
-        if (data instanceof Boolean) return ((Boolean) data).booleanValue() ? (byte) 1 : (byte) 0;
-        return handleUnknownData(column, fieldDefn, data);
+        return convertSmallInt(column, fieldDefn, data);
     }
 
     /**
@@ -936,8 +945,13 @@ public class TableSchemaBuilder {
     protected Object convertSmallInt(Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         if (data instanceof Short) return data;
-        if (data instanceof Integer) return new Short(((Integer) data).shortValue());
-        if (data instanceof Long) return new Short(((Long) data).shortValue());
+        if (data instanceof Number) {
+            Number value = (Number) data;
+            return new Short(value.shortValue());
+        }
+        if (data instanceof Boolean) {
+            return ((Boolean) data).booleanValue() ? SHORT_TRUE : SHORT_FALSE;
+        }
         return handleUnknownData(column, fieldDefn, data);
     }
 
@@ -952,8 +966,13 @@ public class TableSchemaBuilder {
     protected Object convertInteger(Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         if (data instanceof Integer) return data;
-        if (data instanceof Short) return new Integer(((Short) data).intValue());
-        if (data instanceof Long) return new Integer(((Long) data).intValue());
+        if (data instanceof Number) {
+            Number value = (Number) data;
+            return new Integer(value.intValue());
+        }
+        if (data instanceof Boolean) {
+            return ((Boolean) data).booleanValue() ? INTEGER_TRUE : INTEGER_FALSE;
+        }
         return handleUnknownData(column, fieldDefn, data);
     }
 
@@ -968,8 +987,13 @@ public class TableSchemaBuilder {
     protected Object convertBigInt(Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         if (data instanceof Long) return data;
-        if (data instanceof Integer) return new Long(((Integer) data).longValue());
-        if (data instanceof Short) return new Long(((Short) data).longValue());
+        if (data instanceof Number) {
+            Number value = (Number) data;
+            return new Long(value.longValue());
+        }
+        if (data instanceof Boolean) {
+            return ((Boolean) data).booleanValue() ? LONG_TRUE : LONG_FALSE;
+        }
         return handleUnknownData(column, fieldDefn, data);
     }
 
@@ -996,10 +1020,13 @@ public class TableSchemaBuilder {
     protected Object convertDouble(Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         if (data instanceof Double) return data;
-        if (data instanceof Float) return new Double(((Float) data).doubleValue());
-        if (data instanceof Integer) return new Double(((Integer) data).doubleValue());
-        if (data instanceof Long) return new Double(((Long) data).doubleValue());
-        if (data instanceof Short) return new Double(((Short) data).doubleValue());
+        if (data instanceof Number) {
+            Number value = (Number) data;
+            return new Double(value.doubleValue());
+        }
+        if (data instanceof Boolean) {
+            return ((Boolean) data).booleanValue() ? DOUBLE_TRUE : DOUBLE_FALSE;
+        }
         return handleUnknownData(column, fieldDefn, data);
     }
 
@@ -1014,10 +1041,13 @@ public class TableSchemaBuilder {
     protected Object convertReal(Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         if (data instanceof Float) return data;
-        if (data instanceof Double) return new Float(((Double) data).floatValue());
-        if (data instanceof Integer) return new Float(((Integer) data).floatValue());
-        if (data instanceof Long) return new Float(((Long) data).floatValue());
-        if (data instanceof Short) return new Float(((Short) data).floatValue());
+        if (data instanceof Number) {
+            Number value = (Number) data;
+            return new Float(value.floatValue());
+        }
+        if (data instanceof Boolean) {
+            return ((Boolean) data).booleanValue() ? FLOAT_TRUE : FLOAT_FALSE;
+        }
         return handleUnknownData(column, fieldDefn, data);
     }
 
@@ -1107,7 +1137,7 @@ public class TableSchemaBuilder {
     protected Object convertRowId(Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         if (data instanceof java.sql.RowId) {
-            java.sql.RowId row = (java.sql.RowId)data;
+            java.sql.RowId row = (java.sql.RowId) data;
             return ByteBuffer.wrap(row.getBytes());
         }
         return handleUnknownData(column, fieldDefn, data);

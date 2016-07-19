@@ -58,8 +58,10 @@ public class MySqlDdlParser extends DdlParser {
     @Override
     protected void initializeDataTypes(DataTypeParser dataTypes) {
         dataTypes.register(Types.BIT, "BIT[(L)]");
-        dataTypes.register(Types.INTEGER, "TINYINT[(L)] [UNSIGNED] [ZEROFILL]");
-        dataTypes.register(Types.INTEGER, "SMALLINT[(L)] [UNSIGNED] [ZEROFILL]");
+        // MySQL unsigned TINYINTs can be mapped to JDBC TINYINT, but signed values don't map. Therefore, per JDBC spec
+        // the best mapping for all TINYINT values is JDBC's SMALLINT, which maps to a short.
+        dataTypes.register(Types.SMALLINT, "TINYINT[(L)] [UNSIGNED] [ZEROFILL]");
+        dataTypes.register(Types.SMALLINT, "SMALLINT[(L)] [UNSIGNED] [ZEROFILL]");
         dataTypes.register(Types.INTEGER, "MEDIUMINT[(L)] [UNSIGNED] [ZEROFILL]");
         dataTypes.register(Types.INTEGER, "INT[(L)] [UNSIGNED|SIGNED] [ZEROFILL]");
         dataTypes.register(Types.INTEGER, "INTEGER[(L)] [UNSIGNED] [ZEROFILL]");
