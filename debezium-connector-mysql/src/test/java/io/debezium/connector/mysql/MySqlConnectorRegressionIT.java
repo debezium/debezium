@@ -76,7 +76,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        Testing.Debug.enable();
+        //Testing.Debug.enable();
         SourceRecords records = consumeRecordsByTopic(4 + 3); // 4 schema change record, 3 inserts
         stopConnector();
         assertThat(records).isNotNull();

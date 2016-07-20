@@ -42,7 +42,6 @@ public class LoggingContext {
         private static final Map<String, String> EMPTY_CONTEXT = Collections.emptyMap();
         private final Map<String, String> context;
 
-        @SuppressWarnings("unchecked")
         protected PreviousContext() {
             Map<String, String> context = MDC.getCopyOfContextMap();
             this.context = context != null ? context : EMPTY_CONTEXT;

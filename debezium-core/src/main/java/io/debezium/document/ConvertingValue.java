@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 
 import io.debezium.annotation.Immutable;
+import io.debezium.util.Strings;
 
 /**
  * A specialization of {@link Value} that wraps another {@link Value} to allow conversion of types.
@@ -127,30 +128,12 @@ final class ConvertingValue implements Value {
         if (value.isNumber()) return value.asNumber();
         if (value.isString()) {
             String str = value.asString();
-            try {
-                return Integer.valueOf(str);
-            } catch (NumberFormatException e) {
-                try {
-                    return Long.valueOf(str);
-                } catch (NumberFormatException e1) {
-                    try {
-                        return Float.valueOf(str);
-                    } catch (NumberFormatException e2) {
-                        try {
-                            return Double.valueOf(str);
-                        } catch (NumberFormatException e3) {
-                            try {
-                                return new BigInteger(str);
-                            } catch (NumberFormatException e4) {
-                                try {
-                                    return new BigDecimal(str);
-                                } catch (NumberFormatException e5) {
-                                }
-                            }
-                        }
-                    }
-                }
+            Number number = Strings.asNumber(str);
+            if ( number instanceof Short ) {
+                // Shorts aren't allowed, so just use an integer ...
+                number = new Integer(number.intValue());
             }
+            return number;
         }
         return null;
     }

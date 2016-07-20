@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.net.URL;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -30,12 +31,15 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.common.config.ConfigValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.Immutable;
+import io.debezium.config.Field.ValidationOutput;
 import io.debezium.util.Collect;
 import io.debezium.util.IoUtil;
+import io.debezium.util.Strings;
 
 /**
  * An immutable representation of a Debezium configuration. A {@link Configuration} instance can be obtained
@@ -489,6 +493,7 @@ public interface Configuration {
             };
             return changeString(key, strFunction);
         }
+
         /**
          * Apply the function to this builder to change a potentially existing integer field.
          * 
@@ -629,22 +634,22 @@ public interface Configuration {
             function.accept(this);
             return this;
         }
-        
+
         @Override
         public Builder changeString(String key, Function<String, String> function) {
-            return changeString(key,null,function);
+            return changeString(key, null, function);
         }
 
         @Override
         public Builder changeString(Field field, Function<String, String> function) {
-            return changeString(field.name(),field.defaultValue(),function);
+            return changeString(field.name(), field.defaultValueAsString(), function);
         }
 
         protected Builder changeString(String key, String defaultValue, Function<String, String> function) {
             String existing = props.getProperty(key);
-            if ( existing == null ) existing = defaultValue;
+            if (existing == null) existing = defaultValue;
             String newValue = function.apply(existing);
-            return with(key,newValue);
+            return with(key, newValue);
         }
 
         @Override
@@ -735,19 +740,38 @@ public interface Configuration {
     }
 
     /**
-     * Obtain a configuration instance by copying the supplied map of string keys and string values. The entries within the map
+     * Obtain a configuration instance by copying the supplied map of string keys and object values. The entries within the map
      * are copied so that the resulting Configuration cannot be modified.
      * 
      * @param properties the properties; may be null or empty
      * @return the configuration; never null
      */
-    public static Configuration from(Map<String, String> properties) {
-        Map<String, String> props = new HashMap<>();
+    public static Configuration from(Map<String, ?> properties) {
+        return from(properties, value -> {
+            if (value == null) return null;
+            if (value instanceof Collection<?>) {
+                return Strings.join(",", (List<?>) value);
+            }
+            return value.toString();
+        });
+    }
+
+    /**
+     * Obtain a configuration instance by copying the supplied map of string keys and object values. The entries within the map
+     * are copied so that the resulting Configuration cannot be modified.
+     * 
+     * @param properties the properties; may be null or empty
+     * @param conversion the function that converts the supplied values into strings, or returns {@code null} if the value
+     *            is to be excluded
+     * @return the configuration; never null
+     */
+    public static <T> Configuration from(Map<String, T> properties, Function<T, String> conversion) {
+        Map<String, Object> props = new HashMap<>();
         if (properties != null) props.putAll(properties);
         return new Configuration() {
             @Override
             public String getString(String key) {
-                return properties.get(key);
+                return conversion.apply(properties.get(key));
             }
 
             @Override
@@ -937,7 +961,7 @@ public interface Configuration {
      *         such key-value pair in the configuration
      */
     default String getString(Field field) {
-        return getString(field.name(), field.defaultValue());
+        return getString(field.name(), field.defaultValueAsString());
     }
 
     /**
@@ -950,7 +974,20 @@ public interface Configuration {
      *         such key-value pair in the configuration
      */
     default String getString(Field field, String defaultValue) {
-        return getString(field.name(), () -> field.defaultValue());
+        return getString(field.name(), () -> field.defaultValueAsString());
+    }
+
+    /**
+     * Get the string value(s) associated with the given key, where the supplied regular expression is used to parse the single
+     * string value into multiple values.
+     * 
+     * @param field the field; may not be null
+     * @param regex the delimiting regular expression
+     * @return the list of string values; null only if there is no such key-value pair in the configuration
+     * @see String#split(String)
+     */
+    default List<String> getStrings(Field field, String regex) {
+        return getStrings(field.name(), regex);
     }
 
     /**
@@ -1050,6 +1087,21 @@ public interface Configuration {
      *         {@code defaultValueSupplier} reference is null, or there is a key-value pair in the configuration but the value
      *         could not be parsed as an integer
      */
+    default Number getNumber(String key, Supplier<Number> defaultValueSupplier) {
+        String value = getString(key);
+        return Strings.asNumber(value, defaultValueSupplier);
+    }
+
+    /**
+     * Get the integer value associated with the given key, using the given supplier to obtain a default value if there is no such
+     * key-value pair.
+     * 
+     * @param key the key for the configuration property
+     * @param defaultValueSupplier the supplier for the default value; may be null
+     * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration, the
+     *         {@code defaultValueSupplier} reference is null, or there is a key-value pair in the configuration but the value
+     *         could not be parsed as an integer
+     */
     default Integer getInteger(String key, IntSupplier defaultValueSupplier) {
         String value = getString(key);
         if (value != null) {
@@ -1101,6 +1153,20 @@ public interface Configuration {
     }
 
     /**
+     * Get the numeric value associated with the given field, returning the field's default value if there is no such
+     * key-value pair.
+     * 
+     * @param field the field
+     * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration and there is
+     *         no default value in the field or the default value could not be parsed as a long, or there is a key-value pair in
+     *         the configuration but the value could not be parsed as an integer value
+     * @throws NumberFormatException if there is no name-value pair and the field has no default value
+     */
+    default Number getNumber(Field field) {
+        return getNumber(field.name(), () -> Strings.asNumber(field.defaultValueAsString()));
+    }
+
+    /**
      * Get the integer value associated with the given field, returning the field's default value if there is no such
      * key-value pair.
      * 
@@ -1111,7 +1177,7 @@ public interface Configuration {
      * @throws NumberFormatException if there is no name-value pair and the field has no default value
      */
     default int getInteger(Field field) {
-        return getInteger(field.name(), () -> Integer.valueOf(field.defaultValue())).intValue();
+        return getInteger(field.name(), () -> Integer.valueOf(field.defaultValueAsString())).intValue();
     }
 
     /**
@@ -1125,7 +1191,7 @@ public interface Configuration {
      * @throws NumberFormatException if there is no name-value pair and the field has no default value
      */
     default long getLong(Field field) {
-        return getLong(field.name(), () -> Long.valueOf(field.defaultValue())).longValue();
+        return getLong(field.name(), () -> Long.valueOf(field.defaultValueAsString())).longValue();
     }
 
     /**
@@ -1139,7 +1205,7 @@ public interface Configuration {
      * @throws NumberFormatException if there is no name-value pair and the field has no default value
      */
     default boolean getBoolean(Field field) {
-        return getBoolean(field.name(), () -> Boolean.valueOf(field.defaultValue())).booleanValue();
+        return getBoolean(field.name(), () -> Boolean.valueOf(field.defaultValueAsString())).booleanValue();
     }
 
     /**
@@ -1422,11 +1488,28 @@ public interface Configuration {
      * @return the properties object; never null
      */
     default Properties asProperties() {
+        return asProperties(null);
+    }
+
+    /**
+     * Get a copy of these configuration properties as a Properties object.
+     * 
+     * @param fields the fields defining the defaults; may be null
+     * @return the properties object; never null
+     */
+    default Properties asProperties(Field.Set fields) {
         Properties props = new Properties();
+        // Add all values as-is ...
         keys().forEach(key -> {
             String value = getString(key);
             if (key != null && value != null) props.setProperty(key, value);
         });
+        if (fields != null) {
+            // Add the default values ...
+            fields.forEach(field -> {
+                props.put(field.name(), getString(field));
+            });
+        }
         return props;
     }
 
@@ -1436,11 +1519,28 @@ public interface Configuration {
      * @return the properties object; never null
      */
     default Map<String, String> asMap() {
+        return asMap(null);
+    }
+
+    /**
+     * Get a copy of these configuration properties with defaults as a Map.
+     * 
+     * @param fields the fields defining the defaults; may be null
+     * @return the properties object; never null
+     */
+    default Map<String, String> asMap(Field.Set fields) {
         Map<String, String> props = new HashMap<>();
+        // Add all values as-is ...
         keys().forEach(key -> {
             String value = getString(key);
             if (key != null && value != null) props.put(key, value);
         });
+        if (fields != null) {
+            // Add the default values ...
+            fields.forEach(field -> {
+                props.put(field.name(), getString(field));
+            });
+        }
         return props;
     }
 
@@ -1498,7 +1598,7 @@ public interface Configuration {
      * @param problems the consumer to be called with each problem; never null
      * @return {@code true} if the value is considered valid, or {@code false} if it is not valid
      */
-    default boolean validate(Iterable<Field> fields, Consumer<String> problems) {
+    default boolean validate(Iterable<Field> fields, ValidationOutput problems) {
         boolean valid = true;
         for (Field field : fields) {
             if (!field.validate(this, problems)) valid = false;
@@ -1514,12 +1614,46 @@ public interface Configuration {
      * @param problems the consumer to be called with each problem; never null
      * @return {@code true} if the value is considered valid, or {@code false} if it is not valid
      */
-    default boolean validate(Field[] fields, Consumer<String> problems) {
-        boolean valid = true;
-        for (Field field : fields) {
-            if (!field.validate(this, problems)) valid = false;
-        }
-        return valid;
+    default boolean validateAndRecord(Iterable<Field> fields, Consumer<String> problems) {
+        return validate(fields, (f, v, problem) -> {
+            if (v == null) {
+                problems.accept("The '" + f.name() + "' value is invalid: " + problem);
+            } else {
+                String valueStr = v.toString();
+                if (v instanceof CharSequence) valueStr = "'" + valueStr + "'";
+                problems.accept("The '" + f.name() + "' value " + valueStr + " is invalid: " + problem);
+            }
+        });
+    }
+
+    /**
+     * Validate the supplied fields in this configuration. Extra fields not described by the supplied {@code fields} parameter
+     * are not validated.
+     * 
+     * @param fields the fields
+     * @return the {@link ConfigValue} for each of the fields; never null
+     */
+    default Map<String, ConfigValue> validate(Field.Set fields) {
+        // Create a map of configuration values for each field ...
+        Map<String, ConfigValue> configValuesByFieldName = new HashMap<>();
+        fields.forEach(field -> {
+            configValuesByFieldName.put(field.name(), new ConfigValue(field.name()));
+        });
+
+        // If any dependents don't exist ...
+        fields.forEachMissingDependent(missingDepedent -> {
+            ConfigValue undefinedConfigValue = new ConfigValue(missingDepedent);
+            undefinedConfigValue.addErrorMessage(missingDepedent + " is referred in the dependents, but not defined.");
+            undefinedConfigValue.visible(false);
+            configValuesByFieldName.put(missingDepedent, undefinedConfigValue);
+        });
+
+        // Now validate each top-level field ...
+        fields.forEachTopLevelField(field -> {
+            field.validate(this, fields::fieldWithName, configValuesByFieldName);
+        });
+
+        return configValuesByFieldName;
     }
 
     /**
@@ -1714,7 +1848,7 @@ public interface Configuration {
             }
         });
     }
-    
+
     /**
      * Call the supplied function for each of the fields.
      * 

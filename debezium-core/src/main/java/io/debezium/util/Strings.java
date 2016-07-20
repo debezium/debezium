@@ -8,6 +8,7 @@ package io.debezium.util;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.Collections;
@@ -17,7 +18,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import io.debezium.annotation.ThreadSafe;
 
@@ -77,6 +80,7 @@ public final class Strings {
      * 
      * @param input the input string with comma-separated regular expressions
      * @return the list of regular expression {@link Pattern}s included in the list; never null
+     * @throws PatternSyntaxException if the input includes an invalid regular expression
      */
     public static Set<Pattern> listOfRegex(String input) {
         return listOf(input, ',', Pattern::compile);
@@ -89,6 +93,9 @@ public final class Strings {
      * @param input the input string with comma-separated regular expressions
      * @param regexFlags the flags for {@link Pattern#compile(String, int) compiling regular expressions}
      * @return the list of regular expression {@link Pattern}s included in the list; never null
+     * @throws PatternSyntaxException if the input includes an invalid regular expression
+     * @throws IllegalArgumentException if bit values other than those corresponding to the defined
+     *             match flags are set in {@code regexFlags}
      */
     public static Set<Pattern> listOfRegex(String input, int regexFlags) {
         return listOf(input, ',', (str) -> Pattern.compile(str, regexFlags));
@@ -162,6 +169,7 @@ public final class Strings {
 
     /**
      * Returns a new String composed of the supplied values joined together with a copy of the specified {@code delimiter}.
+     * All {@code null} values are simply ignored.
      *
      * @param delimiter the delimiter that separates each element
      * @param values the values to join together.
@@ -171,8 +179,8 @@ public final class Strings {
      * @see java.lang.String#join
      */
     public static <T> String join(CharSequence delimiter, Iterable<T> values) {
-        return join(delimiter,values,v->{
-            return v != null ? v.toString() : "null";
+        return join(delimiter, values, v -> {
+            return v != null ? v.toString() : null;
         });
     }
 
@@ -181,22 +189,26 @@ public final class Strings {
      *
      * @param delimiter the delimiter that separates each element
      * @param values the values to join together.
-     * @param conversion the function that converts the supplied values into strings
+     * @param conversion the function that converts the supplied values into strings, or returns {@code null} if the value
+     *            is to be excluded
      * @return a new {@code String} that is composed of the {@code elements} separated by the {@code delimiter}
      *
      * @throws NullPointerException If {@code delimiter} or {@code elements} is {@code null}
      * @see java.lang.String#join
      */
-    public static <T> String join(CharSequence delimiter, Iterable<T> values, Function<T,String> conversion ) {
+    public static <T> String join(CharSequence delimiter, Iterable<T> values, Function<T, String> conversion) {
         Objects.requireNonNull(delimiter);
         Objects.requireNonNull(values);
         Iterator<T> iter = values.iterator();
-        if ( !iter.hasNext() ) return "";
+        if (!iter.hasNext()) return "";
         StringBuilder sb = new StringBuilder();
         sb.append(iter.next());
-        while ( iter.hasNext() ) {
-            sb.append(delimiter);
-            sb.append(conversion.apply(iter.next()));
+        while (iter.hasNext()) {
+            String convertedValue = conversion.apply(iter.next());
+            if (convertedValue != null) {
+                sb.append(delimiter);
+                sb.append(convertedValue);
+            }
         }
         return sb.toString();
     }
@@ -441,6 +453,57 @@ public final class Strings {
         throwable.printStackTrace(pw);
         pw.close();
         return bas.toString();
+    }
+
+    /**
+     * Parse the supplied string as a number.
+     * 
+     * @param value the string representation of a integer value
+     * @return the number, or {@code null} if the value is not a number
+     */
+    public static Number asNumber(String value) {
+        return asNumber(value,null);
+    }
+
+    /**
+     * Parse the supplied string as a number.
+     * 
+     * @param value the string representation of a integer value
+     * @param defaultValueProvider the function that returns a value to be used when the string value is null or cannot be parsed
+     *            as a number; may be null if no default value is to be used
+     * @return the number, or {@code null} if the value is not a number and no default value is supplied
+     */
+    public static Number asNumber(String value, Supplier<Number> defaultValueProvider) {
+        if (value != null) {
+            try {
+                return Short.valueOf(value);
+            } catch (NumberFormatException e1) {
+                try {
+                    return Integer.valueOf(value);
+                } catch (NumberFormatException e2) {
+                    try {
+                        return Long.valueOf(value);
+                    } catch (NumberFormatException e3) {
+                        try {
+                            return Float.valueOf(value);
+                        } catch (NumberFormatException e4) {
+                            try {
+                                return Double.valueOf(value);
+                            } catch (NumberFormatException e5) {
+                                try {
+                                    return new BigInteger(value);
+                                } catch (NumberFormatException e6) {
+                                    try {
+                                        return new BigDecimal(value);
+                                    } catch (NumberFormatException e7) {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return defaultValueProvider != null ? defaultValueProvider.get() : null;
     }
 
     /**

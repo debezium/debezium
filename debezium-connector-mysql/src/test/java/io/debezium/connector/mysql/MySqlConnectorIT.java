@@ -12,6 +12,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.kafka.common.config.Config;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -22,11 +23,13 @@ import org.junit.Test;
 import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.Field.Recommender;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.data.Envelope;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.history.FileDatabaseHistory;
+import io.debezium.relational.history.KafkaDatabaseHistory;
 import io.debezium.util.Testing;
 
 /**
@@ -74,6 +77,129 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    public void shouldFailToValidateInvalidConfiguration() {
+        Configuration config = Configuration.create()
+                                            .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+                                            .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+                                            .build();
+        MySqlConnector connector = new MySqlConnector();
+        Config result = connector.validate(config.asMap());
+
+        assertConfigurationErrors(result, MySqlConnectorConfig.HOSTNAME, 1);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.PORT);
+        assertConfigurationErrors(result, MySqlConnectorConfig.USER, 1);
+        assertConfigurationErrors(result, MySqlConnectorConfig.PASSWORD, 1);
+        assertConfigurationErrors(result, MySqlConnectorConfig.SERVER_NAME, 1);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SERVER_ID);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLES_IGNORE_BUILTIN);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_WHITELIST);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_BLACKLIST);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_WHITELIST);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_BLACKLIST);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_BLACKLIST);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.CONNECTION_TIMEOUT_MS);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.KEEP_ALIVE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_QUEUE_SIZE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_BATCH_SIZE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.POLL_INTERVAL_MS);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_HISTORY);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_MODE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING);
+        assertConfigurationErrors(result, KafkaDatabaseHistory.BOOTSTRAP_SERVERS);
+        assertConfigurationErrors(result, KafkaDatabaseHistory.TOPIC);
+        assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS);
+        assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS);
+    }
+
+    @Test
+    public void shouldValidateAcceptableConfiguration() {
+        Configuration config = Configuration.create()
+                                            .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
+                                            .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
+                                            .with(MySqlConnectorConfig.USER, "snapper")
+                                            .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
+                                            .with(MySqlConnectorConfig.SERVER_ID, 18765)
+                                            .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+                                            .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
+                                            .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
+                                            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                                            .with("database.useSSL", false) // eliminates MySQL driver warning about SSL
+                                                                            // connections
+                                            .build();
+        MySqlConnector connector = new MySqlConnector();
+        Config result = connector.validate(config.asMap());
+
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.HOSTNAME);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.PORT);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.USER);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.PASSWORD);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SERVER_NAME);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SERVER_ID);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLES_IGNORE_BUILTIN);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_WHITELIST);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_BLACKLIST);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_WHITELIST);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_BLACKLIST);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_BLACKLIST);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.CONNECTION_TIMEOUT_MS);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.KEEP_ALIVE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_QUEUE_SIZE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_BATCH_SIZE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.POLL_INTERVAL_MS);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_HISTORY);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_MODE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING);
+        assertNoConfigurationErrors(result, KafkaDatabaseHistory.BOOTSTRAP_SERVERS);
+        assertNoConfigurationErrors(result, KafkaDatabaseHistory.TOPIC);
+        assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS);
+        assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS);
+
+        // Testing.Debug.enable();
+
+        Recommender dbNameRecommender = MySqlConnectorConfig.DATABASE_WHITELIST.recommender();
+        List<Object> dbNames = dbNameRecommender.validValues(MySqlConnectorConfig.DATABASE_WHITELIST, config);
+        Testing.debug("List of dbNames: " + dbNames);
+        assertThat(dbNames).containsOnly("connector_test", "readbinlog_test", "regression_test",
+                                         "connector_test_ro", "emptydb");
+
+        Recommender tableNameRecommender = MySqlConnectorConfig.TABLE_WHITELIST.recommender();
+        List<Object> tableNames = tableNameRecommender.validValues(MySqlConnectorConfig.TABLE_WHITELIST, config);
+        assertThat(tableNames).containsOnly("connector_test.customers",
+                                            "connector_test.orders",
+                                            "connector_test.products",
+                                            "connector_test.products_on_hand",
+                                            "connector_test_ro.customers",
+                                            "connector_test_ro.orders",
+                                            "connector_test_ro.products",
+                                            "connector_test_ro.products_on_hand",
+                                            "regression_test.t1464075356413_testtable6",
+                                            "regression_test.dbz_85_fractest",
+                                            "regression_test.dbz84_integer_types_table",
+                                            "readbinlog_test.product",
+                                            "readbinlog_test.purchased",
+                                            "readbinlog_test.person");
+        Testing.debug("List of tableNames: " + tableNames);
+
+        // Now set the whitelist to two databases ...
+        Configuration config2 = config.edit()
+                                      .with(MySqlConnectorConfig.DATABASE_WHITELIST, "connector_test,connector_test_ro")
+                                      .build();
+
+        List<Object> tableNames2 = tableNameRecommender.validValues(MySqlConnectorConfig.TABLE_WHITELIST, config2);
+        assertThat(tableNames2).containsOnly("connector_test.customers",
+                                             "connector_test.orders",
+                                             "connector_test.products",
+                                             "connector_test.products_on_hand",
+                                             "connector_test_ro.customers",
+                                             "connector_test_ro.orders",
+                                             "connector_test_ro.products",
+                                             "connector_test_ro.products_on_hand");
+        Testing.debug("List of tableNames: " + tableNames2);
+    }
+
+    @Test
     public void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = Configuration.create()
@@ -88,17 +214,17 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                               .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                              .with("database.useSSL",false) // eliminates MySQL driver warning about SSL connections
+                              .with("database.useSSL", false) // eliminates MySQL driver warning about SSL connections
                               .build();
         // Start the connector ...
         start(MySqlConnector.class, config);
-        
-        //Testing.Print.enable();
+
+        // Testing.Print.enable();
 
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        SourceRecords records = consumeRecordsByTopic(5+9+9+4+1);   // 1 schema change record
+        SourceRecords records = consumeRecordsByTopic(5 + 9 + 9 + 4 + 1); // 1 schema change record
         assertThat(records.recordsForTopic("myServer").size()).isEqualTo(1);
         assertThat(records.recordsForTopic("myServer.connector_test.products").size()).isEqualTo(9);
         assertThat(records.recordsForTopic("myServer.connector_test.products_on_hand").size()).isEqualTo(9);
@@ -112,16 +238,16 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         // Check that all records are valid, can be serialized and deserialized ...
         records.forEach(this::validate);
-        
+
         // Check that the last record has snapshots disabled in the offset, but not in the source
         List<SourceRecord> allRecords = records.allRecordsInOrder();
-        SourceRecord last = allRecords.get(allRecords.size()-1);
-        SourceRecord secondToLast = allRecords.get(allRecords.size()-2);
+        SourceRecord last = allRecords.get(allRecords.size() - 1);
+        SourceRecord secondToLast = allRecords.get(allRecords.size() - 2);
         assertThat(secondToLast.sourceOffset().containsKey(SourceInfo.SNAPSHOT_KEY)).isTrue();
         assertThat(last.sourceOffset().containsKey(SourceInfo.SNAPSHOT_KEY)).isFalse(); // not snapshot
-        assertThat(((Struct)secondToLast.value()).getStruct(Envelope.FieldName.SOURCE).getBoolean(SourceInfo.SNAPSHOT_KEY)).isTrue();
-        assertThat(((Struct)last.value()).getStruct(Envelope.FieldName.SOURCE).getBoolean(SourceInfo.SNAPSHOT_KEY)).isTrue();
-        
+        assertThat(((Struct) secondToLast.value()).getStruct(Envelope.FieldName.SOURCE).getBoolean(SourceInfo.SNAPSHOT_KEY)).isTrue();
+        assertThat(((Struct) last.value()).getStruct(Envelope.FieldName.SOURCE).getBoolean(SourceInfo.SNAPSHOT_KEY)).isTrue();
+
         // ---------------------------------------------------------------------------------------------------------------
         // Stopping the connector does not lose events recorded when connector is not running
         // ---------------------------------------------------------------------------------------------------------------
@@ -131,7 +257,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         int totalConsumed = consumeAvailableRecords(this::print);
         assertThat(totalConsumed).isEqualTo(0);
         stopConnector();
-        
+
         // Make some changes to data only while the connector is stopped ...
         try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
             try (JdbcConnection connection = db.connect()) {
@@ -144,8 +270,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 });
             }
         }
-        
-        //Testing.Print.enable();
+
+        // Testing.Print.enable();
 
         // Restart the connector and read the insert record ...
         Testing.print("*** Restarting connector after inserts were made");
@@ -153,9 +279,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic("myServer.connector_test.products").size()).isEqualTo(1);
         assertThat(records.topics().size()).isEqualTo(1);
-        
+
         Testing.print("*** Done with inserts and restart");
-        
+
         // ---------------------------------------------------------------------------------------------------------------
         // Simple INSERT
         // ---------------------------------------------------------------------------------------------------------------
@@ -167,7 +293,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 });
             }
         }
-        
+
         // And consume the one insert ...
         records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic("myServer.connector_test.products").size()).isEqualTo(1);
@@ -195,7 +321,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertInsert(updates.get(0), "id", 2001);
         assertDelete(updates.get(1), "id", 1001);
         assertTombstone(updates.get(2), "id", 1001);
-        
+
         Testing.print("*** Done with PK change");
 
         // ---------------------------------------------------------------------------------------------------------------
@@ -270,7 +396,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Make sure there are no additional events
         // ---------------------------------------------------------------------------------------------------------------
-        
+
         // Do something completely different with a table we've not modified yet and then read that event.
         try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
             try (JdbcConnection connection = db.connect()) {
@@ -300,7 +426,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     @Test
     public void shouldConsumeEventsWithNoSnapshot() throws SQLException, InterruptedException {
         Testing.Files.delete(DB_HISTORY_PATH);
-        
+
         // Use the DB configuration to define the connector's configuration ...
         config = Configuration.create()
                               .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
@@ -315,7 +441,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.name().toLowerCase())
                               .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                              .with("database.useSSL",false) // eliminates MySQL driver warning about SSL connections
+                              .with("database.useSSL", false) // eliminates MySQL driver warning about SSL connections
                               .build();
 
         // Start the connector ...
@@ -323,34 +449,33 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         // Consume the first records due to startup and initialization of the database ...
         // Testing.Print.enable();
-        SourceRecords records = consumeRecordsByTopic(9+9+4+5+6);   // 6 DDL changes
+        SourceRecords records = consumeRecordsByTopic(9 + 9 + 4 + 5 + 6); // 6 DDL changes
         assertThat(records.recordsForTopic("myServer1.connector_test_ro.products").size()).isEqualTo(9);
         assertThat(records.recordsForTopic("myServer1.connector_test_ro.products_on_hand").size()).isEqualTo(9);
         assertThat(records.recordsForTopic("myServer1.connector_test_ro.customers").size()).isEqualTo(4);
         assertThat(records.recordsForTopic("myServer1.connector_test_ro.orders").size()).isEqualTo(5);
-        assertThat(records.topics().size()).isEqualTo(4+1);
+        assertThat(records.topics().size()).isEqualTo(4 + 1);
         assertThat(records.ddlRecordsForDatabase("connector_test_ro").size()).isEqualTo(6);
 
         // Check that all records are valid, can be serialized and deserialized ...
         records.forEach(this::validate);
-        
+
         // More records may have been written (if this method were run after the others), but we don't care ...
         stopConnector();
 
-        records.recordsForTopic("myServer1.connector_test_ro.orders").forEach(record->{
+        records.recordsForTopic("myServer1.connector_test_ro.orders").forEach(record -> {
             print(record);
         });
-        
-        records.recordsForTopic("myServer1.connector_test_ro.customers").forEach(record->{
+
+        records.recordsForTopic("myServer1.connector_test_ro.customers").forEach(record -> {
             print(record);
         });
     }
 
-
     @Test
     public void shouldConsumeEventsWithMaskedAndBlacklistedColumns() throws SQLException, InterruptedException {
         Testing.Files.delete(DB_HISTORY_PATH);
-        
+
         // Use the DB configuration to define the connector's configuration ...
         config = Configuration.create()
                               .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
@@ -366,7 +491,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.MASK_COLUMN(12), "connector_test_ro.customers.email")
                               .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                              .with("database.useSSL",false) // eliminates MySQL driver warning about SSL connections
+                              .with("database.useSSL", false) // eliminates MySQL driver warning about SSL connections
                               .build();
 
         // Start the connector ...
@@ -374,7 +499,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         // Consume the first records due to startup and initialization of the database ...
         // Testing.Print.enable();
-        SourceRecords records = consumeRecordsByTopic(9+9+4+5);
+        SourceRecords records = consumeRecordsByTopic(9 + 9 + 4 + 5);
         assertThat(records.recordsForTopic("myServer2.connector_test_ro.products").size()).isEqualTo(9);
         assertThat(records.recordsForTopic("myServer2.connector_test_ro.products_on_hand").size()).isEqualTo(9);
         assertThat(records.recordsForTopic("myServer2.connector_test_ro.customers").size()).isEqualTo(4);
@@ -383,12 +508,12 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         // Check that all records are valid, can be serialized and deserialized ...
         records.forEach(this::validate);
-        
+
         // More records may have been written (if this method were run after the others), but we don't care ...
         stopConnector();
 
         // Check that the orders.order_number is not present ...
-        records.recordsForTopic("myServer2.connector_test_ro.orders").forEach(record->{
+        records.recordsForTopic("myServer2.connector_test_ro.orders").forEach(record -> {
             print(record);
             Struct value = (Struct) record.value();
             try {
@@ -398,9 +523,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 // expected
             }
         });
-        
+
         // Check that the customer.email is masked ...
-        records.recordsForTopic("myServer2.connector_test_ro.customers").forEach(record->{
+        records.recordsForTopic("myServer2.connector_test_ro.customers").forEach(record -> {
             Struct value = (Struct) record.value();
             if (value.getStruct("after") != null) {
                 assertThat(value.getStruct("after").getString("email")).isEqualTo("************");

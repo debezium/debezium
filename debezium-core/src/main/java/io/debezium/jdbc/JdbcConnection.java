@@ -200,8 +200,8 @@ public class JdbcConnection implements AutoCloseable {
     public JdbcConfiguration config() {
         return JdbcConfiguration.adapt(config);
     }
-    
-    public JdbcConnection setAutoCommit( boolean autoCommit ) throws SQLException {
+
+    public JdbcConnection setAutoCommit(boolean autoCommit) throws SQLException {
         connection().setAutoCommit(autoCommit);
         return this;
     }
@@ -245,7 +245,7 @@ public class JdbcConnection implements AutoCloseable {
         Connection conn = connection();
         try (Statement statement = conn.createStatement();) {
             operations.apply(statement);
-            if ( !conn.getAutoCommit() ) conn.commit();
+            if (!conn.getAutoCommit()) conn.commit();
         }
         return this;
     }
@@ -343,7 +343,7 @@ public class JdbcConnection implements AutoCloseable {
                 try (ResultSet resultSet = statement.executeQuery();) {
                     if (resultConsumer != null) {
                         success = resultConsumer.accept(value, resultSet);
-                        if ( !success ) break;
+                        if (!success) break;
                     }
                 }
             }
@@ -411,9 +411,9 @@ public class JdbcConnection implements AutoCloseable {
         resultSet.beforeFirst();
         return columnSizes;
     }
-    
+
     public synchronized boolean isConnected() throws SQLException {
-        if ( conn == null ) return false;
+        if (conn == null) return false;
         return !conn.isClosed();
     }
 
@@ -442,6 +442,79 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     /**
+     * Get the names of all of the catalogs.
+     * @return the set of catalog names; never null but possibly empty
+     * @throws SQLException if an error occurs while accessing the database metadata
+     */
+    public Set<String> readAllCatalogNames()
+            throws SQLException {
+        Set<String> catalogs = new HashSet<>();
+        DatabaseMetaData metadata = connection().getMetaData();
+        try (ResultSet rs = metadata.getCatalogs()) {
+            while (rs.next()) {
+                String catalogName = rs.getString(1);
+                catalogs.add(catalogName);
+            }
+        }
+        return catalogs;
+    }
+    
+    public String[] tableTypes() throws SQLException {
+        List<String> types = new ArrayList<>();
+        DatabaseMetaData metadata = connection().getMetaData();
+        try (ResultSet rs = metadata.getTableTypes()) {
+            while (rs.next()) {
+                String tableType = rs.getString(1);
+                if (tableType != null) types.add(tableType);
+            }
+        }
+        return types.toArray(new String[types.size()]);
+    }
+
+    /**
+     * Get the identifiers of all available tables.
+     * 
+     * @param tableTypes the set of table types to include in the results, which may be null for all table types
+     * @return the set of {@link TableId}s; never null but possibly empty
+     * @throws SQLException if an error occurs while accessing the database metadata
+     */
+    public Set<TableId> readAllTableNames(String[] tableTypes) throws SQLException {
+        return readTableNames(null, null, null, tableTypes);
+    }
+
+    /**
+     * Get the identifiers of the tables.
+     * 
+     * @param databaseCatalog the name of the catalog, which is typically the database name; may be an empty string for tables
+     *            that have no catalog, or {@code null} if the catalog name should not be used to narrow the list of table
+     *            identifiers
+     * @param schemaNamePattern the pattern used to match database schema names, which may be "" to match only those tables with
+     *            no schema or {@code null} if the schema name should not be used to narrow the list of table
+     *            identifiers
+     * @param tableNamePattern the pattern used to match database table names, which may be null to match all table names
+     * @param tableTypes the set of table types to include in the results, which may be null for all table types
+     * @return the set of {@link TableId}s; never null but possibly empty
+     * @throws SQLException if an error occurs while accessing the database metadata
+     */
+    public Set<TableId> readTableNames(String databaseCatalog, String schemaNamePattern, String tableNamePattern,
+                                       String[] tableTypes)
+            throws SQLException {
+        if (tableNamePattern == null) tableNamePattern = "%";
+        Set<TableId> tableIds = new HashSet<>();
+        DatabaseMetaData metadata = connection().getMetaData();
+        try (ResultSet rs = metadata.getTables(databaseCatalog, schemaNamePattern, tableNamePattern, tableTypes)) {
+            while (rs.next()) {
+                String catalogName = rs.getString(1);
+                String schemaName = rs.getString(2);
+                String tableName = rs.getString(3);
+                TableId tableId = new TableId(catalogName, schemaName, tableName);
+                tableIds.add(tableId);
+            }
+        }
+        return tableIds;
+    }
+
+    /**
      * Create definitions for each tables in the database, given the catalog name, schema pattern, table filter, and
      * column filter.
      * 
@@ -465,7 +538,7 @@ public class JdbcConnection implements AutoCloseable {
         Set<TableId> tableIdsBefore = new HashSet<>(tables.tableIds());
 
         // Read the metadata for the table columns ...
-        DatabaseMetaData metadata = conn.getMetaData();
+        DatabaseMetaData metadata = connection().getMetaData();
         ConcurrentMap<TableId, List<Column>> columnsByTable = new ConcurrentHashMap<>();
         try (ResultSet rs = metadata.getColumns(databaseCatalog, schemaNamePattern, null, null)) {
             while (rs.next()) {
@@ -510,8 +583,8 @@ public class JdbcConnection implements AutoCloseable {
             Collections.sort(columns);
             tables.overwriteTable(id, columns, pkColumnNames);
         }
-        
-        if ( removeTablesNotFoundInJdbc ) {
+
+        if (removeTablesNotFoundInJdbc) {
             // Remove any definitions for tables that were not found in the database metadata ...
             tableIdsBefore.removeAll(columnsByTable.keySet());
             tableIdsBefore.forEach(tables::removeTable);

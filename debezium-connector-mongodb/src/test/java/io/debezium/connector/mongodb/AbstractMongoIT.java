@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
 import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.ReplicationContext.MongoPrimary;
+import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.util.Testing;
 
 public abstract class AbstractMongoIT implements Testing {

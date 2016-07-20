@@ -5,8 +5,11 @@
  */
 package io.debezium.connector.mysql;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.config.Configuration;
@@ -37,7 +40,31 @@ public class Filters {
                                                                                       "slave_relay_log_info", "slave_master_info",
                                                                                       "slave_worker_info", "gtid_executed",
                                                                                       "server_cost", "engine_cost");
-    protected static final Set<String> BUILT_IN_DB_NAMES = Collect.unmodifiableSet("mysql", "performance_schema");
+    protected static final Set<String> BUILT_IN_DB_NAMES = Collect.unmodifiableSet("mysql", "performance_schema","sys", "information_schema");
+
+    protected static boolean isBuiltInDatabase(String databaseName) {
+        return BUILT_IN_DB_NAMES.contains(databaseName.toLowerCase());
+    }
+
+    protected static boolean isBuiltInTable(TableId id ) {
+        return isBuiltInDatabase(id.catalog()) || BUILT_IN_TABLE_NAMES.contains(id.table().toLowerCase());
+    }
+
+    protected static boolean isNotBuiltInDatabase(String databaseName) {
+        return !isBuiltInDatabase(databaseName);
+    }
+
+    protected static boolean isNotBuiltInTable(TableId id ) {
+        return !isBuiltInTable(id);
+    }
+
+    protected static List<TableId> withoutBuiltIns(Collection<TableId> tableIds) {
+        return tableIds.stream().filter(Filters::isNotBuiltInTable).collect(Collectors.toList());
+    }
+
+    protected static List<String> withoutBuiltInDatabases(Collection<String> dbNames) {
+        return dbNames.stream().filter(Filters::isNotBuiltInDatabase).collect(Collectors.toList());
+    }
 
     private final Predicate<String> dbFilter;
     private final Predicate<TableId> tableFilter;
@@ -50,12 +77,8 @@ public class Filters {
      * @param config the configuration; may not be null
      */
     public Filters(Configuration config) {
-        this.isBuiltInDb = (dbName) -> {
-            return BUILT_IN_DB_NAMES.contains(dbName.toLowerCase());
-        };
-        this.isBuiltInTable = (id) -> {
-            return isBuiltInDb.test(id.catalog()) || BUILT_IN_TABLE_NAMES.contains(id.table().toLowerCase());
-        };
+        this.isBuiltInDb = Filters::isBuiltInDatabase;
+        this.isBuiltInTable = Filters::isBuiltInTable;
 
         // Define the filter used for database names ...
         Predicate<String> dbFilter = Selectors.databaseSelector()
@@ -94,6 +117,12 @@ public class Filters {
         return dbFilter;
     }
 
+    public Predicate<TableId> tableInDatabaseFilter() {
+        return tableId->{
+            return dbFilter.test(tableId.catalog());
+        };
+    }
+    
     public Predicate<TableId> tableFilter() {
         return tableFilter;
     }
@@ -117,4 +146,5 @@ public class Filters {
     public ColumnMappers columnMappers() {
         return columnMappers;
     }
+
 }

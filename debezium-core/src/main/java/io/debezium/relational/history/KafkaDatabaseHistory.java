@@ -6,7 +6,6 @@
 package io.debezium.relational.history;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -22,6 +21,9 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.config.ConfigDef.Importance;
+import org.apache.kafka.common.config.ConfigDef.Type;
+import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -45,10 +47,18 @@ import io.debezium.util.Collect;
 public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
 
     public static final Field TOPIC = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.topic")
+                                           .withDisplayName("Database history topic name")
+                                           .withType(Type.STRING)
+                                           .withWidth(Width.LONG)
+                                           .withImportance(Importance.HIGH)
                                            .withDescription("The name of the topic for the database schema history")
                                            .withValidation(Field::isRequired);
 
     public static final Field BOOTSTRAP_SERVERS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.bootstrap.servers")
+                                                       .withDisplayName("Kafka broker addresses")
+                                                       .withType(Type.STRING)
+                                                       .withWidth(Width.LONG)
+                                                       .withImportance(Importance.HIGH)
                                                        .withDescription("A list of host/port pairs that the connector will use for establishing the initial "
                                                                + "connection to the Kafka cluster for retrieving database schema history previously stored "
                                                                + "by the connector. This should point to the same Kafka cluster used by the Kafka Connect "
@@ -57,22 +67,30 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
 
     public static final Field RECOVERY_POLL_INTERVAL_MS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING
             + "kafka.recovery.poll.interval.ms")
+                                                               .withDisplayName("Poll interval during database history recovery (ms)")
+                                                               .withType(Type.INT)
+                                                               .withWidth(Width.SHORT)
+                                                               .withImportance(Importance.LOW)
                                                                .withDescription("The number of milliseconds to wait while polling for persisted data during recovery.")
                                                                .withDefault(100)
                                                                .withValidation(Field::isInteger);
 
     public static final Field RECOVERY_POLL_ATTEMPTS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.recovery.attempts")
+                                                            .withDisplayName("Max attempts to recovery database history")
+                                                            .withType(Type.INT)
+                                                            .withWidth(Width.SHORT)
+                                                            .withImportance(Importance.LOW)
                                                             .withDescription("The number of attempts in a row that no data are returned from Kafka before recover completes. "
                                                                     + "The maximum amount of time to wait after receiving no data is (recovery.attempts) x (recovery.poll.interval.ms).")
                                                             .withDefault(4)
                                                             .withValidation(Field::isInteger);
 
-    public static Collection<Field> ALL_FIELDS = Collect.arrayListOf(TOPIC, BOOTSTRAP_SERVERS,
-                                                                     RECOVERY_POLL_INTERVAL_MS, RECOVERY_POLL_ATTEMPTS);
+    public static Field.Set ALL_FIELDS = Field.setOf(TOPIC, BOOTSTRAP_SERVERS,
+                                                     RECOVERY_POLL_INTERVAL_MS, RECOVERY_POLL_ATTEMPTS);
 
     private static final String CONSUMER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "consumer.";
     private static final String PRODUCER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "producer.";
-    
+
     private final DocumentReader reader = DocumentReader.defaultReader();
     private final Integer partition = new Integer(0);
     private String topicName;
@@ -84,8 +102,8 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
 
     @Override
     public void configure(Configuration config, HistoryRecordComparator comparator) {
-        super.configure(config,comparator);
-        if (!config.validate(ALL_FIELDS, logger::error)) {
+        super.configure(config, comparator);
+        if (!config.validateAndRecord(ALL_FIELDS, logger::error)) {
             throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }
         this.topicName = config.getString(TOPIC);
@@ -196,10 +214,10 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             super.stop();
         }
     }
-    
+
     @Override
     public String toString() {
-        if ( topicName != null ) {
+        if (topicName != null) {
             return "Kakfa topic " + topicName + (partition != null ? (":" + partition) : "")
                     + " using brokers at " + producerConfig.getString(BOOTSTRAP_SERVERS);
         }

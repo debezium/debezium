@@ -99,11 +99,11 @@ public class MySqlTaskContextIT {
         assertThat(context.serverId()).isEqualTo(serverId);
         assertThat(context.serverName()).isEqualTo(serverName);
 
-        assertThat("" + context.includeSchemaChangeRecords()).isEqualTo(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES.defaultValue());
-        assertThat("" + context.maxBatchSize()).isEqualTo(MySqlConnectorConfig.MAX_BATCH_SIZE.defaultValue());
-        assertThat("" + context.maxQueueSize()).isEqualTo(MySqlConnectorConfig.MAX_QUEUE_SIZE.defaultValue());
-        assertThat("" + context.pollIntervalInMillseconds()).isEqualTo(MySqlConnectorConfig.POLL_INTERVAL_MS.defaultValue());
-        assertThat("" + context.snapshotMode().getValue()).isEqualTo(MySqlConnectorConfig.SNAPSHOT_MODE.defaultValue());
+        assertThat("" + context.includeSchemaChangeRecords()).isEqualTo(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES.defaultValueAsString());
+        assertThat("" + context.maxBatchSize()).isEqualTo(MySqlConnectorConfig.MAX_BATCH_SIZE.defaultValueAsString());
+        assertThat("" + context.maxQueueSize()).isEqualTo(MySqlConnectorConfig.MAX_QUEUE_SIZE.defaultValueAsString());
+        assertThat("" + context.pollIntervalInMillseconds()).isEqualTo(MySqlConnectorConfig.POLL_INTERVAL_MS.defaultValueAsString());
+        assertThat("" + context.snapshotMode().getValue()).isEqualTo(MySqlConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
 
         // Snapshot default is 'initial' ...
         assertThat(context.isSnapshotAllowedWhenNeeded()).isEqualTo(false);

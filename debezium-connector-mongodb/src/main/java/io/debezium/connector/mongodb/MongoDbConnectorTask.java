@@ -97,7 +97,7 @@ public final class MongoDbConnectorTask extends SourceTask {
 
             // The MongoDbConnector.taskConfigs created our configuration, but we still validate the configuration in case of bugs
             // ...
-            if (!config.validate(MongoDbConnectorConfig.ALL_FIELDS, logger::error)) {
+            if (!config.validateAndRecord(MongoDbConnectorConfig.ALL_FIELDS, logger::error)) {
                 throw new ConnectException(
                         "Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
             }

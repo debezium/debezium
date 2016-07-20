@@ -21,15 +21,17 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import org.apache.kafka.common.config.Config;
+import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.json.JsonDeserializer;
+import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.junit.After;
 import org.junit.Before;
 import org.slf4j.Logger;
@@ -73,7 +75,7 @@ public abstract class AbstractConnectorTest implements Testing {
 
     @Before
     public final void initializeConnectorTestFramework() {
-        LoggingContext.forConnector(getClass().getSimpleName(),"","test");
+        LoggingContext.forConnector(getClass().getSimpleName(), "", "test");
         keyJsonConverter = new JsonConverter();
         valueJsonConverter = new JsonConverter();
         keyJsonDeserializer = new JsonDeserializer();
@@ -186,7 +188,7 @@ public abstract class AbstractConnectorTest implements Testing {
         Configuration config = Configuration.copy(connectorConfig)
                                             .with(EmbeddedEngine.ENGINE_NAME, "testing-connector")
                                             .with(EmbeddedEngine.CONNECTOR_CLASS, connectorClass.getName())
-                                            .with(FileOffsetBackingStore.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
+                                            .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
                                             .with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 0)
                                             .build();
         latch = new CountDownLatch(1);
@@ -216,8 +218,8 @@ public abstract class AbstractConnectorTest implements Testing {
         // Submit the connector for asynchronous execution ...
         assertThat(executor).isNull();
         executor = Executors.newFixedThreadPool(1);
-        executor.execute(()->{
-            LoggingContext.forConnector(getClass().getSimpleName(),"","engine");
+        executor.execute(() -> {
+            LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
             engine.run();
         });
     }
@@ -337,6 +339,7 @@ public abstract class AbstractConnectorTest implements Testing {
 
         /**
          * Get the DDL events for the named database.
+         * 
          * @param dbName the name of the database; may not be null
          * @return the DDL-related events; never null but possibly empty
          */
@@ -346,6 +349,7 @@ public abstract class AbstractConnectorTest implements Testing {
 
         /**
          * Get the names of the databases that were affected by the DDL statements.
+         * 
          * @return the set of database names; never null but possibly empty
          */
         public Set<String> databaseNames() {
@@ -354,6 +358,7 @@ public abstract class AbstractConnectorTest implements Testing {
 
         /**
          * Get the records on the given topic.
+         * 
          * @param topicName the name of the topic.
          * @return the records for the topic; possibly null if there were no records produced on the topic
          */
@@ -363,6 +368,7 @@ public abstract class AbstractConnectorTest implements Testing {
 
         /**
          * Get the set of topics for which records were received.
+         * 
          * @return the names of the topics; never null
          */
         public Set<String> topics() {
@@ -376,7 +382,7 @@ public abstract class AbstractConnectorTest implements Testing {
         public void forEach(Consumer<SourceRecord> consumer) {
             records.forEach(consumer);
         }
-        
+
         public List<SourceRecord> allRecordsInOrder() {
             return Collections.unmodifiableList(records);
         }
@@ -506,4 +512,26 @@ public abstract class AbstractConnectorTest implements Testing {
     protected void debug(SourceRecord record) {
         VerifyRecord.debug(record);
     }
+
+    protected void assertConfigurationErrors(Config config, io.debezium.config.Field field, int numErrors) {
+        ConfigValue value = configValue(config, field.name());
+        assertThat(value.errorMessages().size()).isEqualTo(numErrors);
+    }
+
+    protected void assertConfigurationErrors(Config config, io.debezium.config.Field field) {
+        ConfigValue value = configValue(config, field.name());
+        assertThat(value.errorMessages().size()).isGreaterThan(0);
+    }
+
+    protected void assertNoConfigurationErrors(Config config, io.debezium.config.Field... fields) {
+        for (io.debezium.config.Field field : fields) {
+            ConfigValue value = configValue(config, field.name());
+            assertThat(value.errorMessages().size()).isEqualTo(0);
+        }
+    }
+
+    protected ConfigValue configValue(Config config, String fieldName) {
+        return config.configValues().stream().filter(value -> value.name().equals(fieldName)).findFirst().orElse(null);
+    }
+
 }
