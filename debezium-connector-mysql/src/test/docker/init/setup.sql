@@ -220,3 +220,12 @@ CREATE TABLE dbz84_integer_types_table (
 );
 INSERT INTO dbz84_integer_types_table
 VALUES(127,-128,128,255, default,201,202,203, default,301,302,303, default,401,402,403, default,501,502,503);
+
+-- DBZ-85 handle fractional part of seconds
+CREATE TABLE dbz_85_fractest (
+  c1 DATE,
+  c2 TIME(2),
+  c3 DATETIME(2),
+  c4 TIMESTAMP(2)
+);
+INSERT INTO dbz_85_fractest VALUES ('2014-09-08', '17:51:04.777', '2014-09-08 17:51:04.777', '2014-09-08 17:51:04.777');
