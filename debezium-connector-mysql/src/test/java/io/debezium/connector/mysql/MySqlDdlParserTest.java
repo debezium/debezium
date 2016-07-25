@@ -301,6 +301,14 @@ public class MySqlDdlParserTest {
     }
 
     @Test
+    public void shouldParseIntegrationTestSchema() {
+        parser.parse(readFile("ddl/mysql-integration.ddl"), tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(10);
+        assertThat(listener.total()).isEqualTo(17);
+    }
+
+    @Test
     public void shouldParseCreateStatements() {
         parser.parse(readFile("ddl/mysql-test-create.ddl"), tables);
         Testing.print(tables);

@@ -6,6 +6,9 @@
 package io.debezium.data;
 
 import java.nio.ByteBuffer;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +25,7 @@ import org.apache.kafka.connect.source.SourceRecord;
  * @author Randall Hauch
  */
 public class SchemaUtil {
-
+    
     private SchemaUtil() {
     }
 
@@ -83,7 +86,7 @@ public class SchemaUtil {
      * @return the JSON string representation
      */
     public static String asDetailedString(Field field) {
-        return new RecordWriter().append(field).toString();
+        return new RecordWriter().detailed(true).append(field).toString();
     }
 
     /**
@@ -93,7 +96,7 @@ public class SchemaUtil {
      * @return the JSON string representation
      */
     public static String asDetailedString(Struct struct) {
-        return new RecordWriter().append(struct).toString();
+        return new RecordWriter().detailed(true).append(struct).toString();
     }
 
     /**
@@ -103,7 +106,7 @@ public class SchemaUtil {
      * @return the JSON string representation
      */
     public static String asDetailedString(Schema schema) {
-        return new RecordWriter().append(schema).toString();
+        return new RecordWriter().detailed(true).append(schema).toString();
     }
 
     /**
@@ -113,7 +116,7 @@ public class SchemaUtil {
      * @return the JSON string representation
      */
     public static String asDetailedString(SourceRecord record) {
-        return new RecordWriter().append(record).toString();
+        return new RecordWriter().detailed(true).append(record).toString();
     }
 
     protected static class RecordWriter {
@@ -228,8 +231,24 @@ public class SchemaUtil {
                 }
                 appendAdditional("value", record.value());
                 sb.append('}');
+            } else if ( obj instanceof java.sql.Time ){
+                java.sql.Time time = (java.sql.Time)obj;
+                append(DateTimeFormatter.ISO_LOCAL_TIME.format(time.toLocalTime()));
+            } else if ( obj instanceof java.sql.Date ){
+                java.sql.Date date = (java.sql.Date)obj;
+                append(DateTimeFormatter.ISO_DATE.format(date.toLocalDate()));
+            } else if ( obj instanceof java.sql.Timestamp ){
+                java.sql.Timestamp ts = (java.sql.Timestamp)obj;
+                Instant instant = ts.toInstant();
+                append(DateTimeFormatter.ISO_INSTANT.format(instant));
+            } else if ( obj instanceof java.util.Date ){
+                java.util.Date date = (java.util.Date)obj;
+                append(DateTimeFormatter.ISO_INSTANT.format(date.toInstant()));
+            } else if ( obj instanceof TemporalAccessor ){
+                TemporalAccessor temporal = (TemporalAccessor)obj;
+                append(DateTimeFormatter.ISO_INSTANT.format(temporal));
             } else {
-                sb.append(obj.toString());
+                append(obj.toString());
             }
             return this;
         }

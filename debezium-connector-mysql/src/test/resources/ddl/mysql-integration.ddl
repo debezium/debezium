@@ -1,32 +1,32 @@
-# In production you would almost certainly limit the replication user must be on the follower (slave) machine,
-# to prevent other clients accessing the log from other machines. For example, 'replicator'@'follower.acme.com'.
-# However, in this database we'll grant 3 users different privileges:
-#
-# 1) 'replicator' - all privileges required by the binlog reader (setup through 'readbinlog.sql')
-# 2) 'snapper' - all privileges required by the snapshot reader AND binlog reader
-# 3) 'mysqluser' - all privileges
-#
+-- In production you would almost certainly limit the replication user must be on the follower (slave) machine,
+-- to prevent other clients accessing the log from other machines. For example, 'replicator'@'follower.acme.com'.
+-- However, in this database we'll grant 3 users different privileges:
+--
+-- 1) 'replicator' - all privileges required by the binlog reader (setup through 'readbinlog.sql')
+-- 2) 'snapper' - all privileges required by the snapshot reader AND binlog reader
+-- 3) 'mysqluser' - all privileges
+--
 GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'replicator' IDENTIFIED BY 'replpass';
 GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT  ON *.* TO 'snapper'@'%' IDENTIFIED BY 'snapperpass';
 GRANT ALL PRIVILEGES ON *.* TO 'mysqluser'@'%';
 
-# ----------------------------------------------------------------------------------------------------------------
-# DATABASE:  emptydb
-# ----------------------------------------------------------------------------------------------------------------
+-- ----------------------------------------------------------------------------------------------------------------
+-- DATABASE:  emptydb
+-- ----------------------------------------------------------------------------------------------------------------
 CREATE DATABASE emptydb;
 
-# ----------------------------------------------------------------------------------------------------------------
-# DATABASE:  readbinlog_test
-# ----------------------------------------------------------------------------------------------------------------
+-- ----------------------------------------------------------------------------------------------------------------
+-- DATABASE:  readbinlog_test
+-- ----------------------------------------------------------------------------------------------------------------
 CREATE DATABASE readbinlog_test;
 
-# ----------------------------------------------------------------------------------------------------------------
-# DATABASE:  connector_test
-# ----------------------------------------------------------------------------------------------------------------
+-- ----------------------------------------------------------------------------------------------------------------
+-- DATABASE:  connector_test
+-- ----------------------------------------------------------------------------------------------------------------
 CREATE DATABASE connector_test;
 USE connector_test;
 
-# Create and populate our products using a single insert with many rows
+-- Create and populate our products using a single insert with many rows
 CREATE TABLE products (
   id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
@@ -46,7 +46,7 @@ VALUES (default,"scooter","Small 2-wheel scooter",3.14),
        (default,"jacket","water resistent black wind breaker",0.1),
        (default,"spare tire","24 inch spare tire",22.2);
 
-# Create and populate the products on hand using multiple inserts
+-- Create and populate the products on hand using multiple inserts
 CREATE TABLE products_on_hand (
   product_id INTEGER NOT NULL PRIMARY KEY,
   quantity INTEGER NOT NULL,
@@ -63,7 +63,7 @@ INSERT INTO products_on_hand VALUES (107,44);
 INSERT INTO products_on_hand VALUES (108,2);
 INSERT INTO products_on_hand VALUES (109,5);
 
-# Create some customers ...
+-- Create some customers ...
 CREATE TABLE customers (
   id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
   first_name VARCHAR(255) NOT NULL,
@@ -78,7 +78,7 @@ VALUES (default,"Sally","Thomas","sally.thomas@acme.com"),
        (default,"Edward","Walker","ed@walker.com"),
        (default,"Anne","Kretchmar","annek@noanswer.org");
 
-# Create some veyr simple orders
+-- Create some veyr simple orders
 CREATE TABLE orders (
   order_number INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
   order_date DATE NOT NULL,
@@ -97,13 +97,13 @@ VALUES (default, '2016-01-16', 1001, 1, 102),
        (default, '2016-02-21', 1003, 1, 107);
 
 
-# ----------------------------------------------------------------------------------------------------------------
-# DATABASE:  connector_test_ro
-# ----------------------------------------------------------------------------------------------------------------
+-- ----------------------------------------------------------------------------------------------------------------
+-- DATABASE:  connector_test_ro
+-- ----------------------------------------------------------------------------------------------------------------
 CREATE DATABASE connector_test_ro;
 USE connector_test_ro;
 
-# Create and populate our products using a single insert with many rows
+-- Create and populate our products using a single insert with many rows
 CREATE TABLE products (
   id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
@@ -123,7 +123,7 @@ VALUES (default,"scooter","Small 2-wheel scooter",3.14),
        (default,"jacket","water resistent black wind breaker",0.1),
        (default,"spare tire","24 inch spare tire",22.2);
 
-# Create and populate the products on hand using multiple inserts
+-- Create and populate the products on hand using multiple inserts
 CREATE TABLE products_on_hand (
   product_id INTEGER NOT NULL PRIMARY KEY,
   quantity INTEGER NOT NULL,
@@ -140,7 +140,7 @@ INSERT INTO products_on_hand VALUES (107,44);
 INSERT INTO products_on_hand VALUES (108,2);
 INSERT INTO products_on_hand VALUES (109,5);
 
-# Create some customers ...
+-- Create some customers ...
 CREATE TABLE customers (
   id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
   first_name VARCHAR(255) NOT NULL,
@@ -155,7 +155,7 @@ VALUES (default,"Sally","Thomas","sally.thomas@acme.com"),
        (default,"Edward","Walker","ed@walker.com"),
        (default,"Anne","Kretchmar","annek@noanswer.org");
 
-# Create some veyr simple orders
+-- Create some veyr simple orders
 CREATE TABLE orders (
   order_number INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
   order_date DATE NOT NULL,
@@ -175,17 +175,17 @@ VALUES (default, '2016-01-16', 1001, 1, 102),
 
 
 
-# ----------------------------------------------------------------------------------------------------------------
-# DATABASE:  regression_test
-# ----------------------------------------------------------------------------------------------------------------
-# The integration test for this database expects to scans all of the binlog events associated with this database
-# without error or problems. The integration test does not modify any records in this database, so this script
-# must contain all operations to these tables.
+-- ----------------------------------------------------------------------------------------------------------------
+-- DATABASE:  regression_test
+-- ----------------------------------------------------------------------------------------------------------------
+-- The integration test for this database expects to scans all of the binlog events associated with this database
+-- without error or problems. The integration test does not modify any records in this database, so this script
+-- must contain all operations to these tables.
 #
 CREATE DATABASE regression_test;
 USE regression_test;
 
-# DBZ-61 handle binary value recorded as hex string value
+-- DBZ-61 handle binary value recorded as hex string value
 CREATE TABLE t1464075356413_testtable6 (
   pk_column int auto_increment NOT NULL,
   varbinary_col varbinary(20) NOT NULL,
@@ -220,12 +220,3 @@ CREATE TABLE dbz84_integer_types_table (
 );
 INSERT INTO dbz84_integer_types_table
 VALUES(127,-128,128,255, default,201,202,203, default,301,302,303, default,401,402,403, default,501,502,503);
-
--- DBZ-85 handle fractional part of seconds
-CREATE TABLE dbz_85_fractest (
-  c1 DATE,
-  c2 TIME(2),
-  c3 DATETIME(2),
-  c4 TIMESTAMP(2)
-);
-INSERT INTO dbz_85_fractest VALUES ('2014-09-08', '17:51:04.777', '2014-09-08 17:51:04.777', '2014-09-08 17:51:04.777');

@@ -10,11 +10,11 @@ import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoField;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -41,7 +41,9 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.data.Bits;
 import io.debezium.data.IsoTime;
 import io.debezium.data.IsoTimestamp;
+import io.debezium.data.SchemaUtil;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.jdbc.TimeZoneAdapter;
 import io.debezium.relational.mapping.ColumnMapper;
 import io.debezium.relational.mapping.ColumnMappers;
 
@@ -62,13 +64,34 @@ import io.debezium.relational.mapping.ColumnMappers;
 @Immutable
 public class TableSchemaBuilder {
 
+    private static final Short SHORT_TRUE = new Short((short) 1);
+    private static final Short SHORT_FALSE = new Short((short) 0);
+    private static final Integer INTEGER_TRUE = new Integer(1);
+    private static final Integer INTEGER_FALSE = new Integer(0);
+    private static final Long LONG_TRUE = new Long(1L);
+    private static final Long LONG_FALSE = new Long(0L);
+    private static final Float FLOAT_TRUE = new Float(1.0);
+    private static final Float FLOAT_FALSE = new Float(0.0);
+    private static final Double DOUBLE_TRUE = new Double(1.0d);
+    private static final Double DOUBLE_FALSE = new Double(0.0d);
     private static final Logger LOGGER = LoggerFactory.getLogger(TableSchemaBuilder.class);
     private static final LocalDate EPOCH_DAY = LocalDate.ofEpochDay(0);
 
+    private final TimeZoneAdapter timeZoneAdapter;
+
     /**
-     * Create a new instance of the builder.
+     * Create a new instance of the builder that uses the {@link TimeZoneAdapter#create() default time zone adapter}.
      */
     public TableSchemaBuilder() {
+        this(TimeZoneAdapter.create());
+    }
+
+    /**
+     * Create a new instance of the builder.
+     * @param timeZoneAdapter the adapter for temporal objects created by the source database; may not be null
+     */
+    public TableSchemaBuilder(TimeZoneAdapter timeZoneAdapter) {
+        this.timeZoneAdapter = timeZoneAdapter;
     }
 
     /**
@@ -136,8 +159,10 @@ public class TableSchemaBuilder {
         // Build the schemas ...
         final TableId tableId = table.id();
         final String tableIdStr = tableId.toString();
-        SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(schemaPrefix + tableIdStr + ".Value");
-        SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(schemaPrefix + tableIdStr + ".Key");
+        final String schemaNamePrefix = schemaPrefix + tableIdStr;
+        SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(schemaNamePrefix + ".Value");
+        SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(schemaNamePrefix + ".Key");
+        LOGGER.debug("Mapping table '{}' to schemas under '{}'", tableId, schemaNamePrefix);
         AtomicBoolean hasPrimaryKey = new AtomicBoolean(false);
         table.columns().forEach(column -> {
             if (table.isPrimaryKeyColumn(column.name())) {
@@ -153,6 +178,11 @@ public class TableSchemaBuilder {
         });
         Schema valSchema = valSchemaBuilder.optional().build();
         Schema keySchema = hasPrimaryKey.get() ? keySchemaBuilder.build() : null;
+
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Mapped primary key for table '{}' to schema: {}", tableId, SchemaUtil.asDetailedString(keySchema));
+            LOGGER.debug("Mapped columns for table '{}' to schema: {}", tableId, SchemaUtil.asDetailedString(valSchema));
+        }
 
         // Create the generators ...
         Function<Object[], Object> keyGenerator = createKeyGenerator(keySchema, tableId, table.primaryKeyColumns());
@@ -434,6 +464,11 @@ public class TableSchemaBuilder {
             }
             if (column.isOptional()) fieldBuilder.optional();
             builder.field(column.name(), fieldBuilder.build());
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("- field '{}' ({}{}) from column {}", column.name(), builder.isOptional() ? "OPTIONAL " : "",
+                             fieldBuilder.type(),
+                             column);
+            }
         }
     }
 
@@ -583,6 +618,7 @@ public class TableSchemaBuilder {
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         OffsetDateTime dateTime = null;
+        LOGGER.debug("TimestampWithZone: " + data + " , class=" + data.getClass());
         if (data instanceof OffsetDateTime) {
             // JDBC specification indicates that this will be the canonical object for this JDBC type.
             dateTime = (OffsetDateTime) data;
@@ -644,6 +680,7 @@ public class TableSchemaBuilder {
     protected Object convertTimeWithZone(Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         OffsetTime time = null;
+        LOGGER.debug("TimeWithZone: " + data + " , class=" + data.getClass());
         if (data instanceof OffsetTime) {
             // JDBC specification indicates that this will be the canonical object for this JDBC type.
             time = (OffsetTime) data;
@@ -698,15 +735,10 @@ public class TableSchemaBuilder {
     protected Object convertTimestamp(Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         java.util.Date date = null;
-        if (data instanceof java.sql.Timestamp) {
-            // JDBC specification indicates that this will be the canonical object for this JDBC type.
-            date = (java.util.Date) data;
-        } else if (data instanceof java.sql.Date) {
-            // This should still work, even though it should have just date info
-            date = (java.util.Date) data;
-        } else if (data instanceof java.util.Date) {
-            // Possible that some implementations might use this.
-            date = (java.util.Date) data;
+        LOGGER.debug("Timestamp: " + data + " , class=" + data.getClass());
+        if (data instanceof java.util.Date) {
+            ZonedDateTime zdt = timeZoneAdapter.toZonedDateTime((java.util.Date)data);
+            date = java.util.Date.from(zdt.toInstant());
         } else if (data instanceof java.time.LocalDate) {
             // If we get a local date (no TZ info), we need to just convert to a util.Date (no TZ info) ...
             java.time.LocalDate local = (java.time.LocalDate) data;
@@ -751,16 +783,10 @@ public class TableSchemaBuilder {
     protected Object convertTime(Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         java.util.Date date = null;
-        if (data instanceof java.sql.Time) {
-            // JDBC specification indicates that this will be the canonical object for this JDBC type.
-            // Contains only time info, with the date set to the epoch day ...
-            date = (java.sql.Date) data;
-        } else if (data instanceof java.util.Date) {
-            // Possible that some implementations might use this. We ignore any date info by converting to an
-            // instant and changing the date to the epoch date, and finally creating a new java.util.Date ...
-            date = (java.util.Date) data;
-            Instant instant = Instant.ofEpochMilli(date.getTime()).with(ChronoField.EPOCH_DAY, 0);
-            date = new java.util.Date(instant.toEpochMilli());
+        LOGGER.debug("Time: " + data + " , class=" + data.getClass());
+        if (data instanceof java.util.Date) {
+            ZonedDateTime zdt = timeZoneAdapter.toZonedDateTime((java.util.Date)data);
+            date = java.util.Date.from(zdt.toInstant());
         } else if (data instanceof java.time.LocalTime) {
             // If we get a local time (no TZ info), we need to just convert to a util.Date (no TZ info) ...
             java.time.LocalTime local = (java.time.LocalTime) data;
@@ -805,21 +831,10 @@ public class TableSchemaBuilder {
     protected Object convertDate(Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         java.util.Date date = null;
-        if (data instanceof java.sql.Date) {
-            // JDBC specification indicates that this will be the nominal object for this JDBC type.
-            // Contains only date info, with all time values set to all zeros (e.g. midnight).
-            // However, the java.sql.Date object *may* contain timezone information for some DBMS+Driver combinations.
-            // Therefore, first convert it to a local LocalDate, then to a LocalDateTime at midnight, and then to an
-            // instant in UTC ...
-            java.sql.Date sqlDate = (java.sql.Date) data;
-            LocalDate localDate = sqlDate.toLocalDate();
-            date = java.util.Date.from(localDate.atStartOfDay().toInstant(ZoneOffset.UTC));
-        } else if (data instanceof java.util.Date) {
-            // Possible that some implementations might use this. We should be prepared to ignore any time,
-            // information by truncating to days and creating a new java.util.Date ...
-            date = (java.util.Date) data;
-            Instant instant = Instant.ofEpochMilli(date.getTime()).truncatedTo(ChronoUnit.DAYS);
-            date = new java.util.Date(instant.toEpochMilli());
+        LOGGER.debug("Date: " + data + " , class=" + data.getClass());
+        if (data instanceof java.util.Date) {
+            ZonedDateTime zdt = timeZoneAdapter.toZonedDateTime((java.util.Date)data);
+            date = java.util.Date.from(zdt.toInstant());
         } else if (data instanceof java.time.LocalDate) {
             // If we get a local date (no TZ info), we need to just convert to a util.Date (no TZ info) ...
             java.time.LocalDate local = (java.time.LocalDate) data;
@@ -872,7 +887,7 @@ public class TableSchemaBuilder {
             data = ((String) data).getBytes();
         }
         if (data instanceof byte[]) {
-            return ByteBuffer.wrap((byte[])data);
+            return ByteBuffer.wrap((byte[]) data);
         }
         // An unexpected value
         return unexpectedBinary(data, fieldDefn);
@@ -902,10 +917,7 @@ public class TableSchemaBuilder {
      * @return the converted value, or null if the conversion could not be made
      */
     protected Object convertTinyInt(Column column, Field fieldDefn, Object data) {
-        if (data == null) return null;
-        if (data instanceof Byte) return data;
-        if (data instanceof Boolean) return ((Boolean) data).booleanValue() ? (byte) 1 : (byte) 0;
-        return handleUnknownData(column, fieldDefn, data);
+        return convertSmallInt(column, fieldDefn, data);
     }
 
     /**
@@ -919,8 +931,13 @@ public class TableSchemaBuilder {
     protected Object convertSmallInt(Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         if (data instanceof Short) return data;
-        if (data instanceof Integer) return new Short(((Integer) data).shortValue());
-        if (data instanceof Long) return new Short(((Long) data).shortValue());
+        if (data instanceof Number) {
+            Number value = (Number) data;
+            return new Short(value.shortValue());
+        }
+        if (data instanceof Boolean) {
+            return ((Boolean) data).booleanValue() ? SHORT_TRUE : SHORT_FALSE;
+        }
         return handleUnknownData(column, fieldDefn, data);
     }
 
@@ -935,8 +952,13 @@ public class TableSchemaBuilder {
     protected Object convertInteger(Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         if (data instanceof Integer) return data;
-        if (data instanceof Short) return new Integer(((Short) data).intValue());
-        if (data instanceof Long) return new Integer(((Long) data).intValue());
+        if (data instanceof Number) {
+            Number value = (Number) data;
+            return new Integer(value.intValue());
+        }
+        if (data instanceof Boolean) {
+            return ((Boolean) data).booleanValue() ? INTEGER_TRUE : INTEGER_FALSE;
+        }
         return handleUnknownData(column, fieldDefn, data);
     }
 
@@ -951,8 +973,13 @@ public class TableSchemaBuilder {
     protected Object convertBigInt(Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         if (data instanceof Long) return data;
-        if (data instanceof Integer) return new Long(((Integer) data).longValue());
-        if (data instanceof Short) return new Long(((Short) data).longValue());
+        if (data instanceof Number) {
+            Number value = (Number) data;
+            return new Long(value.longValue());
+        }
+        if (data instanceof Boolean) {
+            return ((Boolean) data).booleanValue() ? LONG_TRUE : LONG_FALSE;
+        }
         return handleUnknownData(column, fieldDefn, data);
     }
 
@@ -979,10 +1006,13 @@ public class TableSchemaBuilder {
     protected Object convertDouble(Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         if (data instanceof Double) return data;
-        if (data instanceof Float) return new Double(((Float) data).doubleValue());
-        if (data instanceof Integer) return new Double(((Integer) data).doubleValue());
-        if (data instanceof Long) return new Double(((Long) data).doubleValue());
-        if (data instanceof Short) return new Double(((Short) data).doubleValue());
+        if (data instanceof Number) {
+            Number value = (Number) data;
+            return new Double(value.doubleValue());
+        }
+        if (data instanceof Boolean) {
+            return ((Boolean) data).booleanValue() ? DOUBLE_TRUE : DOUBLE_FALSE;
+        }
         return handleUnknownData(column, fieldDefn, data);
     }
 
@@ -997,10 +1027,13 @@ public class TableSchemaBuilder {
     protected Object convertReal(Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         if (data instanceof Float) return data;
-        if (data instanceof Double) return new Float(((Double) data).floatValue());
-        if (data instanceof Integer) return new Float(((Integer) data).floatValue());
-        if (data instanceof Long) return new Float(((Long) data).floatValue());
-        if (data instanceof Short) return new Float(((Short) data).floatValue());
+        if (data instanceof Number) {
+            Number value = (Number) data;
+            return new Float(value.floatValue());
+        }
+        if (data instanceof Boolean) {
+            return ((Boolean) data).booleanValue() ? FLOAT_TRUE : FLOAT_FALSE;
+        }
         return handleUnknownData(column, fieldDefn, data);
     }
 
@@ -1090,7 +1123,7 @@ public class TableSchemaBuilder {
     protected Object convertRowId(Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         if (data instanceof java.sql.RowId) {
-            java.sql.RowId row = (java.sql.RowId)data;
+            java.sql.RowId row = (java.sql.RowId) data;
             return ByteBuffer.wrap(row.getBytes());
         }
         return handleUnknownData(column, fieldDefn, data);

@@ -58,17 +58,19 @@ public class MySqlDdlParser extends DdlParser {
     @Override
     protected void initializeDataTypes(DataTypeParser dataTypes) {
         dataTypes.register(Types.BIT, "BIT[(L)]");
-        dataTypes.register(Types.INTEGER, "TINYINT[(L)] [UNSIGNED] [ZEROFILL]");
-        dataTypes.register(Types.INTEGER, "SMALLINT[(L)] [UNSIGNED] [ZEROFILL]");
-        dataTypes.register(Types.INTEGER, "MEDIUMINT[(L)] [UNSIGNED] [ZEROFILL]");
+        // MySQL unsigned TINYINTs can be mapped to JDBC TINYINT, but signed values don't map. Therefore, per JDBC spec
+        // the best mapping for all TINYINT values is JDBC's SMALLINT, which maps to a short.
+        dataTypes.register(Types.SMALLINT, "TINYINT[(L)] [UNSIGNED|SIGNED] [ZEROFILL]");
+        dataTypes.register(Types.SMALLINT, "SMALLINT[(L)] [UNSIGNED|SIGNED] [ZEROFILL]");
+        dataTypes.register(Types.INTEGER, "MEDIUMINT[(L)] [UNSIGNED|SIGNED] [ZEROFILL]");
         dataTypes.register(Types.INTEGER, "INT[(L)] [UNSIGNED|SIGNED] [ZEROFILL]");
-        dataTypes.register(Types.INTEGER, "INTEGER[(L)] [UNSIGNED] [ZEROFILL]");
+        dataTypes.register(Types.INTEGER, "INTEGER[(L)] [UNSIGNED|SIGNED] [ZEROFILL]");
         dataTypes.register(Types.BIGINT, "BIGINT[(L)] [UNSIGNED|SIGNED] [ZEROFILL]");
         dataTypes.register(Types.REAL, "REAL[(M[,D])] [UNSIGNED] [ZEROFILL]");
-        dataTypes.register(Types.DOUBLE, "DOUBLE[(M[,D])] [UNSIGNED] [ZEROFILL]");
-        dataTypes.register(Types.FLOAT, "FLOAT[(M[,D])] [UNSIGNED] [ZEROFILL]");
-        dataTypes.register(Types.DECIMAL, "DECIMAL[(M[,D])] [UNSIGNED] [ZEROFILL]");
-        dataTypes.register(Types.NUMERIC, "NUMERIC[(M[,D])] [UNSIGNED] [ZEROFILL]");
+        dataTypes.register(Types.DOUBLE, "DOUBLE[(M[,D])] [UNSIGNED|SIGNED] [ZEROFILL]");
+        dataTypes.register(Types.FLOAT, "FLOAT[(M[,D])] [UNSIGNED|SIGNED] [ZEROFILL]");
+        dataTypes.register(Types.DECIMAL, "DECIMAL[(M[,D])] [UNSIGNED|SIGNED] [ZEROFILL]");
+        dataTypes.register(Types.NUMERIC, "NUMERIC[(M[,D])] [UNSIGNED|SIGNED] [ZEROFILL]");
         dataTypes.register(Types.BOOLEAN, "BOOLEAN");
         dataTypes.register(Types.BOOLEAN, "BOOL");
         dataTypes.register(Types.DATE, "DATE");
