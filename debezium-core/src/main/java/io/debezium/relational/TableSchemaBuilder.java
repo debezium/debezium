@@ -625,7 +625,7 @@ public class TableSchemaBuilder {
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         OffsetDateTime dateTime = null;
-        LoggerFactory.getLogger(getClass()).info("TimestampWithZone: " + data + " , class=" + data.getClass());
+        LOGGER.debug("TimestampWithZone: " + data + " , class=" + data.getClass());
         if (data instanceof OffsetDateTime) {
             // JDBC specification indicates that this will be the canonical object for this JDBC type.
             dateTime = (OffsetDateTime) data;
@@ -687,7 +687,7 @@ public class TableSchemaBuilder {
     protected Object convertTimeWithZone(Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         OffsetTime time = null;
-        LoggerFactory.getLogger(getClass()).info("TimeWithZone: " + data + " , class=" + data.getClass());
+        LOGGER.debug("TimeWithZone: " + data + " , class=" + data.getClass());
         if (data instanceof OffsetTime) {
             // JDBC specification indicates that this will be the canonical object for this JDBC type.
             time = (OffsetTime) data;
@@ -742,7 +742,7 @@ public class TableSchemaBuilder {
     protected Object convertTimestamp(Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         java.util.Date date = null;
-        LoggerFactory.getLogger(getClass()).info("Timestamp: " + data + " , class=" + data.getClass());
+        LOGGER.debug("Timestamp: " + data + " , class=" + data.getClass());
         if (data instanceof java.util.Date) {
             ZonedDateTime zdt = timeZoneAdapter.toZonedDateTime((java.util.Date)data);
             date = java.util.Date.from(zdt.toInstant());
@@ -790,7 +790,7 @@ public class TableSchemaBuilder {
     protected Object convertTime(Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         java.util.Date date = null;
-        LoggerFactory.getLogger(getClass()).info("Time: " + data + " , class=" + data.getClass());
+        LOGGER.debug("Time: " + data + " , class=" + data.getClass());
         if (data instanceof java.util.Date) {
             ZonedDateTime zdt = timeZoneAdapter.toZonedDateTime((java.util.Date)data);
             date = java.util.Date.from(zdt.toInstant());
@@ -838,7 +838,7 @@ public class TableSchemaBuilder {
     protected Object convertDate(Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         java.util.Date date = null;
-        LoggerFactory.getLogger(getClass()).info("Date: " + data + " , class=" + data.getClass());
+        LOGGER.debug("Date: " + data + " , class=" + data.getClass());
         if (data instanceof java.util.Date) {
             ZonedDateTime zdt = timeZoneAdapter.toZonedDateTime((java.util.Date)data);
             date = java.util.Date.from(zdt.toInstant());
