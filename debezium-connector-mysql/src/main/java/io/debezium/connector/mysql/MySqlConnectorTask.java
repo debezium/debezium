@@ -58,7 +58,7 @@ public final class MySqlConnectorTask extends SourceTask {
 
         // Validate the configuration ...
         final Configuration config = Configuration.from(props);
-        if (!config.validate(MySqlConnectorConfig.ALL_FIELDS, logger::error)) {
+        if (!config.validateAndRecord(MySqlConnectorConfig.ALL_FIELDS, logger::error)) {
             throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }
 

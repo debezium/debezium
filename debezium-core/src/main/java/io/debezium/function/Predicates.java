@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import io.debezium.util.Strings;
 
@@ -25,6 +26,7 @@ public class Predicates {
      * 
      * @param regexPatterns the comma-separated regular expression pattern (or literal) strings; may not be null
      * @return the predicate function that performs the matching
+     * @throws PatternSyntaxException if the string includes an invalid regular expression
      */
     public static Predicate<String> includes(String regexPatterns) {
         return includes(regexPatterns, (str) -> str);
@@ -36,6 +38,7 @@ public class Predicates {
      * 
      * @param regexPatterns the comma-separated regular expression pattern (or literal) strings; may not be null
      * @return the predicate function that performs the matching
+     * @throws PatternSyntaxException if the string includes an invalid regular expression
      */
     public static Predicate<String> excludes(String regexPatterns) {
         return includes(regexPatterns).negate();
@@ -49,6 +52,7 @@ public class Predicates {
      * @param conversion the function that converts each predicate-supplied value to a string that can be matched against the
      *            regular expressions; may not be null
      * @return the predicate function that performs the matching
+     * @throws PatternSyntaxException if the string includes an invalid regular expression
      */
     public static <T> Predicate<T> includes(String regexPatterns, Function<T, String> conversion) {
         Set<Pattern> patterns = Strings.listOfRegex(regexPatterns,Pattern.CASE_INSENSITIVE);
@@ -71,6 +75,7 @@ public class Predicates {
      * @param conversion the function that converts each predicate-supplied value to a string that can be matched against the
      *            regular expressions; may not be null
      * @return the predicate function that performs the matching
+     * @throws PatternSyntaxException if the string includes an invalid regular expression
      */
     public static <T> Predicate<T> excludes(String regexPatterns, Function<T, String> conversion) {
         return includes(regexPatterns, conversion).negate();

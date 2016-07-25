@@ -17,15 +17,20 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectorContext;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.json.JsonConverter;
+import org.apache.kafka.connect.runtime.WorkerConfig;
+import org.apache.kafka.connect.runtime.distributed.DistributedConfig;
+import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
 import org.apache.kafka.connect.source.SourceTaskContext;
 import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
+import org.apache.kafka.connect.storage.KafkaOffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetStorageReader;
 import org.apache.kafka.connect.storage.OffsetStorageReaderImpl;
@@ -85,6 +90,29 @@ public final class EmbeddedEngine implements Runnable {
                                                     .withDefault(FileOffsetBackingStore.class.getName());
 
     /**
+     * An optional field that specifies the file location for the {@link FileOffsetBackingStore}.
+     * 
+     * @see #OFFSET_STORAGE
+     */
+    public static final Field OFFSET_STORAGE_FILE_FILENAME = Field.create(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG)
+                                                                  .withDescription("The file where offsets are to be stored. Required when "
+                                                                          + "'offset.storage' is set to the " +
+                                                                          FileOffsetBackingStore.class.getName() + " class.")
+                                                                  .withDefault("");
+
+    /**
+     * An optional field that specifies the file location for the {@link KafkaOffsetBackingStore}.
+     * 
+     * @see #OFFSET_STORAGE
+     */
+    public static final Field OFFSET_STORAGE_KAFKA_TOPIC = Field.create(DistributedConfig.OFFSET_STORAGE_TOPIC_CONFIG)
+                                                                .withDescription("The name of the Kafka topic where offsets are to be stored. "
+                                                                        + "Required with other properties when 'offset.storage' is set to the "
+                                                                        +
+                                                                        KafkaOffsetBackingStore.class.getName() + " class.")
+                                                                .withDefault("");
+
+    /**
      * An optional advanced field that specifies the maximum amount of time that the embedded connector should wait
      * for an offset commit to complete.
      */
@@ -115,7 +143,14 @@ public final class EmbeddedEngine implements Runnable {
     /**
      * The array of fields that are required by each connectors.
      */
-    public static final Field[] CONNECTOR_FIELDS = { ENGINE_NAME, CONNECTOR_CLASS };
+    public static final Field.Set CONNECTOR_FIELDS = Field.setOf(ENGINE_NAME, CONNECTOR_CLASS);
+
+    /**
+     * The array of all exposed fields.
+     */
+    protected static final Field.Set ALL_FIELDS = CONNECTOR_FIELDS.with(OFFSET_STORAGE, OFFSET_STORAGE_FILE_FILENAME,
+                                                                        OFFSET_FLUSH_INTERVAL_MS, OFFSET_COMMIT_TIMEOUT_MS,
+                                                                        INTERNAL_KEY_CONVERTER_CLASS, INTERNAL_VALUE_CONVERTER_CLASS);
 
     /**
      * A callback function to be notified when the connector completes.
@@ -147,8 +182,7 @@ public final class EmbeddedEngine implements Runnable {
         Builder notifying(Consumer<SourceRecord> consumer);
 
         /**
-         * Use the specified {@link Configuration#validate(Field[], Consumer) valid} configuration for the connector. This method
-         * must be called with a non-null configuration.
+         * Use the specified configuration for the connector. The configuration is assumed to already be valid.
          * 
          * @param config the configuration
          * @return this builder object so methods can be chained together; never null
@@ -256,6 +290,7 @@ public final class EmbeddedEngine implements Runnable {
     private final VariableLatch latch = new VariableLatch(0);
     private final Converter keyConverter;
     private final Converter valueConverter;
+    private final WorkerConfig workerConfig;
     private long recordsSinceLastCommit = 0;
     private long timeSinceLastCommitMillis = 0;
 
@@ -281,6 +316,13 @@ public final class EmbeddedEngine implements Runnable {
             valueConverterConfig = config.edit().with(INTERNAL_VALUE_CONVERTER_CLASS + ".schemas.enable", false).build();
         }
         valueConverter.configure(valueConverterConfig.subset(INTERNAL_VALUE_CONVERTER_CLASS.name() + ".", true).asMap(), false);
+
+        // Create the worker config, adding extra fields that are required for validation of a worker config
+        // but that are not used within the embedded engine (since the source records are never serialized) ...
+        Map<String, String> embeddedConfig = config.asMap(ALL_FIELDS);
+        embeddedConfig.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
+        embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
+        workerConfig = new EmbeddedConfig(embeddedConfig);
     }
 
     /**
@@ -328,7 +370,7 @@ public final class EmbeddedEngine implements Runnable {
             // Only one thread can be in this part of the method at a time ...
             latch.countUp();
             try {
-                if (!config.validate(CONNECTOR_FIELDS, logger::error)) {
+                if (!config.validateAndRecord(CONNECTOR_FIELDS, logger::error)) {
                     fail("Failed to start connector with invalid configuration (see logs for actual errors)");
                     return;
                 }
@@ -358,8 +400,7 @@ public final class EmbeddedEngine implements Runnable {
 
                 // Initialize the offset store ...
                 try {
-                    offsetStore.configure(config.subset(OFFSET_STORAGE.name() + ".", false).asMap()); // subset but do not
-                                                                                                      // remove prefixes
+                    offsetStore.configure(workerConfig);
                     offsetStore.start();
                 } catch (Throwable t) {
                     fail("Unable to configure and start the '" + offsetStoreClassName + "' offset backing store", t);
@@ -371,7 +412,19 @@ public final class EmbeddedEngine implements Runnable {
                 OffsetCommitPolicy offsetCommitPolicy = OffsetCommitPolicy.periodic(offsetPeriodMs, TimeUnit.MILLISECONDS);
 
                 // Initialize the connector using a context that does NOT respond to requests to reconfigure tasks ...
-                ConnectorContext context = () -> {};
+                ConnectorContext context = new ConnectorContext() {
+
+                    @Override
+                    public void requestTaskReconfiguration() {
+                        // Do nothing ...
+                    }
+
+                    @Override
+                    public void raiseError(Exception e) {
+                        fail(e.getMessage(), e);
+                    }
+
+                };
                 connector.initialize(context);
                 OffsetStorageWriter offsetWriter = new OffsetStorageWriter(offsetStore, engineName,
                         keyConverter, valueConverter);
@@ -560,4 +613,20 @@ public final class EmbeddedEngine implements Runnable {
     public String toString() {
         return "EmbeddedConnector{id=" + config.getString(ENGINE_NAME) + '}';
     }
+
+    protected static class EmbeddedConfig extends WorkerConfig {
+        private static final ConfigDef CONFIG;
+
+        static {
+            ConfigDef config = baseConfigDef();
+            Field.group(config, "file", OFFSET_STORAGE_FILE_FILENAME);
+            Field.group(config, "kafka", OFFSET_STORAGE_KAFKA_TOPIC);
+            CONFIG = config;
+        }
+
+        protected EmbeddedConfig(Map<String, String> props) {
+            super(CONFIG, props);
+        }
+    }
+
 }

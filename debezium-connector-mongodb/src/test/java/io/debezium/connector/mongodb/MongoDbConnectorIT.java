@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
+import org.apache.kafka.common.config.Config;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
@@ -28,7 +29,8 @@ import com.mongodb.client.model.InsertOneOptions;
 import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.ReplicationContext.MongoPrimary;
+import io.debezium.config.Field.Recommender;
+import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.embedded.AbstractConnectorTest;
@@ -80,8 +82,85 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldConsumeAllEventsFromDatabase() throws InterruptedException, IOException {
+    public void shouldFailToValidateInvalidConfiguration() {
+        Configuration config = Configuration.create().build();
+        MongoDbConnector connector = new MongoDbConnector();
+        Config result = connector.validate(config.asMap());
+
+        assertConfigurationErrors(result, MongoDbConnectorConfig.HOSTS, 1);
+        assertConfigurationErrors(result, MongoDbConnectorConfig.LOGICAL_NAME, 1);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.USER);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.PASSWORD);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.DATABASE_LIST);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.COLLECTION_WHITELIST);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.COLLECTION_BLACKLIST);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_COPY_THREADS);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_QUEUE_SIZE);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_BATCH_SIZE);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.POLL_INTERVAL_MS);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.CONNECT_BACKOFF_INITIAL_DELAY_MS);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.CONNECT_BACKOFF_MAX_DELAY_MS);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS);
+    }
+
+    @Test
+    public void shouldValidateAcceptableConfiguration() {
+        config = Configuration.create()
+                              .with(MongoDbConnectorConfig.HOSTS, System.getProperty("connector.mongodb.hosts"))
+                              .with(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS, System.getProperty("connector.mongodb.members.auto.discover"))
+                              .with(MongoDbConnectorConfig.LOGICAL_NAME, System.getProperty("connector.mongodb.name"))
+                              .build();
         
+        // Add data to the databases so that the databases will be listed ...
+        context = new ReplicationContext(config);
+        storeDocuments("dbval", "validationColl1", "simple_objects.json");
+        storeDocuments("dbval2", "validationColl2", "restaurants1.json");
+        
+        MongoDbConnector connector = new MongoDbConnector();
+        Config result = connector.validate(config.asMap());
+
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.HOSTS);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.LOGICAL_NAME);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.USER);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.PASSWORD);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.DATABASE_LIST);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.COLLECTION_WHITELIST);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.COLLECTION_BLACKLIST);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_COPY_THREADS);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_QUEUE_SIZE);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_BATCH_SIZE);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.POLL_INTERVAL_MS);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.CONNECT_BACKOFF_INITIAL_DELAY_MS);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.CONNECT_BACKOFF_MAX_DELAY_MS);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS);
+
+        // Testing.Debug.enable();
+
+        Recommender dbNameRecommender = MongoDbConnectorConfig.DATABASE_LIST.recommender();
+        List<Object> dbNames = dbNameRecommender.validValues(MongoDbConnectorConfig.DATABASE_LIST, config);
+        Testing.debug("List of dbNames: " + dbNames);
+        assertThat(dbNames).contains("dbval", "dbval2");    // may have more depending upon order
+
+        Recommender collectionNameRecommender = MongoDbConnectorConfig.COLLECTION_WHITELIST.recommender();
+        List<Object> collectionNames = collectionNameRecommender.validValues(MongoDbConnectorConfig.COLLECTION_WHITELIST, config);
+        Testing.debug("List of collection names: " + collectionNames);
+        assertThat(collectionNames).isEmpty();
+
+        // Now set the whitelist to two databases ...
+        Configuration config2 = config.edit()
+                                      .with(MongoDbConnectorConfig.DATABASE_LIST, "dbval")
+                                      .build();
+
+        List<Object> collectionNames2 = collectionNameRecommender.validValues(MongoDbConnectorConfig.COLLECTION_WHITELIST, config2);
+        assertThat(collectionNames2).containsOnly("dbval.validationColl1");
+        Testing.debug("List of collection names: " + collectionNames2);
+    }
+
+    @Test
+    public void shouldConsumeAllEventsFromDatabase() throws InterruptedException, IOException {
+
         // Use the DB configuration to define the connector's configuration ...
         config = Configuration.create()
                               .with(MongoDbConnectorConfig.HOSTS, System.getProperty("connector.mongodb.hosts"))
@@ -116,7 +195,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             verifyFromInitialSync(record);
             verifyReadOperation(record);
         });
-        
+
         // At this point, the connector has performed the initial sync and awaits changes ...
 
         // ---------------------------------------------------------------------------------------------------------------
@@ -139,7 +218,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         // Stop the connector
         // ---------------------------------------------------------------------------------------------------------------
         stopConnector();
-        
+
         // ---------------------------------------------------------------------------------------------------------------
         // Store more documents while the connector is NOT running
         // ---------------------------------------------------------------------------------------------------------------
@@ -149,7 +228,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         // Start the connector and we should only see the documents added since it was stopped
         // ---------------------------------------------------------------------------------------------------------------
         start(MongoDbConnector.class, config);
-        
+
         // Wait until we can consume the 4 documents we just added ...
         SourceRecords records3 = consumeRecordsByTopic(5);
         assertThat(records3.recordsForTopic("mongo.dbit.restaurants").size()).isEqualTo(5);
@@ -160,7 +239,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             verifyNotFromInitialSync(record);
             verifyCreateOperation(record);
         });
-        
+
         // ---------------------------------------------------------------------------------------------------------------
         // Store more documents while the connector is still running
         // ---------------------------------------------------------------------------------------------------------------
@@ -176,39 +255,39 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             verifyNotFromInitialSync(record);
             verifyCreateOperation(record);
         });
-        
+
     }
-    
-    protected void verifyFromInitialSync( SourceRecord record ) {
+
+    protected void verifyFromInitialSync(SourceRecord record) {
         assertThat(record.sourceOffset().containsKey(SourceInfo.INITIAL_SYNC)).isTrue();
-        Struct value = (Struct)record.value();
+        Struct value = (Struct) record.value();
         assertThat(value.getStruct(Envelope.FieldName.SOURCE).getBoolean(SourceInfo.INITIAL_SYNC)).isTrue();
     }
 
-    protected void verifyNotFromInitialSync( SourceRecord record ) {
+    protected void verifyNotFromInitialSync(SourceRecord record) {
         assertThat(record.sourceOffset().containsKey(SourceInfo.INITIAL_SYNC)).isFalse();
-        Struct value = (Struct)record.value();
+        Struct value = (Struct) record.value();
         assertThat(value.getStruct(Envelope.FieldName.SOURCE).getBoolean(SourceInfo.INITIAL_SYNC)).isNull();
     }
 
-    protected void verifyCreateOperation( SourceRecord record ) {
-        verifyOperation(record,Operation.CREATE);
+    protected void verifyCreateOperation(SourceRecord record) {
+        verifyOperation(record, Operation.CREATE);
     }
 
-    protected void verifyReadOperation( SourceRecord record ) {
-        verifyOperation(record,Operation.READ);
+    protected void verifyReadOperation(SourceRecord record) {
+        verifyOperation(record, Operation.READ);
     }
 
-    protected void verifyUpdateOperation( SourceRecord record ) {
-        verifyOperation(record,Operation.UPDATE);
+    protected void verifyUpdateOperation(SourceRecord record) {
+        verifyOperation(record, Operation.UPDATE);
     }
 
-    protected void verifyDeleteOperation( SourceRecord record ) {
-        verifyOperation(record,Operation.DELETE);
+    protected void verifyDeleteOperation(SourceRecord record) {
+        verifyOperation(record, Operation.DELETE);
     }
 
-    protected void verifyOperation( SourceRecord record, Operation expected ) {
-        Struct value = (Struct)record.value();
+    protected void verifyOperation(SourceRecord record, Operation expected) {
+        Struct value = (Struct) record.value();
         assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(expected.code());
     }
 
@@ -222,6 +301,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             Testing.debug("Storing in '" + dbName + "." + collectionName + "' documents loaded from from '" + pathOnClasspath + "'");
             MongoDatabase db1 = mongo.getDatabase(dbName);
             MongoCollection<Document> coll = db1.getCollection(collectionName);
+            coll.drop();
             storeDocuments(coll, pathOnClasspath);
         });
     }
@@ -244,7 +324,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
                 assertThat(doc.size()).isGreaterThan(0);
                 results.add(doc);
             });
-        } catch ( IOException e ) {
+        } catch (IOException e) {
             fail("Unable to find or read file '" + pathOnClasspath + "': " + e.getMessage());
         }
         return results;

@@ -43,6 +43,7 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         linesAdded = 0;
         Testing.Files.delete(TEST_FILE_PATH);
         inputFile = Testing.Files.createTestingFile(TEST_FILE_PATH);
+        // Basic connector configuration; the remaining engine configuration props are set in base class in startup
         connectorConfig = Configuration.create()
                                        .with(FileStreamSourceConnector.FILE_CONFIG, TEST_FILE_PATH)
                                        .with(FileStreamSourceConnector.TOPIC_CONFIG, "topicX")

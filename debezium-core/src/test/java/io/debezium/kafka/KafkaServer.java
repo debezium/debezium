@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.util.IoUtil;
 import kafka.admin.AdminUtils;
+import kafka.admin.RackAwareMode;
 import kafka.server.KafkaConfig;
 import kafka.utils.ZkUtils;
 
@@ -275,7 +276,8 @@ public class KafkaServer {
      * @param replicationFactor the replication factor for the topic
      */
     public void createTopic( String topic, int numPartitions, int replicationFactor ) {
-        AdminUtils.createTopic(getZkUtils(), topic, 1, 1, new Properties());
+        RackAwareMode rackAwareMode = null;
+        AdminUtils.createTopic(getZkUtils(), topic, numPartitions, replicationFactor, new Properties(), rackAwareMode);
     }
 
     /**

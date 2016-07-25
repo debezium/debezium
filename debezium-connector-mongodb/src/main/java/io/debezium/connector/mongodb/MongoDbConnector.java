@@ -11,11 +11,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.kafka.common.config.Config;
+import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.mongodb.MongoClient;
+import com.mongodb.MongoException;
 
 import io.debezium.config.Configuration;
 import io.debezium.util.Clock;
@@ -90,7 +96,7 @@ public class MongoDbConnector extends SourceConnector {
     public void start(Map<String, String> props) {
         // Validate the configuration ...
         final Configuration config = Configuration.from(props);
-        if (!config.validate(MongoDbConnectorConfig.ALL_FIELDS, logger::error)) {
+        if (!config.validateAndRecord(MongoDbConnectorConfig.ALL_FIELDS, logger::error)) {
             throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }
 
@@ -175,4 +181,36 @@ public class MongoDbConnector extends SourceConnector {
         }
     }
 
+    @Override
+    public ConfigDef config() {
+        return MongoDbConnectorConfig.configDef();
+    }
+
+    @Override
+    public Config validate(Map<String, String> connectorConfigs) {
+        Configuration config = Configuration.from(connectorConfigs);
+
+        // First, validate all of the individual fields, which is easy since don't make any of the fields invisible ...
+        Map<String, ConfigValue> results = config.validate(MongoDbConnectorConfig.EXPOSED_FIELDS);
+
+        // Get the config values for each of the connection-related fields ...
+        ConfigValue hostsValue = results.get(MongoDbConnectorConfig.HOSTS.name());
+        ConfigValue userValue = results.get(MongoDbConnectorConfig.USER.name());
+        ConfigValue passwordValue = results.get(MongoDbConnectorConfig.PASSWORD.name());
+
+        // If there are no errors on any of these ...
+        if (hostsValue.errorMessages().isEmpty()
+                && userValue.errorMessages().isEmpty()
+                && passwordValue.errorMessages().isEmpty()) {
+            // Try to connect to the database ...
+            try (ConnectionContext connContext = new ConnectionContext(config)) {
+                try ( MongoClient client = connContext.clientFor(connContext.hosts()) ) {
+                    client.listDatabaseNames();
+                }
+            } catch (MongoException e) {
+                hostsValue.addErrorMessage("Unable to connect: " + e.getMessage());
+            }
+        }
+        return new Config(new ArrayList<>(results.values()));
+    }
 }

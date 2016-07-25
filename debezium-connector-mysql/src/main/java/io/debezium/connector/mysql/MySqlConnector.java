@@ -5,13 +5,21 @@
  */
 package io.debezium.connector.mysql;
 
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.kafka.common.config.Config;
+import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.source.SourceConnector;
+
+import io.debezium.config.Configuration;
+import io.debezium.jdbc.JdbcConnection;
 
 /**
  * A Kafka Connect source connector that creates tasks that read the MySQL binary log and generate the corresponding
@@ -55,4 +63,37 @@ public class MySqlConnector extends SourceConnector {
         this.props = null;
     }
 
+    @Override
+    public ConfigDef config() {
+        return MySqlConnectorConfig.configDef();
+    }
+
+    @Override
+    public Config validate(Map<String, String> connectorConfigs) {
+        Configuration config = Configuration.from(connectorConfigs);
+
+        // First, validate all of the individual fields, which is easy since don't make any of the fields invisible ...
+        Map<String, ConfigValue> results = config.validate(MySqlConnectorConfig.EXPOSED_FIELDS);
+
+        // Get the config values for each of the connection-related fields ...
+        ConfigValue hostnameValue = results.get(MySqlConnectorConfig.HOSTNAME.name());
+        ConfigValue portValue = results.get(MySqlConnectorConfig.PORT.name());
+        ConfigValue userValue = results.get(MySqlConnectorConfig.USER.name());
+        ConfigValue passwordValue = results.get(MySqlConnectorConfig.PASSWORD.name());
+
+        // If there are no errors on any of these ...
+        if (hostnameValue.errorMessages().isEmpty()
+                && portValue.errorMessages().isEmpty()
+                && userValue.errorMessages().isEmpty()
+                && passwordValue.errorMessages().isEmpty()) {
+            // Try to connect to the database ...
+            try (MySqlJdbcContext jdbcContext = new MySqlJdbcContext(config)) {
+                JdbcConnection mysql = jdbcContext.jdbc();
+                mysql.execute("SELECT version()");
+            } catch (SQLException e) {
+                hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());
+            }
+        }
+        return new Config(new ArrayList<>(results.values()));
+    }
 }

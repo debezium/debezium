@@ -5,15 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
-import java.sql.SQLException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
-import io.debezium.jdbc.JdbcConnection;
-import io.debezium.jdbc.JdbcConnection.ConnectionFactory;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.LoggingContext.PreviousContext;
@@ -24,21 +17,16 @@ import io.debezium.util.LoggingContext.PreviousContext;
  * @see MySqlConnector
  * @author Randall Hauch
  */
-public final class MySqlTaskContext {
+public final class MySqlTaskContext extends MySqlJdbcContext {
 
-    protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory("jdbc:mysql://${hostname}:${port}");
-
-    private final Logger logger = LoggerFactory.getLogger(getClass());
-    private final Configuration config;
     private final SourceInfo source;
     private final MySqlSchema dbSchema;
     private final TopicSelector topicSelector;
     private final RecordMakers recordProcessor;
     private final Clock clock = Clock.system();
-    private final JdbcConnection jdbc;
 
     public MySqlTaskContext(Configuration config) {
-        this.config = config; // must be set before most methods are used
+        super(config);
 
         // Set up the topic selector ...
         this.topicSelector = TopicSelector.defaultSelector(serverName());
@@ -53,26 +41,10 @@ public final class MySqlTaskContext {
 
         // Set up the record processor ...
         this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector);
-
-        // Set up the JDBC connection without actually connecting ...
-        Configuration jdbcConfig = config.subset("database.", true);
-        this.jdbc = new JdbcConnection(jdbcConfig, FACTORY);
-    }
-
-    public Configuration config() {
-        return config;
-    }
-
-    public JdbcConnection jdbc() {
-        return jdbc;
     }
 
     public TopicSelector topicSelector() {
         return topicSelector;
-    }
-
-    public Logger logger() {
-        return logger;
     }
 
     public SourceInfo source() {
@@ -115,22 +87,6 @@ public final class MySqlTaskContext {
         return serverName;
     }
 
-    public String username() {
-        return config.getString(MySqlConnectorConfig.USER);
-    }
-
-    public String password() {
-        return config.getString(MySqlConnectorConfig.PASSWORD);
-    }
-
-    public String hostname() {
-        return config.getString(MySqlConnectorConfig.HOSTNAME);
-    }
-
-    public int port() {
-        return config.getInteger(MySqlConnectorConfig.PORT);
-    }
-
     public int maxQueueSize() {
         return config.getInteger(MySqlConnectorConfig.MAX_QUEUE_SIZE);
     }
@@ -161,18 +117,21 @@ public final class MySqlTaskContext {
 
     protected SnapshotMode snapshotMode() {
         String value = config.getString(MySqlConnectorConfig.SNAPSHOT_MODE);
-        return SnapshotMode.parse(value, MySqlConnectorConfig.SNAPSHOT_MODE.defaultValue());
+        return SnapshotMode.parse(value, MySqlConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
     }
 
     public boolean useMinimalSnapshotLocking() {
         return config.getBoolean(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING);
     }
 
+    @Override
     public void start() {
+        super.start();
         // Start the MySQL database history, which simply starts up resources but does not recover the history to a specific point
         dbSchema().start();
     }
 
+    @Override
     public void shutdown() {
         try {
             // Flush and stop the database history ...
@@ -181,11 +140,7 @@ public final class MySqlTaskContext {
         } catch (Throwable e) {
             logger.error("Unexpected error shutting down the database history", e);
         } finally {
-            try {
-                jdbc.close();
-            } catch (SQLException e) {
-                logger.error("Unexpected error shutting down the database connection", e);
-            }
+            super.shutdown();
         }
     }
 

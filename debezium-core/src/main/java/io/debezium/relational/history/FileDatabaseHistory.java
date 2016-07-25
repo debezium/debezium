@@ -51,11 +51,11 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
     @Override
     public void configure(Configuration config, HistoryRecordComparator comparator) {
         lock.write(() -> {
-            if (!config.validate(ALL_FIELDS, logger::error)) {
+            if (!config.validateAndRecord(ALL_FIELDS, logger::error)) {
                 throw new ConnectException(
                         "Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
             }
-            config.validate(ALL_FIELDS, logger::error);
+            config.validateAndRecord(ALL_FIELDS, logger::error);
             super.configure(config,comparator);
             path = Paths.get(config.getString(FILE_PATH));
         });
