@@ -41,6 +41,7 @@ public class ZookeeperServer {
     private volatile File dataDir;
     private volatile File snapshotDir;
     private volatile File logDir;
+    private volatile ZooKeeperServer server;
 
     /**
      * Create a new server instance.
@@ -75,7 +76,8 @@ public class ZookeeperServer {
         this.logDir.mkdirs();
 
         try {
-            factory.startup(new ZooKeeperServer(snapshotDir, logDir, tickTime));
+            server = new ZooKeeperServer(snapshotDir, logDir, tickTime); 
+            factory.startup(server);
             return this;
         } catch (InterruptedException e) {
             factory = null;
@@ -100,6 +102,12 @@ public class ZookeeperServer {
         if (factory != null) {
             try {
                 factory.shutdown();
+                try {
+                    // Zookeeper 3.4.6 does not close the ZK DB during shutdown, so we must do this here to avoid file locks and open handles...
+                    server.getZKDatabase().close();
+                } catch (IOException e) {
+                    LOGGER.error("Unable to close zookeeper DB", e);
+                }
             } finally {
                 factory = null;
                 if (deleteData) {
