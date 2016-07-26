@@ -5,10 +5,12 @@
  */
 package io.debezium.jdbc;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.Month;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoField;
 import java.util.Calendar;
 
 import org.junit.Before;
@@ -38,12 +40,13 @@ public class TimeZoneAdapterTest {
     public void shouldAdaptSqlDate() {
         // '2014-09-08', '17:51:04.777', '2014-09-08 17:51:04.777', '2014-09-08 17:51:04.777'
         java.sql.Date sqlDate = createSqlDate(2014, Month.SEPTEMBER, 8);
+        ZonedDateTime expectedDateInTargetTZ = ZonedDateTime.ofInstant(Instant.ofEpochMilli(sqlDate.getTime()), adapter.targetZoneId());
         ZonedDateTime zdt = adapter.toZonedDateTime(sqlDate);
         // The date should match ...
         LocalDate date = zdt.toLocalDate();
         assertThat(date.getYear()).isEqualTo(2014);
         assertThat(date.getMonth()).isEqualTo(Month.SEPTEMBER);
-        assertThat(date.getDayOfMonth()).isEqualTo(8);
+        assertThat(date.getDayOfMonth()).isEqualTo(expectedDateInTargetTZ.get(ChronoField.DAY_OF_MONTH));
         // There should be no time component ...
         LocalTime time = zdt.toLocalTime();
         assertThat(time.getHour()).isEqualTo(0);
