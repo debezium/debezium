@@ -298,21 +298,11 @@ public abstract class AbstractConnectorTest implements Testing {
      * @throws InterruptedException if the thread was interrupted while waiting for a record to be returned
      */
     protected SourceRecords consumeRecordsByTopic(int numRecords) throws InterruptedException {
-        return consumeRecordsByTopic(numRecords, new SourceRecords());
-    }
-
-    /**
-     * Try to consume and capture exactly the specified number of records from the connector.
-     * 
-     * @param numRecords the number of records that should be consumed
-     * @param records the collector into which all consumed messages should be placed
-     * @return the actual number of records that were consumed
-     * @throws InterruptedException if the thread was interrupted while waiting for a record to be returned
-     */
-    protected SourceRecords consumeRecordsByTopic(int numRecords, SourceRecords records) throws InterruptedException {
+        SourceRecords records = new SourceRecords();
         consumeRecords(numRecords, records::add);
         return records;
     }
+    
 
     protected class SourceRecords {
         private final List<SourceRecord> records = new ArrayList<>();
