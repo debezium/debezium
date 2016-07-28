@@ -288,6 +288,7 @@ public abstract class AbstractConnectorTest implements Testing {
         consumeRecords(numRecords, records::add);
         return records;
     }
+    
 
     protected class SourceRecords {
         private final List<SourceRecord> records = new ArrayList<>();
