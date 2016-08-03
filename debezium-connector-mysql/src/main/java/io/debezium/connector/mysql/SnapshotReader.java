@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -131,7 +132,6 @@ public class SnapshotReader extends AbstractReader {
      */
     protected void execute() {
         context.configureLoggingContext("snapshot");
-        logger.info("Starting snapshot");
         final AtomicReference<String> sql = new AtomicReference<>();
         final JdbcConnection mysql = context.jdbc();
         final MySqlSchema schema = context.dbSchema();
@@ -139,6 +139,9 @@ public class SnapshotReader extends AbstractReader {
         final SourceInfo source = context.source();
         final Clock clock = context.clock();
         final long ts = clock.currentTimeInMillis();
+        logger.info("Starting snapshot for {} with user '{}'", context.connectionString(), mysql.username());
+        logRolesForCurrentUser(sql, mysql);
+        logServerInformation(sql, mysql);
         try {
             // ------
             // STEP 0
@@ -194,6 +197,10 @@ public class SnapshotReader extends AbstractReader {
                         // This column exists only in MySQL 5.6.5 or later ...
                         String gtidSet = rs.getString(5);// GTID set, may be null, blank, or contain a GTID set
                         source.setGtidSet(gtidSet);
+                        logger.debug("\t using binlog '{}' at position '{}' and gtid '{}'", binlogFilename, binlogPosition,
+                                     gtidSet);
+                    } else {
+                        logger.debug("\t using binlog '{}' at position '{}'", binlogFilename, binlogPosition);
                     }
                     source.startSnapshot();
                 }
@@ -214,7 +221,8 @@ public class SnapshotReader extends AbstractReader {
                     databaseNames.add(rs.getString(1));
                 }
             });
-
+            logger.debug("\t list of available databases is: {}", databaseNames);
+           
             // ------
             // STEP 5
             // ------
@@ -232,6 +240,9 @@ public class SnapshotReader extends AbstractReader {
                         if (filters.tableFilter().test(id)) {
                             tableIds.add(id);
                             tableIdsByDbName.computeIfAbsent(dbName, k -> new ArrayList<>()).add(id);
+                            logger.debug("\t including '{}'", id);
+                        } else {
+                            logger.debug("\t '{}' is filtered out, discarding", id);
                         }
                     }
                 });
@@ -386,6 +397,34 @@ public class SnapshotReader extends AbstractReader {
             }
         } catch (Throwable e) {
             failed(e, "Aborting snapshot after running '" + sql.get() + "': " + e.getMessage());
+        }
+    }
+    
+    private void logServerInformation(AtomicReference<String> sql, JdbcConnection mysql) {
+        try {
+            sql.set("SHOW VARIABLES LIKE 'version'");
+            mysql.query(sql.get(), rs -> {
+                if (rs.next()) {
+                    logger.info("MySql server version is '{}'", rs.getString(2));        
+                }
+            });
+        } catch (SQLException e) {
+            logger.info("Cannot determine MySql server version", e);
+        }       
+    }
+
+    private void logRolesForCurrentUser(AtomicReference<String> sql, JdbcConnection mysql) {
+        try {
+            List<String> privileges = new ArrayList<>();
+            sql.set("SHOW GRANTS");
+            mysql.query(sql.get(), rs -> {
+                while (rs.next()) {
+                    privileges.add(rs.getString(1));
+                }
+            });
+            logger.info("User '{}' has '{}'", mysql.username(), privileges);
+        } catch (SQLException e) {
+            logger.info("Cannot determine the privileges for '{}' ", mysql.username(), e);
         }
     }
 

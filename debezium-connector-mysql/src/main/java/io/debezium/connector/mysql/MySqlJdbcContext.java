@@ -6,10 +6,8 @@
 package io.debezium.connector.mysql;
 
 import java.sql.SQLException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcConnection.ConnectionFactory;
@@ -21,7 +19,8 @@ import io.debezium.jdbc.JdbcConnection.ConnectionFactory;
  */
 public class MySqlJdbcContext implements AutoCloseable {
 
-    protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory("jdbc:mysql://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false");
+    protected static final String MYSQL_CONNECTION_URL = "jdbc:mysql://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false";
+    protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(MYSQL_CONNECTION_URL);
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     protected final Configuration config;
@@ -82,5 +81,9 @@ public class MySqlJdbcContext implements AutoCloseable {
     @Override
     public void close() {
         shutdown();
+    }
+    
+    protected String connectionString() {
+        return jdbc.connectionString(MYSQL_CONNECTION_URL);
     }
 }
