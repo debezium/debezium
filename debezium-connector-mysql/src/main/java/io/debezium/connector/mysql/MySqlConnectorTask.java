@@ -232,7 +232,7 @@ public final class MySqlConnectorTask extends SourceTask {
                 }
             });
         } catch (SQLException e) {
-            throw new ConnectException("Unexpected error while connnecting to MySQL and looking for binary logs: " + e.getMessage());
+            throw new ConnectException("Unexpected error while connecting to MySQL and looking for binary logs: ", e);
         }
 
         // And compare with the one we're supposed to use ...
@@ -257,7 +257,7 @@ public final class MySqlConnectorTask extends SourceTask {
                 }
             });
         } catch (SQLException e) {
-            throw new ConnectException("Unexpected error while connnecting to MySQL and looking at GTID mode: " + e.getMessage());
+            throw new ConnectException("Unexpected error while connecting to MySQL and looking at GTID mode: ", e);
         }
 
         return !"OFF".equalsIgnoreCase(mode.get());
@@ -277,7 +277,7 @@ public final class MySqlConnectorTask extends SourceTask {
                 }
             });
         } catch (SQLException e) {
-            throw new ConnectException("Unexpected error while connnecting to MySQL and looking at GTID mode: " + e.getMessage());
+            throw new ConnectException("Unexpected error while connecting to MySQL and looking at GTID mode: ", e);
         }
 
         return gtidSetStr.get();
