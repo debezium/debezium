@@ -215,7 +215,7 @@
                         <color>magenta</color>
                       </log>
                       <wait>
-                        <log>socket: \'/var/run/mysqld/mysqld\.sock\'  port: 3306  MySQL Community Server \(GPL\)</log>
+                        <log>MySQL init process done. Ready for start up.</log>
                         <time>30000</time>
                       </wait>
                     </run>
