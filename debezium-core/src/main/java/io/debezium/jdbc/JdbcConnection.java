@@ -228,7 +228,12 @@ public class JdbcConnection implements AutoCloseable {
     public JdbcConnection execute(String... sqlStatements) throws SQLException {
         return execute(statement -> {
             for (String sqlStatement : sqlStatements) {
-                if (sqlStatement != null) statement.execute(sqlStatement);
+                if (sqlStatement != null) {
+                    if (LOGGER.isTraceEnabled()) {
+                        LOGGER.trace("executing '{}'", sqlStatement);
+                    }
+                    statement.execute(sqlStatement);
+                }
             }
         });
     }
@@ -274,6 +279,9 @@ public class JdbcConnection implements AutoCloseable {
     public JdbcConnection query(String query, ResultSetConsumer resultConsumer) throws SQLException {
         Connection conn = connection();
         try (Statement statement = conn.createStatement();) {
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("running '{}'", query);
+            }
             try (ResultSet resultSet = statement.executeQuery(query);) {
                 if (resultConsumer != null) {
                     resultConsumer.accept(resultSet);
@@ -439,6 +447,100 @@ public class JdbcConnection implements AutoCloseable {
                 conn = null;
             }
         }
+    }
+
+    /**
+     * Get the names of all of the catalogs.
+     * @return the set of catalog names; never null but possibly empty
+     * @throws SQLException if an error occurs while accessing the database metadata
+     */
+    public Set<String> readAllCatalogNames()
+            throws SQLException {
+        Set<String> catalogs = new HashSet<>();
+        DatabaseMetaData metadata = connection().getMetaData();
+        try (ResultSet rs = metadata.getCatalogs()) {
+            while (rs.next()) {
+                String catalogName = rs.getString(1);
+                catalogs.add(catalogName);
+            }
+        }
+        return catalogs;
+    }
+    
+    public String[] tableTypes() throws SQLException {
+        List<String> types = new ArrayList<>();
+        DatabaseMetaData metadata = connection().getMetaData();
+        try (ResultSet rs = metadata.getTableTypes()) {
+            while (rs.next()) {
+                String tableType = rs.getString(1);
+                if (tableType != null) types.add(tableType);
+            }
+        }
+        return types.toArray(new String[types.size()]);
+    }
+
+    /**
+     * Get the identifiers of all available tables.
+     * 
+     * @param tableTypes the set of table types to include in the results, which may be null for all table types
+     * @return the set of {@link TableId}s; never null but possibly empty
+     * @throws SQLException if an error occurs while accessing the database metadata
+     */
+    public Set<TableId> readAllTableNames(String[] tableTypes) throws SQLException {
+        return readTableNames(null, null, null, tableTypes);
+    }
+
+    /**
+     * Get the identifiers of the tables.
+     * 
+     * @param databaseCatalog the name of the catalog, which is typically the database name; may be an empty string for tables
+     *            that have no catalog, or {@code null} if the catalog name should not be used to narrow the list of table
+     *            identifiers
+     * @param schemaNamePattern the pattern used to match database schema names, which may be "" to match only those tables with
+     *            no schema or {@code null} if the schema name should not be used to narrow the list of table
+     *            identifiers
+     * @param tableNamePattern the pattern used to match database table names, which may be null to match all table names
+     * @param tableTypes the set of table types to include in the results, which may be null for all table types
+     * @return the set of {@link TableId}s; never null but possibly empty
+     * @throws SQLException if an error occurs while accessing the database metadata
+     */
+    public Set<TableId> readTableNames(String databaseCatalog, String schemaNamePattern, String tableNamePattern,
+                                       String[] tableTypes)
+            throws SQLException {
+        if (tableNamePattern == null) tableNamePattern = "%";
+        Set<TableId> tableIds = new HashSet<>();
+        DatabaseMetaData metadata = connection().getMetaData();
+        try (ResultSet rs = metadata.getTables(databaseCatalog, schemaNamePattern, tableNamePattern, tableTypes)) {
+            while (rs.next()) {
+                String catalogName = rs.getString(1);
+                String schemaName = rs.getString(2);
+                String tableName = rs.getString(3);
+                TableId tableId = new TableId(catalogName, schemaName, tableName);
+                tableIds.add(tableId);
+            }
+        }
+        return tableIds;
+    }
+
+    /**
+     * Returns a JDBC connection string using the current configuration and url.
+     * 
+     * @param urlPattern a {@code String} representing a JDBC connection with variables that will be replaced
+     * @return a {@code String} where the variables in {@code urlPattern} are replaced with values from the configuration
+     */
+    public String connectionString(String urlPattern) {
+        Properties props = config.asProperties();
+        return findAndReplace(urlPattern, props, JdbcConfiguration.DATABASE, JdbcConfiguration.HOSTNAME, JdbcConfiguration.PORT,
+                              JdbcConfiguration.USER, JdbcConfiguration.PASSWORD);
+    }
+
+    /**
+     * Returns the username for this connection
+     * 
+     * @return a {@code String}, never {@code null}
+     */
+    public String username()  {
+        return config.getString(JdbcConfiguration.USER);
     }
 
     /**

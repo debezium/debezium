@@ -48,7 +48,7 @@ public class MySQLConnection extends JdbcConnection {
     protected static void addDefaults(Configuration.Builder builder) {
         builder.withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                .withDefault(JdbcConfiguration.PORT, 3306)
-               .withDefault(JdbcConfiguration.USER, "mysql")
+               .withDefault(JdbcConfiguration.USER, "mysqluser")
                .withDefault(JdbcConfiguration.PASSWORD, "mysqlpw");
     }
 

@@ -5,6 +5,7 @@
  */
 package io.debezium.util;
 
+import java.util.Collections;
 import java.util.Map;
 
 import org.slf4j.MDC;
@@ -38,18 +39,18 @@ public class LoggingContext {
      * A snapshot of an MDC context that can be {@link #restore()}.
      */
     public static final class PreviousContext {
+        private static final Map<String, String> EMPTY_CONTEXT = Collections.emptyMap();
         private final Map<String,String> context;
         @SuppressWarnings("unchecked")
         protected PreviousContext() {
-            context = MDC.getCopyOfContextMap();
+            Map<String, String> context = MDC.getCopyOfContextMap();
+            this.context = context != null ? context : EMPTY_CONTEXT;
         }
         /**
          * Restore this logging context.
          */
         public void restore() {
-            for ( Map.Entry<String, String> entry : context.entrySet() ) {
-                MDC.put(entry.getKey(), entry.getValue());
-            }
+            MDC.setContextMap(context);
         }
     }
 
