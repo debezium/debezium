@@ -27,10 +27,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
@@ -228,7 +226,12 @@ public class JdbcConnection implements AutoCloseable {
     public JdbcConnection execute(String... sqlStatements) throws SQLException {
         return execute(statement -> {
             for (String sqlStatement : sqlStatements) {
-                if (sqlStatement != null) statement.execute(sqlStatement);
+                if (sqlStatement != null) {
+                    if (LOGGER.isTraceEnabled()) {
+                        LOGGER.trace("executing '{}'", sqlStatement);
+                    }
+                    statement.execute(sqlStatement);
+                }
             }
         });
     }
@@ -274,6 +277,9 @@ public class JdbcConnection implements AutoCloseable {
     public JdbcConnection query(String query, ResultSetConsumer resultConsumer) throws SQLException {
         Connection conn = connection();
         try (Statement statement = conn.createStatement();) {
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("running '{}'", query);
+            }
             try (ResultSet resultSet = statement.executeQuery(query);) {
                 if (resultConsumer != null) {
                     resultConsumer.accept(resultSet);
@@ -512,6 +518,27 @@ public class JdbcConnection implements AutoCloseable {
             }
         }
         return tableIds;
+    }
+
+    /**
+     * Returns a JDBC connection string using the current configuration and url. 
+     * 
+     * @param urlPattern a {@code String} representing a JDBC connection with variables that will be replaced
+     * @return a {@code String} where the variables in {@code urlPattern} are replaced with values from the configuration
+     */
+    public String connectionString(String urlPattern) {
+        Properties props = config.asProperties();
+        return findAndReplace(urlPattern, props, JdbcConfiguration.DATABASE, JdbcConfiguration.HOSTNAME, JdbcConfiguration.PORT,
+                              JdbcConfiguration.USER, JdbcConfiguration.PASSWORD);   
+    }
+
+    /**
+     * Returns the username for this connection 
+     * 
+     * @return a {@code String}, never {@code null}
+     */
+    public String username()  {
+        return config.getString(JdbcConfiguration.USER);    
     }
 
     /**
