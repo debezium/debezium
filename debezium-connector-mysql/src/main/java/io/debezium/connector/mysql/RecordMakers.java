@@ -79,6 +79,20 @@ public class RecordMakers {
     }
 
     /**
+     * Determine if there is a record maker for the given table.
+     * 
+     * @param tableId the identifier of the table
+     * @return {@code true} if there is a {@link #forTable(TableId, BitSet, BlockingConsumer) record maker}, or {@code false}
+     * if there is none
+     */
+    public boolean hasTable(TableId tableId) {
+        Long tableNumber = tableNumbersByTableId.get(tableId);
+        if ( tableNumber == null ) return false;
+        Converter converter = convertersByTableNumber.get(tableNumber);
+        return converter != null;
+    }
+
+    /**
      * Obtain the record maker for the given table, using the specified columns and sending records to the given consumer.
      * 
      * @param tableNumber the {@link #assign(long, TableId) assigned table number} for which records are to be produced

@@ -277,8 +277,22 @@ public class JdbcConnection implements AutoCloseable {
      * @see #execute(Operations)
      */
     public JdbcConnection query(String query, ResultSetConsumer resultConsumer) throws SQLException {
+        return query(query,conn->conn.createStatement(),resultConsumer);
+    }
+
+    /**
+     * Execute a SQL query.
+     * 
+     * @param query the SQL query
+     * @param statementFactory the function that should be used to create the statement from the connection; may not be null
+     * @param resultConsumer the consumer of the query results
+     * @return this object for chaining methods together
+     * @throws SQLException if there is an error connecting to the database or executing the statements
+     * @see #execute(Operations)
+     */
+    public JdbcConnection query(String query, StatementFactory statementFactory, ResultSetConsumer resultConsumer) throws SQLException {
         Connection conn = connection();
-        try (Statement statement = conn.createStatement();) {
+        try (Statement statement = statementFactory.createStatement(conn);) {
             if (LOGGER.isTraceEnabled()) {
                 LOGGER.trace("running '{}'", query);
             }
@@ -289,6 +303,21 @@ public class JdbcConnection implements AutoCloseable {
             }
         }
         return this;
+    }
+    
+    /**
+     * A function to create a statement from a connection.
+     * @author Randall Hauch
+     */
+    @FunctionalInterface
+    public interface StatementFactory {
+        /**
+         * Use the given connection to create a statement.
+         * @param connection the JDBC connection; never null
+         * @return the statement
+         * @throws SQLException if there are problems creating a statement
+         */
+        Statement createStatement(Connection connection) throws SQLException;
     }
 
     /**

@@ -71,6 +71,11 @@ public class MySqlConnectorConfig {
                                                       .withDescription("Frequency in milliseconds to wait for new change events to appear after receiving no events. Defaults to 1 second (1000 ms).")
                                                       .withDefault(TimeUnit.SECONDS.toMillis(1))
                                                       .withValidation(Field::isPositiveInteger);
+    
+    public static final Field ROW_COUNT_FOR_STREAMING_RESULT_SETS = Field.create("min.row.count.to.stream.results")
+                                                                         .withDescription("The number of rows a table must contain to stream results rather than pull all into memory during snapshots. Defaults to 1,000.")
+                                                                         .withDefault(1_000)
+                                                                         .withValidation(Field::isPositiveInteger);
 
     public static final Field DATABASE_HISTORY = Field.create("database.history")
                                                       .withDescription("The name of the DatabaseHistory class that should be used to store and recover database schema changes. "

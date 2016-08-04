@@ -102,6 +102,10 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     public long pollIntervalInMillseconds() {
         return config.getLong(MySqlConnectorConfig.POLL_INTERVAL_MS);
     }
+    
+    public long rowCountForLargeTable() {
+        return config.getLong(MySqlConnectorConfig.ROW_COUNT_FOR_STREAMING_RESULT_SETS);
+    }
 
     public boolean includeSchemaChangeRecords() {
         return config.getBoolean(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES);

@@ -211,6 +211,26 @@ public final class Strings {
     }
 
     /**
+     * Pad the string with the specific character to ensure the string is at least the specified length.
+     * 
+     * @param original the string to be padded; may not be null
+     * @param length the minimum desired length; must be positive
+     * @param padChar the character to use for padding, if the supplied string is not long enough
+     * @return the padded string of the desired length
+     * @see #justifyLeft(String, int, char)
+     */
+    public static String pad(String original,
+                                   int length,
+                                   char padChar) {
+        if ( original.length() >= length ) return original;
+        StringBuilder sb = new StringBuilder(original);
+        while ( sb.length() < length ) {
+            sb.append(padChar);
+        }
+        return sb.toString();
+    }
+
+    /**
      * Set the length of the string, padding with the supplied character if the supplied string is shorter than desired, or
      * truncating the string if it is longer than desired. Unlike {@link #justifyLeft(String, int, char)}, this method does not
      * remove leading and trailing whitespace.
