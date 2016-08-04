@@ -5,7 +5,10 @@
  */
 package io.debezium.connector.mysql;
 
+import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -14,11 +17,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.kafka.connect.source.SourceRecord;
+
 import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
+import io.debezium.function.BufferedBlockingConsumer;
 import io.debezium.function.Predicates;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.jdbc.JdbcConnection.StatementFactory;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
@@ -140,8 +148,8 @@ public class SnapshotReader extends AbstractReader {
         final Clock clock = context.clock();
         final long ts = clock.currentTimeInMillis();
         logger.info("Starting snapshot for {} with user '{}'", context.connectionString(), mysql.username());
-        logRolesForCurrentUser(sql, mysql);
-        logServerInformation(sql, mysql);
+        logRolesForCurrentUser(mysql);
+        logServerInformation(mysql);
         try {
             // ------
             // STEP 0
@@ -222,7 +230,7 @@ public class SnapshotReader extends AbstractReader {
                 }
             });
             logger.debug("\t list of available databases is: {}", databaseNames);
-           
+
             // ------
             // STEP 5
             // ------
@@ -230,7 +238,7 @@ public class SnapshotReader extends AbstractReader {
             // build the SQL statement each time. Although in other cases this might lead to SQL injection, in our case
             // we are reading the database names from the database and not taking them from the user ...
             logger.info("Step 5: read list of available tables in each database");
-            final List<TableId> tableIds = new ArrayList<>();
+            List<TableId> tableIds = new ArrayList<>();
             final Map<String, List<TableId>> tableIdsByDbName = new HashMap<>();
             for (String dbName : databaseNames) {
                 sql.set("SHOW TABLES IN " + dbName);
@@ -301,28 +309,50 @@ public class SnapshotReader extends AbstractReader {
                 mysql.execute(sql.get());
                 unlocked = true;
                 long lockReleased = clock.currentTimeInMillis();
-                logger.info("Writes to MySQL prevented for a total of {}", Strings.duration(lockReleased - lockAcquired));
+                logger.info("Step 7: blocked writes to MySQL for a total of {}", Strings.duration(lockReleased - lockAcquired));
             }
 
             // ------
             // STEP 8
             // ------
+            // Use a buffered blocking consumer to buffer all of the records, so that after we copy all of the tables
+            // and produce events we can update the very last event with the non-snapshot offset ...
+            BufferedBlockingConsumer<SourceRecord> bufferedRecordQueue = BufferedBlockingConsumer.bufferLast(super::enqueueRecord);
+
             // Dump all of the tables and generate source records ...
             logger.info("Step 8: scanning contents of {} tables", tableIds.size());
             long startScan = clock.currentTimeInMillis();
             AtomicBoolean interrupted = new AtomicBoolean(false);
+            AtomicLong totalRowCount = new AtomicLong();
             int counter = 0;
+            int completedCounter = 0;
+            long largeTableCount = context.rowCountForLargeTable();
             Iterator<TableId> tableIdIter = tableIds.iterator();
             while (tableIdIter.hasNext()) {
                 TableId tableId = tableIdIter.next();
-                boolean isLastTable = tableIdIter.hasNext() == false;
-                long start = clock.currentTimeInMillis();
-                logger.debug("Step 8.{}: scanning table '{}'; {} tables remain", ++counter, tableId, tableIds.size() - counter);
-                sql.set("SELECT * FROM " + tableId);
-                mysql.query(sql.get(), rs -> {
-                    RecordsForTable recordMaker = context.makeRecord().forTable(tableId, null, super::enqueueRecord);
-                    if (recordMaker != null) {
-                        boolean completed = false;
+
+                // Obtain a record maker for this table, which knows about the schema ...
+                RecordsForTable recordMaker = context.makeRecord().forTable(tableId, null, bufferedRecordQueue);
+                if (recordMaker != null) {
+
+                    // Choose how we create statements based on the # of rows ...
+                    sql.set("SELECT COUNT(*) FROM " + tableId);
+                    AtomicLong numRows = new AtomicLong();
+                    mysql.query(sql.get(), rs -> {
+                        if (rs.next()) numRows.set(rs.getLong(1));
+                    });
+                    StatementFactory statementFactory = this::createStatement;
+                    if (numRows.get() > largeTableCount) {
+                        statementFactory = this::createStatementWithLargeResultSet;
+                    }
+
+                    // Scan the rows in the table ...
+                    long start = clock.currentTimeInMillis();
+                    logger.debug("Step 8: - scanning table '{}' ({} of {} tables)", tableId, ++counter, tableIds.size());
+                    sql.set("SELECT * FROM " + tableId);
+                    mysql.query(sql.get(), statementFactory, rs -> {
+                        long rowNum = 0;
+                        long rowCount = numRows.get();
                         try {
                             // The table is included in the connector's filters, so process all of the table records ...
                             final Table table = schema.tableFor(tableId);
@@ -332,37 +362,52 @@ public class SnapshotReader extends AbstractReader {
                                 for (int i = 0, j = 1; i != numColumns; ++i, ++j) {
                                     row[i] = rs.getObject(j);
                                 }
-                                if (isLastTable && rs.isLast()) {
-                                    // This is the last record, so mark the offset as having completed the snapshot
-                                    // but the SourceInfo.struct() will still be marked as being part of the snapshot ...
-                                    source.markLastSnapshot();
-                                }
                                 recorder.recordRow(recordMaker, row, ts); // has no row number!
+                                ++rowNum;
+                                if (rowNum % 10_000 == 0 || rowNum == rowCount) {
+                                    long stop = clock.currentTimeInMillis();
+                                    logger.info("Step 8: - {} of {} rows scanned from table '{}' after {}", rowNum, rowCount, tableId,
+                                                Strings.duration(stop - start));
+                                }
                             }
-                            if (isLastTable) completed = true;
                         } catch (InterruptedException e) {
                             Thread.interrupted();
-                            if (!completed) {
-                                // We were not able to finish all rows in all tables ...
-                                logger.info("Stopping the snapshot after thread interruption");
-                                interrupted.set(true);
-                            }
+                            // We were not able to finish all rows in all tables ...
+                            logger.info("Step 8: Stopping the snapshot due to thread interruption");
+                            interrupted.set(true);
+                        } finally {
+                            totalRowCount.addAndGet(rowCount);
                         }
-                    }
-                });
-                if (interrupted.get()) break;
-                long stop = clock.currentTimeInMillis();
-                logger.info("Step 8.{}: scanned table '{}' in {}", counter, tableId, Strings.duration(stop - start));
+                    });
+
+                    if (interrupted.get()) break;
+                }
+                ++completedCounter;
             }
+
+            // We've copied all of the tables, but our buffer holds onto the very last record.
+            // First mark the snapshot as complete and then apply the updated offset to the buffered record ...
+            source.markLastSnapshot();
             long stop = clock.currentTimeInMillis();
-            logger.info("Step 8: scanned contents of {} tables in {}", tableIds.size(), Strings.duration(stop - startScan));
+            try {
+                bufferedRecordQueue.flush(this::replaceOffset);
+                logger.info("Step 8: scanned {} rows in {} tables in {}",
+                            totalRowCount, tableIds.size(), Strings.duration(stop - startScan));
+            } catch (InterruptedException e) {
+                Thread.interrupted();
+                // We were not able to finish all rows in all tables ...
+                logger.info("Step 8: aborting the snapshot after {} rows in {} of {} tables {}",
+                            totalRowCount, completedCounter, tableIds.size(), Strings.duration(stop - startScan));
+                interrupted.set(true);
+            }
 
             // ------
             // STEP 9
             // ------
             // Release the read lock if we have not yet done so ...
+            int step = 9;
             if (!unlocked) {
-                logger.info("Step 9: releasing global read lock to enable MySQL writes");
+                logger.info("Step {}: releasing global read lock to enable MySQL writes", step++);
                 sql.set("UNLOCK TABLES");
                 mysql.execute(sql.get());
                 unlocked = true;
@@ -375,13 +420,13 @@ public class SnapshotReader extends AbstractReader {
             // -------
             if (interrupted.get()) {
                 // We were interrupted while reading the tables, so roll back the transaction and return immediately ...
-                logger.info("Step 10: rolling back transaction after request to stop");
+                logger.info("Step {}: rolling back transaction after abort", step++);
                 sql.set("ROLLBACK");
                 mysql.execute(sql.get());
                 return;
             }
             // Otherwise, commit our transaction
-            logger.info("Step 10: committing transaction");
+            logger.info("Step {}: committing transaction", step++);
             sql.set("COMMIT");
             mysql.execute(sql.get());
 
@@ -399,33 +444,91 @@ public class SnapshotReader extends AbstractReader {
             failed(e, "Aborting snapshot after running '" + sql.get() + "': " + e.getMessage());
         }
     }
-    
-    private void logServerInformation(AtomicReference<String> sql, JdbcConnection mysql) {
+
+    /**
+     * Create a JDBC statement that can be used for large result sets.
+     * <p>
+     * By default, the MySQL Connector/J driver retrieves all rows for ResultSets and stores them in memory. In most cases this
+     * is the most efficient way to operate and, due to the design of the MySQL network protocol, is easier to implement.
+     * However, when ResultSets that have a large number of rows or large values, the driver may not be able to allocate
+     * heap space in the JVM and may result in an {@link OutOfMemoryError}. See
+     * <a href="https://issues.jboss.org/browse/DBZ-94">DBZ-94</a> for details.
+     * <p>
+     * This method handles such cases using the
+     * <a href="https://dev.mysql.com/doc/connector-j/5.1/en/connector-j-reference-implementation-notes.html">recommended
+     * technique</a> for MySQL by creating the JDBC {@link Statement} with {@link ResultSet#TYPE_FORWARD_ONLY forward-only} cursor
+     * and {@link ResultSet#CONCUR_READ_ONLY read-only concurrency} flags, and with a {@link Integer#MIN_VALUE minimum value}
+     * {@link Statement#setFetchSize(int) fetch size hint}.
+     * 
+     * @param connection the JDBC connection; may not be null
+     * @return the statement; never null
+     * @throws SQLException if there is a problem creating the statement
+     */
+    private Statement createStatementWithLargeResultSet(Connection connection) throws SQLException {
+        Statement stmt = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+        stmt.setFetchSize(Integer.MIN_VALUE);
+        return stmt;
+    }
+
+    private Statement createStatement(Connection connection) throws SQLException {
+        return connection.createStatement();
+    }
+
+    private void logServerInformation(JdbcConnection mysql) {
         try {
-            sql.set("SHOW VARIABLES LIKE 'version'");
-            mysql.query(sql.get(), rs -> {
-                if (rs.next()) {
-                    logger.info("MySql server version is '{}'", rs.getString(2));        
+            logger.info("MySQL server variables related to change data capture:");
+            mysql.query("SHOW VARIABLES WHERE Variable_name REGEXP 'version|binlog|tx_|gtid'", rs -> {
+                while (rs.next()) {
+                    logger.info("\t{} = {}",
+                                Strings.pad(rs.getString(1), 45, ' '),
+                                Strings.pad(rs.getString(2), 45, ' '));
                 }
             });
         } catch (SQLException e) {
             logger.info("Cannot determine MySql server version", e);
-        }       
+        }
     }
 
-    private void logRolesForCurrentUser(AtomicReference<String> sql, JdbcConnection mysql) {
+    private void logRolesForCurrentUser(JdbcConnection mysql) {
         try {
-            List<String> privileges = new ArrayList<>();
-            sql.set("SHOW GRANTS");
-            mysql.query(sql.get(), rs -> {
+            List<String> grants = new ArrayList<>();
+            mysql.query("SHOW GRANTS FOR CURRENT_USER", rs -> {
                 while (rs.next()) {
-                    privileges.add(rs.getString(1));
+                    grants.add(rs.getString(1));
                 }
             });
-            logger.info("User '{}' has '{}'", mysql.username(), privileges);
+            if (grants.isEmpty()) {
+                logger.warn("Snapshot is using user '{}' but it likely doesn't have proper privileges. " +
+                        "If tables are missing or are empty, ensure connector is configured with the correct MySQL user " +
+                        "and/or ensure that the MySQL user has the required privileges.",
+                            mysql.username());
+            } else {
+                logger.info("Snapshot is using user '{}' with these MySQL grants:", mysql.username());
+                grants.forEach(grant -> logger.info("\t{}", grant));
+            }
         } catch (SQLException e) {
             logger.info("Cannot determine the privileges for '{}' ", mysql.username(), e);
         }
+    }
+
+    /**
+     * Utility method to replace the offset in the given record with the latest. This is used on the last record produced
+     * during the snapshot.
+     * 
+     * @param record the record
+     * @return the updated record
+     */
+    protected SourceRecord replaceOffset(SourceRecord record) {
+        if (record == null) return null;
+        Map<String, ?> newOffset = context.source().offset();
+        return new SourceRecord(record.sourcePartition(),
+                newOffset,
+                record.topic(),
+                record.kafkaPartition(),
+                record.keySchema(),
+                record.key(),
+                record.valueSchema(),
+                record.value());
     }
 
     protected void enqueueSchemaChanges(String dbName, String ddlStatements) {
