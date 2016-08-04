@@ -9,7 +9,6 @@ import static org.junit.Assert.fail;
 
 import java.sql.Types;
 
-import org.apache.kafka.connect.data.Date;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -19,6 +18,8 @@ import org.junit.Test;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.time.Date;
 import io.debezium.util.AvroValidator;
 
 public class TableSchemaBuilderTest {
@@ -77,19 +78,19 @@ public class TableSchemaBuilderTest {
 
     @Test(expected = NullPointerException.class)
     public void shouldFailToBuildTableSchemaFromNullTable() {
-        new TableSchemaBuilder(validator::validate).create(prefix,null);
+        new TableSchemaBuilder(new JdbcValueConverters(),validator::validate).create(prefix,null);
     }
 
     @Test
     public void shouldBuildTableSchemaFromTable() {
-        schema = new TableSchemaBuilder(validator::validate).create(prefix,table);
+        schema = new TableSchemaBuilder(new JdbcValueConverters(),validator::validate).create(prefix,table);
         assertThat(schema).isNotNull();
     }
 
     @Test
     public void shouldBuildTableSchemaFromTableWithoutPrimaryKey() {
         table = table.edit().setPrimaryKeyNames().create();
-        schema = new TableSchemaBuilder(validator::validate).create(prefix,table);
+        schema = new TableSchemaBuilder(new JdbcValueConverters(),validator::validate).create(prefix,table);
         assertThat(schema).isNotNull();
         // Check the keys ...
         assertThat(schema.keySchema()).isNull();

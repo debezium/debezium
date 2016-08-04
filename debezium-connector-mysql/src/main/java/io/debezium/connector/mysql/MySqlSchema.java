@@ -99,14 +99,11 @@ public class MySqlSchema {
         this.ddlChanges = new DdlChanges(this.ddlParser.terminator());
         this.ddlParser.addListener(ddlChanges);
 
-        // Specific to how the MySQL Binary Log client library creates temporal values ...
-        TimeZoneAdapter tzAdapter = TimeZoneAdapter.create()
-                                                   .withLocalZoneForUtilDate()
-                                                   .withLocalZoneForSqlDate()
-                                                   .withLocalZoneForSqlTime()
-                                                   .withUtcZoneForSqlTimestamp()
-                                                   .withUtcTargetZone();
-        this.schemaBuilder = new TableSchemaBuilder(tzAdapter, schemaNameValidator::validate);
+        // Use MySQL-specific converters and schemas for values ...
+        MySqlValueConverters valueConverters = new MySqlValueConverters();
+        this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameValidator::validate);
+        
+        // Set up the server name and schema prefix ...
         if (serverName != null) serverName = serverName.trim();
         this.serverName = serverName;
         if (this.serverName == null || serverName.isEmpty()) {
