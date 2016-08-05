@@ -66,7 +66,7 @@ Here's an example of code that configures and runs an embedded MySQL connector:
 
 Let's look into this code in more detail, starting with the first few lines that we repeat here:
 
-   // Define the configuration for the embedded and MySQL connector ...
+    // Define the configuration for the embedded and MySQL connector ...
     Configuration config = Configuration.create()
                                         /* begin engine properties */
                                         .with("name", "mysql-connector")
