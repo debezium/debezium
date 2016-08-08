@@ -166,20 +166,17 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         Recommender tableNameRecommender = MySqlConnectorConfig.TABLE_WHITELIST.recommender();
         List<Object> tableNames = tableNameRecommender.validValues(MySqlConnectorConfig.TABLE_WHITELIST, config);
-        assertThat(tableNames).containsOnly("connector_test.customers",
-                                            "connector_test.orders",
-                                            "connector_test.products",
-                                            "connector_test.products_on_hand",
-                                            "connector_test_ro.customers",
-                                            "connector_test_ro.orders",
-                                            "connector_test_ro.products",
-                                            "connector_test_ro.products_on_hand",
-                                            "regression_test.t1464075356413_testtable6",
-                                            "regression_test.dbz_85_fractest",
-                                            "regression_test.dbz84_integer_types_table",
-                                            "readbinlog_test.product",
-                                            "readbinlog_test.purchased",
-                                            "readbinlog_test.person");
+        assertThat(tableNames).contains("connector_test.customers",
+                                        "connector_test.orders",
+                                        "connector_test.products",
+                                        "connector_test.products_on_hand",
+                                        "connector_test_ro.customers",
+                                        "connector_test_ro.orders",
+                                        "connector_test_ro.products",
+                                        "connector_test_ro.products_on_hand",
+                                        "regression_test.t1464075356413_testtable6",
+                                        "regression_test.dbz_85_fractest",
+                                        "regression_test.dbz84_integer_types_table");
         Testing.debug("List of tableNames: " + tableNames);
 
         // Now set the whitelist to two databases ...

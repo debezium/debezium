@@ -24,6 +24,7 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.data.Envelope;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.util.Testing;
@@ -54,6 +55,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor( "DBZ-61" )
     public void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = Configuration.create()
