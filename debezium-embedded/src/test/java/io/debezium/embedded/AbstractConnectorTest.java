@@ -285,6 +285,8 @@ public abstract class AbstractConnectorTest implements Testing {
                             + (numberOfRecords - recordsConsumed) + " more)");
                     print(record);
                 }
+            } else {
+                return recordsConsumed;
             }
         }
         return recordsConsumed;
