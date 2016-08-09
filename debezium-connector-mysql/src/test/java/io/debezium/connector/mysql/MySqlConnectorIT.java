@@ -221,15 +221,15 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        SourceRecords records = consumeRecordsByTopic(5 + 9 + 9 + 4 + 1); // 1 schema change record
-        assertThat(records.recordsForTopic("myServer").size()).isEqualTo(1);
+        SourceRecords records = consumeRecordsByTopic(5 + 9 + 9 + 4 + 11); // 11 schema change records
+        assertThat(records.recordsForTopic("myServer").size()).isEqualTo(11);
         assertThat(records.recordsForTopic("myServer.connector_test.products").size()).isEqualTo(9);
         assertThat(records.recordsForTopic("myServer.connector_test.products_on_hand").size()).isEqualTo(9);
         assertThat(records.recordsForTopic("myServer.connector_test.customers").size()).isEqualTo(4);
         assertThat(records.recordsForTopic("myServer.connector_test.orders").size()).isEqualTo(5);
         assertThat(records.topics().size()).isEqualTo(5);
         assertThat(records.databaseNames().size()).isEqualTo(1);
-        assertThat(records.ddlRecordsForDatabase("connector_test").size()).isEqualTo(1);
+        assertThat(records.ddlRecordsForDatabase("connector_test").size()).isEqualTo(11);
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
         records.ddlRecordsForDatabase("connector_test").forEach(this::print);
 
