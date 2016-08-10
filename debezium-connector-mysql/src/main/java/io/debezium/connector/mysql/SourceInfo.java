@@ -273,7 +273,10 @@ final class SourceInfo {
      * @param positionOfFirstEvent the position in the binary log file to begin processing
      */
     public void setBinlogStartPoint(String binlogFilename, long positionOfFirstEvent) {
-        this.binlogFilename = binlogFilename;
+        if (binlogFilename != null) {
+            this.binlogFilename = binlogFilename;
+        }
+        assert positionOfFirstEvent >= 0;
         this.nextBinlogPosition = positionOfFirstEvent;
         this.lastBinlogPosition = this.nextBinlogPosition;
         this.nextEventRowNumber = 0;

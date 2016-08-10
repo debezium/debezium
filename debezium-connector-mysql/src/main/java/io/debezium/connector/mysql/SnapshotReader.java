@@ -194,7 +194,8 @@ public class SnapshotReader extends AbstractReader {
             // Obtain the binlog position and update the SourceInfo in the context. This means that all source records generated
             // as part of the snapshot will contain the binlog position of the snapshot.
             logger.info("Step 3: read binlog position of MySQL master");
-            sql.set("SHOW MASTER STATUS");
+            String showMasterStmt = "SHOW MASTER STATUS";
+            sql.set(showMasterStmt);
             mysql.query(sql.get(), rs -> {
                 if (rs.next()) {
                     String binlogFilename = rs.getString(1);
@@ -210,6 +211,8 @@ public class SnapshotReader extends AbstractReader {
                         logger.info("\t using binlog '{}' at position '{}'", binlogFilename, binlogPosition);
                     }
                     source.startSnapshot();
+                } else {
+                    throw new IllegalStateException("Cannot read the binlog filename and position via '" + showMasterStmt + "'. Make sure your server is correctly configured");    
                 }
             });
 
