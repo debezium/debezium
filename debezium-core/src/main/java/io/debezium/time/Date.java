@@ -54,12 +54,11 @@ public class Date {
      * {@link java.time.LocalTime}, {@link java.util.Date}, {@link java.sql.Date}, {@link java.sql.Time}, or
      * {@link java.sql.Timestamp}, ignoring any time portions of the supplied value.
      * 
-     * @param value the local or SQL date, time, or timestamp value
+     * @param value the local or SQL date, time, or timestamp value; may not be null
      * @return the number of days past epoch
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types
      */
-    public static Integer toEpochDay(Object value) {
-        if ( value == null ) return null;
+    public static int toEpochDay(Object value) {
         return (int)Conversions.toLocalDate(value).toEpochDay();
     }
 

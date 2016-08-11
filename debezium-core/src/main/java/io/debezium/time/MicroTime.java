@@ -56,16 +56,15 @@ public class MicroTime {
      * {@link java.time.LocalTime}, {@link java.util.Date}, {@link java.sql.Date}, {@link java.sql.Time}, or
      * {@link java.sql.Timestamp}, ignoring any date portions of the supplied value.
      * 
-     * @param value the local or SQL date, time, or timestamp value
+     * @param value the local or SQL date, time, or timestamp value; may not be null
      * @return the microseconds past midnight
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types
      */
-    public static Integer toMicroOfDay(Object value) {
-        if ( value == null ) return null;
+    public static int toMicroOfDay(Object value) {
         LocalTime time = Conversions.toLocalTime(value);
         long micros = Math.floorDiv(time.toNanoOfDay(), Conversions.NANOSECONDS_PER_MICROSECOND);
         assert Math.abs(micros) < Integer.MAX_VALUE;
-        return Integer.valueOf((int)micros);
+        return (int)micros;
     }
 
     private MicroTime() {

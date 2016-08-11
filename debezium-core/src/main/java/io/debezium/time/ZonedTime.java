@@ -68,7 +68,7 @@ public class ZonedTime {
      * @param defaultZone the time zone that should be used by default if the value does not have timezone information; may not be
      *            null
      * @return the microseconds past midnight
-     * @throws IllegalArgumentException if the value is not an instance of the acceptable types
+     * @throws IllegalArgumentException if the value is not an instance of the acceptable types or is null
      */
     public static String toIsoString(Object value, ZoneId defaultZone) {
         if ( value instanceof OffsetTime ) {
@@ -86,7 +86,7 @@ public class ZonedTime {
     /**
      * Get the ISO 8601 formatted representation of the given {@link OffsetDateTime}.
      * 
-     * @param timestamp the timestamp value
+     * @param timestamp the timestamp value; may not be null
      * @return the ISO 8601 formatted string
      */
     public static String toIsoString(OffsetDateTime timestamp) {
@@ -95,7 +95,7 @@ public class ZonedTime {
     /**
      * Get the ISO 8601 formatted representation of the given {@link OffsetTime}.
      * 
-     * @param timestamp the timestamp value
+     * @param timestamp the timestamp value; may not be null
      * @return the ISO 8601 formatted string
      */
     public static String toIsoString(OffsetTime timestamp) {
@@ -106,7 +106,7 @@ public class ZonedTime {
      * Get the ISO 8601 formatted representation of the given {@link java.util.Date} or one of its JDBC subclasses, using
      * the supplied timezone information.
      * 
-     * @param timestamp the timestamp value
+     * @param timestamp the timestamp value; may not be null
      * @param zoneId the timezone identifier or offset where the timestamp is defined
      * @return the ISO 8601 formatted string
      */
@@ -127,7 +127,7 @@ public class ZonedTime {
      * Get the ISO 8601 formatted representation of the given {@link java.sql.Timestamp}, which contains a date and time but
      * has no timezone information.
      * 
-     * @param timestamp the JDBC timestamp value
+     * @param timestamp the JDBC timestamp value; may not be null
      * @param zoneId the timezone identifier or offset where the timestamp is defined
      * @return the ISO 8601 formatted string
      */
@@ -140,7 +140,7 @@ public class ZonedTime {
      * Get the ISO 8601 formatted representation of the given {@link java.sql.Date}, which contains a date but no time or
      * timezone information.
      * 
-     * @param date the date value
+     * @param date the date value; may not be null
      * @param zoneId the timezone identifier or offset where the date is defined
      * @return the ISO 8601 formatted string
      */
@@ -154,7 +154,7 @@ public class ZonedTime {
      * Get the ISO 8601 formatted representation of the given {@link java.sql.Time}, which contains time but no date or timezone
      * information.
      * 
-     * @param time the JDBC time value
+     * @param time the JDBC time value; may not be null
      * @param zoneId the timezone identifier or offset where the time is defined
      * @return the ISO 8601 formatted string
      */

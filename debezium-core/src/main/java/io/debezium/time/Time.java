@@ -56,12 +56,11 @@ public class Time {
      * {@link java.time.LocalTime}, {@link java.util.Date}, {@link java.sql.Date}, {@link java.sql.Time}, or
      * {@link java.sql.Timestamp}, ignoring any date portions of the supplied value.
      * 
-     * @param value the local or SQL date, time, or timestamp value
+     * @param value the local or SQL date, time, or timestamp value; may not be null
      * @return the milliseconds past midnight
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types
      */
-    public static Integer toMilliOfDay(Object value) {
-        if ( value == null ) return null;
+    public static int toMilliOfDay(Object value) {
         LocalTime time = Conversions.toLocalTime(value);
         long micros = Math.floorDiv(time.toNanoOfDay(), Conversions.NANOSECONDS_PER_MILLISECOND);
         assert Math.abs(micros) < Integer.MAX_VALUE;

@@ -57,12 +57,11 @@ public class NanoTimestamp {
      * {@link java.time.LocalTime}, {@link java.util.Date}, {@link java.sql.Date}, {@link java.sql.Time}, or
      * {@link java.sql.Timestamp}.
      * 
-     * @param value the local or SQL date, time, or timestamp value
+     * @param value the local or SQL date, time, or timestamp value; may not be null
      * @return the epoch nanoseconds
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types
      */
-    public static Long toEpochNanos(Object value) {
-        if ( value == null ) return null;
+    public static long toEpochNanos(Object value) {
         LocalDateTime dateTime = Conversions.toLocalDateTime(value);
         return Conversions.toEpochNanos(dateTime);
     }

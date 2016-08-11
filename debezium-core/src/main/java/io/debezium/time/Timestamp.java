@@ -57,12 +57,11 @@ public class Timestamp {
      * {@link java.time.LocalTime}, {@link java.util.Date}, {@link java.sql.Date}, {@link java.sql.Time}, or
      * {@link java.sql.Timestamp}.
      * 
-     * @param value the local or SQL date, time, or timestamp value
+     * @param value the local or SQL date, time, or timestamp value; may not be null
      * @return the epoch milliseconds
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types
      */
-    public static Long toEpochMillis(Object value) {
-        if ( value == null ) return null;
+    public static long toEpochMillis(Object value) {
         LocalDateTime dateTime = Conversions.toLocalDateTime(value);
         long epochNanos = Conversions.toEpochNanos(dateTime);
         return Math.floorDiv(epochNanos, Conversions.NANOSECONDS_PER_MILLISECOND);

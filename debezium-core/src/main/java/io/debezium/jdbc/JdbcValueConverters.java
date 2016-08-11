@@ -314,6 +314,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @return the converted value, or null if the conversion could not be made
      */
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
+        if ( data == null ) return null;
         try {
             return ZonedTimestamp.toIsoString(data, defaultOffset);
         } catch (IllegalArgumentException e) {
@@ -337,6 +338,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @return the converted value, or null if the conversion could not be made
      */
     protected Object convertTimeWithZone(Column column, Field fieldDefn, Object data) {
+        if ( data == null ) return null;
         try {
             return ZonedTime.toIsoString(data, defaultOffset);
         } catch (IllegalArgumentException e) {
@@ -358,6 +360,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @return the converted value, or null if the conversion could not be made
      */
     protected Object convertTimestampToEpochMillis(Column column, Field fieldDefn, Object data) {
+        if ( data == null ) return null;
         try {
             return Timestamp.toEpochMillis(data);
         } catch (IllegalArgumentException e) {
@@ -379,6 +382,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @return the converted value, or null if the conversion could not be made
      */
     protected Object convertTimestampToEpochMicros(Column column, Field fieldDefn, Object data) {
+        if ( data == null ) return null;
         try {
             return MicroTimestamp.toEpochMicros(data);
         } catch (IllegalArgumentException e) {
@@ -400,6 +404,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @return the converted value, or null if the conversion could not be made
      */
     protected Object convertTimestampToEpochNanos(Column column, Field fieldDefn, Object data) {
+        if ( data == null ) return null;
         try {
             return NanoTimestamp.toEpochNanos(data);
         } catch (IllegalArgumentException e) {
@@ -421,10 +426,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @return the converted value, or null if the conversion could not be made
      */
     protected Object convertTimestampToEpochMillisAsDate(Column column, Field fieldDefn, Object data) {
+        if ( data == null ) return null;
         try {
-            Long epochMillis = Timestamp.toEpochMillis(data);
-            if ( epochMillis == null ) return null;
-            return new java.util.Date(epochMillis.longValue());
+            return new java.util.Date(Timestamp.toEpochMillis(data));
         } catch (IllegalArgumentException e) {
             return handleUnknownData(column, fieldDefn, data);
         }
@@ -445,6 +449,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @return the converted value, or null if the conversion could not be made
      */
     protected Object convertTimeToMillisPastMidnight(Column column, Field fieldDefn, Object data) {
+        if ( data == null ) return null;
         try {
             return Time.toMilliOfDay(data);
         } catch (IllegalArgumentException e) {
@@ -467,6 +472,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @return the converted value, or null if the conversion could not be made
      */
     protected Object convertTimeToMicrosPastMidnight(Column column, Field fieldDefn, Object data) {
+        if ( data == null ) return null;
         try {
             return MicroTime.toMicroOfDay(data);
         } catch (IllegalArgumentException e) {
@@ -489,6 +495,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @return the converted value, or null if the conversion could not be made
      */
     protected Object convertTimeToNanosPastMidnight(Column column, Field fieldDefn, Object data) {
+        if ( data == null ) return null;
         try {
             return NanoTime.toNanoOfDay(data);
         } catch (IllegalArgumentException e) {
@@ -511,10 +518,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @return the converted value, or null if the conversion could not be made
      */
     protected Object convertTimeToMillisPastMidnightAsDate(Column column, Field fieldDefn, Object data) {
+        if ( data == null ) return null;
         try {
-            Integer millisOfDay = Time.toMilliOfDay(data);
-            if ( millisOfDay == null ) return null;
-            return new java.util.Date(millisOfDay.longValue());
+            return new java.util.Date(Time.toMilliOfDay(data));
         } catch (IllegalArgumentException e) {
             return handleUnknownData(column, fieldDefn, data);
         }
@@ -561,9 +567,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
     protected Object convertDateToEpochDaysAsDate(Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         try {
-            Integer epochDay = Date.toEpochDay(data);
-            if ( epochDay == null ) return null;
-            long epochMillis = TimeUnit.DAYS.toMillis(epochDay.longValue());
+            int epochDay = Date.toEpochDay(data);
+            long epochMillis = TimeUnit.DAYS.toMillis(epochDay);
             return new java.util.Date(epochMillis);
         } catch (IllegalArgumentException e) {
             logger.warn("Unexpected JDBC DATE value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
@@ -755,6 +760,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @return the converted value, or null if the conversion could not be made
      */
     protected Object convertNumeric(Column column, Field fieldDefn, Object data) {
+        if (data == null) return null;
         BigDecimal decimal = null;
         if (data instanceof BigDecimal)
             decimal = (BigDecimal) data;

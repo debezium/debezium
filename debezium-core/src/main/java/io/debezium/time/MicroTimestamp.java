@@ -57,12 +57,11 @@ public class MicroTimestamp {
      * {@link java.time.LocalTime}, {@link java.util.Date}, {@link java.sql.Date}, {@link java.sql.Time}, or
      * {@link java.sql.Timestamp}.
      * 
-     * @param value the local or SQL date, time, or timestamp value
+     * @param value the local or SQL date, time, or timestamp value; may not be null
      * @return the epoch microseconds
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types
      */
-    public static Long toEpochMicros(Object value) {
-        if ( value == null ) return null;
+    public static long toEpochMicros(Object value) {
         LocalDateTime dateTime = Conversions.toLocalDateTime(value);
         long epochNanos = Conversions.toEpochNanos(dateTime);
         return Math.floorDiv(epochNanos, Conversions.NANOSECONDS_PER_MICROSECOND);
