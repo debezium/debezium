@@ -74,10 +74,12 @@ public class MySqlValueConverters extends JdbcValueConverters {
             return Year.builder();
         }
         if (matches(typeName, "ENUM")) {
-            return SchemaBuilder.int32();
+            String commaSeparatedOptions = extractEnumAndSetOptions(column,true);
+            return io.debezium.data.Enum.builder(commaSeparatedOptions);
         }
         if (matches(typeName, "SET")) {
-            return SchemaBuilder.int64();
+            String commaSeparatedOptions = extractEnumAndSetOptions(column,true);
+            return io.debezium.data.EnumSet.builder(commaSeparatedOptions);
         }
         // Otherwise, let the base class handle it ...
         return super.schemaBuilder(column);
@@ -91,10 +93,14 @@ public class MySqlValueConverters extends JdbcValueConverters {
             return (data) -> convertYear(column, fieldDefn, data);
         }
         if (matches(typeName, "ENUM")) {
-            return (data) -> convertInteger(column, fieldDefn, data);
+            // Build up the character array based upon the column's type ...
+            String options = extractEnumAndSetOptions(column,false);
+            return (data) -> convertEnum(options, column, fieldDefn, data);
         }
         if (matches(typeName, "SET")) {
-            return (data) -> convertDouble(column, fieldDefn, data);
+            // Build up the character array based upon the column's type ...
+            String options = extractEnumAndSetOptions(column,false);
+            return (data) -> convertSet(options, column, fieldDefn, data);
         }
         // Otherwise, let the base class handle it ...
         return super.converter(column, fieldDefn);
@@ -128,6 +134,59 @@ public class MySqlValueConverters extends JdbcValueConverters {
     }
 
     /**
+     * Converts a value object for a MySQL {@code ENUM}, which is represented in the binlog events as an integer value containing
+     * the index of the enum option. The MySQL JDBC driver returns a string containing the option,
+     * so this method calculates the same.
+     * 
+     * @param options the characters that appear in the same order as defined in the column; may not be null
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @return the converted value, or null if the conversion could not be made
+     */
+    protected Object convertEnum(String options, Column column, Field fieldDefn, Object data) {
+        if (data == null) return null;
+        if (data instanceof String) {
+            // JDBC should return strings ...
+            return data;
+        }
+        if (data instanceof Integer) {
+            // The binlog will contain an int with the 1-based index of the option in the enum value ...
+            int index = ((Integer) data).intValue() - 1;    // 'options' is 0-based
+            if (index < options.length()) {
+                return options.substring(index, index + 1);
+            }
+            return null;
+        }
+        return handleUnknownData(column, fieldDefn, data);
+    }
+
+    /**
+     * Converts a value object for a MySQL {@code SET}, which is represented in the binlog events contain a long number in which
+     * every bit corresponds to a different option. The MySQL JDBC driver returns a string containing the comma-separated options,
+     * so this method calculates the same.
+     * 
+     * @param options the characters that appear in the same order as defined in the column; may not be null
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @return the converted value, or null if the conversion could not be made
+     */
+    protected Object convertSet(String options, Column column, Field fieldDefn, Object data) {
+        if (data == null) return null;
+        if (data instanceof String) {
+            // JDBC should return strings ...
+            return data;
+        }
+        if (data instanceof Long) {
+            // The binlog will contain a long with the indexes of the options in the set value ...
+            long indexes = ((Long) data).longValue();
+            return convertSetValue(indexes,options);
+        }
+        return handleUnknownData(column, fieldDefn, data);
+    }
+
+    /**
      * Determine if the uppercase form of a column's type exactly matches or begins with the specified prefix.
      * Note that this logic works when the column's {@link Column#typeName() type} contains the type name followed by parentheses.
      * 
@@ -138,6 +197,36 @@ public class MySqlValueConverters extends JdbcValueConverters {
     protected boolean matches(String upperCaseTypeName, String upperCaseMatch) {
         if (upperCaseTypeName == null) return false;
         return upperCaseMatch.equals(upperCaseTypeName) || upperCaseTypeName.startsWith(upperCaseMatch + "(");
+    }
+
+    protected String extractEnumAndSetOptions(Column column, boolean commaSeparated) {
+        String options = MySqlDdlParser.parseSetAndEnumOptions(column.typeExpression());
+        if ( !commaSeparated ) return options;
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        for ( int i=0; i!=options.length(); ++i ) {
+            if ( first ) first = false;
+            else sb.append(',');
+            sb.append(options.charAt(i));
+        }
+        return sb.toString();
+    }
+    
+    protected String convertSetValue( long indexes, String options ) {
+        StringBuilder sb = new StringBuilder();
+        int index = 0;
+        boolean first = true;
+        while (indexes != 0L) {
+            if (indexes % 2L != 0) {
+                if ( first ) first = false;
+                else sb.append(',');
+                sb.append(options.substring(index, index + 1));
+            }
+            ++index;
+            indexes = indexes >>> 1;
+        }
+        return sb.toString();
+
     }
 
 }

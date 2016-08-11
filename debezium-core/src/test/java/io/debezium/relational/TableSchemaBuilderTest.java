@@ -44,19 +44,19 @@ public class TableSchemaBuilderTest {
         table = Table.editor()
                      .tableId(id)
                      .addColumns(Column.editor().name("C1")
-                                       .typeName("VARCHAR").jdbcType(Types.VARCHAR).length(10)
+                                       .type("VARCHAR").jdbcType(Types.VARCHAR).length(10)
                                        .optional(false)
                                        .generated(true)
                                        .create(),
                                  Column.editor().name("C2")
-                                       .typeName("NUMBER").jdbcType(Types.NUMERIC).length(5).scale(3)
+                                       .type("NUMBER").jdbcType(Types.NUMERIC).length(5).scale(3)
                                        .create(),
                                  Column.editor().name("C3")
-                                       .typeName("DATE").jdbcType(Types.DATE).length(4)
+                                       .type("DATE").jdbcType(Types.DATE).length(4)
                                        .optional(true)
                                        .create(),
                                  Column.editor().name("C4")
-                                       .typeName("COUNTER").jdbcType(Types.INTEGER)
+                                       .type("COUNTER").jdbcType(Types.INTEGER)
                                        .autoIncremented(true)
                                        .optional(true)
                                        .create())

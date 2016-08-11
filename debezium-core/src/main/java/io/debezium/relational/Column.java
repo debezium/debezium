@@ -55,6 +55,14 @@ public interface Column extends Comparable<Column> {
     String typeName();
 
     /**
+     * Get the database-specific complete expression defining the column's data type, including dimensions, length, precision,
+     * character sets, constraints, etc.
+     * 
+     * @return the complete type expression
+     */
+    String typeExpression();
+
+    /**
      * Get the maximum length of this column's values. For numeric columns, this represents the precision.
      * 
      * @return the length of the column
@@ -114,7 +122,7 @@ public interface Column extends Comparable<Column> {
     default ColumnEditor edit() {
         return Column.editor()
                                .name(name())
-                               .typeName(typeName())
+                               .type(typeName(),typeExpression())
                                .jdbcType(jdbcType())
                                .length(length())
                                .scale(scale())

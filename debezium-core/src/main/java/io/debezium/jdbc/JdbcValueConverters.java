@@ -100,7 +100,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
             // Single- and multi-bit values ...
             case Types.BIT:
                 if (column.length() > 1) {
-                    return Bits.builder();
+                    return Bits.builder(column.length());
                 }
                 // otherwise, it is just one bit so use a boolean ...
             case Types.BOOLEAN:

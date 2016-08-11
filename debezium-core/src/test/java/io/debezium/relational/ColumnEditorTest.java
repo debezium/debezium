@@ -25,7 +25,7 @@ public class ColumnEditorTest {
     
     protected void createColumnWithAllFieldsSetToNonDefaults() {
         column = editor.name("price")
-                .typeName("NUMBER")
+                .type("NUMBER")
                 .jdbcType(Types.DOUBLE)
                 .length(5)
                 .scale(2)

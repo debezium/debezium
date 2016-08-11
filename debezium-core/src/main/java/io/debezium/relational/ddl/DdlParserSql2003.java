@@ -353,7 +353,7 @@ public class DdlParserSql2003 extends DdlParser {
             return;
         }
         column.jdbcType(dataType.jdbcType());
-        column.typeName(dataType.name());
+        column.type(dataType.name(),dataType.expression());
         if ( dataType.length() > -1 ) column.length((int)dataType.length());
         if ( dataType.scale() > -1 ) column.scale(dataType.scale());
 

@@ -281,6 +281,21 @@ public class MySqlDdlParserTest {
     }
 
     @Test
+    public void shouldParseCreateTableWithEnumAndSetColumns() {
+        String ddl = "CREATE TABLE t ( c1 ENUM('a','b','c') NOT NULL, c2 SET('a','b','c') NULL);";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table t = tables.forTable(new TableId(null, null, "t"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("c1", "c2");
+        assertThat(t.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t, "c1", "ENUM", Types.CHAR, 1, -1, false, false, false);
+        assertColumn(t, "c2", "SET", Types.CHAR, 5, -1, true, false, false);
+        assertThat(t.columnWithName("c1").position()).isEqualTo(1);
+        assertThat(t.columnWithName("c2").position()).isEqualTo(2);
+    }
+
+    @Test
     public void shouldParseGrantStatement() {
         String ddl = "GRANT ALL PRIVILEGES ON `mysql`.* TO 'mysqluser'@'%'";
         parser.parse(ddl, tables);
@@ -355,7 +370,32 @@ public class MySqlDdlParserTest {
         assertThat(listener.total()).isEqualTo(16);
         listener.forEach(this::printEvent);
     }
+    
+    @Test
+    public void shouldParseEnumOptions() {
+        assertParseEnumAndSetOptions("ENUM('a','b','c')","abc");
+        assertParseEnumAndSetOptions("ENUM('a')","a");
+        assertParseEnumAndSetOptions("ENUM()","");
+        assertParseEnumAndSetOptions("ENUM ('a','b','c') CHARACTER SET","abc");
+        assertParseEnumAndSetOptions("ENUM ('a') CHARACTER SET","a");
+        assertParseEnumAndSetOptions("ENUM () CHARACTER SET","");
+    }
+    
+    @Test
+    public void shouldParseSetOptions() {
+        assertParseEnumAndSetOptions("SET('a','b','c')","abc");
+        assertParseEnumAndSetOptions("SET('a')","a");
+        assertParseEnumAndSetOptions("SET()","");
+        assertParseEnumAndSetOptions("SET ('a','b','c') CHARACTER SET","abc");
+        assertParseEnumAndSetOptions("SET ('a') CHARACTER SET","a");
+        assertParseEnumAndSetOptions("SET () CHARACTER SET","");
+    }
 
+    protected void assertParseEnumAndSetOptions( String typeExpression, String optionString ) {
+        String options = MySqlDdlParser.parseSetAndEnumOptions(typeExpression);
+        assertThat(options).isEqualTo(optionString);
+    }
+    
     protected void printEvent(Event event) {
         Testing.print(event);
     }

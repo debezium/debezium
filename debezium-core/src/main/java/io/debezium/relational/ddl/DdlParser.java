@@ -800,11 +800,11 @@ public class DdlParser {
         ColumnEditor column = Column.editor().name(columnName);
         try {
             if (constantValue.startsWith("'") || constantValue.startsWith("\"")) {
-                column.typeName("CHAR");
+                column.type("CHAR");
                 column.jdbcType(Types.CHAR);
                 column.length(constantValue.length() - 2);
             } else if (constantValue.equalsIgnoreCase("TRUE") || constantValue.equalsIgnoreCase("FALSE")) {
-                column.typeName("BOOLEAN");
+                column.type("BOOLEAN");
                 column.jdbcType(Types.BOOLEAN);
             } else {
                 setTypeInfoForConstant(constantValue, column);
@@ -818,22 +818,22 @@ public class DdlParser {
     protected void setTypeInfoForConstant(String constantValue, ColumnEditor column) {
         try {
             Integer.parseInt(constantValue);
-            column.typeName("INTEGER");
+            column.type("INTEGER");
             column.jdbcType(Types.INTEGER);
         } catch (NumberFormatException e) {}
         try {
             Long.parseLong(constantValue);
-            column.typeName("BIGINT");
+            column.type("BIGINT");
             column.jdbcType(Types.BIGINT);
         } catch (NumberFormatException e) {}
         try {
             Float.parseFloat(constantValue);
-            column.typeName("FLOAT");
+            column.type("FLOAT");
             column.jdbcType(Types.FLOAT);
         } catch (NumberFormatException e) {}
         try {
             Double.parseDouble(constantValue);
-            column.typeName("DOUBLE");
+            column.type("DOUBLE");
             column.jdbcType(Types.DOUBLE);
             int precision = 0;
             int scale = 0;
@@ -858,7 +858,7 @@ public class DdlParser {
         } catch (NumberFormatException e) {}
         try {
             BigDecimal decimal = new BigDecimal(constantValue);
-            column.typeName("DECIMAL");
+            column.type("DECIMAL");
             column.jdbcType(Types.DECIMAL);
             column.length(decimal.precision());
             column.scale(decimal.precision());
