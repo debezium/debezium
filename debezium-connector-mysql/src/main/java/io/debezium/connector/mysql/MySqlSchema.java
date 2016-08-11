@@ -23,6 +23,7 @@ import com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDat
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.MySqlConnectorConfig.TemporalPrecisionMode;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.TimeZoneAdapter;
 import io.debezium.relational.Table;
@@ -100,7 +101,10 @@ public class MySqlSchema {
         this.ddlParser.addListener(ddlChanges);
 
         // Use MySQL-specific converters and schemas for values ...
-        MySqlValueConverters valueConverters = new MySqlValueConverters();
+        String timePrecisionModeStr = config.getString(MySqlConnectorConfig.TIME_PRECISION_MODE);
+        TemporalPrecisionMode timePrecisionMode = TemporalPrecisionMode.parse(timePrecisionModeStr);
+        boolean adaptiveTimePrecision = TemporalPrecisionMode.ADAPTIVE.equals(timePrecisionMode);
+        MySqlValueConverters valueConverters = new MySqlValueConverters(adaptiveTimePrecision);
         this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameValidator::validate);
         
         // Set up the server name and schema prefix ...

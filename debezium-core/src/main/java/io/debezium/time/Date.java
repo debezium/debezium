@@ -23,7 +23,7 @@ public class Date {
 
     /**
      * Returns a {@link SchemaBuilder} for a {@link Date}. The builder will create a schema that describes a field
-     * with the {@value #SCHEMA_NAME} as the {@link Schema#name() name} and {@link SchemaBuilder#int64() INT64} for the literal
+     * with the {@value #SCHEMA_NAME} as the {@link Schema#name() name} and {@link SchemaBuilder#int32() INT32} for the literal
      * type storing the number of <em>days</em> since January 1, 1970, at 00:00:00Z.
      * <p>
      * You can use the resulting SchemaBuilder to set or override additional schema settings such as required/optional, default
@@ -32,14 +32,14 @@ public class Date {
      * @return the schema builder
      */
     public static SchemaBuilder builder() {
-        return SchemaBuilder.int64()
+        return SchemaBuilder.int32()
                             .name(SCHEMA_NAME)
                             .version(1);
     }
 
     /**
      * Returns a Schema for a {@link Date} but with all other default Schema settings. The schema describes a field
-     * with the {@value #SCHEMA_NAME} as the {@link Schema#name() name} and {@link SchemaBuilder#int64() INT64} for the literal
+     * with the {@value #SCHEMA_NAME} as the {@link Schema#name() name} and {@link SchemaBuilder#int32() INT32} for the literal
      * type storing the number of <em>days</em> since January 1, 1970, at 00:00:00Z.
      * 
      * @return the schema
@@ -55,12 +55,12 @@ public class Date {
      * {@link java.sql.Timestamp}, ignoring any time portions of the supplied value.
      * 
      * @param value the local or SQL date, time, or timestamp value
-     * @return the microseconds past midnight
+     * @return the number of days past epoch
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types
      */
-    public static Long toEpochDay(Object value) {
+    public static Integer toEpochDay(Object value) {
         if ( value == null ) return null;
-        return Conversions.toLocalDate(value).toEpochDay();
+        return (int)Conversions.toLocalDate(value).toEpochDay();
     }
 
     private Date() {

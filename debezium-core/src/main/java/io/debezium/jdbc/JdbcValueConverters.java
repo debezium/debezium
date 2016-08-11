@@ -11,6 +11,7 @@ import java.sql.Types;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
@@ -62,23 +63,31 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final ZoneOffset defaultOffset;
+    private final boolean adaptiveTimePrecision;
 
     /**
-     * Create a new instance.
+     * Create a new instance that always uses UTC for the default time zone when converting values without timezone information
+     * to values that require timezones, and uses adapts time and timestamp values based upon the precision of the database
+     * columns.
      */
     public JdbcValueConverters() {
-        this(ZoneOffset.UTC);
+        this(true, ZoneOffset.UTC);
     }
 
     /**
      * Create a new instance, and specify the time zone offset that should be used only when converting values without timezone
      * information to values that require timezones. This default offset should not be needed when values are highly-correlated
      * with the expected SQL/JDBC types.
+     * 
+     * @param adaptiveTimePrecision {@code true} if the time, date, and timestamp values should be based upon the precision of the
+     *            database columns using {@link io.debezium.time} semantic types, or {@code false} if they should be fixed to
+     *            millisecond precision using Kafka Connect {@link org.apache.kafka.connect.data} logical types.
      * @param defaultOffset the zone offset that is to be used when converting non-timezone related values to values that do
-     * have timezones; may be null if UTC is to be used
+     *            have timezones; may be null if UTC is to be used
      */
-    public JdbcValueConverters(ZoneOffset defaultOffset) {
+    public JdbcValueConverters(boolean adaptiveTimePrecision, ZoneOffset defaultOffset) {
         this.defaultOffset = defaultOffset != null ? defaultOffset : ZoneOffset.UTC;
+        this.adaptiveTimePrecision = adaptiveTimePrecision;
     }
 
     @Override
@@ -153,15 +162,24 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
             // Date and time values
             case Types.DATE:
+                if (adaptiveTimePrecision) {
                 return Date.builder();
+                }
+                return org.apache.kafka.connect.data.Date.builder();
             case Types.TIME:
-                if (column.length() <= 3) return Time.builder();
-                if (column.length() <= 6) return MicroTime.builder();
-                return NanoTime.builder();
+                if (adaptiveTimePrecision) {
+                    if (column.length() <= 3) return Time.builder();
+                    if (column.length() <= 6) return MicroTime.builder();
+                    return NanoTime.builder();
+                }
+                return org.apache.kafka.connect.data.Time.builder();
             case Types.TIMESTAMP:
-                if (column.length() <= 3) return Timestamp.builder();
-                if (column.length() <= 6) return MicroTimestamp.builder();
-                return NanoTimestamp.builder();
+                if (adaptiveTimePrecision) {
+                    if (column.length() <= 3 || !adaptiveTimePrecision) return Timestamp.builder();
+                    if (column.length() <= 6) return MicroTimestamp.builder();
+                    return NanoTimestamp.builder();
+                }
+                return org.apache.kafka.connect.data.Timestamp.builder();
             case Types.TIME_WITH_TIMEZONE:
                 return ZonedTime.builder();
             case Types.TIMESTAMP_WITH_TIMEZONE:
@@ -184,6 +202,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 break;
         }
         return null;
+
     }
 
     @Override
@@ -240,15 +259,24 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
             // Date and time values
             case Types.DATE:
+                if (adaptiveTimePrecision) {
                 return (data) -> convertDateToEpochDays(column, fieldDefn, data);
+                }
+                return (data) -> convertDateToEpochDaysAsDate(column, fieldDefn, data);
             case Types.TIME:
-                if (column.length() <= 3) return (data) -> convertTimeToMillisPastMidnight(column, fieldDefn, data);
-                if (column.length() <= 6) return (data) -> convertTimeToMicrosPastMidnight(column, fieldDefn, data);
-                return (data) -> convertTimeToNanosPastMidnight(column, fieldDefn, data);
+                if (adaptiveTimePrecision) {
+                    if (column.length() <= 3) return (data) -> convertTimeToMillisPastMidnight(column, fieldDefn, data);
+                    if (column.length() <= 6) return (data) -> convertTimeToMicrosPastMidnight(column, fieldDefn, data);
+                    return (data) -> convertTimeToNanosPastMidnight(column, fieldDefn, data);
+                }
+                return (data) -> convertTimeToMillisPastMidnightAsDate(column, fieldDefn, data);
             case Types.TIMESTAMP:
-                if (column.length() <= 3) return (data) -> convertTimestampToEpochMillis(column, fieldDefn, data);
-                if (column.length() <= 6) return (data) -> convertTimestampToEpochMicros(column, fieldDefn, data);
-                return (data) -> convertTimestampToEpochNanos(column, fieldDefn, data);
+                if (adaptiveTimePrecision) {
+                    if (column.length() <= 3) return (data) -> convertTimestampToEpochMillis(column, fieldDefn, data);
+                    if (column.length() <= 6) return (data) -> convertTimestampToEpochMicros(column, fieldDefn, data);
+                    return (data) -> convertTimestampToEpochNanos(column, fieldDefn, data);
+                }
+                return (data) -> convertTimestampToEpochMillisAsDate(column, fieldDefn, data);
             case Types.TIME_WITH_TIMEZONE:
                 return (data) -> convertTimeWithZone(column, fieldDefn, data);
             case Types.TIMESTAMP_WITH_TIMEZONE:
@@ -380,6 +408,29 @@ public class JdbcValueConverters implements ValueConverterProvider {
     }
 
     /**
+     * Converts a value object for an expected JDBC type of {@link Types#TIMESTAMP} to {@link java.util.Date} values representing
+     * milliseconds past epoch.
+     * <p>
+     * Per the JDBC specification, databases should return {@link java.sql.Timestamp} instances, which have date and time info
+     * but no time zone info. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such
+     * as {@link java.util.Date}, {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}.
+     * 
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @return the converted value, or null if the conversion could not be made
+     */
+    protected Object convertTimestampToEpochMillisAsDate(Column column, Field fieldDefn, Object data) {
+        try {
+            Long epochMillis = Timestamp.toEpochMillis(data);
+            if ( epochMillis == null ) return null;
+            return new java.util.Date(epochMillis.longValue());
+        } catch (IllegalArgumentException e) {
+            return handleUnknownData(column, fieldDefn, data);
+        }
+    }
+
+    /**
      * Converts a value object for an expected JDBC type of {@link Types#TIME} to {@link Time} values, or milliseconds past
      * midnight.
      * <p>
@@ -446,7 +497,31 @@ public class JdbcValueConverters implements ValueConverterProvider {
     }
 
     /**
-     * Converts a value object for an expected JDBC type of {@link Types#DATE}.
+     * Converts a value object for an expected JDBC type of {@link Types#TIME} to {@link java.util.Date} values representing
+     * the milliseconds past midnight on the epoch day.
+     * <p>
+     * Per the JDBC specification, databases should return {@link java.sql.Time} instances that have no notion of date or
+     * time zones. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such as
+     * {@link java.util.Date}, {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}. If any of the types might
+     * have date components, those date components are ignored.
+     * 
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @return the converted value, or null if the conversion could not be made
+     */
+    protected Object convertTimeToMillisPastMidnightAsDate(Column column, Field fieldDefn, Object data) {
+        try {
+            Integer millisOfDay = Time.toMilliOfDay(data);
+            if ( millisOfDay == null ) return null;
+            return new java.util.Date(millisOfDay.longValue());
+        } catch (IllegalArgumentException e) {
+            return handleUnknownData(column, fieldDefn, data);
+        }
+    }
+
+    /**
+     * Converts a value object for an expected JDBC type of {@link Types#DATE} to the number of days past epoch.
      * <p>
      * Per the JDBC specification, databases should return {@link java.sql.Date} instances that have no notion of time or
      * time zones. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such as
@@ -462,6 +537,34 @@ public class JdbcValueConverters implements ValueConverterProvider {
         if (data == null) return null;
         try {
             return Date.toEpochDay(data);
+        } catch (IllegalArgumentException e) {
+            logger.warn("Unexpected JDBC DATE value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
+                        fieldDefn.schema(), data.getClass(), data);
+            return null;
+        }
+    }
+
+    /**
+     * Converts a value object for an expected JDBC type of {@link Types#DATE} to the number of days past epoch, but represented
+     * as a {@link java.util.Date} value at midnight on the date.
+     * <p>
+     * Per the JDBC specification, databases should return {@link java.sql.Date} instances that have no notion of time or
+     * time zones. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such as
+     * {@link java.util.Date}, {@link java.time.LocalDate}, and {@link java.time.LocalDateTime}. If any of the types might
+     * have time components, those time components are ignored.
+     * 
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @return the converted value, or null if the conversion could not be made
+     */
+    protected Object convertDateToEpochDaysAsDate(Column column, Field fieldDefn, Object data) {
+        if (data == null) return null;
+        try {
+            Integer epochDay = Date.toEpochDay(data);
+            if ( epochDay == null ) return null;
+            long epochMillis = TimeUnit.DAYS.toMillis(epochDay.longValue());
+            return new java.util.Date(epochMillis);
         } catch (IllegalArgumentException e) {
             logger.warn("Unexpected JDBC DATE value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
                         fieldDefn.schema(), data.getClass(), data);

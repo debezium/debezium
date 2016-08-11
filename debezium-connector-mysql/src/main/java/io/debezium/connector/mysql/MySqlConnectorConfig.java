@@ -33,6 +33,61 @@ import io.debezium.relational.history.KafkaDatabaseHistory;
 public class MySqlConnectorConfig {
 
     /**
+     * The set of predefined TemporalPrecisionMode options or aliases.
+     */
+    public static enum TemporalPrecisionMode {
+        /**
+         * Represent time and date values based upon the resolution in the database, using {@link io.debezium.time} semantic
+         * types.
+         */
+        ADAPTIVE("adaptive"),
+
+        /**
+         * Represent time and date values using Kafka Connect {@link org.apache.kafka.connect.data} logical types, which always
+         * have millisecond precision.
+         */
+        CONNECT("connect");
+
+        private final String value;
+
+        private TemporalPrecisionMode(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         * 
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static TemporalPrecisionMode parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+            for (TemporalPrecisionMode option : TemporalPrecisionMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         * 
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static TemporalPrecisionMode parse(String value, String defaultValue) {
+            TemporalPrecisionMode mode = parse(value);
+            if (mode == null && defaultValue != null) mode = parse(defaultValue);
+            return mode;
+        }
+    }
+
+    /**
      * The set of predefined SnapshotMode options or aliases.
      */
     public static enum SnapshotMode {
@@ -268,7 +323,7 @@ public class MySqlConnectorConfig {
                                                       .withDescription("Frequency in milliseconds to wait for new change events to appear after receiving no events. Defaults to 1 second (1000 ms).")
                                                       .withDefault(TimeUnit.SECONDS.toMillis(1))
                                                       .withValidation(Field::isPositiveInteger);
-    
+
     public static final Field ROW_COUNT_FOR_STREAMING_RESULT_SETS = Field.create("min.row.count.to.stream.results")
                                                                          .withDisplayName("Stream result set larger than")
                                                                          .withType(Type.LONG)
@@ -330,6 +385,17 @@ public class MySqlConnectorConfig {
                                                                       + "of the snapshot; in such cases set this property to 'false'.")
                                                               .withDefault(true);
 
+    public static final Field TIME_PRECISION_MODE = Field.create("time.precision.mode")
+                                                         .withDisplayName("Time Precision")
+                                                         .withEnum(TemporalPrecisionMode.class)
+                                                         .withWidth(Width.SHORT)
+                                                         .withImportance(Importance.MEDIUM)
+                                                         .withDescription("Time, date, and timestamps can be represented with different kinds of precisions, including:"
+                                                                 + "'adaptive' (the default) bases the precision of time, date, and timestamp values on the database column's precision; "
+                                                                 + "'connect' always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
+                                                                 + "which uses millisecond precision regardless of the database columns' precision .")
+                                                         .withDefault(TemporalPrecisionMode.ADAPTIVE.getValue());
+
     /**
      * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
      * have their values truncated to be no longer than the specified number of characters.
@@ -371,7 +437,8 @@ public class MySqlConnectorConfig {
                                                      DATABASE_HISTORY, INCLUDE_SCHEMA_CHANGES,
                                                      TABLE_WHITELIST, TABLE_BLACKLIST, TABLES_IGNORE_BUILTIN,
                                                      DATABASE_WHITELIST, DATABASE_BLACKLIST,
-                                                     COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING);
+                                                     COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING,
+                                                     TIME_PRECISION_MODE);
 
     /**
      * The set of {@link Field}s that are included in the {@link #configDef() configuration definition}. This includes
@@ -393,7 +460,7 @@ public class MySqlConnectorConfig {
         Field.group(config, "Events", INCLUDE_SCHEMA_CHANGES, TABLES_IGNORE_BUILTIN, DATABASE_WHITELIST, TABLE_WHITELIST,
                     COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
-                    SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING);
+                    SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE);
         return config;
     }
 

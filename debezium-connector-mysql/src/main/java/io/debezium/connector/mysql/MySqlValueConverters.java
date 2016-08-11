@@ -42,9 +42,13 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * Create a new instance that always uses UTC for the default time zone when converting values without timezone information
      * to values that require timezones.
      * <p>
+     * 
+     * @param adaptiveTimePrecision {@code true} if the time, date, and timestamp values should be based upon the precision of the
+     *            database columns using {@link io.debezium.time} semantic types, or {@code false} if they should be fixed to
+     *            millisecond precision using Kafka Connect {@link org.apache.kafka.connect.data} logical types.
      */
-    public MySqlValueConverters() {
-        super();
+    public MySqlValueConverters(boolean adaptiveTimePrecision) {
+        this(adaptiveTimePrecision, ZoneOffset.UTC);
     }
 
     /**
@@ -52,11 +56,14 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * information to values that require timezones. This default offset should not be needed when values are highly-correlated
      * with the expected SQL/JDBC types.
      * 
+     * @param adaptiveTimePrecision {@code true} if the time, date, and timestamp values should be based upon the precision of the
+     *            database columns using {@link io.debezium.time} semantic types, or {@code false} if they should be fixed to
+     *            millisecond precision using Kafka Connect {@link org.apache.kafka.connect.data} logical types.
      * @param defaultOffset the zone offset that is to be used when converting non-timezone related values to values that do
      *            have timezones; may be null if UTC is to be used
      */
-    public MySqlValueConverters(ZoneOffset defaultOffset) {
-        super(defaultOffset);
+    public MySqlValueConverters(boolean adaptiveTimePrecision, ZoneOffset defaultOffset) {
+        super(adaptiveTimePrecision, defaultOffset);
     }
 
     @Override
@@ -105,17 +112,17 @@ public class MySqlValueConverters extends JdbcValueConverters {
     @SuppressWarnings("deprecation")
     protected Object convertYear(Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
-        if ( data instanceof java.time.Year ) {
+        if (data instanceof java.time.Year) {
             // The MySQL binlog always returns a Year object ...
-            return ((java.time.Year)data).getValue();
+            return ((java.time.Year) data).getValue();
         }
-        if ( data instanceof java.sql.Date ) {
+        if (data instanceof java.sql.Date) {
             // MySQL JDBC driver sometimes returns a Java SQL Date object ...
-            return ((java.sql.Date)data).getYear();
+            return ((java.sql.Date) data).getYear();
         }
         if (data instanceof Number) {
             // MySQL JDBC driver sometimes returns a short ...
-            return ((Number)data).intValue();
+            return ((Number) data).intValue();
         }
         return handleUnknownData(column, fieldDefn, data);
     }
