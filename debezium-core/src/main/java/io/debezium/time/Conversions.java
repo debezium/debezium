@@ -107,8 +107,18 @@ final class Conversions {
         if ( obj instanceof LocalDateTime) {
             return (LocalDateTime)obj;
         }
+        if ( obj instanceof LocalDate) {
+            LocalDate date = (LocalDate)obj;
+            return LocalDateTime.of(date, LocalTime.MIDNIGHT);
+        }
+        if ( obj instanceof LocalTime) {
+            LocalTime time = (LocalTime)obj;
+            return LocalDateTime.of(EPOCH, time);
+        }
         if ( obj instanceof java.sql.Date) {
-            throw new IllegalArgumentException("Unable to convert to LocalDate from a java.sql.Date value '" + obj + "'");
+            java.sql.Date sqlDate = (java.sql.Date)obj;
+            LocalDate date = sqlDate.toLocalDate();
+            return LocalDateTime.of(date, LocalTime.MIDNIGHT);
         }
         if ( obj instanceof java.sql.Time) {
             LocalTime localTime = toLocalTime(obj);
