@@ -48,11 +48,11 @@
         <maven.compiler.target>1.8</maven.compiler.target>
 
         <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
-        <version.kafka>0.10.0.0</version.kafka>
+        <version.kafka>0.10.0.1</version.kafka>
         <version.kafka.scala>2.11</version.kafka.scala>
         <version.scala>2.11.8</version.scala>
         <version.curator>2.11.0</version.curator>
-        <version.zookeeper>3.4.6</version.zookeeper>
+        <version.zookeeper>3.4.8</version.zookeeper>
         <version.jackson>2.6.3</version.jackson>
         <version.org.slf4j>1.7.21</version.org.slf4j>
         <version.log4j>1.2.17</version.log4j>
