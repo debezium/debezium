@@ -18,7 +18,6 @@ import io.debezium.annotation.Immutable;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
-import io.debezium.time.Date;
 import io.debezium.time.Year;
 
 /**
@@ -90,17 +89,17 @@ public class MySqlValueConverters extends JdbcValueConverters {
         // Handle a few MySQL-specific types based upon how they are handled by the MySQL binlog client ...
         String typeName = column.typeName().toUpperCase();
         if (matches(typeName, "YEAR")) {
-            return (data) -> convertYear(column, fieldDefn, data);
+            return (data) -> convertYearToInt(column, fieldDefn, data);
         }
         if (matches(typeName, "ENUM")) {
             // Build up the character array based upon the column's type ...
             String options = extractEnumAndSetOptions(column,false);
-            return (data) -> convertEnum(options, column, fieldDefn, data);
+            return (data) -> convertEnumToString(options, column, fieldDefn, data);
         }
         if (matches(typeName, "SET")) {
             // Build up the character array based upon the column's type ...
             String options = extractEnumAndSetOptions(column,false);
-            return (data) -> convertSet(options, column, fieldDefn, data);
+            return (data) -> convertSetToString(options, column, fieldDefn, data);
         }
         // Otherwise, let the base class handle it ...
         return super.converter(column, fieldDefn);
@@ -112,11 +111,11 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * 
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
-     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @param data the data object to be converted into a year literal integer value; never null
      * @return the converted value, or null if the conversion could not be made
      */
     @SuppressWarnings("deprecation")
-    protected Object convertYear(Column column, Field fieldDefn, Object data) {
+    protected Object convertYearToInt(Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         if (data instanceof java.time.Year) {
             // The MySQL binlog always returns a Year object ...
@@ -141,10 +140,10 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @param options the characters that appear in the same order as defined in the column; may not be null
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
-     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @param data the data object to be converted into an {@code ENUM} literal String value; never null
      * @return the converted value, or null if the conversion could not be made
      */
-    protected Object convertEnum(String options, Column column, Field fieldDefn, Object data) {
+    protected Object convertEnumToString(String options, Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         if (data instanceof String) {
             // JDBC should return strings ...
@@ -169,10 +168,10 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @param options the characters that appear in the same order as defined in the column; may not be null
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
-     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @param data the data object to be converted into an {@code SET} literal String value; never null
      * @return the converted value, or null if the conversion could not be made
      */
-    protected Object convertSet(String options, Column column, Field fieldDefn, Object data) {
+    protected Object convertSetToString(String options, Column column, Field fieldDefn, Object data) {
         if (data == null) return null;
         if (data instanceof String) {
             // JDBC should return strings ...
