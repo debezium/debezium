@@ -610,7 +610,7 @@ public class JdbcConnection implements AutoCloseable {
                     if (columnFilter == null || columnFilter.matches(catalogName, schemaName, tableName, columnName)) {
                         ColumnEditor column = Column.editor().name(columnName);
                         column.jdbcType(rs.getInt(5));
-                        column.typeName(rs.getString(6));
+                        column.type(rs.getString(6));
                         column.length(rs.getInt(7));
                         column.scale(rs.getInt(9));
                         column.optional(isNullable(rs.getInt(11)));
@@ -675,7 +675,7 @@ public class JdbcConnection implements AutoCloseable {
         for (int position = 1; position <= metadata.getColumnCount(); ++position) {
             String columnLabel = metadata.getColumnLabel(position);
             column.name(columnLabel != null ? columnLabel : metadata.getColumnName(position));
-            column.typeName(metadata.getColumnTypeName(position));
+            column.type(metadata.getColumnTypeName(position));
             column.jdbcType(metadata.getColumnType(position));
             column.length(metadata.getPrecision(position));
             column.scale(metadata.getScale(position));

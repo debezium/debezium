@@ -46,6 +46,14 @@ public interface ColumnEditor extends Comparable<Column> {
     String typeName();
 
     /**
+     * Get the database-specific complete expression defining the column's data type, including dimensions, length, precision,
+     * character sets, constraints, etc.
+     * 
+     * @return the complete type expression
+     */
+    String typeExpression();
+
+    /**
      * Get the maximum length of this column's values. For numeric columns, this represents the precision.
      * 
      * @return the length of the column
@@ -94,7 +102,18 @@ public interface ColumnEditor extends Comparable<Column> {
      * @param typeName the column's type name
      * @return this editor so callers can chain methods together
      */
-    ColumnEditor typeName(String typeName);
+    ColumnEditor type(String typeName);
+
+    /**
+     * Set the database-specific name of the column's data type. The expression includes the column's
+     * {@link #typeName() type name} and also any dimensions, lengths, precisions, character sets, etc.
+     * 
+     * 
+     * @param typeName the column's type name
+     * @param typeExpression the column's complete type expression
+     * @return this editor so callers can chain methods together
+     */
+    ColumnEditor type(String typeName, String typeExpression);
 
     /**
      * Set the {@link Types JDBC type} of this column.

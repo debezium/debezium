@@ -13,6 +13,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.relational.Column;
@@ -38,6 +40,16 @@ import io.debezium.text.TokenStream.Marker;
  */
 @NotThreadSafe
 public class MySqlDdlParser extends DdlParser {
+
+    /**
+     * Pattern to grab the list of single-quoted options within a SET or ENUM type definition.
+     */
+    private static final Pattern ENUM_AND_SET_LITERALS = Pattern.compile("(ENUM|SET)\\s*[(]([^)]*)[)].*");
+
+    /**
+     * Pattern to extract the option characters from the comma-separated list of single-quoted options.
+     */
+    private static final Pattern ENUM_AND_SET_OPTIONS = Pattern.compile("'([^']*)'");
 
     /**
      * Create a new DDL parser for MySQL that does not include view definitions.
@@ -171,10 +183,10 @@ public class MySqlDdlParser extends DdlParser {
                          this::parseCreateUnknown);
         }
     }
-    
+
     protected void parseCreateDatabase(Marker start) {
-        tokens.consumeAnyOf("DATABASE","SCHEMA");
-        tokens.canConsume("IF","NOT","EXISTS");
+        tokens.consumeAnyOf("DATABASE", "SCHEMA");
+        tokens.canConsume("IF", "NOT", "EXISTS");
         String dbName = tokens.consume();
         consumeRemainingStatement(start);
         signalCreateDatabase(dbName, start);
@@ -182,7 +194,7 @@ public class MySqlDdlParser extends DdlParser {
     }
 
     protected void parseAlterDatabase(Marker start) {
-        tokens.consumeAnyOf("DATABASE","SCHEMA");
+        tokens.consumeAnyOf("DATABASE", "SCHEMA");
         String dbName = tokens.consume();
         consumeRemainingStatement(start);
         signalAlterDatabase(dbName, null, start);
@@ -190,8 +202,8 @@ public class MySqlDdlParser extends DdlParser {
     }
 
     protected void parseDropDatabase(Marker start) {
-        tokens.consumeAnyOf("DATABASE","SCHEMA");
-        tokens.canConsume("IF","EXISTS");
+        tokens.consumeAnyOf("DATABASE", "SCHEMA");
+        tokens.canConsume("IF", "EXISTS");
         String dbName = tokens.consume();
         signalDropDatabase(dbName, start);
         debugParsed(start);
@@ -202,10 +214,10 @@ public class MySqlDdlParser extends DdlParser {
         tokens.consume("TABLE");
         boolean onlyIfNotExists = tokens.canConsume("IF", "NOT", "EXISTS");
         TableId tableId = parseQualifiedTableName(start);
-        if ( tokens.canConsume("LIKE")) {
+        if (tokens.canConsume("LIKE")) {
             TableId originalId = parseQualifiedTableName(start);
             Table original = databaseTables.forTable(originalId);
-            if ( original != null ) {
+            if (original != null) {
                 databaseTables.overwriteTable(tableId, original.columns(), original.primaryKeyColumnNames());
             }
             consumeRemainingStatement(start);
@@ -242,8 +254,7 @@ public class MySqlDdlParser extends DdlParser {
     }
 
     protected void parseTableOptions(Marker start, TableEditor table) {
-        while (parseTableOption(start, table)) {
-        }
+        while (parseTableOption(start, table)) {}
     }
 
     protected boolean parseTableOption(Marker start, TableEditor table) {
@@ -260,7 +271,7 @@ public class MySqlDdlParser extends DdlParser {
             tokens.consume();
             return true;
         } else if (tokens.canConsume("DEFAULT", "CHARACTER", "SET") || tokens.canConsume("CHARACTER", "SET") ||
-                   tokens.canConsume("DEFAULT", "CHARSET") || tokens.canConsume("CHARSET")) {
+                tokens.canConsume("DEFAULT", "CHARSET") || tokens.canConsume("CHARSET")) {
             tokens.canConsume('=');
             tokens.consume();
             return true;
@@ -409,7 +420,7 @@ public class MySqlDdlParser extends DdlParser {
                 parseIndexType(start);
             }
             if (!tokens.matches('(')) {
-                tokens.consume();   // index name
+                tokens.consume(); // index name
             }
             List<String> pkColumnNames = parseIndexColumnNames(start);
             table.setPrimaryKeyNames(pkColumnNames);
@@ -468,7 +479,7 @@ public class MySqlDdlParser extends DdlParser {
             // Obtain the column editor ...
             String columnName = tokens.consume();
             parseCreateColumn(start, table, columnName);
-            
+
             // ALTER TABLE allows reordering the columns after the definition ...
             if (tokens.canConsume("FIRST")) {
                 table.reorderColumn(columnName, null);
@@ -495,6 +506,30 @@ public class MySqlDdlParser extends DdlParser {
         return table.columnWithName(newColumnDefn.name());
     }
 
+    /**
+     * Parse the {@code ENUM} or {@code SET} data type expression to extract the character options, where the index(es) appearing
+     * in the {@code ENUM} or {@code SET} values can be used to identify the acceptable characters.
+     * 
+     * @param typeExpression the data type expression
+     * @return the string containing the character options allowed by the {@code ENUM} or {@code SET}; never null
+     */
+    public static String parseSetAndEnumOptions(String typeExpression) {
+        Matcher matcher = ENUM_AND_SET_LITERALS.matcher(typeExpression);
+        if (matcher.matches()) {
+            String literals = matcher.group(2);
+            Matcher optionMatcher = ENUM_AND_SET_OPTIONS.matcher(literals);
+            StringBuilder sb = new StringBuilder();
+            while (optionMatcher.find()) {
+                String option = optionMatcher.group(1);
+                if (option.length() > 0) {
+                    sb.append(option.charAt(0));
+                }
+            }
+            return sb.toString();
+        }
+        return "";
+    }
+
     protected void parseColumnDefinition(Marker start, String columnName, TokenStream tokens, TableEditor table, ColumnEditor column,
                                          AtomicBoolean isPrimaryKey) {
         // Parse the data type, which must be at this location ...
@@ -511,9 +546,16 @@ public class MySqlDdlParser extends DdlParser {
             return;
         }
         column.jdbcType(dataType.jdbcType());
-        column.typeName(dataType.name());
-        if (dataType.length() > -1) column.length((int) dataType.length());
-        if (dataType.scale() > -1) column.scale(dataType.scale());
+        column.type(dataType.name(), dataType.expression());
+        if ("ENUM".equals(dataType.name())) {
+            column.length(1);
+        } else if ("SET".equals(dataType.name())) {
+            String options = parseSetAndEnumOptions(dataType.expression());
+            column.length(Math.max(0, options.length() * 2 - 1)); // number of options + number of commas
+        } else {
+            if (dataType.length() > -1) column.length((int) dataType.length());
+            if (dataType.scale() > -1) column.scale(dataType.scale());
+        }
 
         if (tokens.canConsume("AS") || tokens.canConsume("GENERATED", "ALWAYS", "AS")) {
             consumeExpression(start);
@@ -634,22 +676,19 @@ public class MySqlDdlParser extends DdlParser {
         if (tokens.canConsume("MATCH")) {
             tokens.consumeAnyOf("FULL", "PARTIAL", "SIMPLE");
         }
-        if (tokens.canConsume("ON","DELETE")) {
+        if (tokens.canConsume("ON", "DELETE")) {
             parseReferenceOption(start);
         }
-        if (tokens.canConsume("ON","UPDATE")) {
+        if (tokens.canConsume("ON", "UPDATE")) {
             parseReferenceOption(start);
         }
-        if (tokens.canConsume("ON","DELETE")) { // in case ON UPDATE is first
+        if (tokens.canConsume("ON", "DELETE")) { // in case ON UPDATE is first
             parseReferenceOption(start);
         }
     }
 
     protected void parseReferenceOption(Marker start) {
-        if (tokens.canConsume("RESTRICT")) {
-        } else if (tokens.canConsume("CASCADE")) {
-        } else if (tokens.canConsume("SET", "NULL")) {
-        } else {
+        if (tokens.canConsume("RESTRICT")) {} else if (tokens.canConsume("CASCADE")) {} else if (tokens.canConsume("SET", "NULL")) {} else {
             tokens.canConsume("NO", "ACTION");
         }
     }
@@ -676,7 +715,7 @@ public class MySqlDdlParser extends DdlParser {
             debugSkipped(start);
             return;
         }
-        
+
         TableEditor table = databaseTables.editOrCreateTable(tableId);
         if (tokens.matches('(')) {
             List<String> columnNames = parseColumnNameList(start);
@@ -704,7 +743,7 @@ public class MySqlDdlParser extends DdlParser {
                     if (selectedColumn != null) {
                         changedColumns.add(column.edit()
                                                  .jdbcType(selectedColumn.jdbcType())
-                                                 .typeName(selectedColumn.typeName())
+                                                 .type(selectedColumn.typeName(), selectedColumn.typeExpression())
                                                  .length(selectedColumn.length())
                                                  .scale(selectedColumn.scale())
                                                  .autoIncremented(selectedColumn.isAutoIncremented())
@@ -745,7 +784,7 @@ public class MySqlDdlParser extends DdlParser {
 
     protected void parseCreateIndex(Marker start) {
         boolean unique = tokens.canConsume("UNIQUE");
-        tokens.canConsumeAnyOf("FULLTEXT","SPATIAL");
+        tokens.canConsumeAnyOf("FULLTEXT", "SPATIAL");
         tokens.consume("INDEX");
         String indexName = tokens.consume(); // index name
         if (tokens.matches("USING")) {
@@ -756,8 +795,8 @@ public class MySqlDdlParser extends DdlParser {
             // Usually this is required, but in some cases ON is not required
             tableId = parseQualifiedTableName(start);
         }
-        
-        if ( unique && tableId != null ) {
+
+        if (unique && tableId != null) {
             // This is a unique index, and we can mark the index's columns as the primary key iff there is not already
             // a primary key on the table. (Should a PK be created later via an alter, then it will overwrite this.)
             TableEditor table = databaseTables.editTable(tableId);
@@ -810,7 +849,7 @@ public class MySqlDdlParser extends DdlParser {
             if (newTableName.get() != null) {
                 // the table was renamed ...
                 Table renamed = databaseTables.renameTable(tableId, newTableName.get());
-                if ( renamed != null ) {
+                if (renamed != null) {
                     oldTableId = tableId;
                     tableId = renamed.id();
                 }
@@ -885,8 +924,9 @@ public class MySqlDdlParser extends DdlParser {
         } else if (tokens.canConsumeAnyOf("ALGORITHM", "LOCK")) {
             tokens.canConsume('=');
             tokens.consume();
-        } else if (tokens.canConsume("DISABLE", "KEYS") || tokens.canConsume("ENABLE", "KEYS")) {
-        } else if (tokens.canConsume("RENAME", "INDEX") || tokens.canConsume("RENAME", "KEY")) {
+        } else if (tokens.canConsume("DISABLE", "KEYS")
+                || tokens.canConsume("ENABLE", "KEYS")) {} else if (tokens.canConsume("RENAME", "INDEX")
+                        || tokens.canConsume("RENAME", "KEY")) {
             tokens.consume(); // old
             tokens.consume("TO");
             tokens.consume(); // new
@@ -979,15 +1019,15 @@ public class MySqlDdlParser extends DdlParser {
         List<TableId> ids = parseQualifiedTableNames(start);
         boolean restrict = tokens.canConsume("RESTRICT");
         boolean cascade = tokens.canConsume("CASCADE");
-        ids.forEach(tableId->{
+        ids.forEach(tableId -> {
             databaseTables.removeTable(tableId);
-            signalDropTable(tableId, statementPrefix + tableId + (restrict ? " RESTRICT" : cascade ? " CASCADE" : "") );
+            signalDropTable(tableId, statementPrefix + tableId + (restrict ? " RESTRICT" : cascade ? " CASCADE" : ""));
         });
         debugParsed(start);
     }
-        
+
     protected void parseDropView(Marker start) {
-        if ( skipViews ) {
+        if (skipViews) {
             consumeRemainingStatement(start);
             debugSkipped(start);
             return;
@@ -998,9 +1038,9 @@ public class MySqlDdlParser extends DdlParser {
         List<TableId> ids = parseQualifiedTableNames(start);
         boolean restrict = tokens.canConsume("RESTRICT");
         boolean cascade = tokens.canConsume("CASCADE");
-        ids.forEach(tableId->{
+        ids.forEach(tableId -> {
             databaseTables.removeTable(tableId);
-            signalDropView(tableId, statementPrefix + tableId + (restrict ? " RESTRICT" : cascade ? " CASCADE" : "") );
+            signalDropView(tableId, statementPrefix + tableId + (restrict ? " RESTRICT" : cascade ? " CASCADE" : ""));
         });
         debugParsed(start);
     }
@@ -1040,7 +1080,7 @@ public class MySqlDdlParser extends DdlParser {
         databaseTables.renameTable(from, to);
         // Signal a separate statement for this table rename action, even though multiple renames might be
         // performed by a single DDL statement on the token stream ...
-        signalAlterTable(from,to,"RENAME TABLE " + from + " TO " + to);
+        signalAlterTable(from, to, "RENAME TABLE " + from + " TO " + to);
     }
 
     protected void parseUse(Marker marker) {
@@ -1112,12 +1152,12 @@ public class MySqlDdlParser extends DdlParser {
     protected void parseDefaultClause(Marker start) {
         tokens.consume("DEFAULT");
         if (tokens.canConsume("CURRENT_TIMESTAMP")) {
-            if ( tokens.canConsume('(')) {
+            if (tokens.canConsume('(')) {
                 tokens.consumeInteger();
                 tokens.consume(')');
             }
             tokens.canConsume("ON", "UPDATE", "CURRENT_TIMESTAMP");
-            if ( tokens.canConsume('(')) {
+            if (tokens.canConsume('(')) {
                 tokens.consumeInteger();
                 tokens.consume(')');
             }

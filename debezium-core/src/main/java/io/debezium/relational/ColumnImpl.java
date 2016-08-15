@@ -10,18 +10,20 @@ final class ColumnImpl implements Column, Comparable<Column> {
     private final int position;
     private final int jdbcType;
     private final String typeName;
+    private final String typeExpression;
     private final int length;
     private final int scale;
     private final boolean optional;
     private final boolean autoIncremented;
     private final boolean generated;
 
-    protected ColumnImpl(String columnName, int position, int jdbcType, String typeName, int columnLength, int columnScale,
-            boolean optional, boolean autoIncremented, boolean generated) {
+    protected ColumnImpl(String columnName, int position, int jdbcType, String typeName, String typeExpression, int columnLength,
+            int columnScale, boolean optional, boolean autoIncremented, boolean generated) {
         this.name = columnName;
         this.position = position;
         this.jdbcType = jdbcType;
         this.typeName = typeName;
+        this.typeExpression = typeExpression;
         this.length = columnLength;
         this.scale = columnScale;
         this.optional = optional;
@@ -52,6 +54,11 @@ final class ColumnImpl implements Column, Comparable<Column> {
     }
 
     @Override
+    public String typeExpression() {
+        return typeExpression;
+    }
+
+    @Override
     public int length() {
         return length;
     }
@@ -75,18 +82,19 @@ final class ColumnImpl implements Column, Comparable<Column> {
     public boolean isGenerated() {
         return generated;
     }
-    
+
     @Override
     public int hashCode() {
         return name.hashCode();
     }
-    
+
     @Override
     public boolean equals(Object obj) {
-        if ( obj == this ) return true;
-        if ( obj instanceof Column ) {
-            Column that = (Column)obj;
+        if (obj == this) return true;
+        if (obj instanceof Column) {
+            Column that = (Column) obj;
             return this.name().equalsIgnoreCase(that.name()) &&
+                    this.typeExpression().equalsIgnoreCase(that.typeExpression()) &&
                     this.typeName().equalsIgnoreCase(that.typeName()) &&
                     this.jdbcType() == that.jdbcType() &&
                     this.position() == that.position() &&
@@ -103,16 +111,16 @@ final class ColumnImpl implements Column, Comparable<Column> {
     public String toString() {
         StringBuilder sb = new StringBuilder(name);
         sb.append(" ").append(typeName);
-        if ( length >= 0 ) {
+        if (length >= 0) {
             sb.append('(').append(length);
-            if ( scale >= 0 ) {
+            if (scale >= 0) {
                 sb.append(',').append(scale);
             }
             sb.append(')');
         }
-        if ( !optional ) sb.append(" NOT NULL");
-        if ( autoIncremented ) sb.append(" AUTO_INCREMENTED");
-        if ( generated ) sb.append(" GENERATED");
+        if (!optional) sb.append(" NOT NULL");
+        if (autoIncremented) sb.append(" AUTO_INCREMENTED");
+        if (generated) sb.append(" GENERATED");
         return sb.toString();
     }
 

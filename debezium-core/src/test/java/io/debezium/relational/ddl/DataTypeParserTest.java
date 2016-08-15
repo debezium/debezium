@@ -43,6 +43,8 @@ public class DataTypeParserTest {
         parser.register(Types.DOUBLE, "DOUBLE PRECISION[(M,D)] [UNSIGNED] [ZEROFILL]");
         parser.register(Types.DOUBLE, "REAL[(M,D)] [UNSIGNED] [ZEROFILL]");
 
+        parser.register(Types.CHAR, "ENUM(...) [CHARSET charset_name] [COLLATE collation_name]");
+
         parser.register(Types.VARCHAR, "VARCHAR");
     }
 
@@ -103,6 +105,11 @@ public class DataTypeParserTest {
         assertType("DECIMAL(10,5)","DECIMAL",Types.DECIMAL, 10, 5);
         assertType("DECIMAL(10,5) ZEROFILL","DECIMAL ZEROFILL",Types.DECIMAL, 10, 5);
         assertType("DECIMAL(10,5) UNSIGNED ZEROFILL","DECIMAL UNSIGNED ZEROFILL",Types.DECIMAL, 10, 5);
+    }
+    
+    @Test
+    public void shouldDetermineTypeWithWildcard() {
+        assertType("ENUM('a','b','c')","ENUM",Types.CHAR);
     }
     
     protected void assertType( String content, String typeName, int jdbcType ) {

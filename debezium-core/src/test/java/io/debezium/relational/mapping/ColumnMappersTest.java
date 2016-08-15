@@ -32,9 +32,9 @@ public class ColumnMappersTest {
 
     @Before
     public void beforeEach() {
-        column = Column.editor().name("firstName").jdbcType(Types.VARCHAR).typeName("VARCHAR").position(1).create();
-        column2 = Column.editor().name("lastName").jdbcType(Types.VARCHAR).typeName("VARCHAR").position(2).create();
-        column3 = Column.editor().name("otherColumn").jdbcType(Types.VARCHAR).typeName("VARCHAR").position(3).create();
+        column = Column.editor().name("firstName").jdbcType(Types.VARCHAR).type("VARCHAR").position(1).create();
+        column2 = Column.editor().name("lastName").jdbcType(Types.VARCHAR).type("VARCHAR").position(2).create();
+        column3 = Column.editor().name("otherColumn").jdbcType(Types.VARCHAR).type("VARCHAR").position(3).create();
         fullyQualifiedNames = tableId + "." + column.name() + ","
                 + tableId + "." + column3.name() + ",";
     }
