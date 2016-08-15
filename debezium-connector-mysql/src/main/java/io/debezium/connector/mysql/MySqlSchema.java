@@ -23,6 +23,7 @@ import com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDat
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.MySqlConnectorConfig.TemporalPrecisionMode;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.TimeZoneAdapter;
 import io.debezium.relational.Table;
@@ -99,14 +100,14 @@ public class MySqlSchema {
         this.ddlChanges = new DdlChanges(this.ddlParser.terminator());
         this.ddlParser.addListener(ddlChanges);
 
-        // Specific to how the MySQL Binary Log client library creates temporal values ...
-        TimeZoneAdapter tzAdapter = TimeZoneAdapter.create()
-                                                   .withLocalZoneForUtilDate()
-                                                   .withLocalZoneForSqlDate()
-                                                   .withLocalZoneForSqlTime()
-                                                   .withUtcZoneForSqlTimestamp()
-                                                   .withUtcTargetZone();
-        this.schemaBuilder = new TableSchemaBuilder(tzAdapter, schemaNameValidator::validate);
+        // Use MySQL-specific converters and schemas for values ...
+        String timePrecisionModeStr = config.getString(MySqlConnectorConfig.TIME_PRECISION_MODE);
+        TemporalPrecisionMode timePrecisionMode = TemporalPrecisionMode.parse(timePrecisionModeStr);
+        boolean adaptiveTimePrecision = TemporalPrecisionMode.ADAPTIVE.equals(timePrecisionMode);
+        MySqlValueConverters valueConverters = new MySqlValueConverters(adaptiveTimePrecision);
+        this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameValidator::validate);
+        
+        // Set up the server name and schema prefix ...
         if (serverName != null) serverName = serverName.trim();
         this.serverName = serverName;
         if (this.serverName == null || serverName.isEmpty()) {

@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.BitSet;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -33,6 +34,7 @@ import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
 import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer;
 import com.github.shyiko.mysql.binlog.event.deserialization.GtidEventDataDeserializer;
+import com.github.shyiko.mysql.binlog.io.ByteArrayInputStream;
 import com.github.shyiko.mysql.binlog.network.AuthenticationException;
 
 import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
@@ -74,9 +76,38 @@ public class BinlogReader extends AbstractReader {
         if (logger.isDebugEnabled()) client.registerEventListener(this::logEvent);
 
         // Set up the event deserializer with additional type(s) ...
-        EventDeserializer eventDeserializer = new EventDeserializer();
+        final Map<Long, TableMapEventData> tableMapEventByTableId = new HashMap<Long, TableMapEventData>();
+        EventDeserializer eventDeserializer = new EventDeserializer() {
+            @Override
+            public Event nextEvent(ByteArrayInputStream inputStream) throws IOException {
+                // Delegate to the superclass ...
+                Event event = super.nextEvent(inputStream);
+                // We have to record the most recent TableMapEventData for each table number for our custom deserializers ...
+                if (event.getHeader().getEventType() == EventType.TABLE_MAP) {
+                    TableMapEventData tableMapEvent = event.getData();
+                    tableMapEventByTableId.put(tableMapEvent.getTableId(), tableMapEvent);
+                }
+                return event;
+            }
+        };
+        // Add our custom deserializers ...
         eventDeserializer.setEventDataDeserializer(EventType.STOP, new StopEventDataDeserializer());
         eventDeserializer.setEventDataDeserializer(EventType.GTID, new GtidEventDataDeserializer());
+        eventDeserializer.setEventDataDeserializer(EventType.WRITE_ROWS,
+                                                   new RowDeserializers.WriteRowsDeserializer(tableMapEventByTableId));
+        eventDeserializer.setEventDataDeserializer(EventType.UPDATE_ROWS,
+                                                   new RowDeserializers.UpdateRowsDeserializer(tableMapEventByTableId));
+        eventDeserializer.setEventDataDeserializer(EventType.DELETE_ROWS,
+                                                   new RowDeserializers.DeleteRowsDeserializer(tableMapEventByTableId));
+        eventDeserializer.setEventDataDeserializer(EventType.EXT_WRITE_ROWS,
+                                                   new RowDeserializers.WriteRowsDeserializer(
+                                                           tableMapEventByTableId).setMayContainExtraInformation(true));
+        eventDeserializer.setEventDataDeserializer(EventType.EXT_UPDATE_ROWS,
+                                                   new RowDeserializers.UpdateRowsDeserializer(
+                                                           tableMapEventByTableId).setMayContainExtraInformation(true));
+        eventDeserializer.setEventDataDeserializer(EventType.EXT_DELETE_ROWS,
+                                                   new RowDeserializers.DeleteRowsDeserializer(
+                                                           tableMapEventByTableId).setMayContainExtraInformation(true));
         client.setEventDeserializer(eventDeserializer);
     }
 

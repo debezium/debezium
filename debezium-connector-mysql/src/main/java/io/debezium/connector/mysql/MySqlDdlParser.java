@@ -75,9 +75,9 @@ public class MySqlDdlParser extends DdlParser {
         dataTypes.register(Types.BOOLEAN, "BOOL");
         dataTypes.register(Types.DATE, "DATE");
         dataTypes.register(Types.TIME, "TIME[(L)]");
-        dataTypes.register(Types.TIMESTAMP, "TIMESTAMP[(L)]");
+        dataTypes.register(Types.TIMESTAMP_WITH_TIMEZONE, "TIMESTAMP[(L)]"); // includes timezone information
         dataTypes.register(Types.TIMESTAMP, "DATETIME[(L)]");
-        dataTypes.register(Types.DATE, "YEAR[(2|4)]");
+        dataTypes.register(Types.INTEGER, "YEAR[(2|4)]");
         dataTypes.register(Types.BLOB, "CHAR[(L)] BINARY [CHARACTER SET charset_name] [COLLATE collation_name]");
         dataTypes.register(Types.BLOB, "VARCHAR(L) BINARY [CHARACTER SET charset_name] [COLLATE collation_name]");
         dataTypes.register(Types.VARCHAR, "CHAR[(L)] [CHARACTER SET charset_name] [COLLATE collation_name]");
