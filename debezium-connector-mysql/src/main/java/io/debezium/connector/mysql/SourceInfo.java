@@ -331,11 +331,11 @@ final class SourceInfo {
     }
 
     /**
-     * Denote that a snapshot is being (or has been) started.
+     * Denote that a snapshot has completed successfully.
      */
     public void completeSnapshot() {
-        this.lastSnapshot = true;
-        this.nextSnapshot = true;
+        this.lastSnapshot = false;
+        this.nextSnapshot = false;
     }
 
     /**
