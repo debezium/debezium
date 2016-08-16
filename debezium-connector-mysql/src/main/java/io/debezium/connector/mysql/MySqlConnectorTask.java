@@ -76,6 +76,7 @@ public final class MySqlConnectorTask extends SourceTask {
             if (offsets != null) {
                 // Set the position in our source info ...
                 source.setOffset(offsets);
+                logger.info("Found existing offset: {}", offsets);
 
                 // Before anything else, recover the database history to the specified binlog coordinates ...
                 taskContext.loadHistory(source);
@@ -90,6 +91,7 @@ public final class MySqlConnectorTask extends SourceTask {
                     }
                     // Otherwise, restart a new snapshot ...
                     startWithSnapshot = true;
+                    logger.info("Prior execution was an incomplete snapshot, so starting new snapshot");
                 } else {
                     // No snapshot was in effect, so we should just start reading from the binlog ...
                     startWithSnapshot = false;
@@ -110,11 +112,13 @@ public final class MySqlConnectorTask extends SourceTask {
                 if (taskContext.isSnapshotNeverAllowed()) {
                     // We're not allowed to take a snapshot, so instead we have to assume that the binlog contains the
                     // full history of the database.
+                    logger.info("Found no existing offset and snapshots disallowed, so starting at beginning of binlog");
                     source.setBinlogStartPoint("", 0L);// start from the beginning of the binlog
                 } else {
                     // We are allowed to use snapshots, and that is the best way to start ...
                     startWithSnapshot = true;
                     // The snapshot will determine if GTIDs are set
+                    logger.info("Found no existing offset, so preparing to perform a snapshot");
                 }
             }
 
@@ -225,7 +229,7 @@ public final class MySqlConnectorTask extends SourceTask {
         // Accumulate the available binlog filenames ...
         List<String> logNames = new ArrayList<>();
         try {
-            logger.info("Stop 0: Get all known binlogs from MySQL");
+            logger.info("Step 0: Get all known binlogs from MySQL");
             taskContext.jdbc().query("SHOW BINARY LOGS", rs -> {
                 while (rs.next()) {
                     logNames.add(rs.getString(1));
