@@ -10,7 +10,7 @@
    <modelVersion>4.0.0</modelVersion>
    <groupId>io.debezium</groupId>
    <artifactId>debezium-checkstyle</artifactId>
-   <version>0.2.4-SNAPSHOT</version>
+   <version>0.2.4</version>
    <name>Debezium Checkstyle Rules</name>
    <description>Contains the definitions for the Debezium commons code style and conventions</description>
 
@@ -67,4 +67,8 @@
             </exclusions>
         </dependency>
     </dependencies>
+
+  <scm>
+    <tag>v0.2.4</tag>
+  </scm>
 </project>
