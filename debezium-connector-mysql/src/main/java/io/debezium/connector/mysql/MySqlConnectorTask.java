@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
+import io.debezium.util.LoggingContext.PreviousContext;
 
 /**
  * A Kafka Connect source task reads the MySQL binary log and generate the corresponding data change events.
@@ -147,23 +148,28 @@ public final class MySqlConnectorTask extends SourceTask {
 
     @Override
     public void stop() {
-        logger.info("Stopping MySQL connector task");
-        // We need to explicitly stop both readers, in this order. If we were to instead call 'currentReader.stop()', there
-        // is a chance without synchronization that we'd miss the transition and stop only the snapshot reader. And stopping both
-        // is far simpler and more efficient than synchronizing ...
-        try {
-            this.snapshotReader.stop();
-        } finally {
+        if (context != null) {
+            PreviousContext prevLoggingContext = this.taskContext.configureLoggingContext("task");
+            // We need to explicitly stop both readers, in this order. If we were to instead call 'currentReader.stop()', there
+            // is a chance without synchronization that we'd miss the transition and stop only the snapshot reader. And stopping
+            // both
+            // is far simpler and more efficient than synchronizing ...
             try {
-                this.binlogReader.stop();
+                logger.info("Stopping MySQL connector task");
+                if (this.snapshotReader != null) this.snapshotReader.stop();
             } finally {
                 try {
-                    // Flush and stop database history, close all JDBC connections ...
-                    taskContext.shutdown();
-                } catch (Throwable e) {
-                    logger.error("Unexpected error shutting down the database history and/or closing JDBC connections", e);
+                    if (this.binlogReader != null) this.binlogReader.stop();
                 } finally {
-                    logger.info("Connector task successfully stopped");
+                    try {
+                        // Flush and stop database history, close all JDBC connections ...
+                        if (this.taskContext != null) taskContext.shutdown();
+                    } catch (Throwable e) {
+                        logger.error("Unexpected error shutting down the database history and/or closing JDBC connections", e);
+                    } finally {
+                        logger.info("Connector task successfully stopped");
+                        prevLoggingContext.restore();
+                    }
                 }
             }
         }
@@ -183,10 +189,10 @@ public final class MySqlConnectorTask extends SourceTask {
      */
     protected boolean isBinlogAvailable() {
         String gtidStr = taskContext.source().gtidSet();
-        if ( gtidStr != null) {
-            if ( gtidStr.trim().isEmpty() ) return true; // start at beginning ...
+        if (gtidStr != null) {
+            if (gtidStr.trim().isEmpty()) return true; // start at beginning ...
             String availableGtidStr = knownGtidSet();
-            if ( availableGtidStr == null || availableGtidStr.trim().isEmpty() ) {
+            if (availableGtidStr == null || availableGtidStr.trim().isEmpty()) {
                 // Last offsets had GTIDs but the server does not use them ...
                 logger.info("Connector used GTIDs previously, but MySQL does not know of any GTIDs or they are not enabled");
                 return false;
@@ -194,13 +200,13 @@ public final class MySqlConnectorTask extends SourceTask {
             // GTIDs are enabled, and we used them previously ...
             GtidSet gtidSet = new GtidSet(gtidStr);
             GtidSet availableGtidSet = new GtidSet(knownGtidSet());
-            if ( gtidSet.isContainedWithin(availableGtidSet)) {
+            if (gtidSet.isContainedWithin(availableGtidSet)) {
                 return true;
             }
-            logger.info("Connector last known GTIDs are {}, but MySQL has {}",gtidSet,availableGtidSet);
+            logger.info("Connector last known GTIDs are {}, but MySQL has {}", gtidSet, availableGtidSet);
             return false;
         }
-        
+
         String binlogFilename = taskContext.source().binlogFilename();
         if (binlogFilename == null) return true; // start at current position
         if (binlogFilename.equals("")) return true; // start at beginning
@@ -220,8 +226,8 @@ public final class MySqlConnectorTask extends SourceTask {
 
         // And compare with the one we're supposed to use ...
         boolean found = logNames.stream().anyMatch(binlogFilename::equals);
-        if ( !found ) {
-            logger.info("Connector requires binlog file '{}', but MySQL only has {}",binlogFilename,String.join(", ",logNames));
+        if (!found) {
+            logger.info("Connector requires binlog file '{}', but MySQL only has {}", binlogFilename, String.join(", ", logNames));
         }
         return found;
     }
