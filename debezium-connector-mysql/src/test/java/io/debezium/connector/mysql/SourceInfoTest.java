@@ -19,6 +19,7 @@ import org.junit.Test;
 import static org.fest.assertions.Assertions.assertThat;
 
 import io.confluent.connect.avro.AvroData;
+import io.debezium.doc.FixFor;
 import io.debezium.document.Document;
 
 public class SourceInfoTest {
@@ -398,6 +399,33 @@ public class SourceInfoTest {
     @Test
     public void shouldOrderPositionWithGtidAsAfterPositionWithoutGtid() {
         assertPositionWithGtids("IdA:1-5").isAfter(positionWithoutGtids("filename.01", 0, 0));
+    }
+
+    @FixFor("DBZ-107")
+    @Test
+    public void shouldRemoveNewlinesFromGtidSet() {
+        String gtidExecuted = "036d85a9-64e5-11e6-9b48-42010af0000c:1-2,\n" +
+                "7145bf69-d1ca-11e5-a588-0242ac110004:1-3149,\n" +
+                "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-39";
+        String gtidCleaned = "036d85a9-64e5-11e6-9b48-42010af0000c:1-2," +
+                "7145bf69-d1ca-11e5-a588-0242ac110004:1-3149," +
+                "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-39";
+        source.setGtidSet(gtidExecuted);
+        assertThat(source.gtidSet()).isEqualTo(gtidCleaned);
+    }
+
+    @FixFor("DBZ-107")
+    @Test
+    public void shouldNotSetBlankGtidSet() {
+        source.setGtidSet("");
+        assertThat(source.gtidSet()).isNull();
+    }
+
+    @FixFor("DBZ-107")
+    @Test
+    public void shouldNotSetNullGtidSet() {
+        source.setGtidSet(null);
+        assertThat(source.gtidSet()).isNull();
     }
 
     protected Document positionWithGtids(String gtids) {
