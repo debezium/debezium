@@ -262,7 +262,7 @@ final class SourceInfo {
      */
     public void setGtidSet(String gtidSet) {
         if (gtidSet != null && !gtidSet.trim().isEmpty()) {
-            this.gtidSet = gtidSet;
+            this.gtidSet = gtidSet.replaceAll("\n", ""); // remove all of the newline chars if they exist
         }
     }
 
