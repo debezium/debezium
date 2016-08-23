@@ -137,7 +137,17 @@ public class DdlParser {
     public final String terminator() {
         return terminator;
     }
-
+    
+    /**
+     * Determine if the next token is a single- or double-quoted string.
+     * 
+     * @return {@code true} if the next token is a {@link DdlTokenizer#SINGLE_QUOTED_STRING single-quoted string} or
+     * {@link DdlTokenizer#DOUBLE_QUOTED_STRING double-quoted string}, or {@code false} otherwise
+     */
+    protected boolean isNextTokenQuotedIdentifier() {
+        return tokens.matchesAnyOf(DdlTokenizer.SINGLE_QUOTED_STRING,DdlTokenizer.DOUBLE_QUOTED_STRING);
+    }
+    
     protected int determineTokenType(int type, String token) {
         if (statementStarts.contains(token)) type |= DdlTokenizer.STATEMENT_KEY;
         if (keywords.contains(token)) type |= DdlTokenizer.KEYWORD;
