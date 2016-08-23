@@ -412,10 +412,14 @@ public class MySqlDdlParser extends DdlParser {
     }
 
     protected void parseCreateDefinition(Marker start, TableEditor table) {
+        // If the first token is a quoted identifier, then we know it is a column name ...
+        boolean quoted = isNextTokenQuotedIdentifier();
+
         // Try to parse the constraints first ...
-        if (tokens.canConsume("CHECK")) {
+        if (!quoted && tokens.canConsume("CHECK")) {
             consumeExpression(start);
-        } else if (tokens.canConsume("CONSTRAINT", TokenStream.ANY_VALUE, "PRIMARY", "KEY") || tokens.canConsume("PRIMARY", "KEY")) {
+        } else if (!quoted && tokens.canConsume("CONSTRAINT", TokenStream.ANY_VALUE, "PRIMARY", "KEY")
+                || tokens.canConsume("PRIMARY", "KEY")) {
             if (tokens.canConsume("USING")) {
                 parseIndexType(start);
             }
@@ -432,7 +436,7 @@ public class MySqlDdlParser extends DdlParser {
                     table.addColumn(c.edit().optional(false).create());
                 }
             });
-        } else if (tokens.canConsume("CONSTRAINT", TokenStream.ANY_VALUE, "UNIQUE") || tokens.canConsume("UNIQUE")) {
+        } else if (!quoted && tokens.canConsume("CONSTRAINT", TokenStream.ANY_VALUE, "UNIQUE") || tokens.canConsume("UNIQUE")) {
             tokens.canConsumeAnyOf("KEY", "INDEX");
             if (!tokens.matches('(')) {
                 if (!tokens.matches("USING")) {
@@ -447,7 +451,8 @@ public class MySqlDdlParser extends DdlParser {
                 table.setPrimaryKeyNames(uniqueKeyColumnNames); // this may eventually get overwritten by a real PK
             }
             parseIndexOptions(start);
-        } else if (tokens.canConsume("CONSTRAINT", TokenStream.ANY_VALUE, "FOREIGN", "KEY") || tokens.canConsume("FOREIGN", "KEY")) {
+        } else if (!quoted && tokens.canConsume("CONSTRAINT", TokenStream.ANY_VALUE, "FOREIGN", "KEY")
+                || tokens.canConsume("FOREIGN", "KEY")) {
             if (!tokens.matches('(')) {
                 tokens.consume(); // name of foreign key
             }
@@ -455,7 +460,7 @@ public class MySqlDdlParser extends DdlParser {
             if (tokens.matches("REFERENCES")) {
                 parseReferenceDefinition(start);
             }
-        } else if (tokens.canConsumeAnyOf("INDEX", "KEY")) {
+        } else if (!quoted && tokens.canConsumeAnyOf("INDEX", "KEY")) {
             if (!tokens.matches('(')) {
                 if (!tokens.matches("USING")) {
                     tokens.consume(); // name of unique index ...
@@ -466,7 +471,7 @@ public class MySqlDdlParser extends DdlParser {
             }
             parseIndexColumnNames(start);
             parseIndexOptions(start);
-        } else if (tokens.canConsume("FULLTEXT", "SPATIAL")) {
+        } else if (!quoted && tokens.canConsume("FULLTEXT", "SPATIAL")) {
             tokens.canConsumeAnyOf("INDEX", "KEY");
             if (!tokens.matches('(')) {
                 tokens.consume(); // name of unique index ...
@@ -474,7 +479,7 @@ public class MySqlDdlParser extends DdlParser {
             parseIndexColumnNames(start);
             parseIndexOptions(start);
         } else {
-            tokens.canConsume("COLUMN"); // optional in ALTER TABLE but never CREATE TABLE
+            tokens.canConsume("COLUMN"); // optional
 
             // Obtain the column editor ...
             String columnName = tokens.consume();
@@ -1151,21 +1156,26 @@ public class MySqlDdlParser extends DdlParser {
 
     protected void parseDefaultClause(Marker start) {
         tokens.consume("DEFAULT");
-        if (tokens.canConsume("CURRENT_TIMESTAMP")) {
-            if (tokens.canConsume('(')) {
-                tokens.consumeInteger();
-                tokens.consume(')');
-            }
-            tokens.canConsume("ON", "UPDATE", "CURRENT_TIMESTAMP");
-            if (tokens.canConsume('(')) {
-                tokens.consumeInteger();
-                tokens.consume(')');
-            }
-        } else if (tokens.canConsume("NULL")) {
-            // do nothing ...
-        } else {
+        if (isNextTokenQuotedIdentifier()) {
+            // We know that it is a quoted literal ...
             parseLiteral(start);
-            // do nothing ...
+        } else {
+            if (tokens.canConsume("CURRENT_TIMESTAMP")) {
+                if (tokens.canConsume('(')) {
+                    tokens.consumeInteger();
+                    tokens.consume(')');
+                }
+                tokens.canConsume("ON", "UPDATE", "CURRENT_TIMESTAMP");
+                if (tokens.canConsume('(')) {
+                    tokens.consumeInteger();
+                    tokens.consume(')');
+                }
+            } else if (tokens.canConsume("NULL")) {
+                // do nothing ...
+            } else {
+                parseLiteral(start);
+                // do nothing ...
+            }
         }
     }
 }
