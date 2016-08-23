@@ -5,6 +5,7 @@
  */
 package io.debezium.jdbc;
 
+import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
@@ -27,7 +28,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -273,6 +273,11 @@ public class JdbcConnection implements AutoCloseable {
     public static interface StatementPreparer {
         void accept(PreparedStatement statement) throws SQLException;
     }
+    
+    @FunctionalInterface
+    public static interface CallPreparer {
+        void accept(CallableStatement statement) throws SQLException;
+    }
 
     /**
      * Execute a SQL query.
@@ -286,7 +291,31 @@ public class JdbcConnection implements AutoCloseable {
     public JdbcConnection query(String query, ResultSetConsumer resultConsumer) throws SQLException {
         return query(query,conn->conn.createStatement(),resultConsumer);
     }
-
+    
+    /**
+     * Execute a stored procedure.
+     * 
+     * @param sql the SQL query; may not be {@code null}
+     * @param callPreparer a {@link CallPreparer} instance which can be used to set additional parameters; may be null
+     * @param resultSetConsumer a {@link ResultSetConsumer} instance which can be used to process the results; may be null
+     * @return this object for chaining methods together
+     * @throws SQLException if anything unexpected fails
+     */
+    public JdbcConnection call(String sql, CallPreparer callPreparer, ResultSetConsumer resultSetConsumer) throws SQLException {
+        Connection conn = connection();
+        try (CallableStatement callableStatement = conn.prepareCall(sql)) {
+            if (callPreparer != null) {
+                callPreparer.accept(callableStatement);
+            }
+            try (ResultSet rs = callableStatement.executeQuery()) {
+                if (resultSetConsumer != null) {
+                    resultSetConsumer.accept(rs);
+                }
+            }
+        }
+        return this;
+    }
+    
     /**
      * Execute a SQL query.
      * 
