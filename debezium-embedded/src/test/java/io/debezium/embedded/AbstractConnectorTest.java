@@ -5,6 +5,8 @@
  */
 package io.debezium.embedded;
 
+import static org.junit.Assert.fail;
+
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -510,6 +512,12 @@ public abstract class AbstractConnectorTest implements Testing {
         assertThat(value.errorMessages().size()).isEqualTo(numErrors);
     }
 
+    protected void assertConfigurationErrors(Config config, io.debezium.config.Field field, int minErrorsInclusive, int maxErrorsInclusive) {
+        ConfigValue value = configValue(config, field.name());
+        assertThat(value.errorMessages().size()).isGreaterThanOrEqualTo(minErrorsInclusive);
+        assertThat(value.errorMessages().size()).isLessThanOrEqualTo(maxErrorsInclusive);
+    }
+
     protected void assertConfigurationErrors(Config config, io.debezium.config.Field field) {
         ConfigValue value = configValue(config, field.name());
         assertThat(value.errorMessages().size()).isGreaterThan(0);
@@ -518,7 +526,11 @@ public abstract class AbstractConnectorTest implements Testing {
     protected void assertNoConfigurationErrors(Config config, io.debezium.config.Field... fields) {
         for (io.debezium.config.Field field : fields) {
             ConfigValue value = configValue(config, field.name());
-            assertThat(value.errorMessages().size()).isEqualTo(0);
+            if ( value != null ) {
+                if ( !value.errorMessages().isEmpty() ) {
+                    fail("Error messages on field '" + field.name() + "': " + value.errorMessages());
+                }
+            }
         }
     }
 

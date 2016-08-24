@@ -25,6 +25,7 @@ import org.junit.Test;
 import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.TemporalPrecisionMode;
 import io.debezium.data.Envelope;
@@ -68,6 +69,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
+                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED.name().toLowerCase())
                               .with(MySqlConnectorConfig.SERVER_ID, 18765)
                               .with(MySqlConnectorConfig.SERVER_NAME, "regression")
                               .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
@@ -76,7 +78,6 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                               .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.toString())
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                              .with("database.useSSL", false) // eliminates MySQL driver warning about SSL connections
                               .build();
         // Start the connector ...
         start(MySqlConnector.class, config);
@@ -188,6 +189,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
+                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED.name().toLowerCase())
                               .with(MySqlConnectorConfig.SERVER_ID, 18765)
                               .with(MySqlConnectorConfig.SERVER_NAME, "regression")
                               .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
@@ -197,7 +199,6 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.toString())
                               .with(MySqlConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.CONNECT.toString())
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                              .with("database.useSSL", false) // eliminates MySQL driver warning about SSL connections
                               .build();
         // Start the connector ...
         start(MySqlConnector.class, config);
@@ -307,6 +308,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
+                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED.name().toLowerCase())
                               .with(MySqlConnectorConfig.SERVER_ID, 18765)
                               .with(MySqlConnectorConfig.SERVER_NAME, "regression")
                               .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
@@ -315,7 +317,6 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                               .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.toString())
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                              .with("database.useSSL", false) // eliminates MySQL driver warning about SSL connections
                               .build();
         // Start the connector ...
         start(MySqlConnector.class, config);

@@ -639,8 +639,26 @@ public final class Field {
      * @return the new field; never null
      */
     public <T extends Enum<T>> Field withEnum(Class<T> enumType) {
+        return withEnum(enumType,null);
+    }
+
+    /**
+     * Create and return a new Field instance that is a copy of this field but has a {@link #withType(Type) type} of
+     * {@link org.apache.kafka.connect.data.Schema.Type#STRING}, a {@link #withRecommender(Recommender) recommender}
+     * that returns a list of {@link Enum#name() Enum names} as valid values, and a validator that verifies values are valid
+     * enumeration names.
+     * 
+     * @param enumType the enumeration type for the field
+     * @param defaultOption the default enumeration value; may be null
+     * @return the new field; never null
+     */
+    public <T extends Enum<T>> Field withEnum(Class<T> enumType, T defaultOption) {
         EnumRecommender<T> recommendator = new EnumRecommender<>(enumType);
-        return withType(Type.STRING).withRecommender(recommendator).withValidation(recommendator);
+        Field result = withType(Type.STRING).withRecommender(recommendator).withValidation(recommendator);
+        if ( defaultOption != null ) {
+            result = result.withDefault(defaultOption.name().toLowerCase());
+        }
+        return result;
     }
 
     /**
