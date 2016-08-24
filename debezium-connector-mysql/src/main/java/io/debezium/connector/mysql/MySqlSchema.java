@@ -11,21 +11,15 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
-import org.apache.kafka.connect.data.Date;
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Time;
-import org.apache.kafka.connect.data.Timestamp;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDataDeserializer;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.TemporalPrecisionMode;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.jdbc.TimeZoneAdapter;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
@@ -77,18 +71,6 @@ public class MySqlSchema {
 
     /**
      * Create a schema component given the supplied {@link MySqlConnectorConfig MySQL connector configuration}.
-     * <p>
-     * This component sets up a {@link TimeZoneAdapter} that is specific to how the MySQL Binary Log client library
-     * works. The {@link AbstractRowsEventDataDeserializer} class has various methods to instantiate the
-     * {@link java.util.Date}, {@link java.sql.Date}, {@link java.sql.Time}, and {@link java.sql.Timestamp} temporal values,
-     * where the values for {@link java.util.Date}, {@link java.sql.Date}, and {@link java.sql.Time} are all in terms of
-     * the <em>local time zone</em> (since it uses {@link java.util.Calendar#getInstance()}), but where the
-     * {@link java.sql.Timestamp} values are created differently using the milliseconds past epoch and therefore in terms of
-     * the <em>UTC time zone</em>.
-     * <p>
-     * And, because Kafka Connect {@link Time}, {@link Date}, and {@link Timestamp} logical
-     * schema types all expect the {@link java.util.Date} to be in terms of the <em>UTC time zone</em>, the
-     * {@link TimeZoneAdapter} also needs to produce {@link java.util.Date} values that will be correct in UTC.
      * 
      * @param config the connector configuration, which is presumed to be valid
      * @param serverName the name of the server
