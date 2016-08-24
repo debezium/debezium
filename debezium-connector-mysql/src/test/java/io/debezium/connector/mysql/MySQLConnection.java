@@ -26,6 +26,7 @@ public class MySQLConnection extends JdbcConnection {
     public static MySQLConnection forTestDatabase(String databaseName) {
         return new MySQLConnection(JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
                                                     .withDatabase(databaseName)
+                                                    .with("useSSL", false)
                                                     .build());
     }
 
@@ -42,6 +43,7 @@ public class MySQLConnection extends JdbcConnection {
                                                     .withDatabase(databaseName)
                                                     .withUser(username)
                                                     .withPassword(password)
+                                                    .with("useSSL", false)
                                                     .build());
     }
 

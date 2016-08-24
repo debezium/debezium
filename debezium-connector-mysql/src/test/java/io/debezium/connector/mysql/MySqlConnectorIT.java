@@ -24,6 +24,7 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field.Recommender;
+import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.data.Envelope;
 import io.debezium.embedded.AbstractConnectorTest;
@@ -106,8 +107,68 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_MODE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_MODE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_KEYSTORE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD);
         assertConfigurationErrors(result, KafkaDatabaseHistory.BOOTSTRAP_SERVERS);
         assertConfigurationErrors(result, KafkaDatabaseHistory.TOPIC);
+        assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS);
+        assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS);
+    }
+
+    @Test
+    public void shouldValidateValidConfigurationWithSSL() {
+        Configuration config = Configuration.create()
+                                            .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
+                                            .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
+                                            .with(MySqlConnectorConfig.USER, "snapper")
+                                            .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
+                                            .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.REQUIRED.name().toLowerCase())
+                                            .with(MySqlConnectorConfig.SSL_KEYSTORE, "/some/path/to/keystore")
+                                            .with(MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD, "keystore1234")
+                                            .with(MySqlConnectorConfig.SSL_TRUSTSTORE, "/some/path/to/truststore")
+                                            .with(MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD, "truststore1234")
+                                            .with(MySqlConnectorConfig.SERVER_ID, 18765)
+                                            .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+                                            .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
+                                            .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
+                                            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                                            .build();
+        MySqlConnector connector = new MySqlConnector();
+        Config result = connector.validate(config.asMap());
+
+        // Can't connect to MySQL using SSL on a container using the 'mysql/mysql-server' image maintained by MySQL team,
+        // but can actually connect to MySQL using SSL on a container using the 'mysql' image maintained by Docker, Inc.
+        assertConfigurationErrors(result, MySqlConnectorConfig.HOSTNAME, 0, 1);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.PORT);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.USER);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.PASSWORD);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SERVER_NAME);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SERVER_ID);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLES_IGNORE_BUILTIN);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_WHITELIST);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_BLACKLIST);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_WHITELIST);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_BLACKLIST);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_BLACKLIST);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.CONNECTION_TIMEOUT_MS);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.KEEP_ALIVE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_QUEUE_SIZE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_BATCH_SIZE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.POLL_INTERVAL_MS);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_HISTORY);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_MODE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_MODE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_KEYSTORE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD);
+        assertNoConfigurationErrors(result, KafkaDatabaseHistory.BOOTSTRAP_SERVERS);
+        assertNoConfigurationErrors(result, KafkaDatabaseHistory.TOPIC);
         assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS);
         assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS);
     }
@@ -119,13 +180,12 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                                             .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
                                             .with(MySqlConnectorConfig.USER, "snapper")
                                             .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
+                                            .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED.name().toLowerCase())
                                             .with(MySqlConnectorConfig.SERVER_ID, 18765)
                                             .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
                                             .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
                                             .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
                                             .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                                            .with("database.useSSL", false) // eliminates MySQL driver warning about SSL
-                                                                            // connections
                                             .build();
         MySqlConnector connector = new MySqlConnector();
         Config result = connector.validate(config.asMap());
@@ -151,6 +211,11 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_MODE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_MODE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_KEYSTORE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD);
         assertNoConfigurationErrors(result, KafkaDatabaseHistory.BOOTSTRAP_SERVERS);
         assertNoConfigurationErrors(result, KafkaDatabaseHistory.TOPIC);
         assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS);
@@ -206,12 +271,12 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                               .with(MySqlConnectorConfig.SERVER_ID, 18765)
                               .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED.name().toLowerCase())
                               .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                               .with(MySqlConnectorConfig.DATABASE_WHITELIST, "connector_test")
                               .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                               .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                              .with("database.useSSL", false) // eliminates MySQL driver warning about SSL connections
                               .build();
         // Start the connector ...
         start(MySqlConnector.class, config);
@@ -430,6 +495,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
+                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED.name().toLowerCase())
                               .with(MySqlConnectorConfig.SERVER_ID, 18780)
                               .with(MySqlConnectorConfig.SERVER_NAME, "myServer1")
                               .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
@@ -438,7 +504,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.name().toLowerCase())
                               .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                              .with("database.useSSL", false) // eliminates MySQL driver warning about SSL connections
                               .build();
 
         // Start the connector ...
@@ -479,6 +544,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
+                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED.name().toLowerCase())
                               .with(MySqlConnectorConfig.SERVER_ID, 18780)
                               .with(MySqlConnectorConfig.SERVER_NAME, "myServer2")
                               .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
@@ -488,7 +554,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.MASK_COLUMN(12), "connector_test_ro.customers.email")
                               .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                              .with("database.useSSL", false) // eliminates MySQL driver warning about SSL connections
                               .build();
 
         // Start the connector ...

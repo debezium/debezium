@@ -17,6 +17,8 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.source.SourceConnector;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConnection;
@@ -32,7 +34,8 @@ import io.debezium.jdbc.JdbcConnection;
  * @author Randall Hauch
  */
 public class MySqlConnector extends SourceConnector {
-
+    
+    private Logger logger = LoggerFactory.getLogger(getClass());
     private Map<String, String> props;
 
     public MySqlConnector() {
@@ -88,10 +91,17 @@ public class MySqlConnector extends SourceConnector {
                 && passwordValue.errorMessages().isEmpty()) {
             // Try to connect to the database ...
             try (MySqlJdbcContext jdbcContext = new MySqlJdbcContext(config)) {
+                jdbcContext.start();
                 JdbcConnection mysql = jdbcContext.jdbc();
-                mysql.execute("SELECT version()");
-            } catch (SQLException e) {
-                hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());
+                try {
+                    mysql.execute("SELECT version()");
+                    logger.info("Successfully tested connection for {} with user '{}'", jdbcContext.connectionString(), mysql.username());
+                } catch (SQLException e) {
+                    logger.info("Failed testing connection for {} with user '{}'", jdbcContext.connectionString(), mysql.username());
+                    hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());
+                } finally {
+                    jdbcContext.shutdown();
+                }
             }
         }
         return new Config(new ArrayList<>(results.values()));
