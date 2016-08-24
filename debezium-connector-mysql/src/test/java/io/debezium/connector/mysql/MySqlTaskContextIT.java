@@ -16,6 +16,7 @@ import org.junit.Test;
 import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.util.Testing;
@@ -69,12 +70,12 @@ public class MySqlTaskContextIT {
                             .with(MySqlConnectorConfig.PORT, port)
                             .with(MySqlConnectorConfig.USER, username)
                             .with(MySqlConnectorConfig.PASSWORD, password)
+                            .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED.name().toLowerCase())
                             .with(MySqlConnectorConfig.SERVER_ID, serverId)
                             .with(MySqlConnectorConfig.SERVER_NAME, serverName)
                             .with(MySqlConnectorConfig.DATABASE_WHITELIST, databaseName)
                             .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                            .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                            .with("database.useSSL",false); // eliminates MySQL driver warning about SSL connections
+                            .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH);
     }
 
     @Test

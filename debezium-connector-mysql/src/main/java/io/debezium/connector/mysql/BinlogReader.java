@@ -36,7 +36,9 @@ import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer;
 import com.github.shyiko.mysql.binlog.event.deserialization.GtidEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.io.ByteArrayInputStream;
 import com.github.shyiko.mysql.binlog.network.AuthenticationException;
+import com.github.shyiko.mysql.binlog.network.SSLMode;
 
+import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.relational.TableId;
@@ -70,6 +72,7 @@ public class BinlogReader extends AbstractReader {
         // Set up the log reader ...
         client = new BinaryLogClient(context.hostname(), context.port(), context.username(), context.password());
         client.setServerId(context.serverId());
+        client.setSSLMode(sslModeFor(context.sslMode()));
         client.setKeepAlive(context.config().getBoolean(MySqlConnectorConfig.KEEP_ALIVE));
         client.registerEventListener(this::handleEvent);
         client.registerLifecycleListener(new ReaderThreadLifecycleListener());
@@ -406,6 +409,22 @@ public class BinlogReader extends AbstractReader {
         } else {
             logger.debug("Skipping delete row event: {}", event);
         }
+    }
+    
+    protected SSLMode sslModeFor( SecureConnectionMode mode ) {
+        switch(mode) {
+            case DISABLED:
+                return SSLMode.DISABLED;
+            case PREFERRED:
+                return SSLMode.PREFERRED;
+            case REQUIRED:
+                return SSLMode.REQUIRED;
+            case VERIFY_CA:
+                return SSLMode.VERIFY_CA;
+            case VERIFY_IDENTITY:
+                return SSLMode.VERIFY_IDENTITY;
+        }
+        return null;
     }
 
     protected final class ReaderThreadLifecycleListener implements LifecycleListener {

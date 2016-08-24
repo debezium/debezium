@@ -135,7 +135,75 @@ public class MySqlConnectorConfig {
         }
     }
 
-    private static final String DATABASE_LIST_NAME = "database.list";
+    /**
+     * The set of predefined SecureConnectionMode options or aliases.
+     */
+    public static enum SecureConnectionMode {
+        /**
+         * Establish an unencrypted connection.
+         */
+        DISABLED("disabled"),
+        
+        /**
+         * Establish a secure (encrypted) connection if the server supports secure connections.
+         * Fall back to an unencrypted connection otherwise.
+         */
+        PREFERRED("preferred"),
+        /**
+         * Establish a secure connection if the server supports secure connections.
+         * The connection attempt fails if a secure connection cannot be established.
+         */
+        REQUIRED("required"),
+        /**
+         * Like REQUIRED, but additionally verify the server TLS certificate against the configured Certificate Authority
+         * (CA) certificates. The connection attempt fails if no valid matching CA certificates are found.
+         */
+        VERIFY_CA("verify_ca"),
+        /**
+         * Like VERIFY_CA, but additionally verify that the server certificate matches the host to which the connection is
+         * attempted.
+         */
+        VERIFY_IDENTITY("verify_identity");
+        
+        private final String value;
+
+        private SecureConnectionMode(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         * 
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static SecureConnectionMode parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+            for (SecureConnectionMode option : SecureConnectionMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         * 
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static SecureConnectionMode parse(String value, String defaultValue) {
+            SecureConnectionMode mode = parse(value);
+            if (mode == null && defaultValue != null) mode = parse(defaultValue);
+            return mode;
+        }
+    }
+
     private static final String DATABASE_WHITELIST_NAME = "database.whitelist";
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
     private static final String TABLE_IGNORE_BUILTIN_NAME = "table.ignore.builtin";
@@ -147,7 +215,6 @@ public class MySqlConnectorConfig {
                                               .withType(Type.STRING)
                                               .withWidth(Width.MEDIUM)
                                               .withImportance(Importance.HIGH)
-                                              .withDependents(DATABASE_LIST_NAME)
                                               .withValidation(Field::isRequired)
                                               .withDescription("Resolvable hostname or IP address of the MySQL database server.");
 
@@ -157,7 +224,6 @@ public class MySqlConnectorConfig {
                                           .withWidth(Width.SHORT)
                                           .withDefault(3306)
                                           .withImportance(Importance.HIGH)
-                                          .withDependents(DATABASE_LIST_NAME)
                                           .withValidation(Field::isInteger)
                                           .withDescription("Port of the MySQL database server.");
 
@@ -166,7 +232,6 @@ public class MySqlConnectorConfig {
                                           .withType(Type.STRING)
                                           .withWidth(Width.SHORT)
                                           .withImportance(Importance.HIGH)
-                                          .withDependents(DATABASE_LIST_NAME)
                                           .withValidation(Field::isRequired)
                                           .withDescription("Name of the MySQL database user to be used when connecting to the database.");
 
@@ -175,7 +240,6 @@ public class MySqlConnectorConfig {
                                               .withType(Type.PASSWORD)
                                               .withWidth(Width.SHORT)
                                               .withImportance(Importance.HIGH)
-                                              .withDependents(DATABASE_LIST_NAME)
                                               .withValidation(Field::isRequired)
                                               .withDescription("Password of the MySQL database user to be used when connecting to the database.");
 
@@ -201,6 +265,49 @@ public class MySqlConnectorConfig {
                                                        + "currently-running database processes in the cluster. This connector joins the "
                                                        + "MySQL database cluster as another server (with this unique ID) so it can read "
                                                        + "the binlog. By default, a random number is generated between 5400 and 6400.");
+
+    public static final Field SSL_MODE = Field.create("database.ssl.mode")
+                                              .withDisplayName("SSL mode")
+                                              .withEnum(SecureConnectionMode.class, SecureConnectionMode.DISABLED)
+                                              .withWidth(Width.MEDIUM)
+                                              .withImportance(Importance.MEDIUM)
+                                              .withDescription("Whether to use an encrypted connection to MySQL. Options include"
+                                                      + "'disabled' (the default) to use an unencrypted connection; "
+                                                      + "'preferred' to establish a secure (encrypted) connection if the server supports secure connections, "
+                                                      + "but fall back to an unencrypted connection otherwise; "
+                                                      + "'required' to use a secure (encrypted) connection, and fail if one cannot be established; "
+                                                      + "'verify_ca' like 'required' but additionally verify the server TLS certificate against the configured Certificate Authority "
+                                                      + "(CA) certificates, or fail if no valid matching CA certificates are found; or"
+                                                      + "'verify_identity' like 'verify_ca' but additionally verify that the server certificate matches the host to which the connection is attempted.");
+
+    public static final Field SSL_KEYSTORE = Field.create("database.ssl.keystore")
+                                                  .withDisplayName("SSL Keystore")
+                                                  .withType(Type.STRING)
+                                                  .withWidth(Width.LONG)
+                                                  .withImportance(Importance.MEDIUM)
+                                                  .withDescription("Location of the Java keystore file containing an application process's own certificate and private key.");
+
+    public static final Field SSL_KEYSTORE_PASSWORD = Field.create("database.ssl.keystore.password")
+                                                           .withDisplayName("SSL Keystore Password")
+                                                           .withType(Type.PASSWORD)
+                                                           .withWidth(Width.MEDIUM)
+                                                           .withImportance(Importance.MEDIUM)
+                                                           .withDescription("Password to access the private key from the keystore file specified by 'ssl.keystore' configuration property or the 'javax.net.ssl.keyStore' system or JVM property. "
+                                                                   + "This password is used to unlock the keystore file (store password), and to decrypt the private key stored in the keystore (key password).");
+
+    public static final Field SSL_TRUSTSTORE = Field.create("database.ssl.truststore")
+                                                    .withDisplayName("SSL Truststore")
+                                                    .withType(Type.STRING)
+                                                    .withWidth(Width.LONG)
+                                                    .withImportance(Importance.MEDIUM)
+                                                    .withDescription("Location of the Java truststore file containing the collection of CA certificates trusted by this application process (trust store).");
+
+    public static final Field SSL_TRUSTSTORE_PASSWORD = Field.create("database.ssl.truststore.password")
+                                                             .withDisplayName("SSL Truststore Password")
+                                                             .withType(Type.PASSWORD)
+                                                             .withWidth(Width.MEDIUM)
+                                                             .withImportance(Importance.MEDIUM)
+                                                             .withDescription("Password to unlock the keystore file (store password) specified by 'ssl.trustore' configuration property or the 'javax.net.ssl.trustStore' system or JVM property.");
 
     public static final Field TABLES_IGNORE_BUILTIN = Field.create(TABLE_IGNORE_BUILTIN_NAME)
                                                            .withDisplayName("Ignore system databases")
@@ -361,7 +468,7 @@ public class MySqlConnectorConfig {
 
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
                                                    .withDisplayName("Snapshot mode")
-                                                   .withEnum(SnapshotMode.class)
+                                                   .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
                                                    .withWidth(Width.SHORT)
                                                    .withImportance(Importance.LOW)
                                                    .withDescription("The criteria for running a snapshot upon startup of the connector. "
@@ -369,8 +476,7 @@ public class MySqlConnectorConfig {
                                                            + "'when_needed' to specify that the connector run a snapshot upon startup whenever it deems it necessary; "
                                                            + "'initial' (the default) to specify the connector can run a snapshot only when no offsets are available for the logical server name; and "
                                                            + "'never' to specify the connector should never run a snapshot and that upon first startup the connector should read from the beginning of the binlog. "
-                                                           + "The 'never' mode should be used with care, and only when the binlog is known to contain all history.")
-                                                   .withDefault(SnapshotMode.INITIAL.getValue());
+                                                           + "The 'never' mode should be used with care, and only when the binlog is known to contain all history.");
 
     public static final Field SNAPSHOT_MINIMAL_LOCKING = Field.create("snapshot.minimal.locks")
                                                               .withDisplayName("Use shortest database locking for snapshots")
@@ -387,14 +493,13 @@ public class MySqlConnectorConfig {
 
     public static final Field TIME_PRECISION_MODE = Field.create("time.precision.mode")
                                                          .withDisplayName("Time Precision")
-                                                         .withEnum(TemporalPrecisionMode.class)
+                                                         .withEnum(TemporalPrecisionMode.class, TemporalPrecisionMode.ADAPTIVE)
                                                          .withWidth(Width.SHORT)
                                                          .withImportance(Importance.MEDIUM)
                                                          .withDescription("Time, date, and timestamps can be represented with different kinds of precisions, including:"
                                                                  + "'adaptive' (the default) bases the precision of time, date, and timestamp values on the database column's precision; "
                                                                  + "'connect' always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
-                                                                 + "which uses millisecond precision regardless of the database columns' precision .")
-                                                         .withDefault(TemporalPrecisionMode.ADAPTIVE.getValue());
+                                                                 + "which uses millisecond precision regardless of the database columns' precision .");
 
     /**
      * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
@@ -438,7 +543,9 @@ public class MySqlConnectorConfig {
                                                      TABLE_WHITELIST, TABLE_BLACKLIST, TABLES_IGNORE_BUILTIN,
                                                      DATABASE_WHITELIST, DATABASE_BLACKLIST,
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING,
-                                                     TIME_PRECISION_MODE);
+                                                     TIME_PRECISION_MODE,
+                                                     SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD,
+                                                     SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD);
 
     /**
      * The set of {@link Field}s that are included in the {@link #configDef() configuration definition}. This includes
@@ -453,10 +560,11 @@ public class MySqlConnectorConfig {
 
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
-        Field.group(config, "MySQL", HOSTNAME, PORT, USER, PASSWORD, SERVER_NAME, SERVER_ID);
-        Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS, KafkaDatabaseHistory.TOPIC,
-                    KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS, KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS,
-                    DATABASE_HISTORY);
+        Field.group(config, "MySQL", HOSTNAME, PORT, USER, PASSWORD, SERVER_NAME, SERVER_ID,
+                    SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD, SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD);
+        Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
+                    KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
+                    KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, DATABASE_HISTORY);
         Field.group(config, "Events", INCLUDE_SCHEMA_CHANGES, TABLES_IGNORE_BUILTIN, DATABASE_WHITELIST, TABLE_WHITELIST,
                     COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
