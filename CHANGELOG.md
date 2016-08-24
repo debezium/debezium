@@ -2,6 +2,26 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 0.3.1
+
+August XX, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12331359)
+
+### New features
+
+* Added support for secure (encrypted) connections to MySQL. [DBZ-99](https://issues.jboss.org/projects/DBZ/issues/DBZ-99)
+
+### Backwards-incompatible changes since 0.3.0
+
+None
+
+### Fixes since 0.3.0
+
+This release includes all of the fixes from the link:release-0-2-4[0.2.4] release, and also includes the following fixes:
+
+* Corrected how the MySQL connector parses some DDL statements. [DBZ-106](https://issues.jboss.org/projects/DBZ/issues/DBZ-106)
+* Corrected a potential error in the MySQL connector when performing a snapshot on a MySQL server using GTIDs where the GTID set string includes new line characters. [DBZ-107](https://issues.jboss.org/projects/DBZ/issues/DBZ-107)
+
+
 ## 0.3.0
 
 August 16, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12329661)
