@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -17,6 +18,8 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.github.shyiko.mysql.binlog.network.ServerException;
 
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
@@ -105,7 +108,7 @@ public abstract class AbstractReader {
      * @param error the error that resulted in the failure; should not be {@code null}
      */
     protected void failed(Throwable error) {
-        this.failure.set(new ConnectException(error));
+        this.failure.set(wrap(error));
     }
 
     /**
@@ -114,8 +117,28 @@ public abstract class AbstractReader {
      * @param msg the error message; may not be null
      */
     protected void failed(Throwable error, String msg) {
-        this.logger.error("Failed due to error: {}", msg, error);
-        this.failure.set(new ConnectException(msg,error));
+        ConnectException wrapped = wrap(error);
+        this.logger.error("Failed due to error: {}", msg, wrapped);
+        this.failure.set(wrapped);
+    }
+
+    /**
+     * Wraps the specified exception in a {@link ConnectException}, ensuring that all useful state is captured inside
+     * the new exception's message.
+     * @param error the exception; may not be null
+     * @return the wrapped Kafka Connect exception
+     */
+    protected ConnectException wrap(Throwable error) {
+        assert error != null;
+        String msg = error.getMessage();
+        if (error instanceof ServerException) {
+            ServerException e = (ServerException) error;
+            msg = msg + " Error code: " + e.getErrorCode() + "; SQLSTATE: " + e.getSqlState() + ".";
+        } else if (error instanceof SQLException) {
+            SQLException e = (SQLException) error;
+            msg = e.getMessage() + " Error code: " + e.getErrorCode() + "; SQLSTATE: " + e.getSQLState() + ".";
+        }
+        return new ConnectException(msg, error);
     }
 
     /**
