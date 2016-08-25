@@ -34,6 +34,7 @@ public interface DdlParserListener {
         CREATE_TABLE, ALTER_TABLE, DROP_TABLE,
         CREATE_INDEX, DROP_INDEX,
         CREATE_DATABASE, ALTER_DATABASE, DROP_DATABASE,
+        SET_VARIABLE,
     }
 
     /**
@@ -283,4 +284,40 @@ public interface DdlParserListener {
         }
     }
 
+    /**
+     * An event describing the setting of a variable.
+     */
+    @Immutable
+    public static class SetVariableEvent extends Event {
+        
+        private final String variableName;
+        private final String value;
+
+        public SetVariableEvent(String variableName, String value, String ddlStatement) {
+            super(EventType.SET_VARIABLE, ddlStatement);
+            this.variableName = variableName;
+            this.value = value;
+        }
+
+        /**
+         * Get the name of the variable that was set.
+         * @return the variable name; never null
+         */
+        public String variableName() {
+            return variableName;
+        }
+        
+        /**
+         * Get the value of the variable that was set.
+         * @return the variable value; may be null
+         */
+        public String variableValue() {
+            return value;
+        }
+        
+        @Override
+        public String toString() {
+            return statement();
+        }
+    }
 }

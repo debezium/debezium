@@ -128,6 +128,8 @@ public class DdlChanges implements DdlParserListener {
             case DROP_DATABASE:
                 DatabaseEvent dbEvent = (DatabaseEvent) event;
                 return dbEvent.databaseName();
+            case SET_VARIABLE:
+                return "";
         }
         assert false : "Should never happen";
         return null;

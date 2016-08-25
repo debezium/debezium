@@ -18,6 +18,7 @@ final class TableEditorImpl implements TableEditor {
     private LinkedHashMap<String, Column> sortedColumns = new LinkedHashMap<>();
     private final List<String> pkColumnNames = new ArrayList<>();
     private boolean uniqueValues = false;
+    private String defaultCharsetName;
 
     protected TableEditorImpl() {
     }
@@ -142,6 +143,17 @@ final class TableEditorImpl implements TableEditor {
     public boolean hasUniqueValues() {
         return uniqueValues;
     }
+    
+    @Override
+    public TableEditor setDefaultCharsetName(String charsetName) {
+        this.defaultCharsetName = charsetName;
+        return this;
+    }
+    
+    @Override
+    public boolean hasDefaultCharsetName() {
+        return this.defaultCharsetName != null && !this.defaultCharsetName.trim().isEmpty();
+    }
 
     @Override
     public TableEditor removeColumn(String columnName) {
@@ -231,6 +243,11 @@ final class TableEditorImpl implements TableEditor {
     @Override
     public Table create() {
         if (id == null) throw new IllegalStateException("Unable to create a table from an editor that has no table ID");
-        return new TableImpl(id, new ArrayList<>(sortedColumns.values()), primaryKeyColumnNames());
+        List<Column> columns = new ArrayList<>();
+        sortedColumns.values().forEach(column->{
+            column = column.edit().charsetNameOfTable(defaultCharsetName).create();
+            columns.add(column);
+        });
+        return new TableImpl(id, columns, primaryKeyColumnNames(), defaultCharsetName);
     }
 }

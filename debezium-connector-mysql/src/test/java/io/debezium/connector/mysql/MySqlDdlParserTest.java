@@ -21,7 +21,6 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
-import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.ddl.DdlParserListener.Event;
 import io.debezium.relational.ddl.SimpleDdlParserListener;
 import io.debezium.util.IoUtil;
@@ -29,7 +28,7 @@ import io.debezium.util.Testing;
 
 public class MySqlDdlParserTest {
 
-    private DdlParser parser;
+    private MySqlDdlParser parser;
     private Tables tables;
     private SimpleDdlParserListener listener;
 
@@ -212,7 +211,7 @@ public class MySqlDdlParserTest {
         assertThat(t).isNotNull();
         assertThat(t.columnNames()).containsExactly("col1");
         assertThat(t.primaryKeyColumnNames()).isEmpty();
-        assertColumn(t, "col1", "VARCHAR CHARACTER SET greek", Types.VARCHAR, 25, -1, true, false, false);
+        assertColumn(t, "col1", "VARCHAR", Types.VARCHAR, 25, -1, true, false, false);
     }
 
     @Test
@@ -224,7 +223,7 @@ public class MySqlDdlParserTest {
         assertThat(t).isNotNull();
         assertThat(t.columnNames()).containsExactly("col1");
         assertThat(t.primaryKeyColumnNames()).isEmpty();
-        assertColumn(t, "col1", "VARCHAR", Types.VARCHAR, 25, -1, true, false, false);
+        assertColumn(t, "col1", "VARCHAR", Types.VARCHAR, 25, null, true);
 
         ddl = "ALTER TABLE t MODIFY col1 VARCHAR(50) CHARACTER SET greek;";
         parser.parse(ddl, tables);
@@ -232,7 +231,7 @@ public class MySqlDdlParserTest {
         assertThat(t2).isNotNull();
         assertThat(t2.columnNames()).containsExactly("col1");
         assertThat(t2.primaryKeyColumnNames()).isEmpty();
-        assertColumn(t2, "col1", "VARCHAR CHARACTER SET greek", Types.VARCHAR, 50, -1, true, false, false);
+        assertColumn(t2, "col1", "VARCHAR", Types.VARCHAR, 50, "greek", true);
 
         ddl = "ALTER TABLE t MODIFY col1 VARCHAR(75) CHARSET utf8;";
         parser.parse(ddl, tables);
@@ -240,7 +239,176 @@ public class MySqlDdlParserTest {
         assertThat(t3).isNotNull();
         assertThat(t3.columnNames()).containsExactly("col1");
         assertThat(t3.primaryKeyColumnNames()).isEmpty();
-        assertColumn(t3, "col1", "VARCHAR CHARSET utf8", Types.VARCHAR, 75, -1, true, false, false);
+        assertColumn(t3, "col1", "VARCHAR", Types.VARCHAR, 75, "utf8", true);
+    }
+
+    @Test
+    public void shouldParseCreateDatabaseAndTableThatUsesDefaultCharacterSets() {
+        String ddl = "SET character_set_server=utf8;" + System.lineSeparator()
+                + "CREATE DATABASE db1 CHARACTER SET utf8mb4;" + System.lineSeparator()
+                + "USE db1;" + System.lineSeparator()
+                + "CREATE TABLE t1 (" + System.lineSeparator()
+                + " id int(11) not null auto_increment," + System.lineSeparator()
+                + " c1 varchar(255) default null," + System.lineSeparator()
+                + " c2 varchar(255) charset default not null," + System.lineSeparator()
+                + " c3 varchar(255) charset latin2 not null," + System.lineSeparator()
+                + " primary key ('id')" + System.lineSeparator()
+                + ") engine=InnoDB auto_increment=1006 default charset=latin1;" + System.lineSeparator();
+        parser.parse(ddl, tables);
+        assertVariable("character_set_server", "utf8");
+        assertVariable("character_set_database", "utf8mb4"); // changes when we use a different database
+        assertThat(tables.size()).isEqualTo(1);
+        Table t = tables.forTable(new TableId("db1", null, "t1"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("id", "c1", "c2", "c3");
+        assertThat(t.primaryKeyColumnNames()).containsExactly("id");
+        assertColumn(t, "id", "INT", Types.INTEGER, 11, -1, false, true, true);
+        assertColumn(t, "c1", "VARCHAR", Types.VARCHAR, 255, "latin1", true);
+        assertColumn(t, "c2", "VARCHAR", Types.VARCHAR, 255, "latin1", false);
+        assertColumn(t, "c3", "VARCHAR", Types.VARCHAR, 255, "latin2", false);
+
+        // Create a similar table but without a default charset for the table ...
+        ddl = "CREATE TABLE t2 (" + System.lineSeparator()
+                + " id int(11) not null auto_increment," + System.lineSeparator()
+                + " c1 varchar(255) default null," + System.lineSeparator()
+                + " c2 varchar(255) charset default not null," + System.lineSeparator()
+                + " c3 varchar(255) charset latin2 not null," + System.lineSeparator()
+                + " primary key ('id')" + System.lineSeparator()
+                + ") engine=InnoDB auto_increment=1006;" + System.lineSeparator();
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(2);
+        Table t2 = tables.forTable(new TableId("db1", null, "t2"));
+        assertThat(t2).isNotNull();
+        assertThat(t2.columnNames()).containsExactly("id", "c1", "c2", "c3");
+        assertThat(t2.primaryKeyColumnNames()).containsExactly("id");
+        assertColumn(t2, "id", "INT", Types.INTEGER, 11, -1, false, true, true);
+        assertColumn(t2, "c1", "VARCHAR", Types.VARCHAR, 255, "utf8mb4", true);
+        assertColumn(t2, "c2", "VARCHAR", Types.VARCHAR, 255, "utf8mb4", false);
+        assertColumn(t2, "c3", "VARCHAR", Types.VARCHAR, 255, "latin2", false);
+    }
+
+    @Test
+    public void shouldParseCreateDatabaseAndUseDatabaseStatementsAndHaveCharacterEncodingVariablesUpdated() {
+        parser.parse("SET character_set_server=utf8;", tables);
+        assertVariable("character_set_server", "utf8");
+        assertVariable("character_set_database", null);
+
+        parser.parse("CREATE DATABASE db1 CHARACTER SET utf8mb4;", tables);
+        assertVariable("character_set_server", "utf8");
+        assertVariable("character_set_database", null); // changes when we USE a different database
+
+        parser.parse("USE db1;", tables);// changes the "character_set_database" system variable ...
+        assertVariable("character_set_server", "utf8");
+        assertVariable("character_set_database", "utf8mb4");
+
+        parser.parse("CREATE DATABASE db2 CHARACTER SET latin1;", tables);
+        assertVariable("character_set_server", "utf8");
+        assertVariable("character_set_database", "utf8mb4");
+
+        parser.parse("USE db2;", tables);// changes the "character_set_database" system variable ...
+        assertVariable("character_set_server", "utf8");
+        assertVariable("character_set_database", "latin1");
+
+        parser.parse("USE db1;", tables);// changes the "character_set_database" system variable ...
+        assertVariable("character_set_server", "utf8");
+        assertVariable("character_set_database", "utf8mb4");
+    }
+
+    @Test
+    public void shouldParseSetCharacterSetStatement() {
+        parser.parse("SET character_set_server=utf8;", tables);
+        assertVariable("character_set_server", "utf8");
+        assertVariable("character_set_connection", null);
+        assertVariable("character_set_database", null);
+
+        parser.parse("SET CHARACTER SET utf8mb4;", tables);
+        assertVariable("character_set_server", "utf8");
+        assertVariable("character_set_client", "utf8mb4");
+        assertVariable("character_set_results", "utf8mb4");
+        assertVariable("character_set_connection", null);
+        assertVariable("character_set_database", null);
+
+        // Set the character set to the default for the current database, or since there is none then that of the server ...
+        parser.parse("SET CHARACTER SET default;", tables);
+        assertVariable("character_set_server", "utf8");
+        assertVariable("character_set_client", "utf8");
+        assertVariable("character_set_results", "utf8");
+        assertVariable("character_set_connection", null);
+        assertVariable("character_set_database", null);
+
+        parser.parse("SET CHARSET utf16;", tables);
+        assertVariable("character_set_server", "utf8");
+        assertVariable("character_set_client", "utf16");
+        assertVariable("character_set_results", "utf16");
+        assertVariable("character_set_connection", null);
+        assertVariable("character_set_database", null);
+
+        parser.parse("SET CHARSET default;", tables);
+        assertVariable("character_set_server", "utf8");
+        assertVariable("character_set_client", "utf8");
+        assertVariable("character_set_results", "utf8");
+        assertVariable("character_set_connection", null);
+        assertVariable("character_set_database", null);
+
+        parser.parse("CREATE DATABASE db1 CHARACTER SET cs1;", tables);
+        assertVariable("character_set_server", "utf8");
+        assertVariable("character_set_database", null); // changes when we USE a different database
+
+        parser.parse("USE db1;", tables);// changes the "character_set_database" system variable ...
+        assertVariable("character_set_server", "utf8");
+        assertVariable("character_set_database", "cs1");
+
+        parser.parse("SET CHARSET default;", tables);
+        assertVariable("character_set_server", "utf8");
+        assertVariable("character_set_client", "cs1");
+        assertVariable("character_set_results", "cs1");
+        assertVariable("character_set_connection", null);
+        assertVariable("character_set_database", "cs1");
+    }
+
+    @Test
+    public void shouldParseSetNamesStatement() {
+        parser.parse("SET character_set_server=utf8;", tables);
+        assertVariable("character_set_server", "utf8");
+        assertVariable("character_set_connection", null);
+        assertVariable("character_set_database", null);
+
+        parser.parse("SET NAMES utf8mb4 COLLATE junk;", tables);
+        assertVariable("character_set_server", "utf8");
+        assertVariable("character_set_client", "utf8mb4");
+        assertVariable("character_set_results", "utf8mb4");
+        assertVariable("character_set_connection", "utf8mb4");
+        assertVariable("character_set_database", null);
+
+        // Set the character set to the default for the current database, or since there is none then that of the server ...
+        parser.parse("SET NAMES default;", tables);
+        assertVariable("character_set_server", "utf8");
+        assertVariable("character_set_client", "utf8");
+        assertVariable("character_set_results", "utf8");
+        assertVariable("character_set_connection", "utf8");
+        assertVariable("character_set_database", null);
+
+        parser.parse("SET NAMES utf16;", tables);
+        assertVariable("character_set_server", "utf8");
+        assertVariable("character_set_client", "utf16");
+        assertVariable("character_set_results", "utf16");
+        assertVariable("character_set_connection", "utf16");
+        assertVariable("character_set_database", null);
+
+        parser.parse("CREATE DATABASE db1 CHARACTER SET cs1;", tables);
+        assertVariable("character_set_server", "utf8");
+        assertVariable("character_set_database", null); // changes when we USE a different database
+
+        parser.parse("USE db1;", tables);// changes the "character_set_database" system variable ...
+        assertVariable("character_set_server", "utf8");
+        assertVariable("character_set_database", "cs1");
+
+        parser.parse("SET NAMES default;", tables);
+        assertVariable("character_set_server", "utf8");
+        assertVariable("character_set_client", "cs1");
+        assertVariable("character_set_results", "cs1");
+        assertVariable("character_set_connection", "cs1");
+        assertVariable("character_set_database", "cs1");
     }
 
     @Test
@@ -259,7 +427,7 @@ public class MySqlDdlParserTest {
         parser.parse(ddl, tables);
         Table t2 = tables.forTable(new TableId(null, null, "t"));
         assertThat(t2).isNotNull();
-        assertThat(t2.columnNames()).containsExactly("col1","col2");
+        assertThat(t2.columnNames()).containsExactly("col1", "col2");
         assertThat(t2.primaryKeyColumnNames()).isEmpty();
         assertColumn(t2, "col1", "VARCHAR", Types.VARCHAR, 25, -1, true, false, false);
         assertColumn(t2, "col2", "VARCHAR", Types.VARCHAR, 50, -1, false, false, false);
@@ -270,7 +438,7 @@ public class MySqlDdlParserTest {
         parser.parse(ddl, tables);
         Table t3 = tables.forTable(new TableId(null, null, "t"));
         assertThat(t3).isNotNull();
-        assertThat(t3.columnNames()).containsExactly("col1","col3", "col2");
+        assertThat(t3.columnNames()).containsExactly("col1", "col3", "col2");
         assertThat(t3.primaryKeyColumnNames()).isEmpty();
         assertColumn(t3, "col1", "VARCHAR", Types.VARCHAR, 25, -1, true, false, false);
         assertColumn(t3, "col3", "FLOAT", Types.FLOAT, -1, -1, false, false, false);
@@ -304,15 +472,96 @@ public class MySqlDdlParserTest {
     }
 
     @Test
+    public void shouldParseSetOfOneVariableStatementWithoutTerminator() {
+        String ddl = "set character_set_client=utf8";
+        parser.parse(ddl, tables);
+        assertVariable("character_set_client", "utf8");
+    }
+
+    @Test
+    public void shouldParseSetOfOneVariableStatementWithTerminator() {
+        String ddl = "set character_set_client = utf8;";
+        parser.parse(ddl, tables);
+        assertVariable("character_set_client", "utf8");
+    }
+
+    @Test
+    public void shouldParseSetOfSameVariableWithDifferentScope() {
+        String ddl = "SET GLOBAL sort_buffer_size=1000000, SESSION sort_buffer_size=1000000";
+        parser.parse(ddl, tables);
+        assertGlobalVariable("sort_buffer_size", "1000000");
+        assertSessionVariable("sort_buffer_size", "1000000");
+    }
+
+    @Test
+    public void shouldParseSetOfMultipleVariablesWithInferredScope() {
+        String ddl = "SET GLOBAL v1=1, v2=2";
+        parser.parse(ddl, tables);
+        assertGlobalVariable("v1", "1");
+        assertGlobalVariable("v2", "2");
+        assertSessionVariable("v2", null);
+    }
+
+    @Test
+    public void shouldParseSetOfGlobalVariable() {
+        String ddl = "SET GLOBAL v1=1; SET @@global.v2=2";
+        parser.parse(ddl, tables);
+        assertGlobalVariable("v1", "1");
+        assertGlobalVariable("v2", "2");
+        assertSessionVariable("v1", null);
+        assertSessionVariable("v2", null);
+    }
+
+    @Test
+    public void shouldParseSetOfLocalVariable() {
+        String ddl = "SET LOCAL v1=1; SET @@local.v2=2";
+        parser.parse(ddl, tables);
+        assertLocalVariable("v1", "1");
+        assertLocalVariable("v2", "2");
+        assertSessionVariable("v1", "1");
+        assertSessionVariable("v2", "2");
+        assertGlobalVariable("v1", null);
+        assertGlobalVariable("v2", null);
+    }
+
+    @Test
+    public void shouldParseSetOfSessionVariable() {
+        String ddl = "SET SESSION v1=1; SET @@session.v2=2";
+        parser.parse(ddl, tables);
+        assertLocalVariable("v1", "1");
+        assertLocalVariable("v2", "2");
+        assertSessionVariable("v1", "1");
+        assertSessionVariable("v2", "2");
+        assertGlobalVariable("v1", null);
+        assertGlobalVariable("v2", null);
+    }
+
+    @Test
+    public void shouldParseButNotSetUserVariableWithHyphenDelimiter() {
+        String ddl = "SET @a-b-c-d:=1";
+        parser.parse(ddl, tables);
+        assertLocalVariable("a-b-c-d", null);
+        assertSessionVariable("a-b-c-d", null);
+        assertGlobalVariable("a-b-c-d", null);
+    }
+
+    @Test
+    public void shouldParseVariableWithHyphenDelimiter() {
+        String ddl = "SET a-b-c-d=1";
+        parser.parse(ddl, tables);
+        assertSessionVariable("a-b-c-d", "1");
+    }
+
+    @Test
     public void shouldParseStatementsWithQuotedIdentifiers() {
         parser.parse(readFile("ddl/mysql-quoted.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(4);
         assertThat(listener.total()).isEqualTo(10);
-        assertThat(tables.forTable("connector_test_ro",null,"products")).isNotNull();
-        assertThat(tables.forTable("connector_test_ro",null,"products_on_hand")).isNotNull();
-        assertThat(tables.forTable("connector_test_ro",null,"customers")).isNotNull();
-        assertThat(tables.forTable("connector_test_ro",null,"orders")).isNotNull();
+        assertThat(tables.forTable("connector_test_ro", null, "products")).isNotNull();
+        assertThat(tables.forTable("connector_test_ro", null, "products_on_hand")).isNotNull();
+        assertThat(tables.forTable("connector_test_ro", null, "customers")).isNotNull();
+        assertThat(tables.forTable("connector_test_ro", null, "orders")).isNotNull();
     }
 
     @Test
@@ -345,7 +594,7 @@ public class MySqlDdlParserTest {
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(6);
         assertThat(listener.total()).isEqualTo(62);
-        // listener.forEach(this::printEvent);
+        listener.forEach(this::printEvent);
     }
 
     @Test
@@ -378,32 +627,62 @@ public class MySqlDdlParserTest {
         assertThat(listener.total()).isEqualTo(16);
         listener.forEach(this::printEvent);
     }
-    
+
     @Test
     public void shouldParseEnumOptions() {
-        assertParseEnumAndSetOptions("ENUM('a','b','c')","abc");
-        assertParseEnumAndSetOptions("ENUM('a')","a");
-        assertParseEnumAndSetOptions("ENUM()","");
-        assertParseEnumAndSetOptions("ENUM ('a','b','c') CHARACTER SET","abc");
-        assertParseEnumAndSetOptions("ENUM ('a') CHARACTER SET","a");
-        assertParseEnumAndSetOptions("ENUM () CHARACTER SET","");
-    }
-    
-    @Test
-    public void shouldParseSetOptions() {
-        assertParseEnumAndSetOptions("SET('a','b','c')","abc");
-        assertParseEnumAndSetOptions("SET('a')","a");
-        assertParseEnumAndSetOptions("SET()","");
-        assertParseEnumAndSetOptions("SET ('a','b','c') CHARACTER SET","abc");
-        assertParseEnumAndSetOptions("SET ('a') CHARACTER SET","a");
-        assertParseEnumAndSetOptions("SET () CHARACTER SET","");
+        assertParseEnumAndSetOptions("ENUM('a','b','c')", "abc");
+        assertParseEnumAndSetOptions("ENUM('a')", "a");
+        assertParseEnumAndSetOptions("ENUM()", "");
+        assertParseEnumAndSetOptions("ENUM ('a','b','c') CHARACTER SET", "abc");
+        assertParseEnumAndSetOptions("ENUM ('a') CHARACTER SET", "a");
+        assertParseEnumAndSetOptions("ENUM () CHARACTER SET", "");
     }
 
-    protected void assertParseEnumAndSetOptions( String typeExpression, String optionString ) {
+    @Test
+    public void shouldParseSetOptions() {
+        assertParseEnumAndSetOptions("SET('a','b','c')", "abc");
+        assertParseEnumAndSetOptions("SET('a')", "a");
+        assertParseEnumAndSetOptions("SET()", "");
+        assertParseEnumAndSetOptions("SET ('a','b','c') CHARACTER SET", "abc");
+        assertParseEnumAndSetOptions("SET ('a') CHARACTER SET", "a");
+        assertParseEnumAndSetOptions("SET () CHARACTER SET", "");
+    }
+
+    protected void assertParseEnumAndSetOptions(String typeExpression, String optionString) {
         String options = MySqlDdlParser.parseSetAndEnumOptions(typeExpression);
         assertThat(options).isEqualTo(optionString);
     }
-    
+
+    protected void assertVariable(String name, String expectedValue) {
+        String actualValue = parser.systemVariables().getVariable(name);
+        if (expectedValue == null) {
+            assertThat(actualValue).isNull();
+        } else {
+            assertThat(actualValue).isEqualToIgnoringCase(expectedValue);
+        }
+    }
+
+    protected void assertVariable(MySqlSystemVariables.Scope scope, String name, String expectedValue) {
+        String actualValue = parser.systemVariables().getVariable(name, scope);
+        if (expectedValue == null) {
+            assertThat(actualValue).isNull();
+        } else {
+            assertThat(actualValue).isEqualToIgnoringCase(expectedValue);
+        }
+    }
+
+    protected void assertGlobalVariable(String name, String expectedValue) {
+        assertVariable(MySqlSystemVariables.Scope.GLOBAL, name, expectedValue);
+    }
+
+    protected void assertSessionVariable(String name, String expectedValue) {
+        assertVariable(MySqlSystemVariables.Scope.SESSION, name, expectedValue);
+    }
+
+    protected void assertLocalVariable(String name, String expectedValue) {
+        assertVariable(MySqlSystemVariables.Scope.LOCAL, name, expectedValue);
+    }
+
     protected void printEvent(Event event) {
         Testing.print(event);
     }
@@ -442,6 +721,20 @@ public class MySqlDdlParserTest {
         }
         assert false : "should never get here";
         return null;
+    }
+
+    protected void assertColumn(Table table, String name, String typeName, int jdbcType, int length,
+                                String charsetName, boolean optional) {
+        Column column = table.columnWithName(name);
+        assertThat(column.name()).isEqualTo(name);
+        assertThat(column.typeName()).isEqualTo(typeName);
+        assertThat(column.jdbcType()).isEqualTo(jdbcType);
+        assertThat(column.length()).isEqualTo(length);
+        assertThat(column.charsetName()).isEqualTo(charsetName);
+        assertThat(column.scale()).isEqualTo(-1);
+        assertThat(column.isOptional()).isEqualTo(optional);
+        assertThat(column.isGenerated()).isFalse();
+        assertThat(column.isAutoIncremented()).isFalse();
     }
 
     protected void assertColumn(Table table, String name, String typeName, int jdbcType, int length, int scale,

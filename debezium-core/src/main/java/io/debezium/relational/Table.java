@@ -95,6 +95,14 @@ public interface Table {
     Column columnWithName(String name);
 
     /**
+     * Get the database-specific name of the default character set used by columns in this table.
+     * 
+     * @return the database-specific character set name used by default in columns of this table, or {@code null} if there is no
+     * such default character set name defined on the table
+     */
+    String defaultCharsetName();
+
+    /**
      * Determine if the named column is part of the primary key.
      * 
      * @param columnName the name of the column
