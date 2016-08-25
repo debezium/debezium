@@ -13,6 +13,8 @@ final class ColumnEditorImpl implements ColumnEditor {
     private int jdbcType = Types.INTEGER;
     private String typeName;
     private String typeExpression;
+    private String charsetName;
+    private String tableCharsetName;
     private int length = -1;
     private int scale = -1;
     private int position = 1;
@@ -42,7 +44,17 @@ final class ColumnEditorImpl implements ColumnEditor {
     public int jdbcType() {
         return jdbcType;
     }
-
+    
+    @Override
+    public String charsetName() {
+        return charsetName;
+    }
+    
+    @Override
+    public String charsetNameOfTable() {
+        return tableCharsetName;
+    }
+    
     @Override
     public int length() {
         return length;
@@ -100,6 +112,18 @@ final class ColumnEditorImpl implements ColumnEditor {
     }
 
     @Override
+    public ColumnEditor charsetName(String charsetName) {
+        this.charsetName = charsetName;
+        return this;
+    }
+    
+    @Override
+    public ColumnEditor charsetNameOfTable(String charsetName) {
+        this.tableCharsetName = charsetName;
+        return this;
+    }
+
+    @Override
     public ColumnEditorImpl length(int length) {
         assert length >= -1;
         this.length = length;
@@ -139,7 +163,7 @@ final class ColumnEditorImpl implements ColumnEditor {
 
     @Override
     public Column create() {
-        return new ColumnImpl(name, position, jdbcType, typeName, typeExpression, length, scale, optional, autoIncremented, generated);
+        return new ColumnImpl(name, position, jdbcType, typeName, typeExpression, charsetName, tableCharsetName, length, scale, optional, autoIncremented, generated);
     }
 
     @Override

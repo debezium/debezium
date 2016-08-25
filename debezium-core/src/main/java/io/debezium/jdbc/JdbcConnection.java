@@ -646,7 +646,8 @@ public class JdbcConnection implements AutoCloseable {
             // Then define the table ...
             List<Column> columns = columnsByTable.get(id);
             Collections.sort(columns);
-            tables.overwriteTable(id, columns, pkColumnNames);
+            String defaultCharsetName = null; // JDBC does not expose character sets
+            tables.overwriteTable(id, columns, pkColumnNames, defaultCharsetName);
         }
 
         if (removeTablesNotFoundInJdbc) {
