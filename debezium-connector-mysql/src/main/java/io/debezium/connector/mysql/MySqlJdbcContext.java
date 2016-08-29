@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.mysql;
 
-import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,7 +31,7 @@ import io.debezium.util.Strings;
  */
 public class MySqlJdbcContext implements AutoCloseable {
 
-    protected static final String MYSQL_CONNECTION_URL = "jdbc:mysql://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false&useSSL=${useSSL}";
+    protected static final String MYSQL_CONNECTION_URL = "jdbc:mysql://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false&useSSL=${useSSL}&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8";
     protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(MYSQL_CONNECTION_URL);
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
@@ -49,10 +48,7 @@ public class MySqlJdbcContext implements AutoCloseable {
         boolean useSSL = sslModeEnabled();
         Configuration jdbcConfig = config.subset("database.", true)
                                          .edit()
-                                         .with("useInformationSchema", "true")
-                                         .with("nullCatalogMeansCurrent", "false")
                                          .with("useSSL", Boolean.toString(useSSL))
-                                         .with("characterEncoding", StandardCharsets.UTF_8.name())
                                          .build();
         this.jdbc = new JdbcConnection(jdbcConfig, FACTORY);
     }
