@@ -86,17 +86,18 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
         // Testing.Debug.enable();
-        SourceRecords records = consumeRecordsByTopic(5 + 6); // 5 schema change record, 6 inserts
+        SourceRecords records = consumeRecordsByTopic(6 + 7); // 5 schema change record, 7 inserts
         stopConnector();
         assertThat(records).isNotNull();
-        assertThat(records.recordsForTopic("regression").size()).isEqualTo(5);
+        assertThat(records.recordsForTopic("regression").size()).isEqualTo(6);
         assertThat(records.recordsForTopic("regression.regression_test.t1464075356413_testtable6").size()).isEqualTo(1);
         assertThat(records.recordsForTopic("regression.regression_test.dbz84_integer_types_table").size()).isEqualTo(1);
         assertThat(records.recordsForTopic("regression.regression_test.dbz_85_fractest").size()).isEqualTo(1);
         assertThat(records.recordsForTopic("regression.regression_test.dbz_100_enumsettest").size()).isEqualTo(3);
-        assertThat(records.topics().size()).isEqualTo(5);
+        assertThat(records.recordsForTopic("regression.regression_test.dbz_102_charsettest").size()).isEqualTo(1);
+        assertThat(records.topics().size()).isEqualTo(6);
         assertThat(records.databaseNames().size()).isEqualTo(1);
-        assertThat(records.ddlRecordsForDatabase("regression_test").size()).isEqualTo(5);
+        assertThat(records.ddlRecordsForDatabase("regression_test").size()).isEqualTo(6);
         assertThat(records.ddlRecordsForDatabase("connector_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
         records.ddlRecordsForDatabase("regression_test").forEach(this::print);
@@ -109,15 +110,19 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
                 String c1 = after.getString("c1");
                 String c2 = after.getString("c2");
-                if ( c1.equals("a") ) {
+                if (c1.equals("a")) {
                     assertThat(c2).isEqualTo("a,b,c");
-                } else if ( c1.equals("b") ) {
+                } else if (c1.equals("b")) {
                     assertThat(c2).isEqualTo("a,b");
-                } else if ( c1.equals("c") ) {
+                } else if (c1.equals("c")) {
                     assertThat(c2).isEqualTo("a");
                 } else {
                     fail("c1 didn't match expected value");
                 }
+            } else if (record.topic().endsWith("dbz_102_charsettest")) {
+                Struct after = value.getStruct(Envelope.FieldName.AFTER);
+                String text = after.getString("text");
+                assertThat(text).isEqualTo("产品");
             } else if (record.topic().endsWith("dbz_85_fractest")) {
                 // The microseconds of all three should be exactly 780
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
@@ -207,17 +212,18 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
         // Testing.Debug.enable();
-        SourceRecords records = consumeRecordsByTopic(5 + 6); // 5 schema change record, 6 inserts
+        SourceRecords records = consumeRecordsByTopic(6 + 7); // 6 schema change record, 7 inserts
         stopConnector();
         assertThat(records).isNotNull();
-        assertThat(records.recordsForTopic("regression").size()).isEqualTo(5);
+        assertThat(records.recordsForTopic("regression").size()).isEqualTo(6);
         assertThat(records.recordsForTopic("regression.regression_test.t1464075356413_testtable6").size()).isEqualTo(1);
         assertThat(records.recordsForTopic("regression.regression_test.dbz84_integer_types_table").size()).isEqualTo(1);
         assertThat(records.recordsForTopic("regression.regression_test.dbz_85_fractest").size()).isEqualTo(1);
         assertThat(records.recordsForTopic("regression.regression_test.dbz_100_enumsettest").size()).isEqualTo(3);
-        assertThat(records.topics().size()).isEqualTo(5);
+        assertThat(records.recordsForTopic("regression.regression_test.dbz_102_charsettest").size()).isEqualTo(1);
+        assertThat(records.topics().size()).isEqualTo(6);
         assertThat(records.databaseNames().size()).isEqualTo(1);
-        assertThat(records.ddlRecordsForDatabase("regression_test").size()).isEqualTo(5);
+        assertThat(records.ddlRecordsForDatabase("regression_test").size()).isEqualTo(6);
         assertThat(records.ddlRecordsForDatabase("connector_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
         records.ddlRecordsForDatabase("regression_test").forEach(this::print);
@@ -230,15 +236,19 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
                 String c1 = after.getString("c1");
                 String c2 = after.getString("c2");
-                if ( c1.equals("a") ) {
+                if (c1.equals("a")) {
                     assertThat(c2).isEqualTo("a,b,c");
-                } else if ( c1.equals("b") ) {
+                } else if (c1.equals("b")) {
                     assertThat(c2).isEqualTo("a,b");
-                } else if ( c1.equals("c") ) {
+                } else if (c1.equals("c")) {
                     assertThat(c2).isEqualTo("a");
                 } else {
                     fail("c1 didn't match expected value");
                 }
+            } else if (record.topic().endsWith("dbz_102_charsettest")) {
+                Struct after = value.getStruct(Envelope.FieldName.AFTER);
+                String text = after.getString("text");
+                assertThat(text).isEqualTo("产品");
             } else if (record.topic().endsWith("dbz_85_fractest")) {
                 // The microseconds of all three should be exactly 780
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
@@ -324,21 +334,30 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        // Testing.Debug.enable();
-        // 11 schema change records = 5 drop tables, 1 drop database, 1 create database, 1 use database, 5 create tables
-        SourceRecords records = consumeRecordsByTopic(11 + 6); // plus 6 data records ...
+        Testing.Debug.enable();
+        // We expect a total of 14 schema change records:
+        // 1 set variables
+        // 6 drop tables
+        // 1 drop database
+        // 1 create database
+        // 1 use database
+        // 6 create tables
+        SourceRecords records = consumeRecordsByTopic(14 + 7); // plus 7 data records ...
         stopConnector();
         assertThat(records).isNotNull();
-        assertThat(records.recordsForTopic("regression").size()).isEqualTo(11);
+        assertThat(records.recordsForTopic("regression").size()).isEqualTo(14);
         assertThat(records.recordsForTopic("regression.regression_test.t1464075356413_testtable6").size()).isEqualTo(1);
         assertThat(records.recordsForTopic("regression.regression_test.dbz84_integer_types_table").size()).isEqualTo(1);
         assertThat(records.recordsForTopic("regression.regression_test.dbz_85_fractest").size()).isEqualTo(1);
         assertThat(records.recordsForTopic("regression.regression_test.dbz_100_enumsettest").size()).isEqualTo(3);
-        assertThat(records.topics().size()).isEqualTo(5);
-        assertThat(records.databaseNames().size()).isEqualTo(1);
-        assertThat(records.ddlRecordsForDatabase("regression_test").size()).isEqualTo(11);
+        assertThat(records.recordsForTopic("regression.regression_test.dbz_102_charsettest").size()).isEqualTo(1);
+        assertThat(records.topics().size()).isEqualTo(6);
+        assertThat(records.databaseNames().size()).isEqualTo(2);
+        assertThat(records.databaseNames()).containsOnly("regression_test","");
+        assertThat(records.ddlRecordsForDatabase("regression_test").size()).isEqualTo(13);
         assertThat(records.ddlRecordsForDatabase("connector_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
+        assertThat(records.ddlRecordsForDatabase("").size()).isEqualTo(1); // SET statement
         records.ddlRecordsForDatabase("regression_test").forEach(this::print);
 
         // Check that all records are valid, can be serialized and deserialized ...
@@ -349,15 +368,19 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
                 String c1 = after.getString("c1");
                 String c2 = after.getString("c2");
-                if ( c1.equals("a") ) {
+                if (c1.equals("a")) {
                     assertThat(c2).isEqualTo("a,b,c");
-                } else if ( c1.equals("b") ) {
+                } else if (c1.equals("b")) {
                     assertThat(c2).isEqualTo("a,b");
-                } else if ( c1.equals("c") ) {
+                } else if (c1.equals("c")) {
                     assertThat(c2).isEqualTo("a");
                 } else {
                     fail("c1 didn't match expected value");
                 }
+            } else if (record.topic().endsWith("dbz_102_charsettest")) {
+                Struct after = value.getStruct(Envelope.FieldName.AFTER);
+                String text = after.getString("text");
+                assertThat(text).isEqualTo("产品");
             } else if (record.topic().endsWith("dbz_85_fractest")) {
                 // The microseconds of all three should be exactly 780
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);

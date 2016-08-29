@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -25,6 +27,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.ddl.DataType;
 import io.debezium.relational.ddl.DataTypeParser;
 import io.debezium.relational.ddl.DdlParser;
+import io.debezium.relational.ddl.DdlParserListener.SetVariableEvent;
 import io.debezium.relational.ddl.DdlTokenizer;
 import io.debezium.text.ParsingException;
 import io.debezium.text.TokenStream;
@@ -52,6 +55,15 @@ public class MySqlDdlParser extends DdlParser {
     private static final Pattern ENUM_AND_SET_OPTIONS = Pattern.compile("'([^']*)'");
 
     /**
+     * The system variable name for the name of the character set that the server uses by default.
+     * See http://dev.mysql.com/doc/refman/5.7/en/server-options.html#option_mysqld_character-set-server
+     */
+    private static final String SERVER_CHARSET_NAME = MySqlSystemVariables.CHARSET_NAME_SERVER;
+
+    private final MySqlSystemVariables systemVariables = new MySqlSystemVariables();
+    private final ConcurrentMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
+
+    /**
      * Create a new DDL parser for MySQL that does not include view definitions.
      */
     public MySqlDdlParser() {
@@ -65,6 +77,10 @@ public class MySqlDdlParser extends DdlParser {
      */
     public MySqlDdlParser(boolean includeViews) {
         super(";", includeViews);
+    }
+
+    protected MySqlSystemVariables systemVariables() {
+        return systemVariables;
     }
 
     @Override
@@ -90,40 +106,26 @@ public class MySqlDdlParser extends DdlParser {
         dataTypes.register(Types.TIMESTAMP_WITH_TIMEZONE, "TIMESTAMP[(L)]"); // includes timezone information
         dataTypes.register(Types.TIMESTAMP, "DATETIME[(L)]");
         dataTypes.register(Types.INTEGER, "YEAR[(2|4)]");
-        dataTypes.register(Types.BLOB, "CHAR[(L)] BINARY [CHARACTER SET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.BLOB, "VARCHAR(L) BINARY [CHARACTER SET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.VARCHAR, "CHAR[(L)] [CHARACTER SET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.VARCHAR, "VARCHAR(L) [CHARACTER SET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.BLOB, "CHAR[(L)] BINARY [CHARSET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.BLOB, "VARCHAR(L) BINARY [CHARSET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.VARCHAR, "CHAR[(L)] [CHARSET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.VARCHAR, "VARCHAR(L) [CHARSET charset_name] [COLLATE collation_name]");
+        dataTypes.register(Types.BLOB, "CHAR[(L)] BINARY");
+        dataTypes.register(Types.BLOB, "VARCHAR(L) BINARY");
+        dataTypes.register(Types.CHAR, "CHAR[(L)]");
+        dataTypes.register(Types.VARCHAR, "VARCHAR(L)");
         dataTypes.register(Types.CHAR, "BINARY[(L)]");
         dataTypes.register(Types.VARBINARY, "VARBINARY(L)");
         dataTypes.register(Types.BLOB, "TINYBLOB");
         dataTypes.register(Types.BLOB, "BLOB");
         dataTypes.register(Types.BLOB, "MEDIUMBLOB");
         dataTypes.register(Types.BLOB, "LONGBLOB");
-        dataTypes.register(Types.BLOB, "TINYTEXT BINARY [CHARACTER SET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.BLOB, "TEXT BINARY [CHARACTER SET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.BLOB, "MEDIUMTEXT BINARY [CHARACTER SET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.BLOB, "LONGTEXT BINARY [CHARACTER SET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.VARCHAR, "TINYTEXT [CHARACTER SET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.VARCHAR, "TEXT [CHARACTER SET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.VARCHAR, "MEDIUMTEXT [CHARACTER SET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.VARCHAR, "LONGTEXT [CHARACTER SET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.CHAR, "ENUM(...) [CHARACTER SET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.CHAR, "SET(...) [CHARACTER SET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.BLOB, "TINYTEXT BINARY [CHARSET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.BLOB, "TEXT BINARY [CHARSET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.BLOB, "MEDIUMTEXT BINARY [CHARSET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.BLOB, "LONGTEXT BINARY [CHARSET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.VARCHAR, "TINYTEXT [CHARSET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.VARCHAR, "TEXT [CHARSET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.VARCHAR, "MEDIUMTEXT [CHARSET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.VARCHAR, "LONGTEXT [CHARSET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.CHAR, "ENUM(...) [CHARSET charset_name] [COLLATE collation_name]");
-        dataTypes.register(Types.CHAR, "SET(...) [CHARSET charset_name] [COLLATE collation_name]");
+        dataTypes.register(Types.BLOB, "TINYTEXT BINARY");
+        dataTypes.register(Types.BLOB, "TEXT BINARY");
+        dataTypes.register(Types.BLOB, "MEDIUMTEXT BINARY");
+        dataTypes.register(Types.BLOB, "LONGTEXT BINARY");
+        dataTypes.register(Types.VARCHAR, "TINYTEXT");
+        dataTypes.register(Types.VARCHAR, "TEXT");
+        dataTypes.register(Types.VARCHAR, "MEDIUMTEXT");
+        dataTypes.register(Types.VARCHAR, "LONGTEXT");
+        dataTypes.register(Types.CHAR, "ENUM(...)");
+        dataTypes.register(Types.CHAR, "SET(...)");
         dataTypes.register(Types.OTHER, "JSON");
     }
 
@@ -133,7 +135,7 @@ public class MySqlDdlParser extends DdlParser {
 
     @Override
     protected void initializeStatementStarts(TokenSet statementStartTokens) {
-        statementStartTokens.add("CREATE", "ALTER", "DROP", "INSERT", "SET", "GRANT", "REVOKE", "FLUSH", "TRUNCATE", "COMMIT", "USE");
+        statementStartTokens.add("CREATE", "ALTER", "DROP", "INSERT", "GRANT", "REVOKE", "FLUSH", "TRUNCATE", "COMMIT", "USE");
     }
 
     @Override
@@ -150,9 +152,115 @@ public class MySqlDdlParser extends DdlParser {
             parseRename(marker);
         } else if (tokens.matches("USE")) {
             parseUse(marker);
+        } else if (tokens.matches("SET")) {
+            parseSet(marker);
         } else {
             parseUnknownStatement(marker);
         }
+    }
+
+    protected void parseSet(Marker start) {
+        tokens.consume("SET");
+        AtomicReference<MySqlSystemVariables.Scope> scope = new AtomicReference<>();
+        parseSetVariable(start, scope);
+        while (tokens.canConsume(',')) {
+            parseSetVariable(start, scope);
+        }
+        consumeRemainingStatement(start);
+        debugParsed(start);
+    }
+
+    protected void parseSetVariable(Marker start, AtomicReference<MySqlSystemVariables.Scope> scope) {
+        // First, use the modifier to set the scope ...
+        if (tokens.canConsume("GLOBAL") || tokens.canConsume("@@GLOBAL", ".")) {
+            scope.set(MySqlSystemVariables.Scope.GLOBAL);
+        } else if (tokens.canConsume("SESSION") || tokens.canConsume("@@SESSION", ".")) {
+            scope.set(MySqlSystemVariables.Scope.SESSION);
+        } else if (tokens.canConsume("LOCAL") || tokens.canConsume("@@LOCAL", ".")) {
+            scope.set(MySqlSystemVariables.Scope.LOCAL);
+        }
+
+        // Now handle the remainder of the variable assignment ...
+        if (tokens.canConsume("PASSWORD")) {
+            // ignore
+        } else if (tokens.canConsume("TRANSACTION", "ISOLATION", "LEVEL")) {
+            // ignore
+        } else if (tokens.canConsume("CHARACTER", "SET") || tokens.canConsume("CHARSET")) {
+            // Sets two variables plus the current character set for the current database
+            // See https://dev.mysql.com/doc/refman/5.7/en/set-statement.html
+            String charsetName = tokens.consume();
+            if ("DEFAULT".equalsIgnoreCase(charsetName)) {
+                charsetName = currentDatabaseCharset();
+            }
+            systemVariables.setVariable(scope.get(), "character_set_client", charsetName);
+            systemVariables.setVariable(scope.get(), "character_set_results", charsetName);
+            // systemVariables.setVariable(scope.get(), "collation_connection", ...);
+        } else if (tokens.canConsume("NAMES")) {
+            // https://dev.mysql.com/doc/refman/5.7/en/set-statement.html
+            String charsetName = tokens.consume();
+            if ("DEFAULT".equalsIgnoreCase(charsetName)) {
+                charsetName = currentDatabaseCharset();
+            }
+            systemVariables.setVariable(scope.get(), "character_set_client", charsetName);
+            systemVariables.setVariable(scope.get(), "character_set_results", charsetName);
+            systemVariables.setVariable(scope.get(), "character_set_connection", charsetName);
+            // systemVariables.setVariable(scope.get(), "collation_connection", ...);
+
+            if (tokens.canConsume("COLLATION")) {
+                tokens.consume(); // consume the collation name but do nothing with it
+            }
+        } else {
+            // This is a global, session, or local system variable, or a user variable.
+            String variableName = parseVariableName();
+            tokens.canConsume(":"); // := is for user variables
+            tokens.consume("=");
+            String value = parseVariableValue();
+
+            if (variableName.startsWith("@")) {
+                // This is a user variable, so do nothing with it ...
+            } else {
+                systemVariables.setVariable(scope.get(), variableName, value);
+
+                // If this is setting 'character_set_database', then we need to record the character set for
+                // the given database ...
+                if ("character_set_database".equalsIgnoreCase(variableName)) {
+                    String currentDatabaseName = currentSchema();
+                    if (currentDatabaseName != null) {
+                        charsetNameForDatabase.put(currentDatabaseName, value);
+                    }
+                }
+                
+                // Signal that the variable was set ...
+                signalEvent(new SetVariableEvent(variableName,value,statement(start)));
+            }
+        }
+    }
+
+    protected String parseVariableName() {
+        String variableName = tokens.consume();
+        while (tokens.canConsume("-")) {
+            variableName = variableName + "-" + tokens.consume();
+        }
+        return variableName;
+    }
+
+    protected String parseVariableValue() {
+        if ( tokens.canConsumeAnyOf(",",";")) {
+            // The variable is blank ...
+            return "";
+        }
+        Marker start = tokens.mark();
+        tokens.consumeUntilEndOrOneOf(",", ";");
+        String value = tokens.getContentFrom(start);
+        if ( value.startsWith("'") && value.endsWith("'")) {
+            // Remove the single quotes around the value ...
+            if ( value.length() <= 2 ) {
+                value = "";
+            } else {
+                value = value.substring(1, value.length()-2);
+            }
+        }
+        return value;
     }
 
     @SuppressWarnings("unchecked")
@@ -188,6 +296,7 @@ public class MySqlDdlParser extends DdlParser {
         tokens.consumeAnyOf("DATABASE", "SCHEMA");
         tokens.canConsume("IF", "NOT", "EXISTS");
         String dbName = tokens.consume();
+        parseDatabaseOptions(start, dbName);
         consumeRemainingStatement(start);
         signalCreateDatabase(dbName, start);
         debugParsed(start);
@@ -196,6 +305,7 @@ public class MySqlDdlParser extends DdlParser {
     protected void parseAlterDatabase(Marker start) {
         tokens.consumeAnyOf("DATABASE", "SCHEMA");
         String dbName = tokens.consume();
+        parseDatabaseOptions(start, dbName);
         consumeRemainingStatement(start);
         signalAlterDatabase(dbName, null, start);
         debugParsed(start);
@@ -209,6 +319,23 @@ public class MySqlDdlParser extends DdlParser {
         debugParsed(start);
     }
 
+    protected void parseDatabaseOptions(Marker start, String dbName) {
+        // Handle the default character set and collation ...
+        tokens.canConsume("DEFAULT");
+        if (tokens.canConsume("CHARACTER", "SET") || tokens.canConsume("CHARSET")) {
+            tokens.canConsume("=");
+            String charsetName = tokens.consume();
+            if ("DEFAULT".equalsIgnoreCase(charsetName)) {
+                charsetName = systemVariables.getVariable(SERVER_CHARSET_NAME);
+            }
+            charsetNameForDatabase.put(dbName, charsetName);
+        }
+        if (tokens.canConsume("COLLATE")) {
+            tokens.canConsume("=");
+            tokens.consume(); // collation name
+        }
+    }
+
     protected void parseCreateTable(Marker start) {
         tokens.canConsume("TEMPORARY");
         tokens.consume("TABLE");
@@ -218,7 +345,7 @@ public class MySqlDdlParser extends DdlParser {
             TableId originalId = parseQualifiedTableName(start);
             Table original = databaseTables.forTable(originalId);
             if (original != null) {
-                databaseTables.overwriteTable(tableId, original.columns(), original.primaryKeyColumnNames());
+                databaseTables.overwriteTable(tableId, original.columns(), original.primaryKeyColumnNames(), original.defaultCharsetName());
             }
             consumeRemainingStatement(start);
             signalCreateTable(tableId, start);
@@ -247,6 +374,11 @@ public class MySqlDdlParser extends DdlParser {
             parseAsSelectStatement(start, table);
         }
 
+        // Make sure that the table's character set has been set ...
+        if (!table.hasDefaultCharsetName()) {
+            table.setDefaultCharsetName(currentDatabaseCharset());
+        }
+
         // Update the table definition ...
         databaseTables.overwriteTable(table.create());
         signalCreateTable(tableId, start);
@@ -273,7 +405,12 @@ public class MySqlDdlParser extends DdlParser {
         } else if (tokens.canConsume("DEFAULT", "CHARACTER", "SET") || tokens.canConsume("CHARACTER", "SET") ||
                 tokens.canConsume("DEFAULT", "CHARSET") || tokens.canConsume("CHARSET")) {
             tokens.canConsume('=');
-            tokens.consume();
+            String charsetName = tokens.consume();
+            if ("DEFAULT".equalsIgnoreCase(charsetName)) {
+                // The table's default character set is set to the character set of the current database ...
+                charsetName = currentDatabaseCharset();
+            }
+            table.setDefaultCharsetName(charsetName);
             return true;
         } else if (tokens.canConsume("DEFAULT", "COLLATE") || tokens.canConsume("COLLATE")) {
             tokens.canConsume('=');
@@ -560,6 +697,17 @@ public class MySqlDdlParser extends DdlParser {
         } else {
             if (dataType.length() > -1) column.length((int) dataType.length());
             if (dataType.scale() > -1) column.scale(dataType.scale());
+        }
+
+        if (tokens.canConsume("CHARSET") || tokens.canConsume("CHARACTER", "SET")) {
+            String charsetName = tokens.consume();
+            if (!"DEFAULT".equalsIgnoreCase(charsetName)) {
+                // Only record it if not inheriting the character set from the table
+                column.charsetName(charsetName);
+            }
+        }
+        if (tokens.canConsume("COLLATE")) {
+            tokens.consume(); // name of collation
         }
 
         if (tokens.canConsume("AS") || tokens.canConsume("GENERATED", "ALWAYS", "AS")) {
@@ -952,10 +1100,11 @@ public class MySqlDdlParser extends DdlParser {
                 || tokens.canConsume("DEFAULT", "CHARACTER", "SET")
                 || tokens.canConsume("DEFAULT", "CHARSET")) {
             tokens.canConsume('=');
-            tokens.consume(); // charset name
+            String charsetName = tokens.consume(); // charset name
+            table.setDefaultCharsetName(charsetName);
             if (tokens.canConsume("COLLATE")) {
                 tokens.canConsume('=');
-                tokens.consume(); // collation name
+                tokens.consume(); // collation name (ignored)
             }
         } else if (tokens.canConsume("DISCARD", "TABLESPACE") || tokens.canConsume("IMPORT", "TABLESPACE")) {
             // nothing
@@ -1092,6 +1241,25 @@ public class MySqlDdlParser extends DdlParser {
         tokens.consume("USE");
         String dbName = tokens.consume();
         setCurrentSchema(dbName);
+
+        // Every time MySQL switches to a different database, it sets the "character_set_database" and "collation_database"
+        // system variables. We replicate that behavior here (or the variable we care about) so that these variables are always
+        // right for the current database.
+        String charsetForDb = charsetNameForDatabase.get(dbName);
+        systemVariables.setVariable(MySqlSystemVariables.Scope.GLOBAL, "character_set_database", charsetForDb);
+    }
+
+    /**
+     * Get the name of the character set for the current database, via the "character_set_database" system property.
+     * 
+     * @return the name of the character set for the current database, or null if not known ...
+     */
+    protected String currentDatabaseCharset() {
+        String charsetName = systemVariables.getVariable("character_set_database");
+        if (charsetName == null || "DEFAULT".equalsIgnoreCase(charsetName)) {
+            charsetName = systemVariables.getVariable(SERVER_CHARSET_NAME);
+        }
+        return charsetName;
     }
 
     protected List<String> parseColumnNameList(Marker start) {

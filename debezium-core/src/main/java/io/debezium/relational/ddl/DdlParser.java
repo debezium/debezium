@@ -577,7 +577,9 @@ public class DdlParser {
      */
     protected void consumeRemainingStatement(Marker start) {
         while (tokens.hasNext()) {
-            if (tokens.matches(DdlTokenizer.STATEMENT_KEY)) break;
+            if (tokens.matches(DdlTokenizer.STATEMENT_KEY)) {
+                break;
+            }
             if (tokens.canConsume("BEGIN")) {
                 tokens.consumeThrough("END");
             } else if (tokens.matches(DdlTokenizer.STATEMENT_TERMINATOR)) {

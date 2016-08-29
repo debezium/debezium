@@ -116,6 +116,7 @@ public class BinlogReaderIT {
         context = new MySqlTaskContext(config);
         context.start();
         context.source().setBinlogStartPoint("",0L); // start from beginning
+        context.initializeHistory();
         reader = new BinlogReader(context);
 
         // Start reading the binlog ...
@@ -175,6 +176,7 @@ public class BinlogReaderIT {
         context = new MySqlTaskContext(config);
         context.start();
         context.source().setBinlogStartPoint("",0L); // start from beginning
+        context.initializeHistory();
         reader = new BinlogReader(context);
 
         // Start reading the binlog ...

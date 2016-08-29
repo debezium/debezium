@@ -54,6 +54,22 @@ public interface ColumnEditor extends Comparable<Column> {
     String typeExpression();
 
     /**
+     * Get the database-specific name of the character set used by this column.
+     * 
+     * @return the database-specific character set name, or null if the column's data type doesn't use character sets or no
+     * character set is specified
+     */
+    String charsetName();
+
+    /**
+     * Get the database-specific name of the character set defined by this column's table, which is used if a character set is
+     * not explicitly set on this column.
+     * 
+     * @return the database-specific character set name defined for this column's table, or null if not defined
+     */
+    String charsetNameOfTable();
+
+    /**
      * Get the maximum length of this column's values. For numeric columns, this represents the precision.
      * 
      * @return the length of the column
@@ -122,6 +138,22 @@ public interface ColumnEditor extends Comparable<Column> {
      * @return this editor so callers can chain methods together
      */
     ColumnEditor jdbcType(int jdbcType);
+
+    /**
+     * Set the database-specific name of the character set used by this column.
+     * 
+     * @param charsetName the database-specific character set name; may be null
+     * @return this editor so callers can chain methods together
+     */
+    ColumnEditor charsetName(String charsetName);
+
+    /**
+     * Set the database-specific name of the character set defined by this column's table.
+     * 
+     * @param charsetName the database-specific character set name; may be null
+     * @return this editor so callers can chain methods together
+     */
+    ColumnEditor charsetNameOfTable(String charsetName);
 
     /**
      * Set the maximum length of this column's values. For numeric columns, this represents the precision.

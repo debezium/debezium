@@ -61,7 +61,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
     private static final Double DOUBLE_TRUE = new Double(1.0d);
     private static final Double DOUBLE_FALSE = new Double(0.0d);
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
+    protected final Logger logger = LoggerFactory.getLogger(getClass());
     private final ZoneOffset defaultOffset;
     private final boolean adaptiveTimePrecision;
 

@@ -114,11 +114,13 @@ public final class MySqlConnectorTask extends SourceTask {
                     // full history of the database.
                     logger.info("Found no existing offset and snapshots disallowed, so starting at beginning of binlog");
                     source.setBinlogStartPoint("", 0L);// start from the beginning of the binlog
+                    taskContext.initializeHistory();
                 } else {
                     // We are allowed to use snapshots, and that is the best way to start ...
                     startWithSnapshot = true;
                     // The snapshot will determine if GTIDs are set
                     logger.info("Found no existing offset, so preparing to perform a snapshot");
+                    // The snapshot will also initialize history ...
                 }
             }
 
