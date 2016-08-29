@@ -126,18 +126,26 @@ public class MySqlJdbcContext implements AutoCloseable {
     protected void setSystemProperty(String property, Field field, boolean showValueInError) {
         String value = config.getString(field);
         if (value != null) {
+            value = value.trim();
             String existingValue = System.getProperty(property);
-            if (existingValue != null && existingValue.equalsIgnoreCase(value)) {
-                String msg = "System or JVM property '" + property + "' is already defined, but the configuration property '" + field.name()
-                        + "' defines a different value";
-                if (showValueInError) {
-                    msg = "System or JVM property '" + property + "' is already defined as " + existingValue
-                            + ", but the configuration property '" + field.name() + "' defines a different value '" + value + "'";
-                }
-                throw new ConnectException(msg);
-            } else {
+            if (existingValue == null) {
+                // There was no existing property ...
                 String existing = System.setProperty(property, value);
                 originalSystemProperties.put(property, existing); // the existing value may be null
+            } else {
+                existingValue = existingValue.trim();
+                if (!existingValue.equalsIgnoreCase(value)) {
+                    // There was an existing property, and the value is different ...
+                    String msg = "System or JVM property '" + property + "' is already defined, but the configuration property '"
+                            + field.name()
+                            + "' defines a different value";
+                    if (showValueInError) {
+                        msg = "System or JVM property '" + property + "' is already defined as " + existingValue
+                                + ", but the configuration property '" + field.name() + "' defines a different value '" + value + "'";
+                    }
+                    throw new ConnectException(msg);
+                }
+                // Otherwise, there was an existing property, and the value is exactly the same (so do nothing!)
             }
         }
     }
