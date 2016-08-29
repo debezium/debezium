@@ -5,9 +5,14 @@
  */
 package io.debezium.connector.mysql;
 
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
@@ -18,6 +23,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcConnection.ConnectionFactory;
+import io.debezium.util.Strings;
 
 /**
  * A context for a JDBC connection to MySQL.
@@ -32,19 +38,21 @@ public class MySqlJdbcContext implements AutoCloseable {
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     protected final Configuration config;
     protected final JdbcConnection jdbc;
-    private final Map<String,String> originalSystemProperties = new HashMap<>();
+    private final Map<String, String> originalSystemProperties = new HashMap<>();
 
     public MySqlJdbcContext(Configuration config) {
         this.config = config; // must be set before most methods are used
 
         // Set up the JDBC connection without actually connecting, with extra MySQL-specific properties
-        // to give us better JDBC database metadata behavior ...
+        // to give us better JDBC database metadata behavior, including using UTF-8 for the client-side character encoding
+        // per https://dev.mysql.com/doc/connector-j/5.1/en/connector-j-reference-charsets.html
         boolean useSSL = sslModeEnabled();
         Configuration jdbcConfig = config.subset("database.", true)
                                          .edit()
                                          .with("useInformationSchema", "true")
                                          .with("nullCatalogMeansCurrent", "false")
                                          .with("useSSL", Boolean.toString(useSSL))
+                                         .with("characterEncoding", StandardCharsets.UTF_8.name())
                                          .build();
         this.jdbc = new JdbcConnection(jdbcConfig, FACTORY);
     }
@@ -81,11 +89,11 @@ public class MySqlJdbcContext implements AutoCloseable {
         String mode = config.getString(MySqlConnectorConfig.SSL_MODE);
         return SecureConnectionMode.parse(mode);
     }
-    
+
     public boolean sslModeEnabled() {
         return sslMode() != SecureConnectionMode.DISABLED;
     }
-    
+
     public void start() {
         if (sslModeEnabled()) {
             originalSystemProperties.clear();
@@ -104,9 +112,9 @@ public class MySqlJdbcContext implements AutoCloseable {
             logger.error("Unexpected error shutting down the database connection", e);
         } finally {
             // Reset the system properties to their original value ...
-            originalSystemProperties.forEach((name,value)->{
-                if ( value != null ) {
-                    System.setProperty(name,value);
+            originalSystemProperties.forEach((name, value) -> {
+                if (value != null) {
+                    System.setProperty(name, value);
                 } else {
                     System.clearProperty(name);
                 }
@@ -121,6 +129,59 @@ public class MySqlJdbcContext implements AutoCloseable {
 
     protected String connectionString() {
         return jdbc.connectionString(MYSQL_CONNECTION_URL);
+    }
+
+    /**
+     * Read the MySQL charset-related system variables.
+     * 
+     * @param sql the reference that should be set to the SQL statement; may be null if not needed
+     * @return the system variables that are related to server character sets; never null
+     */
+    protected Map<String, String> readMySqlCharsetSystemVariables(AtomicReference<String> sql) {
+        // Read the system variables from the MySQL instance and get the current database name ...
+        Map<String, String> variables = new HashMap<>();
+        try (JdbcConnection mysql = jdbc.connect()) {
+            logger.debug("Reading MySQL charset-related system variables before parsing DDL history.");
+            String statement = "SHOW VARIABLES WHERE Variable_name IN ('character_set_server','collation_server')";
+            if (sql != null) sql.set(statement);
+            mysql.query(statement, rs -> {
+                while (rs.next()) {
+                    String varName = rs.getString(1);
+                    String value = rs.getString(2);
+                    if (varName != null && value != null) {
+                        variables.put(varName, value);
+                        logger.debug("\t{} = {}",
+                                     Strings.pad(varName, 45, ' '),
+                                     Strings.pad(value, 45, ' '));
+                    }
+                }
+            });
+        } catch (SQLException e) {
+            throw new ConnectException("Error reading MySQL variables: " + e.getMessage(), e);
+        }
+        return variables;
+    }
+
+    protected String setStatementFor(Map<String, String> variables) {
+        StringBuilder sb = new StringBuilder("SET ");
+        boolean first = true;
+        List<String> varNames = new ArrayList<>(variables.keySet());
+        Collections.sort(varNames);
+        for (String varName : varNames) {
+            if (first) {
+                first = false;
+            } else {
+                sb.append(", ");
+            }
+            sb.append(varName).append("=");
+            String value = variables.get(varName);
+            if (value == null) value = "";
+            if (value.contains(",") || value.contains(";")) {
+                value = "'" + value + "'";
+            }
+            sb.append(value);
+        }
+        return sb.append(";").toString();
     }
 
     protected void setSystemProperty(String property, Field field, boolean showValueInError) {
