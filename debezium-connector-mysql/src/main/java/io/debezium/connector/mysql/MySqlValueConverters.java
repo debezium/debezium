@@ -122,6 +122,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
             case Types.SQLXML:
                 Charset charset = charsetFor(column);
                 if (charset != null) {
+                    logger.debug("Using {} charset by default for column: {}", charset, column);
                     return (data) -> convertString(column, fieldDefn, charset, data);
                 }
                 logger.warn("Using UTF-8 charset by default for column without charset: {}", column);

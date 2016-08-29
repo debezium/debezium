@@ -238,3 +238,15 @@ CREATE TABLE dbz_100_enumsettest (
 INSERT INTO dbz_100_enumsettest VALUES ('a', 'a,b,c');
 INSERT INTO dbz_100_enumsettest VALUES ('b', 'b,a');
 INSERT INTO dbz_100_enumsettest VALUES ('c', 'a');
+
+-- DBZ-102 handle character sets
+-- Use session variables to dictate the character sets used by the client running these commands so
+-- the literal value is interpretted correctly...
+set character_set_client=utf8;
+set character_set_connection=utf8;
+CREATE TABLE dbz_102_charsettest (
+  id INT(11) NOT NULL AUTO_INCREMENT,
+  text VARCHAR(255) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2001 DEFAULT CHARSET=utf8;
+INSERT INTO dbz_102_charsettest VALUES (default, "产品");
