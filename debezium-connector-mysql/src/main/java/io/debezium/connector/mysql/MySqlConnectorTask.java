@@ -216,6 +216,7 @@ public final class MySqlConnectorTask extends SourceTask {
             GtidSet gtidSet = new GtidSet(gtidStr);
             GtidSet availableGtidSet = new GtidSet(knownGtidSet());
             if (gtidSet.isContainedWithin(availableGtidSet)) {
+                logger.info("MySQL current GTID set {} does contain the GTID set required by the connector {}", availableGtidSet, gtidSet);
                 return true;
             }
             logger.info("Connector last known GTIDs are {}, but MySQL has {}", gtidSet, availableGtidSet);
@@ -244,6 +245,7 @@ public final class MySqlConnectorTask extends SourceTask {
         if (!found) {
             logger.info("Connector requires binlog file '{}', but MySQL only has {}", binlogFilename, String.join(", ", logNames));
         }
+        logger.info("MySQL has the binlog file '{}' required by the connector", binlogFilename);
         return found;
     }
 
