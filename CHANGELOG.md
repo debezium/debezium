@@ -12,7 +12,7 @@ August XX, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/f
 
 ### Backwards-incompatible changes since 0.3.0
 
-None
+* MySQL connector now properly decodes string values from the binlog based upon the column's character set encoding as read by the DDL statement. Upon upgrade and restart, the connector will re-read the recorded database history and now associate the columns with their the character sets, and any newly processed events will use properly encoded strings values. As expected, previously generated events are never altered. Force a snapshot to regenerate events for the servers. [DBZ-102](https://issues.jboss.org/projects/DBZ/issues/DBZ-102)
 
 ### Fixes since 0.3.0
 

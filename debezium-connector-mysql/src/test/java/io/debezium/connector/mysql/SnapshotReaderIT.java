@@ -268,10 +268,10 @@ public class SnapshotReaderIT {
         // The last poll should always return null ...
         assertThat(records).isNull();
         
-        // There should be 11 schema changes ...
-        assertThat(schemaChanges.recordCount()).isEqualTo(11);
-        assertThat(schemaChanges.databaseCount()).isEqualTo(1);
-        assertThat(schemaChanges.databases()).containsOnly(DB_NAME);
+        // There should be 11 schema changes plus 1 SET statement ...
+        assertThat(schemaChanges.recordCount()).isEqualTo(12);
+        assertThat(schemaChanges.databaseCount()).isEqualTo(2);
+        assertThat(schemaChanges.databases()).containsOnly(DB_NAME,"");
         
         // Check the records via the store ...
         assertThat(store.collectionCount()).isEqualTo(4);

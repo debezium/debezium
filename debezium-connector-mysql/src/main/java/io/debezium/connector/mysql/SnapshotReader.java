@@ -19,6 +19,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+
 import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
@@ -168,6 +169,10 @@ public class SnapshotReader extends AbstractReader {
             sql.set("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
             mysql.execute(sql.get());
 
+            // Generate the DDL statements that set the charset-related system variables ...
+            Map<String, String> systemVariables = context.readMySqlCharsetSystemVariables(sql);
+            String setSystemVariablesStatement = context.setStatementFor(systemVariables);
+
             // ------
             // STEP 1
             // ------
@@ -206,13 +211,14 @@ public class SnapshotReader extends AbstractReader {
                         String gtidSet = rs.getString(5);// GTID set, may be null, blank, or contain a GTID set
                         source.setGtidSet(gtidSet);
                         logger.info("\t using binlog '{}' at position '{}' and gtid '{}'", binlogFilename, binlogPosition,
-                                     gtidSet);
+                                    gtidSet);
                     } else {
                         logger.info("\t using binlog '{}' at position '{}'", binlogFilename, binlogPosition);
                     }
                     source.startSnapshot();
                 } else {
-                    throw new IllegalStateException("Cannot read the binlog filename and position via '" + showMasterStmt + "'. Make sure your server is correctly configured");    
+                    throw new IllegalStateException("Cannot read the binlog filename and position via '" + showMasterStmt
+                            + "'. Make sure your server is correctly configured");
                 }
             });
 
@@ -264,14 +270,18 @@ public class SnapshotReader extends AbstractReader {
             // Transform the current schema so that it reflects the *current* state of the MySQL server's contents.
             // First, get the DROP TABLE and CREATE TABLE statement (with keys and constraint definitions) for our tables ...
             logger.info("Step 6: generating DROP and CREATE statements to reflect current database schemas:");
+            schema.applyDdl(source, null, setSystemVariablesStatement, this::enqueueSchemaChanges);
+
             // Add DROP TABLE statements for all tables that we knew about AND those tables found in the databases ...
             Set<TableId> allTableIds = new HashSet<>(schema.tables().tableIds());
             allTableIds.addAll(tableIds);
-            allTableIds.forEach(tableId -> schema.applyDdl(source, tableId.schema(), "DROP TABLE IF EXISTS " + tableId, this::enqueueSchemaChanges));
+            allTableIds.forEach(tableId -> schema.applyDdl(source, tableId.schema(), "DROP TABLE IF EXISTS " + tableId,
+                                                           this::enqueueSchemaChanges));
             // Add a DROP DATABASE statement for each database that we no longer know about ...
             schema.tables().tableIds().stream().map(TableId::catalog)
                   .filter(Predicates.not(databaseNames::contains))
-                  .forEach(missingDbName -> schema.applyDdl(source, missingDbName, "DROP DATABASE IF EXISTS " + missingDbName, this::enqueueSchemaChanges));
+                  .forEach(missingDbName -> schema.applyDdl(source, missingDbName, "DROP DATABASE IF EXISTS " + missingDbName,
+                                                            this::enqueueSchemaChanges));
             // Now process all of our tables for each database ...
             for (Map.Entry<String, List<TableId>> entry : tableIdsByDbName.entrySet()) {
                 String dbName = entry.getKey();
@@ -472,7 +482,7 @@ public class SnapshotReader extends AbstractReader {
     private void logServerInformation(JdbcConnection mysql) {
         try {
             logger.info("MySQL server variables related to change data capture:");
-            mysql.query("SHOW VARIABLES WHERE Variable_name REGEXP 'version|binlog|tx_|gtid'", rs -> {
+            mysql.query("SHOW VARIABLES WHERE Variable_name REGEXP 'version|binlog|tx_|gtid|character_set|collation'", rs -> {
                 while (rs.next()) {
                     logger.info("\t{} = {}",
                                 Strings.pad(rs.getString(1), 45, ' '),

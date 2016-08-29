@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.TemporalPrecisionMode;
+import io.debezium.connector.mysql.MySqlSystemVariables.Scope;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -88,7 +89,7 @@ public class MySqlSchema {
         boolean adaptiveTimePrecision = TemporalPrecisionMode.ADAPTIVE.equals(timePrecisionMode);
         MySqlValueConverters valueConverters = new MySqlValueConverters(adaptiveTimePrecision);
         this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameValidator::validate);
-        
+
         // Set up the server name and schema prefix ...
         if (serverName != null) serverName = serverName.trim();
         this.serverName = serverName;
@@ -179,6 +180,26 @@ public class MySqlSchema {
         return dbHistory.toString();
     }
 
+    /**
+     * Set the system variables on the DDL parser.
+     * 
+     * @param variables the system variables; may not be null but may be empty
+     */
+    public void setSystemVariables(Map<String, String> variables) {
+        variables.forEach((varName, value) -> {
+            ddlParser.systemVariables().setVariable(Scope.SESSION, varName, value);
+        });
+    }
+    
+    /**
+     * Get the system variables as known by the DDL parser.
+     * 
+     * @return the system variables; never null
+     */
+    public MySqlSystemVariables systemVariables() {
+        return ddlParser.systemVariables();
+    }
+    
     /**
      * Load the schema for the databases using JDBC database metadata. If there are changes relative to any
      * table definitions that existed when this method is called, those changes are recorded in the database history
@@ -317,12 +338,12 @@ public class MySqlSchema {
                     // the same order they were read for each _affected_ database, grouped together if multiple apply
                     // to the same _affected_ database...
                     ddlChanges.groupStatementStringsByDatabase((dbName, ddl) -> {
-                        if (filters.databaseFilter().test(dbName)) {
+                        if (filters.databaseFilter().test(dbName) || dbName == null || "".equals(dbName)) {
                             if (dbName == null) dbName = "";
                             statementConsumer.consume(dbName, ddlStatements);
                         }
                     });
-                } else if (filters.databaseFilter().test(databaseName)) {
+                } else if (filters.databaseFilter().test(databaseName) || databaseName == null || "".equals(databaseName)) {
                     if (databaseName == null) databaseName = "";
                     statementConsumer.consume(databaseName, ddlStatements);
                 }

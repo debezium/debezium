@@ -56,6 +56,16 @@ class RowDeserializers {
         public DeleteRowsDeserializer(Map<Long, TableMapEventData> tableMapEventByTableId) {
             super(tableMapEventByTableId);
         }
+        
+        @Override
+        protected Serializable deserializeString(int length, ByteArrayInputStream inputStream) throws IOException {
+            return RowDeserializers.deserializeString(length, inputStream);
+        }
+        
+        @Override
+        protected Serializable deserializeVarString(int meta, ByteArrayInputStream inputStream) throws IOException {
+            return RowDeserializers.deserializeVarString(meta, inputStream);
+        }
 
         @Override
         protected Serializable deserializeDate(ByteArrayInputStream inputStream) throws IOException {
@@ -102,6 +112,16 @@ class RowDeserializers {
 
         public UpdateRowsDeserializer(Map<Long, TableMapEventData> tableMapEventByTableId) {
             super(tableMapEventByTableId);
+        }
+
+        @Override
+        protected Serializable deserializeString(int length, ByteArrayInputStream inputStream) throws IOException {
+            return RowDeserializers.deserializeString(length, inputStream);
+        }
+        
+        @Override
+        protected Serializable deserializeVarString(int meta, ByteArrayInputStream inputStream) throws IOException {
+            return RowDeserializers.deserializeVarString(meta, inputStream);
         }
 
         @Override
@@ -152,6 +172,16 @@ class RowDeserializers {
         }
 
         @Override
+        protected Serializable deserializeString(int length, ByteArrayInputStream inputStream) throws IOException {
+            return RowDeserializers.deserializeString(length, inputStream);
+        }
+        
+        @Override
+        protected Serializable deserializeVarString(int meta, ByteArrayInputStream inputStream) throws IOException {
+            return RowDeserializers.deserializeVarString(meta, inputStream);
+        }
+
+        @Override
         protected Serializable deserializeDate(ByteArrayInputStream inputStream) throws IOException {
             return RowDeserializers.deserializeDate(inputStream);
         }
@@ -190,6 +220,34 @@ class RowDeserializers {
         protected Serializable deserializeYear(ByteArrayInputStream inputStream) throws IOException {
             return RowDeserializers.deserializeYear(inputStream);
         }
+    }
+
+    /**
+     * Converts a MySQL string to a {@code byte[]}.
+     * 
+     * @param length the number of bytes used to store the length of the string
+     * @param inputStream the binary stream containing the raw binlog event data for the value
+     * @return the {@code byte[]} object
+     * @throws IOException if there is an error reading from the binlog event data
+     */
+    protected static Serializable deserializeString(int length, ByteArrayInputStream inputStream) throws IOException {
+        // charset is not present in the binary log (meaning there is no way to distinguish between CHAR / BINARY)
+        // as a result - return byte[] instead of an actual String
+        int stringLength = length < 256 ? inputStream.readInteger(1) : inputStream.readInteger(2);
+        return inputStream.read(stringLength);
+    }
+
+    /**
+     * Converts a MySQL string to a {@code byte[]}.
+     * 
+     * @param meta the {@code meta} value containing the number of bytes in the length field
+     * @param inputStream the binary stream containing the raw binlog event data for the value
+     * @return the {@code byte[]} object
+     * @throws IOException if there is an error reading from the binlog event data
+     */
+    protected static Serializable deserializeVarString(int meta, ByteArrayInputStream inputStream) throws IOException {
+        int varcharLength = meta < 256 ? inputStream.readInteger(1) : inputStream.readInteger(2);
+        return inputStream.read(varcharLength);
     }
 
     /**
