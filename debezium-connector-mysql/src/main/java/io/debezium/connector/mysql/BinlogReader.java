@@ -17,6 +17,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.source.SourceRecord;
 
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.BinaryLogClient.LifecycleListener;
@@ -177,6 +178,14 @@ public class BinlogReader extends AbstractReader {
 
     @Override
     protected void doCleanup() {
+    }
+
+    @Override
+    protected void pollComplete(List<SourceRecord> batch) {
+        if (!batch.isEmpty()) {
+            SourceRecord lastRecord = batch.get(batch.size() - 1);
+            logger.info("{} records sent, last offset: {}", batch.size(), lastRecord.sourceOffset());
+        }
     }
 
     protected void logEvent(Event event) {
