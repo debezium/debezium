@@ -256,11 +256,11 @@ public class MySqlConnectorConfig {
 
     public static final Field SERVER_ID = Field.create("database.server.id")
                                                .withDisplayName("Cluster ID")
-                                               .withType(Type.INT)
-                                               .withWidth(Width.SHORT)
+                                               .withType(Type.LONG)
+                                               .withWidth(Width.LONG)
                                                .withImportance(Importance.HIGH)
                                                .withDefault(MySqlConnectorConfig::randomServerId)
-                                               .withValidation(Field::isRequired, Field::isPositiveInteger)
+                                               .withValidation(Field::isRequired, Field::isPositiveLong)
                                                .withDescription("A numeric ID of this database client, which must be unique across all "
                                                        + "currently-running database processes in the cluster. This connector joins the "
                                                        + "MySQL database cluster as another server (with this unique ID) so it can read "
