@@ -131,6 +131,17 @@ public final class SourceInfo {
         }
     }
 
+    /**
+     * Get the replica set name for the given partition.
+     * 
+     * @param partition the partition map
+     * @return the replica set name (when the partition is valid), or {@code null} if the partition is null or has no replica
+     *         set name entry
+     */
+    public static String replicaSetNameForPartition(Map<String, ?> partition) {
+        return partition != null ? (String) partition.get(REPLICA_SET_NAME) : null;
+    }
+
     private final String serverName;
 
     public SourceInfo(String serverName) {
