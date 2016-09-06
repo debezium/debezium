@@ -174,13 +174,22 @@ public abstract class AbstractReader {
         }
         
         if (batch.isEmpty() && success.get() && records.isEmpty()) {
-            // We found no records but the snapshot completed successfully, so we're done
+            // We found no records but the operation completed successfully, so we're done
             this.running.set(false);
             doCleanup();
             return null;
         }
+        pollComplete(batch);
         logger.trace("Completed batch of {} records", batch.size());
         return batch;
+    }
+    
+    /**
+     * Method called when {@link #poll()} completes sending a non-zero-sized batch of records.
+     * @param batch the batch of records being recorded
+     */
+    protected void pollComplete( List<SourceRecord> batch ) {
+        // do nothing
     }
 
     /**
