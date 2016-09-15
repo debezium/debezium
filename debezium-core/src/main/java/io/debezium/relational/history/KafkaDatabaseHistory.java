@@ -137,8 +137,8 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                                     .withDefault(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
                                     .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
                                     .build();
-        logger.info("KafkaDatabaseHistory Consumer config: " + consumerConfig);
-        logger.info("KafkaDatabaseHistory Producer config: " + producerConfig);
+        logger.info("KafkaDatabaseHistory Consumer config: " + consumerConfig.withMaskedPasswords());
+        logger.info("KafkaDatabaseHistory Producer config: " + producerConfig.withMaskedPasswords());
     }
 
     @Override
