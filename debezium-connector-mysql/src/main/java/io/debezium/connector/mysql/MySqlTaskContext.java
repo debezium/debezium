@@ -40,7 +40,6 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
 
         // Set up the MySQL schema ...
         this.dbSchema = new MySqlSchema(config, serverName());
-        this.dbSchema.start();
 
         // Set up the record processor ...
         this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector);

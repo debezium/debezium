@@ -85,7 +85,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                                                             .withDefault(4)
                                                             .withValidation(Field::isInteger);
 
-    public static Field.Set ALL_FIELDS = Field.setOf(TOPIC, BOOTSTRAP_SERVERS,
+    public static Field.Set ALL_FIELDS = Field.setOf(TOPIC, BOOTSTRAP_SERVERS, DatabaseHistory.NAME,
                                                      RECOVERY_POLL_INTERVAL_MS, RECOVERY_POLL_ATTEMPTS);
 
     private static final String CONSUMER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "consumer.";
@@ -112,11 +112,11 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
 
         String bootstrapServers = config.getString(BOOTSTRAP_SERVERS);
         // Copy the relevant portions of the configuration and add useful defaults ...
-        String clientAndGroupId = UUID.randomUUID().toString();
+        String dbHistoryName = config.getString(DatabaseHistory.NAME, UUID.randomUUID().toString());
         this.consumerConfig = config.subset(CONSUMER_PREFIX, true).edit()
                                     .withDefault(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
-                                    .withDefault(ConsumerConfig.CLIENT_ID_CONFIG, clientAndGroupId)
-                                    .withDefault(ConsumerConfig.GROUP_ID_CONFIG, clientAndGroupId)
+                                    .withDefault(ConsumerConfig.CLIENT_ID_CONFIG, dbHistoryName)
+                                    .withDefault(ConsumerConfig.GROUP_ID_CONFIG, dbHistoryName)
                                     .withDefault(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 1) // get even smallest message
                                     .withDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false)
                                     .withDefault(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 30000)
@@ -127,7 +127,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                                     .build();
         this.producerConfig = config.subset(PRODUCER_PREFIX, true).edit()
                                     .withDefault(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
-                                    .withDefault(ProducerConfig.CLIENT_ID_CONFIG, UUID.randomUUID().toString())
+                                    .withDefault(ProducerConfig.CLIENT_ID_CONFIG, dbHistoryName)
                                     .withDefault(ProducerConfig.ACKS_CONFIG, 1)
                                     .withDefault(ProducerConfig.RETRIES_CONFIG, 1) // may result in duplicate messages, but that's
                                                                                    // okay
@@ -144,7 +144,9 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     @Override
     public void start() {
         super.start();
-        this.producer = new KafkaProducer<>(this.producerConfig.asProperties());
+        if (this.producer == null) {
+            this.producer = new KafkaProducer<>(this.producerConfig.asProperties());
+        }
     }
 
     @Override

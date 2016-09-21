@@ -974,7 +974,10 @@ public interface Configuration {
      *         such key-value pair in the configuration
      */
     default String getString(Field field, String defaultValue) {
-        return getString(field.name(), () -> field.defaultValueAsString());
+        return getString(field.name(), () -> {
+            String value = field.defaultValueAsString();
+            return value != null ? value : defaultValue;
+        });
     }
 
     /**
