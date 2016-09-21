@@ -8,6 +8,8 @@ package io.debezium.jdbc;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.sql.Types;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
@@ -311,10 +313,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
-        if ( data == null ) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            data = OffsetDateTime.of(LocalDate.ofEpochDay(0),LocalTime.MIDNIGHT, defaultOffset); // return epoch
+        }
         try {
             return ZonedTimestamp.toIsoString(data, defaultOffset);
         } catch (IllegalArgumentException e) {
@@ -335,10 +344,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimeWithZone(Column column, Field fieldDefn, Object data) {
-        if ( data == null ) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            data = OffsetTime.of(LocalTime.MIDNIGHT, defaultOffset); // return epoch time
+        }
         try {
             return ZonedTime.toIsoString(data, defaultOffset);
         } catch (IllegalArgumentException e) {
@@ -357,10 +373,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimestampToEpochMillis(Column column, Field fieldDefn, Object data) {
-        if ( data == null ) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return 0L; // return epoch
+        }
         try {
             return Timestamp.toEpochMillis(data);
         } catch (IllegalArgumentException e) {
@@ -379,10 +402,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimestampToEpochMicros(Column column, Field fieldDefn, Object data) {
-        if ( data == null ) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return 0L; // return epoch
+        }
         try {
             return MicroTimestamp.toEpochMicros(data);
         } catch (IllegalArgumentException e) {
@@ -401,10 +431,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimestampToEpochNanos(Column column, Field fieldDefn, Object data) {
-        if ( data == null ) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return 0L; // return epoch
+        }
         try {
             return NanoTimestamp.toEpochNanos(data);
         } catch (IllegalArgumentException e) {
@@ -423,10 +460,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimestampToEpochMillisAsDate(Column column, Field fieldDefn, Object data) {
-        if ( data == null ) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return new java.util.Date(0L); // return epoch
+        }
         try {
             return new java.util.Date(Timestamp.toEpochMillis(data));
         } catch (IllegalArgumentException e) {
@@ -446,10 +490,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimeToMillisPastMidnight(Column column, Field fieldDefn, Object data) {
-        if ( data == null ) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return 0; // return epoch
+        }
         try {
             return Time.toMilliOfDay(data);
         } catch (IllegalArgumentException e) {
@@ -469,10 +520,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimeToMicrosPastMidnight(Column column, Field fieldDefn, Object data) {
-        if ( data == null ) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return 0L; // return epoch
+        }
         try {
             return MicroTime.toMicroOfDay(data);
         } catch (IllegalArgumentException e) {
@@ -492,10 +550,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimeToNanosPastMidnight(Column column, Field fieldDefn, Object data) {
-        if ( data == null ) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return 0L; // return epoch
+        }
         try {
             return NanoTime.toNanoOfDay(data);
         } catch (IllegalArgumentException e) {
@@ -515,10 +580,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimeToMillisPastMidnightAsDate(Column column, Field fieldDefn, Object data) {
-        if ( data == null ) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return 0L; // return epoch
+        }
         try {
             return new java.util.Date(Time.toMilliOfDay(data));
         } catch (IllegalArgumentException e) {
@@ -536,17 +608,24 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * 
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
-     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @param data the data object to be converted into a {@link Date Kafka Connect date} type
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertDateToEpochDays(Column column, Field fieldDefn, Object data) {
-        if (data == null) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return 0; // return epoch
+        }
         try {
             return Date.toEpochDay(data);
         } catch (IllegalArgumentException e) {
             logger.warn("Unexpected JDBC DATE value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
                         fieldDefn.schema(), data.getClass(), data);
-            return null;
+            return handleUnknownData(column, fieldDefn, data);
         }
     }
 
@@ -561,11 +640,18 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * 
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
-     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @param data the data object to be converted into a {@link Date Kafka Connect date} type
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertDateToEpochDaysAsDate(Column column, Field fieldDefn, Object data) {
-        if (data == null) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return new java.util.Date(0L); // return epoch
+        }
         try {
             int epochDay = Date.toEpochDay(data);
             long epochMillis = TimeUnit.DAYS.toMillis(epochDay);
@@ -589,10 +675,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertBinary(Column column, Field fieldDefn, Object data) {
-        if (data == null) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            data = new byte[0];
+        }
         if (data instanceof char[]) {
             data = new String((char[]) data); // convert to string
         }
@@ -613,7 +706,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * 
      * @param value the binary value for which no conversion was found; never null
      * @param fieldDefn the field definition in the Kafka Connect schema; never null
-     * @return the converted value, or null
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      * @see #convertBinary(Column, Field, Object)
      */
     protected byte[] unexpectedBinary(Object value, Field fieldDefn) {
@@ -628,7 +722,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTinyInt(Column column, Field fieldDefn, Object data) {
         return convertSmallInt(column, fieldDefn, data);
@@ -640,10 +735,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertSmallInt(Column column, Field fieldDefn, Object data) {
-        if (data == null) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return 0;
+        }
         if (data instanceof Short) return data;
         if (data instanceof Number) {
             Number value = (Number) data;
@@ -661,10 +763,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertInteger(Column column, Field fieldDefn, Object data) {
-        if (data == null) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return 0;
+        }
         if (data instanceof Integer) return data;
         if (data instanceof Number) {
             Number value = (Number) data;
@@ -682,10 +791,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertBigInt(Column column, Field fieldDefn, Object data) {
-        if (data == null) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return 0L;
+        }
         if (data instanceof Long) return data;
         if (data instanceof Number) {
             Number value = (Number) data;
@@ -703,7 +819,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertFloat(Column column, Field fieldDefn, Object data) {
         return convertDouble(column, fieldDefn, data);
@@ -715,10 +832,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertDouble(Column column, Field fieldDefn, Object data) {
-        if (data == null) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return 0.0d;
+        }
         if (data instanceof Double) return data;
         if (data instanceof Number) {
             Number value = (Number) data;
@@ -736,10 +860,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertReal(Column column, Field fieldDefn, Object data) {
-        if (data == null) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return 0.0f;
+        }
         if (data instanceof Float) return data;
         if (data instanceof Number) {
             Number value = (Number) data;
@@ -757,10 +888,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertNumeric(Column column, Field fieldDefn, Object data) {
-        if (data == null) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return new BigDecimal(0);
+        }
         BigDecimal decimal = null;
         if (data instanceof BigDecimal)
             decimal = (BigDecimal) data;
@@ -788,10 +926,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertDecimal(Column column, Field fieldDefn, Object data) {
-        if (data == null) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return new BigDecimal(0);
+        }
         BigDecimal decimal = null;
         if (data instanceof BigDecimal)
             decimal = (BigDecimal) data;
@@ -821,10 +966,18 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertString(Column column, Field fieldDefn, Object data) {
-        return data == null ? null : data.toString();
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return "";
+        }
+        return data.toString();
     }
 
     /**
@@ -833,10 +986,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertRowId(Column column, Field fieldDefn, Object data) {
-        if (data == null) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return ByteBuffer.wrap(new byte[0]);
+        }
         if (data instanceof java.sql.RowId) {
             java.sql.RowId row = (java.sql.RowId) data;
             return ByteBuffer.wrap(row.getBytes());
@@ -850,10 +1010,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertBit(Column column, Field fieldDefn, Object data) {
-        if (data == null) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return false;
+        }
         if (data instanceof Boolean) return data;
         if (data instanceof Short) return ((Short) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
         if (data instanceof Integer) return ((Integer) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
@@ -867,10 +1034,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertBoolean(Column column, Field fieldDefn, Object data) {
-        if (data == null) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return false;
+        }
         if (data instanceof Boolean) return data;
         if (data instanceof Short) return ((Short) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
         if (data instanceof Integer) return ((Integer) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
@@ -884,11 +1058,16 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object handleUnknownData(Column column, Field fieldDefn, Object data) {
-        logger.warn("Unexpected value for JDBC type {} and column {}: class={}, value={}", column.jdbcType(), column,
-                    data.getClass(), data);
-        return null;
+        if (column.isOptional() || fieldDefn.schema().isOptional()) {
+            logger.warn("Unexpected value for JDBC type {} and column {}: class={}", column.jdbcType(), column,
+                        data.getClass()); // don't include value in case its sensitive
+            return null;
+        }
+        throw new IllegalArgumentException("Unexpected value for JDBC type " + column.jdbcType() + " and column " + column +
+                                           ": class=" + data.getClass());  // don't include value in case its sensitive
     }
 }
