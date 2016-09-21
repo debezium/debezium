@@ -52,11 +52,11 @@ public class Bits {
      * @param value the logical value
      * @return the encoded value
      */
-    public static byte[] fromLogical(Schema schema, BitSet value) {
+    public static byte[] fromBitSet(Schema schema, BitSet value) {
         return value.toByteArray();
     }
 
-    public static BitSet toLogical(Schema schema, byte[] value) {
+    public static BitSet toBitSet(Schema schema, byte[] value) {
         return BitSet.valueOf(value);
     }
 }
