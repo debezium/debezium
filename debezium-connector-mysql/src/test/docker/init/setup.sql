@@ -250,3 +250,13 @@ CREATE TABLE dbz_102_charsettest (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2001 DEFAULT CHARSET=utf8;
 INSERT INTO dbz_102_charsettest VALUES (default, "产品");
+
+-- DBZ-114 handle zero-value dates
+CREATE TABLE dbz_114_zerovaluetest (
+  c1 DATE,
+  c2 TIME(2),
+  c3 DATETIME(2),
+  c4 TIMESTAMP(2)
+);
+INSERT IGNORE INTO dbz_114_zerovaluetest VALUES ('0000-00-00', '00:00:00.000', '0000-00-00 00:00:00.000', '0000-00-00 00:00:00.000');
+INSERT IGNORE INTO dbz_114_zerovaluetest VALUES ('0001-00-00', '00:01:00.000', '0001-00-00 00:00:00.000', '0001-00-00 00:00:00.000');

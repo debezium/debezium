@@ -167,10 +167,17 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @param fieldDefn the field definition for the {@link SourceRecord}'s {@link Schema}; never null
      * @param columnCharset the Java character set in which column byte[] values are encoded; may not be null
      * @param data the data; may be null
-     * @return the string value; may be null if the value is null or is an unknown input type
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertString(Column column, Field fieldDefn, Charset columnCharset, Object data) {
-        if (data == null) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return "";
+        }
         if (data instanceof byte[]) {
             // Decode the binary representation using the given character encoding ...
             return new String((byte[]) data, columnCharset);
@@ -188,11 +195,18 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a year literal integer value; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     @SuppressWarnings("deprecation")
     protected Object convertYearToInt(Column column, Field fieldDefn, Object data) {
-        if (data == null) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return 0;
+        }
         if (data instanceof java.time.Year) {
             // The MySQL binlog always returns a Year object ...
             return ((java.time.Year) data).getValue();
@@ -216,11 +230,18 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @param options the characters that appear in the same order as defined in the column; may not be null
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
-     * @param data the data object to be converted into an {@code ENUM} literal String value; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @param data the data object to be converted into an {@code ENUM} literal String value
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertEnumToString(String options, Column column, Field fieldDefn, Object data) {
-        if (data == null) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return "";
+        }
         if (data instanceof String) {
             // JDBC should return strings ...
             return data;
@@ -245,10 +266,17 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into an {@code SET} literal String value; never null
-     * @return the converted value, or null if the conversion could not be made
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertSetToString(String options, Column column, Field fieldDefn, Object data) {
-        if (data == null) return null;
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return "";
+        }
         if (data instanceof String) {
             // JDBC should return strings ...
             return data;

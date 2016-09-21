@@ -56,12 +56,12 @@ class RowDeserializers {
         public DeleteRowsDeserializer(Map<Long, TableMapEventData> tableMapEventByTableId) {
             super(tableMapEventByTableId);
         }
-        
+
         @Override
         protected Serializable deserializeString(int length, ByteArrayInputStream inputStream) throws IOException {
             return RowDeserializers.deserializeString(length, inputStream);
         }
-        
+
         @Override
         protected Serializable deserializeVarString(int meta, ByteArrayInputStream inputStream) throws IOException {
             return RowDeserializers.deserializeVarString(meta, inputStream);
@@ -118,7 +118,7 @@ class RowDeserializers {
         protected Serializable deserializeString(int length, ByteArrayInputStream inputStream) throws IOException {
             return RowDeserializers.deserializeString(length, inputStream);
         }
-        
+
         @Override
         protected Serializable deserializeVarString(int meta, ByteArrayInputStream inputStream) throws IOException {
             return RowDeserializers.deserializeVarString(meta, inputStream);
@@ -175,7 +175,7 @@ class RowDeserializers {
         protected Serializable deserializeString(int length, ByteArrayInputStream inputStream) throws IOException {
             return RowDeserializers.deserializeString(length, inputStream);
         }
-        
+
         @Override
         protected Serializable deserializeVarString(int meta, ByteArrayInputStream inputStream) throws IOException {
             return RowDeserializers.deserializeVarString(meta, inputStream);
@@ -215,7 +215,7 @@ class RowDeserializers {
         protected Serializable deserializeTimestampV2(int meta, ByteArrayInputStream inputStream) throws IOException {
             return RowDeserializers.deserializeTimestampV2(meta, inputStream);
         }
-        
+
         @Override
         protected Serializable deserializeYear(ByteArrayInputStream inputStream) throws IOException {
             return RowDeserializers.deserializeYear(inputStream);
@@ -252,6 +252,9 @@ class RowDeserializers {
 
     /**
      * Converts a MySQL {@code DATE} value to a {@link LocalDate}.
+     * <p>
+     * This method treats all <a href="http://dev.mysql.com/doc/refman/5.7/en/date-and-time-types.html">zero values</a>
+     * for {@code DATE} columns as NULL, since they cannot be accurately represented as valid {@link LocalDate} objects.
      * 
      * @param inputStream the binary stream containing the raw binlog event data for the value
      * @return the {@link LocalDate} object
@@ -319,6 +322,9 @@ class RowDeserializers {
 
     /**
      * Converts a MySQL {@code DATETIME} value <em>without fractional seconds</em> to a {@link LocalDateTime}.
+     * <p>
+     * This method treats all <a href="http://dev.mysql.com/doc/refman/5.7/en/date-and-time-types.html">zero values</a>
+     * for {@code DATETIME} columns as NULL, since they cannot be accurately represented as valid {@link LocalDateTime} objects.
      * 
      * @param inputStream the binary stream containing the raw binlog event data for the value
      * @return the {@link LocalDateTime} object
@@ -333,11 +339,17 @@ class RowDeserializers {
         int minutes = split[1];
         int seconds = split[0];
         int nanoOfSecond = 0; // This version does not support fractional seconds
+        if (year == 0 || month == 0 || day == 0) {
+            return null;
+        }
         return LocalDateTime.of(year, month, day, hours, minutes, seconds, nanoOfSecond);
     }
 
     /**
      * Converts a MySQL {@code DATETIME} value <em>with fractional seconds</em> to a {@link LocalDateTime}.
+     * <p>
+     * This method treats all <a href="http://dev.mysql.com/doc/refman/5.7/en/date-and-time-types.html">zero values</a>
+     * for {@code DATETIME} columns as NULL, since they cannot be accurately represented as valid {@link LocalDateTime} objects.
      * 
      * @param meta the {@code meta} value containing the fractional second precision, or {@code fsp}
      * @param inputStream the binary stream containing the raw binlog event data for the value
@@ -489,7 +501,7 @@ class RowDeserializers {
      * Note the original is licensed under the same Apache Software License 2.0 as Debezium.
      * 
      * @param fsp the fractional seconds precision describing the number of digits precision used to store the fractional seconds
-     * (e.g., 1 for storing tenths of a second, 2 for storing hundredths, 3 for storing milliseconds, etc.)
+     *            (e.g., 1 for storing tenths of a second, 2 for storing hundredths, 3 for storing milliseconds, etc.)
      * @param inputStream the binary data stream
      * @return the number of nanoseconds
      * @throws IOException if there is an error reading from the binlog event data
