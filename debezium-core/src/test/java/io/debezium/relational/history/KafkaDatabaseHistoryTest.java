@@ -75,8 +75,12 @@ public class KafkaDatabaseHistoryTest {
         config = Configuration.create()
                               .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
                               .with(KafkaDatabaseHistory.TOPIC, topicName)
+                              .with(DatabaseHistory.NAME, "my-db-history")
                               .build();
         history.configure(config,null);
+        history.start();
+        
+        // Should be able to call start more than once ...
         history.start();
 
         DdlParser recoveryParser = new DdlParserSql2003();

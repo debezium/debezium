@@ -106,7 +106,11 @@ public class MySqlSchema {
                     config.getString(MySqlConnectorConfig.DATABASE_HISTORY));
         }
         // Do not remove the prefix from the subset of config properties ...
-        Configuration dbHistoryConfig = config.subset(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING, false);
+        String connectorName = config.getString("name", serverName);
+        Configuration dbHistoryConfig = config.subset(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING, false)
+                                              .edit()
+                                              .withDefault(DatabaseHistory.NAME, connectorName + "-dbhistory")
+                                              .build();
         this.dbHistory.configure(dbHistoryConfig, HISTORY_COMPARATOR); // validates
     }
 
