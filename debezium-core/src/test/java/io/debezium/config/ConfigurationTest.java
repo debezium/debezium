@@ -7,6 +7,7 @@ package io.debezium.config;
 
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -89,6 +90,26 @@ public class ConfigurationTest {
             assertThat(value).isNotNull();
         });
         assertThat(counter.get()).isEqualTo(6);
+    }
+    
+    @Test
+    public void shouldMaskPasswords() {
+        Pattern p = Pattern.compile(".*password$",Pattern.CASE_INSENSITIVE);
+        assertThat(p.matcher("password").matches()).isTrue();
+        assertThat(p.matcher("otherpassword").matches()).isTrue();
+        
+        config = Configuration.create()
+                .with("column.password", "warning")
+                .with("column.Password.this.is.not","value")
+                .with("column.truncate.to.20.chars", "20-chars")
+                .with("column.mask.with.20.chars", "20-mask")
+                .with("column.mask.with.0.chars", "0-mask")
+                .with("column.mask.with.chars", "should-not-be-matched")
+                .build();
+        assertThat(config.withMaskedPasswords().toString().contains("warning")).isFalse();
+        assertThat(config.toString().contains("warning")).isFalse();
+        assertThat(config.withMaskedPasswords().getString("column.password")).isEqualTo("********");
+        assertThat(config.getString("column.password")).isEqualTo("warning");
     }
 
 }
