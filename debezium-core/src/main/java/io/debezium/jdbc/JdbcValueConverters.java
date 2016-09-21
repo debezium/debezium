@@ -7,12 +7,14 @@ package io.debezium.jdbc;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.sql.Types;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
+import java.util.BitSet;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Decimal;
@@ -165,7 +167,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
             // Date and time values
             case Types.DATE:
                 if (adaptiveTimePrecision) {
-                return Date.builder();
+                    return Date.builder();
                 }
                 return org.apache.kafka.connect.data.Date.builder();
             case Types.TIME:
@@ -213,6 +215,11 @@ public class JdbcValueConverters implements ValueConverterProvider {
             case Types.NULL:
                 return (data) -> null;
             case Types.BIT:
+                if (column.length() > 1) {
+                    int numBits = column.length();
+                    int numBytes = numBits / Byte.SIZE + (numBits % Byte.SIZE == 0 ? 0 : 1);
+                    return (data) -> convertBits(column, fieldDefn, data, numBytes);
+                }
                 return (data) -> convertBit(column, fieldDefn, data);
             case Types.BOOLEAN:
                 return (data) -> convertBoolean(column, fieldDefn, data);
@@ -262,7 +269,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
             // Date and time values
             case Types.DATE:
                 if (adaptiveTimePrecision) {
-                return (data) -> convertDateToEpochDays(column, fieldDefn, data);
+                    return (data) -> convertDateToEpochDays(column, fieldDefn, data);
                 }
                 return (data) -> convertDateToEpochDaysAsDate(column, fieldDefn, data);
             case Types.TIME:
@@ -322,7 +329,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
         }
         if (data == null) {
             if (column.isOptional()) return null;
-            data = OffsetDateTime.of(LocalDate.ofEpochDay(0),LocalTime.MIDNIGHT, defaultOffset); // return epoch
+            data = OffsetDateTime.of(LocalDate.ofEpochDay(0), LocalTime.MIDNIGHT, defaultOffset); // return epoch
         }
         try {
             return ZonedTimestamp.toIsoString(data, defaultOffset);
@@ -1025,7 +1032,106 @@ public class JdbcValueConverters implements ValueConverterProvider {
         if (data instanceof Short) return ((Short) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
         if (data instanceof Integer) return ((Integer) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
         if (data instanceof Long) return ((Long) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
+        if (data instanceof BitSet) {
+            BitSet value = (BitSet) data;
+            return value.get(0);
+        }
         return handleUnknownData(column, fieldDefn, data);
+    }
+
+    /**
+     * Converts a value object for an expected JDBC type of {@link Types#BIT} of length 2+.
+     * 
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @param numBytes the number of bytes that should be included in the resulting byte[]
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
+     */
+    protected Object convertBits(Column column, Field fieldDefn, Object data, int numBytes) {
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return false;
+        }
+        if (data instanceof Boolean) {
+            Boolean value = (Boolean) data;
+            return new byte[] { value.booleanValue() ? (byte) 1 : (byte) 0 };
+        }
+        if (data instanceof Short) {
+            Short value = (Short) data;
+            ByteBuffer buffer = ByteBuffer.allocate(Short.BYTES);
+            buffer.order(ByteOrder.LITTLE_ENDIAN);
+            buffer.putShort(value.shortValue());
+            return buffer.array();
+        }
+        if (data instanceof Integer) {
+            Integer value = (Integer) data;
+            ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
+            buffer.order(ByteOrder.LITTLE_ENDIAN);
+            buffer.putInt(value.intValue());
+            return buffer.array();
+        }
+        if (data instanceof Long) {
+            Long value = (Long) data;
+            ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
+            buffer.order(ByteOrder.LITTLE_ENDIAN);
+            buffer.putLong(value.longValue());
+            return buffer.array();
+        }
+        if (data instanceof byte[]) {
+            byte[] bytes = (byte[]) data;
+            if (bytes.length == 1) {
+                return bytes;
+            }
+            if (byteOrderOfBitType() == ByteOrder.BIG_ENDIAN) {
+                // Reverse it to little endian ...
+                int i = 0;
+                int j = bytes.length - 1;
+                byte tmp;
+                while (j > i) {
+                    tmp = bytes[j];
+                    bytes[j] = bytes[i];
+                    bytes[i] = tmp;
+                    ++i;
+                    --j;
+                }
+            }
+            return padLittleEndian(numBytes, bytes);
+        }
+        if (data instanceof BitSet) {
+            byte[] bytes = ((BitSet) data).toByteArray();
+            return padLittleEndian(numBytes, bytes);
+        }
+        return handleUnknownData(column, fieldDefn, data);
+    }
+
+    protected byte[] padLittleEndian(int numBytes, byte[] data) {
+        if (data.length < numBytes) {
+            byte[] padded = new byte[numBytes];
+            System.arraycopy(data, 0, padded, 0, data.length);
+            for (int i = data.length; i != numBytes; ++i) {
+                padded[i] = 0;
+            }
+            return padded;
+        }
+        return data;
+    }
+
+    /**
+     * Determine whether the {@code byte[]} values for columns of type {@code BIT(n)} are {@link ByteOrder#BIG_ENDIAN big-endian}
+     * or {@link ByteOrder#LITTLE_ENDIAN little-endian}. All values for {@code BIT(n)} columns are to be returned in
+     * {@link ByteOrder#LITTLE_ENDIAN little-endian}.
+     * <p>
+     * By default, this method returns {@link ByteOrder#LITTLE_ENDIAN}.
+     * 
+     * @return little endian or big endian; never null
+     */
+    protected ByteOrder byteOrderOfBitType() {
+        return ByteOrder.LITTLE_ENDIAN;
     }
 
     /**
@@ -1068,6 +1174,6 @@ public class JdbcValueConverters implements ValueConverterProvider {
             return null;
         }
         throw new IllegalArgumentException("Unexpected value for JDBC type " + column.jdbcType() + " and column " + column +
-                                           ": class=" + data.getClass());  // don't include value in case its sensitive
+                ": class=" + data.getClass()); // don't include value in case its sensitive
     }
 }

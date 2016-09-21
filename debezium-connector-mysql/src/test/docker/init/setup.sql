@@ -260,3 +260,14 @@ CREATE TABLE dbz_114_zerovaluetest (
 );
 INSERT IGNORE INTO dbz_114_zerovaluetest VALUES ('0000-00-00', '00:00:00.000', '0000-00-00 00:00:00.000', '0000-00-00 00:00:00.000');
 INSERT IGNORE INTO dbz_114_zerovaluetest VALUES ('0001-00-00', '00:01:00.000', '0001-00-00 00:00:00.000', '0001-00-00 00:00:00.000');
+
+
+-- DBZ-123 handle bit values, including bit field literals
+CREATE TABLE dbz_123_bitvaluetest (
+  c1 BIT,
+  c2 BIT(2),
+  c3 BIT(8) NOT NULL,
+  c4 BIT(64)
+);
+INSERT INTO dbz_123_bitvaluetest VALUES (1,2,64,23989979);
+INSERT INTO dbz_123_bitvaluetest VALUES (b'1',b'10',b'01000000',b'1011011100000111011011011');

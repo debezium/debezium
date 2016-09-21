@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.StandardCharsets;
@@ -69,6 +70,11 @@ public class MySqlValueConverters extends JdbcValueConverters {
      */
     public MySqlValueConverters(boolean adaptiveTimePrecision, ZoneOffset defaultOffset) {
         super(adaptiveTimePrecision, defaultOffset);
+    }
+    
+    @Override
+    protected ByteOrder byteOrderOfBitType() {
+        return ByteOrder.BIG_ENDIAN;
     }
 
     @Override
