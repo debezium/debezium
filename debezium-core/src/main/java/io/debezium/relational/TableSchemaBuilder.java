@@ -226,11 +226,10 @@ public class TableSchemaBuilder {
                     Object value = row[recordIndexes[i]];
                     ValueConverter converter = converters[i];
                     if (converter != null) {
-                        if (value != null) value = converter.convert(value);
                         try {
+                            value = converter.convert(value);
                             result.put(fields[i], value);
-                        } catch (DataException e) {
-                            if (value != null) value = converter.convert(value);
+                        } catch (DataException|IllegalArgumentException e) {
                             Column col = columns.get(i);
                             LOGGER.error("Failed to properly convert data value for '" + tableId + "." + col.name() + "' of type "
                                     + col.typeName() + ":", e);
@@ -340,6 +339,6 @@ public class TableSchemaBuilder {
      * @return the value conversion function; may not be null
      */
     protected ValueConverter createValueConverterFor(Column column, Field fieldDefn) {
-        return valueConverterProvider.converter(column, fieldDefn).nullOr();
+        return valueConverterProvider.converter(column, fieldDefn);
     }
 }
