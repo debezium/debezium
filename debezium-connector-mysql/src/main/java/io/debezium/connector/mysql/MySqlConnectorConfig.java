@@ -91,10 +91,27 @@ public class MySqlConnectorConfig {
      * The set of predefined SnapshotMode options or aliases.
      */
     public static enum SnapshotMode {
+
         /**
-         * Forwards each event as a structured Kafka Connect message.
+         * Perform a snapshot when it is needed.
          */
-        WHEN_NEEDED("when_needed"), INITIAL("initial"), NEVER("never");
+        WHEN_NEEDED("when_needed"),
+        
+        /**
+         * Perform a snapshot only upon initial startup of a connector.
+         */
+        INITIAL("initial"),
+
+        /**
+         * Never perform a snapshot and only read the binlog. This assumes the binlog contains all the history of those
+         * databases and tables that will be captured.
+         */
+        NEVER("never"),
+
+        /**
+         * Perform a snapshot and then stop before attempting to read the binlog.
+         */
+        INITIAL_ONLY("initial_only");
 
         private final String value;
 
@@ -474,7 +491,8 @@ public class MySqlConnectorConfig {
                                                    .withDescription("The criteria for running a snapshot upon startup of the connector. "
                                                            + "Options include: "
                                                            + "'when_needed' to specify that the connector run a snapshot upon startup whenever it deems it necessary; "
-                                                           + "'initial' (the default) to specify the connector can run a snapshot only when no offsets are available for the logical server name; and "
+                                                           + "'initial' (the default) to specify the connector can run a snapshot only when no offsets are available for the logical server name; "
+                                                           + "'initial_only' same as 'initial' except the connector should stop after completing the snapshot and before it would normally read the binlog; and"
                                                            + "'never' to specify the connector should never run a snapshot and that upon first startup the connector should read from the beginning of the binlog. "
                                                            + "The 'never' mode should be used with care, and only when the binlog is known to contain all history.");
 
