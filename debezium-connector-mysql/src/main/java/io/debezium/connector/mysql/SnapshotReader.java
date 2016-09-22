@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
@@ -130,8 +131,10 @@ public class SnapshotReader extends AbstractReader {
         try {
             // Call the completion function to say that we've successfully completed
             if (onSuccessfulCompletion != null) onSuccessfulCompletion.run();
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Throwable e) {
-            logger.error("Error calling completion function after completing snapshot", e);
+            throw new ConnectException("Error calling completion function after completing snapshot", e);
         }
     }
 

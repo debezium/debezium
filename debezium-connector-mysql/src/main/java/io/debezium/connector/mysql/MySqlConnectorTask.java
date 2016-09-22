@@ -115,6 +115,15 @@ public final class MySqlConnectorTask extends SourceTask {
                     logger.info("Found no existing offset and snapshots disallowed, so starting at beginning of binlog");
                     source.setBinlogStartPoint("", 0L);// start from the beginning of the binlog
                     taskContext.initializeHistory();
+
+                    // Look to see what the first available binlog file is called, and whether it looks like binlog files have
+                    // been purged. If so, then output a warning ...
+                    String earliestBinlogFilename = earliestBinlogFilename();
+                    if (earliestBinlogFilename == null) {
+                        logger.warn("No binlog appears to be available. Ensure that the MySQL row-level binlog is enabled.");
+                    } else if (!earliestBinlogFilename.endsWith("00001")) {
+                        logger.warn("It is possible the server has purged some binlogs. If this is the case, then using snapshot mode may be required.");
+                    }
                 } else {
                     // We are allowed to use snapshots, and that is the best way to start ...
                     startWithSnapshot = true;
@@ -130,22 +139,44 @@ public final class MySqlConnectorTask extends SourceTask {
                 source.setGtidSet("");
             }
 
+            // Check whether the row-level binlog is enabled ...
+            final boolean rowBinlogEnabled = isRowBinlogEnabled();
+
             // Set up the readers ...
             this.binlogReader = new BinlogReader(taskContext);
             if (startWithSnapshot) {
                 // We're supposed to start with a snapshot, so set that up ...
                 this.snapshotReader = new SnapshotReader(taskContext);
-                this.snapshotReader.onSuccessfulCompletion(this::transitionToReadBinlog);
+                if (!taskContext.isInitialSnapshotOnly()) {
+                    logger.warn("This connector will only perform a snapshot, and will stop after that completes.");
+                    this.snapshotReader.onSuccessfulCompletion(this::skipReadBinlog);
+                } else if (rowBinlogEnabled) {
+                    // This is the normal mode ...
+                    this.snapshotReader.onSuccessfulCompletion(this::transitionToReadBinlog);
+                } else {
+                    assert !rowBinlogEnabled;
+                    assert !taskContext.isInitialSnapshotOnly();
+                    throw new ConnectException("The MySQL server is not configured to use a row-level binlog, which is "
+                            + "required for this connector to work properly. Change the MySQL configuration to use a "
+                            + "row-level binlog and restart the connector.");
+                }
                 this.snapshotReader.useMinimalBlocking(taskContext.useMinimalSnapshotLocking());
                 if (snapshotEventsAreInserts) this.snapshotReader.generateInsertEvents();
                 this.currentReader = this.snapshotReader;
             } else {
+                if (!rowBinlogEnabled) {
+                    throw new ConnectException(
+                            "The MySQL server does not appear to be using a row-level binlog, which is required for this connector to work properly. Enable this mode and restart the connector.");
+                }
                 // Just starting to read the binlog ...
                 this.currentReader = this.binlogReader;
             }
 
             // And start our first reader ...
             this.currentReader.start();
+        } catch (RuntimeException e) {
+            this.taskContext.shutdown();
+            throw e;
         } finally {
             prevLoggingContext.restore();
         }
@@ -196,6 +227,10 @@ public final class MySqlConnectorTask extends SourceTask {
         logger.debug("Transitioning from snapshot reader to binlog reader");
         this.binlogReader.start();
         this.currentReader = this.binlogReader;
+    }
+
+    protected void skipReadBinlog() {
+        logger.info("Connector configured to only perform snapshot, and snapshot completed successfully. Connector will terminate.");
     }
 
     /**
@@ -252,6 +287,29 @@ public final class MySqlConnectorTask extends SourceTask {
     }
 
     /**
+     * Determine the earliest binlog filename that is still available in the server.
+     * 
+     * @return the name of the earliest binlog filename, or null if there are none.
+     */
+    protected String earliestBinlogFilename() {
+        // Accumulate the available binlog filenames ...
+        List<String> logNames = new ArrayList<>();
+        try {
+            logger.info("Checking all known binlogs from MySQL");
+            taskContext.jdbc().query("SHOW BINARY LOGS", rs -> {
+                while (rs.next()) {
+                    logNames.add(rs.getString(1));
+                }
+            });
+        } catch (SQLException e) {
+            throw new ConnectException("Unexpected error while connecting to MySQL and looking for binary logs: ", e);
+        }
+
+        if (logNames.isEmpty()) return null;
+        return logNames.get(0);
+    }
+
+    /**
      * Determine whether the MySQL server has GTIDs enabled.
      * 
      * @return {@code false} if the server's {@code gtid_mode} is set and is {@code OFF}, or {@code true} otherwise
@@ -289,5 +347,26 @@ public final class MySqlConnectorTask extends SourceTask {
         }
 
         return gtidSetStr.get();
+    }
+
+    /**
+     * Determine whether the MySQL server has the row-level binlog enabled.
+     * 
+     * @return {@code true} if the server's {@code binlog_format} is set to {@code ROW}, or {@code false} otherwise
+     */
+    protected boolean isRowBinlogEnabled() {
+        AtomicReference<String> mode = new AtomicReference<String>("");
+        try {
+            taskContext.jdbc().query("SHOW GLOBAL VARIABLES LIKE 'binlog_format'", rs -> {
+                if (rs.next()) {
+                    mode.set(rs.getString(2));
+                }
+            });
+        } catch (SQLException e) {
+            throw new ConnectException("Unexpected error while connecting to MySQL and looking at BINLOG mode: ", e);
+        }
+
+        logger.info("binlog_format={}" + mode.get());
+        return "ROW".equalsIgnoreCase(mode.get());
     }
 }

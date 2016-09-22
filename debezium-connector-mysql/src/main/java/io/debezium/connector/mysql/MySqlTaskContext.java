@@ -150,6 +150,10 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         return snapshotMode() == SnapshotMode.NEVER;
     }
 
+    public boolean isInitialSnapshotOnly() {
+        return snapshotMode() == SnapshotMode.INITIAL_ONLY;
+    }
+
     protected SnapshotMode snapshotMode() {
         String value = config.getString(MySqlConnectorConfig.SNAPSHOT_MODE);
         return SnapshotMode.parse(value, MySqlConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
