@@ -147,7 +147,7 @@ public final class MySqlConnectorTask extends SourceTask {
             if (startWithSnapshot) {
                 // We're supposed to start with a snapshot, so set that up ...
                 this.snapshotReader = new SnapshotReader(taskContext);
-                if (!taskContext.isInitialSnapshotOnly()) {
+                if (taskContext.isInitialSnapshotOnly()) {
                     logger.warn("This connector will only perform a snapshot, and will stop after that completes.");
                     this.snapshotReader.onSuccessfulCompletion(this::skipReadBinlog);
                 } else if (rowBinlogEnabled) {
