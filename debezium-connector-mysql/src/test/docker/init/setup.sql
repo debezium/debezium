@@ -174,7 +174,6 @@ VALUES (default, '2016-01-16', 1001, 1, 102),
        (default, '2016-02-21', 1003, 1, 107);
 
 
-
 -- ----------------------------------------------------------------------------------------------------------------
 -- DATABASE:  regression_test
 -- ----------------------------------------------------------------------------------------------------------------
@@ -271,3 +270,7 @@ CREATE TABLE dbz_123_bitvaluetest (
 );
 INSERT INTO dbz_123_bitvaluetest VALUES (1,2,64,23989979);
 INSERT INTO dbz_123_bitvaluetest VALUES (b'1',b'10',b'01000000',b'1011011100000111011011011');
+
+-- DBZ-104 handle create table like ...
+CREATE TABLE dbz_104_customers LIKE connector_test.customers;
+INSERT INTO dbz_104_customers SELECT * FROM connector_test.customers;
