@@ -20,6 +20,11 @@ import io.debezium.util.Testing;
 @Ignore
 public class PostgresConnectionIT implements Testing {
     
+    
+    public static void beforeClass() {
+        
+    }
+    
     @Test
     public void shouldInitWALReaderAndReadLog() throws SQLException {
         try (PostgresConnection conn = PostgresConnection.forTestDatabase("postgres")) {

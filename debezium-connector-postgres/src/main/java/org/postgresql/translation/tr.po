@@ -1,0 +1,1624 @@
+# This file is distributed under the same license as the PACKAGE package.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER.
+# Devrim GUNDUZ <devrim@PostgreSQL.org>, 2004.
+# Nicolai TUFAR <ntufar@gmail.com>, 2004, 2005.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: jdbc-tr\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2016-01-07 13:37+0300\n"
+"PO-Revision-Date: 2009-05-31 21:47+0200\n"
+"Last-Translator: Devrim GÜNDÜZ <devrim@gunduz.org>\n"
+"Language-Team: Turkish <pgsql-tr-genel@PostgreSQL.org>\n"
+"Language: tr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: KBabel 1.3.1\n"
+"X-Poedit-Language: Turkish\n"
+"X-Poedit-Country: TURKEY\n"
+
+#: org/postgresql/copy/CopyManager.java:57
+#, java-format
+msgid "Requested CopyIn but got {0}"
+msgstr ""
+
+#: org/postgresql/copy/CopyManager.java:69
+#, java-format
+msgid "Requested CopyOut but got {0}"
+msgstr ""
+
+#: org/postgresql/copy/PGCopyInputStream.java:54
+#, java-format
+msgid "Copying from database failed: {0}"
+msgstr ""
+
+#: org/postgresql/copy/PGCopyInputStream.java:70
+#: org/postgresql/copy/PGCopyOutputStream.java:97
+#, fuzzy
+msgid "This copy stream is closed."
+msgstr "ResultSet kapalıdır."
+
+#: org/postgresql/copy/PGCopyInputStream.java:113
+msgid "Read from copy failed."
+msgstr ""
+
+#: org/postgresql/copy/PGCopyOutputStream.java:74
+#, java-format
+msgid "Cannot write to copy a byte of value {0}"
+msgstr ""
+
+#: org/postgresql/core/ConnectionFactory.java:74
+#, java-format
+msgid "A connection could not be made using the requested protocol {0}."
+msgstr "İstenilen protokol ile bağlantı kurulamadı {0}"
+
+#: org/postgresql/core/Oid.java:114
+#, java-format
+msgid "oid type {0} not known and not a number"
+msgstr ""
+
+#: org/postgresql/core/Parser.java:616
+#, java-format
+msgid "Malformed function or procedure escape syntax at offset {0}."
+msgstr "{0} adresinde fonksiyon veya yordamda kaçış söz dizimi geçersiz."
+
+#: org/postgresql/core/PGStream.java:497
+#, java-format
+msgid "Premature end of input stream, expected {0} bytes, but only read {1}."
+msgstr ""
+"Giriş akımında beklenmeyen dosya sonu, {0} bayt beklenirken sadece {1} bayt "
+"alındı."
+
+#: org/postgresql/core/PGStream.java:538
+#, java-format
+msgid "Expected an EOF from server, got: {0}"
+msgstr "Sunucudan EOF beklendi; ama {0} alındı."
+
+#: org/postgresql/core/SetupQueryRunner.java:90
+msgid "An unexpected result was returned by a query."
+msgstr "Sorgu beklenmeyen bir sonuç döndürdü."
+
+#: org/postgresql/core/UTF8Encoding.java:31
+#, java-format
+msgid ""
+"Illegal UTF-8 sequence: byte {0} of {1} byte sequence is not 10xxxxxx: {2}"
+msgstr ""
+"Geçersiz UTF-8 çoklu bayt karakteri: {0}/{1} baytı 10xxxxxx değildir: {2}"
+
+#: org/postgresql/core/UTF8Encoding.java:69
+#, java-format
+msgid "Illegal UTF-8 sequence: {0} bytes used to encode a {1} byte value: {2}"
+msgstr ""
+"Geçersiz UTF-8 çoklu bayt karakteri: {0} bayt, {1} bayt değeri kodlamak için "
+"kullanılmış: {2}"
+
+#: org/postgresql/core/UTF8Encoding.java:104
+#: org/postgresql/core/UTF8Encoding.java:131
+#, java-format
+msgid "Illegal UTF-8 sequence: initial byte is {0}: {1}"
+msgstr "Geçersiz UTF-8 çoklu bayt karakteri: ilk bayt {0}: {1}"
+
+#: org/postgresql/core/UTF8Encoding.java:137
+#, java-format
+msgid "Illegal UTF-8 sequence: final value is out of range: {0}"
+msgstr "Geçersiz UTF-8 çoklu bayt karakteri: son değer sıra dışıdır: {0}"
+
+#: org/postgresql/core/UTF8Encoding.java:153
+#, java-format
+msgid "Illegal UTF-8 sequence: final value is a surrogate value: {0}"
+msgstr "Geçersiz UTF-8 çoklu bayt karakteri: son değer yapay bir değerdir: {0}"
+
+#: org/postgresql/core/Utils.java:119 org/postgresql/core/Utils.java:136
+msgid "Zero bytes may not occur in string parameters."
+msgstr "String parametrelerinde sıfır bayt olamaz."
+
+#: org/postgresql/core/Utils.java:146 org/postgresql/core/Utils.java:217
+msgid "No IOException expected from StringBuffer or StringBuilder"
+msgstr ""
+
+#: org/postgresql/core/Utils.java:206
+msgid "Zero bytes may not occur in identifiers."
+msgstr "Belirteçlerde sıfır bayt olamaz."
+
+#: org/postgresql/core/v2/ConnectionFactoryImpl.java:72
+#: org/postgresql/core/v3/ConnectionFactoryImpl.java:87
+#, fuzzy, java-format
+msgid "Invalid sslmode value: {0}"
+msgstr "Geçersiz akım uzunluğu {0}."
+
+#: org/postgresql/core/v2/ConnectionFactoryImpl.java:87
+#: org/postgresql/core/v3/ConnectionFactoryImpl.java:111
+#, fuzzy, java-format
+msgid "Invalid targetServerType value: {0}"
+msgstr "Geçersiz akım uzunluğu {0}."
+
+#: org/postgresql/core/v2/ConnectionFactoryImpl.java:152
+#: org/postgresql/core/v3/ConnectionFactoryImpl.java:228
+#, java-format
+msgid "Could not find a server with specified targetServerType: {0}"
+msgstr ""
+
+#: org/postgresql/core/v2/ConnectionFactoryImpl.java:172
+msgid ""
+"Connection refused. Check that the hostname and port are correct and that "
+"the postmaster is accepting TCP/IP connections."
+msgstr ""
+"Bağlantı reddedildi. Sunucu adı ve portun doğru olup olmadığını ve "
+"postmaster''in TCP/IP bağlantılarını kabul edip etmediğini kontrol ediniz."
+
+#: org/postgresql/core/v2/ConnectionFactoryImpl.java:181
+#: org/postgresql/core/v3/ConnectionFactoryImpl.java:262
+msgid "The connection attempt failed."
+msgstr "Bağlantı denemesi başarısız oldu."
+
+#: org/postgresql/core/v2/ConnectionFactoryImpl.java:192
+#: org/postgresql/core/v3/ConnectionFactoryImpl.java:273
+#, fuzzy
+msgid "The connection url is invalid."
+msgstr "Bağlantı denemesi başarısız oldu."
+
+#: org/postgresql/core/v2/ConnectionFactoryImpl.java:218
+#: org/postgresql/core/v2/ConnectionFactoryImpl.java:233
+#: org/postgresql/core/v3/ConnectionFactoryImpl.java:324
+#: org/postgresql/core/v3/ConnectionFactoryImpl.java:339
+msgid "The server does not support SSL."
+msgstr "Sunucu SSL desteklemiyor."
+
+#: org/postgresql/core/v2/ConnectionFactoryImpl.java:249
+#: org/postgresql/core/v3/ConnectionFactoryImpl.java:355
+msgid "An error occurred while setting up the SSL connection."
+msgstr "SSL bağlantısı ayarlanırken bir hata oluştu."
+
+#: org/postgresql/core/v2/ConnectionFactoryImpl.java:300
+#, java-format
+msgid "Connection rejected: {0}."
+msgstr "Bağlantı reddedildi {0}"
+
+#: org/postgresql/core/v2/ConnectionFactoryImpl.java:321
+#: org/postgresql/core/v2/ConnectionFactoryImpl.java:349
+#: org/postgresql/core/v2/ConnectionFactoryImpl.java:375
+#: org/postgresql/core/v3/ConnectionFactoryImpl.java:456
+#: org/postgresql/core/v3/ConnectionFactoryImpl.java:486
+#: org/postgresql/core/v3/ConnectionFactoryImpl.java:515
+msgid ""
+"The server requested password-based authentication, but no password was "
+"provided."
+msgstr "Sunucu şifre tabanlı yetkilendirme istedi; ancak bir şifre sağlanmadı."
+
+#: org/postgresql/core/v2/ConnectionFactoryImpl.java:405
+#: org/postgresql/core/v3/ConnectionFactoryImpl.java:625
+#, java-format
+msgid ""
+"The authentication type {0} is not supported. Check that you have configured "
+"the pg_hba.conf file to include the client''s IP address or subnet, and that "
+"it is using an authentication scheme supported by the driver."
+msgstr ""
+"{0} yetkinlendirme tipi desteklenmemektedir. pg_hba.conf dosyanızı "
+"istemcinin IP adresini ya da subnetini içerecek şekilde ayarlayıp "
+"ayarlamadığınızı ve sürücü tarafından desteklenen yetkilendirme "
+"yöntemlerinden birisini kullanıp kullanmadığını kontrol ediniz."
+
+#: org/postgresql/core/v2/ConnectionFactoryImpl.java:412
+#: org/postgresql/core/v2/ConnectionFactoryImpl.java:455
+#: org/postgresql/core/v3/ConnectionFactoryImpl.java:632
+#: org/postgresql/core/v3/ConnectionFactoryImpl.java:688
+#: org/postgresql/core/v3/ConnectionFactoryImpl.java:744
+#: org/postgresql/core/v3/ConnectionFactoryImpl.java:754
+#: org/postgresql/core/v3/ConnectionFactoryImpl.java:763
+#: org/postgresql/core/v3/ConnectionFactoryImpl.java:774
+#: org/postgresql/gss/GssAction.java:130
+msgid "Protocol error.  Session setup failed."
+msgstr "Protokol hatası.  Oturum kurulumu başarısız oldu."
+
+#: org/postgresql/core/v2/ConnectionFactoryImpl.java:443
+#, java-format
+msgid "Backend start-up failed: {0}."
+msgstr "Backend başlaması başarısız oldu: {0}"
+
+#: org/postgresql/core/v2/FastpathParameterList.java:63
+#: org/postgresql/core/v2/FastpathParameterList.java:89
+#: org/postgresql/core/v2/FastpathParameterList.java:100
+#: org/postgresql/core/v2/FastpathParameterList.java:111
+#: org/postgresql/core/v2/SimpleParameterList.java:70
+#: org/postgresql/core/v2/SimpleParameterList.java:94
+#: org/postgresql/core/v2/SimpleParameterList.java:105
+#: org/postgresql/core/v2/SimpleParameterList.java:116
+#: org/postgresql/core/v2/SimpleParameterList.java:127
+#: org/postgresql/core/v3/CompositeParameterList.java:36
+#: org/postgresql/core/v3/SimpleParameterList.java:53
+#: org/postgresql/core/v3/SimpleParameterList.java:64
+#: org/postgresql/jdbc/PgResultSet.java:2715
+#: org/postgresql/jdbc/PgResultSetMetaData.java:472
+#, java-format
+msgid "The column index is out of range: {0}, number of columns: {1}."
+msgstr "Sütun gçstergesi kapsam dışıdır: {0}, sütun sayısı: {1}."
+
+#: org/postgresql/core/v2/FastpathParameterList.java:164
+#: org/postgresql/core/v2/SimpleParameterList.java:191
+#: org/postgresql/core/v3/SimpleParameterList.java:225
+#, java-format
+msgid "No value specified for parameter {0}."
+msgstr "{0} parametresi için hiç bir değer belirtilmedi."
+
+#: org/postgresql/core/v2/QueryExecutorImpl.java:87
+#: org/postgresql/core/v2/QueryExecutorImpl.java:347
+#: org/postgresql/core/v3/QueryExecutorImpl.java:404
+#: org/postgresql/core/v3/QueryExecutorImpl.java:465
+#, java-format
+msgid "Expected command status BEGIN, got {0}."
+msgstr "BEGIN komut durumunu beklenirken {0} alındı."
+
+#: org/postgresql/core/v2/QueryExecutorImpl.java:92
+#: org/postgresql/core/v3/QueryExecutorImpl.java:470
+#: org/postgresql/jdbc/PgResultSet.java:1731
+#, java-format
+msgid "Unexpected command status: {0}."
+msgstr "Beklenmeyen komut durumu: {0}."
+
+#: org/postgresql/core/v2/QueryExecutorImpl.java:127
+#: org/postgresql/core/v2/QueryExecutorImpl.java:136
+#: org/postgresql/core/v2/QueryExecutorImpl.java:185
+#: org/postgresql/core/v2/QueryExecutorImpl.java:376
+#: org/postgresql/core/v3/QueryExecutorImpl.java:226
+#: org/postgresql/core/v3/QueryExecutorImpl.java:364
+#: org/postgresql/core/v3/QueryExecutorImpl.java:441
+#: org/postgresql/core/v3/QueryExecutorImpl.java:505
+#: org/postgresql/core/v3/QueryExecutorImpl.java:587
+#: org/postgresql/core/v3/QueryExecutorImpl.java:2211
+#: org/postgresql/util/StreamWrapper.java:133
+#, fuzzy
+msgid "An I/O error occurred while sending to the backend."
+msgstr "Backend''e gönderirken bir I/O hatası oluştu."
+
+#: org/postgresql/core/v2/QueryExecutorImpl.java:180
+#: org/postgresql/core/v2/QueryExecutorImpl.java:235
+#: org/postgresql/core/v2/QueryExecutorImpl.java:249
+#: org/postgresql/core/v3/QueryExecutorImpl.java:582
+#: org/postgresql/core/v3/QueryExecutorImpl.java:642
+#, java-format
+msgid "Unknown Response Type {0}."
+msgstr "Bilinmeyen yanıt tipi {0}"
+
+#: org/postgresql/core/v2/QueryExecutorImpl.java:453
+#: org/postgresql/core/v2/QueryExecutorImpl.java:503
+#: org/postgresql/core/v3/QueryExecutorImpl.java:1962
+msgid "Ran out of memory retrieving query results."
+msgstr "Sorgu sonuçları alınırken bellek yetersiz."
+
+#: org/postgresql/core/v2/QueryExecutorImpl.java:640
+#: org/postgresql/core/v3/QueryExecutorImpl.java:2328
+#, java-format
+msgid "Unable to interpret the update count in command completion tag: {0}."
+msgstr "Komut tamamlama etiketinde update sayısı yorumlanamıyor: {0}."
+
+#: org/postgresql/core/v2/QueryExecutorImpl.java:654
+msgid "Copy not implemented for protocol version 2"
+msgstr ""
+
+#: org/postgresql/core/v2/SocketFactoryFactory.java:36
+#, fuzzy, java-format
+msgid "The SocketFactory class provided {0} could not be instantiated."
+msgstr "SSLSocketFactory {0} ile örneklenmedi."
+
+#: org/postgresql/core/v3/ConnectionFactoryImpl.java:253
+#, fuzzy, java-format
+msgid ""
+"Connection to {0} refused. Check that the hostname and port are correct and "
+"that the postmaster is accepting TCP/IP connections."
+msgstr ""
+"Bağlantı reddedildi. Sunucu adı ve portun doğru olup olmadığını ve "
+"postmaster''in TCP/IP bağlantılarını kabul edip etmediğini kontrol ediniz."
+
+#: org/postgresql/core/v3/CopyOperationImpl.java:57
+msgid "CommandComplete expected COPY but got: "
+msgstr ""
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:83
+msgid "Tried to obtain lock while already holding it"
+msgstr ""
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:98
+msgid "Tried to break lock on database connection"
+msgstr ""
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:115
+#, fuzzy
+msgid "Interrupted while waiting to obtain lock on database connection"
+msgstr "Bağlanırken kesildi."
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:220
+msgid "Unable to bind parameter values for statement."
+msgstr "Komut için parametre değerlei bağlanamadı."
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:689
+msgid "Database connection failed when starting copy"
+msgstr ""
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:724
+msgid "Tried to cancel an inactive copy operation"
+msgstr ""
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:765
+msgid "Database connection failed when canceling copy operation"
+msgstr ""
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:781
+msgid "Missing expected error response to copy cancel request"
+msgstr ""
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:785
+#, java-format
+msgid "Got {0} error responses to single copy cancel request"
+msgstr ""
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:800
+msgid "Tried to end inactive copy"
+msgstr ""
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:815
+msgid "Database connection failed when ending copy"
+msgstr ""
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:833
+#: org/postgresql/core/v3/QueryExecutorImpl.java:855
+msgid "Tried to write to an inactive copy operation"
+msgstr ""
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:848
+#: org/postgresql/core/v3/QueryExecutorImpl.java:863
+msgid "Database connection failed when writing to copy"
+msgstr ""
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:877
+msgid "Tried to read from inactive copy"
+msgstr ""
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:884
+msgid "Database connection failed when reading from copy"
+msgstr ""
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:956
+#, java-format
+msgid "Received CommandComplete ''{0}'' without an active copy operation"
+msgstr ""
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:983
+#, java-format
+msgid "Got CopyInResponse from server during an active {0}"
+msgstr ""
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:999
+#, java-format
+msgid "Got CopyOutResponse from server during an active {0}"
+msgstr ""
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:1017
+msgid "Got CopyData without an active copy operation"
+msgstr ""
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:1021
+#, fuzzy, java-format
+msgid "Unexpected copydata from server for {0}"
+msgstr "Sunucudan EOF beklendi; ama {0} alındı."
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:1061
+#: org/postgresql/core/v3/QueryExecutorImpl.java:2037
+#, fuzzy, java-format
+msgid ""
+"The server''s client_encoding parameter was changed to {0}. The JDBC driver "
+"requires client_encoding to be UTF8 for correct operation."
+msgstr ""
+"İstemcinin client_encoding parametresi {0} değerine değiştirilmiştir. JDBC "
+"sürücüsünün doğru çalışması için client_encoding parameteresinin UNICODE "
+"olması gerekir."
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:1069
+#: org/postgresql/core/v3/QueryExecutorImpl.java:2045
+#, java-format
+msgid ""
+"The server''s DateStyle parameter was changed to {0}. The JDBC driver "
+"requires DateStyle to begin with ISO for correct operation."
+msgstr ""
+"Sunucunun DateStyle parametresi {0} olarak değiştirildi. JDBC sürücüsü doğru "
+"işlemesi için DateStyle tanımının ISO işle başlamasını gerekir."
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:1083
+#: org/postgresql/core/v3/QueryExecutorImpl.java:2059
+#, java-format
+msgid ""
+"The server''s standard_conforming_strings parameter was reported as {0}. The "
+"JDBC driver expected on or off."
+msgstr ""
+"İstemcinin client_standard_conforming_strings parametresi {0} olarak "
+"raporlandı. JDBC sürücüsü on ya da off olarak bekliyordu."
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:1122
+#, java-format
+msgid "Unexpected packet type during copy: {0}"
+msgstr ""
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:1393
+#, java-format
+msgid ""
+"Bind message length {0} too long.  This can be caused by very large or "
+"incorrect length specifications on InputStream parameters."
+msgstr ""
+"Bind mesaj uzunluğu ({0}) fazla uzun. Bu durum InputStream yalnış uzunluk "
+"belirtimlerden kaynaklanabilir."
+
+#: org/postgresql/core/v3/QueryExecutorImpl.java:2131
+msgid "The driver currently does not support COPY operations."
+msgstr "Bu sunucu şu aşamada COPY işlemleri desteklememktedir."
+
+#: org/postgresql/Driver.java:234
+msgid "Error loading default settings from driverconfig.properties"
+msgstr "driverconfig.properties dosyasından varsayılan ayarları yükleme hatası"
+
+#: org/postgresql/Driver.java:247
+msgid "Properties for the driver contains a non-string value for the key "
+msgstr ""
+
+#: org/postgresql/Driver.java:290
+msgid ""
+"Your security policy has prevented the connection from being attempted.  You "
+"probably need to grant the connect java.net.SocketPermission to the database "
+"server host and port that you wish to connect to."
+msgstr ""
+"Güvenlik politikanız bağlantının kurulmasını engelledi. java.net."
+"SocketPermission'a veritabanına ve de bağlanacağı porta bağlantı izni "
+"vermelisiniz."
+
+#: org/postgresql/Driver.java:296 org/postgresql/Driver.java:362
+msgid ""
+"Something unusual has occurred to cause the driver to fail. Please report "
+"this exception."
+msgstr ""
+"Sıradışı bir durum sürücünün hata vermesine sebep oldu. Lütfen bu durumu "
+"geliştiricilere bildirin."
+
+#: org/postgresql/Driver.java:370
+msgid "Connection attempt timed out."
+msgstr "Bağlantı denemesi zaman aşımına uğradı."
+
+#: org/postgresql/Driver.java:383
+msgid "Interrupted while attempting to connect."
+msgstr "Bağlanırken kesildi."
+
+#: org/postgresql/Driver.java:645
+#, java-format
+msgid "Method {0} is not yet implemented."
+msgstr "{0} yöntemi henüz kodlanmadı."
+
+#: org/postgresql/ds/common/BaseDataSource.java:1037
+#: org/postgresql/ds/common/BaseDataSource.java:1047
+#, fuzzy, java-format
+msgid "Unsupported property name: {0}"
+msgstr "Geçersiz Types değeri: {0}"
+
+#: org/postgresql/ds/PGPooledConnection.java:118
+msgid "This PooledConnection has already been closed."
+msgstr "Geçerli PooledConnection zaten önceden kapatıldı."
+
+#: org/postgresql/ds/PGPooledConnection.java:313
+msgid ""
+"Connection has been closed automatically because a new connection was opened "
+"for the same PooledConnection or the PooledConnection has been closed."
+msgstr ""
+"PooledConnection kapatıldığı için veya aynı PooledConnection için yeni bir "
+"bağlantı açıldığı için geçerli bağlantı otomatik kapatıldı."
+
+#: org/postgresql/ds/PGPooledConnection.java:314
+msgid "Connection has been closed."
+msgstr "Bağlantı kapatıldı."
+
+#: org/postgresql/ds/PGPooledConnection.java:418
+msgid "Statement has been closed."
+msgstr "Komut kapatıldı."
+
+#: org/postgresql/ds/PGPoolingDataSource.java:269
+msgid "Failed to setup DataSource."
+msgstr ""
+
+#: org/postgresql/ds/PGPoolingDataSource.java:371
+msgid "DataSource has been closed."
+msgstr "DataSource kapatıldı."
+
+#: org/postgresql/fastpath/Fastpath.java:82
+#, fuzzy, java-format
+msgid "Fastpath call {0} - No result was returned and we expected a numeric."
+msgstr "Fastpath call {0} - Integer beklenirken hiçbir sonuç getirilmedi."
+
+#: org/postgresql/fastpath/Fastpath.java:165
+#, java-format
+msgid "Fastpath call {0} - No result was returned and we expected an integer."
+msgstr "Fastpath call {0} - Integer beklenirken hiçbir sonuç getirilmedi."
+
+#: org/postgresql/fastpath/Fastpath.java:174
+#, fuzzy, java-format
+msgid ""
+"Fastpath call {0} - No result was returned or wrong size while expecting an "
+"integer."
+msgstr "Fastpath call {0} - Integer beklenirken hiçbir sonuç getirilmedi."
+
+#: org/postgresql/fastpath/Fastpath.java:191
+#, fuzzy, java-format
+msgid "Fastpath call {0} - No result was returned and we expected a long."
+msgstr "Fastpath call {0} - Integer beklenirken hiçbir sonuç getirilmedi."
+
+#: org/postgresql/fastpath/Fastpath.java:200
+#, fuzzy, java-format
+msgid ""
+"Fastpath call {0} - No result was returned or wrong size while expecting a "
+"long."
+msgstr "Fastpath call {0} - Integer beklenirken hiçbir sonuç getirilmedi."
+
+#: org/postgresql/fastpath/Fastpath.java:312
+#, java-format
+msgid "The fastpath function {0} is unknown."
+msgstr "{0} fastpath fonksiyonu bilinmemektedir."
+
+#: org/postgresql/geometric/PGbox.java:79
+#: org/postgresql/geometric/PGcircle.java:76
+#: org/postgresql/geometric/PGcircle.java:84
+#: org/postgresql/geometric/PGline.java:109
+#: org/postgresql/geometric/PGline.java:118
+#: org/postgresql/geometric/PGlseg.java:72
+#: org/postgresql/geometric/PGpoint.java:78
+#, java-format
+msgid "Conversion to type {0} failed: {1}."
+msgstr "{0} veri tipine dönüştürme hatası: {1}."
+
+#: org/postgresql/geometric/PGpath.java:73
+#, java-format
+msgid "Cannot tell if path is open or closed: {0}."
+msgstr "Pathın açık mı kapalı olduğunu tespit edilemiyor: {0}."
+
+#: org/postgresql/gss/GssAction.java:141 org/postgresql/gss/MakeGSS.java:69
+#: org/postgresql/gss/MakeGSS.java:77
+msgid "GSS Authentication failed"
+msgstr ""
+
+#: org/postgresql/jdbc/AbstractBlobClob.java:89
+msgid ""
+"Truncation of large objects is only implemented in 8.3 and later servers."
+msgstr "Large objectlerin temizlenmesi 8.3 ve sonraki sürümlerde kodlanmıştır."
+
+#: org/postgresql/jdbc/AbstractBlobClob.java:94
+msgid "Cannot truncate LOB to a negative length."
+msgstr ""
+
+#: org/postgresql/jdbc/AbstractBlobClob.java:101
+#: org/postgresql/jdbc/AbstractBlobClob.java:245
+#, java-format
+msgid "PostgreSQL LOBs can only index to: {0}"
+msgstr "PostgreSQL LOB göstergeleri sadece {0} referans edebilir"
+
+#: org/postgresql/jdbc/AbstractBlobClob.java:241
+msgid "LOB positioning offsets start at 1."
+msgstr "LOB bağlangıç adresi 1Den başlıyor"
+
+#: org/postgresql/jdbc/AbstractBlobClob.java:257
+msgid "free() was called on this LOB previously"
+msgstr "Bu LOB'da free() daha önce çağırıldı"
+
+#: org/postgresql/jdbc/BatchResultHandler.java:41
+#: org/postgresql/jdbc/PgConnection.java:474
+#: org/postgresql/jdbc/PgPreparedStatement.java:138
+#: org/postgresql/jdbc/PgStatement.java:299
+msgid "A result was returned when none was expected."
+msgstr "Hiçbir sonuç kebklenimezken sonuç getirildi."
+
+#: org/postgresql/jdbc/BatchResultHandler.java:59
+msgid "Too many update results were returned."
+msgstr "Çok fazla güncelleme sonucu döndürüldü."
+
+#: org/postgresql/jdbc/BatchResultHandler.java:88
+#, java-format
+msgid ""
+"Batch entry {0} {1} was aborted.  Call getNextException to see the cause."
+msgstr ""
+"Tpilı iş girişi {0} {1} durduruldu.  Nedenini görmek için getNextException "
+"fonksiyonu çağırın."
+
+#: org/postgresql/jdbc/EscapedFunctions.java:243
+#, java-format
+msgid "{0} function takes four and only four argument."
+msgstr "{0} fonksiyonunu yalnız dört parametre alabilir."
+
+#: org/postgresql/jdbc/EscapedFunctions.java:273
+#: org/postgresql/jdbc/EscapedFunctions.java:347
+#: org/postgresql/jdbc/EscapedFunctions.java:752
+#: org/postgresql/jdbc/EscapedFunctions.java:790
+#, java-format
+msgid "{0} function takes two and only two arguments."
+msgstr "{0} fonksiyonunu sadece iki parametre alabilir."
+
+#: org/postgresql/jdbc/EscapedFunctions.java:291
+#: org/postgresql/jdbc/EscapedFunctions.java:329
+#: org/postgresql/jdbc/EscapedFunctions.java:449
+#: org/postgresql/jdbc/EscapedFunctions.java:464
+#: org/postgresql/jdbc/EscapedFunctions.java:479
+#: org/postgresql/jdbc/EscapedFunctions.java:494
+#: org/postgresql/jdbc/EscapedFunctions.java:509
+#: org/postgresql/jdbc/EscapedFunctions.java:524
+#: org/postgresql/jdbc/EscapedFunctions.java:539
+#: org/postgresql/jdbc/EscapedFunctions.java:554
+#: org/postgresql/jdbc/EscapedFunctions.java:569
+#: org/postgresql/jdbc/EscapedFunctions.java:584
+#: org/postgresql/jdbc/EscapedFunctions.java:599
+#: org/postgresql/jdbc/EscapedFunctions.java:614
+#: org/postgresql/jdbc/EscapedFunctions.java:778
+#, java-format
+msgid "{0} function takes one and only one argument."
+msgstr "{0} fonksiyonunu yalnız tek bir parametre alabilir."
+
+#: org/postgresql/jdbc/EscapedFunctions.java:313
+#: org/postgresql/jdbc/EscapedFunctions.java:394
+#, java-format
+msgid "{0} function takes two or three arguments."
+msgstr "{0} fonksiyonu yalnız iki veya üç argüman alabilir."
+
+#: org/postgresql/jdbc/EscapedFunctions.java:419
+#: org/postgresql/jdbc/EscapedFunctions.java:434
+#: org/postgresql/jdbc/EscapedFunctions.java:737
+#: org/postgresql/jdbc/EscapedFunctions.java:767
+#, java-format
+msgid "{0} function doesn''t take any argument."
+msgstr "{0} fonksiyonu parametre almaz."
+
+#: org/postgresql/jdbc/EscapedFunctions.java:630
+#: org/postgresql/jdbc/EscapedFunctions.java:683
+#, java-format
+msgid "{0} function takes three and only three arguments."
+msgstr "{0} fonksiyonunu sadece üç parametre alabilir."
+
+#: org/postgresql/jdbc/EscapedFunctions.java:643
+#: org/postgresql/jdbc/EscapedFunctions.java:664
+#: org/postgresql/jdbc/EscapedFunctions.java:667
+#: org/postgresql/jdbc/EscapedFunctions.java:700
+#: org/postgresql/jdbc/EscapedFunctions.java:713
+#: org/postgresql/jdbc/EscapedFunctions.java:716
+#, java-format
+msgid "Interval {0} not yet implemented"
+msgstr "{0} aralığı henüz kodlanmadı."
+
+#: org/postgresql/jdbc/PgArray.java:166 org/postgresql/jdbc/PgArray.java:822
+#, java-format
+msgid "The array index is out of range: {0}"
+msgstr "Dizi göstergesi kapsam dışıdır: {0}"
+
+#: org/postgresql/jdbc/PgArray.java:183 org/postgresql/jdbc/PgArray.java:839
+#, java-format
+msgid "The array index is out of range: {0}, number of elements: {1}."
+msgstr "Dizin göstergisi kapsam dışıdır: {0}, öğe sayısı: {1}."
+
+#: org/postgresql/jdbc/PgArray.java:215
+#: org/postgresql/jdbc/PgResultSet.java:1885
+#: org/postgresql/util/HStoreConverter.java:38
+#: org/postgresql/util/HStoreConverter.java:69
+msgid ""
+"Invalid character data was found.  This is most likely caused by stored data "
+"containing characters that are invalid for the character set the database "
+"was created in.  The most common example of this is storing 8bit data in a "
+"SQL_ASCII database."
+msgstr ""
+"Geçersiz karakterler bulunmuştur. Bunun sebebi, verilerde veritabanın "
+"desteklediği dil kodlamadaki karakterlerin dışında bir karaktere "
+"rastlamasıdır. Bunun en yaygın örneği 8 bitlik veriyi SQL_ASCII "
+"veritabanında saklamasıdır."
+
+#: org/postgresql/jdbc/PgCallableStatement.java:90
+#: org/postgresql/jdbc/PgCallableStatement.java:96
+msgid "A CallableStatement was executed with nothing returned."
+msgstr "CallableStatement çalıştırma sonucunda veri getirilmedi."
+
+#: org/postgresql/jdbc/PgCallableStatement.java:107
+msgid "A CallableStatement was executed with an invalid number of parameters"
+msgstr "CallableStatement geçersiz sayıda parametre ile çalıştırıldı."
+
+#: org/postgresql/jdbc/PgCallableStatement.java:139
+#, java-format
+msgid ""
+"A CallableStatement function was executed and the out parameter {0} was of "
+"type {1} however type {2} was registered."
+msgstr ""
+"CallableStatement çalıştırıldı, ancak {2} tipi kaydedilmesine rağmen "
+"döndürme parametresi {0} ve tipi {1} idi."
+
+#: org/postgresql/jdbc/PgCallableStatement.java:195
+msgid ""
+"This statement does not declare an OUT parameter.  Use '{' ?= call ... '}' "
+"to declare one."
+msgstr ""
+"Bu komut OUT parametresi bildirmemektedir.  Bildirmek için '{' ?= call ... "
+"'}' kullanın."
+
+#: org/postgresql/jdbc/PgCallableStatement.java:239
+msgid "wasNull cannot be call before fetching a result."
+msgstr "wasNull sonuç çekmeden önce çağırılamaz."
+
+#: org/postgresql/jdbc/PgCallableStatement.java:377
+#: org/postgresql/jdbc/PgCallableStatement.java:396
+#, java-format
+msgid ""
+"Parameter of type {0} was registered, but call to get{1} (sqltype={2}) was "
+"made."
+msgstr ""
+"{0} tipinde parametre tanıtıldı, ancak {1} (sqltype={2}) tipinde geri "
+"getirmek için çağrı yapıldı."
+
+#: org/postgresql/jdbc/PgCallableStatement.java:417
+msgid ""
+"A CallableStatement was declared, but no call to registerOutParameter(1, "
+"<some type>) was made."
+msgstr ""
+"CallableStatement bildirildi ancak registerOutParameter(1, < bir tip>) "
+"tanıtımı yapılmadı."
+
+#: org/postgresql/jdbc/PgCallableStatement.java:423
+msgid "No function outputs were registered."
+msgstr "Hiçbir fonksiyon çıktısı kaydedilmedi."
+
+#: org/postgresql/jdbc/PgCallableStatement.java:429
+msgid ""
+"Results cannot be retrieved from a CallableStatement before it is executed."
+msgstr "CallableStatement çalıştırılmadan sonuçlar ondan alınamaz."
+
+#: org/postgresql/jdbc/PgConnection.java:312
+#, java-format
+msgid "Unsupported value for stringtype parameter: {0}"
+msgstr "strinftype parametresi için destekleneyen değer: {0}"
+
+#: org/postgresql/jdbc/PgConnection.java:457
+#: org/postgresql/jdbc/PgPreparedStatement.java:115
+#: org/postgresql/jdbc/PgStatement.java:282
+#: org/postgresql/jdbc/TypeInfoCache.java:230
+#: org/postgresql/jdbc/TypeInfoCache.java:370
+#: org/postgresql/jdbc/TypeInfoCache.java:412
+#: org/postgresql/jdbc/TypeInfoCache.java:489
+#: org/postgresql/jdbc/TypeInfoCache.java:494
+#: org/postgresql/jdbc/TypeInfoCache.java:535
+#: org/postgresql/jdbc/TypeInfoCache.java:540
+msgid "No results were returned by the query."
+msgstr "Sorgudan hiç bir sonuç dönmedi."
+
+#: org/postgresql/jdbc/PgConnection.java:578
+msgid "Custom type maps are not supported."
+msgstr "Özel tip eşleştirmeleri desteklenmiyor."
+
+#: org/postgresql/jdbc/PgConnection.java:620
+#, java-format
+msgid "Failed to create object for: {0}."
+msgstr "{0} için nesne oluşturma hatası."
+
+#: org/postgresql/jdbc/PgConnection.java:672
+#, java-format
+msgid "Unable to load the class {0} responsible for the datatype {1}"
+msgstr "{1} veri tipinden sorumlu {0} sınıfı yüklenemedi"
+
+#: org/postgresql/jdbc/PgConnection.java:724
+msgid ""
+"Cannot change transaction read-only property in the middle of a transaction."
+msgstr ""
+"Transaction ortasında geçerli transactionun read-only özellği değiştirilemez."
+
+#: org/postgresql/jdbc/PgConnection.java:775
+msgid "Cannot commit when autoCommit is enabled."
+msgstr ""
+
+#: org/postgresql/jdbc/PgConnection.java:786
+#: org/postgresql/jdbc/PgConnection.java:1358
+#: org/postgresql/jdbc/PgConnection.java:1395
+#, fuzzy
+msgid "This connection has been closed."
+msgstr "Bağlantı kapatıldı."
+
+#: org/postgresql/jdbc/PgConnection.java:796
+msgid "Cannot rollback when autoCommit is enabled."
+msgstr ""
+
+#: org/postgresql/jdbc/PgConnection.java:870
+msgid ""
+"Cannot change transaction isolation level in the middle of a transaction."
+msgstr ""
+"Transaction ortasında geçerli transactionun transaction isolation level "
+"özellği değiştirilemez."
+
+#: org/postgresql/jdbc/PgConnection.java:876
+#, java-format
+msgid "Transaction isolation level {0} not supported."
+msgstr "Transaction isolation level {0} desteklenmiyor."
+
+#: org/postgresql/jdbc/PgConnection.java:921
+msgid "Finalizing a Connection that was never closed:"
+msgstr "Kapatılmamış bağlantı sonlandırılıyor."
+
+#: org/postgresql/jdbc/PgConnection.java:1009
+msgid "Unable to translate data into the desired encoding."
+msgstr "Veri, istenilen dil kodlamasına çevrilemiyor."
+
+#: org/postgresql/jdbc/PgConnection.java:1081
+#: org/postgresql/jdbc/PgResultSet.java:1782
+#: org/postgresql/jdbc/PgStatement.java:1053
+msgid "Fetch size must be a value greater to or equal to 0."
+msgstr "Fetch boyutu sıfır veya daha büyük bir değer olmalıdır."
+
+#: org/postgresql/jdbc/PgConnection.java:1311
+#, java-format
+msgid "Unable to find server array type for provided name {0}."
+msgstr "Belirtilen {0} adı için sunucu array tipi bulunamadı."
+
+#: org/postgresql/jdbc/PgConnection.java:1327
+#, fuzzy, java-format
+msgid "Invalid timeout ({0}<0)."
+msgstr "Geçersiz akım uzunluğu {0}."
+
+#: org/postgresql/jdbc/PgConnection.java:1340
+msgid "Validating connection."
+msgstr ""
+
+#: org/postgresql/jdbc/PgConnection.java:1375
+#, fuzzy, java-format
+msgid "Failed to set ClientInfo property: {0}"
+msgstr "{0} için nesne oluşturma hatası."
+
+#: org/postgresql/jdbc/PgConnection.java:1383
+msgid "ClientInfo property not supported."
+msgstr "Clientinfo property'si desteklenememktedir."
+
+#: org/postgresql/jdbc/PgConnection.java:1408
+msgid "One ore more ClientInfo failed."
+msgstr ""
+
+#: org/postgresql/jdbc/PgConnection.java:1517
+#, java-format
+msgid "Unknown ResultSet holdability setting: {0}."
+msgstr "ResultSet tutabilme ayarı geçersiz: {0}."
+
+#: org/postgresql/jdbc/PgConnection.java:1531
+#: org/postgresql/jdbc/PgConnection.java:1554
+#: org/postgresql/jdbc/PgConnection.java:1576
+#: org/postgresql/jdbc/PgConnection.java:1587
+msgid "Server versions prior to 8.0 do not support savepoints."
+msgstr "Sunucunun 8.0''dan  önceki sürümler savepoint desteklememektedir."
+
+#: org/postgresql/jdbc/PgConnection.java:1535
+#: org/postgresql/jdbc/PgConnection.java:1558
+msgid "Cannot establish a savepoint in auto-commit mode."
+msgstr "Auto-commit biçimde savepoint oluşturulamıyor."
+
+#: org/postgresql/jdbc/PgConnection.java:1635
+msgid "Returning autogenerated keys is not supported."
+msgstr "Otomatik üretilen değerlerin getirilmesi desteklenememktedir."
+
+#: org/postgresql/jdbc/PgDatabaseMetaData.java:78
+msgid ""
+"Unable to determine a value for MaxIndexKeys due to missing system catalog "
+"data."
+msgstr ""
+"Sistem kataloğu olmadığından MaxIndexKeys değerini tespit edilememektedir."
+
+#: org/postgresql/jdbc/PgDatabaseMetaData.java:100
+msgid "Unable to find name datatype in the system catalogs."
+msgstr "Sistem kataloglarında name veri tipi bulunamıyor."
+
+#: org/postgresql/jdbc/PgDatabaseMetaData.java:1117
+msgid "proname"
+msgstr ""
+
+#: org/postgresql/jdbc/PgDatabaseMetaData.java:1117
+msgid "oid"
+msgstr ""
+
+#: org/postgresql/jdbc/PgDatabaseMetaData.java:1119
+#: org/postgresql/jdbc/PgDatabaseMetaData.java:1714
+msgid "typtype"
+msgstr ""
+
+#: org/postgresql/jdbc/PgDatabaseMetaData.java:1122
+msgid "proargtypes"
+msgstr ""
+
+#: org/postgresql/jdbc/PgDatabaseMetaData.java:1732
+msgid "adsrc"
+msgstr ""
+
+#: org/postgresql/jdbc/PgDatabaseMetaData.java:1872
+#: org/postgresql/jdbc/PgDatabaseMetaData.java:1963
+msgid "rolname"
+msgstr ""
+
+#: org/postgresql/jdbc/PgDatabaseMetaData.java:1873
+#: org/postgresql/jdbc/PgDatabaseMetaData.java:1964
+msgid "relacl"
+msgstr ""
+
+#: org/postgresql/jdbc/PgDatabaseMetaData.java:1878
+msgid "attacl"
+msgstr ""
+
+#: org/postgresql/jdbc/PgParameterMetaData.java:86
+#, java-format
+msgid "The parameter index is out of range: {0}, number of parameters: {1}."
+msgstr "Dizin göstergisi kapsam dışıdır: {0}, öğe sayısı: {1}."
+
+#: org/postgresql/jdbc/PgPreparedStatement.java:102
+#: org/postgresql/jdbc/PgPreparedStatement.java:128
+#: org/postgresql/jdbc/PgPreparedStatement.java:150
+#: org/postgresql/jdbc/PgPreparedStatement.java:1108
+msgid ""
+"Can''t use query methods that take a query string on a PreparedStatement."
+msgstr "PreparedStatement ile sorgu satırı alan sorgu yöntemleri kullanılamaz."
+
+#: org/postgresql/jdbc/PgPreparedStatement.java:119
+#: org/postgresql/jdbc/PgStatement.java:286
+msgid "Multiple ResultSets were returned by the query."
+msgstr "Sorgu tarafından birden fazla ResultSet getirildi."
+
+#: org/postgresql/jdbc/PgPreparedStatement.java:270
+msgid "Unknown Types value."
+msgstr "Geçersiz Types değeri."
+
+#: org/postgresql/jdbc/PgPreparedStatement.java:417
+#: org/postgresql/jdbc/PgPreparedStatement.java:486
+#: org/postgresql/jdbc/PgPreparedStatement.java:1251
+#: org/postgresql/jdbc/PgPreparedStatement.java:1583
+#, java-format
+msgid "Invalid stream length {0}."
+msgstr "Geçersiz akım uzunluğu {0}."
+
+#: org/postgresql/jdbc/PgPreparedStatement.java:447
+#, java-format
+msgid "The JVM claims not to support the {0} encoding."
+msgstr "JVM, {0} dil kodlamasını desteklememektedir."
+
+#: org/postgresql/jdbc/PgPreparedStatement.java:450
+#: org/postgresql/jdbc/PgPreparedStatement.java:519
+#: org/postgresql/jdbc/PgResultSet.java:1075
+#: org/postgresql/jdbc/PgResultSet.java:1109
+msgid "Provided InputStream failed."
+msgstr "Sağlanmış InputStream başarısız."
+
+#: org/postgresql/jdbc/PgPreparedStatement.java:536
+#: org/postgresql/jdbc/PgPreparedStatement.java:1170
+#, java-format
+msgid "Unknown type {0}."
+msgstr "Bilinmeyen tip {0}."
+
+#: org/postgresql/jdbc/PgPreparedStatement.java:553
+msgid "No hstore extension installed."
+msgstr ""
+
+#: org/postgresql/jdbc/PgPreparedStatement.java:683
+#: org/postgresql/jdbc/PgPreparedStatement.java:705
+#: org/postgresql/jdbc/PgPreparedStatement.java:715
+#: org/postgresql/jdbc/PgPreparedStatement.java:725
+#, java-format
+msgid "Cannot cast an instance of {0} to type {1}"
+msgstr "{0} tipi {1} tipine dönüştürülemiyor"
+
+#: org/postgresql/jdbc/PgPreparedStatement.java:741
+#, java-format
+msgid "Unsupported Types value: {0}"
+msgstr "Geçersiz Types değeri: {0}"
+
+#: org/postgresql/jdbc/PgPreparedStatement.java:970
+#, java-format
+msgid "Cannot convert an instance of {0} to type {1}"
+msgstr "{0} instance, {1} tipine dönüştürülemiyor"
+
+#: org/postgresql/jdbc/PgPreparedStatement.java:1040
+#, java-format
+msgid ""
+"Can''t infer the SQL type to use for an instance of {0}. Use setObject() "
+"with an explicit Types value to specify the type to use."
+msgstr ""
+"{0}''nin örneği ile kullanılacak SQL tip bulunamadı. Kullanılacak tip "
+"belirtmek için kesin Types değerleri ile setObject() kullanın."
+
+#: org/postgresql/jdbc/PgPreparedStatement.java:1207
+#: org/postgresql/jdbc/PgPreparedStatement.java:1303
+#: org/postgresql/jdbc/PgPreparedStatement.java:1340
+msgid "Unexpected error writing large object to database."
+msgstr "Large object veritabanına yazılırken beklenmeyan hata."
+
+#: org/postgresql/jdbc/PgPreparedStatement.java:1278
+#: org/postgresql/jdbc/PgResultSet.java:1163
+msgid "Provided Reader failed."
+msgstr "Sağlanmış InputStream başarısız."
+
+#: org/postgresql/jdbc/PgPreparedStatement.java:1542
+#: org/postgresql/util/StreamWrapper.java:59
+msgid "Object is too large to send over the protocol."
+msgstr ""
+
+#: org/postgresql/jdbc/PgResultSet.java:285
+msgid ""
+"Operation requires a scrollable ResultSet, but this ResultSet is "
+"FORWARD_ONLY."
+msgstr ""
+"İşlem, kaydırılabilen ResultSet gerektirir, ancak bu ResultSet "
+"FORWARD_ONLYdir."
+
+#: org/postgresql/jdbc/PgResultSet.java:456
+msgid "Unexpected error while decoding character data from a large object."
+msgstr "Large-object nesnesinden karakter veriyi çözerken beklenmeyen hata."
+
+#: org/postgresql/jdbc/PgResultSet.java:507
+#: org/postgresql/jdbc/PgResultSet.java:537
+#: org/postgresql/jdbc/PgResultSet.java:570
+#: org/postgresql/jdbc/PgResultSet.java:2964
+#: org/postgresql/jdbc/PgResultSet.java:3008
+#, fuzzy, java-format
+msgid "Cannot convert the column of type {0} to requested type {1}."
+msgstr "{0} instance, {1} tipine dönüştürülemiyor"
+
+#: org/postgresql/jdbc/PgResultSet.java:789
+#: org/postgresql/jdbc/PgResultSet.java:810
+#: org/postgresql/jdbc/PgResultSet.java:1797
+msgid "Can''t use relative move methods while on the insert row."
+msgstr "Insert kaydı üzerinde relative move method kullanılamaz."
+
+#: org/postgresql/jdbc/PgResultSet.java:829
+#: org/postgresql/jdbc/PgStatement.java:1045
+#, java-format
+msgid "Invalid fetch direction constant: {0}."
+msgstr "Getirme yönü değişmezi geçersiz: {0}."
+
+#: org/postgresql/jdbc/PgResultSet.java:840
+msgid "Cannot call cancelRowUpdates() when on the insert row."
+msgstr "Insert edilmiş kaydın üzerindeyken cancelRowUpdates() çağırılamaz."
+
+#: org/postgresql/jdbc/PgResultSet.java:856
+msgid "Cannot call deleteRow() when on the insert row."
+msgstr "Insert  kaydı üzerinde deleteRow() çağırılamaz."
+
+#: org/postgresql/jdbc/PgResultSet.java:863
+msgid ""
+"Currently positioned before the start of the ResultSet.  You cannot call "
+"deleteRow() here."
+msgstr ""
+"Şu an ResultSet başlangcıından önce konumlandı. deleteRow() burada "
+"çağırabilirsiniz."
+
+#: org/postgresql/jdbc/PgResultSet.java:869
+msgid ""
+"Currently positioned after the end of the ResultSet.  You cannot call "
+"deleteRow() here."
+msgstr ""
+"Şu an ResultSet sonucundan sonra konumlandı. deleteRow() burada "
+"çağırabilirsiniz."
+
+#: org/postgresql/jdbc/PgResultSet.java:873
+msgid "There are no rows in this ResultSet."
+msgstr "Bu ResultSet içinde kayıt bulunamadı."
+
+#: org/postgresql/jdbc/PgResultSet.java:914
+msgid "Not on the insert row."
+msgstr "Insert kaydı değil."
+
+#: org/postgresql/jdbc/PgResultSet.java:916
+msgid "You must specify at least one column value to insert a row."
+msgstr "Bir satır eklemek için en az bir sütun değerini belirtmelisiniz."
+
+#: org/postgresql/jdbc/PgResultSet.java:1072
+#: org/postgresql/jdbc/PgResultSet.java:1706
+#: org/postgresql/jdbc/PgResultSet.java:2377
+#: org/postgresql/jdbc/PgResultSet.java:2402
+#, java-format
+msgid "The JVM claims not to support the encoding: {0}"
+msgstr "JVM, {0} dil kodlamasını desteklememektedir."
+
+#: org/postgresql/jdbc/PgResultSet.java:1214
+msgid "Can''t refresh the insert row."
+msgstr "Inser satırı yenilenemiyor."
+
+#: org/postgresql/jdbc/PgResultSet.java:1280
+msgid "Cannot call updateRow() when on the insert row."
+msgstr "Insert  kaydı üzerinde updateRow() çağırılamaz."
+
+#: org/postgresql/jdbc/PgResultSet.java:1287
+#: org/postgresql/jdbc/PgResultSet.java:3025
+msgid ""
+"Cannot update the ResultSet because it is either before the start or after "
+"the end of the results."
+msgstr ""
+"ResultSet, sonuçların ilk kaydından önce veya son kaydından sonra olduğu "
+"için güncelleme yapılamamaktadır."
+
+#: org/postgresql/jdbc/PgResultSet.java:1486
+msgid "ResultSets with concurrency CONCUR_READ_ONLY cannot be updated."
+msgstr "Eş zamanlama CONCUR_READ_ONLY olan ResultSet''ler değiştirilemez"
+
+#: org/postgresql/jdbc/PgResultSet.java:1555
+#, java-format
+msgid "No primary key found for table {0}."
+msgstr "{0} tablosunda primary key yok."
+
+#: org/postgresql/jdbc/PgResultSet.java:1941
+#: org/postgresql/jdbc/PgResultSet.java:1946
+#: org/postgresql/jdbc/PgResultSet.java:1986
+#: org/postgresql/jdbc/PgResultSet.java:1992
+#: org/postgresql/jdbc/PgResultSet.java:2790
+#: org/postgresql/jdbc/PgResultSet.java:2796
+#: org/postgresql/jdbc/PgResultSet.java:2820
+#: org/postgresql/jdbc/PgResultSet.java:2825
+#: org/postgresql/jdbc/PgResultSet.java:2841
+#: org/postgresql/jdbc/PgResultSet.java:2862
+#: org/postgresql/jdbc/PgResultSet.java:2873
+#: org/postgresql/jdbc/PgResultSet.java:2886
+#: org/postgresql/jdbc/PgResultSet.java:3013
+#, java-format
+msgid "Bad value for type {0} : {1}"
+msgstr "{0} veri tipi için geçersiz değer : {1}"
+
+#: org/postgresql/jdbc/PgResultSet.java:2564
+#, java-format
+msgid "The column name {0} was not found in this ResultSet."
+msgstr "Bu ResultSet içinde {0} sütun adı bulunamadı."
+
+#: org/postgresql/jdbc/PgResultSet.java:2689
+msgid ""
+"ResultSet is not updateable.  The query that generated this result set must "
+"select only one table, and must select all primary keys from that table. See "
+"the JDBC 2.1 API Specification, section 5.6 for more details."
+msgstr ""
+"ResultSet değiştirilemez. Bu sonucu üreten sorgu tek bir tablodan "
+"sorgulamalı ve tablonun tüm primary key alanları belirtmelidir. Daha fazla "
+"bilgi için bk. JDBC 2.1 API Specification, section 5.6."
+
+#: org/postgresql/jdbc/PgResultSet.java:2701
+msgid "This ResultSet is closed."
+msgstr "ResultSet kapalıdır."
+
+#: org/postgresql/jdbc/PgResultSet.java:2732
+msgid "ResultSet not positioned properly, perhaps you need to call next."
+msgstr "ResultSet doğru konumlanmamıştır, next işlemi çağırmanız gerekir."
+
+#: org/postgresql/jdbc/PgResultSet.java:3045
+msgid "Invalid UUID data."
+msgstr "Geçersiz UUID verisi."
+
+#: org/postgresql/jdbc/PgSQLXML.java:150
+msgid "Unable to decode xml data."
+msgstr "XML verisinin kodu çözülemedi."
+
+#: org/postgresql/jdbc/PgSQLXML.java:153
+#, java-format
+msgid "Unknown XML Source class: {0}"
+msgstr "Bilinmeyen XML Kaynak Sınıfı: {0}"
+
+#: org/postgresql/jdbc/PgSQLXML.java:196
+msgid "Unable to create SAXResult for SQLXML."
+msgstr "SQLXML için SAXResult yaratılamadı."
+
+#: org/postgresql/jdbc/PgSQLXML.java:211
+msgid "Unable to create StAXResult for SQLXML"
+msgstr "SQLXML için StAXResult yaratılamadı"
+
+#: org/postgresql/jdbc/PgSQLXML.java:216
+#, java-format
+msgid "Unknown XML Result class: {0}"
+msgstr "Bilinmeyen XML Sonuç sınıfı: {0}."
+
+#: org/postgresql/jdbc/PgSQLXML.java:228
+msgid "This SQLXML object has already been freed."
+msgstr "Bu SQLXML nesnesi zaten boşaltılmış."
+
+#: org/postgresql/jdbc/PgSQLXML.java:237
+msgid ""
+"This SQLXML object has not been initialized, so you cannot retrieve data "
+"from it."
+msgstr "Bu SQLXML nesnesi ilklendirilmemiş; o yüzden ondan veri alamazsınız."
+
+#: org/postgresql/jdbc/PgSQLXML.java:250
+#, java-format
+msgid "Failed to convert binary xml data to encoding: {0}."
+msgstr "xml verisinin şu dil kodlamasına çevirilmesi başarısız oldu: {0}"
+
+#: org/postgresql/jdbc/PgSQLXML.java:276
+msgid "Unable to convert DOMResult SQLXML data to a string."
+msgstr "DOMResult SQLXML verisini diziye dönüştürülemedi."
+
+#: org/postgresql/jdbc/PgSQLXML.java:290
+msgid ""
+"This SQLXML object has already been initialized, so you cannot manipulate it "
+"further."
+msgstr ""
+"Bu SQLXML nesnesi daha önceden ilklendirilmiştir; o yüzden daha fazla "
+"müdahale edilemez."
+
+#: org/postgresql/jdbc/PgStatement.java:325
+msgid "Can''t use executeWithFlags(int) on a Statement."
+msgstr ""
+
+#: org/postgresql/jdbc/PgStatement.java:484
+msgid "Maximum number of rows must be a value grater than or equal to 0."
+msgstr "En büyük getirilecek satır sayısı sıfırdan büyük olmalıdır."
+
+#: org/postgresql/jdbc/PgStatement.java:525
+msgid "Query timeout must be a value greater than or equals to 0."
+msgstr "Sorgu zaman aşımı değer sıfır veya sıfırdan büyük bir sayı olmalıdır."
+
+#: org/postgresql/jdbc/PgStatement.java:561
+msgid "The maximum field size must be a value greater than or equal to 0."
+msgstr "En büyük alan boyutu sıfır ya da sıfırdan büyük bir değer olmalı."
+
+#: org/postgresql/jdbc/PgStatement.java:871
+msgid "This statement has been closed."
+msgstr "Bu komut kapatıldı."
+
+#: org/postgresql/jdbc/PgStatement.java:1148
+msgid ""
+"Returning autogenerated keys is only supported for 8.2 and later servers."
+msgstr ""
+"Otomatik üretilen anahtarların döndürülmesi sadece 8.2 ve üzerindeki "
+"sürümlerdeki sunucularda desteklenmektedir."
+
+#: org/postgresql/jdbc/PgStatement.java:1326
+#: org/postgresql/jdbc/PgStatement.java:1357
+msgid "Returning autogenerated keys by column index is not supported."
+msgstr ""
+"Kolonların indexlenmesi ile otomatik olarak oluşturulan anahtarların "
+"döndürülmesi desteklenmiyor."
+
+#: org/postgresql/jdbc/PSQLSavepoint.java:40
+#: org/postgresql/jdbc/PSQLSavepoint.java:54
+#: org/postgresql/jdbc/PSQLSavepoint.java:72
+msgid "Cannot reference a savepoint after it has been released."
+msgstr "Bırakıldıktan sonra savepoint referans edilemez."
+
+#: org/postgresql/jdbc/PSQLSavepoint.java:45
+msgid "Cannot retrieve the id of a named savepoint."
+msgstr "Adlandırılmış savepointin id değerine erişilemiyor."
+
+#: org/postgresql/jdbc/PSQLSavepoint.java:59
+msgid "Cannot retrieve the name of an unnamed savepoint."
+msgstr "Adı verilmemiş savepointin id değerine erişilemiyor."
+
+#: org/postgresql/jdbc/TimestampUtils.java:298
+#, fuzzy, java-format
+msgid "Bad value for type timestamp/date/time: {1}"
+msgstr "{0} veri tipi için geçersiz değer : {1}"
+
+#: org/postgresql/jdbc/TimestampUtils.java:359
+msgid ""
+"Infinite value found for timestamp/date. This cannot be represented as time."
+msgstr ""
+"Timestamp veri tipinde sonsuz değer bulunmuştur. Buna uygun bir gösterim "
+"yoktur."
+
+#: org/postgresql/jdbc/TimestampUtils.java:674
+#: org/postgresql/jdbc/TimestampUtils.java:710
+#: org/postgresql/jdbc/TimestampUtils.java:757
+#, fuzzy, java-format
+msgid "Unsupported binary encoding of {0}."
+msgstr "Geçersiz Types değeri: {0}"
+
+#: org/postgresql/largeobject/LargeObjectManager.java:147
+msgid "Failed to initialize LargeObject API"
+msgstr "LArgeObject API ilklendirme hatası"
+
+#: org/postgresql/largeobject/LargeObjectManager.java:265
+#: org/postgresql/largeobject/LargeObjectManager.java:308
+msgid "Large Objects may not be used in auto-commit mode."
+msgstr "Auto-commit biçimde large object kullanılamaz."
+
+#: org/postgresql/osgi/PGDataSourceFactory.java:85
+#, fuzzy, java-format
+msgid "Unsupported properties: {0}"
+msgstr "Geçersiz Types değeri: {0}"
+
+#: org/postgresql/PGProperty.java:450 org/postgresql/PGProperty.java:470
+#, java-format
+msgid "{0} parameter value must be an integer but was: {1}"
+msgstr ""
+
+#: org/postgresql/ssl/jdbc4/LazyKeyManager.java:125
+msgid ""
+"Could not find a java cryptographic algorithm: X.509 CertificateFactory not "
+"available."
+msgstr ""
+
+#: org/postgresql/ssl/jdbc4/LazyKeyManager.java:135
+#, java-format
+msgid "Could not open SSL certificate file {0}."
+msgstr ""
+
+#: org/postgresql/ssl/jdbc4/LazyKeyManager.java:140
+#, java-format
+msgid "Loading the SSL certificate {0} into a KeyManager failed."
+msgstr ""
+
+#: org/postgresql/ssl/jdbc4/LazyKeyManager.java:195
+msgid "Enter SSL password: "
+msgstr ""
+
+#: org/postgresql/ssl/jdbc4/LazyKeyManager.java:202
+msgid "Could not read password for SSL key file, console is not available."
+msgstr ""
+
+#: org/postgresql/ssl/jdbc4/LazyKeyManager.java:207
+#, java-format
+msgid "Could not read password for SSL key file by callbackhandler {0}."
+msgstr ""
+
+#: org/postgresql/ssl/jdbc4/LazyKeyManager.java:226
+#, java-format
+msgid "Could not decrypt SSL key file {0}."
+msgstr ""
+
+#: org/postgresql/ssl/jdbc4/LazyKeyManager.java:240
+#, java-format
+msgid "Could not read SSL key file {0}."
+msgstr ""
+
+#: org/postgresql/ssl/jdbc4/LazyKeyManager.java:243
+#: org/postgresql/ssl/jdbc4/LibPQFactory.java:162
+#, java-format
+msgid "Could not find a java cryptographic algorithm: {0}."
+msgstr ""
+
+#: org/postgresql/ssl/jdbc4/LibPQFactory.java:90
+#, fuzzy, java-format
+msgid "The password callback class provided {0} could not be instantiated."
+msgstr "SSLSocketFactory {0} ile örneklenmedi."
+
+#: org/postgresql/ssl/jdbc4/LibPQFactory.java:123
+#, java-format
+msgid "Could not open SSL root certificate file {0}."
+msgstr ""
+
+#: org/postgresql/ssl/jdbc4/LibPQFactory.java:139
+#, java-format
+msgid "Could not read SSL root certificate file {0}."
+msgstr ""
+
+#: org/postgresql/ssl/jdbc4/LibPQFactory.java:143
+#, java-format
+msgid "Loading the SSL root certificate {0} into a TrustManager failed."
+msgstr ""
+
+#: org/postgresql/ssl/jdbc4/LibPQFactory.java:156
+msgid "Could not initialize SSL context."
+msgstr ""
+
+#: org/postgresql/ssl/MakeSSL.java:52
+#, java-format
+msgid "The SSLSocketFactory class provided {0} could not be instantiated."
+msgstr "SSLSocketFactory {0} ile örneklenmedi."
+
+#: org/postgresql/ssl/MakeSSL.java:67
+#, java-format
+msgid "SSL error: {0}"
+msgstr ""
+
+#: org/postgresql/ssl/MakeSSL.java:78
+#, fuzzy, java-format
+msgid "The HostnameVerifier class provided {0} could not be instantiated."
+msgstr "SSLSocketFactory {0} ile örneklenmedi."
+
+#: org/postgresql/ssl/MakeSSL.java:84
+#, java-format
+msgid "The hostname {0} could not be verified by hostnameverifier {1}."
+msgstr ""
+
+#: org/postgresql/ssl/MakeSSL.java:93
+#, java-format
+msgid "The hostname {0} could not be verified."
+msgstr ""
+
+#: org/postgresql/ssl/SingleCertValidatingFactory.java:167
+msgid "The sslfactoryarg property may not be empty."
+msgstr ""
+
+#: org/postgresql/ssl/SingleCertValidatingFactory.java:183
+msgid ""
+"The environment variable containing the server's SSL certificate must not be "
+"empty."
+msgstr ""
+
+#: org/postgresql/ssl/SingleCertValidatingFactory.java:191
+msgid ""
+"The system property containing the server's SSL certificate must not be "
+"empty."
+msgstr ""
+
+#: org/postgresql/ssl/SingleCertValidatingFactory.java:198
+msgid ""
+"The sslfactoryarg property must start with the prefix file:, classpath:, "
+"env:, sys:, or -----BEGIN CERTIFICATE-----."
+msgstr ""
+
+#: org/postgresql/ssl/SingleCertValidatingFactory.java:210
+#, fuzzy
+msgid "An error occurred reading the certificate"
+msgstr "SSL bağlantısı ayarlanırken bir hata oluştu."
+
+#: org/postgresql/ssl/SingleCertValidatingFactory.java:243
+msgid "No X509TrustManager found"
+msgstr ""
+
+#: org/postgresql/util/PGInterval.java:155
+msgid "Conversion of interval failed"
+msgstr "Interval dönüştürmesi başarısız."
+
+#: org/postgresql/util/PGmoney.java:65
+msgid "Conversion of money failed."
+msgstr "Money dönüştürmesi başarısız."
+
+#: org/postgresql/util/ServerErrorMessage.java:165
+#, java-format
+msgid "Detail: {0}"
+msgstr "Ayrıntı: {0}"
+
+#: org/postgresql/util/ServerErrorMessage.java:170
+#, java-format
+msgid "Hint: {0}"
+msgstr "İpucu: {0}"
+
+#: org/postgresql/util/ServerErrorMessage.java:174
+#, java-format
+msgid "Position: {0}"
+msgstr "Position: {0}"
+
+#: org/postgresql/util/ServerErrorMessage.java:178
+#, java-format
+msgid "Where: {0}"
+msgstr "Where: {0}"
+
+#: org/postgresql/util/ServerErrorMessage.java:184
+#, java-format
+msgid "Internal Query: {0}"
+msgstr "Internal Query: {0}"
+
+#: org/postgresql/util/ServerErrorMessage.java:188
+#, java-format
+msgid "Internal Position: {0}"
+msgstr "Internal Position: {0}"
+
+#: org/postgresql/util/ServerErrorMessage.java:195
+#, java-format
+msgid "Location: File: {0}, Routine: {1}, Line: {2}"
+msgstr "Yer: Dosya: {0}, Yordam: {1}, Satır: {2}"
+
+#: org/postgresql/util/ServerErrorMessage.java:200
+#, java-format
+msgid "Server SQLState: {0}"
+msgstr "Sunucu SQLState: {0}"
+
+#: org/postgresql/xa/PGXAConnection.java:148
+msgid ""
+"Transaction control methods setAutoCommit(true), commit, rollback and "
+"setSavePoint not allowed while an XA transaction is active."
+msgstr ""
+
+#: org/postgresql/xa/PGXAConnection.java:196
+#: org/postgresql/xa/PGXAConnection.java:265
+msgid "Invalid flags"
+msgstr "Geçersiz seçenekler"
+
+#: org/postgresql/xa/PGXAConnection.java:200
+#: org/postgresql/xa/PGXAConnection.java:269
+#: org/postgresql/xa/PGXAConnection.java:437
+msgid "xid must not be null"
+msgstr "xid null olamaz"
+
+#: org/postgresql/xa/PGXAConnection.java:204
+msgid "Connection is busy with another transaction"
+msgstr "Bağlantı, başka bir transaction tarafından meşgul ediliyor"
+
+#: org/postgresql/xa/PGXAConnection.java:213
+#: org/postgresql/xa/PGXAConnection.java:279
+msgid "suspend/resume not implemented"
+msgstr "suspend/resume desteklenmiyor"
+
+#: org/postgresql/xa/PGXAConnection.java:219
+#: org/postgresql/xa/PGXAConnection.java:224
+#: org/postgresql/xa/PGXAConnection.java:228
+msgid "Transaction interleaving not implemented"
+msgstr "Transaction interleaving desteklenmiyor."
+
+#: org/postgresql/xa/PGXAConnection.java:239
+msgid "Error disabling autocommit"
+msgstr "autocommit'i devre dışı bırakma sırasında hata"
+
+#: org/postgresql/xa/PGXAConnection.java:273
+msgid "tried to call end without corresponding start call"
+msgstr "start çağırımı olmadan end çağırılmıştır"
+
+#: org/postgresql/xa/PGXAConnection.java:305
+msgid ""
+"Not implemented: Prepare must be issued using the same connection that "
+"started the transaction"
+msgstr ""
+"Desteklenmiyor: Prepare, transaction başlatran bağlantı tarafından "
+"çağırmalıdır"
+
+#: org/postgresql/xa/PGXAConnection.java:309
+msgid "Prepare called before end"
+msgstr "Sondan önce prepare çağırılmış"
+
+#: org/postgresql/xa/PGXAConnection.java:317
+msgid "Server versions prior to 8.1 do not support two-phase commit."
+msgstr ""
+"Sunucunun 8.1''den  önceki sürümler two-phase commit desteklememektedir."
+
+#: org/postgresql/xa/PGXAConnection.java:334
+msgid "Error preparing transaction"
+msgstr "Transaction hazırlama hatası"
+
+#: org/postgresql/xa/PGXAConnection.java:349
+msgid "Invalid flag"
+msgstr "Geçersiz seçenek"
+
+#: org/postgresql/xa/PGXAConnection.java:384
+msgid "Error during recover"
+msgstr "Kurtarma sırasında hata"
+
+#: org/postgresql/xa/PGXAConnection.java:423
+#: org/postgresql/xa/PGXAConnection.java:426
+msgid "Error rolling back prepared transaction"
+msgstr "Hazırlanmış transaction rollback hatası"
+
+#: org/postgresql/xa/PGXAConnection.java:464
+msgid ""
+"Not implemented: one-phase commit must be issued using the same connection "
+"that was used to start it"
+msgstr ""
+"Desteklenmiyor: one-phase commit, işlevinde başlatan ve bitiren bağlantı "
+"aynı olmalıdır"
+
+#: org/postgresql/xa/PGXAConnection.java:468
+msgid "commit called before end"
+msgstr "commit, sondan önce çağırıldı"
+
+#: org/postgresql/xa/PGXAConnection.java:478
+msgid "Error during one-phase commit"
+msgstr "One-phase commit sırasında hata"
+
+#: org/postgresql/xa/PGXAConnection.java:497
+msgid ""
+"Not implemented: 2nd phase commit must be issued using an idle connection"
+msgstr "Desteklenmiyor: 2nd phase commit, atıl bir bağlantıdan başlatılmalıdır"
+
+#: org/postgresql/xa/PGXAConnection.java:513
+#, fuzzy
+msgid "Error committing prepared transaction"
+msgstr "Hazırlanmış transaction rollback hatası"
+
+#: org/postgresql/xa/PGXAConnection.java:529
+msgid "Heuristic commit/rollback not supported"
+msgstr "Heuristic commit/rollback desteklenmiyor"
+
+#~ msgid "The class {0} does not implement org.postgresql.util.PGobject."
+#~ msgstr "{0} sınıfı org.postgresql.util.PGobject implemente etmiyor."
+
+#~ msgid "Query returning autogenerated keys didn't return anything."
+#~ msgstr "Otomatik üretilen anahtarları döndüren sorgu birşey döndürmedi."
+
+#~ msgid "The driver does not support SSL."
+#~ msgstr "Sürücü SSL desteklememktedir."
+
+#~ msgid "Exception: {0}"
+#~ msgstr "İstisna: {0}"
+
+#~ msgid "Stack Trace:"
+#~ msgstr "Stack Trace:"
+
+#~ msgid "End of Stack Trace"
+#~ msgstr "Stack Trace Sonu"
+
+#~ msgid "Exception generating stacktrace for: {0} encountered: {1}"
+#~ msgstr "Exception generating stacktrace for: {0} encountered: {1}"
+
+#~ msgid "Multi-dimensional arrays are currently not supported."
+#~ msgstr "Çok boyutlu matrisler şu aşamada seteklenmemektedir."
+
+#~ msgid "rand function only takes zero or one argument(the seed)."
+#~ msgstr "rand fonksiyonu yalnız sıfır veya bir (seed) argüman alabilir."
+
+#~ msgid "suspend/resume and join not implemented"
+#~ msgstr "suspend/resume ve join desteklenmemektedir"
