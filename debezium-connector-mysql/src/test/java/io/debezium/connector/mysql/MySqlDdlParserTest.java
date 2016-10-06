@@ -589,6 +589,14 @@ public class MySqlDdlParserTest {
     }
 
     @Test
+    public void shouldParseStatementForDbz123() {
+        parser.parse(readFile("ddl/mysql-dbz-123.ddl"), tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(1);
+        assertThat(listener.total()).isEqualTo(1);
+    }
+
+    @Test
     public void shouldParseTestStatements() {
         parser.parse(readFile("ddl/mysql-test-statements.ddl"), tables);
         Testing.print(tables);
