@@ -1322,6 +1322,13 @@ public class MySqlDdlParser extends DdlParser {
         parsingFailed(marker.position(), errors, "Unable to parse statement");
     }
 
+    /**
+     * Parse and consume the {@code DEFAULT} clause. Currently, this method does not capture the default in any way,
+     * since that will likely require parsing the default clause into a useful value (e.g., dealing with hexadecimals,
+     * bit-set literals, date-time literals, etc.).
+
+     * @param start the marker at the beginning of the clause
+     */
     protected void parseDefaultClause(Marker start) {
         tokens.consume("DEFAULT");
         if (isNextTokenQuotedIdentifier()) {
@@ -1342,7 +1349,6 @@ public class MySqlDdlParser extends DdlParser {
                 // do nothing ...
             } else {
                 parseLiteral(start);
-                // do nothing ...
             }
         }
     }
