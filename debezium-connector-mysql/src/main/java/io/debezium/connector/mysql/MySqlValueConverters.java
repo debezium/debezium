@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import java.io.IOException;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
@@ -17,12 +18,15 @@ import java.util.List;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 
 import com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDataDeserializer;
+import com.github.shyiko.mysql.binlog.event.deserialization.json.JsonBinary;
 import com.mysql.jdbc.CharsetMapping;
 
 import io.debezium.annotation.Immutable;
+import io.debezium.data.Json;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
@@ -83,6 +87,9 @@ public class MySqlValueConverters extends JdbcValueConverters {
     public SchemaBuilder schemaBuilder(Column column) {
         // Handle a few MySQL-specific types based upon how they are handled by the MySQL binlog client ...
         String typeName = column.typeName().toUpperCase();
+        if (matches(typeName, "JSON")) {
+            return Json.builder();
+        }
         if (matches(typeName, "YEAR")) {
             return Year.builder();
         }
@@ -102,6 +109,9 @@ public class MySqlValueConverters extends JdbcValueConverters {
     public ValueConverter converter(Column column, Field fieldDefn) {
         // Handle a few MySQL-specific types based upon how they are handled by the MySQL binlog client ...
         String typeName = column.typeName().toUpperCase();
+        if (matches(typeName, "JSON")) {
+            return (data) -> convertJson(column, fieldDefn, data);
+        }
         if (matches(typeName, "YEAR")) {
             return (data) -> convertYearToInt(column, fieldDefn, data);
         }
@@ -166,6 +176,40 @@ public class MySqlValueConverters extends JdbcValueConverters {
             }
         }
         return null;
+    }
+
+    /**
+     * Convert the {@link String} {@code byte[]} value to a string value used in a {@link SourceRecord}.
+     * 
+     * @param column the column in which the value appears
+     * @param fieldDefn the field definition for the {@link SourceRecord}'s {@link Schema}; never null
+     * @param data the data; may be null
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
+     */
+    protected Object convertJson(Column column, Field fieldDefn, Object data) {
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return "{}";
+        }
+        if (data instanceof byte[]) {
+            // The BinlogReader sees these JSON values as binary encoded, so we use the binlog client library's utility
+            // to parse MySQL's internal binary representation into a JSON string, using the standard formatter.
+            try {
+                String json = JsonBinary.parseAsString((byte[])data);
+                return json;
+            } catch ( IOException e) {
+                throw new ConnectException("Failed to parse and read a JSON value on " + column + ": " + e.getMessage(), e);
+            }
+        }
+        if (data instanceof String) {
+            // The SnapshotReader sees JSON values as UTF-8 encoded strings.
+            return data;
+        }
+        return handleUnknownData(column, fieldDefn, data);
     }
 
     /**

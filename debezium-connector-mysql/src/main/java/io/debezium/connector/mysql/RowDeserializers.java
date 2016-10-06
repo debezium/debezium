@@ -101,6 +101,11 @@ class RowDeserializers {
         protected Serializable deserializeTimestampV2(int meta, ByteArrayInputStream inputStream) throws IOException {
             return RowDeserializers.deserializeTimestampV2(meta, inputStream);
         }
+        
+        @Override
+        protected Serializable deserializeYear(ByteArrayInputStream inputStream) throws IOException {
+            return RowDeserializers.deserializeYear(inputStream);
+        }
     }
 
     /**
@@ -157,6 +162,11 @@ class RowDeserializers {
         @Override
         protected Serializable deserializeTimestampV2(int meta, ByteArrayInputStream inputStream) throws IOException {
             return RowDeserializers.deserializeTimestampV2(meta, inputStream);
+        }
+
+        @Override
+        protected Serializable deserializeYear(ByteArrayInputStream inputStream) throws IOException {
+            return RowDeserializers.deserializeYear(inputStream);
         }
     }
 
