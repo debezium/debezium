@@ -6,9 +6,11 @@
 package io.debezium.connector.mysql;
 
 import java.util.Map;
+import java.util.function.Predicate;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.function.Predicates;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.LoggingContext.PreviousContext;
@@ -26,6 +28,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     private final MySqlSchema dbSchema;
     private final TopicSelector topicSelector;
     private final RecordMakers recordProcessor;
+    private final Predicate<String> gtidSourceFilter;
     private final Clock clock = Clock.system();
 
     public MySqlTaskContext(Configuration config) {
@@ -43,6 +46,11 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
 
         // Set up the record processor ...
         this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector);
+
+        String gtidSetIncludes = config.getString(MySqlConnectorConfig.GTID_SOURCE_INCLUDES);
+        String gtidSetExcludes = config.getString(MySqlConnectorConfig.GTID_SOURCE_EXCLUDES);
+        this.gtidSourceFilter = gtidSetIncludes != null ? Predicates.includes(gtidSetIncludes)
+                : (gtidSetExcludes != null ? Predicates.excludes(gtidSetExcludes) : null);
     }
 
     public TopicSelector topicSelector() {
@@ -59,6 +67,16 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
 
     public RecordMakers makeRecord() {
         return recordProcessor;
+    }
+
+    /**
+     * Get the predicate function that will return {@code true} if a GTID source is to be included, or {@code false} if
+     * a GTID source is to be excluded.
+     * 
+     * @return the GTID source predicate function; never null
+     */
+    public Predicate<String> gtidSourceFilter() {
+        return gtidSourceFilter;
     }
 
     /**
