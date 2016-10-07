@@ -105,6 +105,7 @@ public abstract class AbstractReader {
 
     /**
      * Call this method only when the reader has failed, and that a subsequent call to {@link #poll()} should throw this error.
+     * 
      * @param error the error that resulted in the failure; should not be {@code null}
      */
     protected void failed(Throwable error) {
@@ -113,6 +114,7 @@ public abstract class AbstractReader {
 
     /**
      * Call this method only when the reader has failed, and that a subsequent call to {@link #poll()} should throw this error.
+     * 
      * @param error the error that resulted in the failure; should not be {@code null}
      * @param msg the error message; may not be null
      */
@@ -125,6 +127,7 @@ public abstract class AbstractReader {
     /**
      * Wraps the specified exception in a {@link ConnectException}, ensuring that all useful state is captured inside
      * the new exception's message.
+     * 
      * @param error the exception; may not be null
      * @return the wrapped Kafka Connect exception
      */
@@ -149,9 +152,9 @@ public abstract class AbstractReader {
     public boolean isRunning() {
         return this.running.get();
     }
-    
+
     /**
-     * Poll for the next batch of source records. This method blocks if the snapshot is still but no records are available.
+     * Poll for the next batch of source records. This method blocks if this reader is still running but no records are available.
      * 
      * @return the list of source records; or {@code null} when the snapshot is complete, all records have previously been
      *         returned, and the completion function (supplied in the constructor) has been called
@@ -160,19 +163,19 @@ public abstract class AbstractReader {
      */
     public List<SourceRecord> poll() throws InterruptedException {
         failureException = this.failure.get();
-        if ( failureException != null ) throw failureException;
-        
+        if (failureException != null) throw failureException;
+
         logger.trace("Polling for next batch of records");
         List<SourceRecord> batch = new ArrayList<>(maxBatchSize);
         while (running.get() && (records.drainTo(batch, maxBatchSize) == 0) && !success.get()) {
             // No records are available even though the snapshot has not yet completed, so sleep for a bit ...
             metronome.pause();
-            
+
             // Check for failure after waking up ...
             failureException = this.failure.get();
-            if ( failureException != null ) throw failureException;
+            if (failureException != null) throw failureException;
         }
-        
+
         if (batch.isEmpty() && success.get() && records.isEmpty()) {
             // We found no records but the operation completed successfully, so we're done
             this.running.set(false);
@@ -183,18 +186,20 @@ public abstract class AbstractReader {
         logger.trace("Completed batch of {} records", batch.size());
         return batch;
     }
-    
+
     /**
      * Method called when {@link #poll()} completes sending a non-zero-sized batch of records.
+     * 
      * @param batch the batch of records being recorded
      */
-    protected void pollComplete( List<SourceRecord> batch ) {
+    protected void pollComplete(List<SourceRecord> batch) {
         // do nothing
     }
 
     /**
      * Enqueue a record so that it can be obtained when this reader is {@link #poll() polled}. This method will block if the
      * queue is full.
+     * 
      * @param record the record to be enqueued
      * @throws InterruptedException if interrupted while waiting for the queue to have room for this record
      */
