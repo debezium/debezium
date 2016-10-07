@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -43,6 +44,9 @@ import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.relational.TableId;
+import io.debezium.util.Clock;
+import io.debezium.util.ElapsedTimeStrategy;
+import io.debezium.util.Strings;
 
 /**
  * A component that reads the binlog of a MySQL server, and records any schema changes in {@link MySqlSchema}.
@@ -52,12 +56,21 @@ import io.debezium.relational.TableId;
  */
 public class BinlogReader extends AbstractReader {
 
+    private static final long INITIAL_POLL_PERIOD_IN_MILLIS = TimeUnit.SECONDS.toMillis(5);
+    private static final long MAX_POLL_PERIOD_IN_MILLIS = TimeUnit.HOURS.toMillis(1);
+
     private final boolean recordSchemaChangesInSourceRecords;
     private final RecordMakers recordMakers;
     private final SourceInfo source;
     private final EnumMap<EventType, BlockingConsumer<Event>> eventHandlers = new EnumMap<>(EventType.class);
     private BinaryLogClient client;
     private int startingRowNumber = 0;
+    private final Clock clock;
+    private final ElapsedTimeStrategy pollOutputDelay;
+    private long recordCounter = 0L;
+    private long previousOutputMillis = 0L;
+    private final AtomicLong totalRecordCounter = new AtomicLong();
+    private volatile Map<String, ?> lastOffset = null;
 
     /**
      * Create a binlog reader.
@@ -69,6 +82,10 @@ public class BinlogReader extends AbstractReader {
         source = context.source();
         recordMakers = context.makeRecord();
         recordSchemaChangesInSourceRecords = context.includeSchemaChangeRecords();
+        clock = context.clock();
+
+        // Use exponential delay to log the progress frequently at first, but the quickly tapering off to once an hour...
+        pollOutputDelay = ElapsedTimeStrategy.exponential(clock, INITIAL_POLL_PERIOD_IN_MILLIS, MAX_POLL_PERIOD_IN_MILLIS);
 
         // Set up the log reader ...
         client = new BinaryLogClient(context.hostname(), context.port(), context.username(), context.password());
@@ -138,6 +155,10 @@ public class BinlogReader extends AbstractReader {
         // Set the starting row number, which is the next row number to be read ...
         startingRowNumber = source.nextEventRowNumber();
 
+        // Initial our poll output delay logic ...
+        pollOutputDelay.hasElapsed();
+        previousOutputMillis = clock.currentTimeInMillis();
+
         // Start the log reader, which starts background threads ...
         if (isRunning()) {
             long timeoutInMilliseconds = context.timeoutInMilliseconds();
@@ -169,7 +190,7 @@ public class BinlogReader extends AbstractReader {
     @Override
     protected void doStop() {
         try {
-            logger.debug("Stopping binlog reader");
+            logger.debug("Stopping binlog reader, last recorded offset: {}", lastOffset);
             client.disconnect();
         } catch (IOException e) {
             logger.error("Unexpected error when disconnecting from the MySQL binary log reader", e);
@@ -182,9 +203,26 @@ public class BinlogReader extends AbstractReader {
 
     @Override
     protected void pollComplete(List<SourceRecord> batch) {
-        if (!batch.isEmpty()) {
-            SourceRecord lastRecord = batch.get(batch.size() - 1);
-            logger.info("{} records sent, last offset: {}", batch.size(), lastRecord.sourceOffset());
+        // Record a bit about this batch ...
+        int batchSize = batch.size();
+        recordCounter += batchSize;
+        totalRecordCounter.addAndGet(batchSize);
+        if (batchSize > 0) {
+            SourceRecord lastRecord = batch.get(batchSize - 1);
+            lastOffset = lastRecord.sourceOffset();
+            if (pollOutputDelay.hasElapsed()) {
+                // We want to record the status ...
+                long millisSinceLastOutput = clock.currentTimeInMillis() - previousOutputMillis;
+                try {
+                    context.temporaryLoggingContext("binlog", () -> {
+                        logger.info("{} records sent during previous {}, last recorded offset: {}",
+                                    recordCounter, Strings.duration(millisSinceLastOutput), lastOffset);
+                    });
+                } finally {
+                    recordCounter = 0;
+                    previousOutputMillis += millisSinceLastOutput;
+                }
+            }
         }
     }
 
@@ -419,9 +457,9 @@ public class BinlogReader extends AbstractReader {
             logger.debug("Skipping delete row event: {}", event);
         }
     }
-    
-    protected SSLMode sslModeFor( SecureConnectionMode mode ) {
-        switch(mode) {
+
+    protected SSLMode sslModeFor(SecureConnectionMode mode) {
+        switch (mode) {
             case DISABLED:
                 return SSLMode.DISABLED;
             case PREFERRED:
@@ -440,7 +478,12 @@ public class BinlogReader extends AbstractReader {
         @Override
         public void onDisconnect(BinaryLogClient client) {
             context.temporaryLoggingContext("binlog", () -> {
-                logger.info("Stopped reading binlog and closed connection");
+                Map<String, ?> offset = lastOffset;
+                if (offset != null) {
+                    logger.info("Stopped reading binlog after {} events, last recorded offset: {}", totalRecordCounter, offset);
+                } else {
+                    logger.info("Stopped reading binlog after {} events, no new offset was recorded", totalRecordCounter);
+                }
             });
         }
 
