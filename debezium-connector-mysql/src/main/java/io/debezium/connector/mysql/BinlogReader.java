@@ -142,6 +142,9 @@ public class BinlogReader extends AbstractReader {
         eventHandlers.put(EventType.TABLE_MAP, this::handleUpdateTableMetadata);
         eventHandlers.put(EventType.QUERY, this::handleQueryEvent);
         eventHandlers.put(EventType.GTID, this::handleGtidEvent);
+        eventHandlers.put(EventType.WRITE_ROWS, this::handleInsert);
+        eventHandlers.put(EventType.UPDATE_ROWS, this::handleUpdate);
+        eventHandlers.put(EventType.DELETE_ROWS, this::handleDelete);
         eventHandlers.put(EventType.EXT_WRITE_ROWS, this::handleInsert);
         eventHandlers.put(EventType.EXT_UPDATE_ROWS, this::handleUpdate);
         eventHandlers.put(EventType.EXT_DELETE_ROWS, this::handleDelete);
