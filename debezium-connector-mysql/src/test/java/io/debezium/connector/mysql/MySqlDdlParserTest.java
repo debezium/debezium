@@ -10,6 +10,7 @@ import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Types;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Before;
@@ -25,6 +26,7 @@ import io.debezium.relational.ddl.DdlParserListener.Event;
 import io.debezium.relational.ddl.SimpleDdlParserListener;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
+import io.debezium.util.Strings;
 
 public class MySqlDdlParserTest {
 
@@ -638,27 +640,28 @@ public class MySqlDdlParserTest {
 
     @Test
     public void shouldParseEnumOptions() {
-        assertParseEnumAndSetOptions("ENUM('a','b','c')", "abc");
+        assertParseEnumAndSetOptions("ENUM('a','b','c')", "a,b,c");
         assertParseEnumAndSetOptions("ENUM('a')", "a");
         assertParseEnumAndSetOptions("ENUM()", "");
-        assertParseEnumAndSetOptions("ENUM ('a','b','c') CHARACTER SET", "abc");
+        assertParseEnumAndSetOptions("ENUM ('a','b','c') CHARACTER SET", "a,b,c");
         assertParseEnumAndSetOptions("ENUM ('a') CHARACTER SET", "a");
         assertParseEnumAndSetOptions("ENUM () CHARACTER SET", "");
     }
 
     @Test
     public void shouldParseSetOptions() {
-        assertParseEnumAndSetOptions("SET('a','b','c')", "abc");
+        assertParseEnumAndSetOptions("SET('a','b','c')", "a,b,c");
         assertParseEnumAndSetOptions("SET('a')", "a");
         assertParseEnumAndSetOptions("SET()", "");
-        assertParseEnumAndSetOptions("SET ('a','b','c') CHARACTER SET", "abc");
+        assertParseEnumAndSetOptions("SET ('a','b','c') CHARACTER SET", "a,b,c");
         assertParseEnumAndSetOptions("SET ('a') CHARACTER SET", "a");
         assertParseEnumAndSetOptions("SET () CHARACTER SET", "");
     }
 
     protected void assertParseEnumAndSetOptions(String typeExpression, String optionString) {
-        String options = MySqlDdlParser.parseSetAndEnumOptions(typeExpression);
-        assertThat(options).isEqualTo(optionString);
+        List<String> options = MySqlDdlParser.parseSetAndEnumOptions(typeExpression);
+        String commaSeperatedOptions = Strings.join(MySqlDdlParser.ENUM_AND_SET_DELIMINATOR,options);
+        assertThat(optionString).isEqualTo(commaSeperatedOptions);
     }
 
     protected void assertVariable(String name, String expectedValue) {

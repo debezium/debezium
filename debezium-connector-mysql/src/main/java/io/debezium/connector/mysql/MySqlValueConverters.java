@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Types;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -26,6 +27,7 @@ import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
 import io.debezium.time.Year;
+import io.debezium.util.Strings;
 
 /**
  * MySQL-specific customization of the conversions from JDBC values obtained from the MySQL binlog client library.
@@ -85,12 +87,14 @@ public class MySqlValueConverters extends JdbcValueConverters {
             return Year.builder();
         }
         if (matches(typeName, "ENUM")) {
-            String commaSeparatedOptions = extractEnumAndSetOptions(column, true);
-            return io.debezium.data.Enum.builder(commaSeparatedOptions);
+            List<String> options = extractEnumAndSetOptions(column);
+            String commaSeperatedOptions = Strings.join(MySqlDdlParser.ENUM_AND_SET_DELIMINATOR,options);
+            return io.debezium.data.Enum.builder(commaSeperatedOptions);
         }
         if (matches(typeName, "SET")) {
-            String commaSeparatedOptions = extractEnumAndSetOptions(column, true);
-            return io.debezium.data.EnumSet.builder(commaSeparatedOptions);
+            List<String> options = extractEnumAndSetOptions(column);
+            String commaSeperatedOptions = Strings.join(MySqlDdlParser.ENUM_AND_SET_DELIMINATOR,options);
+            return io.debezium.data.EnumSet.builder(commaSeperatedOptions);
         }
         // Otherwise, let the base class handle it ...
         return super.schemaBuilder(column);
@@ -105,12 +109,12 @@ public class MySqlValueConverters extends JdbcValueConverters {
         }
         if (matches(typeName, "ENUM")) {
             // Build up the character array based upon the column's type ...
-            String options = extractEnumAndSetOptions(column, false);
+            List<String> options = extractEnumAndSetOptions(column);
             return (data) -> convertEnumToString(options, column, fieldDefn, data);
         }
         if (matches(typeName, "SET")) {
             // Build up the character array based upon the column's type ...
-            String options = extractEnumAndSetOptions(column, false);
+            List<String> options = extractEnumAndSetOptions(column);
             return (data) -> convertSetToString(options, column, fieldDefn, data);
         }
         
@@ -240,7 +244,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @return the converted value, or null if the conversion could not be made and the column allows nulls
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
-    protected Object convertEnumToString(String options, Column column, Field fieldDefn, Object data) {
+    protected Object convertEnumToString(List<String> options, Column column, Field fieldDefn, Object data) {
         if (data == null) {
             data = fieldDefn.schema().defaultValue();
         }
@@ -253,10 +257,13 @@ public class MySqlValueConverters extends JdbcValueConverters {
             return data;
         }
         if (data instanceof Integer) {
-            // The binlog will contain an int with the 1-based index of the option in the enum value ...
-            int index = ((Integer) data).intValue() - 1; // 'options' is 0-based
-            if (index < options.length()) {
-                return options.substring(index, index + 1);
+
+            if (options != null) {
+                // The binlog will contain an int with the 1-based index of the option in the enum value ...
+                int index = ((Integer) data).intValue() - 1; // 'options' is 0-based
+                if (index < options.size()) {
+                    return options.get(index);
+                }
             }
             return null;
         }
@@ -275,7 +282,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @return the converted value, or null if the conversion could not be made and the column allows nulls
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
-    protected Object convertSetToString(String options, Column column, Field fieldDefn, Object data) {
+    protected Object convertSetToString(List<String> options, Column column, Field fieldDefn, Object data) {
         if (data == null) {
             data = fieldDefn.schema().defaultValue();
         }
@@ -308,32 +315,25 @@ public class MySqlValueConverters extends JdbcValueConverters {
         return upperCaseMatch.equals(upperCaseTypeName) || upperCaseTypeName.startsWith(upperCaseMatch + "(");
     }
 
-    protected String extractEnumAndSetOptions(Column column, boolean commaSeparated) {
-        String options = MySqlDdlParser.parseSetAndEnumOptions(column.typeExpression());
-        if (!commaSeparated) return options;
-        StringBuilder sb = new StringBuilder();
-        boolean first = true;
-        for (int i = 0; i != options.length(); ++i) {
-            if (first)
-                first = false;
-            else
-                sb.append(',');
-            sb.append(options.charAt(i));
-        }
-        return sb.toString();
+    protected List<String> extractEnumAndSetOptions(Column column) {
+        List<String> options = MySqlDdlParser.parseSetAndEnumOptions(column.typeExpression());
+        return options;
     }
 
-    protected String convertSetValue(long indexes, String options) {
+    protected String convertSetValue(long indexes, List<String> options) {
         StringBuilder sb = new StringBuilder();
         int index = 0;
         boolean first = true;
+        int optionLen = options.size();
         while (indexes != 0L) {
             if (indexes % 2L != 0) {
                 if (first)
                     first = false;
                 else
-                    sb.append(',');
-                sb.append(options.substring(index, index + 1));
+                    sb.append(MySqlDdlParser.ENUM_AND_SET_DELIMINATOR);
+                if (index < optionLen) {
+                    sb.append(options.get(index));
+                }
             }
             ++index;
             indexes = indexes >>> 1;
