@@ -26,6 +26,7 @@ import io.debezium.relational.ddl.DdlParserListener.Event;
 import io.debezium.relational.ddl.SimpleDdlParserListener;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
+import io.debezium.util.Strings;
 
 public class MySqlDdlParserTest {
 
@@ -659,17 +660,8 @@ public class MySqlDdlParserTest {
 
     protected void assertParseEnumAndSetOptions(String typeExpression, String optionString) {
         List<String> options = MySqlDdlParser.parseSetAndEnumOptions(typeExpression);
-        StringBuilder sb = new StringBuilder();
-        boolean first = true;
-        for (String value:options) {
-            if (first) {
-                first = false;
-            } else {
-                sb.append(MySqlDdlParser.ENUM_AND_SET_DELIMINATOR);
-            }
-            sb.append(value);
-        }
-        assertThat(optionString).isEqualTo(sb.toString());
+        String commaSeperatedOptions = Strings.join(MySqlDdlParser.ENUM_AND_SET_DELIMINATOR,options);
+        assertThat(optionString).isEqualTo(commaSeperatedOptions);
     }
 
     protected void assertVariable(String name, String expectedValue) {

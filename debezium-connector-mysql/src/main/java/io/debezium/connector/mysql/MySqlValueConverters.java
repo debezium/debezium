@@ -27,6 +27,7 @@ import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
 import io.debezium.time.Year;
+import io.debezium.util.Strings;
 
 /**
  * MySQL-specific customization of the conversions from JDBC values obtained from the MySQL binlog client library.
@@ -87,31 +88,13 @@ public class MySqlValueConverters extends JdbcValueConverters {
         }
         if (matches(typeName, "ENUM")) {
             List<String> options = extractEnumAndSetOptions(column);
-            StringBuilder commaSeparatedOptions = new StringBuilder();
-            boolean first = true;
-            for (String value:options) {
-                if (first) {
-                    first = false;
-                } else {
-                    commaSeparatedOptions.append(MySqlDdlParser.ENUM_AND_SET_DELIMINATOR);
-                }
-                commaSeparatedOptions.append(value);
-            }
-            return io.debezium.data.Enum.builder(commaSeparatedOptions.toString());
+            String commaSeperatedOptions = Strings.join(MySqlDdlParser.ENUM_AND_SET_DELIMINATOR,options);
+            return io.debezium.data.Enum.builder(commaSeperatedOptions);
         }
         if (matches(typeName, "SET")) {
             List<String> options = extractEnumAndSetOptions(column);
-            StringBuilder commaSeparatedOptions = new StringBuilder();
-            boolean first = true;
-            for (String value:options) {
-                if (first) {
-                    first = false;
-                } else {
-                    commaSeparatedOptions.append(MySqlDdlParser.ENUM_AND_SET_DELIMINATOR);
-                }
-                commaSeparatedOptions.append(value);
-            }
-            return io.debezium.data.EnumSet.builder(commaSeparatedOptions.toString());
+            String commaSeperatedOptions = Strings.join(MySqlDdlParser.ENUM_AND_SET_DELIMINATOR,options);
+            return io.debezium.data.EnumSet.builder(commaSeperatedOptions);
         }
         // Otherwise, let the base class handle it ...
         return super.schemaBuilder(column);

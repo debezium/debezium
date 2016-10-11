@@ -63,7 +63,7 @@ public class MySqlDdlParser extends DdlParser {
     private final MySqlSystemVariables systemVariables = new MySqlSystemVariables();
     private final ConcurrentMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
 
-    public static final char ENUM_AND_SET_DELIMINATOR = ',';
+    public static final String ENUM_AND_SET_DELIMINATOR = ",";
     /**
      * Create a new DDL parser for MySQL that does not include view definitions.
      */
