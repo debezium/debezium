@@ -63,7 +63,6 @@ public class MySqlDdlParser extends DdlParser {
     private final MySqlSystemVariables systemVariables = new MySqlSystemVariables();
     private final ConcurrentMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
 
-    public static final String ENUM_AND_SET_DELIMINATOR = ",";
     /**
      * Create a new DDL parser for MySQL that does not include view definitions.
      */
@@ -662,10 +661,9 @@ public class MySqlDdlParser extends DdlParser {
         if (matcher.matches()) {
             String literals = matcher.group(2);
             Matcher optionMatcher = ENUM_AND_SET_OPTIONS.matcher(literals);
-            StringBuilder sb = new StringBuilder();
             while (optionMatcher.find()) {
                 String option = optionMatcher.group(1);
-                if (option.length() > 0) {
+                if (option != null && option.length() > 0) {
                     options.add(option);
                 }
             }

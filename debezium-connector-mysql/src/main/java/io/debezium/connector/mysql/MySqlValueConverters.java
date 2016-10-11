@@ -73,7 +73,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
     public MySqlValueConverters(boolean adaptiveTimePrecision, ZoneOffset defaultOffset) {
         super(adaptiveTimePrecision, defaultOffset);
     }
-    
+
     @Override
     protected ByteOrder byteOrderOfBitType() {
         return ByteOrder.BIG_ENDIAN;
@@ -87,13 +87,11 @@ public class MySqlValueConverters extends JdbcValueConverters {
             return Year.builder();
         }
         if (matches(typeName, "ENUM")) {
-            List<String> options = extractEnumAndSetOptions(column);
-            String commaSeperatedOptions = Strings.join(MySqlDdlParser.ENUM_AND_SET_DELIMINATOR,options);
+            String commaSeperatedOptions = extractEnumAndSetOptionsAsString(column);
             return io.debezium.data.Enum.builder(commaSeperatedOptions);
         }
         if (matches(typeName, "SET")) {
-            List<String> options = extractEnumAndSetOptions(column);
-            String commaSeperatedOptions = Strings.join(MySqlDdlParser.ENUM_AND_SET_DELIMINATOR,options);
+            String commaSeperatedOptions = extractEnumAndSetOptionsAsString(column);
             return io.debezium.data.EnumSet.builder(commaSeperatedOptions);
         }
         // Otherwise, let the base class handle it ...
@@ -117,7 +115,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
             List<String> options = extractEnumAndSetOptions(column);
             return (data) -> convertSetToString(options, column, fieldDefn, data);
         }
-        
+
         // We have to convert bytes encoded in the column's character set ...
         switch (column.jdbcType()) {
             case Types.CHAR: // variable-length
@@ -297,7 +295,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
         if (data instanceof Long) {
             // The binlog will contain a long with the indexes of the options in the set value ...
             long indexes = ((Long) data).longValue();
-            return convertSetValue(indexes, options);
+            return convertSetValue(column, indexes, options);
         }
         return handleUnknownData(column, fieldDefn, data);
     }
@@ -316,23 +314,29 @@ public class MySqlValueConverters extends JdbcValueConverters {
     }
 
     protected List<String> extractEnumAndSetOptions(Column column) {
-        List<String> options = MySqlDdlParser.parseSetAndEnumOptions(column.typeExpression());
-        return options;
+        return MySqlDdlParser.parseSetAndEnumOptions(column.typeExpression());
     }
 
-    protected String convertSetValue(long indexes, List<String> options) {
+    protected String extractEnumAndSetOptionsAsString(Column column) {
+        return Strings.join(",", extractEnumAndSetOptions(column));
+    }
+
+    protected String convertSetValue(Column column, long indexes, List<String> options) {
         StringBuilder sb = new StringBuilder();
         int index = 0;
         boolean first = true;
         int optionLen = options.size();
         while (indexes != 0L) {
             if (indexes % 2L != 0) {
-                if (first)
+                if (first) {
                     first = false;
-                else
-                    sb.append(MySqlDdlParser.ENUM_AND_SET_DELIMINATOR);
+                } else {
+                    sb.append(',');
+                }
                 if (index < optionLen) {
                     sb.append(options.get(index));
+                } else {
+                    logger.warn("Found unexpected index '{}' on column {}", index, column);
                 }
             }
             ++index;
