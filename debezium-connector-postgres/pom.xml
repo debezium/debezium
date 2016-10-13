@@ -1,0 +1,254 @@
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-parent</artifactId>
+        <version>0.4.0-SNAPSHOT</version>
+        <relativePath>../</relativePath>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>debezium-connector-postgres</artifactId>
+    <name>Debezium Connector for PostgreSQL</name>
+    <packaging>jar</packaging>
+    <properties>
+        <version.com.google.protobuf>2.6.1</version.com.google.protobuf>
+        <!-- 
+          Specify the properties that will be used for setting up the integration tests' Docker container.
+          Note that the `dockerhost.ip` property is computed from the IP address of DOCKER_HOST, which will
+          work on all platforms. We'll set some of these as system properties during integration testing.
+      -->
+        <version.postgres.server>9.5</version.postgres.server>
+        <database.port>5432</database.port>
+        <database.user>postgres</database.user>
+        <database.password>postgres</database.password>
+        <database.name>postgres</database.name>
+        <docker.image>debezium/postgres:${version.postgres.server}</docker.image>
+        <docker.skip>false</docker.skip>
+        <docker.showLogs>true</docker.showLogs>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>9.4.1209.jre7</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>${version.com.google.protobuf}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>connect-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!-- Testing -->
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-embedded</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-core</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-embedded</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.easytesting</groupId>
+            <artifactId>fest-assert</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-connect-avro-converter</artifactId>
+        </dependency>
+    </dependencies>
+   
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>com.github.os72</groupId>
+                <artifactId>protoc-jar-maven-plugin</artifactId>
+                <version>3.0.0.1</version>
+                <executions>
+                    <execution>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <protocVersion>${version.com.google.protobuf}</protocVersion> <!-- 2.4.1, 2.5.0, 2.6.1, 3.0.0 -->
+                            <outputDirectory>${project.build.sourceDirectory}</outputDirectory>
+                            <inputDirectories>
+                                <include>src/main/proto</include>
+                            </inputDirectories>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>io.fabric8</groupId>
+                <artifactId>docker-maven-plugin</artifactId>
+                <configuration>
+                    <watchInterval>500</watchInterval>
+                    <logDate>default</logDate>
+                    <verbose>true</verbose>
+                    <autoPull>off</autoPull>
+                    <images>
+                        <image>
+                            <!-- A Docker image using a partial MySQL installation maintained by MySQL team. -->
+                            <name>debezium/postgres:${version.postgres.server}</name>  
+                            <alias>database</alias>
+                            <run>
+                                <namingStrategy>alias</namingStrategy>
+                                <env>
+                                    <POSTGRES_USER>${database.user}</POSTGRES_USER>
+                                    <POSTGRES_PASSWORD>${database.password}</POSTGRES_PASSWORD>
+                                    <POSTGRES_DB>${database.name}</POSTGRES_DB>
+                                </env>
+                                <ports>
+                                    <port>${database.port}:5432</port>
+                                </ports>
+                                <log>
+                                    <prefix>postgres</prefix>
+                                    <enabled>true</enabled>
+                                    <color>yellow</color>
+                                </log>
+                                <wait>
+                                    <log>ready to accept connections</log>
+                                    <time>30000</time> <!-- 30 seconds max -->
+                                </wait>
+                            </run>
+                        </image>
+                    </images>
+                </configuration>
+                <!--
+                Connect this plugin to the maven lifecycle around the integration-test phase:
+                start the container in pre-integration-test and stop it in post-integration-test.
+                -->
+                <executions>
+                    <execution>
+                        <id>start</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>start</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>stop</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>stop</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- 
+            Unlike surefire, the failsafe plugin ensures 'post-integration-test' phase always runs, even
+            when there are failed integration tests. We rely upon this to always shut down the Docker container
+            after the integration tests (defined as '*IT.java') are run.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>integration-test</id>
+                        <goals>
+                            <goal>integration-test</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>verify</id>
+                        <goals>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <skipTests>${skipITs}</skipTests>
+                    <enableAssertions>true</enableAssertions>
+                    <systemPropertyVariables>
+                        <!-- Make these available to the tests via system properties -->
+                        <database.hostname>${docker.host.address}</database.hostname>
+                        <database.port>${database.port}</database.port>
+                        <database.user>${database.user}</database.user>
+                        <database.password>${database.password}</database.password>
+                        <database.dbname>${database.name}</database.dbname>
+                        <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+        </plugins>
+        <resources>
+            <!-- Apply the properties set in the POM to the resource files -->
+            <resource>
+                <filtering>true</filtering>
+                <directory>src/main/resources</directory>
+                <includes>
+                    <include>*</include>
+                    <include>**/*</include>
+                </includes>
+            </resource>
+        </resources>
+        <testResources>
+            <testResource>
+                <directory>src/test/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>*</include>
+                    <include>**/*</include>
+                </includes>
+            </testResource>
+        </testResources>
+    </build>
+    <!--
+    Define several useful profiles
+    -->
+    <profiles>
+        <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+              Do not perform any Docker-related functionality
+              To use, specify "-DskipITs" on the Maven command line.
+              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+        <profile>
+            <id>skip-integration-tests</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>skipITs</name>
+                </property>
+            </activation>
+            <properties>
+                <docker.skip>true</docker.skip>
+            </properties>
+        </profile>
+    </profiles>
+</project>
