@@ -39,7 +39,7 @@ public class MakeGSS {
       jaasApplicationName = "pgjdbc";
     }
     if (kerberosServerName == null) {
-      kerberosServerName = "postgres";
+      kerberosServerName = "postgresql";
     }
 
     Exception result = null;

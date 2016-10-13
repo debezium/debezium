@@ -123,10 +123,9 @@
                     <watchInterval>500</watchInterval>
                     <logDate>default</logDate>
                     <verbose>true</verbose>
-                    <autoPull>off</autoPull>
                     <images>
                         <image>
-                            <!-- A Docker image using a partial MySQL installation maintained by MySQL team. -->
+                            <!-- A Docker image using the Postgres Server with the DBZ decoderbufs plugin -->
                             <name>debezium/postgres:${version.postgres.server}</name>  
                             <alias>database</alias>
                             <run>
@@ -145,8 +144,17 @@
                                     <color>yellow</color>
                                 </log>
                                 <wait>
-                                    <log>ready to accept connections</log>
                                     <time>30000</time> <!-- 30 seconds max -->
+                                    <!--
+                                        The current debezium/postgres docker image restarts the server once when it initializes 
+                                        permissions, so we can't really wait for a log. Instead, we'll wait for the PG port
+                                        to become available
+                                    -->
+                                    <tcp>
+                                        <ports>
+                                            <port>5432</port>
+                                        </ports>
+                                    </tcp>
                                 </wait>
                             </run>
                         </image>

@@ -378,7 +378,7 @@ public class TimestampUtils {
 
     int slen = s.length();
 
-    // convert postgres's infinity values to internal infinity magic value
+    // convert postgresql's infinity values to internal infinity magic value
     if (slen == 8 && s.equals("infinity")) {
       return new Timestamp(PGStatement.DATE_POSITIVE_INFINITY);
     }
@@ -418,7 +418,7 @@ public class TimestampUtils {
 
     int slen = s.length();
 
-    // convert postgres's infinity values to internal infinity magic value
+    // convert postgresql's infinity values to internal infinity magic value
     if (slen == 8 && s.equals("infinity")) {
       return LocalDateTime.MAX;
     }
@@ -1197,7 +1197,7 @@ public class TimestampUtils {
    * @return Java seconds.
    */
   private static long toJavaSecs(long secs) {
-    // postgres epoc to java epoc
+    // postgresql epoc to java epoc
     secs += 946684800L;
 
     // Julian/Gregorian calendar cutoff point
@@ -1221,7 +1221,7 @@ public class TimestampUtils {
    * @return Java seconds.
    */
   private static long toPgSecs(long secs) {
-    // java epoc to postgres epoc
+    // java epoc to postgresql epoc
     secs -= 946684800L;
 
     // Julian/Greagorian calendar cutoff point

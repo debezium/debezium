@@ -8,6 +8,8 @@ package io.debezium.jdbc;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.sql.SQLException;
+import java.sql.SQLXML;
 import java.sql.Types;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -16,7 +18,6 @@ import java.time.OffsetTime;
 import java.time.ZoneOffset;
 import java.util.BitSet;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -25,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.data.Bits;
+import io.debezium.data.Xml;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
 import io.debezium.relational.ValueConverterProvider;
@@ -174,9 +176,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
             case Types.LONGVARCHAR:
             case Types.CLOB:
             case Types.DATALINK:
-            case Types.SQLXML:
                 return SchemaBuilder.string();
-
+            case Types.SQLXML:
+                return Xml.builder();
             // Date and time values
             case Types.DATE:
                 if (adaptiveTimePrecision) {
@@ -228,12 +230,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
             case Types.NULL:
                 return (data) -> null;
             case Types.BIT:
-                if (column.length() > 1) {
-                    int numBits = column.length();
-                    int numBytes = numBits / Byte.SIZE + (numBits % Byte.SIZE == 0 ? 0 : 1);
-                    return (data) -> convertBits(column, fieldDefn, data, numBytes);
-                }
-                return (data) -> convertBit(column, fieldDefn, data);
+                return convertBits(column, fieldDefn);
             case Types.BOOLEAN:
                 return (data) -> convertBoolean(column, fieldDefn, data);
 
@@ -330,7 +327,16 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 return null;
         }
     }
-
+    
+    protected ValueConverter convertBits(Column column, Field fieldDefn) {
+        if (column.length() > 1) {
+            int numBits = column.length();
+            int numBytes = numBits / Byte.SIZE + (numBits % Byte.SIZE == 0 ? 0 : 1);
+            return (data) -> convertBits(column, fieldDefn, data, numBytes);
+        }
+        return (data) -> convertBit(column, fieldDefn, data);
+    }
+    
     /**
      * Converts a value object for an expected JDBC type of {@link Types#TIMESTAMP_WITH_TIMEZONE}.
      * The <a href="http://www.oracle.com/technetwork/articles/java/jf14-date-time-2125367.html">standard ANSI to Java 8 type
@@ -1008,6 +1014,14 @@ public class JdbcValueConverters implements ValueConverterProvider {
         if (data == null) {
             if (column.isOptional()) return null;
             return "";
+        }
+        if (data instanceof SQLXML) {
+            try {
+                return ((SQLXML) data).getString();
+            } catch (SQLException e) {
+                throw new RuntimeException("Error processing data from " + column.jdbcType() + " and column " + column +
+                                           ": class=" + data.getClass(), e);
+            }
         }
         return data.toString();
     }

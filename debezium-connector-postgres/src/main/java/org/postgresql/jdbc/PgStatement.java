@@ -611,7 +611,7 @@ public class PgStatement implements Statement, BaseStatement {
 
   /*
    *
-   * The following methods are postgres extensions and are defined in the interface BaseStatement
+   * The following methods are postgresql extensions and are defined in the interface BaseStatement
    *
    */
 

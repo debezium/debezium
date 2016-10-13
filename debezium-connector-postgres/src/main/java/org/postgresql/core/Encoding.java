@@ -263,7 +263,7 @@ public class Encoding {
    * @return If faster ASCII number parsing can be used with this encoding.
    */
   private boolean testAsciiNumbers() {
-    // TODO: test all postgres supported encoding to see if there are
+    // TODO: test all postgresql supported encoding to see if there are
     // any which do _not_ have ascii numbers in same location
     // at least all the encoding listed in the encodings hashmap have
     // working ascii numbers

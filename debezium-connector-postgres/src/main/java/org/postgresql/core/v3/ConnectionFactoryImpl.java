@@ -295,7 +295,7 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
   }
 
   /**
-   * Convert Java time zone to postgres time zone. All others stay the same except that GMT+nn
+   * Convert Java time zone to postgresql time zone. All others stay the same except that GMT+nn
    * changes to GMT-nn and vise versa.
    *
    * @return The current JVM time zone in postgresql format.

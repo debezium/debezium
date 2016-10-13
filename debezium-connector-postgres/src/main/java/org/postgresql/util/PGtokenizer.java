@@ -13,7 +13,7 @@ import java.util.List;
 
 
 /**
- * This class is used to tokenize the text output of org.postgres. It's mainly used by the geometric
+ * This class is used to tokenize the text output of org.postgresql. It's mainly used by the geometric
  * classes, but is useful in parsing any output from custom data types output from org.postgresql.
  *
  * @see org.postgresql.geometric.PGbox

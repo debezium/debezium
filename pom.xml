@@ -90,6 +90,9 @@
 
         <!-- Don't skip integration tests by default -->
         <skipITs>false</skipITs>
+
+        <!-- No debug options by default -->
+        <debug.argline/>
     </properties>
 
     <modules>
@@ -378,6 +381,9 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-failsafe-plugin</artifactId>
                     <version>${version.failsafe.plugin}</version>
+                    <configuration>
+                        <argLine>${debug.argline}</argLine>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
@@ -508,7 +514,7 @@
                             <value>${skipLongRunningTests}</value>
                         </property>
                     </systemProperties>
-                    <argLine>-Djava.awt.headless=true</argLine>
+                    <argLine>-Djava.awt.headless=true ${debug.argline}</argLine>
                     <!--runOrder>alphabetical</runOrder-->
                     <useFile>false</useFile>
                     <enableAssertions>true</enableAssertions>
@@ -526,6 +532,8 @@
                 </dependencies>
                 <configuration>
                     <configLocation>checkstyle.xml</configLocation>
+                    <suppressionsLocation>checkstyle-suppressions.xml</suppressionsLocation>
+                    <suppressionsFileExpression>checkstyle.suppressions.file</suppressionsFileExpression>
                     <consoleOutput>true</consoleOutput>
                     <failsOnError>true</failsOnError>
                     <linkXRef>false</linkXRef>
@@ -545,6 +553,29 @@
         </plugins>
     </build>
     <profiles>
+        <!--
+           ###################################################################
+           Enable remotely debugging on the command line
+           ###################################################################
+
+           To use, specify "-Ddebug=true" on the Maven command line
+           (typically used when running a single test). Then, start
+           remote debugger (on port 1044) and connect.
+       -->
+        <profile>
+            <id>debug</id>
+            <activation>
+                <property>
+                    <name>debug</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <!-- Useful for remotely debugging the unit tests run by Surefire ... -->
+                <debug.argline>-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=1044</debug.argline>
+            </properties>
+        </profile>
+
         <profile>
             <id>assembly</id>
             <properties>

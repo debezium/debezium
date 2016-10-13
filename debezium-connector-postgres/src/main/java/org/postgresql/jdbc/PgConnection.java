@@ -358,7 +358,7 @@ public class PgConnection implements BaseConnection {
 
     TypeInfo types1 = getTypeInfo();
     if (haveMinimumServerVersion(ServerVersion.v8_3)) {
-      types1.addCoreType("uuid", Oid.UUID, Types.OTHER, "java.util.UUID", Oid.UUID_ARRAY);
+      types1.addCoreType("uuid", Oid.UUID, Types.OTHER, "java.util.Uuid", Oid.UUID_ARRAY);
     }
 
     TypeInfo types = getTypeInfo();
@@ -947,7 +947,7 @@ public class PgConnection implements BaseConnection {
    * <p>
    * This was done at the request of <a href="mailto:rachel@enlarion.demon.co.uk">Rachel
    * Greenham</a> who hit a problem where multiple clients didn't close the connection, and once a
-   * fortnight enough clients were open to kill the postgres server.
+   * fortnight enough clients were open to kill the postgresql server.
    */
   protected void finalize() throws Throwable {
     try {

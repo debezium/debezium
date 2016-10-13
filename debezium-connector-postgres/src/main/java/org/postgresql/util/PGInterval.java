@@ -312,7 +312,7 @@ public class PGInterval extends PGobject implements Serializable, Cloneable {
    */
   public void add(Calendar cal) {
     // Avoid precision loss
-    // Be aware postgres doesn't return more than 60 seconds - no overflow can happen
+    // Be aware postgresql doesn't return more than 60 seconds - no overflow can happen
     final int microseconds = (int) (getSeconds() * 1000000.0);
     final int milliseconds = (microseconds + ((microseconds < 0) ? -500 : 500)) / 1000;
 

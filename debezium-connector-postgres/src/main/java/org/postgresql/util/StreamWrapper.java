@@ -26,7 +26,7 @@ public class StreamWrapper {
 
   private static final int MAX_MEMORY_BUFFER_BYTES = 51200;
 
-  private static final String TEMP_FILE_PREFIX = "postgres-pgjdbc-stream";
+  private static final String TEMP_FILE_PREFIX = "postgresql-pgjdbc-stream";
 
   public StreamWrapper(byte[] data, int offset, int length) {
     this.stream = null;
