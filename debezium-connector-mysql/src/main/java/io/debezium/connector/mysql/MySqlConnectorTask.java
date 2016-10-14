@@ -367,7 +367,7 @@ public final class MySqlConnectorTask extends SourceTask {
             throw new ConnectException("Unexpected error while connecting to MySQL and looking at BINLOG mode: ", e);
         }
 
-        logger.info("binlog_format={}" + mode.get());
+        logger.debug("binlog_format={}", mode.get());
         return "ROW".equalsIgnoreCase(mode.get());
     }
 }
