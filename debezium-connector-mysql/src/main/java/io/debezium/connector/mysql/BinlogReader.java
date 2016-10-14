@@ -161,6 +161,7 @@ public class BinlogReader extends AbstractReader {
                 GtidSet gtidSet = new GtidSet(gtidSetStr).retainAll(gtidSourceFilter);
                 gtidSetStr = gtidSet.toString();
                 logger.info("GTID set after applying GTID source includes/excludes: {}", gtidSetStr);
+                source.setGtidSet(gtidSetStr);
             }
             client.setGtidSet(gtidSetStr);
         } else {
