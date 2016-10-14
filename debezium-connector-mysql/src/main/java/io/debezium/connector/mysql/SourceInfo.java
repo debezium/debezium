@@ -262,7 +262,7 @@ final class SourceInfo {
      */
     public void setGtidSet(String gtidSet) {
         if (gtidSet != null && !gtidSet.trim().isEmpty()) {
-            this.gtidSet = gtidSet.replaceAll("\n", ""); // remove all of the newline chars if they exist
+            this.gtidSet = gtidSet.replaceAll("\n", "").replaceAll("\r", ""); // remove all of the newline chars if they exist
         }
     }
 
@@ -385,7 +385,7 @@ final class SourceInfo {
      * @return the string representation of the binlog GTID ranges; may be null
      */
     public String gtidSet() {
-        return this.gtidSet != null ? this.gtidSet.toString() : null;
+        return this.gtidSet != null ? this.gtidSet : null;
     }
 
     /**
