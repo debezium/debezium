@@ -96,7 +96,7 @@ public class MySqlConnectorConfig {
          * Perform a snapshot when it is needed.
          */
         WHEN_NEEDED("when_needed"),
-        
+
         /**
          * Perform a snapshot only upon initial startup of a connector.
          */
@@ -160,7 +160,7 @@ public class MySqlConnectorConfig {
          * Establish an unencrypted connection.
          */
         DISABLED("disabled"),
-        
+
         /**
          * Establish a secure (encrypted) connection if the server supports secure connections.
          * Fall back to an unencrypted connection otherwise.
@@ -181,7 +181,7 @@ public class MySqlConnectorConfig {
          * attempted.
          */
         VERIFY_IDENTITY("verify_identity");
-        
+
         private final String value;
 
         private SecureConnectionMode(String value) {
@@ -403,6 +403,36 @@ public class MySqlConnectorConfig {
                                                       .withValidation(MySqlConnectorConfig::validateColumnBlacklist)
                                                       .withDescription("");
 
+    /**
+     * A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog
+     * position in the MySQL server. Only the GTID ranges that have sources matching one of these include patterns will
+     * be used.
+     * May not be used with {@link #GTID_SOURCE_EXCLUDES}.
+     */
+    public static final Field GTID_SOURCE_INCLUDES = Field.create("gtid.source.includes")
+                                                          .withDisplayName("Include GTID sources")
+                                                          .withType(Type.LIST)
+                                                          .withWidth(Width.LONG)
+                                                          .withImportance(Importance.HIGH)
+                                                          .withRecommender(DATABASE_LIST_RECOMMENDER)
+                                                          .withDependents(TABLE_WHITELIST_NAME)
+                                                          .withDescription("The source UUIDs used to include GTID ranges when determine the starting position in the MySQL server's binlog.");
+
+    /**
+     * A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog
+     * position in the MySQL server. Only the GTID ranges that have sources matching none of these exclude patterns will
+     * be used.
+     * May not be used with {@link #GTID_SOURCE_INCLUDES}.
+     */
+    public static final Field GTID_SOURCE_EXCLUDES = Field.create("gtid.source.excludes")
+                                                          .withDisplayName("Exclude GTID sources")
+                                                          .withType(Type.STRING)
+                                                          .withWidth(Width.LONG)
+                                                          .withImportance(Importance.MEDIUM)
+                                                          .withValidation(MySqlConnectorConfig::validateGtidSetExcludes)
+                                                          .withInvisibleRecommender()
+                                                          .withDescription("The source UUIDs used to exclude GTID ranges when determine the starting position in the MySQL server's binlog.");
+
     public static final Field CONNECTION_TIMEOUT_MS = Field.create("connect.timeout.ms")
                                                            .withDisplayName("Connection Timeout (ms)")
                                                            .withType(Type.INT)
@@ -561,6 +591,7 @@ public class MySqlConnectorConfig {
                                                      TABLE_WHITELIST, TABLE_BLACKLIST, TABLES_IGNORE_BUILTIN,
                                                      DATABASE_WHITELIST, DATABASE_BLACKLIST,
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING,
+                                                     GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
                                                      TIME_PRECISION_MODE,
                                                      SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD,
                                                      SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD);
@@ -584,7 +615,8 @@ public class MySqlConnectorConfig {
                     KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
                     KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, DATABASE_HISTORY);
         Field.group(config, "Events", INCLUDE_SCHEMA_CHANGES, TABLES_IGNORE_BUILTIN, DATABASE_WHITELIST, TABLE_WHITELIST,
-                    COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST);
+                    COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST,
+                    GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
                     SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE);
         return config;
@@ -677,6 +709,16 @@ public class MySqlConnectorConfig {
         String blacklist = config.getString(TABLE_BLACKLIST);
         if (whitelist != null && blacklist != null) {
             problems.accept(TABLE_BLACKLIST, blacklist, "Whitelist is already specified");
+            return 1;
+        }
+        return 0;
+    }
+
+    private static int validateGtidSetExcludes(Configuration config, Field field, ValidationOutput problems) {
+        String includes = config.getString(GTID_SOURCE_INCLUDES);
+        String excludes = config.getString(GTID_SOURCE_EXCLUDES);
+        if (includes != null && excludes != null) {
+            problems.accept(GTID_SOURCE_EXCLUDES, excludes, "Included GTID source UUIDs are already specified");
             return 1;
         }
         return 0;

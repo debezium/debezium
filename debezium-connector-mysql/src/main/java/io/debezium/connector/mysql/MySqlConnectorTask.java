@@ -249,8 +249,9 @@ public final class MySqlConnectorTask extends SourceTask {
                 logger.info("Connector used GTIDs previously, but MySQL does not know of any GTIDs or they are not enabled");
                 return false;
             }
-            // GTIDs are enabled, and we used them previously ...
-            GtidSet gtidSet = new GtidSet(gtidStr);
+            // GTIDs are enabled, and we used them previously, but retain only those GTID ranges for the allowed source UUIDs ...
+            GtidSet gtidSet = new GtidSet(gtidStr).retainAll(taskContext.gtidSourceFilter());
+            // Get the GTID set that is available in the server ...
             GtidSet availableGtidSet = new GtidSet(knownGtidSet());
             if (gtidSet.isContainedWithin(availableGtidSet)) {
                 logger.info("MySQL current GTID set {} does contain the GTID set required by the connector {}", availableGtidSet, gtidSet);
@@ -366,7 +367,7 @@ public final class MySqlConnectorTask extends SourceTask {
             throw new ConnectException("Unexpected error while connecting to MySQL and looking at BINLOG mode: ", e);
         }
 
-        logger.info("binlog_format={}" + mode.get());
+        logger.debug("binlog_format={}", mode.get());
         return "ROW".equalsIgnoreCase(mode.get());
     }
 }
