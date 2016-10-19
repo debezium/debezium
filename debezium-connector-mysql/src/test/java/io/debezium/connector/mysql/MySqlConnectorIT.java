@@ -226,23 +226,32 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         Recommender dbNameRecommender = MySqlConnectorConfig.DATABASE_WHITELIST.recommender();
         List<Object> dbNames = dbNameRecommender.validValues(MySqlConnectorConfig.DATABASE_WHITELIST, config);
         Testing.debug("List of dbNames: " + dbNames);
-        assertThat(dbNames).containsOnly("connector_test", "readbinlog_test", "regression_test",
+        assertThat(dbNames).containsOnly("connector_test", "readbinlog_test", "regression_test", "json_test",
                                          "connector_test_ro", "emptydb");
 
         Recommender tableNameRecommender = MySqlConnectorConfig.TABLE_WHITELIST.recommender();
         List<Object> tableNames = tableNameRecommender.validValues(MySqlConnectorConfig.TABLE_WHITELIST, config);
-        assertThat(tableNames).contains("connector_test.customers",
-                                        "connector_test.orders",
-                                        "connector_test.products",
-                                        "connector_test.products_on_hand",
-                                        "connector_test_ro.customers",
-                                        "connector_test_ro.orders",
-                                        "connector_test_ro.products",
-                                        "connector_test_ro.products_on_hand",
-                                        "regression_test.t1464075356413_testtable6",
-                                        "regression_test.dbz_85_fractest",
-                                        "regression_test.dbz84_integer_types_table");
         Testing.debug("List of tableNames: " + tableNames);
+        assertThat(tableNames).containsOnly("readbinlog_test.product",
+                                            "readbinlog_test.purchased",
+                                            "readbinlog_test.person",
+                                            "connector_test.customers",
+                                            "connector_test.orders",
+                                            "connector_test.products",
+                                            "connector_test.products_on_hand",
+                                            "connector_test_ro.customers",
+                                            "connector_test_ro.orders",
+                                            "connector_test_ro.products",
+                                            "connector_test_ro.products_on_hand",
+                                            "regression_test.t1464075356413_testtable6",
+                                            "regression_test.dbz_85_fractest",
+                                            "regression_test.dbz84_integer_types_table",
+                                            "regression_test.dbz_100_enumsettest",
+                                            "regression_test.dbz_102_charsettest",
+                                            "regression_test.dbz_114_zerovaluetest",
+                                            "regression_test.dbz_123_bitvaluetest",
+                                            "regression_test.dbz_104_customers",
+                                            "json_test.dbz_126_jsontable");
 
         // Now set the whitelist to two databases ...
         Configuration config2 = config.edit()
