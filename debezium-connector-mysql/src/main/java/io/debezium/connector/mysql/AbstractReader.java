@@ -68,13 +68,15 @@ public abstract class AbstractReader {
     }
 
     /**
-     * Stop the snapshot from running.
-     * <p>
-     * This method does nothing if the snapshot is not {@link #isRunning() running}.
+     * Stop the reader from running. This method is called when the connector is stopped.
      */
     public void stop() {
-        if (this.running.compareAndSet(true, false)) {
-            doStop();
+        try {
+            if (this.running.compareAndSet(true, false)) {
+                doStop();
+            }
+        } finally {
+            doShutdown();
         }
     }
 
@@ -85,7 +87,10 @@ public abstract class AbstractReader {
 
     /**
      * The reader has been requested to stop, so perform any work required to stop the reader's resources that were previously
-     * {@link #start() started}..
+     * {@link #start() started}.
+     * <p>
+     * This method is called only if the reader is not already stopped.
+     * @see #doShutdown()
      */
     protected abstract void doStop();
 
@@ -95,6 +100,14 @@ public abstract class AbstractReader {
      */
     protected abstract void doCleanup();
 
+    /**
+     * The reader has been stopped.
+     * <p>
+     * This method is always called when the connector is stopped.
+     * @see #doStop()
+     */
+    protected abstract void doShutdown();
+    
     /**
      * Call this method only when the reader has successfully completed all of its work, signaling that subsequent
      * calls to {@link #poll()} should forever return {@code null}.
