@@ -8,6 +8,9 @@ package io.debezium.connector.mysql;
 import java.util.Map;
 import java.util.function.Predicate;
 
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
+
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.function.Predicates;
@@ -51,6 +54,10 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         String gtidSetExcludes = config.getString(MySqlConnectorConfig.GTID_SOURCE_EXCLUDES);
         this.gtidSourceFilter = gtidSetIncludes != null ? Predicates.includes(gtidSetIncludes)
                 : (gtidSetExcludes != null ? Predicates.excludes(gtidSetExcludes) : null);
+    }
+
+    public String connectorName() {
+        return config.getString("name");
     }
 
     public TopicSelector topicSelector() {
@@ -222,6 +229,17 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
      */
     public void temporaryLoggingContext(String contextName, Runnable operation) {
         LoggingContext.temporarilyForConnector("MySQL", serverName(), contextName, operation);
+    }
+    
+    /**
+     * Create a JMX metric name for the given metric.
+     * @param contextName the name of the context
+     * @return the JMX metric name
+     * @throws MalformedObjectNameException if the name is invalid
+     */
+    public ObjectName metricName(String contextName) throws MalformedObjectNameException {
+        //return new ObjectName("debezium.mysql:type=connector-metrics,connector=" + serverName() + ",name=" + contextName);
+        return new ObjectName("debezium.mysql:type=connector-metrics,context=" + contextName + ",server=" + serverName());
     }
 
 }

@@ -64,7 +64,8 @@ public class BinlogReader extends AbstractReader {
     private final RecordMakers recordMakers;
     private final SourceInfo source;
     private final EnumMap<EventType, BlockingConsumer<Event>> eventHandlers = new EnumMap<>(EventType.class);
-    private BinaryLogClient client;
+    private final BinaryLogClient client;
+    private final BinlogReaderMetrics metrics;
     private int startingRowNumber = 0;
     private final Clock clock;
     private final ElapsedTimeStrategy pollOutputDelay;
@@ -132,6 +133,10 @@ public class BinlogReader extends AbstractReader {
                                                    new RowDeserializers.DeleteRowsDeserializer(
                                                            tableMapEventByTableId).setMayContainExtraInformation(true));
         client.setEventDeserializer(eventDeserializer);
+
+        // Set up for JMX ...
+        metrics = new BinlogReaderMetrics(client);
+        metrics.register(context, logger);
     }
 
     @Override
@@ -160,7 +165,7 @@ public class BinlogReader extends AbstractReader {
             logger.info("GTID set from previous recorded offset: {}", gtidSetStr);
             // Remove any of the GTID sources that are not required/acceptable ...
             Predicate<String> gtidSourceFilter = context.gtidSourceFilter();
-            if ( gtidSourceFilter != null) {
+            if (gtidSourceFilter != null) {
                 GtidSet gtidSet = new GtidSet(gtidSetStr).retainAll(gtidSourceFilter);
                 gtidSetStr = gtidSet.toString();
                 logger.info("GTID set after applying GTID source includes/excludes: {}", gtidSetStr);
@@ -217,6 +222,11 @@ public class BinlogReader extends AbstractReader {
         } catch (IOException e) {
             logger.error("Unexpected error when disconnecting from the MySQL binary log reader", e);
         }
+    }
+
+    @Override
+    protected void doShutdown() {
+        metrics.unregister(logger);
     }
 
     @Override
