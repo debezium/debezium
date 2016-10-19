@@ -44,6 +44,7 @@ public class SnapshotReader extends AbstractReader {
     private RecordRecorder recorder;
     private volatile Thread thread;
     private volatile Runnable onSuccessfulCompletion;
+    private final SnapshotReaderMetrics metrics;
 
     /**
      * Create a snapshot reader.
@@ -53,6 +54,8 @@ public class SnapshotReader extends AbstractReader {
     public SnapshotReader(MySqlTaskContext context) {
         super(context);
         recorder = this::recordRowAsRead;
+        metrics = new SnapshotReaderMetrics(context.clock());
+        metrics.register(context, logger);
     }
 
     /**
@@ -115,12 +118,14 @@ public class SnapshotReader extends AbstractReader {
         thread.start();
     }
 
-    /**
-     * Stop the snapshot from running.
-     */
     @Override
     protected void doStop() {
         thread.interrupt();
+    }
+
+    @Override
+    protected void doShutdown() {
+        metrics.unregister(logger);
     }
 
     @Override
@@ -154,6 +159,8 @@ public class SnapshotReader extends AbstractReader {
         logRolesForCurrentUser(mysql);
         logServerInformation(mysql);
         try {
+            metrics.startSnapshot();
+
             // ------
             // STEP 0
             // ------
@@ -171,6 +178,7 @@ public class SnapshotReader extends AbstractReader {
             mysql.setAutoCommit(false);
             sql.set("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
             mysql.execute(sql.get());
+            metrics.globalLockAcquired();
 
             // Generate the DDL statements that set the charset-related system variables ...
             Map<String, String> systemVariables = context.readMySqlCharsetSystemVariables(sql);
@@ -317,6 +325,7 @@ public class SnapshotReader extends AbstractReader {
                 mysql.execute(sql.get());
                 unlocked = true;
                 long lockReleased = clock.currentTimeInMillis();
+                metrics.globalLockReleased();
                 logger.info("Step 7: blocked writes to MySQL for a total of {}", Strings.duration(lockReleased - lockAcquired));
             }
 
@@ -329,6 +338,8 @@ public class SnapshotReader extends AbstractReader {
 
             // Dump all of the tables and generate source records ...
             logger.info("Step 8: scanning contents of {} tables", tableIds.size());
+            metrics.setTableCount(tableIds.size());
+
             long startScan = clock.currentTimeInMillis();
             AtomicBoolean interrupted = new AtomicBoolean(false);
             AtomicLong totalRowCount = new AtomicLong();
@@ -388,6 +399,7 @@ public class SnapshotReader extends AbstractReader {
                         }
                     });
 
+                    metrics.completeTable();
                     if (interrupted.get()) break;
                 }
                 ++completedCounter;
@@ -420,6 +432,7 @@ public class SnapshotReader extends AbstractReader {
                 mysql.execute(sql.get());
                 unlocked = true;
                 long lockReleased = clock.currentTimeInMillis();
+                metrics.globalLockReleased();
                 logger.info("Writes to MySQL prevented for a total of {}", Strings.duration(lockReleased - lockAcquired));
             }
 
@@ -431,12 +444,14 @@ public class SnapshotReader extends AbstractReader {
                 logger.info("Step {}: rolling back transaction after abort", step++);
                 sql.set("ROLLBACK");
                 mysql.execute(sql.get());
+                metrics.abortSnapshot();
                 return;
             }
             // Otherwise, commit our transaction
             logger.info("Step {}: committing transaction", step++);
             sql.set("COMMIT");
             mysql.execute(sql.get());
+            metrics.completeSnapshot();
 
             try {
                 // Mark the source as having completed the snapshot. This will ensure the `source` field on records
