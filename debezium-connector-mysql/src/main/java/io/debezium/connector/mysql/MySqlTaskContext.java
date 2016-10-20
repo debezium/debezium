@@ -11,9 +11,14 @@ import java.util.function.Predicate;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
+import org.apache.kafka.connect.errors.ConnectException;
+
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.function.Predicates;
+import io.debezium.relational.topic.ByTableTopicNamingStrategy;
+import io.debezium.relational.topic.TopicSelector;
+import io.debezium.relational.topic.TopicSelectorBuilder;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.LoggingContext.PreviousContext;
@@ -37,8 +42,16 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     public MySqlTaskContext(Configuration config) {
         super(config);
 
-        // Set up the topic selector ...
-        this.topicSelector = TopicSelector.defaultSelector(serverName());
+        // Build the topic selector ...
+        try {
+            String topicSelectorStrategies = config.getString(MySqlConnectorConfig.TOPIC_NAMING_STRATEGY);
+            TopicSelectorBuilder builder = new TopicSelectorBuilder(getClass().getClassLoader());
+            builder.addStrategies(topicSelectorStrategies);
+            builder.addFallback(new ByTableTopicNamingStrategy());
+            this.topicSelector = builder.buildUsingPrefix(serverName());
+        } catch (IllegalArgumentException e) {
+            throw new ConnectException("Error configuring the topic naming strategy", e);
+        }
 
         // Set up the source information ...
         this.source = new SourceInfo();
@@ -230,15 +243,16 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     public void temporaryLoggingContext(String contextName, Runnable operation) {
         LoggingContext.temporarilyForConnector("MySQL", serverName(), contextName, operation);
     }
-    
+
     /**
      * Create a JMX metric name for the given metric.
+     * 
      * @param contextName the name of the context
      * @return the JMX metric name
      * @throws MalformedObjectNameException if the name is invalid
      */
     public ObjectName metricName(String contextName) throws MalformedObjectNameException {
-        //return new ObjectName("debezium.mysql:type=connector-metrics,connector=" + serverName() + ",name=" + contextName);
+        // return new ObjectName("debezium.mysql:type=connector-metrics,connector=" + serverName() + ",name=" + contextName);
         return new ObjectName("debezium.mysql:type=connector-metrics,context=" + contextName + ",server=" + serverName());
     }
 
