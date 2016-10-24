@@ -64,7 +64,7 @@
         <version.postgresql.server>9.4</version.postgresql.server>
         <version.mysql.server>5.7</version.mysql.server>
         <version.mysql.driver>5.1.39</version.mysql.driver>
-        <version.mysql.binlog>0.4.0</version.mysql.binlog>
+        <version.mysql.binlog>0.5.1</version.mysql.binlog>
         <version.mongo.server>3.2.6</version.mongo.server>
         <version.mongo.driver>3.2.2</version.mongo.driver>
 
@@ -79,7 +79,7 @@
         <version.war.plugin>2.5</version.war.plugin>
         <version.codehaus.helper.plugin>1.8</version.codehaus.helper.plugin>
         <version.google.formatter.plugin>0.3.1</version.google.formatter.plugin>
-        <version.docker.maven.plugin>0.15.16</version.docker.maven.plugin>
+        <version.docker.maven.plugin>0.16.8</version.docker.maven.plugin>
         <version.staging.plugin>1.6.3</version.staging.plugin>
 
         <!-- Dockerfiles -->

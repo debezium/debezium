@@ -16,6 +16,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Predicate;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -63,7 +64,8 @@ public class BinlogReader extends AbstractReader {
     private final RecordMakers recordMakers;
     private final SourceInfo source;
     private final EnumMap<EventType, BlockingConsumer<Event>> eventHandlers = new EnumMap<>(EventType.class);
-    private BinaryLogClient client;
+    private final BinaryLogClient client;
+    private final BinlogReaderMetrics metrics;
     private int startingRowNumber = 0;
     private final Clock clock;
     private final ElapsedTimeStrategy pollOutputDelay;
@@ -71,6 +73,7 @@ public class BinlogReader extends AbstractReader {
     private long previousOutputMillis = 0L;
     private final AtomicLong totalRecordCounter = new AtomicLong();
     private volatile Map<String, ?> lastOffset = null;
+    private com.github.shyiko.mysql.binlog.GtidSet gtidSet;
 
     /**
      * Create a binlog reader.
@@ -130,6 +133,10 @@ public class BinlogReader extends AbstractReader {
                                                    new RowDeserializers.DeleteRowsDeserializer(
                                                            tableMapEventByTableId).setMayContainExtraInformation(true));
         client.setEventDeserializer(eventDeserializer);
+
+        // Set up for JMX ...
+        metrics = new BinlogReaderMetrics(client);
+        metrics.register(context, logger);
     }
 
     @Override
@@ -141,7 +148,6 @@ public class BinlogReader extends AbstractReader {
         eventHandlers.put(EventType.ROTATE, this::handleRotateLogsEvent);
         eventHandlers.put(EventType.TABLE_MAP, this::handleUpdateTableMetadata);
         eventHandlers.put(EventType.QUERY, this::handleQueryEvent);
-        eventHandlers.put(EventType.GTID, this::handleGtidEvent);
         eventHandlers.put(EventType.WRITE_ROWS, this::handleInsert);
         eventHandlers.put(EventType.UPDATE_ROWS, this::handleUpdate);
         eventHandlers.put(EventType.DELETE_ROWS, this::handleDelete);
@@ -151,9 +157,27 @@ public class BinlogReader extends AbstractReader {
 
         // The 'source' object holds the starting point in the binlog where we should start reading,
         // set set the client to start from that point ...
-        client.setGtidSet(source.gtidSet()); // may be null
-        client.setBinlogFilename(source.binlogFilename());
-        client.setBinlogPosition(source.nextBinlogPosition());
+        String gtidSetStr = source.gtidSet();
+        if (gtidSetStr != null) {
+            // Register the event handler ...
+            eventHandlers.put(EventType.GTID, this::handleGtidEvent);
+
+            logger.info("GTID set from previous recorded offset: {}", gtidSetStr);
+            // Remove any of the GTID sources that are not required/acceptable ...
+            Predicate<String> gtidSourceFilter = context.gtidSourceFilter();
+            if (gtidSourceFilter != null) {
+                GtidSet gtidSet = new GtidSet(gtidSetStr).retainAll(gtidSourceFilter);
+                gtidSetStr = gtidSet.toString();
+                logger.info("GTID set after applying GTID source includes/excludes: {}", gtidSetStr);
+                source.setGtidSet(gtidSetStr);
+            }
+            client.setGtidSet(gtidSetStr);
+            gtidSet = new com.github.shyiko.mysql.binlog.GtidSet(gtidSetStr);
+        } else {
+            client.setBinlogFilename(source.binlogFilename());
+            client.setBinlogPosition(source.nextBinlogPosition());
+            gtidSet = null;
+        }
 
         // Set the starting row number, which is the next row number to be read ...
         startingRowNumber = source.nextEventRowNumber();
@@ -201,6 +225,11 @@ public class BinlogReader extends AbstractReader {
     }
 
     @Override
+    protected void doShutdown() {
+        metrics.unregister(logger);
+    }
+
+    @Override
     protected void doCleanup() {
     }
 
@@ -243,7 +272,7 @@ public class BinlogReader extends AbstractReader {
         // Update the source offset info. Note that the client returns the value in *milliseconds*, even though the binlog
         // contains only *seconds* precision ...
         EventHeader eventHeader = event.getHeader();
-        source.setBinlogTimestampSeconds(eventHeader.getTimestamp() / 1000L); // client returns milliseconds, we record seconds
+        source.setBinlogTimestampSeconds(eventHeader.getTimestamp() / 1000L); // client returns milliseconds, but only second precision
         source.setBinlogServerId(eventHeader.getServerId());
         EventType eventType = eventHeader.getEventType();
         if (eventType == EventType.ROTATE) {
@@ -329,14 +358,24 @@ public class BinlogReader extends AbstractReader {
 
     /**
      * Handle the supplied event with a {@link GtidEventData} that signals the beginning of a GTID transaction.
+     * We don't yet know whether this transaction contains any events we're interested in, but we have to record
+     * it so that we know the position of this event and know we've processed the binlog to this point.
+     * <p>
+     * Note that this captures the current GTID and complete GTID set, regardless of whether the connector is
+     * {@link MySqlTaskContext#gtidSourceFilter() filtering} the GTID set upon connection. We do this because
+     * we actually want to capture all GTID set values found in the binlog, whether or not we process them.
+     * However, only when we connect do we actually want to pass to MySQL only those GTID ranges that are applicable
+     * per the configuration.
      * 
      * @param event the GTID event to be processed; may not be null
      */
     protected void handleGtidEvent(Event event) {
         logger.debug("GTID transaction: {}", event);
         GtidEventData gtidEvent = unwrapData(event);
-        source.setGtid(gtidEvent.getGtid());
-        source.setGtidSet(client.getGtidSet());
+        String gtid = gtidEvent.getGtid();
+        gtidSet.add(gtid);
+        source.setGtid(gtid);
+        source.setGtidSet(gtidSet.toString()); // rather than use the client's GTID set
     }
 
     /**

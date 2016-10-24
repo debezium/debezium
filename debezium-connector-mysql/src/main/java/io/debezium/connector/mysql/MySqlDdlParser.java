@@ -655,21 +655,20 @@ public class MySqlDdlParser extends DdlParser {
      * @param typeExpression the data type expression
      * @return the string containing the character options allowed by the {@code ENUM} or {@code SET}; never null
      */
-    public static String parseSetAndEnumOptions(String typeExpression) {
+    public static List<String> parseSetAndEnumOptions(String typeExpression) {
         Matcher matcher = ENUM_AND_SET_LITERALS.matcher(typeExpression);
+        List<String> options = new ArrayList<>();
         if (matcher.matches()) {
             String literals = matcher.group(2);
             Matcher optionMatcher = ENUM_AND_SET_OPTIONS.matcher(literals);
-            StringBuilder sb = new StringBuilder();
             while (optionMatcher.find()) {
                 String option = optionMatcher.group(1);
-                if (option.length() > 0) {
-                    sb.append(option.charAt(0));
+                if (option != null && option.length() > 0) {
+                    options.add(option);
                 }
             }
-            return sb.toString();
         }
-        return "";
+        return options;
     }
 
     protected void parseColumnDefinition(Marker start, String columnName, TokenStream tokens, TableEditor table, ColumnEditor column,
@@ -692,8 +691,9 @@ public class MySqlDdlParser extends DdlParser {
         if ("ENUM".equals(dataType.name())) {
             column.length(1);
         } else if ("SET".equals(dataType.name())) {
-            String options = parseSetAndEnumOptions(dataType.expression());
-            column.length(Math.max(0, options.length() * 2 - 1)); // number of options + number of commas
+            List<String> options = parseSetAndEnumOptions(dataType.expression());
+            //After DBZ-132, it will always be comma seperated
+            column.length(Math.max(0, options.size() * 2 - 1)); // number of options + number of commas
         } else {
             if (dataType.length() > -1) column.length((int) dataType.length());
             if (dataType.scale() > -1) column.scale(dataType.scale());

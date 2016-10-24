@@ -13,6 +13,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import io.debezium.annotation.Immutable;
 
@@ -27,11 +29,15 @@ public final class GtidSet {
 
     private final Map<String, UUIDSet> uuidSetsByServerId = new TreeMap<>(); // sorts on keys
 
+    protected GtidSet(Map<String, UUIDSet> uuidSetsByServerId) {
+        this.uuidSetsByServerId.putAll(uuidSetsByServerId);
+    }
+
     /**
      * @param gtids the string representation of the GTIDs.
      */
     public GtidSet(String gtids) {
-        gtids = gtids.replaceAll("\n", "");
+        gtids = gtids.replaceAll("\n", "").replaceAll("\r", "");
         new com.github.shyiko.mysql.binlog.GtidSet(gtids).getUUIDSets().forEach(uuidSet -> {
             uuidSetsByServerId.put(uuidSet.getUUID(), new UUIDSet(uuidSet));
         });
@@ -40,6 +46,22 @@ public final class GtidSet {
             if (sb.length() != 0) sb.append(',');
             sb.append(uuidSet.toString());
         });
+    }
+
+    /**
+     * Obtain a copy of this {@link GtidSet} except with only the GTID ranges that have server UUIDs that match the given
+     * predicate.
+     * 
+     * @param sourceFilter the predicate that returns whether a server UUID is to be included
+     * @return the new GtidSet, or this object if {@code sourceFilter} is null; never null
+     */
+    public GtidSet retainAll(Predicate<String> sourceFilter) {
+        if (sourceFilter == null) return this;
+        Map<String, UUIDSet> newSets = this.uuidSetsByServerId.entrySet()
+                                                              .stream()
+                                                              .filter(entry -> sourceFilter.test(entry.getKey()))
+                                                              .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        return new GtidSet(newSets);
     }
 
     /**
@@ -99,7 +121,7 @@ public final class GtidSet {
         for (UUIDSet uuidSet : uuidSetsByServerId.values()) {
             gtids.add(uuidSet.toString());
         }
-        return String.join(",",gtids);
+        return String.join(",", gtids);
     }
 
     /**
@@ -117,13 +139,13 @@ public final class GtidSet {
                 intervals.add(new Interval(interval.getStart(), interval.getEnd()));
             });
             Collections.sort(this.intervals);
-            if ( this.intervals.size() > 1 ) {
+            if (this.intervals.size() > 1) {
                 // Collapse adjacent intervals ...
-                for ( int i=intervals.size()-1; i!=0; --i) {
-                    Interval before = this.intervals.get(i-1);
+                for (int i = intervals.size() - 1; i != 0; --i) {
+                    Interval before = this.intervals.get(i - 1);
                     Interval after = this.intervals.get(i);
-                    if ( (before.getEnd() + 1) == after.getStart() ) {
-                        this.intervals.set(i-1,new Interval(before.getStart(),after.getEnd()));
+                    if ((before.getEnd() + 1) == after.getStart()) {
+                        this.intervals.set(i - 1, new Interval(before.getStart(), after.getEnd()));
                         this.intervals.remove(i);
                     }
                 }
@@ -202,8 +224,8 @@ public final class GtidSet {
             if (sb.length() != 0) sb.append(',');
             sb.append(uuid).append(':');
             Iterator<Interval> iter = intervals.iterator();
-            if ( iter.hasNext() ) sb.append(iter.next());
-            while ( iter.hasNext() ) {
+            if (iter.hasNext()) sb.append(iter.next());
+            while (iter.hasNext()) {
                 sb.append(':');
                 sb.append(iter.next());
             }
@@ -224,6 +246,7 @@ public final class GtidSet {
 
         /**
          * Get the starting transaction number in this interval.
+         * 
          * @return this interval's first transaction number
          */
         public long getStart() {
@@ -232,6 +255,7 @@ public final class GtidSet {
 
         /**
          * Get the ending transaction number in this interval.
+         * 
          * @return this interval's last transaction number
          */
         public long getEnd() {
@@ -251,13 +275,13 @@ public final class GtidSet {
             if (other == null) return false;
             return this.getStart() >= other.getStart() && this.getEnd() <= other.getEnd();
         }
-        
+
         @Override
         public int compareTo(Interval that) {
-            if ( that == this ) return 0;
+            if (that == this) return 0;
             long diff = this.start - that.start;
-            if ( diff > Integer.MAX_VALUE ) return Integer.MAX_VALUE;
-            if ( diff < Integer.MIN_VALUE ) return Integer.MIN_VALUE;
+            if (diff > Integer.MAX_VALUE) return Integer.MAX_VALUE;
+            if (diff < Integer.MIN_VALUE) return Integer.MIN_VALUE;
             return (int) diff;
         }
 

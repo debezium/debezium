@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import java.io.IOException;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
@@ -12,20 +13,25 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Types;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 
 import com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDataDeserializer;
+import com.github.shyiko.mysql.binlog.event.deserialization.json.JsonBinary;
 import com.mysql.jdbc.CharsetMapping;
 
 import io.debezium.annotation.Immutable;
+import io.debezium.data.Json;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
 import io.debezium.time.Year;
+import io.debezium.util.Strings;
 
 /**
  * MySQL-specific customization of the conversions from JDBC values obtained from the MySQL binlog client library.
@@ -71,7 +77,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
     public MySqlValueConverters(boolean adaptiveTimePrecision, ZoneOffset defaultOffset) {
         super(adaptiveTimePrecision, defaultOffset);
     }
-    
+
     @Override
     protected ByteOrder byteOrderOfBitType() {
         return ByteOrder.BIG_ENDIAN;
@@ -81,16 +87,19 @@ public class MySqlValueConverters extends JdbcValueConverters {
     public SchemaBuilder schemaBuilder(Column column) {
         // Handle a few MySQL-specific types based upon how they are handled by the MySQL binlog client ...
         String typeName = column.typeName().toUpperCase();
+        if (matches(typeName, "JSON")) {
+            return Json.builder();
+        }
         if (matches(typeName, "YEAR")) {
             return Year.builder();
         }
         if (matches(typeName, "ENUM")) {
-            String commaSeparatedOptions = extractEnumAndSetOptions(column, true);
-            return io.debezium.data.Enum.builder(commaSeparatedOptions);
+            String commaSeperatedOptions = extractEnumAndSetOptionsAsString(column);
+            return io.debezium.data.Enum.builder(commaSeperatedOptions);
         }
         if (matches(typeName, "SET")) {
-            String commaSeparatedOptions = extractEnumAndSetOptions(column, true);
-            return io.debezium.data.EnumSet.builder(commaSeparatedOptions);
+            String commaSeperatedOptions = extractEnumAndSetOptionsAsString(column);
+            return io.debezium.data.EnumSet.builder(commaSeperatedOptions);
         }
         // Otherwise, let the base class handle it ...
         return super.schemaBuilder(column);
@@ -100,20 +109,23 @@ public class MySqlValueConverters extends JdbcValueConverters {
     public ValueConverter converter(Column column, Field fieldDefn) {
         // Handle a few MySQL-specific types based upon how they are handled by the MySQL binlog client ...
         String typeName = column.typeName().toUpperCase();
+        if (matches(typeName, "JSON")) {
+            return (data) -> convertJson(column, fieldDefn, data);
+        }
         if (matches(typeName, "YEAR")) {
             return (data) -> convertYearToInt(column, fieldDefn, data);
         }
         if (matches(typeName, "ENUM")) {
             // Build up the character array based upon the column's type ...
-            String options = extractEnumAndSetOptions(column, false);
+            List<String> options = extractEnumAndSetOptions(column);
             return (data) -> convertEnumToString(options, column, fieldDefn, data);
         }
         if (matches(typeName, "SET")) {
             // Build up the character array based upon the column's type ...
-            String options = extractEnumAndSetOptions(column, false);
+            List<String> options = extractEnumAndSetOptions(column);
             return (data) -> convertSetToString(options, column, fieldDefn, data);
         }
-        
+
         // We have to convert bytes encoded in the column's character set ...
         switch (column.jdbcType()) {
             case Types.CHAR: // variable-length
@@ -164,6 +176,40 @@ public class MySqlValueConverters extends JdbcValueConverters {
             }
         }
         return null;
+    }
+
+    /**
+     * Convert the {@link String} {@code byte[]} value to a string value used in a {@link SourceRecord}.
+     * 
+     * @param column the column in which the value appears
+     * @param fieldDefn the field definition for the {@link SourceRecord}'s {@link Schema}; never null
+     * @param data the data; may be null
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
+     */
+    protected Object convertJson(Column column, Field fieldDefn, Object data) {
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return "{}";
+        }
+        if (data instanceof byte[]) {
+            // The BinlogReader sees these JSON values as binary encoded, so we use the binlog client library's utility
+            // to parse MySQL's internal binary representation into a JSON string, using the standard formatter.
+            try {
+                String json = JsonBinary.parseAsString((byte[])data);
+                return json;
+            } catch ( IOException e) {
+                throw new ConnectException("Failed to parse and read a JSON value on " + column + ": " + e.getMessage(), e);
+            }
+        }
+        if (data instanceof String) {
+            // The SnapshotReader sees JSON values as UTF-8 encoded strings.
+            return data;
+        }
+        return handleUnknownData(column, fieldDefn, data);
     }
 
     /**
@@ -240,7 +286,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @return the converted value, or null if the conversion could not be made and the column allows nulls
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
-    protected Object convertEnumToString(String options, Column column, Field fieldDefn, Object data) {
+    protected Object convertEnumToString(List<String> options, Column column, Field fieldDefn, Object data) {
         if (data == null) {
             data = fieldDefn.schema().defaultValue();
         }
@@ -253,10 +299,13 @@ public class MySqlValueConverters extends JdbcValueConverters {
             return data;
         }
         if (data instanceof Integer) {
-            // The binlog will contain an int with the 1-based index of the option in the enum value ...
-            int index = ((Integer) data).intValue() - 1; // 'options' is 0-based
-            if (index < options.length()) {
-                return options.substring(index, index + 1);
+
+            if (options != null) {
+                // The binlog will contain an int with the 1-based index of the option in the enum value ...
+                int index = ((Integer) data).intValue() - 1; // 'options' is 0-based
+                if (index < options.size()) {
+                    return options.get(index);
+                }
             }
             return null;
         }
@@ -275,7 +324,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @return the converted value, or null if the conversion could not be made and the column allows nulls
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
-    protected Object convertSetToString(String options, Column column, Field fieldDefn, Object data) {
+    protected Object convertSetToString(List<String> options, Column column, Field fieldDefn, Object data) {
         if (data == null) {
             data = fieldDefn.schema().defaultValue();
         }
@@ -290,7 +339,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
         if (data instanceof Long) {
             // The binlog will contain a long with the indexes of the options in the set value ...
             long indexes = ((Long) data).longValue();
-            return convertSetValue(indexes, options);
+            return convertSetValue(column, indexes, options);
         }
         return handleUnknownData(column, fieldDefn, data);
     }
@@ -308,32 +357,31 @@ public class MySqlValueConverters extends JdbcValueConverters {
         return upperCaseMatch.equals(upperCaseTypeName) || upperCaseTypeName.startsWith(upperCaseMatch + "(");
     }
 
-    protected String extractEnumAndSetOptions(Column column, boolean commaSeparated) {
-        String options = MySqlDdlParser.parseSetAndEnumOptions(column.typeExpression());
-        if (!commaSeparated) return options;
-        StringBuilder sb = new StringBuilder();
-        boolean first = true;
-        for (int i = 0; i != options.length(); ++i) {
-            if (first)
-                first = false;
-            else
-                sb.append(',');
-            sb.append(options.charAt(i));
-        }
-        return sb.toString();
+    protected List<String> extractEnumAndSetOptions(Column column) {
+        return MySqlDdlParser.parseSetAndEnumOptions(column.typeExpression());
     }
 
-    protected String convertSetValue(long indexes, String options) {
+    protected String extractEnumAndSetOptionsAsString(Column column) {
+        return Strings.join(",", extractEnumAndSetOptions(column));
+    }
+
+    protected String convertSetValue(Column column, long indexes, List<String> options) {
         StringBuilder sb = new StringBuilder();
         int index = 0;
         boolean first = true;
+        int optionLen = options.size();
         while (indexes != 0L) {
             if (indexes % 2L != 0) {
-                if (first)
+                if (first) {
                     first = false;
-                else
+                } else {
                     sb.append(',');
-                sb.append(options.substring(index, index + 1));
+                }
+                if (index < optionLen) {
+                    sb.append(options.get(index));
+                } else {
+                    logger.warn("Found unexpected index '{}' on column {}", index, column);
+                }
             }
             ++index;
             indexes = indexes >>> 1;
