@@ -150,15 +150,13 @@ public final class MySqlConnectorTask extends SourceTask {
                 if (taskContext.isInitialSnapshotOnly()) {
                     logger.warn("This connector will only perform a snapshot, and will stop after that completes.");
                     this.snapshotReader.onSuccessfulCompletion(this::skipReadBinlog);
-                } else if (rowBinlogEnabled) {
-                    // This is the normal mode ...
-                    this.snapshotReader.onSuccessfulCompletion(this::transitionToReadBinlog);
                 } else {
-                    assert !rowBinlogEnabled;
-                    assert !taskContext.isInitialSnapshotOnly();
-                    throw new ConnectException("The MySQL server is not configured to use a row-level binlog, which is "
-                            + "required for this connector to work properly. Change the MySQL configuration to use a "
-                            + "row-level binlog and restart the connector.");
+                    this.snapshotReader.onSuccessfulCompletion(this::transitionToReadBinlog);
+                    if (!rowBinlogEnabled) {
+                        throw new ConnectException("The MySQL server is not configured to use a row-level binlog, which is "
+                                + "required for this connector to work properly. Change the MySQL configuration to use a "
+                                + "row-level binlog and restart the connector.");
+                    }
                 }
                 this.snapshotReader.useMinimalBlocking(taskContext.useMinimalSnapshotLocking());
                 if (snapshotEventsAreInserts) this.snapshotReader.generateInsertEvents();

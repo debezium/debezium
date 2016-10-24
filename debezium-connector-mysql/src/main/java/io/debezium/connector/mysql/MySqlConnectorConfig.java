@@ -103,6 +103,12 @@ public class MySqlConnectorConfig {
         INITIAL("initial"),
 
         /**
+         * Perform a snapshot of database schema(not include initial data in databases) only upon initial startup of a
+         * connector.
+         */
+        SCHEMA_ONLY("schema_only"),
+
+        /**
          * Never perform a snapshot and only read the binlog. This assumes the binlog contains all the history of those
          * databases and tables that will be captured.
          */
