@@ -325,4 +325,47 @@ public class SnapshotReaderIT {
             fail("failed to complete the snapshot within 10 seconds");
         }
     }
+
+    @Test
+    public void shouldCreateSnapshotSchemaOnly() throws Exception {
+        config = simpleConfig().with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY).build();
+        context = new MySqlTaskContext(config);
+        context.start();
+        reader = new SnapshotReader(context);
+        reader.onSuccessfulCompletion(completed::countDown);
+        reader.generateInsertEvents();
+        reader.useMinimalBlocking(true);
+
+        // Start the snapshot ...
+        reader.start();
+
+        // Poll for records ...
+        //Testing.Print.enable();
+        List<SourceRecord> records = null;
+        KeyValueStore store = KeyValueStore.createForTopicsBeginningWith(LOGICAL_NAME + ".");
+        SchemaChangeHistory schemaChanges = new SchemaChangeHistory(LOGICAL_NAME);
+        while ( (records = reader.poll()) != null ) {
+            records.forEach(record->{
+                VerifyRecord.isValid(record);
+                store.add(record);
+                schemaChanges.add(record);
+            });
+        }
+        // The last poll should always return null ...
+        assertThat(records).isNull();
+
+        // There should be no schema changes ...
+        assertThat(schemaChanges.recordCount()).isEqualTo(0);
+
+        // Check the records via the store ...
+        assertThat(store.collectionCount()).isEqualTo(0);
+
+        // Make sure the snapshot completed ...
+        if ( completed.await(10, TimeUnit.SECONDS) ) {
+            // completed the snapshot ...
+            Testing.print("completed the snapshot");
+        } else {
+            fail("failed to complete the snapshot within 10 seconds");
+        }
+    }
 }
