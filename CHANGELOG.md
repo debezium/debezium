@@ -2,6 +2,27 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 0.3.4
+
+October 25, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12331759)
+
+### New features since 0.3.3
+
+* MySQL connector has new `SCHEMA_ONLY` snapshot mode. [DBZ-133](https://issues.jboss.org/projects/DBZ/issues/DBZ-133)
+* MySQL connector supports the MySQL `JSON` datatype. [DBZ-126](https://issues.jboss.org/projects/DBZ/issues/DBZ-126)
+* MySQL connector metrics exposed via JMX. [DBZ-134](https://issues.jboss.org/projects/DBZ/issues/DBZ-134)
+
+### Backwards-incompatible changes since 0.3.3
+
+None
+
+### Fixes since 0.3.3
+
+This release includes all of the fixes from the link:release-0-3-3[0.3.3] release, and also includes the following fixes:
+
+* MySQL connector's `ts_sec` field now shows correct time from MySQL server events. [DBZ-139](https://issues.jboss.org/projects/DBZ/issues/DBZ-139)
+
+
 ## 0.3.3
 
 October 18, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12331604)
