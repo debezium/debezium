@@ -103,6 +103,13 @@ public class MySqlConnectorConfig {
         INITIAL("initial"),
 
         /**
+         * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog.
+         * This should be used with care, but it is very useful when the change event consumers need only the changes
+         * from the point in time the snapshot is made (and doesn't care about any state or changes prior to this point).
+         */
+        SCHEMA_ONLY("schema_only"),
+
+        /**
          * Never perform a snapshot and only read the binlog. This assumes the binlog contains all the history of those
          * databases and tables that will be captured.
          */
