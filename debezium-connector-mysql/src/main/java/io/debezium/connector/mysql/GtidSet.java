@@ -8,6 +8,7 @@ package io.debezium.connector.mysql;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -98,6 +99,19 @@ public final class GtidSet {
             if (!uuidSet.isContainedWithin(thatSet)) return false;
         }
         return true;
+    }
+
+    /**
+     * Obtain a copy of this {@link GtidSet} except overwritten with all of the GTID ranges in the supplied {@link GtidSet}.
+     * @param other the other {@link GtidSet} with ranges to add/overwrite on top of those in this set;
+     * @return the new GtidSet, or this object if {@code other} is null or empty; never null
+     */
+    public GtidSet with(GtidSet other) {
+        if (other == null || other.uuidSetsByServerId.isEmpty()) return this;
+        Map<String, UUIDSet> newSet = new HashMap<>();
+        newSet.putAll(this.uuidSetsByServerId);
+        newSet.putAll(other.uuidSetsByServerId);
+        return new GtidSet(newSet);
     }
 
     @Override
