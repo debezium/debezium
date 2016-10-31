@@ -241,7 +241,7 @@ public final class MySqlConnectorTask extends SourceTask {
         String gtidStr = taskContext.source().gtidSet();
         if (gtidStr != null) {
             if (gtidStr.trim().isEmpty()) return true; // start at beginning ...
-            String availableGtidStr = knownGtidSet();
+            String availableGtidStr = taskContext.knownGtidSet();
             if (availableGtidStr == null || availableGtidStr.trim().isEmpty()) {
                 // Last offsets had GTIDs but the server does not use them ...
                 logger.info("Connector used GTIDs previously, but MySQL does not know of any GTIDs or they are not enabled");
@@ -250,7 +250,7 @@ public final class MySqlConnectorTask extends SourceTask {
             // GTIDs are enabled, and we used them previously, but retain only those GTID ranges for the allowed source UUIDs ...
             GtidSet gtidSet = new GtidSet(gtidStr).retainAll(taskContext.gtidSourceFilter());
             // Get the GTID set that is available in the server ...
-            GtidSet availableGtidSet = new GtidSet(knownGtidSet());
+            GtidSet availableGtidSet = new GtidSet(availableGtidStr);
             if (gtidSet.isContainedWithin(availableGtidSet)) {
                 logger.info("MySQL current GTID set {} does contain the GTID set required by the connector {}", availableGtidSet, gtidSet);
                 return true;
@@ -326,26 +326,6 @@ public final class MySqlConnectorTask extends SourceTask {
         }
 
         return !"OFF".equalsIgnoreCase(mode.get());
-    }
-
-    /**
-     * Determine the available GTID set for MySQL.
-     * 
-     * @return the string representation of MySQL's GTID sets.
-     */
-    protected String knownGtidSet() {
-        AtomicReference<String> gtidSetStr = new AtomicReference<String>();
-        try {
-            taskContext.jdbc().query("SHOW MASTER STATUS", rs -> {
-                if (rs.next()) {
-                    gtidSetStr.set(rs.getString(5));// GTID set, may be null, blank, or contain a GTID set
-                }
-            });
-        } catch (SQLException e) {
-            throw new ConnectException("Unexpected error while connecting to MySQL and looking at GTID mode: ", e);
-        }
-
-        return gtidSetStr.get();
     }
 
     /**

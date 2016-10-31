@@ -16,7 +16,6 @@ import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Predicate;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -155,28 +154,21 @@ public class BinlogReader extends AbstractReader {
         eventHandlers.put(EventType.EXT_UPDATE_ROWS, this::handleUpdate);
         eventHandlers.put(EventType.EXT_DELETE_ROWS, this::handleDelete);
 
-        // The 'source' object holds the starting point in the binlog where we should start reading,
-        // set set the client to start from that point ...
-        String gtidSetStr = source.gtidSet();
-        if (gtidSetStr != null) {
+        // Get the current GtidSet from MySQL so we can get a filtered/merged GtidSet based off of the last Debezium checkpoint.
+        String availableServerGtidStr = context.knownGtidSet();
+        GtidSet availableServerGtidSet = new GtidSet(availableServerGtidStr);
+        GtidSet filteredGtidSet = context.getFilteredGtidSet(availableServerGtidSet);
+        if (filteredGtidSet != null) {
             // Register the event handler ...
             eventHandlers.put(EventType.GTID, this::handleGtidEvent);
-
-            logger.info("GTID set from previous recorded offset: {}", gtidSetStr);
-            // Remove any of the GTID sources that are not required/acceptable ...
-            Predicate<String> gtidSourceFilter = context.gtidSourceFilter();
-            if (gtidSourceFilter != null) {
-                GtidSet gtidSet = new GtidSet(gtidSetStr).retainAll(gtidSourceFilter);
-                gtidSetStr = gtidSet.toString();
-                logger.info("GTID set after applying GTID source includes/excludes: {}", gtidSetStr);
-                source.setGtidSet(gtidSetStr);
-            }
-            client.setGtidSet(gtidSetStr);
-            gtidSet = new com.github.shyiko.mysql.binlog.GtidSet(gtidSetStr);
+            logger.info("Registering binlog reader with GTID set: {}", filteredGtidSet);
+            String filteredGtidSetStr = filteredGtidSet.toString();
+            client.setGtidSet(filteredGtidSetStr);
+            source.setGtidSet(filteredGtidSetStr);
+            gtidSet = new com.github.shyiko.mysql.binlog.GtidSet(filteredGtidSetStr);
         } else {
             client.setBinlogFilename(source.binlogFilename());
             client.setBinlogPosition(source.nextBinlogPosition());
-            gtidSet = null;
         }
 
         // Set the starting row number, which is the next row number to be read ...
