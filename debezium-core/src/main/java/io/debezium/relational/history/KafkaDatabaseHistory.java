@@ -96,7 +96,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     private String topicName;
     private Configuration consumerConfig;
     private Configuration producerConfig;
-    private KafkaProducer<String, String> producer;
+    private volatile KafkaProducer<String, String> producer;
     private int recoveryAttempts = -1;
     private int pollIntervalMs = -1;
 
@@ -151,6 +151,9 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
 
     @Override
     protected void storeRecord(HistoryRecord record) {
+        if (this.producer == null) {
+            throw new IllegalStateException("No producer is available. Ensure that 'start()' is called before storing database history records.");
+        }
         logger.trace("Storing record into database history: {}", record);
         try {
             ProducerRecord<String, String> produced = new ProducerRecord<>(topicName, partition, null, record.toString());

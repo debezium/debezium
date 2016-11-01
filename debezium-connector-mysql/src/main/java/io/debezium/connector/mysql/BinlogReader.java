@@ -264,7 +264,8 @@ public class BinlogReader extends AbstractReader {
         // Update the source offset info. Note that the client returns the value in *milliseconds*, even though the binlog
         // contains only *seconds* precision ...
         EventHeader eventHeader = event.getHeader();
-        source.setBinlogTimestampSeconds(eventHeader.getTimestamp() / 1000L); // client returns milliseconds, but only second precision
+        source.setBinlogTimestampSeconds(eventHeader.getTimestamp() / 1000L); // client returns milliseconds, but only second
+                                                                              // precision
         source.setBinlogServerId(eventHeader.getServerId());
         EventType eventType = eventHeader.getEventType();
         if (eventType == EventType.ROTATE) {
@@ -288,6 +289,14 @@ public class BinlogReader extends AbstractReader {
 
             // And after that event has been processed, always set the starting row number to 0 ...
             startingRowNumber = 0;
+        } catch (RuntimeException e) {
+            // There was an error in the event handler, so propagate the failure to Kafka Connect ...
+            failed(e, "Error processing binlog event");
+            // Do not stop the client, since Kafka Connect should stop the connector on it's own
+            // (and doing it here may cause problems the second time it is stopped).
+            // We can clear the listeners though so that we ignore all future events ...
+            eventHandlers.clear();
+            logger.info("Error processing binlog event, and propagating to Kafka Connect so it stops this connector. Future binlog events read before connector is shutdown will be ignored.");
         } catch (InterruptedException e) {
             // Most likely because this reader was stopped and our thread was interrupted ...
             Thread.interrupted();
@@ -379,6 +388,15 @@ public class BinlogReader extends AbstractReader {
     protected void handleQueryEvent(Event event) {
         QueryEventData command = unwrapData(event);
         logger.debug("Received update table command: {}", event);
+        String sql = command.getSql().trim();
+        if (sql.equalsIgnoreCase("BEGIN")) {
+            // ignore these altogether ...
+            return;
+        }
+        if (sql.equalsIgnoreCase("COMMIT")) {
+            // ignore these altogether ...
+            return;
+        }
         context.dbSchema().applyDdl(context.source(), command.getDatabase(), command.getSql(), (dbName, statements) -> {
             if (recordSchemaChangesInSourceRecords && recordMakers.schemaChanges(dbName, statements, super::enqueueRecord) > 0) {
                 logger.debug("Recorded DDL statements for database '{}': {}", dbName, statements);

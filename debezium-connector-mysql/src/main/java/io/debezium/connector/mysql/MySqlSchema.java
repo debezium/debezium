@@ -117,14 +117,14 @@ public class MySqlSchema {
     /**
      * Start by acquiring resources needed to persist the database history
      */
-    public void start() {
+    public synchronized void start() {
         this.dbHistory.start();
     }
 
     /**
      * Stop recording history and release any resources acquired since {@link #start()}.
      */
-    public void shutdown() {
+    public synchronized void shutdown() {
         this.dbHistory.stop();
     }
 
