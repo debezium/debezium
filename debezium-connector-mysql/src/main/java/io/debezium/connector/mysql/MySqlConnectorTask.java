@@ -7,8 +7,10 @@ package io.debezium.connector.mysql;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -31,9 +33,10 @@ import io.debezium.util.LoggingContext.PreviousContext;
 public final class MySqlConnectorTask extends SourceTask {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
-    private MySqlTaskContext taskContext;
-    private SnapshotReader snapshotReader;
-    private BinlogReader binlogReader;
+    private final AtomicBoolean runningReader = new AtomicBoolean(false);
+    private volatile MySqlTaskContext taskContext;
+    private volatile SnapshotReader snapshotReader;
+    private volatile BinlogReader binlogReader;
     private volatile AbstractReader currentReader;
 
     /**
@@ -51,7 +54,7 @@ public final class MySqlConnectorTask extends SourceTask {
     }
 
     @Override
-    public void start(Map<String, String> props) {
+    public synchronized void start(Map<String, String> props) {
         if (context == null) {
             throw new ConnectException("Unexpected null context");
         }
@@ -171,10 +174,21 @@ public final class MySqlConnectorTask extends SourceTask {
             }
 
             // And start our first reader ...
+            this.runningReader.set(true);
             this.currentReader.start();
-        } catch (RuntimeException e) {
-            this.taskContext.shutdown();
-            throw e;
+        } catch (Throwable e) {
+            // If we don't complete startup, then Kafka Connect will not attempt to stop the connector. So if we
+            // run into a problem, we have to stop ourselves ...
+            try {
+                stop();
+            } catch (Throwable s) {
+                // Log, but don't propagate ...
+                logger.error("Failed to start the connector (see other exception), but got this error while cleaning up", s);
+            }
+            if (e instanceof ConnectException) {
+                throw e;
+            }
+            throw new ConnectException(e);
         } finally {
             prevLoggingContext.restore();
         }
@@ -185,28 +199,47 @@ public final class MySqlConnectorTask extends SourceTask {
         PreviousContext prevLoggingContext = this.taskContext.configureLoggingContext("task");
         try {
             logger.trace("Polling for events");
-            return currentReader.poll();
+            AbstractReader reader = currentReader;
+            return reader != null ? reader.poll() : Collections.emptyList();
         } finally {
             prevLoggingContext.restore();
         }
     }
 
     @Override
-    public void stop() {
+    public synchronized void stop() {
         if (context != null) {
             PreviousContext prevLoggingContext = this.taskContext.configureLoggingContext("task");
             // We need to explicitly stop both readers, in this order. If we were to instead call 'currentReader.stop()', there
             // is a chance without synchronization that we'd miss the transition and stop only the snapshot reader. And stopping
-            // both
-            // is far simpler and more efficient than synchronizing ...
+            // both is far simpler and more efficient than synchronizing ...
             try {
                 logger.info("Stopping MySQL connector task");
-                if (this.snapshotReader != null) this.snapshotReader.stop();
+                if (this.snapshotReader != null) {
+                    try {
+                        this.snapshotReader.stop();
+                    } catch (Throwable e) {
+                        logger.error("Unexpected error stopping the snapshot reader", e);
+                    } finally {
+                        this.snapshotReader = null;
+                    }
+                }
             } finally {
                 try {
-                    if (this.binlogReader != null) this.binlogReader.stop();
+                    if (this.binlogReader != null) {
+                        try {
+                            this.binlogReader.stop();
+                        } catch (Throwable e) {
+                            logger.error("Unexpected error stopping the binary log reader", e);
+                        } finally {
+                            this.binlogReader = null;
+                        }
+                    }
                 } finally {
+                    this.currentReader = null;
                     try {
+                        // Capture that our reader is no longer running; used in "transitionToReadBinlog()" ...
+                        this.runningReader.set(false);
                         // Flush and stop database history, close all JDBC connections ...
                         if (this.taskContext != null) taskContext.shutdown();
                     } catch (Throwable e) {
@@ -221,7 +254,15 @@ public final class MySqlConnectorTask extends SourceTask {
         }
     }
 
-    protected void transitionToReadBinlog() {
+    /**
+     * Transition from the snapshot reader to the binlog reader. This method is synchronized (along with {@link #start(Map)}
+     * and {@link #stop()}) to ensure that we don't transition while we've already begun to stop.
+     */
+    protected synchronized void transitionToReadBinlog() {
+        if (this.binlogReader == null || !this.runningReader.get()) {
+            // We are no longer running, so don't start the binlog reader ...
+            return;
+        }
         logger.debug("Transitioning from snapshot reader to binlog reader");
         this.binlogReader.start();
         this.currentReader = this.binlogReader;
