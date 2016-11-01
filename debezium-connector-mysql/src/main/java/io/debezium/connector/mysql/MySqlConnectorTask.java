@@ -37,10 +37,7 @@ public final class MySqlConnectorTask extends SourceTask {
     private volatile AbstractReader currentReader;
 
     /**
-     * Create an instance of the log reader that uses Kafka to store database schema history and the
-     * {@link TopicSelector#defaultSelector(String) default topic selector} of "{@code <serverName>.<databaseName>.<tableName>}"
-     * for
-     * data and "{@code <serverName>}" for metadata.
+     * Create an instance of the log reader that uses Kafka to store database schema history and DDL changes.
      */
     public MySqlConnectorTask() {
     }

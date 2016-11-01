@@ -29,16 +29,12 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
 
     private final SourceInfo source;
     private final MySqlSchema dbSchema;
-    private final TopicSelector topicSelector;
     private final RecordMakers recordProcessor;
     private final Predicate<String> gtidSourceFilter;
     private final Clock clock = Clock.system();
 
     public MySqlTaskContext(Configuration config) {
         super(config);
-
-        // Set up the topic selector ...
-        this.topicSelector = TopicSelector.defaultSelector(serverName());
 
         // Set up the source information ...
         this.source = new SourceInfo();
@@ -48,7 +44,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         this.dbSchema = new MySqlSchema(config, serverName());
 
         // Set up the record processor ...
-        this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector);
+        this.recordProcessor = new RecordMakers(dbSchema, source, serverName());
 
         String gtidSetIncludes = config.getString(MySqlConnectorConfig.GTID_SOURCE_INCLUDES);
         String gtidSetExcludes = config.getString(MySqlConnectorConfig.GTID_SOURCE_EXCLUDES);
@@ -58,10 +54,6 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
 
     public String connectorName() {
         return config.getString("name");
-    }
-
-    public TopicSelector topicSelector() {
-        return topicSelector;
     }
 
     public SourceInfo source() {
