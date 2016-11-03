@@ -246,4 +246,40 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         return new ObjectName("debezium.mysql:type=connector-metrics,context=" + contextName + ",server=" + serverName());
     }
 
+    /**
+     * Retrieve GTID set after applying include/exclude filters on the source. Also, merges the server GTID set with the
+     * filtered client (Debezium) set.
+     *
+     * The merging behavior of this method might seem a bit strange at first. It's required in order for Debezium to consume a
+     * MySQL binlog that has multi-source replication enabled, if a failover has to occur. In such a case, the server that
+     * Debezium is failed over to might have a different set of sources, but still include the sources required for Debezium
+     * to continue to function. MySQL does not allow downstream replicas to connect if the GTID set does not contain GTIDs for
+     * all channels that the server is replicating from, even if the server does have the data needed by the client. To get
+     * around this, we can have Debezium merge its GTID set with whatever is on the server, so that MySQL will allow it to
+     * connect. See <a href="https://issues.jboss.org/browse/DBZ-143">DBZ-143</a> for details.
+     *
+     * This method does not mutate any state in the context.
+     *
+     * @return A GTID set meant for consuming from a MySQL binlog; may return null if the SourceInfo has no GTIDs and therefore
+     *         none were filtered
+     */
+    public GtidSet getFilteredGtidSet(GtidSet availableServerGtidSet) {
+        logger.info("Attempting to generate a filtered GTID set");
+        String gtidStr = source.gtidSet();
+        if (gtidStr == null) {
+            return null;
+        }
+        logger.info("GTID set from previous recorded offset: {}", gtidStr);
+        GtidSet filteredGtidSet = new GtidSet(gtidStr);
+        Predicate<String> gtidSourceFilter = gtidSourceFilter();
+        if (gtidSourceFilter != null) {
+            filteredGtidSet = filteredGtidSet.retainAll(gtidSourceFilter);
+            logger.info("GTID set after applying GTID source includes/excludes to previous recorded offset: {}", filteredGtidSet);
+        }
+        logger.info("GTID set available on server: {}", availableServerGtidSet);
+        GtidSet mergedGtidSet = availableServerGtidSet.with(filteredGtidSet);
+        logger.info("Final merged GTID set to use when connecting to MySQL: {}", mergedGtidSet);
+        return mergedGtidSet;
+    }
+
 }

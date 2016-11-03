@@ -123,6 +123,26 @@ public class MySqlJdbcContext implements AutoCloseable {
         shutdown();
     }
 
+    /**
+     * Determine the available GTID set for MySQL.
+     *
+     * @return the string representation of MySQL's GTID sets.
+     */
+    public String knownGtidSet() {
+        AtomicReference<String> gtidSetStr = new AtomicReference<String>();
+        try {
+            jdbc.query("SHOW MASTER STATUS", rs -> {
+                if (rs.next()) {
+                    gtidSetStr.set(rs.getString(5));// GTID set, may be null, blank, or contain a GTID set
+                }
+            });
+        } catch (SQLException e) {
+            throw new ConnectException("Unexpected error while connecting to MySQL and looking at GTID mode: ", e);
+        }
+
+        return gtidSetStr.get();
+    }
+
     protected String connectionString() {
         return jdbc.connectionString(MYSQL_CONNECTION_URL);
     }
