@@ -7,8 +7,11 @@ package io.debezium.embedded;
 
 import static org.junit.Assert.fail;
 
+import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -22,6 +25,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigValue;
@@ -29,11 +33,17 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.json.JsonDeserializer;
+import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.apache.kafka.connect.storage.Converter;
+import org.apache.kafka.connect.storage.FileOffsetBackingStore;
+import org.apache.kafka.connect.storage.OffsetStorageReaderImpl;
+import org.fest.assertions.Delta;
 import org.junit.After;
 import org.junit.Before;
 import org.slf4j.Logger;
@@ -42,8 +52,10 @@ import org.slf4j.LoggerFactory;
 import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
+import io.debezium.data.SchemaUtil;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.EmbeddedEngine.CompletionCallback;
+import io.debezium.embedded.EmbeddedEngine.EmbeddedConfig;
 import io.debezium.function.BooleanConsumer;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.util.LoggingContext;
@@ -162,6 +174,22 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     /**
+     * Create a {@link CompletionCallback} that logs when the engine fails to start the connector or when the connector
+     * stops running after completing successfully or due to an error
+     * 
+     * @return the logging {@link CompletionCallback}
+     */
+    protected CompletionCallback loggingCompletion() {
+        return (success, msg, error) -> {
+            if (success) {
+                logger.info(msg);
+            } else {
+                logger.error(msg, error);
+            }
+        };
+    }
+
+    /**
      * Start the connector using the supplied connector configuration, where upon completion the status of the connector is
      * logged.
      * 
@@ -169,13 +197,21 @@ public abstract class AbstractConnectorTest implements Testing {
      * @param connectorConfig the configuration for the connector; may not be null
      */
     protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig) {
-        start(connectorClass, connectorConfig, (success, msg, error) -> {
-            if (success) {
-                logger.info(msg);
-            } else {
-                logger.error(msg, error);
-            }
-        });
+        start(connectorClass, connectorConfig, loggingCompletion(), null);
+    }
+
+    /**
+     * Start the connector using the supplied connector configuration, where upon completion the status of the connector is
+     * logged. The connector will stop immediately when the supplied predicate returns true.
+     * 
+     * @param connectorClass the connector class; may not be null
+     * @param connectorConfig the configuration for the connector; may not be null
+     * @param isStopRecord the function that will be called to determine if the connector should be stopped before processing
+     *            this record; may be null if not needed
+     */
+    protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig,
+                         Predicate<SourceRecord> isStopRecord) {
+        start(connectorClass, connectorConfig, loggingCompletion(), isStopRecord);
     }
 
     /**
@@ -186,7 +222,23 @@ public abstract class AbstractConnectorTest implements Testing {
      * @param callback the function that will be called when the engine fails to start the connector or when the connector
      *            stops running after completing successfully or due to an error; may be null
      */
-    protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig, CompletionCallback callback) {
+    protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig,
+                         CompletionCallback callback) {
+        start(connectorClass, connectorConfig, callback, null);
+    }
+
+    /**
+     * Start the connector using the supplied connector configuration.
+     * 
+     * @param connectorClass the connector class; may not be null
+     * @param connectorConfig the configuration for the connector; may not be null
+     * @param isStopRecord the function that will be called to determine if the connector should be stopped before processing
+     *            this record; may be null if not needed
+     * @param callback the function that will be called when the engine fails to start the connector or when the connector
+     *            stops running after completing successfully or due to an error; may be null
+     */
+    protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig,
+                         CompletionCallback callback, Predicate<SourceRecord> isStopRecord) {
         Configuration config = Configuration.copy(connectorConfig)
                                             .with(EmbeddedEngine.ENGINE_NAME, "testing-connector")
                                             .with(EmbeddedEngine.CONNECTOR_CLASS, connectorClass.getName())
@@ -202,11 +254,14 @@ public abstract class AbstractConnectorTest implements Testing {
             }
             Testing.debug("Stopped connector");
         };
-
         // Create the connector ...
         engine = EmbeddedEngine.create()
                                .using(config)
                                .notifying((record) -> {
+                                   if (isStopRecord != null && isStopRecord.test(record)) {
+                                       logger.error("Stopping connector after record as requested");
+                                       throw new ConnectException("Stopping connector after record as requested");
+                                   }
                                    try {
                                        consumedLines.put(record);
                                    } catch (InterruptedException e) {
@@ -306,7 +361,6 @@ public abstract class AbstractConnectorTest implements Testing {
         consumeRecords(numRecords, records::add);
         return records;
     }
-    
 
     protected class SourceRecords {
         private final List<SourceRecord> records = new ArrayList<>();
@@ -467,6 +521,55 @@ public abstract class AbstractConnectorTest implements Testing {
     protected void assertTombstone(SourceRecord record) {
         VerifyRecord.isValidTombstone(record);
     }
+    
+    protected void assertOffset(SourceRecord record, Map<String,?> expectedOffset) {
+        Map<String,?> offset = record.sourceOffset();
+        assertThat(offset).isEqualTo(expectedOffset);
+    }
+    
+    protected void assertOffset(SourceRecord record, String offsetField, Object expectedValue) {
+        Map<String,?> offset = record.sourceOffset();
+        Object value = offset.get(offsetField);
+        assertSameValue(value,expectedValue);
+    }
+    
+    protected void assertValueField(SourceRecord record, String fieldPath, Object expectedValue) {
+        Object value = record.value();
+        String[] fieldNames = fieldPath.split("/");
+        String pathSoFar = null;
+        for (int i=0; i!=fieldNames.length; ++i) {
+            String fieldName = fieldNames[i];
+            if (value instanceof Struct) {
+                value = ((Struct)value).get(fieldName);
+            } else {
+                // We expected the value to be a struct ...
+                String path = pathSoFar == null ? "record value" : ("'" + pathSoFar + "'");
+                String msg = "Expected the " + path + " to be a Struct but was " + value.getClass().getSimpleName() + " in record: " + SchemaUtil.asString(record);
+                fail(msg);
+            }
+            pathSoFar = pathSoFar == null ? fieldName : pathSoFar + "/" + fieldName;
+        }
+        assertSameValue(value,expectedValue);
+    }
+    
+    private void assertSameValue(Object actual, Object expected) {
+        if(expected instanceof Double || expected instanceof Float || expected instanceof BigDecimal) {
+            // Value should be within 1%
+            double expectedNumericValue = ((Number)expected).doubleValue();
+            double actualNumericValue = ((Number)actual).doubleValue();
+            assertThat(actualNumericValue).isEqualTo(expectedNumericValue, Delta.delta(0.01d*expectedNumericValue));
+        } else if (expected instanceof Integer || expected instanceof Long || expected instanceof Short) {
+            long expectedNumericValue = ((Number)expected).longValue();
+            long actualNumericValue = ((Number)actual).longValue();
+            assertThat(actualNumericValue).isEqualTo(expectedNumericValue);
+        } else if (expected instanceof Boolean) {
+            boolean expectedValue = ((Boolean)expected).booleanValue();
+            boolean actualValue = ((Boolean)expected).booleanValue();
+            assertThat(actualValue).isEqualTo(expectedValue);
+        } else {
+            assertThat(actual).isEqualTo(expected);
+        }
+    }
 
     /**
      * Assert that the supplied {@link Struct} is {@link Struct#validate() valid} and its {@link Struct#schema() schema}
@@ -512,7 +615,8 @@ public abstract class AbstractConnectorTest implements Testing {
         assertThat(value.errorMessages().size()).isEqualTo(numErrors);
     }
 
-    protected void assertConfigurationErrors(Config config, io.debezium.config.Field field, int minErrorsInclusive, int maxErrorsInclusive) {
+    protected void assertConfigurationErrors(Config config, io.debezium.config.Field field, int minErrorsInclusive,
+                                             int maxErrorsInclusive) {
         ConfigValue value = configValue(config, field.name());
         assertThat(value.errorMessages().size()).isGreaterThanOrEqualTo(minErrorsInclusive);
         assertThat(value.errorMessages().size()).isLessThanOrEqualTo(maxErrorsInclusive);
@@ -526,8 +630,8 @@ public abstract class AbstractConnectorTest implements Testing {
     protected void assertNoConfigurationErrors(Config config, io.debezium.config.Field... fields) {
         for (io.debezium.config.Field field : fields) {
             ConfigValue value = configValue(config, field.name());
-            if ( value != null ) {
-                if ( !value.errorMessages().isEmpty() ) {
+            if (value != null) {
+                if (!value.errorMessages().isEmpty()) {
                     fail("Error messages on field '" + field.name() + "': " + value.errorMessages());
                 }
             }
@@ -536,6 +640,61 @@ public abstract class AbstractConnectorTest implements Testing {
 
     protected ConfigValue configValue(Config config, String fieldName) {
         return config.configValues().stream().filter(value -> value.name().equals(fieldName)).findFirst().orElse(null);
+    }
+
+    /**
+     * Utility to read the last committed offset for the specified partition.
+     * 
+     * @param config the configuration of the engine used to persist the offsets
+     * @param partition the partition
+     * @return the map of partitions to offsets; never null but possibly empty
+     */
+    protected <T> Map<String, Object> readLastCommittedOffset(Configuration config, Map<String, T> partition) {
+        return readLastCommittedOffsets(config, Arrays.asList(partition)).get(partition);
+    }
+
+    /**
+     * Utility to read the last committed offsets for the specified partitions.
+     * 
+     * @param config the configuration of the engine used to persist the offsets
+     * @param partitions the partitions
+     * @return the map of partitions to offsets; never null but possibly empty
+     */
+    protected <T> Map<Map<String, T>, Map<String, Object>> readLastCommittedOffsets(Configuration config,
+                                                                                    Collection<Map<String, T>> partitions) {
+        config = config.edit().with(EmbeddedEngine.ENGINE_NAME, "testing-connector")
+                       .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
+                       .with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 0)
+                       .build();
+
+        final String engineName = config.getString(EmbeddedEngine.ENGINE_NAME);
+        Converter keyConverter = config.getInstance(EmbeddedEngine.INTERNAL_KEY_CONVERTER_CLASS, Converter.class);
+        keyConverter.configure(config.subset(EmbeddedEngine.INTERNAL_KEY_CONVERTER_CLASS.name() + ".", true).asMap(), true);
+        Converter valueConverter = config.getInstance(EmbeddedEngine.INTERNAL_VALUE_CONVERTER_CLASS, Converter.class);
+        Configuration valueConverterConfig = config;
+        if (valueConverter instanceof JsonConverter) {
+            // Make sure that the JSON converter is configured to NOT enable schemas ...
+            valueConverterConfig = config.edit().with(EmbeddedEngine.INTERNAL_VALUE_CONVERTER_CLASS + ".schemas.enable", false).build();
+        }
+        valueConverter.configure(valueConverterConfig.subset(EmbeddedEngine.INTERNAL_VALUE_CONVERTER_CLASS.name() + ".", true).asMap(),
+                                 false);
+
+        // Create the worker config, adding extra fields that are required for validation of a worker config
+        // but that are not used within the embedded engine (since the source records are never serialized) ...
+        Map<String, String> embeddedConfig = config.asMap(EmbeddedEngine.ALL_FIELDS);
+        embeddedConfig.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
+        embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
+        WorkerConfig workerConfig = new EmbeddedConfig(embeddedConfig);
+
+        FileOffsetBackingStore offsetStore = new FileOffsetBackingStore();
+        offsetStore.configure(workerConfig);
+        offsetStore.start();
+        try {
+            OffsetStorageReaderImpl offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName, keyConverter, valueConverter);
+            return offsetReader.offsets(partitions);
+        } finally {
+            offsetStore.stop();
+        }
     }
 
 }
