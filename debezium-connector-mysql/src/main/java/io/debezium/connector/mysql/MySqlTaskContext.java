@@ -265,11 +265,11 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
      *         none were filtered
      */
     public GtidSet filterGtidSet(GtidSet availableServerGtidSet) {
-        logger.info("Attempting to generate a filtered GTID set");
         String gtidStr = source.gtidSet();
         if (gtidStr == null) {
             return null;
         }
+        logger.info("Attempting to generate a filtered GTID set");
         logger.info("GTID set from previous recorded offset: {}", gtidStr);
         GtidSet filteredGtidSet = new GtidSet(gtidStr);
         Predicate<String> gtidSourceFilter = gtidSourceFilter();

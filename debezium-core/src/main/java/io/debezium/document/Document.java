@@ -92,6 +92,19 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
         return new BasicDocument().set(fieldName1, value1).set(fieldName2, value2).set(fieldName3, value3).set(fieldName4, value4);
     }
 
+    static Document create(CharSequence fieldName1, Object value1, CharSequence fieldName2, Object value2, CharSequence fieldName3,
+                           Object value3, CharSequence fieldName4, Object value4, CharSequence fieldName5, Object value5) {
+        return new BasicDocument().set(fieldName1, value1).set(fieldName2, value2).set(fieldName3, value3).set(fieldName4, value4)
+                                  .set(fieldName5, value5);
+    }
+
+    static Document create(CharSequence fieldName1, Object value1, CharSequence fieldName2, Object value2, CharSequence fieldName3,
+                           Object value3, CharSequence fieldName4, Object value4, CharSequence fieldName5, Object value5,
+                           CharSequence fieldName6, Object value6) {
+        return new BasicDocument().set(fieldName1, value1).set(fieldName2, value2).set(fieldName3, value3).set(fieldName4, value4)
+                                  .set(fieldName5, value5).set(fieldName6, value6);
+    }
+
     /**
      * Return the number of name-value fields in this object.
      * 
@@ -159,7 +172,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
             parent = find(parentPath, (missingPath, missingIndex) -> {
                 invalid.accept(missingPath); // invoke the invalid handler
                 return Optional.empty();
-            } , invalid);
+            }, invalid);
         } else {
             // Create any missing intermediaries using the segment after the missing segment to determine which
             // type of intermediate value to add ...
@@ -170,7 +183,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
                 } else {
                     return Optional.of(Value.create(Document.create()));
                 }
-            } , invalid);
+            }, invalid);
         }
         if (!parent.isPresent()) return Optional.empty();
         String lastSegment = path.lastSegment().get();
@@ -202,8 +215,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
      *         valid
      */
     default Optional<Value> find(Path path) {
-        return find(path, (missingPath, missingIndex) -> Optional.empty(), (invalidPath) -> {
-        });
+        return find(path, (missingPath, missingIndex) -> Optional.empty(), (invalidPath) -> {});
     }
 
     /**
@@ -719,7 +731,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
      * @return This document, to allow for chaining methods
      */
     Document removeAll();
-    
+
     /**
      * Sets on this object all name/value pairs from the supplied object. If the supplied object is null, this method does
      * nothing.

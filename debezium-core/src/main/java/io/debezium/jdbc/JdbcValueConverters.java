@@ -1169,8 +1169,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object handleUnknownData(Column column, Field fieldDefn, Object data) {
         if (column.isOptional() || fieldDefn.schema().isOptional()) {
+            Class<?> dataClass = data.getClass();
             logger.warn("Unexpected value for JDBC type {} and column {}: class={}", column.jdbcType(), column,
-                        data.getClass()); // don't include value in case its sensitive
+                        dataClass.isArray() ? dataClass.getSimpleName() : dataClass.getName()); // don't include value in case its sensitive
             return null;
         }
         throw new IllegalArgumentException("Unexpected value for JDBC type " + column.jdbcType() + " and column " + column +

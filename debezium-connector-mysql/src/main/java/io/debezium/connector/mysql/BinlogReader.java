@@ -70,6 +70,8 @@ public class BinlogReader extends AbstractReader {
     private final ElapsedTimeStrategy pollOutputDelay;
     private long recordCounter = 0L;
     private long previousOutputMillis = 0L;
+    private long initialEventsToSkip = 0L;
+    private boolean skipEvent = false;
     private final AtomicLong totalRecordCounter = new AtomicLong();
     private volatile Map<String, ?> lastOffset = null;
     private com.github.shyiko.mysql.binlog.GtidSet gtidSet;
@@ -164,15 +166,21 @@ public class BinlogReader extends AbstractReader {
             logger.info("Registering binlog reader with GTID set: {}", filteredGtidSet);
             String filteredGtidSetStr = filteredGtidSet.toString();
             client.setGtidSet(filteredGtidSetStr);
-            source.setGtidSet(filteredGtidSetStr);
+            source.setCompletedGtidSet(filteredGtidSetStr);
             gtidSet = new com.github.shyiko.mysql.binlog.GtidSet(filteredGtidSetStr);
         } else {
             client.setBinlogFilename(source.binlogFilename());
-            client.setBinlogPosition(source.nextBinlogPosition());
+            client.setBinlogPosition(source.binlogPosition());
         }
 
+        // We may be restarting in the middle of a transaction, so see how far into the transaction we have already processed...
+        initialEventsToSkip = source.eventsToSkipUponRestart();
+
         // Set the starting row number, which is the next row number to be read ...
-        startingRowNumber = source.nextEventRowNumber();
+        startingRowNumber = source.rowsToSkipUponRestart();
+
+        // Only when we reach the first BEGIN event will we start to skip events ...
+        skipEvent = false;
 
         // Initial our poll output delay logic ...
         pollOutputDelay.hasElapsed();
@@ -287,8 +295,15 @@ public class BinlogReader extends AbstractReader {
             // Forward the event to the handler ...
             eventHandlers.getOrDefault(eventType, this::ignoreEvent).accept(event);
 
-            // And after that event has been processed, always set the starting row number to 0 ...
-            startingRowNumber = 0;
+            // Capture that we've completed another event ...
+            source.completeEvent();
+
+            if (skipEvent) {
+                // We're in the mode of skipping events and we just skipped this one, so decrement our skip count ...
+                --initialEventsToSkip;
+                skipEvent = initialEventsToSkip > 0;
+            }
+
         } catch (RuntimeException e) {
             // There was an error in the event handler, so propagate the failure to Kafka Connect ...
             failed(e, "Error processing binlog event");
@@ -375,8 +390,7 @@ public class BinlogReader extends AbstractReader {
         GtidEventData gtidEvent = unwrapData(event);
         String gtid = gtidEvent.getGtid();
         gtidSet.add(gtid);
-        source.setGtid(gtid);
-        source.setGtidSet(gtidSet.toString()); // rather than use the client's GTID set
+        source.startGtid(gtid, gtidSet.toString()); // rather than use the client's GTID set
     }
 
     /**
@@ -387,14 +401,23 @@ public class BinlogReader extends AbstractReader {
      */
     protected void handleQueryEvent(Event event) {
         QueryEventData command = unwrapData(event);
-        logger.debug("Received update table command: {}", event);
+        logger.debug("Received query command: {}", event);
         String sql = command.getSql().trim();
         if (sql.equalsIgnoreCase("BEGIN")) {
-            // ignore these altogether ...
+            // We are starting a new transaction ...
+            source.startNextTransaction();
+            if (initialEventsToSkip != 0) {
+                logger.debug("Restarting partially-processed transaction; change events will not be created for the first {} events plus {} more rows in the next event",
+                             initialEventsToSkip, startingRowNumber);
+                // We are restarting, so we need to skip the events in this transaction that we processed previously...
+                skipEvent = true;
+            }
             return;
         }
         if (sql.equalsIgnoreCase("COMMIT")) {
-            // ignore these altogether ...
+            // We are completing the transaction ...
+            source.commitTransaction();
+            skipEvent = false;
             return;
         }
         context.dbSchema().applyDdl(context.source(), command.getDatabase(), command.getSql(), (dbName, statements) -> {
@@ -438,6 +461,11 @@ public class BinlogReader extends AbstractReader {
      * @throws InterruptedException if this thread is interrupted while blocking
      */
     protected void handleInsert(Event event) throws InterruptedException {
+        if (skipEvent) {
+            // We can skip this because we should already be at least this far ...
+            logger.debug("Skipping previously processed row event: {}", event);
+            return;
+        }
         WriteRowsEventData write = unwrapData(event);
         long tableNumber = write.getTableId();
         BitSet includedColumns = write.getIncludedColumns();
@@ -447,13 +475,26 @@ public class BinlogReader extends AbstractReader {
             Long ts = context.clock().currentTimeInMillis();
             int count = 0;
             int numRows = rows.size();
-            for (int row = startingRowNumber; row != numRows; ++row) {
-                count += recordMaker.create(rows.get(row), ts, row, numRows);
+            if (startingRowNumber < numRows) {
+                for (int row = startingRowNumber; row != numRows; ++row) {
+                    count += recordMaker.create(rows.get(row), ts, row, numRows);
+                }
+                if (logger.isDebugEnabled()) {
+                    if (startingRowNumber != 0) {
+                        logger.debug("Recorded {} insert record(s) for last {} row(s) in event: {}",
+                                     count, numRows - startingRowNumber, event);
+                    } else {
+                        logger.debug("Recorded {} insert record(s) for event: {}", count, event);
+                    }
+                }
+            } else {
+                // All rows were previously processed ...
+                logger.debug("Skipping previously processed insert event: {}", event);
             }
-            logger.debug("Recorded {} insert records for event: {}", count, event);
         } else {
             logger.debug("Skipping insert row event: {}", event);
         }
+        startingRowNumber = 0;
     }
 
     /**
@@ -463,6 +504,11 @@ public class BinlogReader extends AbstractReader {
      * @throws InterruptedException if this thread is interrupted while blocking
      */
     protected void handleUpdate(Event event) throws InterruptedException {
+        if (skipEvent) {
+            // We can skip this because we should already be at least this far ...
+            logger.debug("Skipping previously processed row event: {}", event);
+            return;
+        }
         UpdateRowsEventData update = unwrapData(event);
         long tableNumber = update.getTableId();
         BitSet includedColumns = update.getIncludedColumns();
@@ -473,16 +519,29 @@ public class BinlogReader extends AbstractReader {
             Long ts = context.clock().currentTimeInMillis();
             int count = 0;
             int numRows = rows.size();
-            for (int row = startingRowNumber; row != numRows; ++row) {
-                Map.Entry<Serializable[], Serializable[]> changes = rows.get(row);
-                Serializable[] before = changes.getKey();
-                Serializable[] after = changes.getValue();
-                count += recordMaker.update(before, after, ts, row, numRows);
+            if (startingRowNumber < numRows) {
+                for (int row = startingRowNumber; row != numRows; ++row) {
+                    Map.Entry<Serializable[], Serializable[]> changes = rows.get(row);
+                    Serializable[] before = changes.getKey();
+                    Serializable[] after = changes.getValue();
+                    count += recordMaker.update(before, after, ts, row, numRows);
+                }
+                if (logger.isDebugEnabled()) {
+                    if (startingRowNumber != 0) {
+                        logger.debug("Recorded {} update record(s) for last {} row(s) in event: {}",
+                                     count, numRows - startingRowNumber, event);
+                    } else {
+                        logger.debug("Recorded {} update record(s) for event: {}", count, event);
+                    }
+                }
+            } else {
+                // All rows were previously processed ...
+                logger.debug("Skipping previously processed update event: {}", event);
             }
-            logger.debug("Recorded {} update records for event: {}", count, event);
         } else {
             logger.debug("Skipping update row event: {}", event);
         }
+        startingRowNumber = 0;
     }
 
     /**
@@ -492,6 +551,11 @@ public class BinlogReader extends AbstractReader {
      * @throws InterruptedException if this thread is interrupted while blocking
      */
     protected void handleDelete(Event event) throws InterruptedException {
+        if (skipEvent) {
+            // We can skip this because we should already be at least this far ...
+            logger.debug("Skipping previously processed row event: {}", event);
+            return;
+        }
         DeleteRowsEventData deleted = unwrapData(event);
         long tableNumber = deleted.getTableId();
         BitSet includedColumns = deleted.getIncludedColumns();
@@ -501,13 +565,26 @@ public class BinlogReader extends AbstractReader {
             Long ts = context.clock().currentTimeInMillis();
             int count = 0;
             int numRows = rows.size();
-            for (int row = startingRowNumber; row != numRows; ++row) {
-                count += recordMaker.delete(rows.get(row), ts, row, numRows);
+            if (startingRowNumber < numRows) {
+                for (int row = startingRowNumber; row != numRows; ++row) {
+                    count += recordMaker.delete(rows.get(row), ts, row, numRows);
+                }
+                if (logger.isDebugEnabled()) {
+                    if (startingRowNumber != 0) {
+                        logger.debug("Recorded {} delete record(s) for last {} row(s) in event: {}",
+                                     count, numRows - startingRowNumber, event);
+                    } else {
+                        logger.debug("Recorded {} delete record(s) for event: {}", count, event);
+                    }
+                }
+            } else {
+                // All rows were previously processed ...
+                logger.debug("Skipping previously processed delete event: {}", event);
             }
-            logger.debug("Recorded {} delete records for event: {}", count, event);
         } else {
             logger.debug("Skipping delete row event: {}", event);
         }
+        startingRowNumber = 0;
     }
 
     protected SSLMode sslModeFor(SecureConnectionMode mode) {
