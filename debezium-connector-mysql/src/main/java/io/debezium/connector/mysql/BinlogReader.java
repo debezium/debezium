@@ -157,7 +157,7 @@ public class BinlogReader extends AbstractReader {
         // Get the current GtidSet from MySQL so we can get a filtered/merged GtidSet based off of the last Debezium checkpoint.
         String availableServerGtidStr = context.knownGtidSet();
         GtidSet availableServerGtidSet = new GtidSet(availableServerGtidStr);
-        GtidSet filteredGtidSet = context.getFilteredGtidSet(availableServerGtidSet);
+        GtidSet filteredGtidSet = context.filterGtidSet(availableServerGtidSet);
         if (filteredGtidSet != null) {
             // Register the event handler ...
             eventHandlers.put(EventType.GTID, this::handleGtidEvent);

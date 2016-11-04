@@ -247,8 +247,8 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     }
 
     /**
-     * Retrieve GTID set after applying include/exclude filters on the source. Also, merges the server GTID set with the
-     * filtered client (Debezium) set.
+     * Apply the include/exclude GTID source filters to the current {@link #source() GTID set} and merge them onto the
+     * currently available GTID set from a MySQL server.
      *
      * The merging behavior of this method might seem a bit strange at first. It's required in order for Debezium to consume a
      * MySQL binlog that has multi-source replication enabled, if a failover has to occur. In such a case, the server that
@@ -259,11 +259,12 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
      * connect. See <a href="https://issues.jboss.org/browse/DBZ-143">DBZ-143</a> for details.
      *
      * This method does not mutate any state in the context.
-     *
+     * 
+     * @param availableServerGtidSet the GTID set currently available in the MySQL server
      * @return A GTID set meant for consuming from a MySQL binlog; may return null if the SourceInfo has no GTIDs and therefore
      *         none were filtered
      */
-    public GtidSet getFilteredGtidSet(GtidSet availableServerGtidSet) {
+    public GtidSet filterGtidSet(GtidSet availableServerGtidSet) {
         logger.info("Attempting to generate a filtered GTID set");
         String gtidStr = source.gtidSet();
         if (gtidStr == null) {
