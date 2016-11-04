@@ -217,7 +217,7 @@ public class MySqlTaskContextTest {
         context.start();
         context.source().setGtidSet(gtidStr);
 
-        GtidSet mergedGtidSet = context.getFilteredGtidSet(new GtidSet(availableServerGtidStr));
+        GtidSet mergedGtidSet = context.filterGtidSet(new GtidSet(availableServerGtidStr));
         assertThat(mergedGtidSet).isNotNull();
         GtidSet.UUIDSet uuidSet1 = mergedGtidSet.forServerWithId("036d85a9-64e5-11e6-9b48-42010af0000c");
         GtidSet.UUIDSet uuidSet2 = mergedGtidSet.forServerWithId("7145bf69-d1ca-11e5-a588-0242ac110004");
