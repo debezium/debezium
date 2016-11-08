@@ -507,7 +507,7 @@ public class SnapshotReader extends AbstractReader {
     private void logServerInformation(JdbcConnection mysql) {
         try {
             logger.info("MySQL server variables related to change data capture:");
-            mysql.query("SHOW VARIABLES WHERE Variable_name REGEXP 'version|binlog|tx_|gtid|character_set|collation'", rs -> {
+            mysql.query("SHOW VARIABLES WHERE Variable_name REGEXP 'version|binlog|tx_|gtid|character_set|collation|time_zone'", rs -> {
                 while (rs.next()) {
                     logger.info("\t{} = {}",
                                 Strings.pad(rs.getString(1), 45, ' '),
