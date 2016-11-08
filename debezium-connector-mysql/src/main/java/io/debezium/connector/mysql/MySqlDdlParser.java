@@ -108,9 +108,9 @@ public class MySqlDdlParser extends DdlParser {
         dataTypes.register(Types.INTEGER, "YEAR[(2|4)]");
         dataTypes.register(Types.BLOB, "CHAR[(L)] BINARY");
         dataTypes.register(Types.BLOB, "VARCHAR(L) BINARY");
-        dataTypes.register(Types.CHAR, "CHAR[(L)]");
+        dataTypes.register(Types.BLOB, "BINARY[(L)]");
         dataTypes.register(Types.VARCHAR, "VARCHAR(L)");
-        dataTypes.register(Types.CHAR, "BINARY[(L)]");
+        dataTypes.register(Types.CHAR, "CHAR[(L)]");
         dataTypes.register(Types.VARBINARY, "VARBINARY(L)");
         dataTypes.register(Types.BLOB, "TINYBLOB");
         dataTypes.register(Types.BLOB, "BLOB");
