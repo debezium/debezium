@@ -7,6 +7,7 @@ package io.debezium.connector.mysql;
 
 import static org.junit.Assert.fail;
 
+import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -18,6 +19,7 @@ import java.time.ZoneOffset;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
+import org.fest.assertions.Delta;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -25,6 +27,7 @@ import org.junit.Test;
 import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.MySqlConnectorConfig.DecimalHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.TemporalPrecisionMode;
@@ -87,8 +90,8 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Testing.Debug.enable();
         int numCreateDatabase = 1;
-        int numCreateTables = 8;
-        int numDataRecords = 15;
+        int numCreateTables = 9;
+        int numDataRecords = 16;
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords);
         stopConnector();
         assertThat(records).isNotNull();
@@ -101,6 +104,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         assertThat(records.recordsForTopic("regression.regression_test.dbz_114_zerovaluetest").size()).isEqualTo(2);
         assertThat(records.recordsForTopic("regression.regression_test.dbz_123_bitvaluetest").size()).isEqualTo(2);
         assertThat(records.recordsForTopic("regression.regression_test.dbz_104_customers").size()).isEqualTo(4);
+        assertThat(records.recordsForTopic("regression.regression_test.dbz_147_decimalvalues").size()).isEqualTo(1);
         assertThat(records.topics().size()).isEqualTo(1 + numCreateTables);
         assertThat(records.databaseNames().size()).isEqualTo(1);
         assertThat(records.ddlRecordsForDatabase("regression_test").size()).isEqualTo(numCreateDatabase + numCreateTables);
@@ -241,32 +245,38 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
             } else if (record.topic().endsWith("dbz_123_bitvaluetest")) {
                 // All row events should have the same values ...
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
-                // c1 BIT,  // 1 bit
-                // c2 BIT(2),  // 2 bits
-                // c3 BIT(8)    // 8 bits
-                // c4 BIT(64)    // 64 bits
+                // c1 BIT, // 1 bit
+                // c2 BIT(2), // 2 bits
+                // c3 BIT(8) // 8 bits
+                // c4 BIT(64) // 64 bits
                 Boolean c1 = after.getBoolean("c1");
                 assertThat(c1).isEqualTo(Boolean.TRUE);
 
                 byte[] c2 = after.getBytes("c2");
                 assertThat(c2.length).isEqualTo(1);
-                assertThat(c2[0]).isEqualTo((byte)2);
+                assertThat(c2[0]).isEqualTo((byte) 2);
 
                 byte[] c3 = after.getBytes("c3");
                 assertThat(c3.length).isEqualTo(1);
-                assertThat(c3[0]).isEqualTo((byte)64);
+                assertThat(c3[0]).isEqualTo((byte) 64);
 
                 // 1011011100000111011011011 = 23989979
                 byte[] c4 = after.getBytes("c4");
                 assertThat(c4.length).isEqualTo(8); // bytes, little endian
-                assertThat(c4[0]).isEqualTo((byte)219); // 11011011
-                assertThat(c4[1]).isEqualTo((byte)14);  // 00001110
-                assertThat(c4[2]).isEqualTo((byte)110);  // 01101110
-                assertThat(c4[3]).isEqualTo((byte)1);  // 1
-                assertThat(c4[4]).isEqualTo((byte)0);
-                assertThat(c4[5]).isEqualTo((byte)0);
-                assertThat(c4[6]).isEqualTo((byte)0);
-                assertThat(c4[7]).isEqualTo((byte)0);
+                assertThat(c4[0]).isEqualTo((byte) 219); // 11011011
+                assertThat(c4[1]).isEqualTo((byte) 14); // 00001110
+                assertThat(c4[2]).isEqualTo((byte) 110); // 01101110
+                assertThat(c4[3]).isEqualTo((byte) 1); // 1
+                assertThat(c4[4]).isEqualTo((byte) 0);
+                assertThat(c4[5]).isEqualTo((byte) 0);
+                assertThat(c4[6]).isEqualTo((byte) 0);
+                assertThat(c4[7]).isEqualTo((byte) 0);
+            } else if (record.topic().endsWith("dbz_147_decimalvalues")) {
+                Struct after = value.getStruct(Envelope.FieldName.AFTER);
+                Object decimalValue = after.get("decimal_value");
+                assertThat(decimalValue).isInstanceOf(BigDecimal.class);
+                BigDecimal bigValue = (BigDecimal) decimalValue;
+                assertThat(bigValue.doubleValue()).isEqualTo(12345.67, Delta.delta(0.01));
             }
         });
     }
@@ -299,8 +309,8 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Testing.Debug.enable();
         int numCreateDatabase = 1;
-        int numCreateTables = 8;
-        int numDataRecords = 15;
+        int numCreateTables = 9;
+        int numDataRecords = 16;
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords);
         stopConnector();
         assertThat(records).isNotNull();
@@ -313,6 +323,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         assertThat(records.recordsForTopic("regression.regression_test.dbz_114_zerovaluetest").size()).isEqualTo(2);
         assertThat(records.recordsForTopic("regression.regression_test.dbz_123_bitvaluetest").size()).isEqualTo(2);
         assertThat(records.recordsForTopic("regression.regression_test.dbz_104_customers").size()).isEqualTo(4);
+        assertThat(records.recordsForTopic("regression.regression_test.dbz_147_decimalvalues").size()).isEqualTo(1);
         assertThat(records.topics().size()).isEqualTo(1 + numCreateTables);
         assertThat(records.databaseNames().size()).isEqualTo(1);
         assertThat(records.ddlRecordsForDatabase("regression_test").size()).isEqualTo(numCreateDatabase + numCreateTables);
@@ -454,32 +465,38 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
             } else if (record.topic().endsWith("dbz_123_bitvaluetest")) {
                 // All row events should have the same values ...
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
-                // c1 BIT,  // 1 bit
-                // c2 BIT(2),  // 2 bits
-                // c3 BIT(8)    // 8 bits
-                // c4 BIT(64)    // 64 bits
+                // c1 BIT, // 1 bit
+                // c2 BIT(2), // 2 bits
+                // c3 BIT(8) // 8 bits
+                // c4 BIT(64) // 64 bits
                 Boolean c1 = after.getBoolean("c1");
                 assertThat(c1).isEqualTo(Boolean.TRUE);
 
                 byte[] c2 = after.getBytes("c2");
                 assertThat(c2.length).isEqualTo(1);
-                assertThat(c2[0]).isEqualTo((byte)2);
+                assertThat(c2[0]).isEqualTo((byte) 2);
 
                 byte[] c3 = after.getBytes("c3");
                 assertThat(c3.length).isEqualTo(1);
-                assertThat(c3[0]).isEqualTo((byte)64);
+                assertThat(c3[0]).isEqualTo((byte) 64);
 
                 // 1011011100000111011011011 = 23989979
                 byte[] c4 = after.getBytes("c4");
                 assertThat(c4.length).isEqualTo(8); // bytes, little endian
-                assertThat(c4[0]).isEqualTo((byte)219); // 11011011
-                assertThat(c4[1]).isEqualTo((byte)14);  // 00001110
-                assertThat(c4[2]).isEqualTo((byte)110);  // 01101110
-                assertThat(c4[3]).isEqualTo((byte)1);  // 1
-                assertThat(c4[4]).isEqualTo((byte)0);
-                assertThat(c4[5]).isEqualTo((byte)0);
-                assertThat(c4[6]).isEqualTo((byte)0);
-                assertThat(c4[7]).isEqualTo((byte)0);
+                assertThat(c4[0]).isEqualTo((byte) 219); // 11011011
+                assertThat(c4[1]).isEqualTo((byte) 14); // 00001110
+                assertThat(c4[2]).isEqualTo((byte) 110); // 01101110
+                assertThat(c4[3]).isEqualTo((byte) 1); // 1
+                assertThat(c4[4]).isEqualTo((byte) 0);
+                assertThat(c4[5]).isEqualTo((byte) 0);
+                assertThat(c4[6]).isEqualTo((byte) 0);
+                assertThat(c4[7]).isEqualTo((byte) 0);
+            } else if (record.topic().endsWith("dbz_147_decimalvalues")) {
+                Struct after = value.getStruct(Envelope.FieldName.AFTER);
+                Object decimalValue = after.get("decimal_value");
+                assertThat(decimalValue).isInstanceOf(BigDecimal.class);
+                BigDecimal bigValue = (BigDecimal) decimalValue;
+                assertThat(bigValue.doubleValue()).isEqualTo(12345.67, Delta.delta(0.01));
             }
         });
     }
@@ -507,8 +524,8 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
         // Testing.Debug.enable();
-        int numTables = 8;
-        int numDataRecords = 15;
+        int numTables = 9;
+        int numDataRecords = 16;
         int numDdlRecords = numTables * 2 + 3; // for each table (1 drop + 1 create) + for each db (1 create + 1 drop + 1 use)
         int numSetVariables = 1;
         SourceRecords records = consumeRecordsByTopic(numDdlRecords + numSetVariables + numDataRecords);
@@ -523,6 +540,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         assertThat(records.recordsForTopic("regression.regression_test.dbz_114_zerovaluetest").size()).isEqualTo(2);
         assertThat(records.recordsForTopic("regression.regression_test.dbz_123_bitvaluetest").size()).isEqualTo(2);
         assertThat(records.recordsForTopic("regression.regression_test.dbz_104_customers").size()).isEqualTo(4);
+        assertThat(records.recordsForTopic("regression.regression_test.dbz_147_decimalvalues").size()).isEqualTo(1);
         assertThat(records.topics().size()).isEqualTo(numTables + 1);
         assertThat(records.databaseNames().size()).isEqualTo(2);
         assertThat(records.databaseNames()).containsOnly("regression_test", "");
@@ -616,32 +634,90 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
             } else if (record.topic().endsWith("dbz_123_bitvaluetest")) {
                 // All row events should have the same values ...
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
-                // c1 BIT,  // 1 bit
-                // c2 BIT(2),  // 2 bits
-                // c3 BIT(8)    // 8 bits
-                // c4 BIT(64)    // 64 bits
+                // c1 BIT, // 1 bit
+                // c2 BIT(2), // 2 bits
+                // c3 BIT(8) // 8 bits
+                // c4 BIT(64) // 64 bits
                 Boolean c1 = after.getBoolean("c1");
                 assertThat(c1).isEqualTo(Boolean.TRUE);
 
                 byte[] c2 = after.getBytes("c2");
                 assertThat(c2.length).isEqualTo(1);
-                assertThat(c2[0]).isEqualTo((byte)2);
+                assertThat(c2[0]).isEqualTo((byte) 2);
 
                 byte[] c3 = after.getBytes("c3");
                 assertThat(c3.length).isEqualTo(1);
-                assertThat(c3[0]).isEqualTo((byte)64);
+                assertThat(c3[0]).isEqualTo((byte) 64);
 
                 // 1011011100000111011011011 = 23989979
                 byte[] c4 = after.getBytes("c4");
                 assertThat(c4.length).isEqualTo(8); // bytes, little endian
-                assertThat(c4[0]).isEqualTo((byte)219); // 11011011
-                assertThat(c4[1]).isEqualTo((byte)14);  // 00001110
-                assertThat(c4[2]).isEqualTo((byte)110);  // 01101110
-                assertThat(c4[3]).isEqualTo((byte)1);  // 1
-                assertThat(c4[4]).isEqualTo((byte)0);
-                assertThat(c4[5]).isEqualTo((byte)0);
-                assertThat(c4[6]).isEqualTo((byte)0);
-                assertThat(c4[7]).isEqualTo((byte)0);
+                assertThat(c4[0]).isEqualTo((byte) 219); // 11011011
+                assertThat(c4[1]).isEqualTo((byte) 14); // 00001110
+                assertThat(c4[2]).isEqualTo((byte) 110); // 01101110
+                assertThat(c4[3]).isEqualTo((byte) 1); // 1
+                assertThat(c4[4]).isEqualTo((byte) 0);
+                assertThat(c4[5]).isEqualTo((byte) 0);
+                assertThat(c4[6]).isEqualTo((byte) 0);
+                assertThat(c4[7]).isEqualTo((byte) 0);
+            } else if (record.topic().endsWith("dbz_147_decimalvalues")) {
+                Struct after = value.getStruct(Envelope.FieldName.AFTER);
+                Object decimalValue = after.get("decimal_value");
+                assertThat(decimalValue).isInstanceOf(BigDecimal.class);
+                BigDecimal bigValue = (BigDecimal) decimalValue;
+                assertThat(bigValue.doubleValue()).isEqualTo(12345.67, Delta.delta(0.01));
+            }
+        });
+    }
+
+    @Test
+    @FixFor("DBZ-147")
+    public void shouldConsumeAllEventsFromDecimalTableInDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
+        // Use the DB configuration to define the connector's configuration ...
+        config = Configuration.create()
+                              .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
+                              .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
+                              .with(MySqlConnectorConfig.USER, "snapper")
+                              .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
+                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED.name().toLowerCase())
+                              .with(MySqlConnectorConfig.SERVER_ID, 18765)
+                              .with(MySqlConnectorConfig.SERVER_NAME, "regression")
+                              .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
+                              .with(MySqlConnectorConfig.DATABASE_WHITELIST, "regression_test")
+                              .with(MySqlConnectorConfig.TABLE_WHITELIST, "regression_test.dbz_147_decimalvalues")
+                              .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+                              .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                              .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.toString())
+                              .with(MySqlConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE.name())
+                              .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+                              .build();
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        Testing.Debug.enable();
+        int numCreateDatabase = 1;
+        int numCreateTables = 9; // still read DDL for all tables
+        int numDataRecords = 1;
+        SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords);
+        stopConnector();
+        assertThat(records).isNotNull();
+        assertThat(records.recordsForTopic("regression").size()).isEqualTo(numCreateDatabase + numCreateTables);
+        assertThat(records.recordsForTopic("regression.regression_test.dbz_147_decimalvalues").size()).isEqualTo(1);
+        assertThat(records.topics().size()).isEqualTo(2); // rather than 1+numCreateTables
+
+        // Check that all records are valid, can be serialized and deserialized ...
+        records.forEach(this::validate);
+        records.forEach(record -> {
+            Struct value = (Struct) record.value();
+            if (record.topic().endsWith("dbz_147_decimalvalues")) {
+                Struct after = value.getStruct(Envelope.FieldName.AFTER);
+                Object decimalValue = after.get("decimal_value");
+                assertThat(decimalValue).isInstanceOf(Double.class);
+                Double doubleValue = (Double) decimalValue;
+                assertThat(doubleValue).isEqualTo(12345.67, Delta.delta(0.01));
             }
         });
     }

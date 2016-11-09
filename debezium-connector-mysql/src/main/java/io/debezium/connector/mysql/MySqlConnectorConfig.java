@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -23,6 +24,7 @@ import io.debezium.config.Field;
 import io.debezium.config.Field.Recommender;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.KafkaDatabaseHistory;
@@ -82,6 +84,71 @@ public class MySqlConnectorConfig {
          */
         public static TemporalPrecisionMode parse(String value, String defaultValue) {
             TemporalPrecisionMode mode = parse(value);
+            if (mode == null && defaultValue != null) mode = parse(defaultValue);
+            return mode;
+        }
+    }
+
+    /**
+     * The set of predefined DecimalHandlingMode options or aliases.
+     */
+    public static enum DecimalHandlingMode {
+        /**
+         * Represent {@code DECIMAL} and {@code NUMERIC} values as precise {@link BigDecimal} values, which are
+         * represented in change events in a binary form. This is precise but difficult to use.
+         */
+        PRECISE("precise"),
+
+        /**
+         * Represent {@code DECIMAL} and {@code NUMERIC} values as precise {@code double} values. This may be less precise
+         * but is far easier to use.
+         */
+        DOUBLE("double");
+
+        private final String value;
+
+        private DecimalHandlingMode(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public DecimalMode asDecimalMode() {
+            switch (this) {
+                case DOUBLE:
+                    return DecimalMode.DOUBLE;
+                case PRECISE:
+                default:
+                    return DecimalMode.PRECISE;
+            }
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         * 
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static DecimalHandlingMode parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+            for (DecimalHandlingMode option : DecimalHandlingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         * 
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static DecimalHandlingMode parse(String value, String defaultValue) {
+            DecimalHandlingMode mode = parse(value);
             if (mode == null && defaultValue != null) mode = parse(defaultValue);
             return mode;
         }
@@ -556,6 +623,15 @@ public class MySqlConnectorConfig {
                                                                  + "'connect' always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
                                                                  + "which uses millisecond precision regardless of the database columns' precision .");
 
+    public static final Field DECIMAL_HANDLING_MODE = Field.create("decimal.handling.mode")
+                                                           .withDisplayName("Decimal Handling")
+                                                           .withEnum(DecimalHandlingMode.class, DecimalHandlingMode.PRECISE)
+                                                           .withWidth(Width.SHORT)
+                                                           .withImportance(Importance.MEDIUM)
+                                                           .withDescription("Specify how DECIMAL and NUMERIC columns should be represented in change events, including:"
+                                                                   + "'precise' (the default) uses java.math.BigDecimal to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; "
+                                                                   + "'double' represents values using Java's 'double', which may not offer the precision but will be far easier to use in consumers.");
+
     /**
      * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
      * have their values truncated to be no longer than the specified number of characters.
@@ -599,7 +675,7 @@ public class MySqlConnectorConfig {
                                                      DATABASE_WHITELIST, DATABASE_BLACKLIST,
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING,
                                                      GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
-                                                     TIME_PRECISION_MODE,
+                                                     TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                                                      SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD,
                                                      SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD);
 
@@ -625,7 +701,7 @@ public class MySqlConnectorConfig {
                     COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST,
                     GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
-                    SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE);
+                    SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE);
         return config;
     }
 

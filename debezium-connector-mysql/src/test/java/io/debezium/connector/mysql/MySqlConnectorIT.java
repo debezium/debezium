@@ -115,6 +115,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.DECIMAL_HANDLING_MODE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.TIME_PRECISION_MODE);
         assertConfigurationErrors(result, KafkaDatabaseHistory.BOOTSTRAP_SERVERS);
         assertConfigurationErrors(result, KafkaDatabaseHistory.TOPIC);
         assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS);
@@ -170,6 +172,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.DECIMAL_HANDLING_MODE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.TIME_PRECISION_MODE);
         assertNoConfigurationErrors(result, KafkaDatabaseHistory.BOOTSTRAP_SERVERS);
         assertNoConfigurationErrors(result, KafkaDatabaseHistory.TOPIC);
         assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS);
@@ -219,6 +223,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.DECIMAL_HANDLING_MODE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.TIME_PRECISION_MODE);
         assertNoConfigurationErrors(result, KafkaDatabaseHistory.BOOTSTRAP_SERVERS);
         assertNoConfigurationErrors(result, KafkaDatabaseHistory.TOPIC);
         assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS);
@@ -254,6 +260,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                                             "regression_test.dbz_114_zerovaluetest",
                                             "regression_test.dbz_123_bitvaluetest",
                                             "regression_test.dbz_104_customers",
+                                            "regression_test.dbz_147_decimalvalues",
                                             "json_test.dbz_126_jsontable");
 
         // Now set the whitelist to two databases ...

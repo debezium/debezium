@@ -55,12 +55,14 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * to values that require timezones.
      * <p>
      * 
+     * @param decimalMode how {@code DECIMAL} and {@code NUMERIC} values should be treated; may be null if
+     *            {@link io.debezium.jdbc.JdbcValueConverters.DecimalMode#PRECISE} is to be used
      * @param adaptiveTimePrecision {@code true} if the time, date, and timestamp values should be based upon the precision of the
      *            database columns using {@link io.debezium.time} semantic types, or {@code false} if they should be fixed to
      *            millisecond precision using Kafka Connect {@link org.apache.kafka.connect.data} logical types.
      */
-    public MySqlValueConverters(boolean adaptiveTimePrecision) {
-        this(adaptiveTimePrecision, ZoneOffset.UTC);
+    public MySqlValueConverters(DecimalMode decimalMode, boolean adaptiveTimePrecision) {
+        this(decimalMode, adaptiveTimePrecision, ZoneOffset.UTC);
     }
 
     /**
@@ -68,14 +70,16 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * information to values that require timezones. This default offset should not be needed when values are highly-correlated
      * with the expected SQL/JDBC types.
      * 
+     * @param decimalMode how {@code DECIMAL} and {@code NUMERIC} values should be treated; may be null if
+     *            {@link io.debezium.jdbc.JdbcValueConverters.DecimalMode#PRECISE} is to be used
      * @param adaptiveTimePrecision {@code true} if the time, date, and timestamp values should be based upon the precision of the
      *            database columns using {@link io.debezium.time} semantic types, or {@code false} if they should be fixed to
      *            millisecond precision using Kafka Connect {@link org.apache.kafka.connect.data} logical types.
      * @param defaultOffset the zone offset that is to be used when converting non-timezone related values to values that do
      *            have timezones; may be null if UTC is to be used
      */
-    public MySqlValueConverters(boolean adaptiveTimePrecision, ZoneOffset defaultOffset) {
-        super(adaptiveTimePrecision, defaultOffset);
+    public MySqlValueConverters(DecimalMode decimalMode, boolean adaptiveTimePrecision, ZoneOffset defaultOffset) {
+        super(decimalMode, adaptiveTimePrecision, defaultOffset);
     }
 
     @Override
@@ -199,9 +203,9 @@ public class MySqlValueConverters extends JdbcValueConverters {
             // The BinlogReader sees these JSON values as binary encoded, so we use the binlog client library's utility
             // to parse MySQL's internal binary representation into a JSON string, using the standard formatter.
             try {
-                String json = JsonBinary.parseAsString((byte[])data);
+                String json = JsonBinary.parseAsString((byte[]) data);
                 return json;
-            } catch ( IOException e) {
+            } catch (IOException e) {
                 throw new ConnectException("Failed to parse and read a JSON value on " + column + ": " + e.getMessage(), e);
             }
         }

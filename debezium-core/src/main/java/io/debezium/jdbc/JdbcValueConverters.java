@@ -53,6 +53,10 @@ import io.debezium.time.ZonedTimestamp;
  */
 @Immutable
 public class JdbcValueConverters implements ValueConverterProvider {
+    
+    public static enum DecimalMode {
+        PRECISE, DOUBLE;
+    }
 
     private static final Short SHORT_TRUE = new Short((short) 1);
     private static final Short SHORT_FALSE = new Short((short) 0);
@@ -68,6 +72,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     private final ZoneOffset defaultOffset;
     private final boolean adaptiveTimePrecision;
+    private final DecimalMode decimalMode;
 
     /**
      * Create a new instance that always uses UTC for the default time zone when converting values without timezone information
@@ -75,7 +80,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * columns.
      */
     public JdbcValueConverters() {
-        this(true, ZoneOffset.UTC);
+        this(null, true, ZoneOffset.UTC);
     }
 
     /**
@@ -83,15 +88,18 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * information to values that require timezones. This default offset should not be needed when values are highly-correlated
      * with the expected SQL/JDBC types.
      * 
+     * @param decimalMode how {@code DECIMAL} and {@code NUMERIC} values should be treated; may be null if
+     * {@link DecimalMode#PRECISE} is to be used
      * @param adaptiveTimePrecision {@code true} if the time, date, and timestamp values should be based upon the precision of the
      *            database columns using {@link io.debezium.time} semantic types, or {@code false} if they should be fixed to
      *            millisecond precision using Kafka Connect {@link org.apache.kafka.connect.data} logical types.
      * @param defaultOffset the zone offset that is to be used when converting non-timezone related values to values that do
      *            have timezones; may be null if UTC is to be used
      */
-    public JdbcValueConverters(boolean adaptiveTimePrecision, ZoneOffset defaultOffset) {
+    public JdbcValueConverters(DecimalMode decimalMode, boolean adaptiveTimePrecision, ZoneOffset defaultOffset) {
         this.defaultOffset = defaultOffset != null ? defaultOffset : ZoneOffset.UTC;
         this.adaptiveTimePrecision = adaptiveTimePrecision;
+        this.decimalMode = decimalMode != null ? decimalMode : DecimalMode.PRECISE;
     }
 
     @Override
@@ -144,9 +152,14 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 return SchemaBuilder.float64();
             case Types.NUMERIC:
             case Types.DECIMAL:
-                // values are fixed-precision decimal values with exact precision.
-                // Use Kafka Connect's arbitrary precision decimal type and use the column's specified scale ...
-                return Decimal.builder(column.scale());
+                switch(decimalMode) {
+                    case DOUBLE:
+                        return SchemaBuilder.float64();
+                    case PRECISE:
+                        // values are fixed-precision decimal values with exact precision.
+                        // Use Kafka Connect's arbitrary precision decimal type and use the column's specified scale ...
+                        return Decimal.builder(column.scale());
+                }
 
             // Fixed-length string values
             case Types.CHAR:
@@ -249,9 +262,19 @@ public class JdbcValueConverters implements ValueConverterProvider {
             case Types.REAL:
                 return (data) -> convertReal(column, fieldDefn, data);
             case Types.NUMERIC:
-                return (data) -> convertNumeric(column, fieldDefn, data);
+                switch(decimalMode) {
+                    case DOUBLE:
+                        return (data) -> convertDouble(column, fieldDefn, data);
+                    case PRECISE:
+                        return (data) -> convertNumeric(column, fieldDefn, data);
+                }
             case Types.DECIMAL:
-                return (data) -> convertDecimal(column, fieldDefn, data);
+                switch(decimalMode) {
+                    case DOUBLE:
+                        return (data) -> convertDouble(column, fieldDefn, data);
+                    case PRECISE:
+                        return (data) -> convertDecimal(column, fieldDefn, data);
+                }
 
             // String values
             case Types.CHAR: // variable-length
@@ -852,6 +875,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
         }
         if (data instanceof Double) return data;
         if (data instanceof Number) {
+            // Includes BigDecimal and other numeric values ...
             Number value = (Number) data;
             return new Double(value.doubleValue());
         }
@@ -880,6 +904,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
         }
         if (data instanceof Float) return data;
         if (data instanceof Number) {
+            // Includes BigDecimal and other numeric values ...
             Number value = (Number) data;
             return new Float(value.floatValue());
         }

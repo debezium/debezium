@@ -18,9 +18,11 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.MySqlConnectorConfig.DecimalHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.TemporalPrecisionMode;
 import io.debezium.connector.mysql.MySqlSystemVariables.Scope;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
@@ -87,7 +89,10 @@ public class MySqlSchema {
         String timePrecisionModeStr = config.getString(MySqlConnectorConfig.TIME_PRECISION_MODE);
         TemporalPrecisionMode timePrecisionMode = TemporalPrecisionMode.parse(timePrecisionModeStr);
         boolean adaptiveTimePrecision = TemporalPrecisionMode.ADAPTIVE.equals(timePrecisionMode);
-        MySqlValueConverters valueConverters = new MySqlValueConverters(adaptiveTimePrecision);
+        String decimalHandlingModeStr = config.getString(MySqlConnectorConfig.DECIMAL_HANDLING_MODE);
+        DecimalHandlingMode decimalHandlingMode = DecimalHandlingMode.parse(decimalHandlingModeStr);
+        DecimalMode decimalMode = decimalHandlingMode.asDecimalMode();
+        MySqlValueConverters valueConverters = new MySqlValueConverters(decimalMode, adaptiveTimePrecision);
         this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameValidator::validate);
 
         // Set up the server name and schema prefix ...
