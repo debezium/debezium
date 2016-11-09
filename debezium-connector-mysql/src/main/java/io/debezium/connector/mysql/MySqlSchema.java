@@ -30,6 +30,7 @@ import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.ddl.DdlChanges.DatabaseStatementStringConsumer;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.relational.topic.TopicMappingProvider;
 import io.debezium.text.ParsingException;
 import io.debezium.util.AvroValidator;
 import io.debezium.util.Collect;
@@ -82,13 +83,16 @@ public class MySqlSchema {
         this.tables = new Tables();
         this.ddlChanges = new DdlChanges(this.ddlParser.terminator());
         this.ddlParser.addListener(ddlChanges);
+        
+        // Set up the topic mapping provider ...
+        TopicMappingProvider topicMappingProvider = config.getInstance(MySqlConnectorConfig.TOPIC_MAPPING, TopicMappingProvider.class);
 
         // Use MySQL-specific converters and schemas for values ...
         String timePrecisionModeStr = config.getString(MySqlConnectorConfig.TIME_PRECISION_MODE);
         TemporalPrecisionMode timePrecisionMode = TemporalPrecisionMode.parse(timePrecisionModeStr);
         boolean adaptiveTimePrecision = TemporalPrecisionMode.ADAPTIVE.equals(timePrecisionMode);
         MySqlValueConverters valueConverters = new MySqlValueConverters(adaptiveTimePrecision);
-        this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameValidator::validate);
+        this.schemaBuilder = new TableSchemaBuilder(topicMappingProvider, valueConverters, schemaNameValidator::validate);
 
         // Set up the server name and schema prefix ...
         if (serverName != null) serverName = serverName.trim();
