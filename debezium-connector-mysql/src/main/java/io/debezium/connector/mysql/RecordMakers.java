@@ -238,20 +238,22 @@ public class RecordMakers {
                     Map<String, ?> offset = source.offsetForRow(rowNumber, numberOfRows);
                     Struct origin = source.struct();
                     if (key != null && !Objects.equals(key, oldKey)) {
-                        // The key has indeed changed, so first send a create event ...
+                        // The key has changed, so we need to deal with both the new key and old key.
+                        // Consumers may push the events into a system that won't allow both records to exist at the same time,
+                        // so we first want to send the delete event for the old key...
                         SourceRecord record = new SourceRecord(partition, offset, topicName, partitionNum,
-                                keySchema, key, envelope.schema(), envelope.create(valueAfter, origin, ts));
-                        consumer.accept(record);
-                        ++count;
-
-                        // then send a delete event for the old key ...
-                        record = new SourceRecord(partition, offset, topicName, partitionNum,
                                 keySchema, oldKey, envelope.schema(), envelope.delete(valueBefore, origin, ts));
                         consumer.accept(record);
                         ++count;
 
-                        // Send a tombstone event for the old key ...
+                        // Next send a tombstone event for the old key ...
                         record = new SourceRecord(partition, offset, topicName, partitionNum, keySchema, oldKey, null, null);
+                        consumer.accept(record);
+                        ++count;
+
+                        // And finally send the create event ...
+                        record = new SourceRecord(partition, offset, topicName, partitionNum,
+                                keySchema, key, envelope.schema(), envelope.create(valueAfter, origin, ts));
                         consumer.accept(record);
                         ++count;
                     } else {
