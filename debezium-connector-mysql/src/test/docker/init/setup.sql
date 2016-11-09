@@ -274,6 +274,16 @@ INSERT INTO dbz_123_bitvaluetest VALUES (b'1',b'10',b'01000000',b'10110111000001
 CREATE TABLE dbz_104_customers LIKE connector_test.customers;
 INSERT INTO dbz_104_customers SELECT * FROM connector_test.customers;
 
+-- DBZ-147 handle decimal value
+CREATE TABLE dbz_147_decimalvalues (
+  pk_column int auto_increment NOT NULL,
+  decimal_value decimal(7,2) NOT NULL,
+  PRIMARY KEY(pk_column)
+);
+INSERT INTO dbz_147_decimalvalues (pk_column, decimal_value)
+VALUES(default, 12345.67);
+
+
 -- ----------------------------------------------------------------------------------------------------------------
 -- DATABASE:  json_test
 -- ----------------------------------------------------------------------------------------------------------------
