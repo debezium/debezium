@@ -32,10 +32,13 @@ import io.debezium.util.Collect;
  * </pre>
  * 
  * <p>
- * The {@link #offset() source offset} information describes how much of the database's binary log the source the change detector
- * has already processed, and it includes the {@link #binlogFilename() binlog filename}, the {@link #nextBinlogPosition() next
- * position} in the binlog to start reading, and the {@link #nextEventRowNumber() next event row number}. Here's a JSON-like
- * representation of an example:
+ * The {@link #offset() source offset} information is included in each event and captures where the connector should restart
+ * if this event's offset is the last one recorded. The offset includes the {@link #binlogFilename() binlog filename},
+ * the {@link #binlogPosition() position of the first event} in the binlog, the
+ * {@link #eventsToSkipUponRestart() number of events to skip}, and the
+ * {@link #rowsToSkipUponRestart() number of rows to also skip}.
+ * <p>
+ * Here's a JSON-like representation of an example:
  * 
  * <pre>
  * {
@@ -44,22 +47,26 @@ import io.debezium.util.Collect;
  *     "gtid": "db58b0ae-2c10-11e6-b284-0242ac110002:199",
  *     "file": "mysql-bin.000003",
  *     "pos" = 990,
+ *     "event" = 0,
  *     "row": 0,
  *     "snapshot": true
  * }
  * </pre>
- * 
+ * <p>
  * The "{@code gtids}" field only appears in offsets produced when GTIDs are enabled. The "{@code snapshot}" field only appears in
  * offsets produced when the connector is in the middle of a snapshot. And finally, the "{@code ts}" field contains the
  * <em>seconds</em> since Unix epoch (since Jan 1, 1970) of the MySQL event; the message {@link Envelope envelopes} also have a
  * timestamp, but that timestamp is the <em>milliseconds</em> since since Jan 1, 1970.
- * 
- * The {@link #struct() source} struct appears in each message envelope and contains MySQL information about the event. It is
- * a mixture the field from the {@link #partition() partition} (which is renamed in the source to make more sense), the
- * {@link #lastBinlogPosition() position} of the event (and {@link #lastEventRowNumber() row number} within the event) inside
- * the {@link #binlogFilename() binlog file}. When GTIDs are enabled, it also includes the GTID of the transaction in which the
- * event occurs. Like with the offset, the "{@code snapshot}" field only appears for events produced when the connector is in the
- * middle of a snapshot. Here's a JSON-like representation of the source for an event that corresponds to the above partition and
+ * <p>
+ * Each change event envelope also includes the {@link #struct() source} struct that contains MySQL information about that
+ * particular event, including a mixture the fields from the {@link #partition() partition} (which is renamed in the source to
+ * make more sense), the binlog filename and position where the event can be found, and when GTIDs are enabled the GTID of the
+ * transaction in which the event occurs. Like with the offset, the "{@code snapshot}" field only appears for events produced
+ * when the connector is in the middle of a snapshot. Note that this information is likely different than the offset information,
+ * since the connector may need to restart from either just after the most recently completed transaction or the beginning
+ * of the most recently started transaction (whichever appears later in the binlog).
+ * <p>
+ * Here's a JSON-like representation of the source for an event that corresponds to the above partition and
  * offset:
  * 
  * <pre>
@@ -88,9 +95,10 @@ final class SourceInfo {
     public static final String SERVER_PARTITION_KEY = "server";
     public static final String GTID_SET_KEY = "gtids";
     public static final String GTID_KEY = "gtid";
+    public static final String EVENTS_TO_SKIP_OFFSET_KEY = "event";
     public static final String BINLOG_FILENAME_OFFSET_KEY = "file";
     public static final String BINLOG_POSITION_OFFSET_KEY = "pos";
-    public static final String BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY = "row";
+    public static final String BINLOG_ROW_IN_EVENT_OFFSET_KEY = "row";
     public static final String TIMESTAMP_KEY = "ts_sec";
     public static final String SNAPSHOT_KEY = "snapshot";
 
@@ -105,17 +113,22 @@ final class SourceInfo {
                                                      .field(GTID_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(BINLOG_FILENAME_OFFSET_KEY, Schema.STRING_SCHEMA)
                                                      .field(BINLOG_POSITION_OFFSET_KEY, Schema.INT64_SCHEMA)
-                                                     .field(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, Schema.INT32_SCHEMA)
+                                                     .field(BINLOG_ROW_IN_EVENT_OFFSET_KEY, Schema.INT32_SCHEMA)
                                                      .field(SNAPSHOT_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
                                                      .build();
 
-    private String gtidSet;
-    private String binlogGtid;
-    private String binlogFilename;
-    private long lastBinlogPosition = 0;
-    private int lastEventRowNumber = 0;
-    private long nextBinlogPosition = 4;
-    private int nextEventRowNumber = 0;
+    private String currentGtidSet;
+    private String currentGtid;
+    private String currentBinlogFilename;
+    private long currentBinlogPosition = 0L;
+    private int currentRowNumber = 0;
+    private long currentEventLengthInBytes = 0;
+    private String restartGtidSet;
+    private String restartBinlogFilename;
+    private long restartBinlogPosition = 0L;
+    private long restartEventsToSkip = 0;
+    private int restartRowsToSkip = 0;
+    private boolean inTransaction = false;
     private String serverName;
     private long serverId = 0;
     private long binlogTimestampSeconds = 0;
@@ -150,49 +163,90 @@ final class SourceInfo {
     }
 
     /**
+     * Set the position in the MySQL binlog where we will start reading.
+     * 
+     * @param binlogFilename the name of the binary log file; may not be null
+     * @param positionOfFirstEvent the position in the binary log file to begin processing
+     */
+    public void setBinlogStartPoint(String binlogFilename, long positionOfFirstEvent) {
+        if (binlogFilename != null) {
+            this.currentBinlogFilename = binlogFilename;
+            this.restartBinlogFilename = binlogFilename;
+        }
+        assert positionOfFirstEvent >= 0;
+        this.currentBinlogPosition = positionOfFirstEvent;
+        this.restartBinlogPosition = positionOfFirstEvent;
+        this.currentRowNumber = 0;
+        this.restartRowsToSkip = 0;
+    }
+
+    /**
+     * Set the position within the MySQL binary log file of the <em>current event</em>.
+     * 
+     * @param positionOfCurrentEvent the position within the binary log file of the current event
+     * @param eventSizeInBytes the size in bytes of this event
+     */
+    public void setEventPosition(long positionOfCurrentEvent, long eventSizeInBytes) {
+        this.currentBinlogPosition = positionOfCurrentEvent;
+        this.currentEventLengthInBytes = eventSizeInBytes;
+        if (!inTransaction) {
+            this.restartBinlogPosition = positionOfCurrentEvent + eventSizeInBytes;
+        }
+        // Don't set anything else, since the row numbers are set in the offset(int,int) method called at least once
+        // for each processed event
+    }
+
+    /**
      * Get the Kafka Connect detail about the source "offset", which describes the position within the source where we last
      * have last read.
      * 
      * @return a copy of the current offset; never null
      */
     public Map<String, ?> offset() {
-        return offsetUsingPosition(nextBinlogPosition);
+        return offsetUsingPosition(this.restartRowsToSkip);
     }
 
     /**
-     * Set the current row number within a given event, and then get the Kafka Connect detail about the source "offset", which
-     * describes the position within the source where we have last read.
+     * Given the row number within a binlog event and the total number of rows in that event, compute and return the
+     * Kafka Connect offset that is be included in the produced change event describing the row.
      * <p>
      * This method should always be called before {@link #struct()}.
      * 
-     * @param eventRowNumber the 0-based row number within the event being processed
+     * @param eventRowNumber the 0-based row number within the event for which the offset is to be produced
      * @param totalNumberOfRows the total number of rows within the event being processed
      * @return a copy of the current offset; never null
+     * @see #struct()
      */
     public Map<String, ?> offsetForRow(int eventRowNumber, int totalNumberOfRows) {
         if (eventRowNumber < (totalNumberOfRows - 1)) {
             // This is not the last row, so our offset should record the next row to be used ...
-            this.lastEventRowNumber = eventRowNumber;
-            this.nextEventRowNumber = eventRowNumber + 1;
+            this.currentRowNumber = eventRowNumber;
+            this.restartRowsToSkip = this.currentRowNumber + 1;
             // so write out the offset with the position of this event
-            return offsetUsingPosition(lastBinlogPosition);
+            return offsetUsingPosition(this.restartRowsToSkip);
         }
         // This is the last row, so write out the offset that has the position of the next event ...
-        this.lastEventRowNumber = this.nextEventRowNumber;
-        this.nextEventRowNumber = 0;
-        return offsetUsingPosition(nextBinlogPosition);
+        this.currentRowNumber = eventRowNumber;
+        this.restartRowsToSkip = 0;
+        return offsetUsingPosition(totalNumberOfRows);
     }
 
-    private Map<String, ?> offsetUsingPosition(long binlogPosition) {
+    private Map<String, ?> offsetUsingPosition(long rowsToSkip) {
         Map<String, Object> map = new HashMap<>();
         if (serverId != 0) map.put(SERVER_ID_KEY, serverId);
-        if (binlogTimestampSeconds != 0) map.put(TIMESTAMP_KEY, binlogTimestampSeconds);
-        if (gtidSet != null) {
-            map.put(GTID_SET_KEY, gtidSet);
+        if (restartGtidSet != null) {
+            // Put the previously-completed GTID set in the offset along with the event number ...
+            map.put(GTID_SET_KEY, restartGtidSet);
         }
-        map.put(BINLOG_FILENAME_OFFSET_KEY, binlogFilename);
-        map.put(BINLOG_POSITION_OFFSET_KEY, binlogPosition);
-        map.put(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, nextEventRowNumber);
+        map.put(BINLOG_FILENAME_OFFSET_KEY, restartBinlogFilename);
+        map.put(BINLOG_POSITION_OFFSET_KEY, restartBinlogPosition);
+        if (restartEventsToSkip != 0) {
+            map.put(EVENTS_TO_SKIP_OFFSET_KEY, restartEventsToSkip);
+        }
+        if (rowsToSkip != 0) {
+            map.put(BINLOG_ROW_IN_EVENT_OFFSET_KEY, rowsToSkip);
+        }
+        if (binlogTimestampSeconds != 0) map.put(TIMESTAMP_KEY, binlogTimestampSeconds);
         if (isSnapshotInEffect()) {
             map.put(SNAPSHOT_KEY, true);
         }
@@ -223,13 +277,13 @@ final class SourceInfo {
         Struct result = new Struct(SCHEMA);
         result.put(SERVER_NAME_KEY, serverName);
         result.put(SERVER_ID_KEY, serverId);
-        // Don't put the GTID Set into the struct; only the current GTID is fine ...
-        if (binlogGtid != null) {
-            result.put(GTID_KEY, binlogGtid);
+        if (currentGtid != null) {
+            // Don't put the GTID Set into the struct; only the current GTID is fine ...
+            result.put(GTID_KEY, currentGtid);
         }
-        result.put(BINLOG_FILENAME_OFFSET_KEY, binlogFilename);
-        result.put(BINLOG_POSITION_OFFSET_KEY, lastBinlogPosition);
-        result.put(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, lastEventRowNumber);
+        result.put(BINLOG_FILENAME_OFFSET_KEY, currentBinlogFilename);
+        result.put(BINLOG_POSITION_OFFSET_KEY, currentBinlogPosition);
+        result.put(BINLOG_ROW_IN_EVENT_OFFSET_KEY, currentRowNumber);
         result.put(TIMESTAMP_KEY, binlogTimestampSeconds);
         if (lastSnapshot) {
             result.put(SNAPSHOT_KEY, true);
@@ -246,54 +300,73 @@ final class SourceInfo {
         return nextSnapshot;
     }
 
-    /**
-     * Set the latest GTID from the MySQL binary log file.
-     * 
-     * @param gtid the string representation of a specific GTID; may not be null
-     */
-    public void setGtid(String gtid) {
-        this.binlogGtid = gtid;
+    public void startNextTransaction() {
+        // If we have to restart, then we'll start with this BEGIN transaction
+        this.restartRowsToSkip = 0;
+        this.restartEventsToSkip = 0;
+        this.restartBinlogFilename = this.currentBinlogFilename;
+        this.restartBinlogPosition = this.currentBinlogPosition;
+        this.inTransaction = true;
     }
 
     /**
-     * Set the set of GTIDs known to the MySQL server.
-     * 
-     * @param gtidSet the string representation of GTID set; may not be null
+     * Capture that we're starting a new event.
      */
-    public void setGtidSet(String gtidSet) {
+    public void completeEvent() {
+        ++restartEventsToSkip;
+    }
+
+    /**
+     * Get the number of events after the last transaction BEGIN that we've already processed.
+     * 
+     * @return the number of events in the transaction that have been processed completely
+     * @see #completeEvent()
+     * @see #startNextTransaction()
+     */
+    public long eventsToSkipUponRestart() {
+        return restartEventsToSkip;
+    }
+
+    public void commitTransaction() {
+        this.restartGtidSet = this.currentGtidSet;
+        this.restartBinlogFilename = this.currentBinlogFilename;
+        this.restartBinlogPosition = this.currentBinlogPosition + this.currentEventLengthInBytes;
+        this.restartRowsToSkip = 0;
+        this.restartEventsToSkip = 0;
+        this.inTransaction = false;
+    }
+
+    /**
+     * Record that a new GTID transaction has been started and has been included in the set of GTIDs known to the MySQL server.
+     * 
+     * @param gtid the string representation of a specific GTID that has been begun; may not be null
+     * @param gtidSet the string representation of GTID set that includes the newly begun GTID; may not be null
+     */
+    public void startGtid(String gtid, String gtidSet) {
+        this.currentGtid = gtid;
         if (gtidSet != null && !gtidSet.trim().isEmpty()) {
-            this.gtidSet = gtidSet.replaceAll("\n", "").replaceAll("\r", ""); // remove all of the newline chars if they exist
+            // Remove all the newline chars that exist in the GTID set string ...
+            String trimmedGtidSet = gtidSet.replaceAll("\n", "").replaceAll("\r", "");
+            // Set the GTID set that we'll use if restarting BEFORE successful completion of the events in this GTID ...
+            this.restartGtidSet = this.currentGtidSet != null ? this.currentGtidSet : trimmedGtidSet;
+            // Record the GTID set that includes the current transaction ...
+            this.currentGtidSet = trimmedGtidSet;
         }
     }
 
     /**
-     * Set the name of the MySQL binary log file.
+     * Set the GTID set that captures all of the GTID transactions that have been completely processed.
      * 
-     * @param binlogFilename the name of the binary log file; may not be null
-     * @param positionOfFirstEvent the position in the binary log file to begin processing
+     * @param gtidSet the string representation of the GTID set; may not be null, but may be an empty string if no GTIDs
+     *            have been previously processed
      */
-    public void setBinlogStartPoint(String binlogFilename, long positionOfFirstEvent) {
-        if (binlogFilename != null) {
-            this.binlogFilename = binlogFilename;
+    public void setCompletedGtidSet(String gtidSet) {
+        if (gtidSet != null && !gtidSet.trim().isEmpty()) {
+            // Remove all the newline chars that exist in the GTID set string ...
+            String trimmedGtidSet = gtidSet.replaceAll("\n", "").replaceAll("\r", "");
+            this.currentGtidSet = trimmedGtidSet;
+            this.restartGtidSet = trimmedGtidSet;
         }
-        assert positionOfFirstEvent >= 0;
-        this.nextBinlogPosition = positionOfFirstEvent;
-        this.lastBinlogPosition = this.nextBinlogPosition;
-        this.nextEventRowNumber = 0;
-        this.lastEventRowNumber = 0;
-    }
-
-    /**
-     * Set the position within the MySQL binary log file of the <em>current event</em>.
-     * 
-     * @param positionOfCurrentEvent the position within the binary log file of the current event
-     * @param eventSizeInBytes the size in bytes of this event
-     */
-    public void setEventPosition(long positionOfCurrentEvent, long eventSizeInBytes) {
-        this.lastBinlogPosition = positionOfCurrentEvent;
-        this.nextBinlogPosition = positionOfCurrentEvent + eventSizeInBytes;
-        // Don't set anything else, since the row numbers are set in the offset(int,int) method called at least once
-        // for each processed event
     }
 
     /**
@@ -350,15 +423,15 @@ final class SourceInfo {
     public void setOffset(Map<String, ?> sourceOffset) {
         if (sourceOffset != null) {
             // We have previously recorded an offset ...
-            setGtidSet((String) sourceOffset.get(GTID_SET_KEY)); // may be null
-            binlogFilename = (String) sourceOffset.get(BINLOG_FILENAME_OFFSET_KEY);
+            setCompletedGtidSet((String) sourceOffset.get(GTID_SET_KEY)); // may be null
+            restartEventsToSkip = longOffsetValue(sourceOffset, EVENTS_TO_SKIP_OFFSET_KEY);
+            String binlogFilename = (String) sourceOffset.get(BINLOG_FILENAME_OFFSET_KEY);
             if (binlogFilename == null) {
                 throw new ConnectException("Source offset '" + BINLOG_FILENAME_OFFSET_KEY + "' parameter is missing");
             }
-            nextBinlogPosition = longOffsetValue(sourceOffset, BINLOG_POSITION_OFFSET_KEY);
-            nextEventRowNumber = (int) longOffsetValue(sourceOffset, BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY);
-            lastBinlogPosition = nextBinlogPosition;
-            lastEventRowNumber = nextEventRowNumber;
+            long binlogPosition = longOffsetValue(sourceOffset, BINLOG_POSITION_OFFSET_KEY);
+            setBinlogStartPoint(binlogFilename, binlogPosition);
+            this.restartRowsToSkip = (int) longOffsetValue(sourceOffset, BINLOG_ROW_IN_EVENT_OFFSET_KEY);
             nextSnapshot = booleanOffsetValue(sourceOffset, SNAPSHOT_KEY);
             lastSnapshot = nextSnapshot;
         }
@@ -366,7 +439,7 @@ final class SourceInfo {
 
     private long longOffsetValue(Map<String, ?> values, String key) {
         Object obj = values.get(key);
-        if (obj == null) return 0;
+        if (obj == null) return 0L;
         if (obj instanceof Number) return ((Number) obj).longValue();
         try {
             return Long.parseLong(obj.toString());
@@ -388,16 +461,16 @@ final class SourceInfo {
      * @return the string representation of the binlog GTID ranges; may be null
      */
     public String gtidSet() {
-        return this.gtidSet != null ? this.gtidSet : null;
+        return this.currentGtidSet != null ? this.currentGtidSet : null;
     }
 
     /**
-     * Get the name of the MySQL binary log file that has been processed.
+     * Get the name of the MySQL binary log file that has last been processed.
      * 
      * @return the name of the binary log file; null if it has not been {@link #setBinlogStartPoint(String, long) set}
      */
     public String binlogFilename() {
-        return binlogFilename;
+        return restartBinlogFilename;
     }
 
     /**
@@ -405,8 +478,8 @@ final class SourceInfo {
      * 
      * @return the position within the binary log file; null if it has not been {@link #setBinlogStartPoint(String, long) set}
      */
-    public long nextBinlogPosition() {
-        return nextBinlogPosition;
+    public long binlogPosition() {
+        return restartBinlogPosition;
     }
 
     /**
@@ -414,30 +487,18 @@ final class SourceInfo {
      * 
      * @return the position within the binary log file; null if it has not been {@link #setBinlogStartPoint(String, long) set}
      */
-    public long lastBinlogPosition() {
-        return lastBinlogPosition;
+    protected long restartBinlogPosition() {
+        return restartBinlogPosition;
     }
 
     /**
-     * Get the next row within the event at the {@link #nextBinlogPosition() position} within the {@link #binlogFilename() binary
-     * log file}
-     * .
+     * Get the number of rows beyond the {@link #eventsToSkipUponRestart() last completely processed event} to be skipped
+     * upon restart.
      * 
-     * @return the 0-based row number
+     * @return the number of rows to be skipped
      */
-    public int nextEventRowNumber() {
-        return nextEventRowNumber;
-    }
-
-    /**
-     * Get the previous row within the event at the {@link #lastBinlogPosition() position} within the {@link #binlogFilename()
-     * binary log file}
-     * .
-     * 
-     * @return the 0-based row number
-     */
-    public int lastEventRowNumber() {
-        return lastEventRowNumber;
+    public int rowsToSkipUponRestart() {
+        return restartRowsToSkip;
     }
 
     /**
@@ -452,22 +513,26 @@ final class SourceInfo {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        if (gtidSet != null) {
+        if (currentGtidSet != null) {
             sb.append("GTIDs ");
-            sb.append(gtidSet);
-            sb.append(" and binlog file '").append(binlogFilename).append("'");
-            sb.append(", pos=").append(nextBinlogPosition());
-            sb.append(", row=").append(nextEventRowNumber());
+            sb.append(currentGtidSet);
+            sb.append(" and binlog file '").append(restartBinlogFilename).append("'");
+            sb.append(", pos=").append(restartBinlogPosition);
+            sb.append(", skipping ").append(restartEventsToSkip);
+            sb.append(" events plus ").append(restartRowsToSkip);
+            sb.append(" rows");
         } else {
-            if (binlogFilename == null) {
+            if (restartBinlogFilename == null) {
                 sb.append("<latest>");
             } else {
-                if ("".equals(binlogFilename)) {
+                if ("".equals(restartBinlogFilename)) {
                     sb.append("earliest binlog file and position");
                 } else {
-                    sb.append("binlog file '").append(binlogFilename).append("'");
-                    sb.append(", pos=").append(nextBinlogPosition());
-                    sb.append(", row=").append(nextEventRowNumber());
+                    sb.append("binlog file '").append(restartBinlogFilename).append("'");
+                    sb.append(", pos=").append(restartBinlogPosition);
+                    sb.append(", skipping ").append(restartEventsToSkip);
+                    sb.append(" events plus ").append(restartRowsToSkip);
+                    sb.append(" rows");
                 }
             }
         }
@@ -505,7 +570,14 @@ final class SourceInfo {
                         // the desired is in snapshot mode, but the recorded is not. So the recorded is *after* the desired ...
                         return false;
                     }
-                    // In all other cases (even when recorded is in snapshot mode), recorded is before or at desired ...
+                    // In all other cases (even when recorded is in snapshot mode), recorded is before or at desired GTID.
+                    // Now we need to compare how many events in that transaction we've already completed ...
+                    int recordedEventCount = recorded.getInteger(EVENTS_TO_SKIP_OFFSET_KEY, 0);
+                    int desiredEventCount = desired.getInteger(EVENTS_TO_SKIP_OFFSET_KEY, 0);
+                    int diff = recordedEventCount - desiredEventCount;
+                    if (diff > 0) return false;
+
+                    // Otherwise the recorded is definitely before or at the desired ...
                     return true;
                 }
                 // The GTIDs are not an exact match, so figure out if recorded is a subset of the desired ...
@@ -543,16 +615,25 @@ final class SourceInfo {
         assert recordedFilename != null;
         int diff = recordedFilename.compareToIgnoreCase(desiredFilename);
         if (diff > 0) return false;
+        if (diff < 0) return true;
 
         // The filenames are the same, so compare the positions ...
         int recordedPosition = recorded.getInteger(BINLOG_POSITION_OFFSET_KEY, -1);
         int desiredPosition = desired.getInteger(BINLOG_POSITION_OFFSET_KEY, -1);
         diff = recordedPosition - desiredPosition;
         if (diff > 0) return false;
+        if (diff < 0) return true;
 
-        // The positions are the same, so compare the row number ...
-        int recordedRow = recorded.getInteger(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, -1);
-        int desiredRow = desired.getInteger(BINLOG_EVENT_ROW_NUMBER_OFFSET_KEY, -1);
+        // The positions are the same, so compare the completed events in the transaction ...
+        int recordedEventCount = recorded.getInteger(EVENTS_TO_SKIP_OFFSET_KEY, 0);
+        int desiredEventCount = desired.getInteger(EVENTS_TO_SKIP_OFFSET_KEY, 0);
+        diff = recordedEventCount - desiredEventCount;
+        if (diff > 0) return false;
+        if (diff < 0) return true;
+
+        // The completed events are the same, so compare the row number ...
+        int recordedRow = recorded.getInteger(BINLOG_ROW_IN_EVENT_OFFSET_KEY, -1);
+        int desiredRow = desired.getInteger(BINLOG_ROW_IN_EVENT_OFFSET_KEY, -1);
         diff = recordedRow - desiredRow;
         if (diff > 0) return false;
 

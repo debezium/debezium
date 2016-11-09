@@ -215,7 +215,7 @@ public class MySqlTaskContextTest {
                                .build();
         context = new MySqlTaskContext(config);
         context.start();
-        context.source().setGtidSet(gtidStr);
+        context.source().setCompletedGtidSet(gtidStr);
 
         GtidSet mergedGtidSet = context.filterGtidSet(new GtidSet(availableServerGtidStr));
         assertThat(mergedGtidSet).isNotNull();

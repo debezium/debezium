@@ -8,8 +8,10 @@ package io.debezium.connector.mysql;
 import static org.junit.Assert.fail;
 
 import java.nio.file.Path;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.common.config.Config;
@@ -28,6 +30,7 @@ import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.data.Envelope;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.EmbeddedEngine.CompletionResult;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.relational.history.KafkaDatabaseHistory;
@@ -274,11 +277,12 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     public void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
         String masterPort = System.getProperty("database.port");
         String replicaPort = System.getProperty("database.replica.port");
-        if ( !masterPort.equals(replicaPort)) {
+        boolean replicaIsMaster = masterPort.equals(replicaPort);
+        if (!replicaIsMaster) {
             // Give time for the replica to catch up to the master ...
             Thread.sleep(5000L);
         }
-        
+
         // Use the DB configuration to define the connector's configuration to use the "replica"
         // which may be the same as the "master" ...
         config = Configuration.create()
@@ -352,7 +356,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             }
         }
 
-        //Testing.Print.enable();
+        // Testing.Print.enable();
 
         // Restart the connector and read the insert record ...
         Testing.print("*** Restarting connector after inserts were made");
@@ -388,7 +392,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         inserts = records.recordsForTopic("myServer.connector_test.products");
         assertInsert(inserts.get(0), "id", 1001);
 
-        Testing.print("*** Done with simple insert");
+        // Testing.print("*** Done with simple insert");
 
         // ---------------------------------------------------------------------------------------------------------------
         // Changing the primary key of a row should result in 3 events: INSERT, DELETE, and TOMBSTONE
@@ -433,13 +437,15 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         Testing.print("*** Done with simple update");
 
+        //Testing.Print.enable();
+
         // ---------------------------------------------------------------------------------------------------------------
         // Change our schema with a fully-qualified name; we should still see this event
         // ---------------------------------------------------------------------------------------------------------------
         // Add a column with default to the 'products' table and explicitly update one record ...
         try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
             try (JdbcConnection connection = db.connect()) {
-                connection.execute("ALTER TABLE connector_test.products ADD COLUMN volume FLOAT NOT NULL, ADD COLUMN alias VARCHAR(30) NOT NULL AFTER description");
+                connection.execute("ALTER TABLE connector_test.products ADD COLUMN volume FLOAT, ADD COLUMN alias VARCHAR(30) NULL AFTER description");
                 connection.execute("UPDATE products SET volume=13.5 WHERE id=2001");
                 connection.query("SELECT * FROM products", rs -> {
                     if (Testing.Print.isEnabled()) connection.print(rs);
@@ -508,6 +514,173 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Stop the connector ...
         // ---------------------------------------------------------------------------------------------------------------
         stopConnector();
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Restart the connector to read only part of a transaction ...
+        // ---------------------------------------------------------------------------------------------------------------
+        Testing.print("*** Restarting connector");
+        CompletionResult completion = new CompletionResult();
+        start(MySqlConnector.class, config, completion, (record) -> {
+            // We want to stop before processing record 3003 ...
+            Struct key = (Struct) record.key();
+            Number id = (Number) key.get("id");
+            if (id.intValue() == 3003) {
+                return true;
+            }
+            return false;
+        });
+
+        BinlogPosition positionBeforeInserts = new BinlogPosition();
+        BinlogPosition positionAfterInserts = new BinlogPosition();
+        BinlogPosition positionAfterUpdate = new BinlogPosition();
+        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.query("SHOW MASTER STATUS", positionBeforeInserts::readFromDatabase);
+                connection.execute("INSERT INTO products(id,name,description,weight,volume,alias) VALUES "
+                        + "(3001,'ashley','super robot',34.56,0.00,'ashbot'), "
+                        + "(3002,'arthur','motorcycle',87.65,0.00,'arcycle'), "
+                        + "(3003,'oak','tree',987.65,0.00,'oak');");
+                connection.query("SELECT * FROM products", rs -> {
+                    if (Testing.Print.isEnabled()) connection.print(rs);
+                });
+                connection.query("SHOW MASTER STATUS", positionAfterInserts::readFromDatabase);
+                // Change something else that is unrelated ...
+                connection.execute("UPDATE products_on_hand SET quantity=40 WHERE product_id=109");
+                connection.query("SELECT * FROM products_on_hand", rs -> {
+                    if (Testing.Print.isEnabled()) connection.print(rs);
+                });
+                connection.query("SHOW MASTER STATUS", positionAfterUpdate::readFromDatabase);
+            }
+        }
+
+        //Testing.Print.enable();
+
+        // And consume the one insert ...
+        records = consumeRecordsByTopic(2);
+        assertThat(records.recordsForTopic("myServer.connector_test.products").size()).isEqualTo(2);
+        assertThat(records.topics().size()).isEqualTo(1);
+        inserts = records.recordsForTopic("myServer.connector_test.products");
+        assertInsert(inserts.get(0), "id", 3001);
+        assertInsert(inserts.get(1), "id", 3002);
+
+        // Verify that the connector has stopped ...
+        completion.await(10, TimeUnit.SECONDS);
+        assertThat(completion.hasCompleted()).isTrue();
+        assertThat(completion.hasError()).isTrue();
+        assertThat(completion.success()).isFalse();
+        assertNoRecordsToConsume();
+        assertConnectorNotRunning();
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Stop the connector ...
+        // ---------------------------------------------------------------------------------------------------------------
+        stopConnector();
+
+        // Read the last committed offsets, and verify the binlog coordinates ...
+        SourceInfo persistedOffsetSource = new SourceInfo();
+        persistedOffsetSource.setServerName(config.getString(MySqlConnectorConfig.SERVER_NAME));
+        Map<String, ?> lastCommittedOffset = readLastCommittedOffset(config, persistedOffsetSource.partition());
+        persistedOffsetSource.setOffset(lastCommittedOffset);
+        Testing.print("Position before inserts: " + positionBeforeInserts);
+        Testing.print("Position after inserts:  " + positionAfterInserts);
+        Testing.print("Offset: " + lastCommittedOffset);
+        Testing.print("Position after update:  " + positionAfterUpdate);
+        if (replicaIsMaster) {
+            // Same binlog filename ...
+            assertThat(persistedOffsetSource.binlogFilename()).isEqualTo(positionBeforeInserts.binlogFilename());
+            assertThat(persistedOffsetSource.binlogFilename()).isEqualTo(positionAfterInserts.binlogFilename());
+            // Binlog position in offset should be more than before the inserts, but less than the position after the inserts ...
+            assertThat(persistedOffsetSource.binlogPosition()).isGreaterThan(positionBeforeInserts.binlogPosition());
+            assertThat(persistedOffsetSource.binlogPosition()).isLessThan(positionAfterInserts.binlogPosition());
+        } else {
+            // the replica is not the same server as the master, so it will have a different binlog filename and position ...
+        }
+        // Event number is 2 ...
+        assertThat(persistedOffsetSource.eventsToSkipUponRestart()).isEqualTo(2);
+        // GTID set should match the before-inserts GTID set ...
+        // assertThat(persistedOffsetSource.gtidSet()).isEqualTo(positionBeforeInserts.gtidSet());
+
+        Testing.print("*** Restarting connector, and should begin with inserting 3003 (not 109!)");
+        start(MySqlConnector.class, config);
+
+        // And consume the insert for 3003 ...
+        records = consumeRecordsByTopic(1);
+        assertThat(records.topics().size()).isEqualTo(1);
+        inserts = records.recordsForTopic("myServer.connector_test.products");
+        if (inserts == null) {
+            updates = records.recordsForTopic("myServer.connector_test.products_on_hand");
+            if (updates != null) {
+                fail("Restarted connector and missed the insert of product id=3003!");
+            }
+        }
+        // Read the first record produced since we've restarted
+        SourceRecord prod3003 = inserts.get(0);
+        assertInsert(prod3003, "id", 3003);
+        
+        // Check that the offset has the correct/expected values ...
+        assertOffset(prod3003,"file",lastCommittedOffset.get("file"));
+        assertOffset(prod3003,"pos",lastCommittedOffset.get("pos"));
+        assertOffset(prod3003,"row",3);
+        assertOffset(prod3003,"event",lastCommittedOffset.get("event"));
+
+        // Check that the record has all of the column values ...
+        assertValueField(prod3003,"after/id",3003);
+        assertValueField(prod3003,"after/name","oak");
+        assertValueField(prod3003,"after/description","tree");
+        assertValueField(prod3003,"after/weight",987.65d);
+        assertValueField(prod3003,"after/volume",0.0d);
+        assertValueField(prod3003,"after/alias","oak");
+        
+
+        // And make sure we consume that one extra update ...
+        records = consumeRecordsByTopic(1);
+        assertThat(records.topics().size()).isEqualTo(1);
+        updates = records.recordsForTopic("myServer.connector_test.products_on_hand");
+        assertThat(updates.size()).isEqualTo(1);
+        assertUpdate(updates.get(0), "product_id", 109);
+        updates.forEach(this::validate);
+
+        // Start the connector again, and we should see the next two
+        Testing.print("*** Done with simple insert");
+
+    }
+
+    protected static class BinlogPosition {
+        private String binlogFilename;
+        private long binlogPosition;
+        private String gtidSet;
+
+        public void readFromDatabase(ResultSet rs) throws SQLException {
+            if (rs.next()) {
+                binlogFilename = rs.getString(1);
+                binlogPosition = rs.getLong(2);
+                if (rs.getMetaData().getColumnCount() > 4) {
+                    // This column exists only in MySQL 5.6.5 or later ...
+                    gtidSet = rs.getString(5);// GTID set, may be null, blank, or contain a GTID set
+                }
+            }
+        }
+
+        public String binlogFilename() {
+            return binlogFilename;
+        }
+
+        public long binlogPosition() {
+            return binlogPosition;
+        }
+
+        public String gtidSet() {
+            return gtidSet;
+        }
+
+        public boolean hasGtids() {
+            return gtidSet != null;
+        }
+
+        @Override
+        public String toString() {
+            return "file=" + binlogFilename + ", pos=" + binlogPosition + ", gtids=" + (gtidSet != null ? gtidSet : "");
+        }
     }
 
     @Test

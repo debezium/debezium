@@ -8,6 +8,7 @@ package io.debezium.embedded;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -35,7 +36,6 @@ import org.apache.kafka.connect.storage.OffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetStorageReader;
 import org.apache.kafka.connect.storage.OffsetStorageReaderImpl;
 import org.apache.kafka.connect.storage.OffsetStorageWriter;
-import org.apache.kafka.connect.storage.StringConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -134,7 +134,7 @@ public final class EmbeddedEngine implements Runnable {
 
     protected static final Field INTERNAL_KEY_CONVERTER_CLASS = Field.create("internal.key.converter")
                                                                      .withDescription("The Converter class that should be used to serialize and deserialize key data for offsets.")
-                                                                     .withDefault(StringConverter.class.getName());
+                                                                     .withDefault(JsonConverter.class.getName());
 
     protected static final Field INTERNAL_VALUE_CONVERTER_CLASS = Field.create("internal.value.converter")
                                                                        .withDescription("The Converter class that should be used to serialize and deserialize value data for offsets.")
@@ -159,12 +159,106 @@ public final class EmbeddedEngine implements Runnable {
         /**
          * Handle the completion of the embedded connector engine.
          * 
-         * @param success true if the connector completed normally, or {@code false} if the connector produced an error that
-         *            prevented startup or premature termination.
+         * @param success {@code true} if the connector completed normally, or {@code false} if the connector produced an error
+         *            that prevented startup or premature termination.
          * @param message the completion message; never null
          * @param error the error, or null if there was no exception
          */
         void handle(boolean success, String message, Throwable error);
+    }
+
+    /**
+     * A callback function to be notified when the connector completes.
+     */
+    public static class CompletionResult implements CompletionCallback {
+        private final CountDownLatch completed = new CountDownLatch(1);
+        private boolean success;
+        private String message;
+        private Throwable error;
+
+        @Override
+        public void handle(boolean success, String message, Throwable error) {
+            this.success = success;
+            this.message = message;
+            this.error = error;
+            this.completed.countDown();
+        }
+
+        /**
+         * Causes the current thread to wait until the {@link #handle(boolean, String, Throwable) completion occurs}
+         * or until the thread is {@linkplain Thread#interrupt interrupted}.
+         * <p>
+         * This method returns immediately if the connector has completed already.
+         * 
+         * @throws InterruptedException if the current thread is interrupted while waiting
+         */
+        public void await() throws InterruptedException {
+            this.completed.await();
+        }
+
+        /**
+         * Causes the current thread to wait until the {@link #handle(boolean, String, Throwable) completion occurs},
+         * unless the thread is {@linkplain Thread#interrupt interrupted}, or the specified waiting time elapses.
+         * <p>
+         * This method returns immediately if the connector has completed already.
+         * 
+         * @param timeout the maximum time to wait
+         * @param unit the time unit of the {@code timeout} argument
+         * @return {@code true} if the completion was received, or {@code false} if the waiting time elapsed before the completion
+         *         was received.
+         * @throws InterruptedException if the current thread is interrupted while waiting
+         */
+        public boolean await(long timeout, TimeUnit unit) throws InterruptedException {
+            return this.completed.await(timeout, unit);
+        }
+
+        /**
+         * Determine if the connector has completed.
+         * 
+         * @return {@code true} if the connector has completed, or {@code false} if the connector is still running and this
+         *         callback has not yet been {@link #handle(boolean, String, Throwable) notified}
+         */
+        public boolean hasCompleted() {
+            return completed.getCount() == 0;
+        }
+
+        /**
+         * Get whether the connector completed normally.
+         * 
+         * @return {@code true} if the connector completed normally, or {@code false} if the connector produced an error that
+         *         prevented startup or premature termination (or the connector has not yet {@link #hasCompleted() completed})
+         */
+        public boolean success() {
+            return success;
+        }
+
+        /**
+         * Get the completion message.
+         * 
+         * @return the completion message, or null if the connector has not yet {@link #hasCompleted() completed}
+         */
+        public String message() {
+            return message;
+        }
+
+        /**
+         * Get the completion error, if there is one.
+         * 
+         * @return the completion error, or null if there is no error or connector has not yet {@link #hasCompleted() completed}
+         */
+        public Throwable error() {
+            return error;
+        }
+
+        /**
+         * Determine if there is a completion error.
+         * 
+         * @return {@code true} if there is a {@link #error completion error}, or {@code false} if there is no error or
+         *         the connector has not yet {@link #hasCompleted() completed}
+         */
+        public boolean hasError() {
+            return error != null;
+        }
     }
 
     /**
@@ -295,7 +389,7 @@ public final class EmbeddedEngine implements Runnable {
     private long timeSinceLastCommitMillis = 0;
 
     private EmbeddedEngine(Configuration config, ClassLoader classLoader, Clock clock, Consumer<SourceRecord> consumer,
-            CompletionCallback completionCallback) {
+                           CompletionCallback completionCallback) {
         this.config = config;
         this.consumer = consumer;
         this.classLoader = classLoader;
@@ -308,7 +402,7 @@ public final class EmbeddedEngine implements Runnable {
         assert this.classLoader != null;
         assert this.clock != null;
         keyConverter = config.getInstance(INTERNAL_KEY_CONVERTER_CLASS, Converter.class, () -> this.classLoader);
-        keyConverter.configure(config.subset(INTERNAL_KEY_CONVERTER_CLASS.name() + ".", true).asMap(), false);
+        keyConverter.configure(config.subset(INTERNAL_KEY_CONVERTER_CLASS.name() + ".", true).asMap(), true);
         valueConverter = config.getInstance(INTERNAL_VALUE_CONVERTER_CLASS, Converter.class, () -> this.classLoader);
         Configuration valueConverterConfig = config;
         if (valueConverter instanceof JsonConverter) {
@@ -456,8 +550,9 @@ public final class EmbeddedEngine implements Runnable {
                     }
 
                     recordsSinceLastCommit = 0;
+                    Throwable handlerError = null;
                     timeSinceLastCommitMillis = clock.currentTimeInMillis();
-                    while (runningThread.get() != null) {
+                    while (runningThread.get() != null && handlerError == null) {
                         try {
                             logger.debug("Embedded engine is polling task for records");
                             List<SourceRecord> changeRecords = task.poll(); // blocks until there are values ...
@@ -469,17 +564,16 @@ public final class EmbeddedEngine implements Runnable {
                                     try {
                                         consumer.accept(record);
                                     } catch (Throwable t) {
-                                        logger.error("Error in the application's handler method, but continuing anyway", t);
+                                        handlerError = t;
+                                        break;
                                     }
+
+                                    // Record the offset for this record's partition
+                                    offsetWriter.offset(record.sourcePartition(), record.sourceOffset());
+                                    recordsSinceLastCommit += 1;
                                 }
 
-                                // Only then do we write out the last partition to offset storage ...
-                                SourceRecord lastRecord = changeRecords.get(changeRecords.size() - 1);
-                                lastRecord.sourceOffset();
-                                offsetWriter.offset(lastRecord.sourcePartition(), lastRecord.sourceOffset());
-
                                 // Flush the offsets to storage if necessary ...
-                                recordsSinceLastCommit += changeRecords.size();
                                 maybeFlush(offsetWriter, offsetCommitPolicy, commitTimeoutMs);
                             } else {
                                 logger.debug("Received no records from the task");
@@ -501,7 +595,14 @@ public final class EmbeddedEngine implements Runnable {
                     } finally {
                         // Always commit offsets that were captured from the source records we actually processed ...
                         commitOffsets(offsetWriter, commitTimeoutMs);
-                        succeed("Connector '" + connectorClassName + "' completed normally.");
+                        if (handlerError != null) {
+                            // There was an error in the handler ...
+                            fail("Stopping connector after error in the application's handler method: " + handlerError.getMessage(),
+                                 handlerError);
+                        } else {
+                            // We stopped normally ...
+                            succeed("Connector '" + connectorClassName + "' completed normally.");
+                        }
                     }
                 } catch (Throwable t) {
                     fail("Error while trying to run connector class '" + connectorClassName + "'", t);

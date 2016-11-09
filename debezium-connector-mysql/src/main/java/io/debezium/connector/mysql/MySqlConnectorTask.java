@@ -139,7 +139,7 @@ public final class MySqlConnectorTask extends SourceTask {
             if (!startWithSnapshot && source.gtidSet() == null && isGtidModeEnabled()) {
                 // The snapshot will properly determine the GTID set, but we're not starting with a snapshot and GTIDs were not
                 // previously used but the MySQL server has them enabled ...
-                source.setGtidSet("");
+                source.setCompletedGtidSet("");
             }
 
             // Check whether the row-level binlog is enabled ...

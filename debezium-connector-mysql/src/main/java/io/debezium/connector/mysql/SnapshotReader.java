@@ -222,7 +222,7 @@ public class SnapshotReader extends AbstractReader {
                     if (rs.getMetaData().getColumnCount() > 4) {
                         // This column exists only in MySQL 5.6.5 or later ...
                         String gtidSet = rs.getString(5);// GTID set, may be null, blank, or contain a GTID set
-                        source.setGtidSet(gtidSet);
+                        source.setCompletedGtidSet(gtidSet);
                         logger.info("\t using binlog '{}' at position '{}' and gtid '{}'", binlogFilename, binlogPosition,
                                     gtidSet);
                     } else {
