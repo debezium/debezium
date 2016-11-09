@@ -416,9 +416,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         records = consumeRecordsByTopic(3);
         List<SourceRecord> updates = records.recordsForTopic("myServer.connector_test.products");
         assertThat(updates.size()).isEqualTo(3);
-        assertInsert(updates.get(0), "id", 2001);
-        assertDelete(updates.get(1), "id", 1001);
-        assertTombstone(updates.get(2), "id", 1001);
+        assertDelete(updates.get(0), "id", 1001);
+        assertTombstone(updates.get(1), "id", 1001);
+        assertInsert(updates.get(2), "id", 2001);
 
         Testing.print("*** Done with PK change");
 
