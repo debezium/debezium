@@ -640,7 +640,8 @@ public class MySqlDdlParserTest {
 
     @Test
     public void shouldParseEnumOptions() {
-        assertParseEnumAndSetOptions("ENUM('a','b','c')", "a,b,c");
+        assertParseEnumAndSetOptions("ENUM('a','b','c')","a,b,c");
+        assertParseEnumAndSetOptions("ENUM('a','multi','multi with () paren', 'other')", "a,multi,multi with () paren,other");
         assertParseEnumAndSetOptions("ENUM('a')", "a");
         assertParseEnumAndSetOptions("ENUM()", "");
         assertParseEnumAndSetOptions("ENUM ('a','b','c') CHARACTER SET", "a,b,c");
@@ -651,6 +652,7 @@ public class MySqlDdlParserTest {
     @Test
     public void shouldParseSetOptions() {
         assertParseEnumAndSetOptions("SET('a','b','c')", "a,b,c");
+        assertParseEnumAndSetOptions("SET('a','multi','multi with () paren', 'other')", "a,multi,multi with () paren,other");
         assertParseEnumAndSetOptions("SET('a')", "a");
         assertParseEnumAndSetOptions("SET()", "");
         assertParseEnumAndSetOptions("SET ('a','b','c') CHARACTER SET", "a,b,c");

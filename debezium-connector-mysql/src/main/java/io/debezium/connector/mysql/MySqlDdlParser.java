@@ -15,8 +15,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.relational.Column;
@@ -43,16 +41,6 @@ import io.debezium.text.TokenStream.Marker;
  */
 @NotThreadSafe
 public class MySqlDdlParser extends DdlParser {
-
-    /**
-     * Pattern to grab the list of single-quoted options within a SET or ENUM type definition.
-     */
-    private static final Pattern ENUM_AND_SET_LITERALS = Pattern.compile("(ENUM|SET)\\s*[(]([^)]*)[)].*");
-
-    /**
-     * Pattern to extract the option characters from the comma-separated list of single-quoted options.
-     */
-    private static final Pattern ENUM_AND_SET_OPTIONS = Pattern.compile("'([^']*)'");
 
     /**
      * The system variable name for the name of the character set that the server uses by default.
@@ -656,19 +644,36 @@ public class MySqlDdlParser extends DdlParser {
      * @return the string containing the character options allowed by the {@code ENUM} or {@code SET}; never null
      */
     public static List<String> parseSetAndEnumOptions(String typeExpression) {
-        Matcher matcher = ENUM_AND_SET_LITERALS.matcher(typeExpression);
         List<String> options = new ArrayList<>();
-        if (matcher.matches()) {
-            String literals = matcher.group(2);
-            Matcher optionMatcher = ENUM_AND_SET_OPTIONS.matcher(literals);
-            while (optionMatcher.find()) {
-                String option = optionMatcher.group(1);
-                if (option != null && option.length() > 0) {
-                    options.add(option);
+        TokenStream tokens = new TokenStream(typeExpression, TokenStream.basicTokenizer(false), false);
+        tokens.start();
+        if (tokens.canConsumeAnyOf("ENUM", "SET") && tokens.canConsume('(')) {
+            // The literals should be quoted values ...
+            if (tokens.matchesAnyOf(DdlTokenizer.DOUBLE_QUOTED_STRING, DdlTokenizer.SINGLE_QUOTED_STRING)) {
+                options.add(withoutQuotes(tokens.consume()));
+                while (tokens.canConsume(',')) {
+                    if (tokens.matchesAnyOf(DdlTokenizer.DOUBLE_QUOTED_STRING, DdlTokenizer.SINGLE_QUOTED_STRING)) {
+                        options.add(withoutQuotes(tokens.consume()));
+                    }
                 }
             }
+            tokens.consume(')');
         }
         return options;
+    }
+
+    protected static String withoutQuotes(String possiblyQuoted) {
+        if (possiblyQuoted.length() < 2) {
+            // Too short to be quoted ...
+            return possiblyQuoted;
+        }
+        if (possiblyQuoted.startsWith("'") && possiblyQuoted.endsWith("'")) {
+            return possiblyQuoted.substring(1, possiblyQuoted.length() - 1);
+        }
+        if (possiblyQuoted.startsWith("\"") && possiblyQuoted.endsWith("\"")) {
+            return possiblyQuoted.substring(1, possiblyQuoted.length() - 1);
+        }
+        return possiblyQuoted;
     }
 
     protected void parseColumnDefinition(Marker start, String columnName, TokenStream tokens, TableEditor table, ColumnEditor column,
