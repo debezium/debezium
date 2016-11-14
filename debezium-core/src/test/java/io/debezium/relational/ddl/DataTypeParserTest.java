@@ -110,6 +110,8 @@ public class DataTypeParserTest {
     @Test
     public void shouldDetermineTypeWithWildcard() {
         assertType("ENUM('a','b','c')","ENUM",Types.CHAR);
+        assertEnumType("ENUM('a','multi','multi with () paren', 'other') followed by",
+                       "ENUM('a','multi','multi with () paren', 'other')");
     }
     
     protected void assertType( String content, String typeName, int jdbcType ) {
@@ -132,6 +134,15 @@ public class DataTypeParserTest {
         assertThat(type.length()).isEqualTo(length);
         assertThat(type.scale()).isEqualTo(scale);
         assertThat(type.arrayDimensions()).isEqualTo(arrayDims);
+    }
+    
+    protected void assertEnumType( String content, String expression ) {
+        DataType type = parser.parse(text(content), null);
+        assertThat(type).isNotNull();
+        assertThat(type.jdbcType()).isEqualTo(Types.CHAR);
+        assertThat(type.name()).isEqualTo("ENUM");
+        assertThat(type.length()).isEqualTo(-1);
+        assertThat(type.expression()).isEqualTo(expression);
     }
     
     protected void assertNoType( String content ) {
