@@ -588,7 +588,7 @@ public abstract class AbstractConnectorTest implements Testing {
             assertThat(actualNumericValue).isEqualTo(expectedNumericValue);
         } else if (expected instanceof Boolean) {
             boolean expectedValue = ((Boolean)expected).booleanValue();
-            boolean actualValue = ((Boolean)expected).booleanValue();
+            boolean actualValue = ((Boolean)actual).booleanValue();
             assertThat(actualValue).isEqualTo(expectedValue);
         } else {
             assertThat(actual).isEqualTo(expected);
