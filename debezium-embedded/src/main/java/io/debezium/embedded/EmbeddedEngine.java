@@ -492,6 +492,11 @@ public final class EmbeddedEngine implements Runnable {
     }
 
     private void fail(String msg, Throwable error) {
+        if (completionResult.hasError()) {
+            // there's already a recorded failure, so keep the original one and simply log this one
+            logger.error(msg, error);
+            return;
+        }
         // don't use the completion callback here because we want to store the error and message only
         completionResult.handle(false, msg, error);
     }
@@ -646,31 +651,39 @@ public final class EmbeddedEngine implements Runnable {
                                 }
                             } catch (Throwable t) {
                                 // There was some sort of unexpected exception, so we should stop work
-                                // We first try to commit the offsets, since we record them only after the records were handled
+                                if (t instanceof InterruptedException) {
+                                    // we've been requested to stop, so we don't need to capture this, just clear the interrupt
+                                    // status
+                                    Thread.interrupted();
+                                } else if (handlerError == null){
+                                    // make sure we capture the error first so that we can report it later
+                                    handlerError = t;
+                                }
+                                // then try to commit the offsets, since we record them only after the records were handled
                                 // by the consumer ...
                                 maybeFlush(offsetWriter, offsetCommitPolicy, commitTimeoutMs, task);
-                                if (t instanceof InterruptedException) {
-                                    // Then clear the interrupted status ...
-                                    Thread.interrupted();
-                                }
                                 break;
                             }
                         }
                     } finally {
-                        // First stop the task ...
-                        logger.debug("Stopping the task and engine");
-                        task.stop();
-                        connectorCallback.ifPresent(ConnectorCallback::taskStopped);
-    
-                        // Always commit offsets that were captured from the source records we actually processed ...
-                        commitOffsets(offsetWriter, commitTimeoutMs, task);
                         if (handlerError != null) {
-                            // There was an error in the handler ...
+                            // There was an error in the handler so make sure it's always captured...
                             fail("Stopping connector after error in the application's handler method: " + handlerError.getMessage(),
                                  handlerError);
-                        } else {
-                            // We stopped normally ...
-                            succeed("Connector '" + connectorClassName + "' completed normally.");
+                        }
+                        try {
+                            // First stop the task ...
+                            logger.debug("Stopping the task and engine");
+                            task.stop();
+                            connectorCallback.ifPresent(ConnectorCallback::taskStopped);
+                            // Always commit offsets that were captured from the source records we actually processed ...
+                            commitOffsets(offsetWriter, commitTimeoutMs, task);
+                            if (handlerError == null) {
+                                // We stopped normally ...
+                                succeed("Connector '" + connectorClassName + "' completed normally.");
+                            }
+                        } catch (Throwable t) {
+                            fail("Error while trying to stop the task and commit the offsets", t);
                         }
                     }
                 } catch (Throwable t) {
@@ -679,9 +692,15 @@ public final class EmbeddedEngine implements Runnable {
                     // Close the offset storage and finally the connector ...
                     try {
                         offsetStore.stop();
+                    } catch (Throwable t){
+                        fail("Error while trying to stop the offset store", t);
                     } finally {
-                        connector.stop();
-                        connectorCallback.ifPresent(ConnectorCallback::connectorStopped);
+                        try {
+                            connector.stop();
+                            connectorCallback.ifPresent(ConnectorCallback::connectorStopped);
+                        } catch (Throwable t) {
+                            fail("Error while trying to stop connector class '" + connectorClassName + "'", t);
+                        }
                     }
                 }
             } finally {
