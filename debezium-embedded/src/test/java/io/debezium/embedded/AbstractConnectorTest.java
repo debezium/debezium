@@ -55,6 +55,7 @@ import io.debezium.config.Configuration;
 import io.debezium.data.SchemaUtil;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.EmbeddedEngine.CompletionCallback;
+import io.debezium.embedded.EmbeddedEngine.ConnectorCallback;
 import io.debezium.embedded.EmbeddedEngine.EmbeddedConfig;
 import io.debezium.function.BooleanConsumer;
 import io.debezium.relational.history.HistoryRecord;
@@ -250,10 +251,22 @@ public abstract class AbstractConnectorTest implements Testing {
             try {
                 if (callback != null) callback.handle(success, msg, error);
             } finally {
-                latch.countDown();
+                if (!success) {
+                    // we only unblock if there was an error; in all other cases we're unblocking when a task has been started
+                    latch.countDown();
+                }
             }
             Testing.debug("Stopped connector");
         };
+        
+        ConnectorCallback connectorCallback = new ConnectorCallback() {
+            @Override
+            public void taskStarted() {
+                // if this is called, it means a task has been started successfully so we can continue
+                latch.countDown();        
+            }
+        }; 
+        
         // Create the connector ...
         engine = EmbeddedEngine.create()
                                .using(config)
@@ -270,6 +283,7 @@ public abstract class AbstractConnectorTest implements Testing {
                                })
                                .using(this.getClass().getClassLoader())
                                .using(wrapperCallback)
+                               .using(connectorCallback)
                                .build();
 
         // Submit the connector for asynchronous execution ...
@@ -279,6 +293,16 @@ public abstract class AbstractConnectorTest implements Testing {
             LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
             engine.run();
         });
+        try {
+            if (!latch.await(10, TimeUnit.SECONDS)) {
+                // maybe it takes more time to start up, so just log a warning and continue
+                logger.warn("The connector did not finish starting its task(s) or complete in the expected amount of time");
+            }
+        } catch (InterruptedException e) {
+            if (Thread.interrupted()) {
+                fail("Interrupted while waiting for engine startup");
+            }
+        }
     }
 
     /**
