@@ -210,10 +210,19 @@ public final class EmbeddedEngine implements Runnable {
      * A callback function to be notified when the connector completes.
      */
     public static class CompletionResult implements CompletionCallback {
+        private final CompletionCallback delegate;
         private final CountDownLatch completed = new CountDownLatch(1);
         private boolean success;
         private String message;
         private Throwable error;
+
+        public CompletionResult() {
+            this(null);
+        }
+
+        public CompletionResult(CompletionCallback delegate) {
+            this.delegate = delegate;
+        }
 
         @Override
         public void handle(boolean success, String message, Throwable error) {
@@ -221,6 +230,9 @@ public final class EmbeddedEngine implements Runnable {
             this.message = message;
             this.error = error;
             this.completed.countDown();
+            if (delegate != null) {
+                delegate.handle(success, message, error);
+            }
         }
 
         /**
@@ -512,7 +524,7 @@ public final class EmbeddedEngine implements Runnable {
      * <p>
      * First, the method checks to see if this instance is currently {@link #run() running}, and if so immediately returns.
      * <p>
-     * If the configuration is valid, this method connects to the MySQL server and begins reading the server's transaction log.
+     * If the configuration is valid, this method starts the connector and starts polling the connector for change events.
      * All messages are delivered in batches to the {@link Consumer} registered with this embedded connector. The batch size,
      * polling
      * frequency, and other parameters are controlled via configuration settings. This continues until this connector is
@@ -520,6 +532,8 @@ public final class EmbeddedEngine implements Runnable {
      * <p>
      * Note that there are two ways to stop a connector running on a thread: calling {@link #stop()} from another thread, or
      * interrupting the thread (e.g., via {@link ExecutorService#shutdownNow()}).
+     * <p>
+     * This method can be called repeatedly as needed.
      */
     @Override
     public void run() {
@@ -624,7 +638,8 @@ public final class EmbeddedEngine implements Runnable {
                     Throwable handlerError = null;
                     try {
                         timeSinceLastCommitMillis = clock.currentTimeInMillis();
-                        while (runningThread.get() != null && handlerError == null) {
+                        boolean keepProcessing = true;
+                        while (runningThread.get() != null && handlerError == null && keepProcessing) {
                             try {
                                 logger.debug("Embedded engine is polling task for records");
                                 List<SourceRecord> changeRecords = task.poll(); // blocks until there are values ...
@@ -636,6 +651,12 @@ public final class EmbeddedEngine implements Runnable {
                                         try {
                                             consumer.accept(record);
                                             task.commitRecord(record);
+                                        } catch (StopConnectorException e) {
+                                            keepProcessing = false;
+                                            // Stop processing any more but first record the offset for this record's partition
+                                            offsetWriter.offset(record.sourcePartition(), record.sourceOffset());
+                                            recordsSinceLastCommit += 1;
+                                            break;
                                         } catch (Throwable t) {
                                             handlerError = t;
                                             break;

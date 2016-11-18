@@ -313,4 +313,68 @@ public class Iterators {
             }
         };
     }
+
+    /**
+     * A read only iterator that is able to preview the next value without consuming it or altering the behavior or semantics
+     * of the normal {@link Iterator} methods.
+     * 
+     * @param <T> the type of value
+     */
+    public static interface PreviewIterator<T> extends Iterator<T> {
+        /**
+         * Peek at the next value without consuming or using it. This method returns the same value if called multiple times
+         * between {@link Iterator#next}.
+         * 
+         * @return the next value, or null if there are no more
+         */
+        T peek();
+    }
+
+    /**
+     * Get a read-only iterator that can peek at the next value before it is retrieved with {@link Iterator#next()}.
+     * 
+     * @param iter the original iterator
+     * @return the peeking iterator; may be null if {@code iter} is null
+     */
+    public static <T> PreviewIterator<T> preview(Iterator<T> iter) {
+        if (iter == null) return null;
+        if (iter instanceof PreviewIterator) {
+            return (PreviewIterator<T>) iter;
+        }
+        return new PreviewIterator<T>() {
+            private T nextValue;
+
+            @Override
+            public boolean hasNext() {
+                return nextValue != null || iter.hasNext();
+            }
+
+            @Override
+            public T next() {
+                if (nextValue != null) {
+                    T next = nextValue;
+                    nextValue = null;
+                    return next;
+                }
+                return iter.next();
+            }
+
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public T peek() {
+                if (nextValue != null) {
+                    return nextValue;
+                }
+                if (iter.hasNext()) {
+                    nextValue = iter.next();
+                    return nextValue;
+                }
+                return null;
+            }
+        };
+    }
 }

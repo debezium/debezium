@@ -784,9 +784,9 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
      * @param fields the map containing the name/value pairs to be set on this object
      * @return This document, to allow for chaining methods
      */
-    default Document putAll(Map<? extends CharSequence, Object> fields) {
+    default Document putAll(Map<? extends CharSequence, ?> fields) {
         if (fields != null) {
-            for (Map.Entry<? extends CharSequence, Object> entry : fields.entrySet()) {
+            for (Map.Entry<? extends CharSequence, ?> entry : fields.entrySet()) {
                 set(entry.getKey(), entry.getValue());
             }
         }

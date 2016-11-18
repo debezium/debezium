@@ -240,6 +240,26 @@ public interface Configuration {
         }
 
         /**
+         * If any of the fields in the supplied Configuration object do not exist, then add them.
+         * 
+         * @param other the configuration whose fields should be added; may not be null
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B withDefault(Configuration other) {
+            return apply(builder -> other.forEach(builder::withDefault));
+        }
+
+        /**
+         * Add all of the fields in the supplied Configuration object.
+         * 
+         * @param other the configuration whose fields should be added; may not be null
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B with(Configuration other) {
+            return apply(builder -> other.forEach(builder::with));
+        }
+
+        /**
          * Associate the given value with the key of the specified field.
          * 
          * @param field the predefined field for the key
@@ -672,11 +692,11 @@ public interface Configuration {
     /**
      * Create a new {@link Builder configuration builder} that starts with a copy of the supplied configuration.
      * 
-     * @param config the configuration to copy
+     * @param config the configuration to copy; may be null
      * @return the configuration builder
      */
     public static Builder copy(Configuration config) {
-        return new Builder(config.asProperties());
+        return config != null ? new Builder(config.asProperties()) : new Builder();
     }
 
     /**
@@ -1502,6 +1522,47 @@ public interface Configuration {
                 return withMaskedPasswords().asProperties().toString();
             }
         };
+    }
+
+    /**
+     * Return a new {@link Configuration} that contains all of the same fields as this configuration, except with all
+     * variables in the fields replaced with values from the supplied function. Variables found in fields will be left as-is
+     * if the supplied function returns no value for the variable name(s).
+     * <p>
+     * Variables may appear anywhere within a field value, and multiple variables can be used within the same field. Variables
+     * take the form:
+     * 
+     * <pre>
+     *    variable := '${' variableNames [ ':' defaultValue ] '}'
+     *    variableNames := variableName [ ',' variableNames ]
+     *    variableName := // any characters except ',' and ':' and '}'
+     *    defaultValue := // any characters except '}'
+     * </pre>
+     * 
+     * and examples of variables include:
+     * <ul>
+     * <li><code>${var1}</code></li>
+     * <li><code>${var1:defaultValue}</code></li>
+     * <li><code>${var1,var2}</code></li>
+     * <li><code>${var1,var2:defaultValue}</code></li>
+     * </ul>
+     * 
+     * The <i>variableName</i> literal is the name used to look up a the property.
+     * </p>
+     * This syntax supports multiple <i>variables</i>. The logic will process the <i>variables</i> from let to right,
+     * until an existing property is found. And at that point, it will stop and will not attempt to find values for the other
+     * <i>variables</i>.
+     * <p>
+     * 
+     * 
+     * @param valuesByVariableName the function that returns a variable value for a variable name; may not be null but may
+     *            return null if the variable name is not known
+     * @return the Configuration with masked values for matching keys; never null
+     */
+    default Configuration withReplacedVariables(Function<String, String> valuesByVariableName) {
+        return mapped((key, value) -> {
+            return Strings.replaceVariables(value, valuesByVariableName);
+        });
     }
 
     /**

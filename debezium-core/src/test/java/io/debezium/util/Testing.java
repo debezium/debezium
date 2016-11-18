@@ -12,6 +12,7 @@ import java.net.ServerSocket;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
@@ -178,6 +179,15 @@ public interface Testing {
         public static File createTestingDirectory(String relativePath) {
             Path dirPath = Paths.get("target/data", relativePath).toAbsolutePath();
             return IoUtil.createDirectory(dirPath);
+        }
+
+        /**
+         * Create a randomly-named file within the test data directory.
+         * 
+         * @return the reference to the existing readable and writable file
+         */
+        public static File createTestingFile() {
+            return createTestingFile(UUID.randomUUID().toString());
         }
 
         /**
