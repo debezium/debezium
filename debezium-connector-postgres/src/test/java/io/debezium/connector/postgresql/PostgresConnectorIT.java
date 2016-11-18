@@ -12,17 +12,22 @@ import static io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotM
 import static io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode.NEVER;
 import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
 import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -32,10 +37,12 @@ import org.postgresql.util.PSQLState;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.EmbeddedEngine;
-import io.debezium.jdbc.JdbcConnectionException;
+import io.debezium.junit.SkipLongRunning;
+import io.debezium.util.Strings;
 
 /**
  * Integration test for {@link PostgresConnector} using an {@link io.debezium.embedded.EmbeddedEngine} 
@@ -88,6 +95,14 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     }
     
     @Test
+    public void shouldValidateMinimalConfiguration() throws Exception {
+        Configuration config = TestHelper.defaultConfig().build();
+        Config validateConfig = new PostgresConnector().validate(config.asMap());
+        validateConfig.configValues().forEach(configValue -> assertTrue("Unexpected error for: " + configValue.name(), 
+                                                                        configValue.errorMessages().isEmpty()));
+    }
+    
+    @Test
     public void shouldValidateConfiguration() throws Exception {
         // use an empty configuration which should be invalid because of the lack of DB connection details
         Configuration config = Configuration.create().build();
@@ -137,10 +152,12 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         Configuration config = TestHelper.defaultConfig().with(PostgresConnectorConfig.SSL_MODE,  
                                                                PostgresConnectorConfig.SecureConnectionMode.REQUIRED).build();
         start(PostgresConnector.class, config, (success, msg, error) -> {
+            // we expect the task to fail at startup when we're printing the server info
             assertThat(success).isFalse();
-            assertThat(error).isInstanceOf(JdbcConnectionException.class);
-            JdbcConnectionException jdbcException = (JdbcConnectionException)error;
-            assertThat(PSQLState.CONNECTION_UNABLE_TO_CONNECT).isEqualTo(new PSQLState(jdbcException.getSqlState()));
+            assertThat(error).isInstanceOf(ConnectException.class);
+            Throwable cause = error.getCause();
+            assertThat(cause).isInstanceOf(SQLException.class);
+            assertThat(PSQLState.CONNECTION_UNABLE_TO_CONNECT).isEqualTo(new PSQLState(((SQLException)cause).getSQLState()));
         });
         assertConnectorNotRunning();
     }
@@ -247,7 +264,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         CountDownLatch latch = new CountDownLatch(1);
         String setupStmt = SETUP_TABLES_STMT + INSERT_STMT;
         TestHelper.execute(setupStmt);
-        // use 1 ms polling interval to ensure we get the exception during the snapshot process
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                                                         .with(PostgresConnectorConfig.SNAPSHOT_MODE, INITIAL.getValue())
                                                         .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
@@ -282,6 +298,136 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         // insert and verify 2 new records
         TestHelper.execute(INSERT_STMT);
         assertRecordsAfterInsert(2, 3, 3);
+    }
+    
+    @Test
+    public void shouldTakeBlacklistFiltersIntoAccount() throws Exception {
+        String setupStmt = SETUP_TABLES_STMT +
+                           "CREATE TABLE s1.b (pk SERIAL, aa integer, bb integer, PRIMARY KEY(pk));" +
+                           "ALTER TABLE s1.a ADD COLUMN bb integer;" +
+                           "INSERT INTO s1.a (aa, bb) VALUES (2, 2);" +
+                           "INSERT INTO s1.a (aa, bb) VALUES (3, 3);" +
+                           "INSERT INTO s1.b (aa, bb) VALUES (4, 4);" +
+                           "INSERT INTO s2.a (aa) VALUES (5);";
+        TestHelper.execute(setupStmt);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                                                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, INITIAL.getValue())
+                                                        .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                                                        .with(PostgresConnectorConfig.SCHEMA_BLACKLIST, "s2")
+                                                        .with(PostgresConnectorConfig.TABLE_BLACKLIST, ".+b")
+                                                        .with(PostgresConnectorConfig.COLUMN_BLACKLIST, ".+bb");
+    
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+    
+        //check the records from the snapshot take the filters into account
+        SourceRecords actualRecords = consumeRecordsByTopic(4); //3 records in s1.a and 1 in s1.b
+        
+        assertThat(actualRecords.recordsForTopic("s2.a")).isNullOrEmpty();
+        assertThat(actualRecords.recordsForTopic("s1.b")).isNullOrEmpty();
+        List<SourceRecord> recordsForS1a = actualRecords.recordsForTopic("s1.a");
+        assertThat(recordsForS1a.size()).isEqualTo(3);
+        AtomicInteger pkValue = new AtomicInteger(1);
+        recordsForS1a.forEach(record -> {
+            VerifyRecord.isValidRead(record, PK_FIELD, pkValue.getAndIncrement());
+            assertFieldAbsent(record, "bb");
+        });
+        
+        
+        // insert some more records and verify the filtering behavior
+        String insertStmt =  "INSERT INTO s1.b (aa, bb) VALUES (6, 6);" +
+                             "INSERT INTO s2.a (aa) VALUES (7);";
+        TestHelper.execute(insertStmt);
+        assertNoRecordsToConsume();
+    }
+    
+    private void assertFieldAbsent(SourceRecord record, String fieldName) {
+        Struct value = (Struct) ((Struct) record.value()).get(Envelope.FieldName.AFTER);
+        try {
+            value.get(fieldName);
+            fail("field should not be present");
+        } catch (DataException e) {
+            //expected
+        }
+    }
+    
+    @Test
+    @SkipLongRunning("performance")
+    public void testStreamingPerformance() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("postgres_create_tables.ddl");        
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                                                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, NEVER.getValue())
+                                                        .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE);
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        final long recordsCount = 1000000;
+        final int batchSize = 1000;
+        
+        batchInsertRecords(recordsCount, batchSize);
+        CompletableFuture.runAsync(() -> consumeRecords(recordsCount))
+                         .exceptionally(throwable -> {
+                             throw new RuntimeException(throwable);
+                         }).get();
+    }
+    
+    private void consumeRecords(long recordsCount) {
+        int totalConsumedRecords = 0;
+        long start = System.currentTimeMillis();
+        while (totalConsumedRecords < recordsCount) {
+            int consumed = super.consumeAvailableRecords(record -> {});
+            if (consumed > 0) {
+                totalConsumedRecords += consumed;
+                System.out.println("consumed " + totalConsumedRecords + " records");
+            }
+        }
+        System.out.println("total duration to ingest '" + recordsCount + "' records: " + 
+                           Strings.duration(System.currentTimeMillis() - start));
+    }
+    
+    @Test
+    @SkipLongRunning("performance")
+    public void testSnapshotPerformance() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                                                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, INITIAL_ONLY.getValue())
+                                                        .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE);
+        final long recordsCount = 1000000;
+        final int batchSize = 1000;
+    
+        batchInsertRecords(recordsCount, batchSize).get();
+
+        // start the connector only after we've finished inserting all the records
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        
+        CompletableFuture.runAsync(() -> consumeRecords(recordsCount))
+                         .exceptionally(throwable -> {
+                             throw new RuntimeException(throwable);
+                         }).get();
+    }
+    
+    private CompletableFuture<Void> batchInsertRecords(long recordsCount, int batchSize) {
+        String insertStmt = "INSERT INTO text_table(j, jb, x, u) " +
+                            "VALUES ('{\"bar\": \"baz\"}'::json, '{\"bar\": \"baz\"}'::jsonb, " +
+                            "'<foo>bar</foo><foo>bar</foo>'::xml, 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'::UUID);";
+        return CompletableFuture.runAsync(() -> {
+            StringBuilder stmtBuilder = new StringBuilder();
+            for (int i = 0; i < recordsCount; i++) {
+                stmtBuilder.append(insertStmt).append(System.lineSeparator());
+                if (i > 0  && i % batchSize == 0) {
+                    System.out.println("inserting batch [" + (i - batchSize) + "," + i + "]");
+                    TestHelper.execute(stmtBuilder.toString());
+                    stmtBuilder.delete(0, stmtBuilder.length());
+                }
+            }
+            System.out.println("inserting batch [" + (recordsCount - batchSize) + "," + recordsCount + "]");
+            TestHelper.execute(stmtBuilder.toString());
+            stmtBuilder.delete(0, stmtBuilder.length());
+        }).exceptionally(throwable -> {
+            throw new RuntimeException(throwable);
+        });
     }
     
     private Predicate<SourceRecord> stopOnPKPredicate(int pkValue) {

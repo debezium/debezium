@@ -204,7 +204,7 @@ public class PostgresConnection extends JdbcConnection {
         if (username != null) {
             query("SELECT oid, rolname, rolsuper, rolinherit, rolcreaterole, rolcreatedb, rolcanlogin, rolreplication FROM pg_roles " +
                   "WHERE pg_has_role('" + username +"', oid, 'member')", rs -> {
-                if (rs.next()) {
+                while (rs.next()) {
                     String roleInfo = "superuser: " + rs.getBoolean(3) + ", replication: " + rs.getBoolean(8) + 
                                       ", inherit: " + rs.getBoolean(4) + ", create role: " + rs.getBoolean(5) +
                                       ", create db: " + rs.getBoolean(6) + ", can log in: " + rs.getBoolean(7);
@@ -226,7 +226,7 @@ public class PostgresConnection extends JdbcConnection {
         int majorVersion = metaData.getDatabaseMajorVersion();
         int minorVersion = metaData.getDriverMinorVersion();
         if (majorVersion < 9 || (majorVersion == 9 && minorVersion < 4)) {
-            throw new IllegalStateException("Cannot connect to a version of Postgres lower than 9.4");
+            throw new SQLException("Cannot connect to a version of Postgres lower than 9.4");
         }
     }
     

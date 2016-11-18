@@ -67,6 +67,9 @@
         <version.mysql.binlog>0.5.1</version.mysql.binlog>
         <version.mongo.server>3.2.6</version.mongo.server>
         <version.mongo.driver>3.2.2</version.mongo.driver>
+        
+        <!-- Connectors -->
+        <version.com.google.protobuf>2.6.1</version.com.google.protobuf>
 
         <!-- Testing -->
         <version.junit>4.12</version.junit>
@@ -81,6 +84,7 @@
         <version.google.formatter.plugin>0.3.1</version.google.formatter.plugin>
         <version.docker.maven.plugin>0.18.1</version.docker.maven.plugin>
         <version.staging.plugin>1.6.3</version.staging.plugin>
+        <version.protoc.maven.plugin>3.0.0.1</version.protoc.maven.plugin>
 
         <!-- Dockerfiles -->
         <docker.maintainer>Debezium community</docker.maintainer>
@@ -197,12 +201,23 @@
                 <scope>test</scope>
             </dependency>
 
-            <!-- PostgreSQL JDBC driver -->
+            <!-- PostgreSQL connector -->
+            <!--
+                //TODO author=Horia Chiorean date=21/11/2016 description=ignored ATM until the streaming replication support
+                is incoroporated
+             
             <dependency>
                 <groupId>org.postgresql</groupId>
                 <artifactId>postgresql</artifactId>
                 <version>${version.postgresql.driver}</version>
-            </dependency>
+            </dependency>-->
+           
+            <!--Make sure this version is compatible with the Protbuf-C version used on the server -->
+            <dependency>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java</artifactId>
+                <version>${version.com.google.protobuf}</version>
+            </dependency> 
 
             <!-- MySQL JDBC Driver and Binlog reader -->
             <dependency>
@@ -399,6 +414,11 @@
                     <groupId>io.fabric8</groupId>
                     <artifactId>docker-maven-plugin</artifactId>
                     <version>${version.docker.maven.plugin}</version>
+                </plugin>
+                <plugin>
+                    <groupId>com.github.os72</groupId>
+                    <artifactId>protoc-jar-maven-plugin</artifactId>
+                    <version>${version.protoc.maven.plugin}</version>
                 </plugin>
             </plugins>
         </pluginManagement>

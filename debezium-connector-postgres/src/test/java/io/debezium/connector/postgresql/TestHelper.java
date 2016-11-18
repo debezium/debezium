@@ -120,7 +120,7 @@ public final class TestHelper {
     
     protected static void executeDDL(String ddlFile) throws Exception {
         URL ddlTestFile = TestHelper.class.getClassLoader().getResource(ddlFile);
-        assertNotNull("Cannot locate postgres_create_tables.ddl", ddlTestFile);
+        assertNotNull("Cannot locate " + ddlFile, ddlTestFile);
         String statements = Files.readAllLines(Paths.get(ddlTestFile.toURI()))
                                  .stream()
                                  .collect(Collectors.joining(System.lineSeparator()));

@@ -90,7 +90,7 @@ public class ServerInfo {
                                             .map(entry -> "\trole '" + entry.getKey() + "' [" + entry.getValue() + "]")
                                             .collect(Collectors.joining(lineSeparator));
     
-        return "User '" + username + "' connected to database '" + database + "' on " + server + " with:" + lineSeparator + roles;
+        return "user '" + username + "' connected to database '" + database + "' on " + server + " with roles:" + lineSeparator + roles;
     }
     
     /**

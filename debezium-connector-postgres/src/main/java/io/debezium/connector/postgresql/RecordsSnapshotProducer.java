@@ -138,21 +138,22 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             statements.delete(0, statements.length());
     
             //next refresh the schema which will load all the tables taking the filters into account 
-            schema().refresh(connection, false);
+            PostgresSchema schema = schema();
+            schema.refresh(connection, false);
     
             logger.info("Step 2: locking each of the database tables, waiting a maximum of '{}' seconds for each lock",
                         lockTimeoutMillis / 1000d);
             statements.append("SET lock_timeout = ").append(lockTimeoutMillis).append(";").append(lineSeparator);
             // we're locking in SHARE UPDATE EXCLUSIVE MODE to avoid concurrent schema changes while we're taking the snapshot
             // this does not prevent writes to the table, but prevents changes to the table's schema....
-            schema().tables().forEach(tableId -> statements.append("LOCK TABLE ")
-                                                .append(tableId.toString())
-                                                .append(" IN SHARE UPDATE EXCLUSIVE MODE;")
-                                                .append(lineSeparator));
+            schema.tables().forEach(tableId -> statements.append("LOCK TABLE ")
+                                                         .append(tableId.toString())
+                                                         .append(" IN SHARE UPDATE EXCLUSIVE MODE;")
+                                                         .append(lineSeparator));
             connection.executeWithoutCommitting(statements.toString());
     
             //now that we have the locks, refresh the schema
-            schema().refresh(connection, false);
+            schema.refresh(connection, false);
     
             // get the current position in the log, from which we'll continue streaming once the snapshot it finished
             // If rows are being inserted while we're doing the snapshot, the xlog pos should increase and so when 
@@ -166,11 +167,14 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             sourceInfo.update(xlogStart, clock().currentTimeInMicros(), txId);
     
             logger.info("Step 3: reading and exporting the contents of each table");
-            AtomicInteger counter = new AtomicInteger(0);
             AtomicInteger rowsCounter = new AtomicInteger(0);
-            schema().tables().forEach(tableId -> {
+            schema.tables().forEach(tableId -> {
+                if (schema.isFilteredOut(tableId)) {
+                    logger.info("\t table '{}' is filtered out, ignoring", tableId);
+                    return;
+                }
                 long exportStart = clock().currentTimeInMillis();
-                logger.info("Step 3.{}: exporting data from table '{}'", counter.incrementAndGet(), tableId);
+                logger.info("\t exporting data from table '{}'", tableId);
                 try {
                     connection.query("SELECT * FROM " + tableId, 
                                      this::readTableStatement, 
@@ -189,8 +193,8 @@ public class RecordsSnapshotProducer extends RecordsProducer {
     
             // process and send the last record after marking it as such
             logger.info("Step 5: sending the last snapshot record");
+            SourceRecord currentRecord = this.currentRecord.get();
             if (currentRecord != null) {  
-                SourceRecord currentRecord = this.currentRecord.get();
                 sourceInfo.markLastSnapshotRecord();
                 this.currentRecord.set(new SourceRecord(currentRecord.sourcePartition(), sourceInfo.offset(),
                                                         currentRecord.topic(), currentRecord.kafkaPartition(),
@@ -252,7 +256,6 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                 default:
                     return rs.getObject(colIdx);
             }
-        
         } catch (SQLException e) {
             // not a known type
             return rs.getObject(colIdx);
@@ -260,7 +263,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
     }
     
     protected void generateReadRecord(TableId tableId, Object[] rowData) {
-        if (rowData == null || rowData.length == 0) {
+        if (rowData.length == 0) {
             return;
         }
         TableSchema tableSchema = schema().schemaFor(tableId);

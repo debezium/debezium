@@ -5,6 +5,7 @@
  */
 package io.debezium.embedded;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
@@ -26,7 +27,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.data.Field;
@@ -46,10 +46,10 @@ import org.apache.kafka.connect.storage.OffsetStorageReaderImpl;
 import org.fest.assertions.Delta;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
 import io.debezium.data.SchemaUtil;
@@ -58,6 +58,7 @@ import io.debezium.embedded.EmbeddedEngine.CompletionCallback;
 import io.debezium.embedded.EmbeddedEngine.ConnectorCallback;
 import io.debezium.embedded.EmbeddedEngine.EmbeddedConfig;
 import io.debezium.function.BooleanConsumer;
+import io.debezium.junit.SkipTestRule;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Testing;
@@ -74,7 +75,10 @@ import io.debezium.util.Testing;
  * @author Randall Hauch
  */
 public abstract class AbstractConnectorTest implements Testing {
-
+    
+    @Rule
+    public TestRule skipTestRule = new SkipTestRule();
+    
     protected static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath("file-connector-offsets.txt").toAbsolutePath();
 
     private ExecutorService executor;

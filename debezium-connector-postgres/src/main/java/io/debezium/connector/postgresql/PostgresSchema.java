@@ -152,20 +152,13 @@ public class PostgresSchema {
     protected String validateSchemaName(String name) {
         return this.schemaNameValidator.apply(name);
     }
-  
-    /**
-     * Get the {@link TableSchema Schema information} for the table with the given identifier, if that table exists and is
-     * included by the {@link #filters() filter}.
-     * <p>
-     * Note that the {@link Schema} will not contain any columns that have been {@link PostgresConnectorConfig#COLUMN_BLACKLIST
-     * filtered out}.
-     * 
-     * @param id the fully-qualified table identifier; may be null
-     * @return the schema information, or null if there is no table with the given identifier, if the identifier is null,
-     *         or if the table has been excluded by the filters
-     */
-    public TableSchema schemaFor(TableId id) {
-        return filters.tableFilter().test(id) ? tableSchemaByTableId.get(id) : null;
+    
+    protected TableSchema schemaFor(TableId id) {
+        return tableSchemaByTableId.get(id);
+    }
+    
+    protected boolean isFilteredOut(TableId id) {
+        return !filters.tableFilter().test(id);        
     }
 
     protected TableSchema schemaFor(String fqn) {

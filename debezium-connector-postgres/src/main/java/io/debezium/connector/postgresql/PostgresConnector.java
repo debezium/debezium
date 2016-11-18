@@ -22,7 +22,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
-import io.debezium.connector.postgresql.connection.ServerInfo;
 
 /**
  * A Kafka Connect source connector that creates tasks which use Postgresql streaming replication off a logical replication slot
@@ -95,8 +94,9 @@ public class PostgresConnector extends SourceConnector {
             // Try to connect to the database ...
             try (PostgresConnection connection = new PostgresConnection(config.jdbcConfig())) {
                 try {
-                    ServerInfo serverInfo = connection.serverInfo();
-                    logger.info(serverInfo.toString());
+                    connection.execute("SELECT version()");
+                    logger.info("Successfully tested connection for {} with user '{}'", connection.connectionString(),
+                                connection.username());
                 } catch (SQLException e) {
                     logger.info("Failed testing connection for {} with user '{}'", connection.connectionString(),
                                 connection.username());

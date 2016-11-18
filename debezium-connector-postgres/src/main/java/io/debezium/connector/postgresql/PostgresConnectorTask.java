@@ -6,6 +6,7 @@
 
 package io.debezium.connector.postgresql;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Metronome;
@@ -61,10 +63,11 @@ public class PostgresConnectorTask extends SourceTask {
             throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }
         
+        
         // create the task context and schema...
         PostgresSchema schema = new PostgresSchema(config);
         this.taskContext = new PostgresTaskContext(config, schema);
-    
+        
         // create the queue in which records will be produced
         this.queue = new LinkedBlockingDeque<>(config.maxQueueSize());
         this.maxBatchSize = config.maxBatchSize();
@@ -73,6 +76,11 @@ public class PostgresConnectorTask extends SourceTask {
         Map<String, Object> existingOffset = context.offsetStorageReader().offset(sourceInfo.partition());
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
+            //Print out the server information
+            try (PostgresConnection connection = taskContext.createConnection()) {
+                logger.info(connection.serverInfo().toString());
+            }
+            
             if (existingOffset == null) {
                 logger.info("No previous offset found");
                 if (config.snapshotNeverAllowed()) {
@@ -108,6 +116,8 @@ public class PostgresConnectorTask extends SourceTask {
             metronome = Metronome.sleeper(config.pollIntervalMs(), TimeUnit.MILLISECONDS, Clock.SYSTEM);
             producer.start(this::enqueueRecord);
             running.compareAndSet(false, true);
+        }  catch (SQLException e) {
+            throw new ConnectException(e);
         } finally {
             previousContext.restore();
         }

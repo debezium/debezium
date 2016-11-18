@@ -26,7 +26,6 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.TableId;
-import io.debezium.relational.history.KafkaDatabaseHistory;
 
 /**
  * The configuration properties for the {@link PostgresConnector}
@@ -560,14 +559,6 @@ public class PostgresConnectorConfig {
                                                      TIME_PRECISION_MODE,
                                                      SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD,
                                                      SSL_ROOT_CERT, SSL_CLIENT_KEY, SNAPSHOT_LOCK_TIMEOUT_MS, ROWS_FETCH_SIZE);
-
-    /**
-     * The set of {@link Field}s that are included in the {@link #configDef() configuration definition}. This includes
-     * all fields defined in this class (though some are always invisible since they are not to be exposed to the user interface)
-     * plus several that are specific to the {@link KafkaDatabaseHistory} class, since history is always stored in Kafka
-     * when run via the user interface.
-     */
-    protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS.with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS);
     
     private final Configuration config;
     private final String serverName;
@@ -642,7 +633,7 @@ public class PostgresConnectorConfig {
     }
     
     protected Map<String, ConfigValue> validate() {
-        return config.validate(EXPOSED_FIELDS);
+        return config.validate(ALL_FIELDS);
     }  
     
     protected boolean validateAndRecord(Consumer<String> errorConsumer) {

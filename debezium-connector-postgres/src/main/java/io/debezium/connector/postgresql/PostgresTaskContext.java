@@ -23,15 +23,14 @@ import io.debezium.util.LoggingContext;
 @ThreadSafe
 public class PostgresTaskContext {
     
-    private static final String CONNECTOR_TYPE = "Postgres";
-    
     private final PostgresConnectorConfig config;
-    private final Clock clock = Clock.system();
+    private final Clock clock;
     private final TopicSelector topicSelector;
     private final PostgresSchema schema;
     
     protected PostgresTaskContext(PostgresConnectorConfig config, PostgresSchema schema) {
         this.config = config;
+        this.clock = Clock.system(); 
         this.topicSelector = initTopicSelector();
         assert schema != null;
         this.schema = schema;
@@ -90,6 +89,6 @@ public class PostgresTaskContext {
      * @throws IllegalArgumentException if {@code contextName} is null
      */
     protected LoggingContext.PreviousContext configureLoggingContext(String contextName) {
-        return LoggingContext.forConnector(CONNECTOR_TYPE, config.serverName(), contextName);
+        return LoggingContext.forConnector("Postgres", config.serverName(), contextName);
     }
 }

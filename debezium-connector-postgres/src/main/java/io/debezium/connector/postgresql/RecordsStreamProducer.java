@@ -33,7 +33,6 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
-import io.debezium.relational.Tables;
 import io.debezium.util.LoggingContext;
 
 /**
@@ -62,13 +61,10 @@ public class RecordsStreamProducer extends RecordsProducer {
         super(taskContext, sourceInfo);
         this.executorService = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, CONTEXT_NAME + "-thread"));
         this.replicationStream = new AtomicReference<>();
-        LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
             this.replicationConnection = taskContext.createReplicationConnection();
         } catch (SQLException e) {
             throw new ConnectException(e);
-        } finally {
-            previousContext.restore();
         }
     }
     
@@ -126,7 +122,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         try {
             ReplicationStream replicationStream = this.replicationStream.get();
             if (replicationStream != null) {
-                // tell the server the point up until we've processed data, so it can be free to recycle WAL segments
+                // tell the server the point up to which we've processed data, so it can be free to recycle WAL segments
                 logger.debug("flushing offsets to server...");
                 replicationStream.flushLSN();
             } else {
@@ -207,7 +203,7 @@ public class RecordsStreamProducer extends RecordsProducer {
                 break;
             }
             default: {
-                throw new IllegalArgumentException("unknown message operation: " + operation);
+               logger.warn("unknown message operation: " + operation);
             }
         }
     }
@@ -387,26 +383,25 @@ public class RecordsStreamProducer extends RecordsProducer {
     }
     
     private TableSchema tableSchemaFor(TableId tableId) throws SQLException {
-        TableSchema tableSchema = schema().schemaFor(tableId);
+        PostgresSchema schema = schema();
+        if (schema.isFilteredOut(tableId)) {
+            logger.debug("table '{}' is filtered out, ignoring", tableId);
+            return null;
+        }
+        TableSchema tableSchema = schema.schemaFor(tableId);
         if (tableSchema != null) {
             return tableSchema;
         }
-        Tables.TableNameFilter tableNameFilter = schema().filters().tableNameFilter();
-        if (tableNameFilter.matches(tableId.catalog(), tableId.schema(), tableId.table())) {
-            // we don't have a schema registered for this table, even though the filters would allow it...
-            // which means that is a newly created table; so refresh our schema to get the definition for this table
-            schema().refresh(taskContext.createConnection(), tableId);
-            tableSchema = schema().schemaFor(tableId);
-            if (tableSchema == null) {
-                logger.warn("cannot load schema for table '{}'", tableId);
-                return null;
-            } else {
-                logger.debug("refreshed DB schema to include table '{}'", tableId);
-                return tableSchema;
-            }
-        } else {
-            logger.debug("ignoring message for table '{}' because it has been filtered out", tableId);
+        // we don't have a schema registered for this table, even though the filters would allow it...
+        // which means that is a newly created table; so refresh our schema to get the definition for this table
+        schema.refresh(taskContext.createConnection(), tableId);
+        tableSchema = schema.schemaFor(tableId);
+        if (tableSchema == null) {
+            logger.warn("cannot load schema for table '{}'", tableId);
             return null;
+        } else {
+            logger.debug("refreshed DB schema to include table '{}'", tableId);
+            return tableSchema;
         }
     }
     

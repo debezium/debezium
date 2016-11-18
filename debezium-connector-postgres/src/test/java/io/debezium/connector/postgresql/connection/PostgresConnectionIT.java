@@ -91,8 +91,9 @@ public class PostgresConnectionIT {
         }
         // create a new replication slot via a replication connection
         try (ReplicationConnection connection = TestHelper.createForReplication("test", false)) {
-            //nothing
-        };
+            assertTrue(connection.isConnected());
+        }
+        // drop the slot from the previous connection
         try (PostgresConnection connection = TestHelper.create()) {
             // try to drop the previous slot
             assertTrue(connection.dropReplicationSlot("test"));

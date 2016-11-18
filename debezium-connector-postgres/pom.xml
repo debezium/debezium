@@ -12,7 +12,6 @@
     <name>Debezium Connector for PostgreSQL</name>
     <packaging>jar</packaging>
     <properties>
-        <version.com.google.protobuf>2.6.1</version.com.google.protobuf>
         <!-- 
           Specify the properties that will be used for setting up the integration tests' Docker container.
           Note that the `dockerhost.ip` property is computed from the IP address of DOCKER_HOST, which will
@@ -23,7 +22,7 @@
         <database.user>postgres</database.user>
         <database.password>postgres</database.password>
         <database.name>postgres</database.name>
-        <docker.image>debezium/postgres:${version.postgres.server}</docker.image>
+        <docker.filter>debezium/postgres:${version.postgres.server}</docker.filter>
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
     </properties>
@@ -37,13 +36,11 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <version>9.4.1209.jre7</version>
         </dependency>
         -->
         <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
-            <version>${version.com.google.protobuf}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.kafka</groupId>
@@ -99,7 +96,6 @@
             <plugin>
                 <groupId>com.github.os72</groupId>
                 <artifactId>protoc-jar-maven-plugin</artifactId>
-                <version>3.0.0.1</version>
                 <executions>
                     <execution>
                         <phase>generate-sources</phase>
@@ -126,7 +122,7 @@
                     <images>
                         <image>
                             <!-- A Docker image using the Postgres Server with the DBZ decoderbufs plugin -->
-                            <name>debezium/postgres:${version.postgres.server}</name>  
+                            <name>${docker.filter}</name>  
                             <alias>database</alias>
                             <run>
                                 <namingStrategy>alias</namingStrategy>
