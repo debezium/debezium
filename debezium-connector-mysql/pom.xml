@@ -92,7 +92,7 @@
         By default, we should use the docker image maintained by the MySQL team. This property is changed with different profiles.
         However, we run one container with GTIDs and one without.
         -->
-        <docker.image>debezium/mysql-server-test-database</docker.image>
+        <docker.filter>debezium/mysql-server-test-database</docker.filter>
         <docker.skip>false</docker.skip>
     </properties>
     <build>
@@ -506,7 +506,7 @@
             </activation>
             <properties>
               <!-- Run multiple images at the same time, but use different ports for all MySQL servers -->
-              <docker.image>debezium/mysql-server-test-database,debezium/mysql-server-gtids-test-database,debezium/mysql-server-gtids-test-database-replica,debezium/mysql-test-alt-database,debezium/mysql-test-alt-database-gtids,debezium/mysql-test-alt-database-gtids-replica</docker.image>
+              <docker.filter>debezium/mysql-server-test-database,debezium/mysql-server-gtids-test-database,debezium/mysql-server-gtids-test-database-replica,debezium/mysql-test-alt-database,debezium/mysql-test-alt-database-gtids,debezium/mysql-test-alt-database-gtids-replica</docker.filter>
               <database.port>3306</database.port>
               <database.gtid.port>4306</database.gtid.port>
               <database.gtid.replica.port>5306</database.gtid.replica.port>
@@ -661,7 +661,7 @@
           </property>
         </activation>
         <properties>
-          <docker.image>debezium/mysql-server-gtids-test-database</docker.image>
+          <docker.filter>debezium/mysql-server-gtids-test-database</docker.filter>
         </properties>
       </profile>
       <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -677,7 +677,7 @@
           </property>
         </activation>
         <properties>
-          <docker.image>debezium/mysql-test-alt-database</docker.image>
+          <docker.filter>debezium/mysql-test-alt-database</docker.filter>
         </properties>
       </profile>
       <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -693,7 +693,7 @@
           </property>
         </activation>
         <properties>
-          <docker.image>debezium/mysql-test-alt-database-gtids</docker.image>
+          <docker.filter>debezium/mysql-test-alt-database-gtids</docker.filter>
         </properties>
       </profile>
       <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -712,7 +712,7 @@
         </activation>
         <properties>
           <database.replica.port>4306</database.replica.port>
-          <docker.image>debezium/mysql-server-gtids-test-database,debezium/mysql-server-gtids-test-database-replica</docker.image>
+          <docker.filter>debezium/mysql-server-gtids-test-database,debezium/mysql-server-gtids-test-database-replica</docker.filter>
         </properties>
       </profile>
       <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -731,7 +731,7 @@
         </activation>
         <properties>
           <database.replica.port>4306</database.replica.port>
-          <docker.image>debezium/mysql-test-alt-database-gtids,debezium/mysql-test-alt-database-gtids-replica</docker.image>
+          <docker.filter>debezium/mysql-test-alt-database-gtids,debezium/mysql-test-alt-database-gtids-replica</docker.filter>
         </properties>
       </profile>
     </profiles>
