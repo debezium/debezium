@@ -159,17 +159,28 @@ public class BinlogReader extends AbstractReader {
 
         // Get the current GtidSet from MySQL so we can get a filtered/merged GtidSet based off of the last Debezium checkpoint.
         String availableServerGtidStr = context.knownGtidSet();
-        GtidSet availableServerGtidSet = new GtidSet(availableServerGtidStr);
-        GtidSet filteredGtidSet = context.filterGtidSet(availableServerGtidSet);
-        if (filteredGtidSet != null) {
-            // Register the event handler ...
+        if (availableServerGtidStr != null && !availableServerGtidStr.trim().isEmpty()) {
+            // The server is using GTIDs, so enable the handler ...
             eventHandlers.put(EventType.GTID, this::handleGtidEvent);
-            logger.info("Registering binlog reader with GTID set: {}", filteredGtidSet);
-            String filteredGtidSetStr = filteredGtidSet.toString();
-            client.setGtidSet(filteredGtidSetStr);
-            source.setCompletedGtidSet(filteredGtidSetStr);
-            gtidSet = new com.github.shyiko.mysql.binlog.GtidSet(filteredGtidSetStr);
+            
+            // Now look at the GTID set from the server and what we've previously seen ...
+            GtidSet availableServerGtidSet = new GtidSet(availableServerGtidStr);
+            GtidSet filteredGtidSet = context.filterGtidSet(availableServerGtidSet);
+            if (filteredGtidSet != null) {
+                // We've seen at least some GTIDs, so start reading from the filtered GTID set ...
+                logger.info("Registering binlog reader with GTID set: {}", filteredGtidSet);
+                String filteredGtidSetStr = filteredGtidSet.toString();
+                client.setGtidSet(filteredGtidSetStr);
+                source.setCompletedGtidSet(filteredGtidSetStr);
+                gtidSet = new com.github.shyiko.mysql.binlog.GtidSet(filteredGtidSetStr);
+            } else {
+                // We've not yet seen any GTIDs, so that means we have to start reading the binlog from the beginning ...
+                client.setBinlogFilename(source.binlogFilename());
+                client.setBinlogPosition(source.binlogPosition());
+                gtidSet = new com.github.shyiko.mysql.binlog.GtidSet("");
+            }
         } else {
+            // The server is not using GTIDs, so start reading the binlog based upon where we last left off ...
             client.setBinlogFilename(source.binlogFilename());
             client.setBinlogPosition(source.binlogPosition());
         }

@@ -1,0 +1,74 @@
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-integration-tests</artifactId>
+        <version>0.4.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>debezium-mysql-integration-tests</artifactId>
+    <packaging>pom</packaging>
+    <name>MySQL Integration Tests</name>
+    <description>Debezium suite of MySQL integration tests</description>
+
+    <modules>
+        <module>debezium-connector-mysql-5.7-integration-tests</module>
+        <module>debezium-connector-mysql-5.7-gtid-integration-tests</module>
+        <module>debezium-connector-mysql-5.6-integration-tests</module>
+        <module>debezium-connector-mysql-5.6-gtid-integration-tests</module>
+        <!--module>debezium-connector-mysql-5.5-integration-tests</module>
+        <module>debezium-connector-mysql-5.5-gtid-integration-tests</module>
+        <module>debezium-connector-mysql-alt-5.7-integration-tests</module-->
+    </modules>
+
+    <dependencies>
+        <!-- Define the dependencies that all MySQL integration tests will need -->
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-connector-mysql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-connector-mysql</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Do not deploy this module during a release -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+            <!-- Do not build any JARs for this module -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>default-jar</id>
+                        <phase>none</phase>
+                    </execution>
+                    <execution>
+                        <id>test-jar</id>
+                        <phase>none</phase>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
