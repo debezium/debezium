@@ -99,6 +99,7 @@
         <module>debezium-embedded</module>
         <module>debezium-connector-mysql</module>
         <module>debezium-connector-mongodb</module>
+        <module>integration-tests</module>
     </modules>
 
     <distributionManagement>
@@ -301,7 +302,7 @@
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
-                <artifactId>debezium-connector-jdbc</artifactId>
+                <artifactId>debezium-connector-mysql</artifactId>
                 <version>${project.version}</version>
                 <scope>test</scope>
                 <type>test-jar</type>
@@ -549,6 +550,9 @@
             <properties>
                 <skipLongRunningTests>false</skipLongRunningTests>
             </properties>
+            <modules>
+                <module>integration-tests</module>
+            </modules>
         </profile>
         <profile>
             <id>release</id>
