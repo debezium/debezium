@@ -63,6 +63,19 @@ public interface TopicSelector {
         };
     }
 
+    static TopicSelector mergeableSelector(String prefix, String delimiter) {
+        return new TopicSelector() {
+            @Override
+            public String getTopic(String databaseName, String tableName) {
+                return null;
+            }
+
+            @Override
+            public String getPrimaryTopic() {
+                return prefix;
+            }
+        };
+    }
     /**
      * Get the name of the topic for the given server name.
      * 

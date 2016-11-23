@@ -5,19 +5,27 @@
  */
 package io.debezium.connector.mysql;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.connector.mysql.MySqlConnectorConfig.TopicGenerationMode;
 import io.debezium.function.Predicates;
 import io.debezium.util.Clock;
+import io.debezium.util.Collect;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.LoggingContext.PreviousContext;
 import io.debezium.util.Strings;
+
+import static io.debezium.connector.mysql.MySqlConnectorConfig.TABLE_SCHEMA;
 
 /**
  * A Kafka Connect source task reads the MySQL binary log and generate the corresponding data change events.
@@ -38,8 +46,21 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         super(config);
 
         // Set up the topic selector ...
-        this.topicSelector = TopicSelector.defaultSelector(serverName());
+        if (isMergeTopicGenerationMode()) {
+            this.topicSelector = new TopicSelector() {
+                @Override
+                public String getTopic(String databaseName, String tableName) {
+                    return String.join(".", serverName(), databaseName, getSchemaName(tableName));
+                }
 
+                @Override
+                public String getPrimaryTopic() {
+                    return serverName();
+                }
+            };
+        } else {
+            this.topicSelector = TopicSelector.defaultSelector(serverName());
+        }
         // Set up the source information ...
         this.source = new SourceInfo();
         this.source.setServerName(serverName());
@@ -190,6 +211,35 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
 
     public boolean useMinimalSnapshotLocking() {
         return config.getBoolean(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING);
+    }
+
+    protected TopicGenerationMode topicGenerationMode() {
+        String value = config.getString(MySqlConnectorConfig.TOPIC_GENERATION_MODE);
+        return TopicGenerationMode.parse(value, MySqlConnectorConfig.TOPIC_GENERATION_MODE.defaultValueAsString());
+    }
+
+    protected boolean isMergeTopicGenerationMode() {
+        return topicGenerationMode() == TopicGenerationMode.MERGE;
+    }
+
+    protected Map<String, String> getTableSchemaMap() {
+        Map<String, String> map = new HashMap<>();
+        for (String value : config.getStrings(TABLE_SCHEMA, ",")) {
+            Pattern pattern = Pattern.compile("(.+):\\[(([^,]+,)+[^.]+)]");
+            Matcher matcher = pattern.matcher(value);
+            if (matcher.find()) {
+                String schemaName = matcher.group(1);
+                List<String> tableNames = Collect.arrayListOf(matcher.group(2).split(","));
+                for (String tableName : tableNames) {
+                    map.put(tableName, schemaName);
+                }
+            }
+        }
+        return map;
+    }
+
+    protected String getSchemaName(String tableName) {
+        return getTableSchemaMap().getOrDefault(tableName, tableName);
     }
 
     @Override
