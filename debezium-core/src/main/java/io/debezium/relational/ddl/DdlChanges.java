@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.relational.ddl;
@@ -128,6 +128,8 @@ public class DdlChanges implements DdlParserListener {
             case DROP_DATABASE:
                 DatabaseEvent dbEvent = (DatabaseEvent) event;
                 return dbEvent.databaseName();
+            case SET_VARIABLE:
+                return "";
         }
         assert false : "Should never happen";
         return null;

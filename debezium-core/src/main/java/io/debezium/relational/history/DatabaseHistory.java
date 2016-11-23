@@ -1,13 +1,18 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.relational.history;
 
 import java.util.Map;
 
+import org.apache.kafka.common.config.ConfigDef.Importance;
+import org.apache.kafka.common.config.ConfigDef.Type;
+import org.apache.kafka.common.config.ConfigDef.Width;
+
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
 
@@ -21,6 +26,14 @@ import io.debezium.relational.ddl.DdlParser;
 public interface DatabaseHistory {
 
     public static final String CONFIGURATION_FIELD_PREFIX_STRING = "database.history.";
+
+    public static final Field NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "name")
+                                          .withDisplayName("Logical name for the database history")
+                                          .withType(Type.STRING)
+                                          .withWidth(Width.MEDIUM)
+                                          .withImportance(Importance.LOW)
+                                          .withDescription("The name used for the database history, perhaps differently by each implementation.")
+                                          .withValidation(Field::isOptional);
 
     /**
      * Configure this instance.

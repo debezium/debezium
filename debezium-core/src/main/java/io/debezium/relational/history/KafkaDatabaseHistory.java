@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.relational.history;
@@ -85,7 +85,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                                                             .withDefault(4)
                                                             .withValidation(Field::isInteger);
 
-    public static Field.Set ALL_FIELDS = Field.setOf(TOPIC, BOOTSTRAP_SERVERS,
+    public static Field.Set ALL_FIELDS = Field.setOf(TOPIC, BOOTSTRAP_SERVERS, DatabaseHistory.NAME,
                                                      RECOVERY_POLL_INTERVAL_MS, RECOVERY_POLL_ATTEMPTS);
 
     private static final String CONSUMER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "consumer.";
@@ -96,7 +96,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     private String topicName;
     private Configuration consumerConfig;
     private Configuration producerConfig;
-    private KafkaProducer<String, String> producer;
+    private volatile KafkaProducer<String, String> producer;
     private int recoveryAttempts = -1;
     private int pollIntervalMs = -1;
 
@@ -112,11 +112,11 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
 
         String bootstrapServers = config.getString(BOOTSTRAP_SERVERS);
         // Copy the relevant portions of the configuration and add useful defaults ...
-        String clientAndGroupId = UUID.randomUUID().toString();
+        String dbHistoryName = config.getString(DatabaseHistory.NAME, UUID.randomUUID().toString());
         this.consumerConfig = config.subset(CONSUMER_PREFIX, true).edit()
                                     .withDefault(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
-                                    .withDefault(ConsumerConfig.CLIENT_ID_CONFIG, clientAndGroupId)
-                                    .withDefault(ConsumerConfig.GROUP_ID_CONFIG, clientAndGroupId)
+                                    .withDefault(ConsumerConfig.CLIENT_ID_CONFIG, dbHistoryName)
+                                    .withDefault(ConsumerConfig.GROUP_ID_CONFIG, dbHistoryName)
                                     .withDefault(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 1) // get even smallest message
                                     .withDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false)
                                     .withDefault(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 30000)
@@ -127,7 +127,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                                     .build();
         this.producerConfig = config.subset(PRODUCER_PREFIX, true).edit()
                                     .withDefault(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
-                                    .withDefault(ProducerConfig.CLIENT_ID_CONFIG, UUID.randomUUID().toString())
+                                    .withDefault(ProducerConfig.CLIENT_ID_CONFIG, dbHistoryName)
                                     .withDefault(ProducerConfig.ACKS_CONFIG, 1)
                                     .withDefault(ProducerConfig.RETRIES_CONFIG, 1) // may result in duplicate messages, but that's
                                                                                    // okay
@@ -137,18 +137,23 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                                     .withDefault(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
                                     .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
                                     .build();
-        logger.info("KafkaDatabaseHistory Consumer config: " + consumerConfig);
-        logger.info("KafkaDatabaseHistory Producer config: " + producerConfig);
+        logger.info("KafkaDatabaseHistory Consumer config: " + consumerConfig.withMaskedPasswords());
+        logger.info("KafkaDatabaseHistory Producer config: " + producerConfig.withMaskedPasswords());
     }
 
     @Override
     public void start() {
         super.start();
-        this.producer = new KafkaProducer<>(this.producerConfig.asProperties());
+        if (this.producer == null) {
+            this.producer = new KafkaProducer<>(this.producerConfig.asProperties());
+        }
     }
 
     @Override
     protected void storeRecord(HistoryRecord record) {
+        if (this.producer == null) {
+            throw new IllegalStateException("No producer is available. Ensure that 'start()' is called before storing database history records.");
+        }
         logger.trace("Storing record into database history: {}", record);
         try {
             ProducerRecord<String, String> produced = new ProducerRecord<>(topicName, partition, null, record.toString());

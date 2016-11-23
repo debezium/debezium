@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.relational.history;
@@ -46,6 +46,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
 
     @Override
     public final void recover(Map<String, ?> source, Map<String, ?> position, Tables schema, DdlParser ddlParser) {
+        logger.debug("Recovering DDL history for source partition {} and offset {}",source,position);
         HistoryRecord stopPoint = new HistoryRecord(source, position, null, null);
         recoverRecords(schema,ddlParser,recovered->{
             if (comparator.isAtOrBefore(recovered,stopPoint)) {
@@ -53,7 +54,10 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
                 if (ddl != null) {
                     ddlParser.setCurrentSchema(recovered.databaseName()); // may be null
                     ddlParser.parse(ddl, schema);
+                    logger.debug("Applying: {}", ddl);
                 }
+            } else {
+                logger.debug("Skipping: {}", recovered.ddl());
             }
         });
     }

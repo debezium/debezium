@@ -10,7 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.debezium</groupId>
     <artifactId>debezium-parent</artifactId>
-    <version>0.3.0-SNAPSHOT</version>
+    <version>0.4.0-SNAPSHOT</version>
     <name>Debezium Parent POM</name>
     <description>Debezium is an open source change data capture platform</description>
     <packaging>pom</packaging>
@@ -48,11 +48,11 @@
         <maven.compiler.target>1.8</maven.compiler.target>
 
         <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
-        <version.kafka>0.10.0.0</version.kafka>
+        <version.kafka>0.10.0.1</version.kafka>
         <version.kafka.scala>2.11</version.kafka.scala>
         <version.scala>2.11.8</version.scala>
         <version.curator>2.11.0</version.curator>
-        <version.zookeeper>3.4.6</version.zookeeper>
+        <version.zookeeper>3.4.8</version.zookeeper>
         <version.jackson>2.6.3</version.jackson>
         <version.org.slf4j>1.7.21</version.org.slf4j>
         <version.log4j>1.2.17</version.log4j>
@@ -63,8 +63,8 @@
         <version.postgresql.driver>9.4-1205-jdbc42</version.postgresql.driver>
         <version.postgresql.server>9.4</version.postgresql.server>
         <version.mysql.server>5.7</version.mysql.server>
-        <version.mysql.driver>5.1.39</version.mysql.driver>
-        <version.mysql.binlog>0.3.2</version.mysql.binlog>
+        <version.mysql.driver>5.1.40</version.mysql.driver>
+        <version.mysql.binlog>0.5.1</version.mysql.binlog>
         <version.mongo.server>3.2.6</version.mongo.server>
         <version.mongo.driver>3.2.2</version.mongo.driver>
 
@@ -79,7 +79,7 @@
         <version.war.plugin>2.5</version.war.plugin>
         <version.codehaus.helper.plugin>1.8</version.codehaus.helper.plugin>
         <version.google.formatter.plugin>0.3.1</version.google.formatter.plugin>
-        <version.docker.maven.plugin>0.15.12</version.docker.maven.plugin>
+        <version.docker.maven.plugin>0.18.1</version.docker.maven.plugin>
         <version.staging.plugin>1.6.3</version.staging.plugin>
 
         <!-- Dockerfiles -->

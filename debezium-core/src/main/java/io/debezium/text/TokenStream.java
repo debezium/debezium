@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.text;
@@ -213,7 +213,8 @@ import io.debezium.util.Strings;
  * <pre>
  * public class BasicTokenizer implements Tokenizer {
  *     public void tokenize(CharacterStream input,
- *                          Tokens tokens) throws ParsingException {
+ *                          Tokens tokens)
+ *             throws ParsingException {
  *         while (input.hasNext()) {
  *             char c = input.next();
  *             switch (c) {
@@ -481,7 +482,7 @@ public class TokenStream {
      * @throws NoSuchElementException if there are no more tokens
      */
     public Marker mark() {
-        if ( completed ) {
+        if (completed) {
             return new Marker(null, tokenIterator.previousIndex());
         }
         Token currentToken = currentToken();
@@ -741,7 +742,8 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public TokenStream consume(String expected,
-                               String... expectedForNextTokens) throws ParsingException, IllegalStateException {
+                               String... expectedForNextTokens)
+            throws ParsingException, IllegalStateException {
         consume(expected);
         for (String nextExpected : expectedForNextTokens) {
             consume(nextExpected);
@@ -850,7 +852,7 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public TokenStream consumeThrough(char expected) throws ParsingException, IllegalStateException {
-        return consumeThrough(String.valueOf(expected),null);
+        return consumeThrough(String.valueOf(expected), null);
     }
 
     /**
@@ -862,13 +864,13 @@ public class TokenStream {
      * 
      * @param expected the token that is to be found
      * @param skipMatchingTokens the token that, if found, should result in skipping {@code expected} once for each occurrence
-     * of {@code skipMatchingTokens}; may be null
+     *            of {@code skipMatchingTokens}; may be null
      * @return this token stream instance so callers can chain together methods; never null
      * @throws ParsingException if the specified token cannot be found
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public TokenStream consumeThrough(char expected, char skipMatchingTokens) throws ParsingException, IllegalStateException {
-        return consumeThrough(String.valueOf(expected),String.valueOf(skipMatchingTokens));
+        return consumeThrough(String.valueOf(expected), String.valueOf(skipMatchingTokens));
     }
 
     /**
@@ -884,8 +886,9 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public TokenStream consumeThrough(String expected) throws ParsingException, IllegalStateException {
-        return consumeThrough(expected,null);
+        return consumeThrough(expected, null);
     }
+
     /**
      * Attempt to consume all tokens until the specified token is consumed, and then stop. If it is not found, then the token
      * stream is left untouched and a ParsingException is thrown.
@@ -895,7 +898,7 @@ public class TokenStream {
      * 
      * @param expected the token that is to be found
      * @param skipMatchingTokens the token that, if found, should result in skipping {@code expected} once for each occurrence
-     * of {@code skipMatchingTokens}; may be null
+     *            of {@code skipMatchingTokens}; may be null
      * @return this token stream instance so callers can chain together methods; never null
      * @throws ParsingException if the specified token cannot be found
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
@@ -905,7 +908,7 @@ public class TokenStream {
             consume();
             return this;
         }
-        consumeUntil(expected,skipMatchingTokens);
+        consumeUntil(expected, skipMatchingTokens);
         consume(expected);
         return this;
     }
@@ -935,7 +938,7 @@ public class TokenStream {
      * 
      * @param expected the token that is to be found
      * @param skipMatchingTokens the token that, if found, should result in skipping {@code expected} once for each occurrence
-     * of {@code skipMatchingTokens}
+     *            of {@code skipMatchingTokens}
      * @return this token stream instance so callers can chain together methods; never null
      * @throws ParsingException if the specified token cannot be found
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
@@ -957,7 +960,7 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public TokenStream consumeUntil(String expected) throws ParsingException, IllegalStateException {
-        return consumeUntil(expected,null);
+        return consumeUntil(expected, null);
     }
 
     /**
@@ -969,7 +972,7 @@ public class TokenStream {
      * 
      * @param expected the token that is to be found
      * @param skipMatchingTokens the token that, if found, should result in skipping {@code expected} once for each occurrence
-     * of {@code skipMatchingTokens}; may be null
+     *            of {@code skipMatchingTokens}; may be null
      * @return this token stream instance so callers can chain together methods; never null
      * @throws ParsingException if the specified token cannot be found
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
@@ -982,9 +985,9 @@ public class TokenStream {
         Marker start = mark();
         int remaining = 0;
         while (hasNext()) {
-            if ( skipMatchingTokens != null && matches(skipMatchingTokens)) ++remaining;
-            if ( matches(expected) ) {
-                if ( remaining == 0 ) {
+            if (skipMatchingTokens != null && matches(skipMatchingTokens)) ++remaining;
+            if (matches(expected)) {
+                if (remaining == 0) {
                     break;
                 }
                 --remaining;
@@ -995,6 +998,25 @@ public class TokenStream {
             rewind(start);
             throw new ParsingException(tokens.get(tokens.size() - 1).position(),
                     "No more content but was expecting to find " + expected);
+        }
+        return this;
+    }
+
+    /**
+     * Consume the token stream until one of the stop tokens or the end of the stream is found.
+     * 
+     * @param stopTokens the stop tokens; may not be null
+     * @return this token stream instance so callers can chain together methods; never null
+     * @throws ParsingException if none of the specified tokens can be found
+     * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
+     */
+    public TokenStream consumeUntilEndOrOneOf(String... stopTokens)
+            throws ParsingException, IllegalStateException {
+        while (hasNext()) {
+            if (matchesAnyOf(stopTokens)) {
+                break;
+            }
+            consume();
         }
         return this;
     }
@@ -1149,7 +1171,8 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsume(String currentExpected,
-                              String... expectedForNextTokens) throws IllegalStateException {
+                              String... expectedForNextTokens)
+            throws IllegalStateException {
         if (completed) return false;
         ListIterator<Token> iter = tokens.listIterator(tokenIterator.previousIndex());
         if (!iter.hasNext()) return false;
@@ -1264,7 +1287,8 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsumeAnyOf(String firstOption,
-                                   String... additionalOptions) throws IllegalStateException {
+                                   String... additionalOptions)
+            throws IllegalStateException {
         if (completed) return false;
         if (canConsume(firstOption)) return true;
         for (String nextOption : additionalOptions) {
@@ -1312,7 +1336,8 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsumeAnyOf(int firstTypeOption,
-                                   int... additionalTypeOptions) throws IllegalStateException {
+                                   int... additionalTypeOptions)
+            throws IllegalStateException {
         if (completed) return false;
         if (canConsume(firstTypeOption)) return true;
         for (int nextTypeOption : additionalTypeOptions) {
@@ -1384,7 +1409,8 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean matches(String currentExpected,
-                           String... expectedForNextTokens) throws IllegalStateException {
+                           String... expectedForNextTokens)
+            throws IllegalStateException {
         if (completed) return false;
         ListIterator<Token> iter = tokens.listIterator(tokenIterator.previousIndex());
         if (!iter.hasNext()) return false;
@@ -1457,7 +1483,8 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean matches(int currentExpectedType,
-                           int... expectedTypeForNextTokens) throws IllegalStateException {
+                           int... expectedTypeForNextTokens)
+            throws IllegalStateException {
         if (completed) return false;
         ListIterator<Token> iter = tokens.listIterator(tokenIterator.previousIndex());
         if (!iter.hasNext()) return false;
@@ -1504,7 +1531,8 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean matchesAnyOf(String firstOption,
-                                String... additionalOptions) throws IllegalStateException {
+                                String... additionalOptions)
+            throws IllegalStateException {
         if (completed) return false;
         Token current = currentToken();
         if (current.matches(firstOption)) return true;
@@ -1555,7 +1583,8 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean matchesAnyOf(int firstTypeOption,
-                                int... additionalTypeOptions) throws IllegalStateException {
+                                int... additionalTypeOptions)
+            throws IllegalStateException {
         if (completed) return false;
         Token current = currentToken();
         if (current.matches(firstTypeOption)) return true;
@@ -1762,7 +1791,8 @@ public class TokenStream {
          * @throws ParsingException if there is an error while processing the character stream (e.g., a quote is not closed, etc.)
          */
         void tokenize(CharacterStream input,
-                      Tokens tokens) throws ParsingException;
+                      Tokens tokens)
+                throws ParsingException;
     }
 
     /**
@@ -2363,7 +2393,8 @@ public class TokenStream {
 
         @Override
         public void tokenize(CharacterStream input,
-                             Tokens tokens) throws ParsingException {
+                             Tokens tokens)
+                throws ParsingException {
             while (input.hasNext()) {
                 char c = input.next();
                 switch (c) {

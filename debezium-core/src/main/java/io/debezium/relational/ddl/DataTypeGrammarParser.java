@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.relational.ddl;
@@ -243,6 +243,7 @@ public class DataTypeGrammarParser {
     protected static class DataTypeBuilder {
         private StringBuilder prefix = new StringBuilder();
         private StringBuilder suffix = new StringBuilder();
+        private String parameters;
         private int jdbcType = Types.NULL;
         private long length = -1;
         private int scale = -1;
@@ -259,6 +260,11 @@ public class DataTypeGrammarParser {
                 if (suffix.length() != 0) suffix.append(' ');
                 suffix.append(str);
             }
+        }
+
+        public DataTypeBuilder parameters(String parameters) {
+            this.parameters = parameters;
+            return this;
         }
 
         public DataTypeBuilder length(long length) {
@@ -295,6 +301,10 @@ public class DataTypeGrammarParser {
                     expression.append(',');
                     expression.append(this.scale);
                 }
+                expression.append(')');
+            } else if (parameters != null ) {
+                expression.append('(');
+                expression.append(parameters);
                 expression.append(')');
             }
             if (arrayDimsLength != 0) {
@@ -470,10 +480,14 @@ public class DataTypeGrammarParser {
                 // empty list ...
                 return true;
             }
+            Marker start = stream.mark();
             stream.consume(); // first item
             while (stream.canConsume(delimiter)) {
                 stream.consume();
             }
+            // Read the parameters ...
+            String parameters = stream.getContentFrom(start);
+            builder.parameters(parameters);
             return true;
         }
 

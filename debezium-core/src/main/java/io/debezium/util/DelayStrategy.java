@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.util;
@@ -43,7 +43,7 @@ public interface DelayStrategy {
     }
 
     /**
-     * Create a delay strategy that applies an linearly-increasing delay as long as the criteria is met. As soon as
+     * Create a delay strategy that applies a constant delay as long as the criteria is met. As soon as
      * the criteria is not met, the delay resets to zero.
      * 
      * @param delayInMilliseconds the initial delay; must be positive

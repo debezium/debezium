@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.relational;
@@ -93,6 +93,14 @@ public interface Table {
      * @return the column definition, or null if there is no column with the given name
      */
     Column columnWithName(String name);
+
+    /**
+     * Get the database-specific name of the default character set used by columns in this table.
+     * 
+     * @return the database-specific character set name used by default in columns of this table, or {@code null} if there is no
+     * such default character set name defined on the table
+     */
+    String defaultCharsetName();
 
     /**
      * Determine if the named column is part of the primary key.

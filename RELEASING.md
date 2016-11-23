@@ -150,6 +150,8 @@ It may take some time for the artifacts to actually be [visible in Maven Central
 
 ## Merge your pull request to update the Docker images
 
+After you've validated the artifacts, update the Docker image(s) to remove the use of the staging repository and instead use Maven Central at https://repo1.maven.org/maven2. Then, update your pull request again with this change.
+
 Only after the artifacts are available on Maven Central can you merge the pull request for the Debezium Docker images. As soon as your changes are merged, Docker Hub will automatically build and deploy the Docker images that were previously configured. If you've just released a patch release and only updated existing Docker images, then you can proceed to [updating the documentation and blog](#update-the-documentation-and-blog).
 
 Otherwise, for major and minor releases your pull request should have added new Docker images, and you need to log into [Debezium's Docker Hub organization](https://hub.docker.com/r/debezium/) and add/update the build settings for each of the affected images.

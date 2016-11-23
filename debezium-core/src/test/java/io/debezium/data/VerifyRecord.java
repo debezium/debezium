@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.data;
@@ -281,7 +281,7 @@ public class VerifyRecord {
      * @param record the record to validate; may not be null
      */
     public static void isValid(SourceRecord record) {
-        print(record);
+        //print(record);
 
         JsonNode keyJson = null;
         JsonNode valueJson = null;

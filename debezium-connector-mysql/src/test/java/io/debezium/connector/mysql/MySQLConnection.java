@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.connector.mysql;
@@ -26,6 +26,7 @@ public class MySQLConnection extends JdbcConnection {
     public static MySQLConnection forTestDatabase(String databaseName) {
         return new MySQLConnection(JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
                                                     .withDatabase(databaseName)
+                                                    .with("useSSL", false)
                                                     .build());
     }
 
@@ -42,6 +43,7 @@ public class MySQLConnection extends JdbcConnection {
                                                     .withDatabase(databaseName)
                                                     .withUser(username)
                                                     .withPassword(password)
+                                                    .with("useSSL", false)
                                                     .build());
     }
 

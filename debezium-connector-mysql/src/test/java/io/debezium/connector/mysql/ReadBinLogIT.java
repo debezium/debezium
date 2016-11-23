@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.connector.mysql;
@@ -44,6 +44,7 @@ import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
 import com.github.shyiko.mysql.binlog.event.XidEventData;
 import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer;
+import com.github.shyiko.mysql.binlog.network.SSLMode;
 import com.github.shyiko.mysql.binlog.network.ServerException;
 
 import static org.fest.assertions.Assertions.assertThat;
@@ -105,6 +106,7 @@ public class ReadBinLogIT implements Testing {
         client = new BinaryLogClient(config.getHostname(), config.getPort(), "replicator", "replpass");
         client.setServerId(client.getServerId() - 1); // avoid clashes between BinaryLogClient instances
         client.setKeepAlive(false);
+        client.setSSLMode(SSLMode.DISABLED);
         client.registerEventListener(counters);
         client.registerEventListener(this::recordEvent);
         client.registerLifecycleListener(new TraceLifecycleListener());

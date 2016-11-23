@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.relational.history;
@@ -75,8 +75,12 @@ public class KafkaDatabaseHistoryTest {
         config = Configuration.create()
                               .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
                               .with(KafkaDatabaseHistory.TOPIC, topicName)
+                              .with(DatabaseHistory.NAME, "my-db-history")
                               .build();
         history.configure(config,null);
+        history.start();
+        
+        // Should be able to call start more than once ...
         history.start();
 
         DdlParser recoveryParser = new DdlParserSql2003();

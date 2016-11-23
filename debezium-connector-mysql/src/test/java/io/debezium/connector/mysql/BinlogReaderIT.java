@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.connector.mysql;
@@ -18,6 +18,7 @@ import org.junit.Test;
 import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.data.KeyValueStore;
 import io.debezium.data.KeyValueStore.Collection;
 import io.debezium.data.SchemaChangeHistory;
@@ -99,14 +100,14 @@ public class BinlogReaderIT {
                             .with(MySqlConnectorConfig.PORT, port)
                             .with(MySqlConnectorConfig.USER, "replicator")
                             .with(MySqlConnectorConfig.PASSWORD, "replpass")
+                            .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED.name().toLowerCase())
                             .with(MySqlConnectorConfig.SERVER_ID, 18911)
                             .with(MySqlConnectorConfig.SERVER_NAME, LOGICAL_NAME)
                             .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                             .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                             .with(MySqlConnectorConfig.DATABASE_WHITELIST, DB_NAME)
                             .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                            .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                            .with("database.useSSL", false); // eliminates MySQL driver warning about SSL connections
+                            .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH);
     }
 
     @Test
@@ -115,6 +116,7 @@ public class BinlogReaderIT {
         context = new MySqlTaskContext(config);
         context.start();
         context.source().setBinlogStartPoint("",0L); // start from beginning
+        context.initializeHistory();
         reader = new BinlogReader(context);
 
         // Start reading the binlog ...
@@ -174,6 +176,7 @@ public class BinlogReaderIT {
         context = new MySqlTaskContext(config);
         context.start();
         context.source().setBinlogStartPoint("",0L); // start from beginning
+        context.initializeHistory();
         reader = new BinlogReader(context);
 
         // Start reading the binlog ...

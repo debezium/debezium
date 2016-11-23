@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.jdbc;
@@ -134,15 +134,22 @@ public class JdbcConnection implements AutoCloseable {
 
     private static String findAndReplace(String url, Properties props, Field... variables) {
         for (Field field : variables) {
-            String variable = field.name();
-            if (variable != null && url.contains("${" + variable + "}")) {
-                // Otherwise, we have to remove it from the properties ...
-                String value = props.getProperty(variable);
-                if (value != null) {
-                    props.remove(variable);
-                    // And replace the variable ...
-                    url = url.replaceAll("\\$\\{" + variable + "\\}", value);
-                }
+            if ( field != null ) url = findAndReplace(url, field.name(), props);
+        }
+        for (Object key : new HashSet<>(props.keySet())) {
+            if (key != null ) url = findAndReplace(url, key.toString(), props);
+        }
+        return url;
+    }
+    
+    private static String findAndReplace(String url, String name, Properties props) {
+        if (name != null && url.contains("${" + name + "}")) {
+            // Otherwise, we have to remove it from the properties ...
+            String value = props.getProperty(name);
+            if (value != null) {
+                props.remove(name);
+                // And replace the variable ...
+                url = url.replaceAll("\\$\\{" + name + "\\}", value);
             }
         }
         return url;
@@ -610,7 +617,7 @@ public class JdbcConnection implements AutoCloseable {
                     if (columnFilter == null || columnFilter.matches(catalogName, schemaName, tableName, columnName)) {
                         ColumnEditor column = Column.editor().name(columnName);
                         column.jdbcType(rs.getInt(5));
-                        column.typeName(rs.getString(6));
+                        column.type(rs.getString(6));
                         column.length(rs.getInt(7));
                         column.scale(rs.getInt(9));
                         column.optional(isNullable(rs.getInt(11)));
@@ -639,7 +646,8 @@ public class JdbcConnection implements AutoCloseable {
             // Then define the table ...
             List<Column> columns = columnsByTable.get(id);
             Collections.sort(columns);
-            tables.overwriteTable(id, columns, pkColumnNames);
+            String defaultCharsetName = null; // JDBC does not expose character sets
+            tables.overwriteTable(id, columns, pkColumnNames, defaultCharsetName);
         }
 
         if (removeTablesNotFoundInJdbc) {
@@ -675,7 +683,7 @@ public class JdbcConnection implements AutoCloseable {
         for (int position = 1; position <= metadata.getColumnCount(); ++position) {
             String columnLabel = metadata.getColumnLabel(position);
             column.name(columnLabel != null ? columnLabel : metadata.getColumnName(position));
-            column.typeName(metadata.getColumnTypeName(position));
+            column.type(metadata.getColumnTypeName(position));
             column.jdbcType(metadata.getColumnType(position));
             column.length(metadata.getPrecision(position));
             column.scale(metadata.getScale(position));

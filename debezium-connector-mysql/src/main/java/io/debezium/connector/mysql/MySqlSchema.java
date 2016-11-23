@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.connector.mysql;
@@ -11,20 +11,18 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
-import org.apache.kafka.connect.data.Date;
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Time;
-import org.apache.kafka.connect.data.Timestamp;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDataDeserializer;
-
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.MySqlConnectorConfig.DecimalHandlingMode;
+import io.debezium.connector.mysql.MySqlConnectorConfig.TemporalPrecisionMode;
+import io.debezium.connector.mysql.MySqlSystemVariables.Scope;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.jdbc.TimeZoneAdapter;
+import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
@@ -76,18 +74,6 @@ public class MySqlSchema {
 
     /**
      * Create a schema component given the supplied {@link MySqlConnectorConfig MySQL connector configuration}.
-     * <p>
-     * This component sets up a {@link TimeZoneAdapter} that is specific to how the MySQL Binary Log client library
-     * works. The {@link AbstractRowsEventDataDeserializer} class has various methods to instantiate the
-     * {@link java.util.Date}, {@link java.sql.Date}, {@link java.sql.Time}, and {@link java.sql.Timestamp} temporal values,
-     * where the values for {@link java.util.Date}, {@link java.sql.Date}, and {@link java.sql.Time} are all in terms of
-     * the <em>local time zone</em> (since it uses {@link java.util.Calendar#getInstance()}), but where the
-     * {@link java.sql.Timestamp} values are created differently using the milliseconds past epoch and therefore in terms of
-     * the <em>UTC time zone</em>.
-     * <p>
-     * And, because Kafka Connect {@link Time}, {@link Date}, and {@link Timestamp} logical
-     * schema types all expect the {@link java.util.Date} to be in terms of the <em>UTC time zone</em>, the
-     * {@link TimeZoneAdapter} also needs to produce {@link java.util.Date} values that will be correct in UTC.
      * 
      * @param config the connector configuration, which is presumed to be valid
      * @param serverName the name of the server
@@ -99,14 +85,17 @@ public class MySqlSchema {
         this.ddlChanges = new DdlChanges(this.ddlParser.terminator());
         this.ddlParser.addListener(ddlChanges);
 
-        // Specific to how the MySQL Binary Log client library creates temporal values ...
-        TimeZoneAdapter tzAdapter = TimeZoneAdapter.create()
-                                                   .withLocalZoneForUtilDate()
-                                                   .withLocalZoneForSqlDate()
-                                                   .withLocalZoneForSqlTime()
-                                                   .withUtcZoneForSqlTimestamp()
-                                                   .withUtcTargetZone();
-        this.schemaBuilder = new TableSchemaBuilder(tzAdapter, schemaNameValidator::validate);
+        // Use MySQL-specific converters and schemas for values ...
+        String timePrecisionModeStr = config.getString(MySqlConnectorConfig.TIME_PRECISION_MODE);
+        TemporalPrecisionMode timePrecisionMode = TemporalPrecisionMode.parse(timePrecisionModeStr);
+        boolean adaptiveTimePrecision = TemporalPrecisionMode.ADAPTIVE.equals(timePrecisionMode);
+        String decimalHandlingModeStr = config.getString(MySqlConnectorConfig.DECIMAL_HANDLING_MODE);
+        DecimalHandlingMode decimalHandlingMode = DecimalHandlingMode.parse(decimalHandlingModeStr);
+        DecimalMode decimalMode = decimalHandlingMode.asDecimalMode();
+        MySqlValueConverters valueConverters = new MySqlValueConverters(decimalMode, adaptiveTimePrecision);
+        this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameValidator::validate);
+
+        // Set up the server name and schema prefix ...
         if (serverName != null) serverName = serverName.trim();
         this.serverName = serverName;
         if (this.serverName == null || serverName.isEmpty()) {
@@ -122,21 +111,25 @@ public class MySqlSchema {
                     config.getString(MySqlConnectorConfig.DATABASE_HISTORY));
         }
         // Do not remove the prefix from the subset of config properties ...
-        Configuration dbHistoryConfig = config.subset(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING, false);
+        String connectorName = config.getString("name", serverName);
+        Configuration dbHistoryConfig = config.subset(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING, false)
+                                              .edit()
+                                              .withDefault(DatabaseHistory.NAME, connectorName + "-dbhistory")
+                                              .build();
         this.dbHistory.configure(dbHistoryConfig, HISTORY_COMPARATOR); // validates
     }
 
     /**
      * Start by acquiring resources needed to persist the database history
      */
-    public void start() {
+    public synchronized void start() {
         this.dbHistory.start();
     }
 
     /**
      * Stop recording history and release any resources acquired since {@link #start()}.
      */
-    public void shutdown() {
+    public synchronized void shutdown() {
         this.dbHistory.stop();
     }
 
@@ -196,6 +189,26 @@ public class MySqlSchema {
         return dbHistory.toString();
     }
 
+    /**
+     * Set the system variables on the DDL parser.
+     * 
+     * @param variables the system variables; may not be null but may be empty
+     */
+    public void setSystemVariables(Map<String, String> variables) {
+        variables.forEach((varName, value) -> {
+            ddlParser.systemVariables().setVariable(Scope.SESSION, varName, value);
+        });
+    }
+    
+    /**
+     * Get the system variables as known by the DDL parser.
+     * 
+     * @return the system variables; never null
+     */
+    public MySqlSystemVariables systemVariables() {
+        return ddlParser.systemVariables();
+    }
+    
     /**
      * Load the schema for the databases using JDBC database metadata. If there are changes relative to any
      * table definitions that existed when this method is called, those changes are recorded in the database history
@@ -334,12 +347,12 @@ public class MySqlSchema {
                     // the same order they were read for each _affected_ database, grouped together if multiple apply
                     // to the same _affected_ database...
                     ddlChanges.groupStatementStringsByDatabase((dbName, ddl) -> {
-                        if (filters.databaseFilter().test(dbName)) {
+                        if (filters.databaseFilter().test(dbName) || dbName == null || "".equals(dbName)) {
                             if (dbName == null) dbName = "";
                             statementConsumer.consume(dbName, ddlStatements);
                         }
                     });
-                } else if (filters.databaseFilter().test(databaseName)) {
+                } else if (filters.databaseFilter().test(databaseName) || databaseName == null || "".equals(databaseName)) {
                     if (databaseName == null) databaseName = "";
                     statementConsumer.consume(databaseName, ddlStatements);
                 }

@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.config;
@@ -57,6 +57,8 @@ import io.debezium.util.Strings;
  */
 @Immutable
 public interface Configuration {
+
+    public static final Pattern PASSWORD_PATTERN = Pattern.compile(".*password$", Pattern.CASE_INSENSITIVE);
 
     /**
      * The basic interface for configuration builders.
@@ -734,7 +736,7 @@ public interface Configuration {
 
             @Override
             public String toString() {
-                return props.toString();
+                return withMaskedPasswords().asProperties().toString();
             }
         };
     }
@@ -781,7 +783,7 @@ public interface Configuration {
 
             @Override
             public String toString() {
-                return props.toString();
+                return withMaskedPasswords().asProperties().toString();
             }
         };
     }
@@ -974,7 +976,10 @@ public interface Configuration {
      *         such key-value pair in the configuration
      */
     default String getString(Field field, String defaultValue) {
-        return getString(field.name(), () -> field.defaultValueAsString());
+        return getString(field.name(), () -> {
+            String value = field.defaultValueAsString();
+            return value != null ? value : defaultValue;
+        });
     }
 
     /**
@@ -1439,7 +1444,7 @@ public interface Configuration {
 
             @Override
             public String toString() {
-                return asProperties().toString();
+                return withMaskedPasswords().asProperties().toString();
             }
         };
     }
@@ -1468,7 +1473,83 @@ public interface Configuration {
 
             @Override
             public String toString() {
-                return asProperties().toString();
+                return withMaskedPasswords().asProperties().toString();
+            }
+        };
+    }
+
+    /**
+     * Return a new {@link Configuration} that contains the mapped values.
+     * 
+     * @param mapper the function that takes a key and value and returns the new mapped value
+     * @return the Configuration with mapped values; never null
+     */
+    default Configuration mapped(BiFunction<? super String, ? super String, String> mapper) {
+        if (mapper == null) return this;
+        return new Configuration() {
+            @Override
+            public Set<String> keys() {
+                return Configuration.this.keys();
+            }
+
+            @Override
+            public String getString(String key) {
+                return mapper.apply(key, Configuration.this.getString(key));
+            }
+
+            @Override
+            public String toString() {
+                return withMaskedPasswords().asProperties().toString();
+            }
+        };
+    }
+
+    /**
+     * Return a new {@link Configuration} that contains all of the same fields as this configuration, except with masked values
+     * for all keys that end in "password".
+     * 
+     * @return the Configuration with masked values for matching keys; never null
+     */
+    default Configuration withMaskedPasswords() {
+        return withMasked(PASSWORD_PATTERN);
+    }
+
+    /**
+     * Return a new {@link Configuration} that contains all of the same fields as this configuration, except with masked values
+     * for all keys that match the specified pattern.
+     * 
+     * @param keyRegex the regular expression to match against the keys
+     * @return the Configuration with masked values for matching keys; never null
+     */
+    default Configuration withMasked(String keyRegex) {
+        if (keyRegex == null) return this;
+        return withMasked(Pattern.compile(keyRegex));
+    }
+
+    /**
+     * Return a new {@link Configuration} that contains all of the same fields as this configuration, except with masked values
+     * for all keys that match the specified pattern.
+     * 
+     * @param keyRegex the regular expression to match against the keys
+     * @return the Configuration with masked values for matching keys; never null
+     */
+    default Configuration withMasked(Pattern keyRegex) {
+        if (keyRegex == null) return this;
+        return new Configuration() {
+            @Override
+            public Set<String> keys() {
+                return Configuration.this.keys();
+            }
+
+            @Override
+            public String getString(String key) {
+                boolean matches = keyRegex.matcher(key).matches();
+                return matches ? "********" : Configuration.this.getString(key);
+            }
+
+            @Override
+            public String toString() {
+                return withMaskedPasswords().asProperties().toString();
             }
         };
     }
@@ -1620,7 +1701,13 @@ public interface Configuration {
                 problems.accept("The '" + f.name() + "' value is invalid: " + problem);
             } else {
                 String valueStr = v.toString();
-                if (v instanceof CharSequence) valueStr = "'" + valueStr + "'";
+                if (v instanceof CharSequence) {
+                    if (PASSWORD_PATTERN.matcher((CharSequence) v).matches()) {
+                        valueStr = "********"; // mask any fields that we know are passwords
+                    } else {
+                        valueStr = "'" + valueStr + "'";
+                    }
+                }
                 problems.accept("The '" + f.name() + "' value " + valueStr + " is invalid: " + problem);
             }
         });

@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.relational;
@@ -185,6 +185,20 @@ public interface TableEditor {
      * @throws IllegalArgumentException if a name does not correspond to an existing column
      */
     TableEditor setUniqueValues();
+    
+    /**
+     * Set the name of the character set that should be used by default in the columns that require a character set but have
+     * not defined one.
+     * @param charsetName the name of the character set that should be used by default
+     * @return this editor so callers can chain methods together
+     */
+    TableEditor setDefaultCharsetName(String charsetName);
+
+    /**
+     * Determine if a {@link #setDefaultCharsetName(String) default character set} has been set on this table.
+     * @return {@code true} if this has a default character set, or {@code false} if one has not yet been set
+     */
+    boolean hasDefaultCharsetName();
     
     /**
      * Determine whether this table's primary key contains all columns (via {@link #setUniqueValues()}) such that all rows

@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.relational;
@@ -44,6 +44,30 @@ public interface ColumnEditor extends Comparable<Column> {
      * @return the name of the type; may be null if not set
      */
     String typeName();
+
+    /**
+     * Get the database-specific complete expression defining the column's data type, including dimensions, length, precision,
+     * character sets, constraints, etc.
+     * 
+     * @return the complete type expression
+     */
+    String typeExpression();
+
+    /**
+     * Get the database-specific name of the character set used by this column.
+     * 
+     * @return the database-specific character set name, or null if the column's data type doesn't use character sets or no
+     * character set is specified
+     */
+    String charsetName();
+
+    /**
+     * Get the database-specific name of the character set defined by this column's table, which is used if a character set is
+     * not explicitly set on this column.
+     * 
+     * @return the database-specific character set name defined for this column's table, or null if not defined
+     */
+    String charsetNameOfTable();
 
     /**
      * Get the maximum length of this column's values. For numeric columns, this represents the precision.
@@ -94,7 +118,18 @@ public interface ColumnEditor extends Comparable<Column> {
      * @param typeName the column's type name
      * @return this editor so callers can chain methods together
      */
-    ColumnEditor typeName(String typeName);
+    ColumnEditor type(String typeName);
+
+    /**
+     * Set the database-specific name of the column's data type. The expression includes the column's
+     * {@link #typeName() type name} and also any dimensions, lengths, precisions, character sets, etc.
+     * 
+     * 
+     * @param typeName the column's type name
+     * @param typeExpression the column's complete type expression
+     * @return this editor so callers can chain methods together
+     */
+    ColumnEditor type(String typeName, String typeExpression);
 
     /**
      * Set the {@link Types JDBC type} of this column.
@@ -103,6 +138,22 @@ public interface ColumnEditor extends Comparable<Column> {
      * @return this editor so callers can chain methods together
      */
     ColumnEditor jdbcType(int jdbcType);
+
+    /**
+     * Set the database-specific name of the character set used by this column.
+     * 
+     * @param charsetName the database-specific character set name; may be null
+     * @return this editor so callers can chain methods together
+     */
+    ColumnEditor charsetName(String charsetName);
+
+    /**
+     * Set the database-specific name of the character set defined by this column's table.
+     * 
+     * @param charsetName the database-specific character set name; may be null
+     * @return this editor so callers can chain methods together
+     */
+    ColumnEditor charsetNameOfTable(String charsetName);
 
     /**
      * Set the maximum length of this column's values. For numeric columns, this represents the precision.

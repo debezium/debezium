@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.connector.mongodb;
@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
+import io.debezium.data.Json;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.util.AvroValidator;
 
@@ -104,8 +105,8 @@ public class RecordMakers {
                                           .build();
             this.valueSchema = SchemaBuilder.struct()
                                             .name(validator.validate(topicName + ".Envelope"))
-                                            .field(FieldName.AFTER, Schema.OPTIONAL_STRING_SCHEMA)
-                                            .field("patch", Schema.OPTIONAL_STRING_SCHEMA)
+                                            .field(FieldName.AFTER, Json.builder().optional().build())
+                                            .field("patch", Json.builder().optional().build())
                                             .field(FieldName.SOURCE, source.schema())
                                             .field(FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
                                             .field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)

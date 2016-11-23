@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.relational;
@@ -20,6 +20,7 @@ public interface Column extends Comparable<Column> {
 
     /**
      * Obtain an column definition editor that can be used to define a column.
+     * 
      * @return the editor; never null
      */
     public static ColumnEditor editor() {
@@ -55,6 +56,22 @@ public interface Column extends Comparable<Column> {
     String typeName();
 
     /**
+     * Get the database-specific complete expression defining the column's data type, including dimensions, length, precision,
+     * character sets, constraints, etc.
+     * 
+     * @return the complete type expression
+     */
+    String typeExpression();
+
+    /**
+     * Get the database-specific name of the character set used by this column.
+     * 
+     * @return the database-specific character set name, or null if the column's data type doesn't {@link #typeUsesCharset() use
+     *         character sets} or no character set is specified
+     */
+    String charsetName();
+
+    /**
      * Get the maximum length of this column's values. For numeric columns, this represents the precision.
      * 
      * @return the length of the column
@@ -75,7 +92,7 @@ public interface Column extends Comparable<Column> {
      * @see #isRequired()
      */
     boolean isOptional();
-    
+
     /**
      * Determine whether this column is required. This is equivalent to calling {@code !isOptional()}.
      * 
@@ -111,16 +128,28 @@ public interface Column extends Comparable<Column> {
      * 
      * @return the editor; never null
      */
-    default ColumnEditor edit() {
-        return Column.editor()
-                               .name(name())
-                               .typeName(typeName())
-                               .jdbcType(jdbcType())
-                               .length(length())
-                               .scale(scale())
-                               .position(position())
-                               .optional(isOptional())
-                               .autoIncremented(isAutoIncremented())
-                               .generated(isGenerated());
+    ColumnEditor edit();
+
+    /**
+     * Determine whether this column has a {@link #typeName()} or {@link #jdbcType()} to which a character set applies.
+     * 
+     * @return {@code true} if a character set applies the column's type, or {@code false} otherwise
+     */
+    default boolean typeUsesCharset() {
+        switch (jdbcType()) {
+            case Types.CHAR:
+            case Types.VARCHAR:
+            case Types.LONGVARCHAR:
+            case Types.CLOB:
+            case Types.NCHAR:
+            case Types.NVARCHAR:
+            case Types.LONGNVARCHAR:
+            case Types.NCLOB:
+            case Types.DATALINK:
+            case Types.SQLXML:
+                return true;
+            default:
+                return false;
+        }
     }
 }

@@ -1,10 +1,11 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.connector.mysql;
 
+import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -23,6 +24,7 @@ import io.debezium.config.Field;
 import io.debezium.config.Field.Recommender;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.KafkaDatabaseHistory;
@@ -33,13 +35,157 @@ import io.debezium.relational.history.KafkaDatabaseHistory;
 public class MySqlConnectorConfig {
 
     /**
+     * The set of predefined TemporalPrecisionMode options or aliases.
+     */
+    public static enum TemporalPrecisionMode {
+        /**
+         * Represent time and date values based upon the resolution in the database, using {@link io.debezium.time} semantic
+         * types.
+         */
+        ADAPTIVE("adaptive"),
+
+        /**
+         * Represent time and date values using Kafka Connect {@link org.apache.kafka.connect.data} logical types, which always
+         * have millisecond precision.
+         */
+        CONNECT("connect");
+
+        private final String value;
+
+        private TemporalPrecisionMode(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         * 
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static TemporalPrecisionMode parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+            for (TemporalPrecisionMode option : TemporalPrecisionMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         * 
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static TemporalPrecisionMode parse(String value, String defaultValue) {
+            TemporalPrecisionMode mode = parse(value);
+            if (mode == null && defaultValue != null) mode = parse(defaultValue);
+            return mode;
+        }
+    }
+
+    /**
+     * The set of predefined DecimalHandlingMode options or aliases.
+     */
+    public static enum DecimalHandlingMode {
+        /**
+         * Represent {@code DECIMAL} and {@code NUMERIC} values as precise {@link BigDecimal} values, which are
+         * represented in change events in a binary form. This is precise but difficult to use.
+         */
+        PRECISE("precise"),
+
+        /**
+         * Represent {@code DECIMAL} and {@code NUMERIC} values as precise {@code double} values. This may be less precise
+         * but is far easier to use.
+         */
+        DOUBLE("double");
+
+        private final String value;
+
+        private DecimalHandlingMode(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public DecimalMode asDecimalMode() {
+            switch (this) {
+                case DOUBLE:
+                    return DecimalMode.DOUBLE;
+                case PRECISE:
+                default:
+                    return DecimalMode.PRECISE;
+            }
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         * 
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static DecimalHandlingMode parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+            for (DecimalHandlingMode option : DecimalHandlingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         * 
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static DecimalHandlingMode parse(String value, String defaultValue) {
+            DecimalHandlingMode mode = parse(value);
+            if (mode == null && defaultValue != null) mode = parse(defaultValue);
+            return mode;
+        }
+    }
+
+    /**
      * The set of predefined SnapshotMode options or aliases.
      */
     public static enum SnapshotMode {
+
         /**
-         * Forwards each event as a structured Kafka Connect message.
+         * Perform a snapshot when it is needed.
          */
-        WHEN_NEEDED("when_needed"), INITIAL("initial"), NEVER("never");
+        WHEN_NEEDED("when_needed"),
+
+        /**
+         * Perform a snapshot only upon initial startup of a connector.
+         */
+        INITIAL("initial"),
+
+        /**
+         * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog.
+         * This should be used with care, but it is very useful when the change event consumers need only the changes
+         * from the point in time the snapshot is made (and doesn't care about any state or changes prior to this point).
+         */
+        SCHEMA_ONLY("schema_only"),
+
+        /**
+         * Never perform a snapshot and only read the binlog. This assumes the binlog contains all the history of those
+         * databases and tables that will be captured.
+         */
+        NEVER("never"),
+
+        /**
+         * Perform a snapshot and then stop before attempting to read the binlog.
+         */
+        INITIAL_ONLY("initial_only");
 
         private final String value;
 
@@ -80,7 +226,75 @@ public class MySqlConnectorConfig {
         }
     }
 
-    private static final String DATABASE_LIST_NAME = "database.list";
+    /**
+     * The set of predefined SecureConnectionMode options or aliases.
+     */
+    public static enum SecureConnectionMode {
+        /**
+         * Establish an unencrypted connection.
+         */
+        DISABLED("disabled"),
+
+        /**
+         * Establish a secure (encrypted) connection if the server supports secure connections.
+         * Fall back to an unencrypted connection otherwise.
+         */
+        PREFERRED("preferred"),
+        /**
+         * Establish a secure connection if the server supports secure connections.
+         * The connection attempt fails if a secure connection cannot be established.
+         */
+        REQUIRED("required"),
+        /**
+         * Like REQUIRED, but additionally verify the server TLS certificate against the configured Certificate Authority
+         * (CA) certificates. The connection attempt fails if no valid matching CA certificates are found.
+         */
+        VERIFY_CA("verify_ca"),
+        /**
+         * Like VERIFY_CA, but additionally verify that the server certificate matches the host to which the connection is
+         * attempted.
+         */
+        VERIFY_IDENTITY("verify_identity");
+
+        private final String value;
+
+        private SecureConnectionMode(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         * 
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static SecureConnectionMode parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+            for (SecureConnectionMode option : SecureConnectionMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         * 
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static SecureConnectionMode parse(String value, String defaultValue) {
+            SecureConnectionMode mode = parse(value);
+            if (mode == null && defaultValue != null) mode = parse(defaultValue);
+            return mode;
+        }
+    }
+
     private static final String DATABASE_WHITELIST_NAME = "database.whitelist";
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
     private static final String TABLE_IGNORE_BUILTIN_NAME = "table.ignore.builtin";
@@ -92,7 +306,6 @@ public class MySqlConnectorConfig {
                                               .withType(Type.STRING)
                                               .withWidth(Width.MEDIUM)
                                               .withImportance(Importance.HIGH)
-                                              .withDependents(DATABASE_LIST_NAME)
                                               .withValidation(Field::isRequired)
                                               .withDescription("Resolvable hostname or IP address of the MySQL database server.");
 
@@ -102,7 +315,6 @@ public class MySqlConnectorConfig {
                                           .withWidth(Width.SHORT)
                                           .withDefault(3306)
                                           .withImportance(Importance.HIGH)
-                                          .withDependents(DATABASE_LIST_NAME)
                                           .withValidation(Field::isInteger)
                                           .withDescription("Port of the MySQL database server.");
 
@@ -111,7 +323,6 @@ public class MySqlConnectorConfig {
                                           .withType(Type.STRING)
                                           .withWidth(Width.SHORT)
                                           .withImportance(Importance.HIGH)
-                                          .withDependents(DATABASE_LIST_NAME)
                                           .withValidation(Field::isRequired)
                                           .withDescription("Name of the MySQL database user to be used when connecting to the database.");
 
@@ -120,7 +331,6 @@ public class MySqlConnectorConfig {
                                               .withType(Type.PASSWORD)
                                               .withWidth(Width.SHORT)
                                               .withImportance(Importance.HIGH)
-                                              .withDependents(DATABASE_LIST_NAME)
                                               .withValidation(Field::isRequired)
                                               .withDescription("Password of the MySQL database user to be used when connecting to the database.");
 
@@ -137,15 +347,58 @@ public class MySqlConnectorConfig {
 
     public static final Field SERVER_ID = Field.create("database.server.id")
                                                .withDisplayName("Cluster ID")
-                                               .withType(Type.INT)
-                                               .withWidth(Width.SHORT)
+                                               .withType(Type.LONG)
+                                               .withWidth(Width.LONG)
                                                .withImportance(Importance.HIGH)
                                                .withDefault(MySqlConnectorConfig::randomServerId)
-                                               .withValidation(Field::isRequired, Field::isPositiveInteger)
+                                               .withValidation(Field::isRequired, Field::isPositiveLong)
                                                .withDescription("A numeric ID of this database client, which must be unique across all "
                                                        + "currently-running database processes in the cluster. This connector joins the "
                                                        + "MySQL database cluster as another server (with this unique ID) so it can read "
                                                        + "the binlog. By default, a random number is generated between 5400 and 6400.");
+
+    public static final Field SSL_MODE = Field.create("database.ssl.mode")
+                                              .withDisplayName("SSL mode")
+                                              .withEnum(SecureConnectionMode.class, SecureConnectionMode.DISABLED)
+                                              .withWidth(Width.MEDIUM)
+                                              .withImportance(Importance.MEDIUM)
+                                              .withDescription("Whether to use an encrypted connection to MySQL. Options include"
+                                                      + "'disabled' (the default) to use an unencrypted connection; "
+                                                      + "'preferred' to establish a secure (encrypted) connection if the server supports secure connections, "
+                                                      + "but fall back to an unencrypted connection otherwise; "
+                                                      + "'required' to use a secure (encrypted) connection, and fail if one cannot be established; "
+                                                      + "'verify_ca' like 'required' but additionally verify the server TLS certificate against the configured Certificate Authority "
+                                                      + "(CA) certificates, or fail if no valid matching CA certificates are found; or"
+                                                      + "'verify_identity' like 'verify_ca' but additionally verify that the server certificate matches the host to which the connection is attempted.");
+
+    public static final Field SSL_KEYSTORE = Field.create("database.ssl.keystore")
+                                                  .withDisplayName("SSL Keystore")
+                                                  .withType(Type.STRING)
+                                                  .withWidth(Width.LONG)
+                                                  .withImportance(Importance.MEDIUM)
+                                                  .withDescription("Location of the Java keystore file containing an application process's own certificate and private key.");
+
+    public static final Field SSL_KEYSTORE_PASSWORD = Field.create("database.ssl.keystore.password")
+                                                           .withDisplayName("SSL Keystore Password")
+                                                           .withType(Type.PASSWORD)
+                                                           .withWidth(Width.MEDIUM)
+                                                           .withImportance(Importance.MEDIUM)
+                                                           .withDescription("Password to access the private key from the keystore file specified by 'ssl.keystore' configuration property or the 'javax.net.ssl.keyStore' system or JVM property. "
+                                                                   + "This password is used to unlock the keystore file (store password), and to decrypt the private key stored in the keystore (key password).");
+
+    public static final Field SSL_TRUSTSTORE = Field.create("database.ssl.truststore")
+                                                    .withDisplayName("SSL Truststore")
+                                                    .withType(Type.STRING)
+                                                    .withWidth(Width.LONG)
+                                                    .withImportance(Importance.MEDIUM)
+                                                    .withDescription("Location of the Java truststore file containing the collection of CA certificates trusted by this application process (trust store).");
+
+    public static final Field SSL_TRUSTSTORE_PASSWORD = Field.create("database.ssl.truststore.password")
+                                                             .withDisplayName("SSL Truststore Password")
+                                                             .withType(Type.PASSWORD)
+                                                             .withWidth(Width.MEDIUM)
+                                                             .withImportance(Importance.MEDIUM)
+                                                             .withDescription("Password to unlock the keystore file (store password) specified by 'ssl.trustore' configuration property or the 'javax.net.ssl.trustStore' system or JVM property.");
 
     public static final Field TABLES_IGNORE_BUILTIN = Field.create(TABLE_IGNORE_BUILTIN_NAME)
                                                            .withDisplayName("Ignore system databases")
@@ -224,6 +477,36 @@ public class MySqlConnectorConfig {
                                                       .withValidation(MySqlConnectorConfig::validateColumnBlacklist)
                                                       .withDescription("");
 
+    /**
+     * A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog
+     * position in the MySQL server. Only the GTID ranges that have sources matching one of these include patterns will
+     * be used.
+     * May not be used with {@link #GTID_SOURCE_EXCLUDES}.
+     */
+    public static final Field GTID_SOURCE_INCLUDES = Field.create("gtid.source.includes")
+                                                          .withDisplayName("Include GTID sources")
+                                                          .withType(Type.LIST)
+                                                          .withWidth(Width.LONG)
+                                                          .withImportance(Importance.HIGH)
+                                                          .withRecommender(DATABASE_LIST_RECOMMENDER)
+                                                          .withDependents(TABLE_WHITELIST_NAME)
+                                                          .withDescription("The source UUIDs used to include GTID ranges when determine the starting position in the MySQL server's binlog.");
+
+    /**
+     * A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog
+     * position in the MySQL server. Only the GTID ranges that have sources matching none of these exclude patterns will
+     * be used.
+     * May not be used with {@link #GTID_SOURCE_INCLUDES}.
+     */
+    public static final Field GTID_SOURCE_EXCLUDES = Field.create("gtid.source.excludes")
+                                                          .withDisplayName("Exclude GTID sources")
+                                                          .withType(Type.STRING)
+                                                          .withWidth(Width.LONG)
+                                                          .withImportance(Importance.MEDIUM)
+                                                          .withValidation(MySqlConnectorConfig::validateGtidSetExcludes)
+                                                          .withInvisibleRecommender()
+                                                          .withDescription("The source UUIDs used to exclude GTID ranges when determine the starting position in the MySQL server's binlog.");
+
     public static final Field CONNECTION_TIMEOUT_MS = Field.create("connect.timeout.ms")
                                                            .withDisplayName("Connection Timeout (ms)")
                                                            .withType(Type.INT)
@@ -268,7 +551,7 @@ public class MySqlConnectorConfig {
                                                       .withDescription("Frequency in milliseconds to wait for new change events to appear after receiving no events. Defaults to 1 second (1000 ms).")
                                                       .withDefault(TimeUnit.SECONDS.toMillis(1))
                                                       .withValidation(Field::isPositiveInteger);
-    
+
     public static final Field ROW_COUNT_FOR_STREAMING_RESULT_SETS = Field.create("min.row.count.to.stream.results")
                                                                          .withDisplayName("Stream result set larger than")
                                                                          .withType(Type.LONG)
@@ -306,16 +589,16 @@ public class MySqlConnectorConfig {
 
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
                                                    .withDisplayName("Snapshot mode")
-                                                   .withEnum(SnapshotMode.class)
+                                                   .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
                                                    .withWidth(Width.SHORT)
                                                    .withImportance(Importance.LOW)
                                                    .withDescription("The criteria for running a snapshot upon startup of the connector. "
                                                            + "Options include: "
                                                            + "'when_needed' to specify that the connector run a snapshot upon startup whenever it deems it necessary; "
-                                                           + "'initial' (the default) to specify the connector can run a snapshot only when no offsets are available for the logical server name; and "
+                                                           + "'initial' (the default) to specify the connector can run a snapshot only when no offsets are available for the logical server name; "
+                                                           + "'initial_only' same as 'initial' except the connector should stop after completing the snapshot and before it would normally read the binlog; and"
                                                            + "'never' to specify the connector should never run a snapshot and that upon first startup the connector should read from the beginning of the binlog. "
-                                                           + "The 'never' mode should be used with care, and only when the binlog is known to contain all history.")
-                                                   .withDefault(SnapshotMode.INITIAL.getValue());
+                                                           + "The 'never' mode should be used with care, and only when the binlog is known to contain all history.");
 
     public static final Field SNAPSHOT_MINIMAL_LOCKING = Field.create("snapshot.minimal.locks")
                                                               .withDisplayName("Use shortest database locking for snapshots")
@@ -329,6 +612,25 @@ public class MySqlConnectorConfig {
                                                                       + "other operations are updating the database. However, in some cases it may be desirable to block all writes for the entire duration "
                                                                       + "of the snapshot; in such cases set this property to 'false'.")
                                                               .withDefault(true);
+
+    public static final Field TIME_PRECISION_MODE = Field.create("time.precision.mode")
+                                                         .withDisplayName("Time Precision")
+                                                         .withEnum(TemporalPrecisionMode.class, TemporalPrecisionMode.ADAPTIVE)
+                                                         .withWidth(Width.SHORT)
+                                                         .withImportance(Importance.MEDIUM)
+                                                         .withDescription("Time, date, and timestamps can be represented with different kinds of precisions, including:"
+                                                                 + "'adaptive' (the default) bases the precision of time, date, and timestamp values on the database column's precision; "
+                                                                 + "'connect' always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
+                                                                 + "which uses millisecond precision regardless of the database columns' precision .");
+
+    public static final Field DECIMAL_HANDLING_MODE = Field.create("decimal.handling.mode")
+                                                           .withDisplayName("Decimal Handling")
+                                                           .withEnum(DecimalHandlingMode.class, DecimalHandlingMode.PRECISE)
+                                                           .withWidth(Width.SHORT)
+                                                           .withImportance(Importance.MEDIUM)
+                                                           .withDescription("Specify how DECIMAL and NUMERIC columns should be represented in change events, including:"
+                                                                   + "'precise' (the default) uses java.math.BigDecimal to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; "
+                                                                   + "'double' represents values using Java's 'double', which may not offer the precision but will be far easier to use in consumers.");
 
     /**
      * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
@@ -371,7 +673,11 @@ public class MySqlConnectorConfig {
                                                      DATABASE_HISTORY, INCLUDE_SCHEMA_CHANGES,
                                                      TABLE_WHITELIST, TABLE_BLACKLIST, TABLES_IGNORE_BUILTIN,
                                                      DATABASE_WHITELIST, DATABASE_BLACKLIST,
-                                                     COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING);
+                                                     COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING,
+                                                     GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
+                                                     TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
+                                                     SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD,
+                                                     SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD);
 
     /**
      * The set of {@link Field}s that are included in the {@link #configDef() configuration definition}. This includes
@@ -386,14 +692,16 @@ public class MySqlConnectorConfig {
 
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
-        Field.group(config, "MySQL", HOSTNAME, PORT, USER, PASSWORD, SERVER_NAME, SERVER_ID);
-        Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS, KafkaDatabaseHistory.TOPIC,
-                    KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS, KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS,
-                    DATABASE_HISTORY);
+        Field.group(config, "MySQL", HOSTNAME, PORT, USER, PASSWORD, SERVER_NAME, SERVER_ID,
+                    SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD, SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD);
+        Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
+                    KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
+                    KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, DATABASE_HISTORY);
         Field.group(config, "Events", INCLUDE_SCHEMA_CHANGES, TABLES_IGNORE_BUILTIN, DATABASE_WHITELIST, TABLE_WHITELIST,
-                    COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST);
+                    COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST,
+                    GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
-                    SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING);
+                    SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE);
         return config;
     }
 
@@ -484,6 +792,16 @@ public class MySqlConnectorConfig {
         String blacklist = config.getString(TABLE_BLACKLIST);
         if (whitelist != null && blacklist != null) {
             problems.accept(TABLE_BLACKLIST, blacklist, "Whitelist is already specified");
+            return 1;
+        }
+        return 0;
+    }
+
+    private static int validateGtidSetExcludes(Configuration config, Field field, ValidationOutput problems) {
+        String includes = config.getString(GTID_SOURCE_INCLUDES);
+        String excludes = config.getString(GTID_SOURCE_EXCLUDES);
+        if (includes != null && excludes != null) {
+            problems.accept(GTID_SOURCE_EXCLUDES, excludes, "Included GTID source UUIDs are already specified");
             return 1;
         }
         return 0;

@@ -1,10 +1,11 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.connector.mysql;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -17,6 +18,8 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.github.shyiko.mysql.binlog.network.ServerException;
 
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
@@ -65,13 +68,15 @@ public abstract class AbstractReader {
     }
 
     /**
-     * Stop the snapshot from running.
-     * <p>
-     * This method does nothing if the snapshot is not {@link #isRunning() running}.
+     * Stop the reader from running. This method is called when the connector is stopped.
      */
     public void stop() {
-        if (this.running.compareAndSet(true, false)) {
-            doStop();
+        try {
+            if (this.running.compareAndSet(true, false)) {
+                doStop();
+            }
+        } finally {
+            doShutdown();
         }
     }
 
@@ -82,7 +87,10 @@ public abstract class AbstractReader {
 
     /**
      * The reader has been requested to stop, so perform any work required to stop the reader's resources that were previously
-     * {@link #start() started}..
+     * {@link #start() started}.
+     * <p>
+     * This method is called only if the reader is not already stopped.
+     * @see #doShutdown()
      */
     protected abstract void doStop();
 
@@ -93,6 +101,14 @@ public abstract class AbstractReader {
     protected abstract void doCleanup();
 
     /**
+     * The reader has been stopped.
+     * <p>
+     * This method is always called when the connector is stopped.
+     * @see #doStop()
+     */
+    protected abstract void doShutdown();
+    
+    /**
      * Call this method only when the reader has successfully completed all of its work, signaling that subsequent
      * calls to {@link #poll()} should forever return {@code null}.
      */
@@ -102,20 +118,43 @@ public abstract class AbstractReader {
 
     /**
      * Call this method only when the reader has failed, and that a subsequent call to {@link #poll()} should throw this error.
+     * 
      * @param error the error that resulted in the failure; should not be {@code null}
      */
     protected void failed(Throwable error) {
-        this.failure.set(new ConnectException(error));
+        this.failure.set(wrap(error));
     }
 
     /**
      * Call this method only when the reader has failed, and that a subsequent call to {@link #poll()} should throw this error.
+     * 
      * @param error the error that resulted in the failure; should not be {@code null}
      * @param msg the error message; may not be null
      */
     protected void failed(Throwable error, String msg) {
-        this.logger.error("Failed due to error: {}", msg, error);
-        this.failure.set(new ConnectException(msg,error));
+        ConnectException wrapped = wrap(error);
+        this.logger.error("Failed due to error: {}", msg, wrapped);
+        this.failure.set(wrapped);
+    }
+
+    /**
+     * Wraps the specified exception in a {@link ConnectException}, ensuring that all useful state is captured inside
+     * the new exception's message.
+     * 
+     * @param error the exception; may not be null
+     * @return the wrapped Kafka Connect exception
+     */
+    protected ConnectException wrap(Throwable error) {
+        assert error != null;
+        String msg = error.getMessage();
+        if (error instanceof ServerException) {
+            ServerException e = (ServerException) error;
+            msg = msg + " Error code: " + e.getErrorCode() + "; SQLSTATE: " + e.getSqlState() + ".";
+        } else if (error instanceof SQLException) {
+            SQLException e = (SQLException) error;
+            msg = e.getMessage() + " Error code: " + e.getErrorCode() + "; SQLSTATE: " + e.getSQLState() + ".";
+        }
+        return new ConnectException(msg, error);
     }
 
     /**
@@ -126,9 +165,9 @@ public abstract class AbstractReader {
     public boolean isRunning() {
         return this.running.get();
     }
-    
+
     /**
-     * Poll for the next batch of source records. This method blocks if the snapshot is still but no records are available.
+     * Poll for the next batch of source records. This method blocks if this reader is still running but no records are available.
      * 
      * @return the list of source records; or {@code null} when the snapshot is complete, all records have previously been
      *         returned, and the completion function (supplied in the constructor) has been called
@@ -137,32 +176,43 @@ public abstract class AbstractReader {
      */
     public List<SourceRecord> poll() throws InterruptedException {
         failureException = this.failure.get();
-        if ( failureException != null ) throw failureException;
-        
+        if (failureException != null) throw failureException;
+
         logger.trace("Polling for next batch of records");
         List<SourceRecord> batch = new ArrayList<>(maxBatchSize);
         while (running.get() && (records.drainTo(batch, maxBatchSize) == 0) && !success.get()) {
             // No records are available even though the snapshot has not yet completed, so sleep for a bit ...
             metronome.pause();
-            
+
             // Check for failure after waking up ...
             failureException = this.failure.get();
-            if ( failureException != null ) throw failureException;
+            if (failureException != null) throw failureException;
         }
-        
+
         if (batch.isEmpty() && success.get() && records.isEmpty()) {
-            // We found no records but the snapshot completed successfully, so we're done
+            // We found no records but the operation completed successfully, so we're done
             this.running.set(false);
             doCleanup();
             return null;
         }
+        pollComplete(batch);
         logger.trace("Completed batch of {} records", batch.size());
         return batch;
     }
 
     /**
+     * Method called when {@link #poll()} completes sending a non-zero-sized batch of records.
+     * 
+     * @param batch the batch of records being recorded
+     */
+    protected void pollComplete(List<SourceRecord> batch) {
+        // do nothing
+    }
+
+    /**
      * Enqueue a record so that it can be obtained when this reader is {@link #poll() polled}. This method will block if the
      * queue is full.
+     * 
      * @param record the record to be enqueued
      * @throws InterruptedException if interrupted while waiting for the queue to have room for this record
      */

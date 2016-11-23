@@ -1,14 +1,16 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.connector.mysql;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -31,9 +33,10 @@ import io.debezium.util.LoggingContext.PreviousContext;
 public final class MySqlConnectorTask extends SourceTask {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
-    private MySqlTaskContext taskContext;
-    private SnapshotReader snapshotReader;
-    private BinlogReader binlogReader;
+    private final AtomicBoolean runningReader = new AtomicBoolean(false);
+    private volatile MySqlTaskContext taskContext;
+    private volatile SnapshotReader snapshotReader;
+    private volatile BinlogReader binlogReader;
     private volatile AbstractReader currentReader;
 
     /**
@@ -51,7 +54,7 @@ public final class MySqlConnectorTask extends SourceTask {
     }
 
     @Override
-    public void start(Map<String, String> props) {
+    public synchronized void start(Map<String, String> props) {
         if (context == null) {
             throw new ConnectException("Unexpected null context");
         }
@@ -76,6 +79,7 @@ public final class MySqlConnectorTask extends SourceTask {
             if (offsets != null) {
                 // Set the position in our source info ...
                 source.setOffset(offsets);
+                logger.info("Found existing offset: {}", offsets);
 
                 // Before anything else, recover the database history to the specified binlog coordinates ...
                 taskContext.loadHistory(source);
@@ -90,6 +94,7 @@ public final class MySqlConnectorTask extends SourceTask {
                     }
                     // Otherwise, restart a new snapshot ...
                     startWithSnapshot = true;
+                    logger.info("Prior execution was an incomplete snapshot, so starting new snapshot");
                 } else {
                     // No snapshot was in effect, so we should just start reading from the binlog ...
                     startWithSnapshot = false;
@@ -110,36 +115,80 @@ public final class MySqlConnectorTask extends SourceTask {
                 if (taskContext.isSnapshotNeverAllowed()) {
                     // We're not allowed to take a snapshot, so instead we have to assume that the binlog contains the
                     // full history of the database.
+                    logger.info("Found no existing offset and snapshots disallowed, so starting at beginning of binlog");
                     source.setBinlogStartPoint("", 0L);// start from the beginning of the binlog
+                    taskContext.initializeHistory();
+
+                    // Look to see what the first available binlog file is called, and whether it looks like binlog files have
+                    // been purged. If so, then output a warning ...
+                    String earliestBinlogFilename = earliestBinlogFilename();
+                    if (earliestBinlogFilename == null) {
+                        logger.warn("No binlog appears to be available. Ensure that the MySQL row-level binlog is enabled.");
+                    } else if (!earliestBinlogFilename.endsWith("00001")) {
+                        logger.warn("It is possible the server has purged some binlogs. If this is the case, then using snapshot mode may be required.");
+                    }
                 } else {
                     // We are allowed to use snapshots, and that is the best way to start ...
                     startWithSnapshot = true;
                     // The snapshot will determine if GTIDs are set
+                    logger.info("Found no existing offset, so preparing to perform a snapshot");
+                    // The snapshot will also initialize history ...
                 }
             }
 
             if (!startWithSnapshot && source.gtidSet() == null && isGtidModeEnabled()) {
                 // The snapshot will properly determine the GTID set, but we're not starting with a snapshot and GTIDs were not
                 // previously used but the MySQL server has them enabled ...
-                source.setGtidSet("");
+                source.setCompletedGtidSet("");
             }
+
+            // Check whether the row-level binlog is enabled ...
+            final boolean rowBinlogEnabled = isRowBinlogEnabled();
 
             // Set up the readers ...
             this.binlogReader = new BinlogReader(taskContext);
             if (startWithSnapshot) {
                 // We're supposed to start with a snapshot, so set that up ...
                 this.snapshotReader = new SnapshotReader(taskContext);
-                this.snapshotReader.onSuccessfulCompletion(this::transitionToReadBinlog);
+                if (taskContext.isInitialSnapshotOnly()) {
+                    logger.warn("This connector will only perform a snapshot, and will stop after that completes.");
+                    this.snapshotReader.onSuccessfulCompletion(this::skipReadBinlog);
+                } else {
+                    this.snapshotReader.onSuccessfulCompletion(this::transitionToReadBinlog);
+                    if (!rowBinlogEnabled) {
+                        throw new ConnectException("The MySQL server is not configured to use a row-level binlog, which is "
+                                + "required for this connector to work properly. Change the MySQL configuration to use a "
+                                + "row-level binlog and restart the connector.");
+                    }
+                }
                 this.snapshotReader.useMinimalBlocking(taskContext.useMinimalSnapshotLocking());
                 if (snapshotEventsAreInserts) this.snapshotReader.generateInsertEvents();
                 this.currentReader = this.snapshotReader;
             } else {
+                if (!rowBinlogEnabled) {
+                    throw new ConnectException(
+                            "The MySQL server does not appear to be using a row-level binlog, which is required for this connector to work properly. Enable this mode and restart the connector.");
+                }
                 // Just starting to read the binlog ...
                 this.currentReader = this.binlogReader;
             }
 
             // And start our first reader ...
+            this.runningReader.set(true);
             this.currentReader.start();
+        } catch (Throwable e) {
+            // If we don't complete startup, then Kafka Connect will not attempt to stop the connector. So if we
+            // run into a problem, we have to stop ourselves ...
+            try {
+                stop();
+            } catch (Throwable s) {
+                // Log, but don't propagate ...
+                logger.error("Failed to start the connector (see other exception), but got this error while cleaning up", s);
+            }
+            if (e instanceof ConnectException) {
+                throw e;
+            }
+            throw new ConnectException(e);
         } finally {
             prevLoggingContext.restore();
         }
@@ -150,28 +199,47 @@ public final class MySqlConnectorTask extends SourceTask {
         PreviousContext prevLoggingContext = this.taskContext.configureLoggingContext("task");
         try {
             logger.trace("Polling for events");
-            return currentReader.poll();
+            AbstractReader reader = currentReader;
+            return reader != null ? reader.poll() : Collections.emptyList();
         } finally {
             prevLoggingContext.restore();
         }
     }
 
     @Override
-    public void stop() {
+    public synchronized void stop() {
         if (context != null) {
             PreviousContext prevLoggingContext = this.taskContext.configureLoggingContext("task");
             // We need to explicitly stop both readers, in this order. If we were to instead call 'currentReader.stop()', there
             // is a chance without synchronization that we'd miss the transition and stop only the snapshot reader. And stopping
-            // both
-            // is far simpler and more efficient than synchronizing ...
+            // both is far simpler and more efficient than synchronizing ...
             try {
                 logger.info("Stopping MySQL connector task");
-                if (this.snapshotReader != null) this.snapshotReader.stop();
+                if (this.snapshotReader != null) {
+                    try {
+                        this.snapshotReader.stop();
+                    } catch (Throwable e) {
+                        logger.error("Unexpected error stopping the snapshot reader", e);
+                    } finally {
+                        this.snapshotReader = null;
+                    }
+                }
             } finally {
                 try {
-                    if (this.binlogReader != null) this.binlogReader.stop();
+                    if (this.binlogReader != null) {
+                        try {
+                            this.binlogReader.stop();
+                        } catch (Throwable e) {
+                            logger.error("Unexpected error stopping the binary log reader", e);
+                        } finally {
+                            this.binlogReader = null;
+                        }
+                    }
                 } finally {
+                    this.currentReader = null;
                     try {
+                        // Capture that our reader is no longer running; used in "transitionToReadBinlog()" ...
+                        this.runningReader.set(false);
                         // Flush and stop database history, close all JDBC connections ...
                         if (this.taskContext != null) taskContext.shutdown();
                     } catch (Throwable e) {
@@ -186,10 +254,22 @@ public final class MySqlConnectorTask extends SourceTask {
         }
     }
 
-    protected void transitionToReadBinlog() {
+    /**
+     * Transition from the snapshot reader to the binlog reader. This method is synchronized (along with {@link #start(Map)}
+     * and {@link #stop()}) to ensure that we don't transition while we've already begun to stop.
+     */
+    protected synchronized void transitionToReadBinlog() {
+        if (this.binlogReader == null || !this.runningReader.get()) {
+            // We are no longer running, so don't start the binlog reader ...
+            return;
+        }
         logger.debug("Transitioning from snapshot reader to binlog reader");
         this.binlogReader.start();
         this.currentReader = this.binlogReader;
+    }
+
+    protected void skipReadBinlog() {
+        logger.info("Connector configured to only perform snapshot, and snapshot completed successfully. Connector will terminate.");
     }
 
     /**
@@ -202,16 +282,18 @@ public final class MySqlConnectorTask extends SourceTask {
         String gtidStr = taskContext.source().gtidSet();
         if (gtidStr != null) {
             if (gtidStr.trim().isEmpty()) return true; // start at beginning ...
-            String availableGtidStr = knownGtidSet();
+            String availableGtidStr = taskContext.knownGtidSet();
             if (availableGtidStr == null || availableGtidStr.trim().isEmpty()) {
                 // Last offsets had GTIDs but the server does not use them ...
                 logger.info("Connector used GTIDs previously, but MySQL does not know of any GTIDs or they are not enabled");
                 return false;
             }
-            // GTIDs are enabled, and we used them previously ...
-            GtidSet gtidSet = new GtidSet(gtidStr);
-            GtidSet availableGtidSet = new GtidSet(knownGtidSet());
+            // GTIDs are enabled, and we used them previously, but retain only those GTID ranges for the allowed source UUIDs ...
+            GtidSet gtidSet = new GtidSet(gtidStr).retainAll(taskContext.gtidSourceFilter());
+            // Get the GTID set that is available in the server ...
+            GtidSet availableGtidSet = new GtidSet(availableGtidStr);
             if (gtidSet.isContainedWithin(availableGtidSet)) {
+                logger.info("MySQL current GTID set {} does contain the GTID set required by the connector {}", availableGtidSet, gtidSet);
                 return true;
             }
             logger.info("Connector last known GTIDs are {}, but MySQL has {}", gtidSet, availableGtidSet);
@@ -225,7 +307,7 @@ public final class MySqlConnectorTask extends SourceTask {
         // Accumulate the available binlog filenames ...
         List<String> logNames = new ArrayList<>();
         try {
-            logger.info("Stop 0: Get all known binlogs from MySQL");
+            logger.info("Step 0: Get all known binlogs from MySQL");
             taskContext.jdbc().query("SHOW BINARY LOGS", rs -> {
                 while (rs.next()) {
                     logNames.add(rs.getString(1));
@@ -240,7 +322,31 @@ public final class MySqlConnectorTask extends SourceTask {
         if (!found) {
             logger.info("Connector requires binlog file '{}', but MySQL only has {}", binlogFilename, String.join(", ", logNames));
         }
+        logger.info("MySQL has the binlog file '{}' required by the connector", binlogFilename);
         return found;
+    }
+
+    /**
+     * Determine the earliest binlog filename that is still available in the server.
+     * 
+     * @return the name of the earliest binlog filename, or null if there are none.
+     */
+    protected String earliestBinlogFilename() {
+        // Accumulate the available binlog filenames ...
+        List<String> logNames = new ArrayList<>();
+        try {
+            logger.info("Checking all known binlogs from MySQL");
+            taskContext.jdbc().query("SHOW BINARY LOGS", rs -> {
+                while (rs.next()) {
+                    logNames.add(rs.getString(1));
+                }
+            });
+        } catch (SQLException e) {
+            throw new ConnectException("Unexpected error while connecting to MySQL and looking for binary logs: ", e);
+        }
+
+        if (logNames.isEmpty()) return null;
+        return logNames.get(0);
     }
 
     /**
@@ -264,22 +370,23 @@ public final class MySqlConnectorTask extends SourceTask {
     }
 
     /**
-     * Determine the available GTID set for MySQL.
+     * Determine whether the MySQL server has the row-level binlog enabled.
      * 
-     * @return the string representation of MySQL's GTID sets.
+     * @return {@code true} if the server's {@code binlog_format} is set to {@code ROW}, or {@code false} otherwise
      */
-    protected String knownGtidSet() {
-        AtomicReference<String> gtidSetStr = new AtomicReference<String>();
+    protected boolean isRowBinlogEnabled() {
+        AtomicReference<String> mode = new AtomicReference<String>("");
         try {
-            taskContext.jdbc().query("SHOW MASTER STATUS", rs -> {
+            taskContext.jdbc().query("SHOW GLOBAL VARIABLES LIKE 'binlog_format'", rs -> {
                 if (rs.next()) {
-                    gtidSetStr.set(rs.getString(5));// GTID set, may be null, blank, or contain a GTID set
+                    mode.set(rs.getString(2));
                 }
             });
         } catch (SQLException e) {
-            throw new ConnectException("Unexpected error while connecting to MySQL and looking at GTID mode: ", e);
+            throw new ConnectException("Unexpected error while connecting to MySQL and looking at BINLOG mode: ", e);
         }
 
-        return gtidSetStr.get();
+        logger.debug("binlog_format={}", mode.get());
+        return "ROW".equalsIgnoreCase(mode.get());
     }
 }

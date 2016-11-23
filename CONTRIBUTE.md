@@ -76,6 +76,21 @@ If you want to skip the integration tests (e.g., if you don't have Docker instal
 
     $ mvn clean install -Passembly -DskipITs -DskipTests
 
+### Running and debugging tests
+
+A number of the modules use Docker during their integration tests to run a database. During development it's often desirable to start the Docker container and leave it running so that you can compile/run/debug tests repeatedly from your IDE. To do this, simply go into one of the modules (e.g., `cd debezium-connector-mysql`) and run the following command:
+
+    $ mvn docker:build docker:start
+
+This will first force the build to create a new Docker image for the database container, and then will start a container named "database". You can then run any integration tests from your IDE, though all of our integration tests expect the database connection information to be passed in as system variables (like our Maven build does). For example, the MySQL connector integration tests expect something like `-Ddatabase.hostname=localhost -Ddatabase.port=3306` to be passed as arguments to your test.
+
+When your testing is complete, you can stop the Docker container by running:
+
+    $ mvn docker:stop
+
+or the following Docker commands:
+
+    $ docker stop database; docker rm database
 
 ### Making changes
 

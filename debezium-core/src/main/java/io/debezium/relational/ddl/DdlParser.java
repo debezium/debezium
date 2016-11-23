@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.relational.ddl;
@@ -137,7 +137,17 @@ public class DdlParser {
     public final String terminator() {
         return terminator;
     }
-
+    
+    /**
+     * Determine if the next token is a single- or double-quoted string.
+     * 
+     * @return {@code true} if the next token is a {@link DdlTokenizer#SINGLE_QUOTED_STRING single-quoted string} or
+     * {@link DdlTokenizer#DOUBLE_QUOTED_STRING double-quoted string}, or {@code false} otherwise
+     */
+    protected boolean isNextTokenQuotedIdentifier() {
+        return tokens.matchesAnyOf(DdlTokenizer.SINGLE_QUOTED_STRING,DdlTokenizer.DOUBLE_QUOTED_STRING);
+    }
+    
     protected int determineTokenType(int type, String token) {
         if (statementStarts.contains(token)) type |= DdlTokenizer.STATEMENT_KEY;
         if (keywords.contains(token)) type |= DdlTokenizer.KEYWORD;
@@ -567,7 +577,9 @@ public class DdlParser {
      */
     protected void consumeRemainingStatement(Marker start) {
         while (tokens.hasNext()) {
-            if (tokens.matches(DdlTokenizer.STATEMENT_KEY)) break;
+            if (tokens.matches(DdlTokenizer.STATEMENT_KEY)) {
+                break;
+            }
             if (tokens.canConsume("BEGIN")) {
                 tokens.consumeThrough("END");
             } else if (tokens.matches(DdlTokenizer.STATEMENT_TERMINATOR)) {
@@ -652,14 +664,17 @@ public class DdlParser {
             parseCharacterSetName(start);
             return parseCharacterLiteral(start);
         }
-        if (tokens.canConsume('N')) {
+        if (tokens.canConsume("N")) {
             return parseCharacterLiteral(start);
         }
         if (tokens.canConsume("U", "&")) {
             return parseCharacterLiteral(start);
         }
-        if (tokens.canConsume('X')) {
+        if (tokens.canConsume("X")) {
             return parseCharacterLiteral(start);
+        }
+        if (tokens.canConsume("B")) {
+            return parseBitFieldLiteral(start);
         }
         if (tokens.matchesAnyOf(DdlTokenizer.DOUBLE_QUOTED_STRING, DdlTokenizer.SINGLE_QUOTED_STRING)) {
             return tokens.consume();
@@ -739,6 +754,10 @@ public class DdlParser {
         return name;
     }
 
+    protected String parseBitFieldLiteral(Marker start) {
+        return consumeQuotedString();
+    }
+
     protected String parseDateLiteral(Marker start) {
         return consumeQuotedString();
     }
@@ -800,11 +819,11 @@ public class DdlParser {
         ColumnEditor column = Column.editor().name(columnName);
         try {
             if (constantValue.startsWith("'") || constantValue.startsWith("\"")) {
-                column.typeName("CHAR");
+                column.type("CHAR");
                 column.jdbcType(Types.CHAR);
                 column.length(constantValue.length() - 2);
             } else if (constantValue.equalsIgnoreCase("TRUE") || constantValue.equalsIgnoreCase("FALSE")) {
-                column.typeName("BOOLEAN");
+                column.type("BOOLEAN");
                 column.jdbcType(Types.BOOLEAN);
             } else {
                 setTypeInfoForConstant(constantValue, column);
@@ -818,22 +837,22 @@ public class DdlParser {
     protected void setTypeInfoForConstant(String constantValue, ColumnEditor column) {
         try {
             Integer.parseInt(constantValue);
-            column.typeName("INTEGER");
+            column.type("INTEGER");
             column.jdbcType(Types.INTEGER);
         } catch (NumberFormatException e) {}
         try {
             Long.parseLong(constantValue);
-            column.typeName("BIGINT");
+            column.type("BIGINT");
             column.jdbcType(Types.BIGINT);
         } catch (NumberFormatException e) {}
         try {
             Float.parseFloat(constantValue);
-            column.typeName("FLOAT");
+            column.type("FLOAT");
             column.jdbcType(Types.FLOAT);
         } catch (NumberFormatException e) {}
         try {
             Double.parseDouble(constantValue);
-            column.typeName("DOUBLE");
+            column.type("DOUBLE");
             column.jdbcType(Types.DOUBLE);
             int precision = 0;
             int scale = 0;
@@ -858,7 +877,7 @@ public class DdlParser {
         } catch (NumberFormatException e) {}
         try {
             BigDecimal decimal = new BigDecimal(constantValue);
-            column.typeName("DECIMAL");
+            column.type("DECIMAL");
             column.jdbcType(Types.DECIMAL);
             column.length(decimal.precision());
             column.scale(decimal.precision());

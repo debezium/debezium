@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.relational;
@@ -50,9 +50,9 @@ public class TableEditorTest {
     @Test(expected = IllegalArgumentException.class)
     public void shouldNotAllowAddingPrimaryKeyColumnWhenNotFound() {
         editor.tableId(id);
-        Column c1 = columnEditor.name("C1").typeName("VARCHAR").jdbcType(Types.VARCHAR).length(10).position(1).create();
-        Column c2 = columnEditor.name("C2").typeName("NUMBER").jdbcType(Types.NUMERIC).length(5).position(1).create();
-        Column c3 = columnEditor.name("C3").typeName("DATE").jdbcType(Types.DATE).position(1).create();
+        Column c1 = columnEditor.name("C1").type("VARCHAR").jdbcType(Types.VARCHAR).length(10).position(1).create();
+        Column c2 = columnEditor.name("C2").type("NUMBER").jdbcType(Types.NUMERIC).length(5).position(1).create();
+        Column c3 = columnEditor.name("C3").type("DATE").jdbcType(Types.DATE).position(1).create();
         editor.addColumns(c1, c2, c3);
         editor.setPrimaryKeyNames("C1", "WOOPS");
     }
@@ -60,9 +60,9 @@ public class TableEditorTest {
     @Test
     public void shouldAllowAddingPrimaryKeyColumnWhenFound() {
         editor.tableId(id);
-        Column c1 = columnEditor.name("C1").typeName("VARCHAR").jdbcType(Types.VARCHAR).length(10).position(1).create();
-        Column c2 = columnEditor.name("C2").typeName("NUMBER").jdbcType(Types.NUMERIC).length(5).position(1).create();
-        Column c3 = columnEditor.name("C3").typeName("DATE").jdbcType(Types.DATE).position(1).create();
+        Column c1 = columnEditor.name("C1").type("VARCHAR").jdbcType(Types.VARCHAR).length(10).position(1).create();
+        Column c2 = columnEditor.name("C2").type("NUMBER").jdbcType(Types.NUMERIC).length(5).position(1).create();
+        Column c3 = columnEditor.name("C3").type("DATE").jdbcType(Types.DATE).position(1).create();
         editor.addColumns(c1, c2, c3);
         editor.setPrimaryKeyNames("C1");
         c1 = editor.columnWithName(c1.name());
@@ -81,9 +81,9 @@ public class TableEditorTest {
     @Test
     public void shouldFindNonExistingColumnByNameIndependentOfCase() {
         editor.tableId(id);
-        Column c1 = columnEditor.name("C1").typeName("VARCHAR").jdbcType(Types.VARCHAR).length(10).position(1).create();
-        Column c2 = columnEditor.name("C2").typeName("NUMBER").jdbcType(Types.NUMERIC).length(5).position(1).create();
-        Column c3 = columnEditor.name("C3").typeName("DATE").jdbcType(Types.DATE).position(1).create();
+        Column c1 = columnEditor.name("C1").type("VARCHAR").jdbcType(Types.VARCHAR).length(10).position(1).create();
+        Column c2 = columnEditor.name("C2").type("NUMBER").jdbcType(Types.NUMERIC).length(5).position(1).create();
+        Column c3 = columnEditor.name("C3").type("DATE").jdbcType(Types.DATE).position(1).create();
         editor.addColumns(c1, c2, c3);
         editor.columns().forEach(col -> {
             assertThat(editor.columnWithName(col.name())).isNotNull();
@@ -96,9 +96,9 @@ public class TableEditorTest {
     @Test
     public void shouldFindGeneratedColumns() {
         editor.tableId(id);
-        Column c1 = columnEditor.name("C1").typeName("VARCHAR").jdbcType(Types.VARCHAR).length(10).position(1).create();
-        Column c2 = columnEditor.name("C2").typeName("NUMBER").jdbcType(Types.NUMERIC).length(5).generated(true).create();
-        Column c3 = columnEditor.name("C3").typeName("DATE").jdbcType(Types.DATE).generated(true).create();
+        Column c1 = columnEditor.name("C1").type("VARCHAR").jdbcType(Types.VARCHAR).length(10).position(1).create();
+        Column c2 = columnEditor.name("C2").type("NUMBER").jdbcType(Types.NUMERIC).length(5).generated(true).create();
+        Column c3 = columnEditor.name("C3").type("DATE").jdbcType(Types.DATE).generated(true).create();
         editor.addColumns(c1, c2, c3);
         editor.setPrimaryKeyNames("C1");
         table = editor.create();
@@ -112,9 +112,9 @@ public class TableEditorTest {
     @Test
     public void shouldFindAutoIncrementedColumns() {
         editor.tableId(id);
-        Column c1 = columnEditor.name("C1").typeName("VARCHAR").jdbcType(Types.VARCHAR).length(10).position(1).create();
-        Column c2 = columnEditor.name("C2").typeName("NUMBER").jdbcType(Types.NUMERIC).length(5).autoIncremented(true).create();
-        Column c3 = columnEditor.name("C3").typeName("DATE").jdbcType(Types.DATE).autoIncremented(true).create();
+        Column c1 = columnEditor.name("C1").type("VARCHAR").jdbcType(Types.VARCHAR).length(10).position(1).create();
+        Column c2 = columnEditor.name("C2").type("NUMBER").jdbcType(Types.NUMERIC).length(5).autoIncremented(true).create();
+        Column c3 = columnEditor.name("C3").type("DATE").jdbcType(Types.DATE).autoIncremented(true).create();
         editor.addColumns(c1, c2, c3);
         editor.setPrimaryKeyNames("C1");
         table = editor.create();
@@ -128,9 +128,9 @@ public class TableEditorTest {
     @Test
     public void shouldReorderColumns() {
         editor.tableId(id);
-        Column c1 = columnEditor.name("C1").typeName("VARCHAR").jdbcType(Types.VARCHAR).length(10).position(1).create();
-        Column c2 = columnEditor.name("C2").typeName("NUMBER").jdbcType(Types.NUMERIC).length(5).autoIncremented(true).create();
-        Column c3 = columnEditor.name("C3").typeName("DATE").jdbcType(Types.DATE).autoIncremented(true).create();
+        Column c1 = columnEditor.name("C1").type("VARCHAR").jdbcType(Types.VARCHAR).length(10).position(1).create();
+        Column c2 = columnEditor.name("C2").type("NUMBER").jdbcType(Types.NUMERIC).length(5).autoIncremented(true).create();
+        Column c3 = columnEditor.name("C3").type("DATE").jdbcType(Types.DATE).autoIncremented(true).create();
         editor.addColumns(c1, c2, c3);
         assertValidPositions(editor);
         editor.reorderColumn("C1", null);
@@ -163,9 +163,9 @@ public class TableEditorTest {
     @Test(expected = IllegalArgumentException.class)
     public void shouldNotReorderColumnIfNameDoesNotMatch() {
         editor.tableId(id);
-        Column c1 = columnEditor.name("C1").typeName("VARCHAR").jdbcType(Types.VARCHAR).length(10).position(1).create();
-        Column c2 = columnEditor.name("C2").typeName("NUMBER").jdbcType(Types.NUMERIC).length(5).autoIncremented(true).create();
-        Column c3 = columnEditor.name("C3").typeName("DATE").jdbcType(Types.DATE).autoIncremented(true).create();
+        Column c1 = columnEditor.name("C1").type("VARCHAR").jdbcType(Types.VARCHAR).length(10).position(1).create();
+        Column c2 = columnEditor.name("C2").type("NUMBER").jdbcType(Types.NUMERIC).length(5).autoIncremented(true).create();
+        Column c3 = columnEditor.name("C3").type("DATE").jdbcType(Types.DATE).autoIncremented(true).create();
         editor.addColumns(c1, c2, c3);
         editor.reorderColumn("WOOPS", "C2");
         assertValidPositions(editor);
@@ -174,9 +174,9 @@ public class TableEditorTest {
     @Test
     public void shouldRemoveColumnByName() {
         editor.tableId(id);
-        Column c1 = columnEditor.name("C1").typeName("VARCHAR").jdbcType(Types.VARCHAR).length(10).position(1).create();
-        Column c2 = columnEditor.name("C2").typeName("NUMBER").jdbcType(Types.NUMERIC).length(5).autoIncremented(true).create();
-        Column c3 = columnEditor.name("C3").typeName("DATE").jdbcType(Types.DATE).autoIncremented(true).create();
+        Column c1 = columnEditor.name("C1").type("VARCHAR").jdbcType(Types.VARCHAR).length(10).position(1).create();
+        Column c2 = columnEditor.name("C2").type("NUMBER").jdbcType(Types.NUMERIC).length(5).autoIncremented(true).create();
+        Column c3 = columnEditor.name("C3").type("DATE").jdbcType(Types.DATE).autoIncremented(true).create();
         editor.addColumns(c1, c2, c3);
         editor.removeColumn("C2");
         assertThat(editor.columns()).containsExactly(editor.columnWithName("C1"),

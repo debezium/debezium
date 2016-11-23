@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.util;
@@ -143,6 +143,20 @@ public final class Strings {
     }
 
     /**
+     * Check whether the two {@link String} instances are equal ignoring case.
+     * 
+     * @param str1 the first character sequence; may be null
+     * @param str2 the second character sequence; may be null
+     * @return {@code true} if both are null or if the two strings are equal to each other ignoring case, or {@code false}
+     *         otherwise
+     */
+    public static boolean equalsIgnoreCase(String str1, String str2) {
+        if (str1 == str2) return true;
+        if (str1 == null) return str2 == null;
+        return str1.equalsIgnoreCase(str2);
+    }
+
+    /**
      * Returns a new String composed of the supplied integer values joined together
      * with a copy of the specified {@code delimiter}.
      *
@@ -274,11 +288,11 @@ public final class Strings {
      * @see #justifyLeft(String, int, char)
      */
     public static String pad(String original,
-                                   int length,
-                                   char padChar) {
-        if ( original.length() >= length ) return original;
+                             int length,
+                             char padChar) {
+        if (original.length() >= length) return original;
         StringBuilder sb = new StringBuilder(original);
-        while ( sb.length() < length ) {
+        while (sb.length() < length) {
             sb.append(padChar);
         }
         return sb.toString();
@@ -482,7 +496,7 @@ public final class Strings {
      * @return the number, or {@code null} if the value is not a number
      */
     public static Number asNumber(String value) {
-        return asNumber(value,null);
+        return asNumber(value, null);
     }
 
     /**

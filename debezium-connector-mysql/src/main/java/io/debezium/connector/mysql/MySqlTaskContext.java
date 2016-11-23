@@ -1,15 +1,23 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.connector.mysql;
 
+import java.util.Map;
+import java.util.function.Predicate;
+
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
+
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.function.Predicates;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.LoggingContext.PreviousContext;
+import io.debezium.util.Strings;
 
 /**
  * A Kafka Connect source task reads the MySQL binary log and generate the corresponding data change events.
@@ -23,6 +31,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     private final MySqlSchema dbSchema;
     private final TopicSelector topicSelector;
     private final RecordMakers recordProcessor;
+    private final Predicate<String> gtidSourceFilter;
     private final Clock clock = Clock.system();
 
     public MySqlTaskContext(Configuration config) {
@@ -37,10 +46,18 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
 
         // Set up the MySQL schema ...
         this.dbSchema = new MySqlSchema(config, serverName());
-        this.dbSchema.start();
 
         // Set up the record processor ...
         this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector);
+
+        String gtidSetIncludes = config.getString(MySqlConnectorConfig.GTID_SOURCE_INCLUDES);
+        String gtidSetExcludes = config.getString(MySqlConnectorConfig.GTID_SOURCE_EXCLUDES);
+        this.gtidSourceFilter = gtidSetIncludes != null ? Predicates.includes(gtidSetIncludes)
+                : (gtidSetExcludes != null ? Predicates.excludes(gtidSetExcludes) : null);
+    }
+
+    public String connectorName() {
+        return config.getString("name");
     }
 
     public TopicSelector topicSelector() {
@@ -60,6 +77,29 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     }
 
     /**
+     * Get the predicate function that will return {@code true} if a GTID source is to be included, or {@code false} if
+     * a GTID source is to be excluded.
+     * 
+     * @return the GTID source predicate function; never null
+     */
+    public Predicate<String> gtidSourceFilter() {
+        return gtidSourceFilter;
+    }
+
+    /**
+     * Initialize the database history with any server-specific information. This should be done only upon connector startup
+     * when the connector has no prior history.
+     */
+    public void initializeHistory() {
+        // Read the system variables from the MySQL instance and get the current database name ...
+        Map<String, String> variables = readMySqlCharsetSystemVariables(null);
+        String ddlStatement = setStatementFor(variables);
+
+        // And write them into the database history ...
+        dbSchema.applyDdl(source, "", ddlStatement, null);
+    }
+
+    /**
      * Load the database schema information using the previously-recorded history, and stop reading the history when the
      * the history reaches the supplied starting point.
      * 
@@ -67,7 +107,23 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
      *            offset} at which the database schemas are to reflect; may not be null
      */
     public void loadHistory(SourceInfo startingPoint) {
+        // Read the system variables from the MySQL instance and load them into the DDL parser as defaults ...
+        Map<String, String> variables = readMySqlCharsetSystemVariables(null);
+        dbSchema.setSystemVariables(variables);
+
+        // And then load the history ...
         dbSchema.loadHistory(startingPoint);
+
+        // The server's default character set may have changed since we last recorded it in the history,
+        // so we need to see if the history's state does not match ...
+        String systemCharsetName = variables.get(MySqlSystemVariables.CHARSET_NAME_SERVER);
+        String systemCharsetNameFromHistory = dbSchema.systemVariables().getVariable(MySqlSystemVariables.CHARSET_NAME_SERVER);
+        if (!Strings.equalsIgnoreCase(systemCharsetName, systemCharsetNameFromHistory)) {
+            // The history's server character set is NOT the same as the server's current default,
+            // so record the change in the history ...
+            String ddlStatement = setStatementFor(variables);
+            dbSchema.applyDdl(source, "", ddlStatement, null);
+        }
         recordProcessor.regenerate();
     }
 
@@ -81,7 +137,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
 
     public String serverName() {
         String serverName = config.getString(MySqlConnectorConfig.SERVER_NAME);
-        if ( serverName == null ) {
+        if (serverName == null) {
             serverName = hostname() + ":" + port();
         }
         return serverName;
@@ -102,7 +158,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     public long pollIntervalInMillseconds() {
         return config.getLong(MySqlConnectorConfig.POLL_INTERVAL_MS);
     }
-    
+
     public long rowCountForLargeTable() {
         return config.getLong(MySqlConnectorConfig.ROW_COUNT_FOR_STREAMING_RESULT_SETS);
     }
@@ -117,6 +173,14 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
 
     public boolean isSnapshotNeverAllowed() {
         return snapshotMode() == SnapshotMode.NEVER;
+    }
+
+    public boolean isInitialSnapshotOnly() {
+        return snapshotMode() == SnapshotMode.INITIAL_ONLY;
+    }
+
+    public boolean isSchemaOnlySnapshot() {
+        return snapshotMode() == SnapshotMode.SCHEMA_ONLY;
     }
 
     protected SnapshotMode snapshotMode() {
@@ -150,6 +214,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
 
     /**
      * Configure the logger's Mapped Diagnostic Context (MDC) properties for the thread making this call.
+     * 
      * @param contextName the name of the context; may not be null
      * @return the previous MDC context; never null
      * @throws IllegalArgumentException if {@code contextName} is null
@@ -157,7 +222,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     public PreviousContext configureLoggingContext(String contextName) {
         return LoggingContext.forConnector("MySQL", serverName(), contextName);
     }
-    
+
     /**
      * Run the supplied function in the temporary connector MDC context, and when complete always return the MDC context to its
      * state before this method was called.
@@ -168,6 +233,54 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
      */
     public void temporaryLoggingContext(String contextName, Runnable operation) {
         LoggingContext.temporarilyForConnector("MySQL", serverName(), contextName, operation);
+    }
+    
+    /**
+     * Create a JMX metric name for the given metric.
+     * @param contextName the name of the context
+     * @return the JMX metric name
+     * @throws MalformedObjectNameException if the name is invalid
+     */
+    public ObjectName metricName(String contextName) throws MalformedObjectNameException {
+        //return new ObjectName("debezium.mysql:type=connector-metrics,connector=" + serverName() + ",name=" + contextName);
+        return new ObjectName("debezium.mysql:type=connector-metrics,context=" + contextName + ",server=" + serverName());
+    }
+
+    /**
+     * Apply the include/exclude GTID source filters to the current {@link #source() GTID set} and merge them onto the
+     * currently available GTID set from a MySQL server.
+     *
+     * The merging behavior of this method might seem a bit strange at first. It's required in order for Debezium to consume a
+     * MySQL binlog that has multi-source replication enabled, if a failover has to occur. In such a case, the server that
+     * Debezium is failed over to might have a different set of sources, but still include the sources required for Debezium
+     * to continue to function. MySQL does not allow downstream replicas to connect if the GTID set does not contain GTIDs for
+     * all channels that the server is replicating from, even if the server does have the data needed by the client. To get
+     * around this, we can have Debezium merge its GTID set with whatever is on the server, so that MySQL will allow it to
+     * connect. See <a href="https://issues.jboss.org/browse/DBZ-143">DBZ-143</a> for details.
+     *
+     * This method does not mutate any state in the context.
+     * 
+     * @param availableServerGtidSet the GTID set currently available in the MySQL server
+     * @return A GTID set meant for consuming from a MySQL binlog; may return null if the SourceInfo has no GTIDs and therefore
+     *         none were filtered
+     */
+    public GtidSet filterGtidSet(GtidSet availableServerGtidSet) {
+        String gtidStr = source.gtidSet();
+        if (gtidStr == null) {
+            return null;
+        }
+        logger.info("Attempting to generate a filtered GTID set");
+        logger.info("GTID set from previous recorded offset: {}", gtidStr);
+        GtidSet filteredGtidSet = new GtidSet(gtidStr);
+        Predicate<String> gtidSourceFilter = gtidSourceFilter();
+        if (gtidSourceFilter != null) {
+            filteredGtidSet = filteredGtidSet.retainAll(gtidSourceFilter);
+            logger.info("GTID set after applying GTID source includes/excludes to previous recorded offset: {}", filteredGtidSet);
+        }
+        logger.info("GTID set available on server: {}", availableServerGtidSet);
+        GtidSet mergedGtidSet = availableServerGtidSet.with(filteredGtidSet);
+        logger.info("Final merged GTID set to use when connecting to MySQL: {}", mergedGtidSet);
+        return mergedGtidSet;
     }
 
 }

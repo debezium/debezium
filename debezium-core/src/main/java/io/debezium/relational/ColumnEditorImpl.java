@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.relational;
@@ -12,6 +12,9 @@ final class ColumnEditorImpl implements ColumnEditor {
     private String name;
     private int jdbcType = Types.INTEGER;
     private String typeName;
+    private String typeExpression;
+    private String charsetName;
+    private String tableCharsetName;
     private int length = -1;
     private int scale = -1;
     private int position = 1;
@@ -21,42 +24,57 @@ final class ColumnEditorImpl implements ColumnEditor {
 
     protected ColumnEditorImpl() {
     }
-    
+
     @Override
     public String name() {
         return name;
     }
-    
+
     @Override
     public String typeName() {
         return typeName;
     }
-    
+
+    @Override
+    public String typeExpression() {
+        return typeExpression;
+    }
+
     @Override
     public int jdbcType() {
         return jdbcType;
     }
     
     @Override
+    public String charsetName() {
+        return charsetName;
+    }
+    
+    @Override
+    public String charsetNameOfTable() {
+        return tableCharsetName;
+    }
+    
+    @Override
     public int length() {
         return length;
     }
-    
+
     @Override
     public int scale() {
         return scale;
     }
-    
+
     @Override
     public int position() {
         return position;
     }
-    
+
     @Override
     public boolean isOptional() {
         return optional;
     }
-    
+
     @Override
     public boolean isAutoIncremented() {
         return autoIncremented;
@@ -66,7 +84,7 @@ final class ColumnEditorImpl implements ColumnEditor {
     public boolean isGenerated() {
         return generated;
     }
-    
+
     @Override
     public ColumnEditorImpl name(String name) {
         this.name = name;
@@ -74,14 +92,34 @@ final class ColumnEditorImpl implements ColumnEditor {
     }
 
     @Override
-    public ColumnEditorImpl typeName(String typeName) {
+    public ColumnEditorImpl type(String typeName) {
         this.typeName = typeName;
+        this.typeExpression = typeName;
+        return this;
+    }
+    
+    @Override
+    public ColumnEditor type(String typeName, String typeExpression) {
+        this.typeName = typeName;
+        this.typeExpression = typeExpression != null ? typeExpression : typeName;
         return this;
     }
 
     @Override
     public ColumnEditorImpl jdbcType(int jdbcType) {
         this.jdbcType = jdbcType;
+        return this;
+    }
+
+    @Override
+    public ColumnEditor charsetName(String charsetName) {
+        this.charsetName = charsetName;
+        return this;
+    }
+    
+    @Override
+    public ColumnEditor charsetNameOfTable(String charsetName) {
+        this.tableCharsetName = charsetName;
         return this;
     }
 
@@ -125,7 +163,7 @@ final class ColumnEditorImpl implements ColumnEditor {
 
     @Override
     public Column create() {
-        return new ColumnImpl(name, position, jdbcType, typeName, length, scale, optional, autoIncremented, generated);
+        return new ColumnImpl(name, position, jdbcType, typeName, typeExpression, charsetName, tableCharsetName, length, scale, optional, autoIncremented, generated);
     }
 
     @Override

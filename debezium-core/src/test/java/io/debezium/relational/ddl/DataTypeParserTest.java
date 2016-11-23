@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.relational.ddl;
@@ -42,6 +42,8 @@ public class DataTypeParserTest {
         parser.register(Types.DOUBLE, "DOUBLE[(M,D)] [UNSIGNED] [ZEROFILL]");
         parser.register(Types.DOUBLE, "DOUBLE PRECISION[(M,D)] [UNSIGNED] [ZEROFILL]");
         parser.register(Types.DOUBLE, "REAL[(M,D)] [UNSIGNED] [ZEROFILL]");
+
+        parser.register(Types.CHAR, "ENUM(...) [CHARSET charset_name] [COLLATE collation_name]");
 
         parser.register(Types.VARCHAR, "VARCHAR");
     }
@@ -105,6 +107,13 @@ public class DataTypeParserTest {
         assertType("DECIMAL(10,5) UNSIGNED ZEROFILL","DECIMAL UNSIGNED ZEROFILL",Types.DECIMAL, 10, 5);
     }
     
+    @Test
+    public void shouldDetermineTypeWithWildcard() {
+        assertType("ENUM('a','b','c')","ENUM",Types.CHAR);
+        assertEnumType("ENUM('a','multi','multi with () paren', 'other') followed by",
+                       "ENUM('a','multi','multi with () paren', 'other')");
+    }
+    
     protected void assertType( String content, String typeName, int jdbcType ) {
         assertType(content,typeName,jdbcType,-1,-1,null);
     }
@@ -125,6 +134,15 @@ public class DataTypeParserTest {
         assertThat(type.length()).isEqualTo(length);
         assertThat(type.scale()).isEqualTo(scale);
         assertThat(type.arrayDimensions()).isEqualTo(arrayDims);
+    }
+    
+    protected void assertEnumType( String content, String expression ) {
+        DataType type = parser.parse(text(content), null);
+        assertThat(type).isNotNull();
+        assertThat(type.jdbcType()).isEqualTo(Types.CHAR);
+        assertThat(type.name()).isEqualTo("ENUM");
+        assertThat(type.length()).isEqualTo(-1);
+        assertThat(type.expression()).isEqualTo(expression);
     }
     
     protected void assertNoType( String content ) {

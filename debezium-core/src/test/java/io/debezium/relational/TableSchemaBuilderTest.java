@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.relational;
@@ -9,7 +9,6 @@ import static org.junit.Assert.fail;
 
 import java.sql.Types;
 
-import org.apache.kafka.connect.data.Date;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -19,6 +18,8 @@ import org.junit.Test;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.time.Date;
 import io.debezium.util.AvroValidator;
 
 public class TableSchemaBuilderTest {
@@ -43,19 +44,19 @@ public class TableSchemaBuilderTest {
         table = Table.editor()
                      .tableId(id)
                      .addColumns(Column.editor().name("C1")
-                                       .typeName("VARCHAR").jdbcType(Types.VARCHAR).length(10)
+                                       .type("VARCHAR").jdbcType(Types.VARCHAR).length(10)
                                        .optional(false)
                                        .generated(true)
                                        .create(),
                                  Column.editor().name("C2")
-                                       .typeName("NUMBER").jdbcType(Types.NUMERIC).length(5).scale(3)
+                                       .type("NUMBER").jdbcType(Types.NUMERIC).length(5).scale(3)
                                        .create(),
                                  Column.editor().name("C3")
-                                       .typeName("DATE").jdbcType(Types.DATE).length(4)
+                                       .type("DATE").jdbcType(Types.DATE).length(4)
                                        .optional(true)
                                        .create(),
                                  Column.editor().name("C4")
-                                       .typeName("COUNTER").jdbcType(Types.INTEGER)
+                                       .type("COUNTER").jdbcType(Types.INTEGER)
                                        .autoIncremented(true)
                                        .optional(true)
                                        .create())
@@ -77,19 +78,19 @@ public class TableSchemaBuilderTest {
 
     @Test(expected = NullPointerException.class)
     public void shouldFailToBuildTableSchemaFromNullTable() {
-        new TableSchemaBuilder(validator::validate).create(prefix,null);
+        new TableSchemaBuilder(new JdbcValueConverters(),validator::validate).create(prefix,null);
     }
 
     @Test
     public void shouldBuildTableSchemaFromTable() {
-        schema = new TableSchemaBuilder(validator::validate).create(prefix,table);
+        schema = new TableSchemaBuilder(new JdbcValueConverters(),validator::validate).create(prefix,table);
         assertThat(schema).isNotNull();
     }
 
     @Test
     public void shouldBuildTableSchemaFromTableWithoutPrimaryKey() {
         table = table.edit().setPrimaryKeyNames().create();
-        schema = new TableSchemaBuilder(validator::validate).create(prefix,table);
+        schema = new TableSchemaBuilder(new JdbcValueConverters(),validator::validate).create(prefix,table);
         assertThat(schema).isNotNull();
         // Check the keys ...
         assertThat(schema.keySchema()).isNull();

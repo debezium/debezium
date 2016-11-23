@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.connector.mysql;
@@ -61,7 +61,10 @@ public class MySqlSchemaTest {
         mysql.start();
 
         // Testing.Print.enable();
+
+        // Set up the server ...
         source.setBinlogStartPoint("binlog-001",400);
+        mysql.applyDdl(source, "db1", "SET " + MySqlSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", this::printStatements);
         mysql.applyDdl(source, "db1", readFile("ddl/mysql-products.ddl"), this::printStatements);
 
         // Check that we have tables ...
@@ -82,6 +85,7 @@ public class MySqlSchemaTest {
         mysql.start();
 
         source.setBinlogStartPoint("binlog-001",400);
+        mysql.applyDdl(source, "mysql", "SET " + MySqlSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", this::printStatements);
         mysql.applyDdl(source, "mysql", readFile("ddl/mysql-test-init-5.7.ddl"), this::printStatements);
 
         source.setBinlogStartPoint("binlog-001",1000);
@@ -107,6 +111,7 @@ public class MySqlSchemaTest {
         mysql.start();
 
         source.setBinlogStartPoint("binlog-001",400);
+        mysql.applyDdl(source, "mysql", "SET " + MySqlSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", this::printStatements);
         mysql.applyDdl(source, "mysql", readFile("ddl/mysql-test-init-5.7.ddl"), this::printStatements);
 
         source.setBinlogStartPoint("binlog-001",1000);
