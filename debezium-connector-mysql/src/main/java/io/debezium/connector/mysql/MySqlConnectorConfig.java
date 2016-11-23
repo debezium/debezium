@@ -341,7 +341,7 @@ public class MySqlConnectorConfig {
     private static final String DATABASE_WHITELIST_NAME = "database.whitelist";
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
     private static final String TABLE_IGNORE_BUILTIN_NAME = "table.ignore.builtin";
-    private static final String TABLE_SCHEMA_NAME = "table.schema";
+    private static final String TABLE_SCHEMA_NAME = "table.schema.map";
     private static final TableRecommender TABLE_LIST_RECOMMENDER = new TableRecommender();
     private static final DatabaseRecommender DATABASE_LIST_RECOMMENDER = new DatabaseRecommender();
 
