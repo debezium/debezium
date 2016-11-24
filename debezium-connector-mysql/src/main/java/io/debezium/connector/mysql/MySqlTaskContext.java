@@ -41,12 +41,16 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     private final RecordMakers recordProcessor;
     private final Predicate<String> gtidSourceFilter;
     private final Clock clock = Clock.system();
+    private final Map<String, String> tableSchemaMap = new HashMap<>();
 
     public MySqlTaskContext(Configuration config) {
         super(config);
-
+        String a = config.getString(TABLE_SCHEMA.name());
+        logger.info("TableSchemaMap = " + a);
+        logger.info("MergeMode ={}", config.getString(MySqlConnectorConfig.TOPIC_GENERATION_MODE));
         // Set up the topic selector ...
         if (isMergeTopicGenerationMode()) {
+            getTableSchemaMap();
             this.topicSelector = new TopicSelector() {
                 @Override
                 public String getTopic(String databaseName, String tableName) {
@@ -222,24 +226,27 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         return topicGenerationMode() == TopicGenerationMode.MERGE;
     }
 
-    protected Map<String, String> getTableSchemaMap() {
+    protected void getTableSchemaMap() {
         Map<String, String> map = new HashMap<>();
-        for (String value : config.getStrings(TABLE_SCHEMA, ",")) {
+        logger.info("TableSchemaMap = {}", config.getString(TABLE_SCHEMA.name()));
+        for (String value : config.getString(TABLE_SCHEMA.name()).split("],")) {
+            logger.info("TableSchemaChild = {}", value);
             Pattern pattern = Pattern.compile("(.+):\\[(([^,]+,)+[^.]+)]");
             Matcher matcher = pattern.matcher(value);
             if (matcher.find()) {
                 String schemaName = matcher.group(1);
                 List<String> tableNames = Collect.arrayListOf(matcher.group(2).split(","));
+                logger.info("SchemaName = {} tableNames = {}", schemaName, tableNames);
                 for (String tableName : tableNames) {
-                    map.put(tableName, schemaName);
+                    tableSchemaMap.put(tableName, schemaName);
                 }
             }
         }
-        return map;
     }
 
+
     protected String getSchemaName(String tableName) {
-        return getTableSchemaMap().getOrDefault(tableName, tableName);
+        return tableSchemaMap.getOrDefault(tableName, tableName);
     }
 
     @Override

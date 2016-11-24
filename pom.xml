@@ -196,7 +196,6 @@
                 <groupId>io.confluent</groupId>
                 <artifactId>kafka-connect-avro-converter</artifactId>
                 <version>${version.confluent.platform}</version>
-                <scope>test</scope>
             </dependency>
 
             <!-- PostgreSQL JDBC driver -->
