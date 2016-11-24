@@ -41,27 +41,13 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     private final RecordMakers recordProcessor;
     private final Predicate<String> gtidSourceFilter;
     private final Clock clock = Clock.system();
-    private final Map<String, String> tableSchemaMap = new HashMap<>();
 
     public MySqlTaskContext(Configuration config) {
         super(config);
         String a = config.getString(TABLE_SCHEMA.name());
-        logger.info("TableSchemaMap = " + a);
-        logger.info("MergeMode ={}", config.getString(MySqlConnectorConfig.TOPIC_GENERATION_MODE));
         // Set up the topic selector ...
         if (isMergeTopicGenerationMode()) {
-            getTableSchemaMap();
-            this.topicSelector = new TopicSelector() {
-                @Override
-                public String getTopic(String databaseName, String tableName) {
-                    return String.join(".", serverName(), databaseName, getSchemaName(tableName));
-                }
-
-                @Override
-                public String getPrimaryTopic() {
-                    return serverName();
-                }
-            };
+            this.topicSelector = TopicSelector.mergeTopicSelector(serverName(), ".", getTableSchemaMap());
         } else {
             this.topicSelector = TopicSelector.defaultSelector(serverName());
         }
@@ -226,7 +212,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         return topicGenerationMode() == TopicGenerationMode.MERGE;
     }
 
-    protected void getTableSchemaMap() {
+    protected Map<String, String> getTableSchemaMap() {
         Map<String, String> map = new HashMap<>();
         logger.info("TableSchemaMap = {}", config.getString(TABLE_SCHEMA.name()));
         for (String value : config.getString(TABLE_SCHEMA.name()).split("],")) {
@@ -238,15 +224,11 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
                 List<String> tableNames = Collect.arrayListOf(matcher.group(2).split(","));
                 logger.info("SchemaName = {} tableNames = {}", schemaName, tableNames);
                 for (String tableName : tableNames) {
-                    tableSchemaMap.put(tableName, schemaName);
+                    map.put(tableName, schemaName);
                 }
             }
         }
-    }
-
-
-    protected String getSchemaName(String tableName) {
-        return tableSchemaMap.getOrDefault(tableName, tableName);
+        return map;
     }
 
     @Override
