@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.function.Function;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -78,7 +79,7 @@ public class MySqlSchema {
      * @param config the connector configuration, which is presumed to be valid
      * @param serverName the name of the server
      */
-    public MySqlSchema(Configuration config, String serverName) {
+    public MySqlSchema(Configuration config, String serverName, Function<TableId, String> schemaNameConverter) {
         this.filters = new Filters(config);
         this.ddlParser = new MySqlDdlParser(false);
         this.tables = new Tables();
@@ -93,7 +94,8 @@ public class MySqlSchema {
         DecimalHandlingMode decimalHandlingMode = DecimalHandlingMode.parse(decimalHandlingModeStr);
         DecimalMode decimalMode = decimalHandlingMode.asDecimalMode();
         MySqlValueConverters valueConverters = new MySqlValueConverters(decimalMode, adaptiveTimePrecision);
-        this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameValidator::validate);
+
+        this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameValidator::validate, schemaNameConverter);
 
         // Set up the server name and schema prefix ...
         if (serverName != null) serverName = serverName.trim();

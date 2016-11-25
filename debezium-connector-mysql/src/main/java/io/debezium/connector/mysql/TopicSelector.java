@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.mysql;
 
-import java.util.HashMap;
 import java.util.Map;
 
 import io.debezium.annotation.ThreadSafe;

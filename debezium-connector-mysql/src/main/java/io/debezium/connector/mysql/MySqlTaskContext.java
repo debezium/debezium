@@ -5,9 +5,9 @@
  */
 package io.debezium.connector.mysql;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -44,7 +44,6 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
 
     public MySqlTaskContext(Configuration config) {
         super(config);
-        String a = config.getString(TABLE_SCHEMA.name());
         // Set up the topic selector ...
         if (isMergeTopicGenerationMode()) {
             this.topicSelector = TopicSelector.mergeTopicSelector(serverName(), ".", getTableSchemaMap());
@@ -56,7 +55,8 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         this.source.setServerName(serverName());
 
         // Set up the MySQL schema ...
-        this.dbSchema = new MySqlSchema(config, serverName());
+        // shao@datapipeline.com We use topic name as the schema name.
+        this.dbSchema = new MySqlSchema(config, serverName(), this.topicSelector::getTopic);
 
         // Set up the record processor ...
         this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector);
@@ -213,9 +213,9 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     }
 
     protected Map<String, String> getTableSchemaMap() {
-        Map<String, String> map = new HashMap<>();
+        Map<String, String> map = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         logger.info("TableSchemaMap = {}", config.getString(TABLE_SCHEMA.name()));
-        for (String value : config.getString(TABLE_SCHEMA.name()).split("],")) {
+        for (String value : config.getString(TABLE_SCHEMA.name()).toLowerCase().split("],")) {
             logger.info("TableSchemaChild = {}", value);
             Pattern pattern = Pattern.compile("(.+):\\[(([^,]+,)+[^.]+)]");
             Matcher matcher = pattern.matcher(value);
