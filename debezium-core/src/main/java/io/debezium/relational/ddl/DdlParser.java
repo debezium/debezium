@@ -673,11 +673,11 @@ public class DdlParser {
         if (tokens.canConsume("X")) {
             return parseCharacterLiteral(start);
         }
-        if (tokens.canConsume("B")) {
-            return parseBitFieldLiteral(start);
-        }
         if (tokens.matchesAnyOf(DdlTokenizer.DOUBLE_QUOTED_STRING, DdlTokenizer.SINGLE_QUOTED_STRING)) {
             return tokens.consume();
+        }
+        if (tokens.canConsume("B")) {
+            return parseBitFieldLiteral(start);
         }
         if (tokens.canConsume("DATE")) {
             return parseDateLiteral(start);
