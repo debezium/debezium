@@ -18,10 +18,10 @@
           work on all platforms. We'll set some of these as system properties during integration testing.
       -->
         <version.postgres.server>9.6</version.postgres.server>
-        <database.port>5432</database.port>
-        <database.user>postgres</database.user>
-        <database.password>postgres</database.password>
-        <database.name>postgres</database.name>
+        <postgres.port>4532</postgres.port>
+        <postgres.user>postgres</postgres.user>
+        <postgres.password>postgres</postgres.password>
+        <postgres.db.name>postgres</postgres.db.name>
         <docker.filter>debezium/postgres:${version.postgres.server}</docker.filter>
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
@@ -123,16 +123,15 @@
                         <image>
                             <!-- A Docker image using the Postgres Server with the DBZ decoderbufs plugin -->
                             <name>${docker.filter}</name>  
-                            <alias>database</alias>
                             <run>
-                                <namingStrategy>alias</namingStrategy>
+                                <namingStrategy>none</namingStrategy>
                                 <env>
-                                    <POSTGRES_USER>${database.user}</POSTGRES_USER>
-                                    <POSTGRES_PASSWORD>${database.password}</POSTGRES_PASSWORD>
-                                    <POSTGRES_DB>${database.name}</POSTGRES_DB>
+                                    <POSTGRES_USER>${postgres.user}</POSTGRES_USER>
+                                    <POSTGRES_PASSWORD>${postgres.password}</POSTGRES_PASSWORD>
+                                    <POSTGRES_DB>${postgres.db.name}</POSTGRES_DB>
                                 </env>
                                 <ports>
-                                    <port>${database.port}:5432</port>
+                                    <port>${postgres.port}:5432</port>
                                 </ports>
                                 <log>
                                     <prefix>postgres</prefix>
@@ -205,10 +204,10 @@
                     <systemPropertyVariables>
                         <!-- Make these available to the tests via system properties -->
                         <database.hostname>${docker.host.address}</database.hostname>
-                        <database.port>${database.port}</database.port>
-                        <database.user>${database.user}</database.user>
-                        <database.password>${database.password}</database.password>
-                        <database.dbname>${database.name}</database.dbname>
+                        <database.port>${postgres.port}</database.port>
+                        <database.user>${postgres.user}</database.user>
+                        <database.password>${postgres.password}</database.password>
+                        <database.dbname>${postgres.db.name}</database.dbname>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
                 </configuration>

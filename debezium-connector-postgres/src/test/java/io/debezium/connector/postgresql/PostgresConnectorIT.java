@@ -31,6 +31,7 @@ import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.postgresql.util.PSQLState;
 
@@ -41,7 +42,6 @@ import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.EmbeddedEngine;
-import io.debezium.junit.SkipLongRunning;
 import io.debezium.util.Strings;
 
 /**
@@ -352,7 +352,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     }
     
     @Test
-    @SkipLongRunning("performance")
+    @Ignore
     public void testStreamingPerformance() throws Exception {
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("postgres_create_tables.ddl");        
@@ -386,7 +386,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     }
     
     @Test
-    @SkipLongRunning("performance")
+    @Ignore
     public void testSnapshotPerformance() throws Exception {
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("postgres_create_tables.ddl");

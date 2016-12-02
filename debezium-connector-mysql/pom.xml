@@ -107,9 +107,8 @@
                   <image>
                     <!-- A Docker image using a partial MySQL installation maintained by MySQL team. -->
                     <name>debezium/mysql-server-test-database</name>
-                    <alias>database</alias>
                     <run>
-                      <namingStrategy>alias</namingStrategy>
+                      <namingStrategy>none</namingStrategy>
                       <env>
                         <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
                         <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
@@ -204,9 +203,8 @@
                     that is a replica of `debezium/mysql-server-gtids-test-database`
                     -->
                     <name>debezium/mysql-server-gtids-test-database-replica</name>
-                    <alias>replica-gtids</alias>
                     <run>
-                      <namingStrategy>alias</namingStrategy>
+                      <namingStrategy>none</namingStrategy>
                       <env>
                         <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
                         <MYSQL_USER>${mysql.replica.user}</MYSQL_USER>
