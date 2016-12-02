@@ -660,6 +660,32 @@ public class MySqlDdlParserTest {
         assertParseEnumAndSetOptions("SET () CHARACTER SET", "");
     }
 
+    @Test
+    public void shouldParseCreateTableWithEnumDefault() {
+        String ddl = "CREATE TABLE t ( c1 ENUM('a','b','c') NOT NULL DEFAULT 'b', c2 ENUM('a', 'b', 'c') NOT NULL DEFAULT 'a');";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table t = tables.forTable(new TableId(null, null, "t"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("c1", "c2");
+        assertThat(t.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t, "c1", "ENUM", Types.CHAR, 1, -1, false, false, false);
+        assertColumn(t, "c2", "ENUM", Types.CHAR, 1, -1, false, false, false);
+    }
+
+    @Test
+    public void shouldParseCreateTableWithBitDefault() {
+        String ddl = "CREATE TABLE t ( c1 Bit(2) NOT NULL DEFAULT b'1', c2 Bit(2) NOT NULL);";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table t = tables.forTable(new TableId(null, null, "t"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("c1", "c2");
+        assertThat(t.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t, "c1", "BIT", Types.BIT, 2, -1, false, false, false);
+        assertColumn(t, "c2", "BIT", Types.BIT, 2, -1, false, false, false);
+    }
+
     protected void assertParseEnumAndSetOptions(String typeExpression, String optionString) {
         List<String> options = MySqlDdlParser.parseSetAndEnumOptions(typeExpression);
         String commaSeperatedOptions = Strings.join(",", options);
