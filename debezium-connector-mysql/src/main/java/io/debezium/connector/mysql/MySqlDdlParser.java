@@ -98,7 +98,14 @@ public class MySqlDdlParser extends DdlParser {
         dataTypes.register(Types.BLOB, "VARCHAR(L) BINARY");
         dataTypes.register(Types.BLOB, "BINARY[(L)]");
         dataTypes.register(Types.VARCHAR, "VARCHAR(L)");
+        dataTypes.register(Types.NVARCHAR, "NVARCHAR(L)");
+        dataTypes.register(Types.NVARCHAR, "NATIONAL VARCHAR(L)");
+        dataTypes.register(Types.NVARCHAR, "NCHAR VARCHAR(L)");
+        dataTypes.register(Types.NVARCHAR, "NATIONAL CHARACTER VARYING(L)");
+        dataTypes.register(Types.NVARCHAR, "NATIONAL CHAR VARYING(L)");
         dataTypes.register(Types.CHAR, "CHAR[(L)]");
+        dataTypes.register(Types.NCHAR, "NCHAR[(L)]");
+        dataTypes.register(Types.NCHAR, "NATIONAL CHARACTER(L)");
         dataTypes.register(Types.VARBINARY, "VARBINARY(L)");
         dataTypes.register(Types.BLOB, "TINYBLOB");
         dataTypes.register(Types.BLOB, "BLOB");
@@ -703,6 +710,11 @@ public class MySqlDdlParser extends DdlParser {
         } else {
             if (dataType.length() > -1) column.length((int) dataType.length());
             if (dataType.scale() > -1) column.scale(dataType.scale());
+        }
+
+        if(Types.NCHAR == dataType.jdbcType() || Types.NVARCHAR == dataType.jdbcType()) {
+            // NCHAR and NVARCHAR columns always uses utf8 as charset
+            column.charsetName("utf8");
         }
 
         if (tokens.canConsume("CHARSET") || tokens.canConsume("CHARACTER", "SET")) {
