@@ -175,7 +175,7 @@ public final class EmbeddedEngine implements Runnable {
     
         /**
          * Called after a connector has been successfully started by the engine; i.e. {@link SourceConnector#start(Map)} has
-         * completed successfully 
+         * completed successfully
          */
         default void connectorStarted() {
             //nothing by default
@@ -183,7 +183,7 @@ public final class EmbeddedEngine implements Runnable {
     
         /**
          * Called after a connector has been successfully stopped by the engine; i.e. {@link SourceConnector#stop()} has
-         * completed successfully 
+         * completed successfully
          */
         default void connectorStopped() {
             //nothing by default
@@ -191,7 +191,7 @@ public final class EmbeddedEngine implements Runnable {
     
         /**
          * Called after a connector task has been successfully started by the engine; i.e. {@link SourceTask#start(Map)} has
-         * completed successfully 
+         * completed successfully
          */
         default void taskStarted() {
             //nothing by default
@@ -199,7 +199,7 @@ public final class EmbeddedEngine implements Runnable {
     
         /**
          * Called after a connector task has been successfully stopped by the engine; i.e. {@link SourceTask#stop()} has
-         * completed successfully 
+         * completed successfully
          */
         default void taskStopped() {
             //nothing by default
@@ -612,8 +612,10 @@ public final class EmbeddedEngine implements Runnable {
                         task.start(taskConfigs.get(0));
                         connectorCallback.ifPresent(ConnectorCallback::taskStarted);
                     } catch (Throwable t) {
+                        // Mask the passwords ...
+                        Configuration config = Configuration.from(taskConfigs.get(0)).withMaskedPasswords();
                         String msg = "Unable to initialize and start connector's task class '" + taskClass.getName() + "' with config: "
-                                + taskConfigs.get(0);
+                                + config;
                         fail(msg, t);
                         return;
                     }

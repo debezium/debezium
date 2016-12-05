@@ -27,21 +27,6 @@ or
 
     $ mvn docker:stop
 
-## Using the alternative MySQL Server
-
-To use the more complete installation of MySQL found in the `mysql:5.7` Docker image, use the `alt-server` Maven profile when starting or stopping the Docker container:
-
-    $ mvn docker:start -Palt-server
-
-and
-
-    $ mvn docker:stop -Palt-server
-
-All other functionality remains exactly the same, including the ability to run the build using this Docker image:
-
-    $ mvn clean install -Palt-server
-
-
 ## Using Docker directly
 
 Although using the Maven command is far simpler, the Maven command for the `alt-server` profile really just runs (via the Jolokia Maven plugin) a Docker command to start the container, so it's equivalent to:

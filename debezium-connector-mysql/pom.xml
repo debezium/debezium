@@ -73,21 +73,16 @@
     </dependencies>
     <properties>
         <!-- 
-        Specify the properties that will be used for setting up the integration tests' Docker container.
-        Note that the `dockerhost.ip` property is computed from the IP address of DOCKER_HOST, which will
-        work on all platforms. We'll set some of these as system properties during integration testing.
+        Specify the properties for the various Docker containers.
         -->
-        <database.port>3306</database.port>
-        <database.user>mysqluser</database.user>
-        <database.password>mysqlpw</database.password>
-        <database.gtid.port>3306</database.gtid.port>
-        <database.gtid.replica.port>3306</database.gtid.replica.port>
-        <database.replica.port>3306</database.replica.port> <!-- by default use master as 'replica' -->
-        <database.replica.user>mysqlreplica</database.replica.user>
-        <database.replica.password>mysqlpw</database.replica.password>
-        <database.alt.port>3306</database.alt.port>
-        <database.alt.gtid.port>3306</database.alt.gtid.port>
-        <database.alt.replica.port>4306</database.alt.replica.port>
+        <mysql.user>mysqluser</mysql.user>
+        <mysql.password>mysqlpw</mysql.password>
+        <mysql.replica.user>mysqlreplica</mysql.replica.user>
+        <mysql.replica.password>mysqlpw</mysql.replica.password>
+        <mysql.port>3306</mysql.port>
+        <mysql.gtid.port>3306</mysql.gtid.port>
+        <mysql.gtid.replica.port>3306</mysql.gtid.replica.port>
+        <mysql.replica.port>3306</mysql.replica.port> <!-- by default use master as 'replica' -->
         <!--
         By default, we should use the docker image maintained by the MySQL team. This property is changed with different profiles.
         However, we run one container with GTIDs and one without.
@@ -118,11 +113,11 @@
                       <env>
                         <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
                         <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
-                        <MYSQL_USER>${database.user}</MYSQL_USER>
-                        <MYSQL_PASSWORD>${database.password}</MYSQL_PASSWORD>
+                        <MYSQL_USER>${mysql.user}</MYSQL_USER>
+                        <MYSQL_PASSWORD>${mysql.password}</MYSQL_PASSWORD>
                       </env>
                       <ports>
-                        <port>${database.port}:3306</port>
+                        <port>${mysql.port}:3306</port>
                       </ports>
                       <log>
                         <prefix>mysql</prefix>
@@ -152,7 +147,7 @@
                             </fileSet>
                           </fileSets>
                         </inline>
-                        <basedir>/</basedir>
+                        <targetDir>/</targetDir>
                       </assembly>
                     </build>
                   </image>
@@ -165,11 +160,11 @@
                       <env>
                         <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
                         <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
-                        <MYSQL_USER>${database.user}</MYSQL_USER>
-                        <MYSQL_PASSWORD>${database.password}</MYSQL_PASSWORD>
+                        <MYSQL_USER>${mysql.user}</MYSQL_USER>
+                        <MYSQL_PASSWORD>${mysql.password}</MYSQL_PASSWORD>
                       </env>
                       <ports>
-                        <port>${database.gtid.port}:3306</port>
+                        <port>${mysql.gtid.port}:3306</port>
                       </ports>
                       <log>
                         <prefix>mysql-gtids</prefix>
@@ -199,7 +194,7 @@
                             </fileSet>
                           </fileSets>
                         </inline>
-                        <basedir>/</basedir>
+                        <targetDir>/</targetDir>
                       </assembly>
                     </build>
                   </image>
@@ -214,19 +209,19 @@
                       <namingStrategy>alias</namingStrategy>
                       <env>
                         <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
-                        <MYSQL_USER>${database.replica.user}</MYSQL_USER>
-                        <MYSQL_PASSWORD>${database.replica.password}</MYSQL_PASSWORD>
+                        <MYSQL_USER>${mysql.replica.user}</MYSQL_USER>
+                        <MYSQL_PASSWORD>${mysql.replica.password}</MYSQL_PASSWORD>
                       </env>
                       <links>
                         <link>database-gtids</link>
                       </links>
                       <ports>
-                        <port>${database.gtid.replica.port}:3306</port>
+                        <port>${mysql.gtid.replica.port}:3306</port>
                       </ports>
                       <log>
                         <prefix>mysql-gtids-replica</prefix>
                         <enabled>true</enabled>
-                        <color>yellow</color>
+                        <color>magenta</color>
                       </log>
                       <wait>
                         <log>MySQL init process done. Ready for start up.</log>
@@ -251,154 +246,7 @@
                             </fileSet>
                           </fileSets>
                         </inline>
-                        <basedir>/</basedir>
-                      </assembly>
-                    </build>
-                  </image>
-                  <!--
-                  Images based on "mysql" Docker image that includes 'mysqlbinlog' utility.
-                  -->
-                  <image>
-                    <!-- A Docker image using a complete MySQL installation maintained by Docker team. -->
-                    <name>debezium/mysql-test-alt-database</name>
-                    <alias>database-alt</alias>
-                    <run>
-                      <namingStrategy>alias</namingStrategy>
-                      <env>
-                        <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
-                        <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
-                        <MYSQL_USER>${database.user}</MYSQL_USER>
-                        <MYSQL_PASSWORD>${database.password}</MYSQL_PASSWORD>
-                      </env>
-                      <ports>
-                        <port>${database.alt.port}:3306</port>
-                      </ports>
-                      <log>
-                        <prefix>alt-mysql</prefix>
-                        <enabled>true</enabled>
-                        <color>magenta</color>
-                      </log>
-                      <wait>
-                        <log>MySQL init process done. Ready for start up.</log>
-                        <time>30000</time>
-                      </wait>
-                    </run>
-                    <build>
-                      <from>mysql:${version.mysql.server}</from>
-                      <assembly>
-                        <inline>
-                          <fileSets>
-                            <fileSet>
-                              <directory>${project.basedir}/src/test/docker/alt-server</directory>
-                              <includes>
-                                <include>my.cnf</include>
-                              </includes>
-                              <outputDirectory>etc/mysql/conf.d</outputDirectory>
-                            </fileSet>
-                            <fileSet>
-                              <directory>${project.basedir}/src/test/docker/init</directory>
-                              <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
-                            </fileSet>
-                          </fileSets>
-                        </inline>
-                        <basedir>/</basedir>
-                      </assembly>
-                    </build>
-                  </image>
-                  <image>
-                    <!-- A Docker image using a complete MySQL installation maintained by Docker team. -->
-                    <name>debezium/mysql-test-alt-database-gtids</name>
-                    <alias>alt-database-gtids</alias>
-                    <run>
-                      <namingStrategy>alias</namingStrategy>
-                      <env>
-                        <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
-                        <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
-                        <MYSQL_USER>${database.user}</MYSQL_USER>
-                        <MYSQL_PASSWORD>${database.password}</MYSQL_PASSWORD>
-                      </env>
-                      <ports>
-                        <port>${database.alt.gtid.port}:3306</port>
-                      </ports>
-                      <log>
-                        <prefix>alt-mysql-gtids</prefix>
-                        <enabled>true</enabled>
-                        <color>cyan</color>
-                      </log>
-                      <wait>
-                        <log>MySQL init process done. Ready for start up.</log>
-                        <time>30000</time>
-                      </wait>
-                    </run>
-                    <build>
-                      <from>mysql:${version.mysql.server}</from>
-                      <assembly>
-                        <inline>
-                          <fileSets>
-                            <fileSet>
-                              <directory>${project.basedir}/src/test/docker/alt-server-gtids</directory>
-                              <includes>
-                                <include>my.cnf</include>
-                              </includes>
-                              <outputDirectory>etc/mysql/conf.d</outputDirectory>
-                            </fileSet>
-                            <fileSet>
-                              <directory>${project.basedir}/src/test/docker/init</directory>
-                              <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
-                            </fileSet>
-                          </fileSets>
-                        </inline>
-                        <basedir>/</basedir>
-                      </assembly>
-                    </build>
-                  </image>
-                  <image>
-                    <!-- A Docker image using a complete MySQL installation maintained by Docker team. -->
-                    <name>debezium/mysql-test-alt-database-gtids-replica</name>
-                    <alias>alt-replica-gtids</alias>
-                    <run>
-                      <namingStrategy>alias</namingStrategy>
-                      <env>
-                        <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
-                        <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
-                        <MYSQL_USER>${database.replica.user}</MYSQL_USER>
-                        <MYSQL_PASSWORD>${database.replica.password}</MYSQL_PASSWORD>
-                      </env>
-                      <ports>
-                        <port>${database.alt.replica.port}:3306</port>
-                      </ports>
-                      <links>
-                        <link>alt-database-gtids</link>
-                      </links>
-                      <log>
-                        <prefix>alt-mysql-replica</prefix>
-                        <enabled>true</enabled>
-                        <color>yellow</color>
-                      </log>
-                      <wait>
-                        <log>MySQL init process done. Ready for start up.</log>
-                        <time>30000</time>
-                      </wait>
-                    </run>
-                    <build>
-                      <from>mysql:${version.mysql.server}</from>
-                      <assembly>
-                        <inline>
-                          <fileSets>
-                            <fileSet>
-                              <directory>${project.basedir}/src/test/docker/alt-server-replica</directory>
-                              <includes>
-                                <include>my.cnf</include>
-                              </includes>
-                              <outputDirectory>etc/mysql/conf.d</outputDirectory>
-                            </fileSet>
-                            <fileSet>
-                              <directory>${project.basedir}/src/test/docker/init-alt-replica</directory>
-                              <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
-                            </fileSet>
-                          </fileSets>
-                        </inline>
-                        <basedir>/</basedir>
+                        <targetDir>/</targetDir>
                       </assembly>
                     </build>
                   </image>
@@ -434,6 +282,20 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <skipTests>${skipITs}</skipTests>
+                    <enableAssertions>true</enableAssertions>
+                    <systemPropertyVariables>
+                        <!-- Make these available to the tests via system properties -->
+                        <database.hostname>${docker.host.address}</database.hostname>
+                        <database.port>${mysql.port}</database.port>
+                        <database.user>${mysql.user}</database.user>
+                        <database.password>${mysql.password}</database.password>
+                        <database.replica.hostname>${docker.host.address}</database.replica.hostname>
+                        <database.replica.port>${mysql.replica.port}</database.replica.port>
+                        <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
+                    </systemPropertyVariables>
+                </configuration>
                 <executions>
                     <execution>
                         <id>integration-test</id>
@@ -448,20 +310,6 @@
                         </goals>
                     </execution>
                 </executions>
-                <configuration>
-                    <skipTests>${skipITs}</skipTests>
-                    <enableAssertions>true</enableAssertions>
-                    <systemPropertyVariables>
-                        <!-- Make these available to the tests via system properties -->
-                        <database.hostname>${docker.host.address}</database.hostname>
-                        <database.port>${database.port}</database.port>
-                        <database.user>${database.user}</database.user>
-                        <database.password>${database.password}</database.password>
-                        <database.replica.hostname>${docker.host.address}</database.replica.hostname>
-                        <database.replica.port>${database.replica.port}</database.replica.port>
-                        <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
-                    </systemPropertyVariables>
-                </configuration>
             </plugin>
         </plugins>
         <resources>
@@ -507,12 +355,9 @@
             <properties>
               <!-- Run multiple images at the same time, but use different ports for all MySQL servers -->
               <docker.filter>debezium/mysql-server-test-database,debezium/mysql-server-gtids-test-database,debezium/mysql-server-gtids-test-database-replica,debezium/mysql-test-alt-database,debezium/mysql-test-alt-database-gtids,debezium/mysql-test-alt-database-gtids-replica</docker.filter>
-              <database.port>4301</database.port>
-              <database.gtid.port>4302</database.gtid.port>
-              <database.gtid.replica.port>4303</database.gtid.replica.port>
-              <database.alt.port>4304</database.alt.port>
-              <database.alt.gtid.port>4305</database.alt.gtid.port>
-              <database.alt.replica.port>4306</database.alt.replica.port>
+              <mysql.port>4301</mysql.port>
+              <mysql.gtid.port>4302</mysql.gtid.port>
+              <mysql.gtid.replica.port>4303</mysql.gtid.replica.port>
             </properties>
             <build>
                 <plugins>
@@ -550,6 +395,22 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <skipTests>${skipITs}</skipTests>
+                            <enableAssertions>true</enableAssertions>
+                            <systemPropertyVariables>
+                                <!-- Make these available to the tests via system properties -->
+                                <database.hostname>${docker.host.address}</database.hostname>
+                                <database.user>${mysql.user}</database.user>
+                                <database.password>${mysql.password}</database.password>
+                                <database.replica.hostname>${docker.host.address}</database.replica.hostname>
+                                <database.replica.user>${mysql.replica.user}</database.replica.user>
+                                <database.replica.password>${mysql.replica.password}</database.replica.password>
+                                <database.port>${mysql.port}</database.port>
+                                <database.replica.port>${mysql.port}</database.replica.port>
+                                <skipLongRunningTests>false</skipLongRunningTests>
+                            </systemPropertyVariables>
+                        </configuration>
                         <executions>
                             <!-- First run the integration tests with the non-GTID server alone -->
                             <execution>
@@ -560,8 +421,8 @@
                                 <configuration>
                                     <systemPropertyVariables>
                                         <!-- same port for both, since we're only running one server -->
-                                        <database.port>${database.port}</database.port>
-                                        <database.replica.port>${database.port}</database.replica.port>
+                                        <database.port>${mysql.port}</database.port>
+                                        <database.replica.port>${mysql.port}</database.replica.port>
                                     </systemPropertyVariables>
                                 </configuration>
                             </execution>
@@ -573,36 +434,8 @@
                                 </goals>
                                 <configuration>
                                     <systemPropertyVariables>
-                                        <database.port>${database.gtid.port}</database.port>
-                                        <database.replica.port>${database.gtid.replica.port}</database.replica.port>
-                                    </systemPropertyVariables>
-                                </configuration>
-                            </execution>
-                            <!-- Then run the integration tests with the Docker's MySQL server (without GTIDs) -->
-                            <execution>
-                                <id>integration-test-alt-mysql</id>
-                                <goals>
-                                    <goal>integration-test</goal>
-                                </goals>
-                                <configuration>
-                                    <systemPropertyVariables>
-                                        <!-- same port for both, since we're only running one server -->
-                                        <database.port>${database.alt.port}</database.port>
-                                        <database.replica.port>${database.alt.port}</database.replica.port>
-                                    </systemPropertyVariables>
-                                </configuration>
-                            </execution>
-                            <!-- Then run the integration tests with the Docker's MySQL server with GTIDs + replica -->
-                            <execution>
-                                <id>integration-test-alt-mysql-replica</id>
-                                <goals>
-                                    <goal>integration-test</goal>
-                                </goals>
-                                <configuration>
-                                    <systemPropertyVariables>
-                                        <!-- same port for both, since we're only running one server -->
-                                        <database.port>${database.alt.gtid.port}</database.port>
-                                        <database.replica.port>${database.alt.replica.port}</database.replica.port>
+                                        <database.port>${mysql.gtid.port}</database.port>
+                                        <database.replica.port>${mysql.gtid.replica.port}</database.replica.port>
                                     </systemPropertyVariables>
                                 </configuration>
                             </execution>
@@ -613,20 +446,6 @@
                                 </goals>
                             </execution>
                         </executions>
-                        <configuration>
-                            <skipTests>${skipITs}</skipTests>
-                            <enableAssertions>true</enableAssertions>
-                            <systemPropertyVariables>
-                                <!-- Make these available to the tests via system properties -->
-                                <database.hostname>${docker.host.address}</database.hostname>
-                                <database.user>${database.user}</database.user>
-                                <database.password>${database.password}</database.password>
-                                <database.replica.hostname>${docker.host.address}</database.replica.hostname>
-                                <database.replica.user>${database.replica.user}</database.replica.user>
-                                <database.replica.password>${database.replica.password}</database.replica.password>
-                                <skipLongRunningTests>false</skipLongRunningTests>
-                            </systemPropertyVariables>
-                        </configuration>
                     </plugin>
                 </plugins>
             </build>
@@ -661,39 +480,11 @@
           </property>
         </activation>
         <properties>
+          <!-- Docker properties -->
           <docker.filter>debezium/mysql-server-gtids-test-database</docker.filter>
-        </properties>
-      </profile>
-      <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            Use the alternative Docker image for MySQL.
-            To use, specify "-Dalt-mysql" or -Palt-mysql on the Maven command line.
-            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
-      <profile>
-        <id>alt-mysql</id>
-        <activation>
-          <activeByDefault>false</activeByDefault>
-          <property>
-            <name>alt-mysql</name>
-          </property>
-        </activation>
-        <properties>
-          <docker.filter>debezium/mysql-test-alt-database</docker.filter>
-        </properties>
-      </profile>
-      <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            Use the Docker image for MySQL configured to use GTIDs.
-            To use, specify "-Dalt-mysql-gtids" or -Palt-mysql-gtids on the Maven command line.
-            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
-      <profile>
-        <id>alt-mysql-gtids</id>
-        <activation>
-          <activeByDefault>false</activeByDefault>
-          <property>
-            <name>alt-mysql-gtids</name>
-          </property>
-        </activation>
-        <properties>
-          <docker.filter>debezium/mysql-test-alt-database-gtids</docker.filter>
+          <!-- Integration test properties -->
+          <database.port>${mysql.gtid.port}</database.port>
+          <database.replica.port>${mysql.gtid.port}</database.replica.port>
         </properties>
       </profile>
       <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -711,27 +502,13 @@
           </property>
         </activation>
         <properties>
-          <database.replica.port>4306</database.replica.port>
+          <!-- Docker properties -->
+          <mysql.gtid.port>3306</mysql.gtid.port>
+          <mysql.gtid.replica.port>4306</mysql.gtid.replica.port>
           <docker.filter>debezium/mysql-server-gtids-test-database,debezium/mysql-server-gtids-test-database-replica</docker.filter>
-        </properties>
-      </profile>
-      <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            Use the Docker image for a MySQL replica of another MySQL server 
-            configured to use GTIDs. To use, specify "-Dalt-mysql-replica" 
-            or -Palt-mysql-replica on the Maven command line.
-            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
-
-      <profile>
-        <id>alt-mysql-replica</id>
-        <activation>
-          <activeByDefault>false</activeByDefault>
-          <property>
-            <name>alt-mysql-replica</name>
-          </property>
-        </activation>
-        <properties>
-          <database.replica.port>4306</database.replica.port>
-          <docker.filter>debezium/mysql-test-alt-database-gtids,debezium/mysql-test-alt-database-gtids-replica</docker.filter>
+          <!-- Integration test properties -->
+          <database.port>${mysql.gtid.port}</database.port>
+          <database.replica.port>${mysql.gtid.replica.port}</database.replica.port>
         </properties>
       </profile>
     </profiles>
