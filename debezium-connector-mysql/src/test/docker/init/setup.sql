@@ -283,6 +283,23 @@ CREATE TABLE dbz_147_decimalvalues (
 INSERT INTO dbz_147_decimalvalues (pk_column, decimal_value)
 VALUES(default, 12345.67);
 
+-- DBZ-162 handle function declarations with newline characters
+DELIMITER $$
+CREATE FUNCTION fnDbz162( p_creditLimit DOUBLE ) RETURNS VARCHAR(10)
+    DETERMINISTIC
+BEGIN
+ DECLARE lvl VARCHAR(10);
+ IF p_creditLimit > 50000 THEN
+   SET lvl = 'PLATINUM';
+ ELSEIF (p_creditLimit <= 50000 AND p_creditLimit >= 10000) THEN
+   SET lvl = 'GOLD';
+ ELSEIF p_creditLimit < 10000 THEN
+   SET lvl = 'SILVER';
+ END IF;
+ RETURN (lvl);
+END;
+$$
+DELIMITER ;
 
 -- ----------------------------------------------------------------------------------------------------------------
 -- DATABASE:  json_test

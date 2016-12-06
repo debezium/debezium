@@ -18,6 +18,7 @@ import org.junit.Test;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import io.debezium.doc.FixFor;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -466,6 +467,35 @@ public class MySqlDdlParserTest {
     }
 
     @Test
+    public void shouldParseDefiner() {
+        String function = "FUNCTION fnA`( a int, b int ) RETURNS tinyint(1) begin anything end;";
+        String ddl = "CREATE DEFINER='mysqluser'@'%' " + function;
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(0); // no tables
+        assertThat(listener.total()).isEqualTo(0);
+
+        ddl = "CREATE DEFINER='mysqluser'@'something' " + function;
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(0); // no tables
+        assertThat(listener.total()).isEqualTo(0);
+
+        ddl = "CREATE DEFINER=`mysqluser`@`something` " + function;
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(0); // no tables
+        assertThat(listener.total()).isEqualTo(0);
+
+        ddl = "CREATE DEFINER=CURRENT_USER " + function;
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(0); // no tables
+        assertThat(listener.total()).isEqualTo(0);
+
+        ddl = "CREATE DEFINER=CURRENT_USER() " + function;
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(0); // no tables
+        assertThat(listener.total()).isEqualTo(0);
+    }
+
+    @Test
     public void shouldParseGrantStatement() {
         String ddl = "GRANT ALL PRIVILEGES ON `mysql`.* TO 'mysqluser'@'%'";
         parser.parse(ddl, tables);
@@ -630,6 +660,38 @@ public class MySqlDdlParserTest {
         listener.forEach(this::printEvent);
     }
 
+    @FixFor("DBZ-162")
+    @Test
+    public void shouldParseAndIgnoreCreateFunction() {
+        parser.parse(readFile("ddl/mysql-dbz-162.ddl"), tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(1); // 1 table
+        assertThat(listener.total()).isEqualTo(2); // 1 create, 1 alter
+        listener.forEach(this::printEvent);
+    }
+
+    @FixFor("DBZ-162")
+    @Test
+    public void shouldParseAlterTableWithNewlineFeeds() {
+        String ddl = "CREATE TABLE `test` (id INT(11) UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT);";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table t = tables.forTable(new TableId(null, null, "test"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("id");
+        assertThat(t.primaryKeyColumnNames()).containsExactly("id");
+        assertColumn(t, "id", "INT UNSIGNED", Types.INTEGER, 11, -1, false, true, true);
+
+        ddl = "ALTER TABLE `test` CHANGE `id` `collection_id` INT(11)\n UNSIGNED\n NOT NULL\n AUTO_INCREMENT;";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        t = tables.forTable(new TableId(null, null, "test"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("collection_id");
+        assertThat(t.primaryKeyColumnNames()).containsExactly("collection_id");
+        assertColumn(t, "collection_id", "INT UNSIGNED", Types.INTEGER, 11, -1, false, true, true);
+    }
+    
     @Test
     public void shouldParseTicketMonsterLiquibaseStatements() {
         parser.parse(readLines(1, "ddl/mysql-ticketmonster-liquibase.ddl"), tables);
@@ -640,7 +702,7 @@ public class MySqlDdlParserTest {
 
     @Test
     public void shouldParseEnumOptions() {
-        assertParseEnumAndSetOptions("ENUM('a','b','c')","a,b,c");
+        assertParseEnumAndSetOptions("ENUM('a','b','c')", "a,b,c");
         assertParseEnumAndSetOptions("ENUM('a','multi','multi with () paren', 'other')", "a,multi,multi with () paren,other");
         assertParseEnumAndSetOptions("ENUM('a')", "a");
         assertParseEnumAndSetOptions("ENUM()", "");
@@ -660,6 +722,7 @@ public class MySqlDdlParserTest {
         assertParseEnumAndSetOptions("SET () CHARACTER SET", "");
     }
 
+    @FixFor("DBZ-160")
     @Test
     public void shouldParseCreateTableWithEnumDefault() {
         String ddl = "CREATE TABLE t ( c1 ENUM('a','b','c') NOT NULL DEFAULT 'b', c2 ENUM('a', 'b', 'c') NOT NULL DEFAULT 'a');";
@@ -673,6 +736,7 @@ public class MySqlDdlParserTest {
         assertColumn(t, "c2", "ENUM", Types.CHAR, 1, -1, false, false, false);
     }
 
+    @FixFor("DBZ-160")
     @Test
     public void shouldParseCreateTableWithBitDefault() {
         String ddl = "CREATE TABLE t ( c1 Bit(2) NOT NULL DEFAULT b'1', c2 Bit(2) NOT NULL);";

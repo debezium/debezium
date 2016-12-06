@@ -217,9 +217,9 @@ public class MySqlDdlParser extends DdlParser {
                         charsetNameForDatabase.put(currentDatabaseName, value);
                     }
                 }
-                
+
                 // Signal that the variable was set ...
-                signalEvent(new SetVariableEvent(variableName,value,statement(start)));
+                signalEvent(new SetVariableEvent(variableName, value, statement(start)));
             }
         }
     }
@@ -233,19 +233,19 @@ public class MySqlDdlParser extends DdlParser {
     }
 
     protected String parseVariableValue() {
-        if ( tokens.canConsumeAnyOf(",",";")) {
+        if (tokens.canConsumeAnyOf(",", ";")) {
             // The variable is blank ...
             return "";
         }
         Marker start = tokens.mark();
         tokens.consumeUntilEndOrOneOf(",", ";");
         String value = tokens.getContentFrom(start);
-        if ( value.startsWith("'") && value.endsWith("'")) {
+        if (value.startsWith("'") && value.endsWith("'")) {
             // Remove the single quotes around the value ...
-            if ( value.length() <= 2 ) {
+            if (value.length() <= 2) {
                 value = "";
             } else {
-                value = value.substring(1, value.length()-2);
+                value = value.substring(1, value.length() - 2);
             }
         }
         return value;
@@ -264,7 +264,7 @@ public class MySqlDdlParser extends DdlParser {
         } else if (tokens.matchesAnyOf("EVENT")) {
             parseCreateUnknown(marker);
         } else if (tokens.matchesAnyOf("FUNCTION", "PROCEDURE")) {
-            parseCreateUnknown(marker);
+            parseCreateProcedure(marker);
         } else if (tokens.matchesAnyOf("UNIQUE", "FULLTEXT", "SPATIAL", "INDEX")) {
             parseCreateIndex(marker);
         } else if (tokens.matchesAnyOf("SERVER")) {
@@ -276,6 +276,7 @@ public class MySqlDdlParser extends DdlParser {
         } else {
             // It could be several possible things (including more elaborate forms of those matches tried above),
             sequentially(this::parseCreateView,
+                         this::parseCreateProcedure,
                          this::parseCreateUnknown);
         }
     }
@@ -697,7 +698,7 @@ public class MySqlDdlParser extends DdlParser {
             column.length(1);
         } else if ("SET".equals(dataType.name())) {
             List<String> options = parseSetAndEnumOptions(dataType.expression());
-            //After DBZ-132, it will always be comma seperated
+            // After DBZ-132, it will always be comma seperated
             column.length(Math.max(0, options.size() * 2 - 1)); // number of options + number of commas
         } else {
             if (dataType.length() > -1) column.length((int) dataType.length());
@@ -857,10 +858,7 @@ public class MySqlDdlParser extends DdlParser {
             tokens.consume('=');
             tokens.consumeAnyOf("UNDEFINED", "MERGE", "TEMPTABLE");
         }
-        if (tokens.canConsume("DEFINER")) {
-            tokens.consume('=');
-            tokens.consume(); // user or CURRENT_USER
-        }
+        parseDefiner(tokens.mark());
         if (tokens.canConsume("SQL", "SECURITY")) {
             tokens.consumeAnyOf("DEFINER", "INVOKER");
         }
@@ -970,6 +968,28 @@ public class MySqlDdlParser extends DdlParser {
         consumeRemainingStatement(start);
         signalCreateIndex(indexName, tableId, start);
         debugParsed(start);
+    }
+
+    protected void parseDefiner(Marker start) {
+        if (tokens.canConsume("DEFINER")) {
+            tokens.consume('=');
+            tokens.consume(); // user or CURRENT_USER
+            if (tokens.canConsume("@")) {
+                tokens.consume(); // host
+            } else {
+                String next = tokens.peek();
+                if (next.startsWith("@")) { // e.g., @`localhost`
+                    tokens.consume();
+                }
+            }
+        }
+    }
+
+    protected void parseCreateProcedure(Marker start) {
+        parseDefiner(tokens.mark());
+        tokens.consume("FUNCTION");
+        tokens.consume(); // name
+        consumeRemainingStatement(start);
     }
 
     protected void parseCreateUnknown(Marker start) {
@@ -1324,14 +1344,14 @@ public class MySqlDdlParser extends DdlParser {
                 tokens.rewind(marker);
             }
         }
-        parsingFailed(marker.position(), errors, "Unable to parse statement");
+        parsingFailed(marker.position(), errors, "One or more errors trying to parse statement");
     }
 
     /**
      * Parse and consume the {@code DEFAULT} clause. Currently, this method does not capture the default in any way,
      * since that will likely require parsing the default clause into a useful value (e.g., dealing with hexadecimals,
      * bit-set literals, date-time literals, etc.).
-
+     * 
      * @param start the marker at the beginning of the clause
      */
     protected void parseDefaultClause(Marker start) {
