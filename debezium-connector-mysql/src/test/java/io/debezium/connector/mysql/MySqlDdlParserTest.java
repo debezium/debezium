@@ -750,6 +750,25 @@ public class MySqlDdlParserTest {
         assertColumn(t, "c2", "BIT", Types.BIT, 2, -1, false, false, false);
     }
 
+    @Test
+    public void shouldParseStatementForDbz142() {
+        parser.parse(readFile("ddl/mysql-dbz-142.ddl"), tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(2);
+        assertThat(listener.total()).isEqualTo(2);
+
+        Table t = tables.forTable(new TableId(null, null, "nvarchars"));
+        assertColumn(t, "c1", "NVARCHAR", Types.NVARCHAR, 255, "utf8", true);
+        assertColumn(t, "c2", "NATIONAL VARCHAR", Types.NVARCHAR, 255, "utf8", true);
+        assertColumn(t, "c3", "NCHAR VARCHAR", Types.NVARCHAR, 255, "utf8", true);
+        assertColumn(t, "c4", "NATIONAL CHARACTER VARYING", Types.NVARCHAR, 255, "utf8", true);
+        assertColumn(t, "c5", "NATIONAL CHAR VARYING", Types.NVARCHAR, 255, "utf8", true);
+
+        Table t2 = tables.forTable(new TableId(null, null, "nchars"));
+        assertColumn(t2, "c1", "NATIONAL CHARACTER", Types.NCHAR, 10, "utf8", true);
+        assertColumn(t2, "c2", "NCHAR", Types.NCHAR, 10, "utf8", true);
+    }
+
     protected void assertParseEnumAndSetOptions(String typeExpression, String optionString) {
         List<String> options = MySqlDdlParser.parseSetAndEnumOptions(typeExpression);
         String commaSeperatedOptions = Strings.join(",", options);
