@@ -126,13 +126,13 @@ public class MySqlJdbcContext implements AutoCloseable {
     /**
      * Determine the available GTID set for MySQL.
      *
-     * @return the string representation of MySQL's GTID sets.
+     * @return the string representation of MySQL's GTID sets; never null but an empty string if the server does not use GTIDs
      */
     public String knownGtidSet() {
         AtomicReference<String> gtidSetStr = new AtomicReference<String>();
         try {
             jdbc.query("SHOW MASTER STATUS", rs -> {
-                if (rs.next()) {
+                if (rs.next() && rs.getMetaData().getColumnCount() > 4) {
                     gtidSetStr.set(rs.getString(5));// GTID set, may be null, blank, or contain a GTID set
                 }
             });
@@ -140,7 +140,8 @@ public class MySqlJdbcContext implements AutoCloseable {
             throw new ConnectException("Unexpected error while connecting to MySQL and looking at GTID mode: ", e);
         }
 
-        return gtidSetStr.get();
+        String result = gtidSetStr.get();
+        return result != null ? result : "";
     }
 
     protected String connectionString() {
