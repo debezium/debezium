@@ -291,11 +291,12 @@ public class VerifyRecord {
     }
 
     public static void assertEquals(SourceRecord actual, SourceRecord expected, Predicate<String> ignoreFields,
-                                    Map<String, RecordValueComparator> comparatorsByName) {
+                                    Map<String, RecordValueComparator> comparatorsByName,
+                                    Map<String, RecordValueComparator> comparatorsBySchemaName) {
         assertThat(actual).isNotNull();
         assertThat(expected).isNotNull();
-        assertEquals(actual.sourcePartition(), expected.sourcePartition(), "sourcePartition", "", ignoreFields, comparatorsByName);
-        assertEquals(actual.sourceOffset(), expected.sourceOffset(), "sourceOffset", "", ignoreFields, comparatorsByName);
+        assertEquals(null, actual.sourcePartition(), expected.sourcePartition(), "sourcePartition", "", ignoreFields, comparatorsByName, comparatorsBySchemaName);
+        assertEquals(null, actual.sourceOffset(), expected.sourceOffset(), "sourceOffset", "", ignoreFields, comparatorsByName, comparatorsBySchemaName);
         assertThat(actual.topic()).isEqualTo(expected.topic());
         assertThat(actual.kafkaPartition()).isEqualTo(expected.kafkaPartition());
         Schema actualKeySchema = actual.keySchema();
@@ -313,17 +314,17 @@ public class VerifyRecord {
             String expectedStr = SchemaUtil.asString(expectedValueSchema);
             assertThat(actualStr).isEqualTo(expectedStr);
         }
-        assertEquals(actual.key(), expected.key(), "key", "", ignoreFields, comparatorsByName);
-        assertEquals(actual.value(), expected.value(), "value", "", ignoreFields, comparatorsByName);
+        assertEquals(actualKeySchema, actual.key(), expected.key(), "key", "", ignoreFields, comparatorsByName, comparatorsBySchemaName);
+        assertEquals(actualValueSchema, actual.value(), expected.value(), "value", "", ignoreFields, comparatorsByName, comparatorsBySchemaName);
     }
-
+    
     protected static String nameOf(String keyOrValue, String field) {
         if (field == null || field.trim().isEmpty()) {
             return keyOrValue;
         }
         return "'" + field + "' field in the record " + keyOrValue;
     }
-    
+
     private static String fieldName(String field, String suffix) {
         if (field == null || field.trim().isEmpty()) {
             return suffix;
@@ -331,9 +332,18 @@ public class VerifyRecord {
         return field + "/" + suffix;
     }
 
+    private static String schemaName(Schema schema) {
+        if (schema == null) return null;
+        String name = schema.name();
+        if (name != null) name = name.trim();
+        return name.isEmpty() ? null : name;
+    }
+
     @SuppressWarnings("unchecked")
-    protected static void assertEquals(Object o1, Object o2, String keyOrValue, String field,
-                                       Predicate<String> ignoreFields, Map<String, RecordValueComparator> comparatorsByName) {
+    protected static void assertEquals(Schema schema, Object o1, Object o2, String keyOrValue, String field,
+                                       Predicate<String> ignoreFields,
+                                       Map<String, RecordValueComparator> comparatorsByName,
+                                       Map<String, RecordValueComparator> comparatorsBySchemaName) {
         if (o1 == o2) return;
         if (o1 == null) {
             if (o2 == null) return;
@@ -348,6 +358,15 @@ public class VerifyRecord {
             comparator.assertEquals(nameOf(keyOrValue, field), o1, o2);
             return;
         }
+        // See if there is a custom comparator for this schema type ...
+        String schemaName = schemaName(schema);
+        if (schemaName != null) {
+            comparator = comparatorsBySchemaName.get(schemaName);
+            if (comparator != null) {
+                comparator.assertEquals(nameOf(keyOrValue, field), o1, o2);
+            }
+        }
+
         if (o1 instanceof ByteBuffer) {
             o1 = ((ByteBuffer) o1).array();
         }
@@ -386,7 +405,8 @@ public class VerifyRecord {
                 }
                 Object v1 = entry.getValue();
                 Object v2 = m2.get(key);
-                assertEquals(v1, v2, keyOrValue, fieldName(field, key), ignoreFields, comparatorsByName);
+                assertEquals(null, v1, v2, keyOrValue, fieldName(field, key), ignoreFields,
+                             comparatorsByName, comparatorsBySchemaName);
             }
         } else if (o2 instanceof Collection) {
             if (!(o1 instanceof Collection)) {
@@ -402,7 +422,8 @@ public class VerifyRecord {
             Iterator<?> iter2 = m2.iterator();
             int index = 0;
             while (iter1.hasNext() && iter2.hasNext()) {
-                assertEquals(iter1.next(), iter2.next(), keyOrValue, field + "[" + (index++) + "]", ignoreFields, comparatorsByName);
+                assertEquals(null, iter1.next(), iter2.next(), keyOrValue, field + "[" + (index++) + "]", ignoreFields,
+                             comparatorsByName, comparatorsBySchemaName);
             }
         } else if (o2 instanceof Struct) {
             if (!(o1 instanceof Struct)) {
@@ -426,7 +447,8 @@ public class VerifyRecord {
                 }
                 Object value1 = struct1.get(f);
                 Object value2 = struct2.get(f);
-                assertEquals(value1, value2, keyOrValue, fieldName, ignoreFields, comparatorsByName);
+                assertEquals(f.schema(), value1, value2, keyOrValue, fieldName, ignoreFields,
+                             comparatorsByName, comparatorsBySchemaName);
             }
             return;
         } else if (o2 instanceof Double || o2 instanceof Float || o2 instanceof BigDecimal) {

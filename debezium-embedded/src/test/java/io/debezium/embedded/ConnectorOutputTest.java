@@ -142,8 +142,9 @@ import io.debezium.util.Threads.TimeSince;
  * <p>
  * To see more detail about the actual and expected records, turn on Debezium's test debug mode by using this line
  * before the {@code runConnector} call:
+ * 
  * <pre>
- *         Testing.Debug.enable();
+ * Testing.Debug.enable();
  * </pre>
  * 
  * @author Randall Hauch
@@ -579,11 +580,15 @@ public abstract class ConnectorOutputTest {
     protected static interface OutputStreamSupplier {
         OutputStream get() throws IOException;
     }
-    
-    protected void addValueComparators(BiConsumer<String, RecordValueComparator> comparatorsByPath) {
+
+    protected void addValueComparatorsByFieldPath(BiConsumer<String, RecordValueComparator> comparatorsByPath) {
         // add none of them by default
     }
-    
+
+    protected void addValueComparatorsBySchemaName(BiConsumer<String, RecordValueComparator> comparatorsByPath) {
+        // add none of them by default
+    }
+
     /**
      * Create a new test specification with the given name.
      * 
@@ -764,10 +769,12 @@ public abstract class ConnectorOutputTest {
         final SchemaAndValueConverter keyConverter = new SchemaAndValueConverter(environmentConfig, true);
         final SchemaAndValueConverter valueConverter = new SchemaAndValueConverter(environmentConfig, false);
         final TestData testData = spec.testData();
-        
+
         // Get any special comparators ...
-        final Map<String,RecordValueComparator> comparatorsByName = new HashMap<>();
-        addValueComparators(comparatorsByName::put);
+        final Map<String, RecordValueComparator> comparatorsByFieldName = new HashMap<>();
+        addValueComparatorsByFieldPath(comparatorsByFieldName::put);
+        final Map<String, RecordValueComparator> comparatorsBySchemaName = new HashMap<>();
+        addValueComparatorsBySchemaName(comparatorsBySchemaName::put);
 
         RuntimeException runError = null;
         CompletionResult problem = new CompletionResult(callback);
@@ -831,7 +838,8 @@ public abstract class ConnectorOutputTest {
 
                                 // And compare the records ...
                                 try {
-                                    assertSourceRecordMatch(actualRecord, expectedRecord, ignorableFields::contains, comparatorsByName);
+                                    assertSourceRecordMatch(actualRecord, expectedRecord, ignorableFields::contains,
+                                                            comparatorsByFieldName, comparatorsBySchemaName);
                                 } catch (AssertionError e) {
                                     result.error();
                                     String msg = "Source record with key " + SchemaUtil.asString(actualRecord.key())
@@ -908,15 +916,16 @@ public abstract class ConnectorOutputTest {
             long connectorTimeoutInSeconds = environmentConfig.getLong(ENV_CONNECTOR_TIMEOUT_IN_SECONDS, 10);
             // Get ready to run the connector one or more times ...
             do {
-                // Each time create a thread that will stop our connector if we don't get
-                Thread timeoutThread = Threads.interruptAfterTimeout(spec.name() + "-timeout",
-                                                                     connectorTimeoutInSeconds, TimeUnit.SECONDS,
-                                                                     timeSinceLastRecord);
-                // when the connector completes it will interrupt our timeout thread ...
+                // Each time create a thread that will stop our connector if we don't get enough results
+                Thread timeoutThread = Threads.timeout(spec.name() + "-timeout",
+                                                       connectorTimeoutInSeconds, TimeUnit.SECONDS,
+                                                       timeSinceLastRecord,
+                                                       engine::stop);
+                // But plan to stop our timeout thread as soon as the connector completes ...
                 result.uponCompletion(timeoutThread::interrupt);
                 timeoutThread.start();
 
-                // Run the connector and block until the connector is interrupted by the timeout thread or until
+                // Run the connector and block until the connector is stopped by the timeout thread or until
                 // an exception is thrown within the connector (perhaps by the consumer) ...
                 Testing.debug("Starting connector");
                 result.reset();
@@ -1104,7 +1113,8 @@ public abstract class ConnectorOutputTest {
     }
 
     private void assertSourceRecordMatch(SourceRecord actual, SourceRecord expected, Predicate<String> ignoreFields,
-                                         Map<String, RecordValueComparator> comparatorsByName) {
+                                         Map<String, RecordValueComparator> comparatorsByName,
+                                         Map<String, RecordValueComparator> comparatorsBySchemaName) {
         try {
             VerifyRecord.isValid(actual);
         } catch (AssertionError e) {
@@ -1115,7 +1125,7 @@ public abstract class ConnectorOutputTest {
         } catch (AssertionError e) {
             throw new AssertionError("Expected source record is not valid: " + e.getMessage());
         }
-        VerifyRecord.assertEquals(actual, expected, ignoreFields, comparatorsByName);
+        VerifyRecord.assertEquals(actual, expected, ignoreFields, comparatorsByName, comparatorsBySchemaName);
     }
 
     private static class SchemaAndValueConverter implements AutoCloseable {

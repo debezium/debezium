@@ -155,11 +155,16 @@ public class AbstractMySqlConnectorOutputTest extends ConnectorOutputTest {
     }
 
     @Override
-    protected void addValueComparators(BiConsumer<String, RecordValueComparator> comparatorsByPath) {
-        super.addValueComparators(comparatorsByPath);
-        // Add a GTID set comparator for
+    protected void addValueComparatorsByFieldPath(BiConsumer<String, RecordValueComparator> comparatorsByPath) {
+        super.addValueComparatorsByFieldPath(comparatorsByPath);
         comparatorsByPath.accept("SOURCEOFFSET/gtids", this::assertSameGtidSet);
     }
+
+//    @Override
+//    protected void addValueComparatorsBySchemaName(BiConsumer<String, RecordValueComparator> comparatorsBySchemaName) {
+//        super.addValueComparatorsBySchemaName(comparatorsBySchemaName);
+//        comparatorsBySchemaName.accept(ZonedTimestamp.SCHEMA_NAME, this::assertSameZonedTimestamps);
+//    }
 
     protected void assertSameGtidSet(String pathToField, Object actual, Object expected) {
         assertThat(actual).isInstanceOf(String.class);
