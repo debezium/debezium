@@ -23,7 +23,12 @@
     </dependencies>
 
     <properties>
-        <version.mysql.server>5.7</version.mysql.server>
+        <!--
+        The expected results have GTID ranges for this specific patch release. Other patch releases may
+        slightly change the order of the operations and transactions, so the expected results may
+        have to be regenerated when a different patch release is used.
+        -->
+        <version.mysql.server>5.7.17</version.mysql.server>
         <docker.skip>false</docker.skip>
         <!-- 
         Specify the properties that will be used for setting up the integration tests' Docker container.

@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.Task;
@@ -27,6 +28,27 @@ import io.debezium.util.Collect;
 /**
  * A very simple {@link SourceConnector} for testing that reliably produces the same records in the same order, and useful
  * for testing the infrastructure to run {@link SourceConnector}s.
+ * <p>
+ * This connector produces messages with keys having a single monotonically-increasing integer field named {@code id}:
+ * 
+ * <pre>
+ * {
+ *     "id" : "1"
+ * }
+ * </pre>
+ * 
+ * 
+ * and values with a {@code batch} field containing the 1-based batch number, a {@code record} field containing the
+ * 1-based record number within the batch, and an optional {@code timestamp} field that contains a simulated number of
+ * milliseconds past epoch computed by adding the start time of the connector task with the message {@code id}:
+ * 
+ * <pre>
+ * {
+ *     "batch" : "1",
+ *     "record" : "1",
+ *     "timestamp" : null
+ * }
+ * </pre>
  * 
  * @author Randall Hauch
  */
@@ -84,6 +106,7 @@ public class SimpleSourceConnector extends SourceConnector {
 
         private int recordsPerBatch;
         private Queue<SourceRecord> records;
+        private final AtomicBoolean running = new AtomicBoolean();
 
         @Override
         public String version() {
@@ -92,52 +115,58 @@ public class SimpleSourceConnector extends SourceConnector {
 
         @Override
         public void start(Map<String, String> props) {
-            Configuration config = Configuration.from(props);
-            recordsPerBatch = config.getInteger(RECORD_COUNT_PER_BATCH, DEFAULT_RECORD_COUNT_PER_BATCH);
-            int batchCount = config.getInteger(BATCH_COUNT, DEFAULT_BATCH_COUNT);
-            String topic = config.getString(TOPIC_NAME, DEFAULT_TOPIC_NAME);
-            boolean includeTimestamp = config.getBoolean(INCLUDE_TIMESTAMP, DEFAULT_INCLUDE_TIMESTAMP);
+            if (running.compareAndSet(false, true)) {
+                Configuration config = Configuration.from(props);
+                recordsPerBatch = config.getInteger(RECORD_COUNT_PER_BATCH, DEFAULT_RECORD_COUNT_PER_BATCH);
+                int batchCount = config.getInteger(BATCH_COUNT, DEFAULT_BATCH_COUNT);
+                String topic = config.getString(TOPIC_NAME, DEFAULT_TOPIC_NAME);
+                boolean includeTimestamp = config.getBoolean(INCLUDE_TIMESTAMP, DEFAULT_INCLUDE_TIMESTAMP);
 
-            // Create the partition and schemas ...
-            Map<String, ?> partition = Collect.hashMapOf("source", "simple");
-            Schema keySchema = SchemaBuilder.struct()
-                                            .name("simple.key")
-                                            .field("id", Schema.INT32_SCHEMA)
-                                            .build();
-            Schema valueSchema = SchemaBuilder.struct()
-                                              .name("simple.value")
-                                              .field("batch", Schema.INT32_SCHEMA)
-                                              .field("record", Schema.INT32_SCHEMA)
-                                              .field("timestamp", Schema.OPTIONAL_INT64_SCHEMA)
-                                              .build();
+                // Create the partition and schemas ...
+                Map<String, ?> partition = Collect.hashMapOf("source", "simple");
+                Schema keySchema = SchemaBuilder.struct()
+                                                .name("simple.key")
+                                                .field("id", Schema.INT32_SCHEMA)
+                                                .build();
+                Schema valueSchema = SchemaBuilder.struct()
+                                                  .name("simple.value")
+                                                  .field("batch", Schema.INT32_SCHEMA)
+                                                  .field("record", Schema.INT32_SCHEMA)
+                                                  .field("timestamp", Schema.OPTIONAL_INT64_SCHEMA)
+                                                  .build();
 
-            // Read the offset ...
-            Map<String, ?> lastOffset = context.offsetStorageReader().offset(partition);
-            long lastId = lastOffset == null ? 0L : (Long) lastOffset.get("id");
+                // Read the offset ...
+                Map<String, ?> lastOffset = context.offsetStorageReader().offset(partition);
+                long lastId = lastOffset == null ? 0L : (Long) lastOffset.get("id");
 
-            // Generate the records that we need ...
-            records = new LinkedList<>();
-            long initialTimestamp = System.currentTimeMillis();
-            int id = 0;
-            for (int batch = 0; batch != batchCount; ++batch) {
-                for (int recordNum = 0; recordNum != recordsPerBatch; ++recordNum) {
-                    ++id;
-                    if (id <= lastId) {
-                        // We already produced this record, so skip it ...
-                        continue;
+                // Generate the records that we need ...
+                records = new LinkedList<>();
+                long initialTimestamp = System.currentTimeMillis();
+                int id = 0;
+                for (int batch = 0; batch != batchCount; ++batch) {
+                    for (int recordNum = 0; recordNum != recordsPerBatch; ++recordNum) {
+                        ++id;
+                        if (id <= lastId) {
+                            // We already produced this record, so skip it ...
+                            continue;
+                        }
+                        if (!running.get()) {
+                            // the task has been stopped ...
+                            return;
+                        }
+                        // We've not seen this ID yet, so create a record ...
+                        Map<String, ?> offset = Collect.hashMapOf("id", id);
+                        Struct key = new Struct(keySchema);
+                        key.put("id", id);
+                        Struct value = new Struct(valueSchema);
+                        value.put("batch", batch + 1);
+                        value.put("record", recordNum + 1);
+                        if (includeTimestamp) {
+                            value.put("timestamp", initialTimestamp + id);
+                        }
+                        SourceRecord record = new SourceRecord(partition, offset, topic, 1, keySchema, key, valueSchema, value);
+                        records.add(record);
                     }
-                    // We've not seen this ID yet, so create a record ...
-                    Map<String, ?> offset = Collect.hashMapOf("id", id);
-                    Struct key = new Struct(keySchema);
-                    key.put("id", id);
-                    Struct value = new Struct(valueSchema);
-                    value.put("batch", batch + 1);
-                    value.put("record", recordNum + 1);
-                    if (includeTimestamp) {
-                        value.put("timestamp", initialTimestamp + id);
-                    }
-                    SourceRecord record = new SourceRecord(partition, offset, topic, 1, keySchema, key, valueSchema, value);
-                    records.add(record);
                 }
             }
         }
@@ -145,20 +174,26 @@ public class SimpleSourceConnector extends SourceConnector {
         @Override
         public List<SourceRecord> poll() throws InterruptedException {
             if (records.isEmpty()) {
-                // block forever ...
+                // block forever, as this thread will be interrupted if/when the task is stopped ...
                 new CountDownLatch(1).await();
             }
-            List<SourceRecord> results = new ArrayList<>();
-            int record = 0;
-            while (record < recordsPerBatch && !records.isEmpty()) {
-                results.add(records.poll());
+            if (running.get()) {
+                // Still running, so process whatever is in the queue ...
+                List<SourceRecord> results = new ArrayList<>();
+                int record = 0;
+                while (record < recordsPerBatch && !records.isEmpty()) {
+                    results.add(records.poll());
+                }
+                return results;
             }
-            return results;
+            // No longer running ...
+            return null;
         }
 
         @Override
         public void stop() {
-            // do nothing
+            // Request the task to stop and return immediately ...
+            running.set(false);
         }
     }
 }
