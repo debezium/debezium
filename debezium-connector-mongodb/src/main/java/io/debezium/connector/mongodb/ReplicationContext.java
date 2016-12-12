@@ -5,8 +5,13 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.io.IOException;
+import java.util.List;
 import java.util.function.Predicate;
 
+import com.datapipeline.base.mongodb.MongodbSchemaConfig;
+import com.datapipeline.base.mongodb.MongodbSchemaNameConfig;
+import com.fasterxml.jackson.core.type.TypeReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,8 +38,17 @@ public class ReplicationContext extends ConnectionContext {
 
         final String serverName = config.getString(MongoDbConnectorConfig.LOGICAL_NAME);
         this.filters = new Filters(config);
-        this.source = new SourceInfo(serverName);
-        this.topicSelector = TopicSelector.defaultSelector(serverName);
+        MongoDBSchemaCache schemaCache = null;
+        try {
+            schemaCache = new MongoDBSchemaCache(objectMapper.readValue
+                    (config.getString(MongoDbConnectorConfig.COLLECTION_SCHEMA_CONFIGURATION),
+                            new TypeReference<List<MongodbSchemaConfig>>() {}));
+        } catch (IOException e) {
+            logger.error("Error deserialize collection schema config.", e);
+        }
+
+        this.source = new SourceInfo(serverName, schemaCache);
+        this.topicSelector = new DpTopicSelector(config,objectMapper,serverName);
     }
     
     @Override

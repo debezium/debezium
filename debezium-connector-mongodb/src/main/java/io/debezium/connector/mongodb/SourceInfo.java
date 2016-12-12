@@ -143,10 +143,17 @@ public final class SourceInfo {
     }
 
     private final String serverName;
+    private final MongoDBSchemaCache schemaCache;
 
-    public SourceInfo(String serverName) {
+    public SourceInfo(String serverName, MongoDBSchemaCache schemaCache) {
         this.serverName = serverName;
         assert this.serverName != null;
+        this.schemaCache = schemaCache;
+        assert this.schemaCache != null;
+    }
+
+    public MongoDBSchemaCache getMongoDBSchemaCache(){
+        return schemaCache;
     }
 
     /**
