@@ -9,6 +9,9 @@ import org.fest.assertions.StringAssert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.util.List;
+
 import static org.fest.assertions.Assertions.assertThat;
 
 /**
@@ -39,5 +42,4 @@ public class TopicSelectorTest {
     protected CollectionId dbAndCollection( String dbName, String collectionName ) {
         return new CollectionId("rs0",dbName,collectionName);
     }
-
 }

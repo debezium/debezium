@@ -6,9 +6,16 @@
 package io.debezium.connector.mongodb;
 
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+import com.datapipeline.base.converter.ConnectorDataGenerator;
+import com.datapipeline.base.converter.ConnectorType;
+import com.datapipeline.base.converter.Converters;
+import com.datapipeline.base.exceptions.NeedOpsException;
+import com.datapipeline.base.mongodb.MongodbSchema;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -50,6 +57,8 @@ public class RecordMakers {
     private final Function<Document, String> valueTransformer;
     private final BlockingConsumer<SourceRecord> recorder;
 
+    private final MongodbSchemaManager schemaManager;
+
     /**
      * Create the record makers using the supplied components.
      * 
@@ -57,12 +66,13 @@ public class RecordMakers {
      * @param topicSelector the selector for topic names; may not be null
      * @param recorder the potentially blocking consumer function to be called for each generated record; may not be null
      */
-    public RecordMakers(SourceInfo source, TopicSelector topicSelector, BlockingConsumer<SourceRecord> recorder) {
+    public RecordMakers(SourceInfo source, TopicSelector topicSelector, BlockingConsumer<SourceRecord> recorder, MongodbSchemaManager schemaManager) {
         this.source = source;
         this.topicSelector = topicSelector;
         JsonWriterSettings writerSettings = new JsonWriterSettings(JsonMode.STRICT, "", ""); // most compact JSON
         this.valueTransformer = (doc) -> doc.toJson(writerSettings);
         this.recorder = recorder;
+        this.schemaManager = schemaManager;
     }
 
     /**
@@ -71,10 +81,20 @@ public class RecordMakers {
      * @param collectionId the identifier of the collection for which records are to be produced; may not be null
      * @return the table-specific record maker; may be null if the table is not included in the connector
      */
-    public RecordsForCollection forCollection(CollectionId collectionId) {
+    public RecordsForCollection forCollection(CollectionId collectionId) throws NeedOpsException {
+        if(schemaManager == null){
+            throw new NeedOpsException("Schema manager is null, can't build record for collection : "
+                    + collectionId.namespace() + " . Please check if collection schema is correctly set. ");
+        }
+
+        List<MongodbSchema> mongodbSchemas = schemaManager.getMongodbSchemasForCollection(collectionId.dbName(),collectionId.name());
+        if(mongodbSchemas == null){
+            throw new NeedOpsException("Schema is null, can't build record for collection : "
+                    + collectionId.namespace() + " . Please check if collection schema is correctly set. ");
+        }
         return recordMakerByCollectionId.computeIfAbsent(collectionId, id -> {
             String topicName = topicSelector.getTopic(collectionId);
-            return new RecordsForCollection(collectionId, source, topicName, schemaNameValidator, valueTransformer, recorder);
+            return new RecordsForCollection(collectionId, source, topicName, schemaNameValidator, valueTransformer, recorder,mongodbSchemas);
         });
     }
 
@@ -89,28 +109,36 @@ public class RecordMakers {
         private final String topicName;
         private final Schema keySchema;
         private final Schema valueSchema;
+        private final Schema afterValueSchema;
+//        private final Schema valueSchema;
+        private final AvroValidator validator;
         private final Function<Document, String> valueTransformer;
         private final BlockingConsumer<SourceRecord> recorder;
 
+        private final ConnectorDataGenerator dataGenerator;
+        private final List<MongodbSchema> mongodbSchemas;
+
         protected RecordsForCollection(CollectionId collectionId, SourceInfo source, String topicName, AvroValidator validator,
-                Function<Document, String> valueTransformer, BlockingConsumer<SourceRecord> recorder) {
+                Function<Document, String> valueTransformer, BlockingConsumer<SourceRecord> recorder, List<MongodbSchema> mongodbSchemas) {
             this.sourcePartition = source.partition(collectionId.replicaSetName());
             this.collectionId = collectionId;
             this.replicaSetName = this.collectionId.replicaSetName();
             this.source = source;
             this.topicName = topicName;
-            this.keySchema = SchemaBuilder.struct()
-                                          .name(validator.validate(topicName + ".Key"))
-                                          .field("_id", Schema.STRING_SCHEMA)
-                                          .build();
+            dataGenerator = new ConnectorDataGenerator();
+            this.keySchema = dataGenerator.buildKeySchema(validator.validate(topicName + ".Key"), ConnectorType.MONGODB);
+            this.validator = validator;
+            this.afterValueSchema = dataGenerator.buildValueSchema(null, mongodbSchemas);
             this.valueSchema = SchemaBuilder.struct()
                                             .name(validator.validate(topicName + ".Envelope"))
-                                            .field(FieldName.AFTER, Json.builder().optional().build())
+                                            .field(FieldName.AFTER, afterValueSchema)
                                             .field("patch", Json.builder().optional().build())
                                             .field(FieldName.SOURCE, source.schema())
                                             .field(FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
                                             .field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
                                             .build();
+            this.mongodbSchemas = mongodbSchemas;
+
             JsonWriterSettings writerSettings = new JsonWriterSettings(JsonMode.STRICT, "", ""); // most compact JSON
             this.valueTransformer = (doc) -> doc.toJson(writerSettings);
             this.recorder = recorder;
@@ -167,19 +195,34 @@ public class RecordMakers {
                                     long timestamp)
                 throws InterruptedException {
             Integer partition = null;
-            Struct key = keyFor(objId);
+            Struct key = dataGenerator.buildKeyStruct(keySchema,ConnectorType.MONGODB,objId);
+
+            List<MongoDbColumnData> datas = new LinkedList<>();
+            for(MongodbSchema schema: mongodbSchemas){
+                if(objectValue.get(schema.getName())!=null){
+                    Object value = Converters.getConverter(schema.getDataType()).convert(objectValue.get(schema.getName()).toString());
+                    MongoDbColumnData data = new MongoDbColumnData(value,schema);
+                    datas.add(data);
+                }
+            }
+
+            if(objectValue.size() > mongodbSchemas.size()){
+                logger.error("Source data has more schema then defined. " + objectValue.toString());
+            }
+
             Struct value = new Struct(valueSchema);
+            Struct valueStruct = dataGenerator.buildValueStruct(afterValueSchema, datas);
             switch (operation) {
                 case READ:
                 case CREATE:
                     // The object is the new document ...
                     String jsonStr = valueTransformer.apply(objectValue);
-                    value.put(FieldName.AFTER, jsonStr);
+                    value.put(FieldName.AFTER, valueStruct);
                     break;
                 case UPDATE:
                     // The object is the idempotent patch document ...
                     String patchStr = valueTransformer.apply(objectValue);
-                    value.put("patch", patchStr);
+                    value.put("patch", valueStruct);
                     break;
                 case DELETE:
                     // The delete event has nothing of any use, other than the _id which we already have in our key.
@@ -224,10 +267,6 @@ public class RecordMakers {
             }
             return id.toString();
         }
-
-        protected Struct keyFor(String objId) {
-            return new Struct(keySchema).put("_id", objId);
-        }
     }
 
     /**
@@ -238,4 +277,6 @@ public class RecordMakers {
         logger.debug("Clearing table converters");
         recordMakerByCollectionId.clear();
     }
+
+
 }

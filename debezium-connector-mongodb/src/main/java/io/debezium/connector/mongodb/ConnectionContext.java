@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -14,6 +15,9 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import com.datapipeline.base.mongodb.MongodbSchemaConfig;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +45,7 @@ public class ConnectionContext implements AutoCloseable {
     protected final ReplicaSets replicaSets;
     protected final DelayStrategy primaryBackoffStrategy;
     protected final boolean useHostsAsSeeds;
+    protected MongodbSchemaManager schemaManager;
 
     /**
      * @param config the configuration
@@ -57,7 +62,7 @@ public class ConnectionContext implements AutoCloseable {
         // Set up the client pool so that it ...
         MongoClients.Builder clientBuilder = MongoClients.create();
         if (username != null || password != null) {
-            clientBuilder.withCredential(MongoCredential.createCredential(username, configDbName, password.toCharArray()));
+//            clientBuilder.withCredential(MongoCredential.createCredential(username, configDbName, password.toCharArray()));
             clientBuilder.withCredential(MongoCredential.createCredential(username, adminDbName, password.toCharArray()));
         }
         pool = clientBuilder.build();
@@ -67,6 +72,15 @@ public class ConnectionContext implements AutoCloseable {
         final int initialDelayInMs = config.getInteger(MongoDbConnectorConfig.CONNECT_BACKOFF_INITIAL_DELAY_MS);
         final long maxDelayInMs = config.getLong(MongoDbConnectorConfig.CONNECT_BACKOFF_MAX_DELAY_MS);
         this.primaryBackoffStrategy = DelayStrategy.exponential(initialDelayInMs, maxDelayInMs);
+
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            this.schemaManager = new MongodbSchemaManager(objectMapper.readValue
+                    (config.getString(MongoDbConnectorConfig.COLLECTION_SCHEMA_CONFIGURATION),
+                            new TypeReference<List<MongodbSchemaConfig>>() {}));
+        } catch (IOException e) {
+            logger.error("Error deserialize collection schema config.", e);
+        }
     }
 
     public void shutdown() {
@@ -136,6 +150,10 @@ public class ConnectionContext implements AutoCloseable {
         return config.getString(MongoDbConnectorConfig.LOGICAL_NAME);
     }
 
+    public MongodbSchemaManager getSchemaManager() {
+        return schemaManager;
+    }
+
     /**
      * Obtain a client that will repeated try to obtain a client to the primary node of the replica set, waiting (and using
      * this context's back-off strategy) if required until the primary becomes available.
@@ -176,7 +194,9 @@ public class ConnectionContext implements AutoCloseable {
      * @return the client, or {@code null} if no primary could be found for the replica set
      */
     protected Supplier<MongoClient> primaryClientFor(ReplicaSet replicaSet, PrimaryConnectFailed handler) {
-        Supplier<MongoClient> factory = () -> clientForPrimary(replicaSet);
+        Supplier<MongoClient> factory = () -> {
+            return clientForPrimary(replicaSet);
+        };
         int maxAttempts = maxConnectionAttemptsForPrimary();
         return () -> {
             int attempts = 0;

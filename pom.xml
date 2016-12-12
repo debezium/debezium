@@ -82,6 +82,8 @@
         <version.docker.maven.plugin>0.18.1</version.docker.maven.plugin>
         <version.staging.plugin>1.6.3</version.staging.plugin>
 
+        <!-- Data pipeline internal dependency-->
+        <version.datapipeline>0.2.0-SNAPSHOT</version.datapipeline>
         <!-- Dockerfiles -->
         <docker.maintainer>Debezium community</docker.maintainer>
 
@@ -305,6 +307,11 @@
                 <version>${project.version}</version>
                 <scope>test</scope>
                 <type>test-jar</type>
+            </dependency>
+            <dependency>
+                <groupId>com.datapipeline</groupId>
+                <artifactId>dp-core</artifactId>
+                <version>${version.datapipeline}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

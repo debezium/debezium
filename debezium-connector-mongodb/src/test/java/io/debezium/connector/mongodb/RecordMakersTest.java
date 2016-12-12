@@ -8,6 +8,7 @@ package io.debezium.connector.mongodb;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.datapipeline.base.exceptions.NeedOpsException;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.BsonTimestamp;
@@ -45,11 +46,11 @@ public class RecordMakersTest {
         source = new SourceInfo(SERVER_NAME);
         topicSelector = TopicSelector.defaultSelector(PREFIX);
         produced = new ArrayList<>();
-        recordMakers = new RecordMakers(source, topicSelector, produced::add);
+        recordMakers = new RecordMakers(source, topicSelector, produced::add,new MongodbSchemaManager(new ArrayList<>()));
     }
 
     @Test
-    public void shouldAlwaysFindRecordMakerForCollection() {
+    public void shouldAlwaysFindRecordMakerForCollection() throws NeedOpsException {
         for (int i = 0; i != 100; ++i) {
             CollectionId id = new CollectionId("rs0", "dbA", "c" + i);
             RecordsForCollection records = recordMakers.forCollection(id);
@@ -59,7 +60,7 @@ public class RecordMakersTest {
     }
 
     @Test
-    public void shouldGenerateRecordForInsertEvent() throws InterruptedException {
+    public void shouldGenerateRecordForInsertEvent() throws InterruptedException, NeedOpsException {
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         BsonTimestamp ts = new BsonTimestamp(1000, 1);
         ObjectId objId = new ObjectId();
@@ -88,7 +89,7 @@ public class RecordMakersTest {
     }
 
     @Test
-    public void shouldGenerateRecordForUpdateEvent() throws InterruptedException {
+    public void shouldGenerateRecordForUpdateEvent() throws InterruptedException, NeedOpsException {
         BsonTimestamp ts = new BsonTimestamp(1000, 1);
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();
@@ -119,7 +120,7 @@ public class RecordMakersTest {
     }
 
     @Test
-    public void shouldGenerateRecordForDeleteEvent() throws InterruptedException {
+    public void shouldGenerateRecordForDeleteEvent() throws InterruptedException, NeedOpsException {
         BsonTimestamp ts = new BsonTimestamp(1000, 1);
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();
