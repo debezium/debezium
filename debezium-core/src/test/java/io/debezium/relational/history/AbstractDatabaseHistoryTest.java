@@ -5,8 +5,11 @@
  */
 package io.debezium.relational.history;
 
+import static org.junit.Assert.fail;
+
 import java.util.Map;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -50,6 +53,13 @@ public abstract class AbstractDatabaseHistoryTest {
         source2 = server("xyz");
         history = createHistory();
     }
+    
+    @After
+    public void afterEach() {
+        if (history != null) {
+            history.stop();
+        }
+    }
 
     protected abstract DatabaseHistory createHistory();
 
@@ -62,7 +72,11 @@ public abstract class AbstractDatabaseHistoryTest {
     }
 
     protected void record(long pos, int entry, String ddl, Tables... update) {
-        history.record(source1, position("a.log", pos, entry), "db", tables, ddl);
+        try {
+            history.record(source1, position("a.log", pos, entry), "db", tables, ddl);
+        } catch (Throwable t) {
+            fail(t.getMessage());
+        }
         for (Tables tables : update) {
             if (tables != null) {
                 parser.setCurrentSchema("db");

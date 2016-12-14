@@ -93,8 +93,8 @@ public class SnapshotReaderIT {
         config = simpleConfig().build();
         context = new MySqlTaskContext(config);
         context.start();
-        reader = new SnapshotReader(context);
-        reader.onSuccessfulCompletion(completed::countDown);
+        reader = new SnapshotReader("snapshot", context);
+        reader.uponCompletion(completed::countDown);
         reader.generateInsertEvents();
         reader.useMinimalBlocking(true);
 
@@ -171,8 +171,8 @@ public class SnapshotReaderIT {
         config = simpleConfig().with(MySqlConnectorConfig.DATABASE_WHITELIST, "connector_(.*)").build();
         context = new MySqlTaskContext(config);
         context.start();
-        reader = new SnapshotReader(context);
-        reader.onSuccessfulCompletion(completed::countDown);
+        reader = new SnapshotReader("snapshot", context);
+        reader.uponCompletion(completed::countDown);
         reader.generateReadEvents();
         reader.useMinimalBlocking(true);
 
@@ -251,8 +251,8 @@ public class SnapshotReaderIT {
         config = simpleConfig().with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true).build();
         context = new MySqlTaskContext(config);
         context.start();
-        reader = new SnapshotReader(context);
-        reader.onSuccessfulCompletion(completed::countDown);
+        reader = new SnapshotReader("snapshot", context);
+        reader.uponCompletion(completed::countDown);
         reader.generateInsertEvents();
         reader.useMinimalBlocking(true);
 
@@ -331,8 +331,8 @@ public class SnapshotReaderIT {
         config = simpleConfig().with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY).build();
         context = new MySqlTaskContext(config);
         context.start();
-        reader = new SnapshotReader(context);
-        reader.onSuccessfulCompletion(completed::countDown);
+        reader = new SnapshotReader("snapshot", context);
+        reader.uponCompletion(completed::countDown);
         reader.generateInsertEvents();
         reader.useMinimalBlocking(true);
 
@@ -340,12 +340,12 @@ public class SnapshotReaderIT {
         reader.start();
 
         // Poll for records ...
-        //Testing.Print.enable();
+        // Testing.Print.enable();
         List<SourceRecord> records = null;
         KeyValueStore store = KeyValueStore.createForTopicsBeginningWith(LOGICAL_NAME + ".");
         SchemaChangeHistory schemaChanges = new SchemaChangeHistory(LOGICAL_NAME);
-        while ( (records = reader.poll()) != null ) {
-            records.forEach(record->{
+        while ((records = reader.poll()) != null) {
+            records.forEach(record -> {
                 VerifyRecord.isValid(record);
                 store.add(record);
                 schemaChanges.add(record);
@@ -361,7 +361,7 @@ public class SnapshotReaderIT {
         assertThat(store.collectionCount()).isEqualTo(0);
 
         // Make sure the snapshot completed ...
-        if ( completed.await(10, TimeUnit.SECONDS) ) {
+        if (completed.await(10, TimeUnit.SECONDS)) {
             // completed the snapshot ...
             Testing.print("completed the snapshot");
         } else {

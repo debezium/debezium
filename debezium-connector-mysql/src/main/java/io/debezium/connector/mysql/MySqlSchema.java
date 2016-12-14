@@ -199,7 +199,7 @@ public class MySqlSchema {
             ddlParser.systemVariables().setVariable(Scope.SESSION, varName, value);
         });
     }
-    
+
     /**
      * Get the system variables as known by the DDL parser.
      * 
@@ -208,7 +208,7 @@ public class MySqlSchema {
     public MySqlSystemVariables systemVariables() {
         return ddlParser.systemVariables();
     }
-    
+
     /**
      * Load the schema for the databases using JDBC database metadata. If there are changes relative to any
      * table definitions that existed when this method is called, those changes are recorded in the database history
@@ -269,7 +269,11 @@ public class MySqlSchema {
         });
 
         // Finally record the DDL statements into the history ...
-        dbHistory.record(source.partition(), source.offset(), "", tables(), ddl.toString());
+        try {
+            dbHistory.record(source.partition(), source.offset(), "", tables(), ddl.toString());
+        } catch (Throwable e) {
+            throw new ConnectException("Error recording the DDL statement in the database history " + dbHistory + ": " + ddl, e);
+        }
     }
 
     protected void appendDropTableStatement(StringBuilder sb, TableId tableId) {
@@ -361,7 +365,12 @@ public class MySqlSchema {
             // Record the DDL statement so that we can later recover them if needed. We do this _after_ writing the
             // schema change records so that failure recovery (which is based on of the history) won't lose
             // schema change records.
-            dbHistory.record(source.partition(), source.offset(), databaseName, tables, ddlStatements);
+            try {
+                dbHistory.record(source.partition(), source.offset(), databaseName, tables, ddlStatements);
+            } catch (Throwable e) {
+                throw new ConnectException(
+                        "Error recording the DDL statement(s) in the database history " + dbHistory + ": " + ddlStatements, e);
+            }
         }
 
         // Figure out what changed ...

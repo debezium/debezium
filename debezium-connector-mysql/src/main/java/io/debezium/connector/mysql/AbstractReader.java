@@ -29,9 +29,10 @@ import io.debezium.util.Metronome;
  * 
  * @author Randall Hauch
  */
-public abstract class AbstractReader {
+public abstract class AbstractReader implements Reader {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
+    private final String name;
     protected final MySqlTaskContext context;
     private final BlockingQueue<SourceRecord> records;
     private final AtomicBoolean running = new AtomicBoolean(false);
@@ -40,25 +41,34 @@ public abstract class AbstractReader {
     private ConnectException failureException;
     private final int maxBatchSize;
     private final Metronome metronome;
+    private final AtomicReference<Runnable> uponCompletion = new AtomicReference<>();
 
     /**
      * Create a snapshot reader.
      * 
+     * @param name the name of the reader
      * @param context the task context in which this reader is running; may not be null
      */
-    public AbstractReader(MySqlTaskContext context) {
+    public AbstractReader(String name, MySqlTaskContext context) {
+        this.name = name;
         this.context = context;
         this.records = new LinkedBlockingDeque<>(context.maxQueueSize());
         this.maxBatchSize = context.maxBatchSize();
         this.metronome = Metronome.parker(context.pollIntervalInMillseconds(), TimeUnit.MILLISECONDS, Clock.SYSTEM);
     }
 
-    /**
-     * Start the reader and return immediately. Once started, the {@link SourceRecord} can be obtained by periodically calling
-     * {@link #poll()} until that method returns {@code null}.
-     * <p>
-     * This method does nothing if it is already running.
-     */
+    @Override
+    public String name() {
+        return name;
+    }
+
+    @Override
+    public void uponCompletion(Runnable handler) {
+        assert this.uponCompletion.get() == null;
+        this.uponCompletion.set(handler);
+    }
+
+    @Override
     public void start() {
         if (this.running.compareAndSet(false, true)) {
             this.failure.set(null);
@@ -67,16 +77,18 @@ public abstract class AbstractReader {
         }
     }
 
-    /**
-     * Stop the reader from running. This method is called when the connector is stopped.
-     */
+    @Override
     public void stop() {
         try {
-            if (this.running.compareAndSet(true, false)) {
-                doStop();
-            }
+            doStop();
+            running.set(false);
         } finally {
-            doShutdown();
+            if (failure.get() != null) {
+                // We had a failure and it was propagated via poll(), after which Kafka Connect will stop
+                // the connector, which will stop the task that will then stop this reader via this method.
+                // Since no more records will ever be polled again, we know we can clean up this reader's resources...
+                doCleanup();
+            }
         }
     }
 
@@ -89,35 +101,29 @@ public abstract class AbstractReader {
      * The reader has been requested to stop, so perform any work required to stop the reader's resources that were previously
      * {@link #start() started}.
      * <p>
-     * This method is called only if the reader is not already stopped.
-     * @see #doShutdown()
+     * This method is always called when {@link #stop()} is called, and the first time {@link #isRunning()} will return
+     * {@code true} the first time and {@code false} for any subsequent calls.
      */
     protected abstract void doStop();
 
     /**
-     * The reader has completed sending all {@link #enqueueRecord(SourceRecord) enqueued records}, so clean up any resources
-     * that remain.
+     * The reader has completed all processing and all {@link #enqueueRecord(SourceRecord) enqueued records} have been
+     * {@link #poll() consumed}, so this reader should clean up any resources that might remain.
      */
     protected abstract void doCleanup();
 
     /**
-     * The reader has been stopped.
-     * <p>
-     * This method is always called when the connector is stopped.
-     * @see #doStop()
-     */
-    protected abstract void doShutdown();
-    
-    /**
      * Call this method only when the reader has successfully completed all of its work, signaling that subsequent
-     * calls to {@link #poll()} should forever return {@code null}.
+     * calls to {@link #poll()} should forever return {@code null} and that this reader should transition from
+     * {@link Reader.State#STOPPING} to {@link Reader.State#STOPPED}.
      */
     protected void completeSuccessfully() {
         this.success.set(true);
     }
 
     /**
-     * Call this method only when the reader has failed, and that a subsequent call to {@link #poll()} should throw this error.
+     * Call this method only when the reader has failed, that a subsequent call to {@link #poll()} should throw
+     * this error, and that {@link #doCleanup()} can be called at any time.
      * 
      * @param error the error that resulted in the failure; should not be {@code null}
      */
@@ -126,7 +132,8 @@ public abstract class AbstractReader {
     }
 
     /**
-     * Call this method only when the reader has failed, and that a subsequent call to {@link #poll()} should throw this error.
+     * Call this method only when the reader has failed, that a subsequent call to {@link #poll()} should throw
+     * this error, and that {@link #doCleanup()} can be called at any time.
      * 
      * @param error the error that resulted in the failure; should not be {@code null}
      * @param msg the error message; may not be null
@@ -157,26 +164,34 @@ public abstract class AbstractReader {
         return new ConnectException(msg, error);
     }
 
-    /**
-     * Get whether the snapshot is still running and records are available.
-     * 
-     * @return {@code true} if still running, or {@code false} if no longer running and/or all records have been processed
-     */
-    public boolean isRunning() {
-        return this.running.get();
+    @Override
+    public State state() {
+        if (success.get() || failure.get() != null) {
+            // We've either completed successfully or have failed, but either way no more records will be returned ...
+            return State.STOPPED;
+        }
+        if (running.get()) {
+            return State.RUNNING;
+        }
+        // Otherwise, we're in the process of stopping ...
+        return State.STOPPING;
     }
 
-    /**
-     * Poll for the next batch of source records. This method blocks if this reader is still running but no records are available.
-     * 
-     * @return the list of source records; or {@code null} when the snapshot is complete, all records have previously been
-     *         returned, and the completion function (supplied in the constructor) has been called
-     * @throws InterruptedException if this thread is interrupted while waiting for more records
-     * @throws ConnectException if there is an error while this reader is running
-     */
+    protected boolean isRunning() {
+        return running.get();
+    }
+
+    @Override
     public List<SourceRecord> poll() throws InterruptedException {
+        // Before we do anything else, determine if there was a failure and throw that exception ...
         failureException = this.failure.get();
-        if (failureException != null) throw failureException;
+        if (failureException != null) {
+            // In this case, we'll throw the exception and the Kafka Connect worker or EmbeddedEngine
+            // will then explicitly stop the connector task. Most likely, however, the reader that threw
+            // the exception will have already stopped itself and will generate no additional records.
+            // Regardless, there may be records on the queue that will never be consumed.
+            throw failureException;
+        }
 
         logger.trace("Polling for next batch of records");
         List<SourceRecord> batch = new ArrayList<>(maxBatchSize);
@@ -192,12 +207,29 @@ public abstract class AbstractReader {
         if (batch.isEmpty() && success.get() && records.isEmpty()) {
             // We found no records but the operation completed successfully, so we're done
             this.running.set(false);
-            doCleanup();
+            cleanupResources();
             return null;
         }
         pollComplete(batch);
         logger.trace("Completed batch of {} records", batch.size());
         return batch;
+    }
+    
+    /**
+     * This method is normally called by {@link #poll()} when there this reader finishes normally and all generated
+     * records are consumed prior to being {@link #stop() stopped}. However, if this reader is explicitly
+     * {@link #stop() stopped} while still working, then subclasses should call this method when they have completed
+     * all of their shutdown work.
+     */
+    protected void cleanupResources() {
+        try {
+            doCleanup();
+        } finally {
+            Runnable completionHandler = uponCompletion.getAndSet(null); // set to null so that we call it only once
+            if (completionHandler != null) {
+                completionHandler.run();
+            }
+        }
     }
 
     /**

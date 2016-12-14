@@ -79,10 +79,11 @@ public class BinlogReader extends AbstractReader {
     /**
      * Create a binlog reader.
      * 
+     * @param name the name of this reader; may not be null
      * @param context the task context in which this reader is running; may not be null
      */
-    public BinlogReader(MySqlTaskContext context) {
-        super(context);
+    public BinlogReader(String name, MySqlTaskContext context) {
+        super(name, context);
         source = context.source();
         recordMakers = context.makeRecord();
         recordSchemaChangesInSourceRecords = context.includeSchemaChangeRecords();
@@ -217,20 +218,23 @@ public class BinlogReader extends AbstractReader {
     @Override
     protected void doStop() {
         try {
-            logger.debug("Stopping binlog reader, last recorded offset: {}", lastOffset);
-            client.disconnect();
+            if (isRunning()) {
+                logger.debug("Stopping binlog reader, last recorded offset: {}", lastOffset);
+                client.disconnect();
+            }
+            cleanupResources();
         } catch (IOException e) {
             logger.error("Unexpected error when disconnecting from the MySQL binary log reader", e);
+        } finally {
+            // We unregister our JMX metrics now, which means we won't record metrics for records that
+            // may be processed between now and complete shutdown. That's okay.
+            metrics.unregister(logger);
         }
     }
 
     @Override
-    protected void doShutdown() {
-        metrics.unregister(logger);
-    }
-
-    @Override
     protected void doCleanup() {
+        logger.debug("Completed writing all records that were read from the binlog before being stopped");
     }
 
     @Override
@@ -398,8 +402,9 @@ public class BinlogReader extends AbstractReader {
      * MySQL schemas.
      * 
      * @param event the database change data event to be processed; may not be null
+     * @throws InterruptedException if this thread is interrupted while recording the DDL statements
      */
-    protected void handleQueryEvent(Event event) {
+    protected void handleQueryEvent(Event event) throws InterruptedException {
         QueryEventData command = unwrapData(event);
         logger.debug("Received query command: {}", event);
         String sql = command.getSql().trim();

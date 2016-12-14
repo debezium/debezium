@@ -150,7 +150,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     }
 
     @Override
-    protected void storeRecord(HistoryRecord record) {
+    protected void storeRecord(HistoryRecord record) throws DatabaseHistoryException {
         if (this.producer == null) {
             throw new IllegalStateException("No producer is available. Ensure that 'start()' is called before storing database history records.");
         }
@@ -165,10 +165,12 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                 logger.debug("Stored record in topic '{}' partition {} at offset {} ",
                              metadata.topic(), metadata.partition(), metadata.offset());
             }
-        } catch (InterruptedException e) {
-            logger.error("Interrupted while waiting for response to storing record into database history: {}", record);
+        } catch( InterruptedException e) {
+            logger.trace("Interrupted before record was written into database history: {}", record);
+            Thread.interrupted();
+            throw new DatabaseHistoryException(e);
         } catch (ExecutionException e) {
-            logger.error("Error while storing database history record into Kafka: {}", record, e);
+            throw new DatabaseHistoryException(e);
         }
     }
 
