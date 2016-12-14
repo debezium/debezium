@@ -60,8 +60,9 @@ public interface DatabaseHistory {
      * @param databaseName the name of the database whose schema is being changed; may be null
      * @param schema the current definition of the database schema; may not be null
      * @param ddl the DDL statements that describe the changes to the database schema; may not be null
+     * @throws DatabaseHistoryException if the record could not be written
      */
-    void record(Map<String, ?> source, Map<String, ?> position, String databaseName, Tables schema, String ddl);
+    void record(Map<String, ?> source, Map<String, ?> position, String databaseName, Tables schema, String ddl) throws DatabaseHistoryException;
 
     /**
      * Recover the {@link Tables database schema} to a known point in its history. Note that it is possible to recover the
