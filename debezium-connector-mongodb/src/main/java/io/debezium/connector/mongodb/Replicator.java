@@ -18,6 +18,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
+import com.datapipeline.base.exceptions.DpExceptionHandler;
+import com.datapipeline.base.exceptions.NeedOpsException;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.BsonTimestamp;
@@ -110,7 +112,7 @@ public class Replicator {
         this.replicaSet = replicaSet;
         this.rsName = replicaSet.replicaSetName();
         this.copyThreads = Executors.newFixedThreadPool(context.maxNumberOfCopyThreads());
-        this.recordMakers = new RecordMakers(this.source, context.topicSelector(), recorder);
+        this.recordMakers = new RecordMakers(this.source, context.topicSelector(), recorder, context.getSchemaManager());
         this.collectionFilter = this.context.collectionFilter();
         this.clock = this.context.clock();
     }
@@ -297,10 +299,14 @@ public class Replicator {
      * @return number of documents that were copied
      * @throws InterruptedException if the thread was interrupted while the copy operation was running
      */
-    protected long copyCollection(CollectionId collectionId, long timestamp) throws InterruptedException {
+    protected long copyCollection(CollectionId collectionId, long timestamp) throws InterruptedException{
         AtomicLong docCount = new AtomicLong();
         primaryClient.executeBlocking("sync '" + collectionId + "'", primary -> {
-            docCount.set(copyCollection(primary, collectionId, timestamp));
+            try {
+                docCount.set(copyCollection(primary, collectionId, timestamp));
+            } catch (NeedOpsException e){
+                DpExceptionHandler.handle(e,logger);
+            }
         });
         return docCount.get();
     }
@@ -314,7 +320,7 @@ public class Replicator {
      * @return number of documents that were copied
      * @throws InterruptedException if the thread was interrupted while the copy operation was running
      */
-    protected long copyCollection(MongoClient primary, CollectionId collectionId, long timestamp) throws InterruptedException {
+    protected long copyCollection(MongoClient primary, CollectionId collectionId, long timestamp) throws InterruptedException, NeedOpsException {
         RecordsForCollection factory = recordMakers.forCollection(collectionId);
         MongoDatabase db = primary.getDatabase(collectionId.dbName());
         MongoCollection<Document> docCollection = db.getCollection(collectionId.name());
@@ -361,8 +367,13 @@ public class Replicator {
         ServerAddress primaryAddress = primary.getAddress();
         try (MongoCursor<Document> cursor = results.iterator()) {
             while (running.get() && cursor.hasNext()) {
-                if (!handleOplogEvent(primaryAddress, cursor.next())) {
-                    // Something happened, and we're supposed to stop reading
+                try {
+                    if (!handleOplogEvent(primaryAddress, cursor.next())) {
+                        // Something happened, and we're supposed to stop reading
+                        return;
+                    }
+                } catch (NeedOpsException e) {
+                    DpExceptionHandler.handle(e,logger);
                     return;
                 }
             }
@@ -377,7 +388,7 @@ public class Replicator {
      * @return {@code true} if additional events should be processed, or {@code false} if the caller should stop
      *         processing events
      */
-    protected boolean handleOplogEvent(ServerAddress primaryAddress, Document event) {
+    protected boolean handleOplogEvent(ServerAddress primaryAddress, Document event) throws NeedOpsException {
         logger.debug("Found event: {}", event);
         String ns = event.getString("ns");
         Document object = event.get("o", Document.class);
