@@ -68,6 +68,9 @@
         <version.mongo.server>3.2.6</version.mongo.server>
         <version.mongo.driver>3.2.2</version.mongo.driver>
 
+        <!-- nexus -->
+        <nexus.ip>52.41.253.123</nexus.ip>
+
         <!-- Testing -->
         <version.junit>4.12</version.junit>
         <version.fest>1.4</version.fest>
@@ -82,6 +85,8 @@
         <version.docker.maven.plugin>0.18.1</version.docker.maven.plugin>
         <version.staging.plugin>1.6.3</version.staging.plugin>
 
+        <!-- Data pipeline internal dependency-->
+        <version.datapipeline>0.2.0-SNAPSHOT</version.datapipeline>
         <!-- Dockerfiles -->
         <docker.maintainer>Debezium community</docker.maintainer>
 
@@ -102,16 +107,20 @@
     </modules>
 
     <distributionManagement>
-      <repository>
-        <id>ossrh</id>
-        <name>Sonatype Staging Repository</name>
-        <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
-      </repository>
-      <snapshotRepository>
-        <id>ossrh</id>
-        <name>OSS Sonatype Nexus Snapshots</name>
-        <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-      </snapshotRepository>
+      <!--<repository>-->
+        <!--<id>ossrh</id>-->
+        <!--<name>Sonatype Staging Repository</name>-->
+        <!--<url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>-->
+      <!--</repository>-->
+      <!--<snapshotRepository>-->
+        <!--<id>ossrh</id>-->
+        <!--<name>OSS Sonatype Nexus Snapshots</name>-->
+        <!--<url>https://oss.sonatype.org/content/repositories/snapshots</url>-->
+      <!--</snapshotRepository>-->
+        <snapshotRepository>
+            <id>datapipeline</id>
+            <url>http://${nexus.ip}:8081/nexus/content/repositories/snapshots</url>
+        </snapshotRepository>
     </distributionManagement>
 
     <repositories>
@@ -305,6 +314,11 @@
                 <version>${project.version}</version>
                 <scope>test</scope>
                 <type>test-jar</type>
+            </dependency>
+            <dependency>
+                <groupId>com.datapipeline</groupId>
+                <artifactId>dp-core</artifactId>
+                <version>${version.datapipeline}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

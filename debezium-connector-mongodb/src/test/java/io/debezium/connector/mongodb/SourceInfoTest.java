@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.util.ArrayList;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
@@ -28,7 +29,7 @@ public class SourceInfoTest {
 
     @Before
     public void beforeEach() {
-        source = new SourceInfo("serverX");
+        source = new SourceInfo("serverX", new MongoDBSchemaCache(new ArrayList<>()));
     }
 
     @Test
@@ -76,7 +77,7 @@ public class SourceInfoTest {
 
         // Create a new source info and set the offset ...
         Map<String,String> partition = source.partition(REPLICA_SET_NAME);
-        source = new SourceInfo("serverX");
+        source = new SourceInfo("serverX", new MongoDBSchemaCache(new ArrayList<>()));
         source.setOffsetFor(partition, offset);
         
         offset = source.lastOffset(REPLICA_SET_NAME);

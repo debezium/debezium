@@ -202,6 +202,15 @@ public class MongoDbConnectorConfig {
                                                 .withValidation(Field::isInteger)
                                                 .withInvisibleRecommender();
 
+
+    public static final Field COLLECTION_SCHEMA_CONFIGURATION = Field.create("mongodb.collection.schemas")
+            .withDependents("The schema configuration describing each collection")
+            .withType(Type.STRING).withImportance(Importance.HIGH);
+
+    public static final Field COLLECTION_SCHEMA_NAME_CONFIGURATION = Field.create("collection.schema.name")
+            .withDependents("The name configuration for collections")
+            .withType(Type.STRING).withImportance(Importance.MEDIUM).withDefault("");
+
     public static Field.Set ALL_FIELDS = Field.setOf(USER, PASSWORD, HOSTS, LOGICAL_NAME,
                                                      MAX_COPY_THREADS, MAX_QUEUE_SIZE, MAX_BATCH_SIZE,
                                                      POLL_INTERVAL_MS,
