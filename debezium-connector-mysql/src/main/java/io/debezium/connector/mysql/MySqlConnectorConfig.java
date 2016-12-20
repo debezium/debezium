@@ -553,13 +553,15 @@ public class MySqlConnectorConfig {
                                                       .withValidation(Field::isPositiveInteger);
 
     public static final Field ROW_COUNT_FOR_STREAMING_RESULT_SETS = Field.create("min.row.count.to.stream.results")
-                                                                         .withDisplayName("Stream result set larger than")
+                                                                         .withDisplayName("Stream result set of size")
                                                                          .withType(Type.LONG)
                                                                          .withWidth(Width.MEDIUM)
                                                                          .withImportance(Importance.LOW)
-                                                                         .withDescription("The number of rows a table must contain to stream results rather than pull all into memory during snapshots. Defaults to 1,000.")
+                                                                         .withDescription("The number of rows a table must contain to stream results rather than pull "
+                                                                                 + "all into memory during snapshots. Defaults to 1,000. Use 0 to stream all results "
+                                                                                 + "and completely avoid checking the size of each table.")
                                                                          .withDefault(1_000)
-                                                                         .withValidation(Field::isPositiveInteger);
+                                                                         .withValidation(Field::isNonNegativeLong);
 
     /**
      * The database history class is hidden in the {@link #configDef()} since that is designed to work with a user interface,
