@@ -494,6 +494,77 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(0); // no tables
         assertThat(listener.total()).isEqualTo(0);
     }
+    
+    @Test
+    @FixFor("DBZ-169")
+    public void shouldParseTimeWithNowDefault() {
+        String ddl = "CREATE TABLE t1 ( "
+                + "c1 int primary key auto_increment, "
+                + "c2 datetime, "
+                + "c3 datetime on update now(), "
+                + "c4 char(4));";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        assertThat(listener.total()).isEqualTo(1);
+        Table t = tables.forTable(new TableId(null, null, "t1"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("c1", "c2", "c3", "c4");
+        assertThat(t.primaryKeyColumnNames()).containsExactly("c1");
+        assertColumn(t, "c1", "INT", Types.INTEGER, -1, -1, false, true, true);
+        assertColumn(t, "c2", "DATETIME", Types.TIMESTAMP, -1, -1, true, false, false);
+        assertColumn(t, "c3", "DATETIME", Types.TIMESTAMP, -1, -1, true, false, true);
+        assertColumn(t, "c4", "CHAR", Types.CHAR, 4, -1, true, false, false);
+        assertThat(t.columnWithName("c1").position()).isEqualTo(1);
+        assertThat(t.columnWithName("c2").position()).isEqualTo(2);
+        assertThat(t.columnWithName("c3").position()).isEqualTo(3);
+        assertThat(t.columnWithName("c4").position()).isEqualTo(4);
+    }
+    
+    @Test
+    @FixFor("DBZ-169")
+    public void shouldParseCreateAndAlterWithOnUpdate() {
+        String ddl = "CREATE TABLE customers ( "
+                + "id INT PRIMARY KEY NOT NULL, "
+                + "name VARCHAR(30) NOT NULL, "
+                + "PRIMARY KEY (id) );"
+                + ""
+                + "CREATE TABLE `CUSTOMERS_HISTORY` LIKE `customers`; "
+                + ""
+                + "ALTER TABLE `CUSTOMERS_HISTORY` MODIFY COLUMN `id` varchar(36) NOT NULL,"
+                + "DROP PRIMARY KEY,"
+                + "ADD action tinyint(3) unsigned NOT NULL FIRST,"
+                + "ADD revision int(10) unsigned NOT NULL AFTER action,"
+                + "ADD changed_on DATETIME NOT NULL DEFAULT NOW() AFTER revision,"
+                + "ADD PRIMARY KEY (id, revision);";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(2);
+        assertThat(listener.total()).isEqualTo(3);
+        
+        Table t = tables.forTable(new TableId(null, null, "customers"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("id", "name");
+        assertThat(t.primaryKeyColumnNames()).containsExactly("id");
+        assertColumn(t, "id", "INT", Types.INTEGER, -1, -1, false, false, false);
+        assertColumn(t, "name", "VARCHAR", Types.VARCHAR, 30, -1, false, false, false);
+        assertThat(t.columnWithName("id").position()).isEqualTo(1);
+        assertThat(t.columnWithName("name").position()).isEqualTo(2);
+
+        t = tables.forTable(new TableId(null, null, "CUSTOMERS_HISTORY"));
+        assertThat(t).isNotNull();
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("action", "revision", "changed_on", "id", "name");
+        assertThat(t.primaryKeyColumnNames()).containsExactly("id", "revision");
+        assertColumn(t, "action", "TINYINT UNSIGNED", Types.SMALLINT, 3, -1, false, false, false);
+        assertColumn(t, "revision", "INT UNSIGNED", Types.INTEGER, 10, -1, false, false, false);
+        assertColumn(t, "changed_on", "DATETIME", Types.TIMESTAMP, -1, -1, false, false, false);
+        assertColumn(t, "id", "VARCHAR", Types.VARCHAR, 36, -1, false, false, false);
+        assertColumn(t, "name", "VARCHAR", Types.VARCHAR, 30, -1, false, false, false);
+        assertThat(t.columnWithName("action").position()).isEqualTo(1);
+        assertThat(t.columnWithName("revision").position()).isEqualTo(2);
+        assertThat(t.columnWithName("changed_on").position()).isEqualTo(3);
+        assertThat(t.columnWithName("id").position()).isEqualTo(4);
+        assertThat(t.columnWithName("name").position()).isEqualTo(5);
+    }
 
     @Test
     public void shouldParseGrantStatement() {
