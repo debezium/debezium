@@ -10,6 +10,7 @@ import java.io.PrintWriter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.text.DecimalFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -17,6 +18,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.StringTokenizer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -637,6 +639,147 @@ public final class Strings {
         String result = new DecimalFormat("######00").format(hours) + ':' + new DecimalFormat("00").format(minutes) + ':'
                 + new DecimalFormat("00.0##").format(seconds);
         return result;
+    }
+
+    /**
+     * Obtain a function that will replace variables in the supplied value with values from the supplied lookup function.
+     * <p>
+     * Variables may appear anywhere within a string value, and multiple variables can be used within the same value. Variables
+     * take the form:
+     * 
+     * <pre>
+     *    variable := '${' variableNames [ ':' defaultValue ] '}'
+     *    variableNames := variableName [ ',' variableNames ]
+     *    variableName := // any characters except ',' and ':' and '}'
+     *    defaultValue := // any characters except '}'
+     * </pre>
+     * 
+     * Note that <i>variableName</i> is the name used to look up a the property.
+     * </p>
+     * Notice that the syntax supports multiple <i>variables</i>. The logic will process the <i>variables</i> from let to right,
+     * until an existing property is found. And at that point, it will stop and will not attempt to find values for the other
+     * <i>variables</i>.
+     * <p>
+     * 
+     * @param replacementsByVariableName the function used to find the replacements for variable names; may not be null
+     * @return the function that will replace variables in supplied strings; never null
+     */
+    public static Function<String, String> replaceVariablesWith(Function<String, String> replacementsByVariableName) {
+        return (value) -> {
+            return replaceVariables(value, replacementsByVariableName);
+        };
+    }
+
+    private static final String CURLY_PREFIX = "${";
+    private static final String CURLY_SUFFIX = "}";
+    private static final String VAR_DELIM = ",";
+    private static final String DEFAULT_DELIM = ":";
+
+    /**
+     * Look in the supplied value for variables and replace them with values from the supplied lookup function.
+     * <p>
+     * Variables may appear anywhere within a string value, and multiple variables can be used within the same value. Variables
+     * take the form:
+     * 
+     * <pre>
+     *    variable := '${' variableNames [ ':' defaultValue ] '}'
+     *    variableNames := variableName [ ',' variableNames ]
+     *    variableName := // any characters except ',' and ':' and '}'
+     *    defaultValue := // any characters except '}'
+     * </pre>
+     * 
+     * Note that <i>variableName</i> is the name used to look up a the property.
+     * </p>
+     * Notice that the syntax supports multiple <i>variables</i>. The logic will process the <i>variables</i> from let to right,
+     * until an existing property is found. And at that point, it will stop and will not attempt to find values for the other
+     * <i>variables</i>.
+     * <p>
+     * 
+     * @param value the content in which the variables are to be found and replaced; may not be null
+     * @param replacementsByVariableName the function used to find the replacements for variable names; may not be null
+     * @return the function that will replace variables in supplied strings; never null
+     */
+    public static String replaceVariables(String value, Function<String, String> replacementsByVariableName) {
+        if (value == null || value.trim().length() == 0) return value;
+
+        StringBuilder sb = new StringBuilder(value);
+
+        // Get the index of the first constant, if any
+        int startName = sb.indexOf(CURLY_PREFIX);
+        if (startName == -1) return value;
+
+        // process as many different variable groupings that are defined, where one group will resolve to one property
+        // substitution
+        while (startName != -1) {
+            String defaultValue = null;
+            int endName = sb.indexOf(CURLY_SUFFIX, startName);
+            if (endName == -1) {
+                // if no suffix can be found, then this variable was probably defined incorrectly
+                // but return what there is at this point
+                return sb.toString();
+            }
+
+            String varString = sb.substring(startName + 2, endName);
+            if (varString.indexOf(DEFAULT_DELIM) > -1) {
+                List<String> defaults = split(varString, DEFAULT_DELIM);
+
+                // get the property(s) variables that are defined left of the default delimiter.
+                varString = defaults.get(0);
+
+                // if the default is defined, then capture in case none of the other properties are found
+                if (defaults.size() == 2) {
+                    defaultValue = defaults.get(1);
+                }
+            }
+
+            String constValue = null;
+            // split the property(s) based VAR_DELIM, when multiple property options are defined
+            List<String> vars = split(varString, VAR_DELIM);
+            for (final String var : vars) {
+                constValue = replacementsByVariableName.apply(var);
+
+                // the first found property is the value to be substituted
+                if (constValue != null) {
+                    break;
+                }
+            }
+
+            // if no property is found to substitute, then use the default value, if defined
+            if (constValue == null && defaultValue != null) {
+                constValue = defaultValue;
+            }
+
+            if (constValue != null) {
+                sb = sb.replace(startName, endName + 1, constValue);
+                // Checking for another constants
+                startName = sb.indexOf(CURLY_PREFIX);
+
+            } else {
+                // continue to try to substitute for other properties so that all defined variables
+                // are tried to be substituted for
+                startName = sb.indexOf(CURLY_PREFIX, endName);
+            }
+        }
+        return sb.toString();
+
+    }
+
+    /**
+     * Split a string into pieces based on delimiters. Similar to the Perl function of the same name. The delimiters are not
+     * included in the returned strings.
+     * 
+     * @param str Full string
+     * @param splitter Characters to split on
+     * @return List of String pieces from full string
+     */
+    private static List<String> split(String str,
+                                      String splitter) {
+        StringTokenizer tokens = new StringTokenizer(str, splitter);
+        ArrayList<String> l = new ArrayList<>(tokens.countTokens());
+        while (tokens.hasMoreTokens()) {
+            l.add(tokens.nextToken());
+        }
+        return l;
     }
 
     private Strings() {

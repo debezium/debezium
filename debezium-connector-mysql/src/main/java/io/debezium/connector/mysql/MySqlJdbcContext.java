@@ -179,6 +179,37 @@ public class MySqlJdbcContext implements AutoCloseable {
         return variables;
     }
 
+    /**
+     * Read the MySQL system variables.
+     * 
+     * @param sql the reference that should be set to the SQL statement; may be null if not needed
+     * @return the system variables that are related to server character sets; never null
+     */
+    protected Map<String, String> readMySqlSystemVariables(AtomicReference<String> sql) {
+        // Read the system variables from the MySQL instance and get the current database name ...
+        Map<String, String> variables = new HashMap<>();
+        try (JdbcConnection mysql = jdbc.connect()) {
+            logger.debug("Reading MySQL system variables");
+            String statement = "SHOW VARIABLES";
+            if (sql != null) sql.set(statement);
+            mysql.query(statement, rs -> {
+                while (rs.next()) {
+                    String varName = rs.getString(1);
+                    String value = rs.getString(2);
+                    if (varName != null && value != null) {
+                        variables.put(varName, value);
+                        logger.debug("\t{} = {}",
+                                     Strings.pad(varName, 45, ' '),
+                                     Strings.pad(value, 45, ' '));
+                    }
+                }
+            });
+        } catch (SQLException e) {
+            throw new ConnectException("Error reading MySQL variables: " + e.getMessage(), e);
+        }
+        return variables;
+    }
+
     protected String setStatementFor(Map<String, String> variables) {
         StringBuilder sb = new StringBuilder("SET ");
         boolean first = true;

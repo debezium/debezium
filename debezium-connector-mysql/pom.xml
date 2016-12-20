@@ -354,7 +354,7 @@
             </activation>
             <properties>
               <!-- Run multiple images at the same time, but use different ports for all MySQL servers -->
-              <docker.filter>debezium/mysql-server-test-database,debezium/mysql-server-gtids-test-database,debezium/mysql-server-gtids-test-database-replica,debezium/mysql-test-alt-database,debezium/mysql-test-alt-database-gtids,debezium/mysql-test-alt-database-gtids-replica</docker.filter>
+              <docker.filter>debezium/mysql-server-test-database,debezium/mysql-server-gtids-test-database,debezium/mysql-server-gtids-test-database-replica</docker.filter>
               <mysql.port>4301</mysql.port>
               <mysql.gtid.port>4302</mysql.gtid.port>
               <mysql.gtid.replica.port>4303</mysql.gtid.replica.port>

@@ -167,42 +167,42 @@ public final class EmbeddedEngine implements Runnable {
          */
         void handle(boolean success, String message, Throwable error);
     }
-    
+
     /**
      * Callback function which informs users about the various stages a connector goes through during startup
      */
     public interface ConnectorCallback {
-    
+
         /**
          * Called after a connector has been successfully started by the engine; i.e. {@link SourceConnector#start(Map)} has
          * completed successfully
          */
         default void connectorStarted() {
-            //nothing by default
+            // nothing by default
         }
-    
+
         /**
          * Called after a connector has been successfully stopped by the engine; i.e. {@link SourceConnector#stop()} has
          * completed successfully
          */
         default void connectorStopped() {
-            //nothing by default
+            // nothing by default
         }
-    
+
         /**
          * Called after a connector task has been successfully started by the engine; i.e. {@link SourceTask#start(Map)} has
          * completed successfully
          */
         default void taskStarted() {
-            //nothing by default
+            // nothing by default
         }
-    
+
         /**
          * Called after a connector task has been successfully stopped by the engine; i.e. {@link SourceTask#stop()} has
          * completed successfully
          */
         default void taskStopped() {
-            //nothing by default
+            // nothing by default
         }
     }
 
@@ -210,10 +210,19 @@ public final class EmbeddedEngine implements Runnable {
      * A callback function to be notified when the connector completes.
      */
     public static class CompletionResult implements CompletionCallback {
+        private final CompletionCallback delegate;
         private final CountDownLatch completed = new CountDownLatch(1);
         private boolean success;
         private String message;
         private Throwable error;
+
+        public CompletionResult() {
+            this(null);
+        }
+
+        public CompletionResult(CompletionCallback delegate) {
+            this.delegate = delegate;
+        }
 
         @Override
         public void handle(boolean success, String message, Throwable error) {
@@ -221,6 +230,9 @@ public final class EmbeddedEngine implements Runnable {
             this.message = message;
             this.error = error;
             this.completed.countDown();
+            if (delegate != null) {
+                delegate.handle(success, message, error);
+            }
         }
 
         /**
@@ -404,13 +416,13 @@ public final class EmbeddedEngine implements Runnable {
                 this.completionCallback = completionCallback;
                 return this;
             }
-    
+
             @Override
             public Builder using(ConnectorCallback connectorCallback) {
                 this.connectorCallback = connectorCallback;
                 return this;
             }
-    
+
             @Override
             public Builder notifying(Consumer<SourceRecord> consumer) {
                 this.consumer = consumer;
@@ -512,7 +524,7 @@ public final class EmbeddedEngine implements Runnable {
      * <p>
      * First, the method checks to see if this instance is currently {@link #run() running}, and if so immediately returns.
      * <p>
-     * If the configuration is valid, this method connects to the MySQL server and begins reading the server's transaction log.
+     * If the configuration is valid, this method starts the connector and starts polling the connector for change events.
      * All messages are delivered in batches to the {@link Consumer} registered with this embedded connector. The batch size,
      * polling
      * frequency, and other parameters are controlled via configuration settings. This continues until this connector is
@@ -520,6 +532,8 @@ public final class EmbeddedEngine implements Runnable {
      * <p>
      * Note that there are two ways to stop a connector running on a thread: calling {@link #stop()} from another thread, or
      * interrupting the thread (e.g., via {@link ExecutorService#shutdownNow()}).
+     * <p>
+     * This method can be called repeatedly as needed.
      */
     @Override
     public void run() {
@@ -624,47 +638,63 @@ public final class EmbeddedEngine implements Runnable {
                     Throwable handlerError = null;
                     try {
                         timeSinceLastCommitMillis = clock.currentTimeInMillis();
-                        while (runningThread.get() != null && handlerError == null) {
+                        boolean keepProcessing = true;
+                        List<SourceRecord> changeRecords = null;
+                        while (runningThread.get() != null && handlerError == null && keepProcessing) {
                             try {
-                                logger.debug("Embedded engine is polling task for records");
-                                List<SourceRecord> changeRecords = task.poll(); // blocks until there are values ...
-                                if (changeRecords != null && !changeRecords.isEmpty()) {
-                                    logger.debug("Received {} records from the task", changeRecords.size());
-    
-                                    // First forward the records to the connector's consumer ...
-                                    for (SourceRecord record : changeRecords) {
-                                        try {
-                                            consumer.accept(record);
-                                            task.commitRecord(record);
-                                        } catch (Throwable t) {
-                                            handlerError = t;
-                                            break;
-                                        }
-    
-                                        // Record the offset for this record's partition
-                                        offsetWriter.offset(record.sourcePartition(), record.sourceOffset());
-                                        recordsSinceLastCommit += 1;
-                                    }
-    
-                                    // Flush the offsets to storage if necessary ...
-                                    maybeFlush(offsetWriter, offsetCommitPolicy, commitTimeoutMs, task);
-                                } else {
-                                    logger.debug("Received no records from the task");
-                                }
-                            } catch (Throwable t) {
-                                // There was some sort of unexpected exception, so we should stop work
-                                if (t instanceof InterruptedException) {
-                                    // we've been requested to stop, so we don't need to capture this, just clear the interrupt
-                                    // status
+                                try {
+                                    logger.debug("Embedded engine is polling task for records on thread " + runningThread.get());
+                                    changeRecords = task.poll(); // blocks until there are values ...
+                                    logger.debug("Embedded engine returned from polling task for records");
+                                } catch (InterruptedException e) {
+                                    // Interrupted while polling ...
+                                    logger.debug("Embedded engine interrupted on thread " + runningThread.get() + " while polling the task for records");
                                     Thread.interrupted();
-                                } else if (handlerError == null){
-                                    // make sure we capture the error first so that we can report it later
-                                    handlerError = t;
+                                    break;
                                 }
+                                try {
+                                    if (changeRecords != null && !changeRecords.isEmpty()) {
+                                        logger.debug("Received {} records from the task", changeRecords.size());
+
+                                        // First forward the records to the connector's consumer ...
+                                        for (SourceRecord record : changeRecords) {
+                                            try {
+                                                consumer.accept(record);
+                                                task.commitRecord(record);
+                                            } catch (StopConnectorException e) {
+                                                keepProcessing = false;
+                                                // Stop processing any more but first record the offset for this record's
+                                                // partition
+                                                offsetWriter.offset(record.sourcePartition(), record.sourceOffset());
+                                                recordsSinceLastCommit += 1;
+                                                break;
+                                            } catch (Throwable t) {
+                                                handlerError = t;
+                                                break;
+                                            }
+
+                                            // Record the offset for this record's partition
+                                            offsetWriter.offset(record.sourcePartition(), record.sourceOffset());
+                                            recordsSinceLastCommit += 1;
+                                        }
+
+                                        // Flush the offsets to storage if necessary ...
+                                        maybeFlush(offsetWriter, offsetCommitPolicy, commitTimeoutMs, task);
+                                    } else {
+                                        logger.debug("Received no records from the task");
+                                    }
+                                } catch (Throwable t) {
+                                    // There was some sort of unexpected exception, so we should stop work
+                                    if (handlerError == null) {
+                                        // make sure we capture the error first so that we can report it later
+                                        handlerError = t;
+                                    }
+                                    break;
+                                }
+                            } finally {
                                 // then try to commit the offsets, since we record them only after the records were handled
                                 // by the consumer ...
                                 maybeFlush(offsetWriter, offsetCommitPolicy, commitTimeoutMs, task);
-                                break;
                             }
                         }
                     } finally {
@@ -694,7 +724,7 @@ public final class EmbeddedEngine implements Runnable {
                     // Close the offset storage and finally the connector ...
                     try {
                         offsetStore.stop();
-                    } catch (Throwable t){
+                    } catch (Throwable t) {
                         fail("Error while trying to stop the offset store", t);
                     } finally {
                         try {
@@ -713,7 +743,7 @@ public final class EmbeddedEngine implements Runnable {
             }
         }
     }
-    
+
     /**
      * Determine if we should flush offsets to storage, and if so then attempt to flush offsets.
      *
@@ -730,7 +760,7 @@ public final class EmbeddedEngine implements Runnable {
             commitOffsets(offsetWriter, commitTimeoutMs, task);
         }
     }
-    
+
     /**
      * Flush offsets to storage.
      *
@@ -785,6 +815,7 @@ public final class EmbeddedEngine implements Runnable {
         // Signal that the run() method should stop ...
         Thread thread = this.runningThread.getAndSet(null);
         if (thread != null) {
+            logger.debug("Interruping the embedded engine's thread " + thread + " (already interrupted: " + thread.isInterrupted() + ")");
             // Interrupt the thread in case it is blocked while polling the task for records ...
             thread.interrupt();
             return true;

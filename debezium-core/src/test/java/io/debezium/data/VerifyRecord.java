@@ -7,6 +7,7 @@ package io.debezium.data;
 
 import static org.junit.Assert.fail;
 
+import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collection;
@@ -14,6 +15,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -24,6 +26,7 @@ import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.json.JsonDeserializer;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.fest.assertions.Delta;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,6 +48,19 @@ import io.debezium.util.Testing;
  * @author Randall Hauch
  */
 public class VerifyRecord {
+
+    @FunctionalInterface
+    public static interface RecordValueComparator {
+        /**
+         * Assert that the actual and expected values are equal. By the time this method is called, the actual value
+         * and expected values are both determined to be non-null.
+         * 
+         * @param pathToField the path to the field within the JSON representation of the source record; never null
+         * @param actualValue the actual value for the field in the source record; never null
+         * @param expectedValue the expected value for the field in the source record; never null
+         */
+        void assertEquals(String pathToField, Object actualValue, Object expectedValue);
+    }
 
     private static final JsonConverter keyJsonConverter = new JsonConverter();
     private static final JsonConverter valueJsonConverter = new JsonConverter();
@@ -274,6 +290,188 @@ public class VerifyRecord {
         Testing.debug(SchemaUtil.asDetailedString(record));
     }
 
+    public static void assertEquals(SourceRecord actual, SourceRecord expected, Predicate<String> ignoreFields,
+                                    Map<String, RecordValueComparator> comparatorsByName,
+                                    Map<String, RecordValueComparator> comparatorsBySchemaName) {
+        assertThat(actual).isNotNull();
+        assertThat(expected).isNotNull();
+        assertEquals(null, actual.sourcePartition(), expected.sourcePartition(), "sourcePartition", "", ignoreFields, comparatorsByName, comparatorsBySchemaName);
+        assertEquals(null, actual.sourceOffset(), expected.sourceOffset(), "sourceOffset", "", ignoreFields, comparatorsByName, comparatorsBySchemaName);
+        assertThat(actual.topic()).isEqualTo(expected.topic());
+        assertThat(actual.kafkaPartition()).isEqualTo(expected.kafkaPartition());
+        Schema actualKeySchema = actual.keySchema();
+        Schema actualValueSchema = actual.valueSchema();
+        Schema expectedKeySchema = expected.keySchema();
+        Schema expectedValueSchema = expected.valueSchema();
+        if (!Objects.equals(actualKeySchema, expectedKeySchema)) {
+            String actualStr = SchemaUtil.asString(actualKeySchema);
+            String expectedStr = SchemaUtil.asString(expectedKeySchema);
+            assertThat(actualStr).as("The key schema for record with key " + SchemaUtil.asString(actual.key())
+                    + " did not match expected schema").isEqualTo(expectedStr);
+        }
+        if (!Objects.equals(actualValueSchema, expectedValueSchema)) {
+            String actualStr = SchemaUtil.asString(actualValueSchema);
+            String expectedStr = SchemaUtil.asString(expectedValueSchema);
+            assertThat(actualStr).isEqualTo(expectedStr);
+        }
+        assertEquals(actualKeySchema, actual.key(), expected.key(), "key", "", ignoreFields, comparatorsByName, comparatorsBySchemaName);
+        assertEquals(actualValueSchema, actual.value(), expected.value(), "value", "", ignoreFields, comparatorsByName, comparatorsBySchemaName);
+    }
+    
+    protected static String nameOf(String keyOrValue, String field) {
+        if (field == null || field.trim().isEmpty()) {
+            return keyOrValue;
+        }
+        return "'" + field + "' field in the record " + keyOrValue;
+    }
+
+    private static String fieldName(String field, String suffix) {
+        if (field == null || field.trim().isEmpty()) {
+            return suffix;
+        }
+        return field + "/" + suffix;
+    }
+
+    private static String schemaName(Schema schema) {
+        if (schema == null) return null;
+        String name = schema.name();
+        if (name != null) name = name.trim();
+        return name.isEmpty() ? null : name;
+    }
+
+    @SuppressWarnings("unchecked")
+    protected static void assertEquals(Schema schema, Object o1, Object o2, String keyOrValue, String field,
+                                       Predicate<String> ignoreFields,
+                                       Map<String, RecordValueComparator> comparatorsByName,
+                                       Map<String, RecordValueComparator> comparatorsBySchemaName) {
+        if (o1 == o2) return;
+        if (o1 == null) {
+            if (o2 == null) return;
+            fail(nameOf(keyOrValue, field) + " was null but expected " + SchemaUtil.asString(o2));
+        } else if (o2 == null) {
+            fail("expecting a null " + nameOf(keyOrValue, field) + " but found " + SchemaUtil.asString(o1));
+        }
+        // See if there is a custom comparator for this field ...
+        String pathToField = keyOrValue.toUpperCase() + "/" + field;
+        RecordValueComparator comparator = comparatorsByName.get(pathToField);
+        if (comparator != null) {
+            comparator.assertEquals(nameOf(keyOrValue, field), o1, o2);
+            return;
+        }
+        // See if there is a custom comparator for this schema type ...
+        String schemaName = schemaName(schema);
+        if (schemaName != null) {
+            comparator = comparatorsBySchemaName.get(schemaName);
+            if (comparator != null) {
+                comparator.assertEquals(nameOf(keyOrValue, field), o1, o2);
+            }
+        }
+
+        if (o1 instanceof ByteBuffer) {
+            o1 = ((ByteBuffer) o1).array();
+        }
+        if (o2 instanceof ByteBuffer) {
+            o2 = ((ByteBuffer) o2).array();
+        }
+        if (o2 instanceof byte[]) {
+            if (!(o1 instanceof byte[])) {
+                fail("expecting " + nameOf(keyOrValue, field) + " to be byte[] but found " + o1.getClass().toString());
+            }
+            if (!Arrays.equals((byte[]) o1, (byte[]) o2)) {
+                fail("byte[] at " + nameOf(keyOrValue, field) + " is " + o1 + " but was expected to be " + o2);
+            }
+        } else if (o2 instanceof Object[]) {
+            if (!(o1 instanceof Object[])) {
+                fail("expecting " + nameOf(keyOrValue, field) + " to be Object[] but was " + o1.getClass().toString());
+            }
+            if (!deepEquals((Object[]) o1, (Object[]) o2)) {
+                fail("Object[] at " + nameOf(keyOrValue, field) + " is " + o1 + " but was expected to be " + o2);
+            }
+        } else if (o2 instanceof Map) {
+            if (!(o1 instanceof Map)) {
+                fail("expecting " + nameOf(keyOrValue, field) + " to be Map<String,?> but was " + o1.getClass().toString());
+            }
+            Map<String, Object> m1 = (Map<String, Object>) o1;
+            Map<String, Object> m2 = (Map<String, Object>) o2;
+            if (!m1.keySet().equals(m2.keySet())) {
+                fail("Map at " + nameOf(keyOrValue, field) + " has entry keys " + m1.keySet() + " but expected " + m2.keySet());
+            }
+            for (Map.Entry<String, Object> entry : m1.entrySet()) {
+                String key = entry.getKey();
+                String fieldName = field.isEmpty() ? key : field + "/" + key;
+                String predicate = keyOrValue.toUpperCase() + "/" + fieldName;
+                if (ignoreFields != null && ignoreFields.test(predicate)) {
+                    continue;
+                }
+                Object v1 = entry.getValue();
+                Object v2 = m2.get(key);
+                assertEquals(null, v1, v2, keyOrValue, fieldName(field, key), ignoreFields,
+                             comparatorsByName, comparatorsBySchemaName);
+            }
+        } else if (o2 instanceof Collection) {
+            if (!(o1 instanceof Collection)) {
+                fail("expecting " + nameOf(keyOrValue, field) + " to be Collection<?> but was " + o1.getClass().toString());
+            }
+            Collection<Object> m1 = (Collection<Object>) o1;
+            Collection<Object> m2 = (Collection<Object>) o2;
+            if (m1.size() != m2.size()) {
+                fail("Collection at " + nameOf(keyOrValue, field) + " has " + SchemaUtil.asString(m1) + " but expected "
+                        + SchemaUtil.asString(m2));
+            }
+            Iterator<?> iter1 = m1.iterator();
+            Iterator<?> iter2 = m2.iterator();
+            int index = 0;
+            while (iter1.hasNext() && iter2.hasNext()) {
+                assertEquals(null, iter1.next(), iter2.next(), keyOrValue, field + "[" + (index++) + "]", ignoreFields,
+                             comparatorsByName, comparatorsBySchemaName);
+            }
+        } else if (o2 instanceof Struct) {
+            if (!(o1 instanceof Struct)) {
+                fail("expecting " + nameOf(keyOrValue, field) + " to be Struct but was " + o1.getClass().toString());
+            }
+            // Unfortunately, the Struct.equals() method has a bug in that it is not using Arrays.deepEquals(...) to
+            // compare values in two Struct objects. The result is that the equals only works if the values of the
+            // first level Struct are non arrays; otherwise, the array values are compared using == and that obviously
+            // does not work for non-primitive values.
+            Struct struct1 = (Struct) o1;
+            Struct struct2 = (Struct) o2;
+            if (!Objects.equals(struct1.schema(), struct2.schema())) {
+                fail("Schema at " + nameOf(keyOrValue, field) + " is " + SchemaUtil.asString(struct1.schema()) + " but expected "
+                        + SchemaUtil.asString(struct2.schema()));
+            }
+            for (Field f : struct1.schema().fields()) {
+                String fieldName = fieldName(field, f.name());
+                String predicate = keyOrValue.toUpperCase() + "/" + fieldName;
+                if (ignoreFields != null && ignoreFields.test(predicate)) {
+                    continue;
+                }
+                Object value1 = struct1.get(f);
+                Object value2 = struct2.get(f);
+                assertEquals(f.schema(), value1, value2, keyOrValue, fieldName, ignoreFields,
+                             comparatorsByName, comparatorsBySchemaName);
+            }
+            return;
+        } else if (o2 instanceof Double || o2 instanceof Float || o2 instanceof BigDecimal) {
+            // Value should be within 1%
+            double expectedNumericValue = ((Number) o2).doubleValue();
+            double actualNumericValue = ((Number) o1).doubleValue();
+            String desc = "found " + nameOf(keyOrValue, field) + " is " + o1 + " but expected " + o2;
+            assertThat(actualNumericValue).as(desc).isEqualTo(expectedNumericValue, Delta.delta(0.01d * expectedNumericValue));
+        } else if (o2 instanceof Integer || o2 instanceof Long || o2 instanceof Short) {
+            long expectedNumericValue = ((Number) o2).longValue();
+            long actualNumericValue = ((Number) o1).longValue();
+            String desc = "found " + nameOf(keyOrValue, field) + " is " + o1 + " but expected " + o2;
+            assertThat(actualNumericValue).as(desc).isEqualTo(expectedNumericValue);
+        } else if (o2 instanceof Boolean) {
+            boolean expectedValue = ((Boolean) o2).booleanValue();
+            boolean actualValue = ((Boolean) o1).booleanValue();
+            String desc = "found " + nameOf(keyOrValue, field) + " is " + o1 + " but expected " + o2;
+            assertThat(actualValue).as(desc).isEqualTo(expectedValue);
+        } else {
+            assertThat(o1).isEqualTo(o2);
+        }
+    }
+
     /**
      * Validate that a {@link SourceRecord}'s key and value can each be converted to a byte[] and then back to an equivalent
      * {@link SourceRecord}.
@@ -281,7 +479,7 @@ public class VerifyRecord {
      * @param record the record to validate; may not be null
      */
     public static void isValid(SourceRecord record) {
-        //print(record);
+        // print(record);
 
         JsonNode keyJson = null;
         JsonNode valueJson = null;
