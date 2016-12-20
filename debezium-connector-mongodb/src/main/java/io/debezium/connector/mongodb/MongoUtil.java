@@ -125,7 +125,7 @@ public class MongoUtil {
                                     Consumer<MongoCollection<Document>> collectionOperation) {
         onDatabase(client, dbName, db -> {
             if (contains(db.listCollectionNames(), collectionName)) {
-                collectionOperation.accept(db.getCollection(dbName));
+                collectionOperation.accept(db.getCollection(collectionName));
             }
         });
     }
