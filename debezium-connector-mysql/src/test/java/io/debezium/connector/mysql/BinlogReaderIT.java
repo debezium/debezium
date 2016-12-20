@@ -117,7 +117,7 @@ public class BinlogReaderIT {
         context.start();
         context.source().setBinlogStartPoint("",0L); // start from beginning
         context.initializeHistory();
-        reader = new BinlogReader(context);
+        reader = new BinlogReader("binlog", context);
 
         // Start reading the binlog ...
         reader.start();
@@ -177,7 +177,7 @@ public class BinlogReaderIT {
         context.start();
         context.source().setBinlogStartPoint("",0L); // start from beginning
         context.initializeHistory();
-        reader = new BinlogReader(context);
+        reader = new BinlogReader("binlog", context);
 
         // Start reading the binlog ...
         reader.start();
