@@ -357,15 +357,25 @@ public class SnapshotReader extends AbstractReader {
                         RecordsForTable recordMaker = context.makeRecord().forTable(tableId, null, bufferedRecordQueue);
                         if (recordMaker != null) {
 
-                            // Choose how we create statements based on the # of rows ...
-                            sql.set("SELECT COUNT(*) FROM " + tableId);
-                            AtomicLong numRows = new AtomicLong();
-                            mysql.query(sql.get(), rs -> {
-                                if (rs.next()) numRows.set(rs.getLong(1));
-                            });
-                            StatementFactory statementFactory = this::createStatement;
-                            if (numRows.get() > largeTableCount) {
-                                statementFactory = this::createStatementWithLargeResultSet;
+                            AtomicLong numRows = new AtomicLong(-1);
+                            AtomicReference<String> rowCountStr = new AtomicReference<>("<unknown>");
+                            StatementFactory statementFactory = this::createStatementWithLargeResultSet;
+                            if (largeTableCount > 0) {
+                                // Switch to the table's database ...
+                                sql.set("USE " + tableId.catalog() + ";");
+                                mysql.execute(sql.get());
+
+                                // Choose how we create statements based on the # of rows.
+                                // This is approximate and less accurate then COUNT(*),
+                                // but far more efficient for large InnoDB tables.
+                                sql.set("SHOW TABLE STATUS LIKE '" + tableId.table() + "';");
+                                mysql.query(sql.get(), rs -> {
+                                    if (rs.next()) numRows.set(rs.getLong(5));
+                                });
+                                if (numRows.get() <= largeTableCount) {
+                                    statementFactory = this::createStatement;
+                                }
+                                rowCountStr.set(numRows.toString());
                             }
 
                             // Scan the rows in the table ...
@@ -375,7 +385,6 @@ public class SnapshotReader extends AbstractReader {
                             try {
                                 mysql.query(sql.get(), statementFactory, rs -> {
                                     long rowNum = 0;
-                                    long rowCount = numRows.get();
                                     try {
                                         // The table is included in the connector's filters, so process all of the table records
                                         // ...
@@ -388,23 +397,28 @@ public class SnapshotReader extends AbstractReader {
                                             }
                                             recorder.recordRow(recordMaker, row, ts); // has no row number!
                                             ++rowNum;
-                                            if (rowNum % 100 == 0) {
-                                                if (!isRunning()) break;
+                                            if (rowNum % 100 == 0 && !isRunning()) {
+                                                // We've stopped running ...
+                                                break;
                                             }
-                                            if (rowNum % 10_000 == 0 || rowNum == rowCount) {
+                                            if (rowNum % 10_000 == 0) {
                                                 long stop = clock.currentTimeInMillis();
-                                                logger.info("Step 8: - {} of {} rows scanned from table '{}' after {}", rowNum, rowCount,
-                                                            tableId,
-                                                            Strings.duration(stop - start));
+                                                logger.info("Step 8: - {} of {} rows scanned from table '{}' after {}",
+                                                            rowNum, rowCountStr, tableId, Strings.duration(stop - start));
                                             }
+                                        }
+
+                                        totalRowCount.addAndGet(rowNum);
+                                        if (isRunning()) {
+                                            long stop = clock.currentTimeInMillis();
+                                            logger.info("Step 8: - Completed scanning a total of {} rows from table '{}' after {}",
+                                                        rowNum, tableId, Strings.duration(stop - start));
                                         }
                                     } catch (InterruptedException e) {
                                         Thread.interrupted();
                                         // We were not able to finish all rows in all tables ...
                                         logger.info("Step 8: Stopping the snapshot due to thread interruption");
                                         interrupted.set(true);
-                                    } finally {
-                                        totalRowCount.addAndGet(rowCount);
                                     }
                                 });
                             } finally {
