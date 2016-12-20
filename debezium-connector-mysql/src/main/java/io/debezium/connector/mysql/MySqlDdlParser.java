@@ -712,7 +712,7 @@ public class MySqlDdlParser extends DdlParser {
             if (dataType.scale() > -1) column.scale(dataType.scale());
         }
 
-        if(Types.NCHAR == dataType.jdbcType() || Types.NVARCHAR == dataType.jdbcType()) {
+        if (Types.NCHAR == dataType.jdbcType() || Types.NVARCHAR == dataType.jdbcType()) {
             // NCHAR and NVARCHAR columns always uses utf8 as charset
             column.charsetName("utf8");
         }
@@ -754,10 +754,8 @@ public class MySqlDdlParser extends DdlParser {
                 if (tokens.matches("DEFAULT")) {
                     parseDefaultClause(start);
                 }
-                if (tokens.canConsume("ON")) {
-                    if (tokens.canConsumeAnyOf("UPDATE", "DELETE")) {
-                        tokens.consume(); // e.g., "ON UPATE CURRENT_TIMESTAMP"
-                    }
+                if (tokens.matches("ON", "UPDATE") || tokens.matches("ON", "DELETE")) {
+                    parseOnUpdateOrDelete(tokens.mark());
                     column.autoIncremented(true);
                 }
                 // Other options ...
@@ -1372,20 +1370,29 @@ public class MySqlDdlParser extends DdlParser {
             // We know that it is a quoted literal ...
             parseLiteral(start);
         } else {
-            if (tokens.canConsume("CURRENT_TIMESTAMP")) {
-                if (tokens.canConsume('(')) {
-                    tokens.consumeInteger();
-                    tokens.consume(')');
-                }
-                tokens.canConsume("ON", "UPDATE", "CURRENT_TIMESTAMP");
-                if (tokens.canConsume('(')) {
-                    tokens.consumeInteger();
-                    tokens.consume(')');
-                }
+            if (tokens.matchesAnyOf("CURRENT_TIMESTAMP", "NOW")) {
+                parseCurrentTimestampOrNow();
+                parseOnUpdateOrDelete(tokens.mark());
             } else if (tokens.canConsume("NULL")) {
                 // do nothing ...
             } else {
                 parseLiteral(start);
+            }
+        }
+    }
+
+    protected void parseOnUpdateOrDelete(Marker start) {
+        if (tokens.canConsume("ON") && tokens.canConsumeAnyOf("UPDATE", "DELETE")) {
+            parseCurrentTimestampOrNow();
+        }
+    }
+
+    private void parseCurrentTimestampOrNow() {
+        tokens.consumeAnyOf("CURRENT_TIMESTAMP", "NOW");
+        if (tokens.canConsume('(')) {
+            if (!tokens.canConsume(')')) {
+                tokens.consumeInteger();
+                tokens.consume(')');
             }
         }
     }
