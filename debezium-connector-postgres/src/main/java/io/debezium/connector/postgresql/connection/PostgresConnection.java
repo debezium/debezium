@@ -224,7 +224,7 @@ public class PostgresConnection extends JdbcConnection {
     private static void validateServerVersion(Statement statement) throws SQLException {
         DatabaseMetaData metaData = statement.getConnection().getMetaData();
         int majorVersion = metaData.getDatabaseMajorVersion();
-        int minorVersion = metaData.getDriverMinorVersion();
+        int minorVersion = metaData.getDatabaseMinorVersion();
         if (majorVersion < 9 || (majorVersion == 9 && minorVersion < 4)) {
             throw new SQLException("Cannot connect to a version of Postgres lower than 9.4");
         }
