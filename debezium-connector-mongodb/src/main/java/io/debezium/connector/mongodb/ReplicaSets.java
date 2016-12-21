@@ -94,6 +94,15 @@ public class ReplicaSets {
     }
 
     /**
+     * Get the number of replica sets with names.
+     * 
+     * @return the valid replica set count
+     */
+    public int validReplicaSetCount() {
+        return replicaSetsByName.size();
+    }
+    
+    /**
      * Perform the supplied function on each of the replica sets
      * 
      * @param function the consumer function; may not be null
@@ -129,6 +138,28 @@ public class ReplicaSets {
     public List<ReplicaSet> all() {
         List<ReplicaSet> replicaSets = new ArrayList<>();
         replicaSets.addAll(replicaSetsByName.values());
+        replicaSets.addAll(nonReplicaSets);
+        return replicaSets;
+    }
+
+    /**
+     * Get a copy of all of the valid {@link ReplicaSet} objects that have names.
+     * 
+     * @return the valid replica set objects; never null but possibly empty
+     */
+    public List<ReplicaSet> validReplicaSets() {
+        List<ReplicaSet> replicaSets = new ArrayList<>();
+        replicaSets.addAll(replicaSetsByName.values());
+        return replicaSets;
+    }
+
+    /**
+     * Get a copy of all of the {@link ReplicaSet} objects that have no names.
+     * 
+     * @return the unnamed replica set objects; never null but possibly empty
+     */
+    public List<ReplicaSet> unnamedReplicaSets() {
+        List<ReplicaSet> replicaSets = new ArrayList<>();
         replicaSets.addAll(nonReplicaSets);
         return replicaSets;
     }
