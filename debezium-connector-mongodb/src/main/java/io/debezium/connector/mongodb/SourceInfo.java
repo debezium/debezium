@@ -168,6 +168,7 @@ public final class SourceInfo {
      * @return the source partition information; never null
      */
     public Map<String, String> partition(String replicaSetName) {
+        if (replicaSetName == null) throw new IllegalArgumentException("Replica set name may not be null");
         return sourcePartitionsByReplicaSetName.computeIfAbsent(replicaSetName, rsName -> {
             return Collect.hashMapOf(SERVER_ID_KEY, serverName, REPLICA_SET_NAME, rsName);
         });
