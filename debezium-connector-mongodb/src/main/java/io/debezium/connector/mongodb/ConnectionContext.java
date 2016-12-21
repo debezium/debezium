@@ -51,13 +51,11 @@ public class ConnectionContext implements AutoCloseable {
         this.useHostsAsSeeds = config.getBoolean(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS);
         final String username = config.getString(MongoDbConnectorConfig.USER);
         final String password = config.getString(MongoDbConnectorConfig.PASSWORD);
-        final String configDbName = ReplicaSetDiscovery.CONFIG_DATABASE_NAME;
         final String adminDbName = ReplicaSetDiscovery.ADMIN_DATABASE_NAME;
 
         // Set up the client pool so that it ...
         MongoClients.Builder clientBuilder = MongoClients.create();
         if (username != null || password != null) {
-            clientBuilder.withCredential(MongoCredential.createCredential(username, configDbName, password.toCharArray()));
             clientBuilder.withCredential(MongoCredential.createCredential(username, adminDbName, password.toCharArray()));
         }
         pool = clientBuilder.build();
