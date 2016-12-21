@@ -99,7 +99,6 @@
         <module>debezium-embedded</module>
         <module>debezium-connector-mysql</module>
         <module>debezium-connector-mongodb</module>
-        <module>integration-tests</module>
     </modules>
 
     <distributionManagement>
