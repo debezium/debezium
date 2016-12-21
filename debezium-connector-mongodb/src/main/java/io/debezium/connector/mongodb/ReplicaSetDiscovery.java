@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.MongoClient;
+import com.mongodb.MongoException;
 import com.mongodb.ReplicaSetStatus;
 
 import io.debezium.annotation.ThreadSafe;
@@ -60,13 +61,19 @@ public class ReplicaSetDiscovery {
         Set<ReplicaSet> replicaSetSpecs = new HashSet<>();
 
         // First see if the addresses are for a config server replica set ...
-        MongoUtil.onCollectionDocuments(client, CONFIG_DATABASE_NAME, "shards", doc -> {
-            logger.info("Checking shard details from configuration replica set {}", seedAddresses);
-            String shardName = doc.getString("_id");
-            String hostStr = doc.getString("host");
-            String replicaSetName = MongoUtil.replicaSetUsedIn(hostStr);
-            replicaSetSpecs.add(new ReplicaSet(hostStr, replicaSetName, shardName));
-        });
+        String shardsCollection = "shards";
+        try {
+            MongoUtil.onCollectionDocuments(client, CONFIG_DATABASE_NAME, shardsCollection, doc -> {
+                logger.info("Checking shard details from configuration replica set {}", seedAddresses);
+                String shardName = doc.getString("_id");
+                String hostStr = doc.getString("host");
+                String replicaSetName = MongoUtil.replicaSetUsedIn(hostStr);
+                replicaSetSpecs.add(new ReplicaSet(hostStr, replicaSetName, shardName));
+            });
+        } catch (MongoException e) {
+            logger.error("Error while reading the '{}' collection in the '{}' database: {}",
+                         shardsCollection, CONFIG_DATABASE_NAME, e.getMessage(), e);
+        }
         if (replicaSetSpecs.isEmpty()) {
             // The addresses may be a replica set ...
             ReplicaSetStatus rsStatus = client.getReplicaSetStatus();
@@ -83,10 +90,17 @@ public class ReplicaSetDiscovery {
                 // that we're not connected to a config server replica set, so any replica set name from the seed addresses
                 // is almost certainly our replica set name ...
                 String replicaSetName = MongoUtil.replicaSetUsedIn(seedAddresses);
-                for (String address : seedAddresses.split(",")) {
-                    replicaSetSpecs.add(new ReplicaSet(address, replicaSetName, null));
+                if (replicaSetName != null) {
+                    for (String address : seedAddresses.split(",")) {
+                        replicaSetSpecs.add(new ReplicaSet(address, replicaSetName, null));
+                    }
                 }
             }
+        }
+        if (replicaSetSpecs.isEmpty()) {
+            // Without a replica set name, we can't do anything ...
+            logger.error("Found no replica sets at {}, so there is nothing to monitor and no connector tasks will be started. Check seed addresses in connector configuration.",
+                         seedAddresses);
         }
         return new ReplicaSets(replicaSetSpecs);
     }
