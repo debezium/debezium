@@ -252,21 +252,31 @@ public class SnapshotReader extends AbstractReader {
                 logger.info("Step 5: read list of available tables in each database");
                 List<TableId> tableIds = new ArrayList<>();
                 final Map<String, List<TableId>> tableIdsByDbName = new HashMap<>();
+                final Set<String> readableDatabaseNames = new HashSet<>();
                 for (String dbName : databaseNames) {
-                    sql.set("SHOW TABLES IN " + dbName);
-                    mysql.query(sql.get(), rs -> {
-                        while (rs.next() && isRunning()) {
-                            TableId id = new TableId(dbName, null, rs.getString(1));
-                            if (filters.tableFilter().test(id)) {
-                                tableIds.add(id);
-                                tableIdsByDbName.computeIfAbsent(dbName, k -> new ArrayList<>()).add(id);
-                                logger.info("\t including '{}'", id);
-                            } else {
-                                logger.info("\t '{}' is filtered out, discarding", id);
+                    try {
+                        // MySQL sometimes considers some local files as databases (see DBZ-164),
+                        // so we will simply try each one and ignore the problematic ones ...
+                        sql.set("SHOW TABLES IN " + quote(dbName));
+                        mysql.query(sql.get(), rs -> {
+                            while (rs.next() && isRunning()) {
+                                TableId id = new TableId(dbName, null, rs.getString(1));
+                                if (filters.tableFilter().test(id)) {
+                                    tableIds.add(id);
+                                    tableIdsByDbName.computeIfAbsent(dbName, k -> new ArrayList<>()).add(id);
+                                    logger.info("\t including '{}'", id);
+                                } else {
+                                    logger.info("\t '{}' is filtered out, discarding", id);
+                                }
                             }
-                        }
-                    });
+                        });
+                        readableDatabaseNames.add(dbName);
+                    } catch (SQLException e) {
+                        // We were unable to execute the query or process the results, so skip this ...
+                        logger.warn("\t skipping database '{}' due to error reading tables: {}", dbName, e.getMessage());
+                    }
                 }
+                logger.info("\t snapshot continuing with databases: {}", readableDatabaseNames);
 
                 // ------
                 // STEP 6
@@ -282,15 +292,15 @@ public class SnapshotReader extends AbstractReader {
                 allTableIds.stream()
                            .filter(id -> isRunning()) // ignore all subsequent tables if this reader is stopped
                            .forEach(tableId -> schema.applyDdl(source, tableId.schema(),
-                                                               "DROP TABLE IF EXISTS " + tableId,
+                                                               "DROP TABLE IF EXISTS " + quote(tableId),
                                                                this::enqueueSchemaChanges));
 
                 // Add a DROP DATABASE statement for each database that we no longer know about ...
                 schema.tables().tableIds().stream().map(TableId::catalog)
-                      .filter(Predicates.not(databaseNames::contains))
+                      .filter(Predicates.not(readableDatabaseNames::contains))
                       .filter(id -> isRunning()) // ignore all subsequent tables if this reader is stopped
                       .forEach(missingDbName -> schema.applyDdl(source, missingDbName,
-                                                                "DROP DATABASE IF EXISTS " + missingDbName,
+                                                                "DROP DATABASE IF EXISTS " + quote(missingDbName),
                                                                 this::enqueueSchemaChanges));
 
                 // Now process all of our tables for each database ...
@@ -298,12 +308,12 @@ public class SnapshotReader extends AbstractReader {
                     if (!isRunning()) break;
                     String dbName = entry.getKey();
                     // First drop, create, and then use the named database ...
-                    schema.applyDdl(source, dbName, "DROP DATABASE IF EXISTS " + dbName, this::enqueueSchemaChanges);
-                    schema.applyDdl(source, dbName, "CREATE DATABASE " + dbName, this::enqueueSchemaChanges);
-                    schema.applyDdl(source, dbName, "USE " + dbName, this::enqueueSchemaChanges);
+                    schema.applyDdl(source, dbName, "DROP DATABASE IF EXISTS " + quote(dbName), this::enqueueSchemaChanges);
+                    schema.applyDdl(source, dbName, "CREATE DATABASE " + quote(dbName), this::enqueueSchemaChanges);
+                    schema.applyDdl(source, dbName, "USE " + quote(dbName), this::enqueueSchemaChanges);
                     for (TableId tableId : entry.getValue()) {
                         if (!isRunning()) break;
-                        sql.set("SHOW CREATE TABLE " + tableId);
+                        sql.set("SHOW CREATE TABLE " + quote(tableId));
                         mysql.query(sql.get(), rs -> {
                             if (rs.next()) {
                                 schema.applyDdl(source, dbName, rs.getString(2), this::enqueueSchemaChanges);
@@ -357,31 +367,36 @@ public class SnapshotReader extends AbstractReader {
                         RecordsForTable recordMaker = context.makeRecord().forTable(tableId, null, bufferedRecordQueue);
                         if (recordMaker != null) {
 
+                            // Switch to the table's database ...
+                            sql.set("USE " + quote(tableId.catalog()) + ";");
+                            mysql.execute(sql.get());
+
                             AtomicLong numRows = new AtomicLong(-1);
                             AtomicReference<String> rowCountStr = new AtomicReference<>("<unknown>");
                             StatementFactory statementFactory = this::createStatementWithLargeResultSet;
                             if (largeTableCount > 0) {
-                                // Switch to the table's database ...
-                                sql.set("USE " + tableId.catalog() + ";");
-                                mysql.execute(sql.get());
-
-                                // Choose how we create statements based on the # of rows.
-                                // This is approximate and less accurate then COUNT(*),
-                                // but far more efficient for large InnoDB tables.
-                                sql.set("SHOW TABLE STATUS LIKE '" + tableId.table() + "';");
-                                mysql.query(sql.get(), rs -> {
-                                    if (rs.next()) numRows.set(rs.getLong(5));
-                                });
-                                if (numRows.get() <= largeTableCount) {
-                                    statementFactory = this::createStatement;
+                                try {
+                                    // Choose how we create statements based on the # of rows.
+                                    // This is approximate and less accurate then COUNT(*),
+                                    // but far more efficient for large InnoDB tables.
+                                    sql.set("SHOW TABLE STATUS LIKE '" + tableId.table() + "';");
+                                    mysql.query(sql.get(), rs -> {
+                                        if (rs.next()) numRows.set(rs.getLong(5));
+                                    });
+                                    if (numRows.get() <= largeTableCount) {
+                                        statementFactory = this::createStatement;
+                                    }
+                                    rowCountStr.set(numRows.toString());
+                                } catch (SQLException e) {
+                                    // Log it, but otherwise just use large result set by default ...
+                                    logger.debug("Error while getting number of rows in table {}: {}", tableId, e.getMessage(), e);
                                 }
-                                rowCountStr.set(numRows.toString());
                             }
 
                             // Scan the rows in the table ...
                             long start = clock.currentTimeInMillis();
                             logger.info("Step 8: - scanning table '{}' ({} of {} tables)", tableId, ++counter, tableIds.size());
-                            sql.set("SELECT * FROM " + tableId);
+                            sql.set("SELECT * FROM " + quote(tableId));
                             try {
                                 mysql.query(sql.get(), statementFactory, rs -> {
                                     long rowNum = 0;
@@ -519,6 +534,14 @@ public class SnapshotReader extends AbstractReader {
         } catch (Throwable e) {
             failed(e, "Aborting snapshot due to error when last running '" + sql.get() + "': " + e.getMessage());
         }
+    }
+
+    protected String quote(String dbOrTableName) {
+        return "`" + dbOrTableName + "`";
+    }
+
+    protected String quote(TableId id) {
+        return quote(id.catalog()) + "." + quote(id.table());
     }
 
     /**
