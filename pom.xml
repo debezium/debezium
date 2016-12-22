@@ -548,9 +548,6 @@
             <properties>
                 <skipLongRunningTests>false</skipLongRunningTests>
             </properties>
-            <modules>
-                <module>integration-tests</module>
-            </modules>
         </profile>
         <profile>
             <id>release</id>
