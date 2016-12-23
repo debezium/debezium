@@ -523,7 +523,7 @@ public class PostgresConnectorConfig {
                                                    .withImportance(Importance.MEDIUM)
                                                    .withDescription("The criteria for running a snapshot upon startup of the connector. "
                                                            + "Options include: "
-                                                           + "'when_needed' to specify that the connector run a snapshot upon startup whenever it deems it necessary; "
+                                                           + "'always' to specify that the connector run a snapshot each time it starts up; "
                                                            + "'initial' (the default) to specify the connector can run a snapshot only when no offsets are available for the logical server name; "
                                                            + "'initial_only' same as 'initial' except the connector should stop after completing the snapshot and before it would normally start emitting changes; and"
                                                            + "'never' to specify the connector should never run a snapshot and that upon first startup the connector should read from the last position (LSN) recorded by the server");
