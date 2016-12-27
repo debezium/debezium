@@ -7,6 +7,7 @@
 package io.debezium.connector.postgresql;
 
 import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
+import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -102,12 +103,12 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         
         SourceRecord first = consumer.remove();
         VerifyRecord.isValidInsert(first, PK_FIELD, 2);
-        assertEquals("s1.a", first.topic());
+        assertEquals(topicName("s1.a"), first.topic());
         assertRecordOffset(first, false, false);
 
         SourceRecord second = consumer.remove();
         VerifyRecord.isValidInsert(second, PK_FIELD, 2);
-        assertEquals("s2.a", second.topic());
+        assertEquals(topicName("s2.a"), second.topic());
         assertRecordOffset(second, false, false);
         
         // now shut down the producers and insert some more records
@@ -147,8 +148,9 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     private void assertReadRecord(SourceRecord record, Map<String, List<SchemaAndValueField>> expectedValuesByTableName) {
         VerifyRecord.isValidRead(record, PK_FIELD, 1);
         String actualTopicName = record.topic();
-        assertTrue("Invalid topic name for records", actualTopicName.startsWith("public."));
-        String tableName = actualTopicName.replace("public.", "");
+        String topicPrefix = topicName("public.");
+        assertTrue("Invalid topic name for records", actualTopicName.startsWith(topicPrefix));
+        String tableName = actualTopicName.replace(topicPrefix, "");
         List<SchemaAndValueField> expectedValuesAndSchemasForTable = expectedValuesByTableName.get(tableName);
         assertNotNull("No expected values for " + tableName + " found", expectedValuesAndSchemasForTable);
         assertRecordSchemaAndValues(expectedValuesAndSchemasForTable, record, Envelope.FieldName.AFTER); 

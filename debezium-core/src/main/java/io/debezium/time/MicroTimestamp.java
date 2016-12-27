@@ -22,7 +22,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
  */
 public class MicroTimestamp {
 
-    public static final String SCHEMA_NAME = "io.debezium.time.NanoTimestamp";
+    public static final String SCHEMA_NAME = "io.debezium.time.MicroTimestamp";
 
     /**
      * Returns a {@link SchemaBuilder} for a {@link MicroTimestamp}. The resulting schema will describe a field

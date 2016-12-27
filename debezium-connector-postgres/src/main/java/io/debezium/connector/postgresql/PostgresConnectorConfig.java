@@ -290,8 +290,8 @@ public class PostgresConnectorConfig {
                                               .withWidth(Width.MEDIUM)
                                               .withImportance(Importance.MEDIUM)
                                               .withDefault(ReplicationConnection.Builder.DEFAULT_SLOT_NAME) 
-                                              .withDescription("The name of the Postgres logical decoding slot created for monitoring a particular database and plugin. " +
-                                                               "Defaults to 'debezium_connector'");
+                                              .withDescription("The name of the Postgres logical decoding slot created for streaming changes from a plugin." +
+                                                               "Defaults to 'debezium");
     
     public static final Field DROP_SLOT_ON_STOP = Field.create("slot.drop_on_stop")
                                                         .withDisplayName("Drop slot on stop")
@@ -343,7 +343,7 @@ public class PostgresConnectorConfig {
                                                    .withValidation(Field::isRequired)
                                                    .withDescription("The name of the database the connector should be monitoring");
 
-    public static final Field SERVER_NAME = Field.create("database.server.name")
+    public static final Field SERVER_NAME = Field.create(DATABASE_CONFIG_PREFIX + "server.name")
                                                  .withDisplayName("Namespace")
                                                  .withType(Type.STRING)
                                                  .withWidth(Width.MEDIUM)
@@ -376,7 +376,7 @@ public class PostgresConnectorConfig {
                                                     .withType(Type.INT)
                                                     .withWidth(Width.SHORT)
                                                     .withImportance(Importance.MEDIUM)
-                                                    .withDescription("Maximum size of each batch of source records. Defaults to 1024.")
+                                                    .withDescription("Maximum size of each batch of source records. Defaults to 10024.")
                                                     .withDefault(DEFAULT_MAX_BATCH_SIZE)
                                                     .withValidation(Field::isPositiveInteger);
     

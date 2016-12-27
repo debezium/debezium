@@ -17,7 +17,7 @@ import org.apache.kafka.connect.data.Struct;
  */
 public class Point {
 
-    public static final String LOGICAL_NAME = "io.debezium.data.geometry.point";
+    public static final String LOGICAL_NAME = "io.debezium.data.geometry.Point";
     public static final String X_FIELD = "x";
     public static final String Y_FIELD = "y";
     

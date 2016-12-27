@@ -11,6 +11,7 @@ import static io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotM
 import static io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode.INITIAL_ONLY;
 import static io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode.NEVER;
 import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
+import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -323,9 +324,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         //check the records from the snapshot take the filters into account
         SourceRecords actualRecords = consumeRecordsByTopic(4); //3 records in s1.a and 1 in s1.b
         
-        assertThat(actualRecords.recordsForTopic("s2.a")).isNullOrEmpty();
-        assertThat(actualRecords.recordsForTopic("s1.b")).isNullOrEmpty();
-        List<SourceRecord> recordsForS1a = actualRecords.recordsForTopic("s1.a");
+        assertThat(actualRecords.recordsForTopic(topicName("s2.a"))).isNullOrEmpty();
+        assertThat(actualRecords.recordsForTopic(topicName("s1.b"))).isNullOrEmpty();
+        List<SourceRecord> recordsForS1a = actualRecords.recordsForTopic(topicName("s1.a"));
         assertThat(recordsForS1a.size()).isEqualTo(3);
         AtomicInteger pkValue = new AtomicInteger(1);
         recordsForS1a.forEach(record -> {
@@ -444,12 +445,12 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         // we have 2 schemas/topics that we expect
         int expectedCountPerSchema = expectedCount / 2;
         
-        List<SourceRecord> recordsForTopicS1 = actualRecords.recordsForTopic("s1.a");
+        List<SourceRecord> recordsForTopicS1 = actualRecords.recordsForTopic(topicName("s1.a"));
         assertThat(recordsForTopicS1.size()).isEqualTo(expectedCountPerSchema);
         IntStream.range(0, expectedCountPerSchema)
                  .forEach(i -> VerifyRecord.isValidRead(recordsForTopicS1.remove(0), PK_FIELD, pks[i]));
     
-        List<SourceRecord> recordsForTopicS2 = actualRecords.recordsForTopic("s2.a");
+        List<SourceRecord> recordsForTopicS2 = actualRecords.recordsForTopic(topicName("s2.a"));
         assertThat(recordsForTopicS2.size()).isEqualTo(expectedCountPerSchema);
         IntStream.range(0, expectedCountPerSchema)
                  .forEach(i -> VerifyRecord.isValidRead(recordsForTopicS2.remove(0), PK_FIELD, pks[i + expectedCountPerSchema]));
@@ -462,11 +463,11 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         // we have 2 schemas
         int expectedCountPerSchema = expectedCount / 2;
     
-        List<SourceRecord> recordsForTopicS1 = actualRecords.recordsForTopic("s1.a");
+        List<SourceRecord> recordsForTopicS1 = actualRecords.recordsForTopic(topicName("s1.a"));
         assertThat(recordsForTopicS1.size()).isEqualTo(expectedCountPerSchema);
         IntStream.range(0, expectedCountPerSchema).forEach(i -> VerifyRecord.isValidInsert(recordsForTopicS1.remove(0), PK_FIELD, pks[i]));
     
-        List<SourceRecord> recordsForTopicS2 = actualRecords.recordsForTopic("s2.a");
+        List<SourceRecord> recordsForTopicS2 = actualRecords.recordsForTopic(topicName("s2.a"));
         assertThat(recordsForTopicS2.size()).isEqualTo(expectedCountPerSchema);
         IntStream.range(0, expectedCountPerSchema).forEach(i -> VerifyRecord.isValidInsert(recordsForTopicS2.remove(0), PK_FIELD, pks[i]));
     }

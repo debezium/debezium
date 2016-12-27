@@ -128,4 +128,8 @@ public final class TestHelper {
             connection.executeWithoutCommitting(statements);
         }
     }
+    
+    protected static String topicName(String suffix) {
+        return TestHelper.TEST_SERVER + "." + suffix;
+    }
 }

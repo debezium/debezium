@@ -15,14 +15,26 @@ import io.debezium.relational.TableId;
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 public interface TopicSelector {
+            
     /**
-     * Selector which generates a separate topic name for each table, based on the FQN name of the table
+     * Generates a topic name for each table, based on the table schema, table name and a prefix
+     *
+     * @param prefix a prefix which will be prepended to the topic name
+     * @return a {@link TopicSelector} instance, never {@code null}
      */
-    TopicSelector TOPIC_PER_TABLE = tableId -> String.join(".", tableId.schema(), tableId.table());
+    static TopicSelector topicPerTable(String prefix) {
+        return tableId -> String.join(".", prefix, tableId.schema(), tableId.table());     
+    }
+     
     /**
-     * Selector which generates a separate topic for an entire DB schema
+     * Generates a topic name for each table, based on the table schema and a prefix
+     *
+     * @param prefix a prefix which will be prepended to the topic name
+     * @return a {@link TopicSelector} instance, never {@code null}
      */
-    TopicSelector TOPIC_PER_SCHEMA = TableId::schema;
+    static TopicSelector topicPerSchema(String prefix) {
+        return tableId -> String.join(".", prefix, tableId.schema());
+    }
     
     /**
      * Returns the name of the Kafka topic for a given table identifier

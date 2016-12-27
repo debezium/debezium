@@ -7,6 +7,7 @@
 package io.debezium.connector.postgresql;
 
 import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
+import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.assertFalse;
 
@@ -119,7 +120,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         
         // the update record should be the last record
         SourceRecord updatedRecord = consumer.remove();
-        String topicName = "public.test_table";
+        String topicName = topicName("public.test_table");
         assertEquals(topicName, updatedRecord.topic());
         VerifyRecord.isValidUpdate(updatedRecord, PK_FIELD, 1);
         
@@ -159,7 +160,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
       
         // the update should be the last record
         SourceRecord updatedRecord = consumer.remove();
-        String topicName = "public.test_table";
+        String topicName = topicName("public.test_table");
         assertEquals(topicName, updatedRecord.topic());
         VerifyRecord.isValidUpdate(updatedRecord, PK_FIELD, 1);
     
@@ -204,7 +205,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         recordsProducer.start(consumer);
         executeAndWait("UPDATE test_table SET text = 'update', pk = 2");
         
-        String topicName = "public.test_table";
+        String topicName = topicName("public.test_table");
         
         // first should be a delete of the old pk
         SourceRecord deleteRecord = consumer.remove();
@@ -232,7 +233,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statements);
 
         SourceRecord insertRecord = consumer.remove();
-        assertEquals("public.test_table", insertRecord.topic());
+        assertEquals(topicName("public.test_table"), insertRecord.topic());
         VerifyRecord.isValidInsert(insertRecord, PK_FIELD, 2);
         List<SchemaAndValueField> expectedSchemaAndValues = Arrays.asList(
                 new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "update"),
@@ -248,9 +249,11 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(5);
         recordsProducer.start(consumer);
         executeAndWait(statements);
-        
-        String topicName = "public.test_table";
-        assertRecordInserted(topicName, PK_FIELD, 2);
+    
+    
+        String topicPrefix = "public.test_table";
+        String topicName = topicName(topicPrefix);
+        assertRecordInserted(topicPrefix, PK_FIELD, 2);
     
         // first entry removed
         SourceRecord record = consumer.remove();
@@ -289,7 +292,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     private SourceRecord assertRecordInserted(String expectedTopicName, String pkColumn, int pk) throws InterruptedException {
         assertFalse("records not generated", consumer.isEmpty());
         SourceRecord insertedRecord = consumer.remove();
-        assertEquals(expectedTopicName, insertedRecord.topic());
+        assertEquals(topicName(expectedTopicName), insertedRecord.topic());
         VerifyRecord.isValidInsert(insertedRecord, pkColumn, pk);
         return insertedRecord;
     }

@@ -16,7 +16,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
  */
 public class Uuid {
 
-    public static final String LOGICAL_NAME = "io.debezium.data.uuid";
+    public static final String LOGICAL_NAME = "io.debezium.data.Uuid";
 
     /**
      * Returns a {@link SchemaBuilder} for a Uuid field. You can use the resulting SchemaBuilder

@@ -40,9 +40,9 @@ public class PostgresTaskContext {
         PostgresConnectorConfig.TopicSelectionStrategy topicSelectionStrategy = config.topicSelectionStrategy();
         switch (topicSelectionStrategy) {
             case TOPIC_PER_SCHEMA: 
-                return TopicSelector.TOPIC_PER_SCHEMA;
+                return TopicSelector.topicPerSchema(config.serverName());
             case TOPIC_PER_TABLE:
-                return TopicSelector.TOPIC_PER_TABLE;
+                return TopicSelector.topicPerTable(config.serverName());
             default: 
                 throw new IllegalArgumentException("Unknown topic selection strategy: " + topicSelectionStrategy);
         }
