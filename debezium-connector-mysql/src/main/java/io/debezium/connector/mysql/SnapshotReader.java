@@ -44,6 +44,7 @@ public class SnapshotReader extends AbstractReader {
     private final boolean includeData;
     private RecordRecorder recorder;
     private volatile Thread thread;
+    public String connectionID;
     private volatile Runnable onSuccessfulCompletion;
     private final SnapshotReaderMetrics metrics;
 
@@ -122,6 +123,14 @@ public class SnapshotReader extends AbstractReader {
 
     @Override
     protected void doStop() {
+        if (connectionID != null) {
+            try {
+                logger.info("Stop Task: Kill Snapshot process {}.", connectionID);
+                new MySqlJdbcContext(context.config).jdbc().execute("KILL " + connectionID).close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
         thread.interrupt();
     }
 
@@ -358,6 +367,12 @@ public class SnapshotReader extends AbstractReader {
                     if (recordMaker != null) {
 
                         // Choose how we create statements based on the # of rows ...
+                        mysql.query("SELECT CONNECTION_ID();", rs -> {
+                            while(rs.next()) {
+                                connectionID = rs.getString(1);
+                                logger.info("Snapshot reader connection ID {}", connectionID);
+                            }
+                        });
                         sql.set("SELECT COUNT(*) FROM " + tableId);
                         AtomicLong numRows = new AtomicLong();
                         mysql.query(sql.get(), rs -> {
@@ -367,7 +382,12 @@ public class SnapshotReader extends AbstractReader {
                         if (numRows.get() > largeTableCount) {
                             statementFactory = this::createStatementWithLargeResultSet;
                         }
-
+                        mysql.query("SELECT CONNECTION_ID();", rs -> {
+                            while(rs.next()) {
+                                connectionID = rs.getString(1);
+                                logger.info("Snapshot reader connection ID {}", connectionID);
+                            }
+                        });
                         // Scan the rows in the table ...
                         long start = clock.currentTimeInMillis();
                         logger.info("Step 8: - scanning table '{}' ({} of {} tables)", tableId, ++counter, tableIds.size());
@@ -381,6 +401,10 @@ public class SnapshotReader extends AbstractReader {
                                 final int numColumns = table.columns().size();
                                 final Object[] row = new Object[numColumns];
                                 while (rs.next()) {
+                                    if (!isRunning()) {
+                                        logger.info("Not running anymore.");
+                                        throw new InterruptedException();
+                                    }
                                     for (int i = 0, j = 1; i != numColumns; ++i, ++j) {
                                         row[i] = rs.getObject(j);
                                     }
@@ -396,7 +420,9 @@ public class SnapshotReader extends AbstractReader {
                                 Thread.interrupted();
                                 // We were not able to finish all rows in all tables ...
                                 logger.info("Step 8: Stopping the snapshot due to thread interruption");
+                                rs.getStatement().cancel();
                                 interrupted.set(true);
+                                logger.info("Step 8: ResultSet closed");
                             } finally {
                                 totalRowCount.addAndGet(rowCount);
                             }

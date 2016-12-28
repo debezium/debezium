@@ -226,6 +226,16 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
                 for (String tableName : tableNames) {
                     map.put(tableName, schemaName);
                 }
+            } else {
+                //TODO: single table rename
+                Pattern pattern1 = Pattern.compile("(.+):\\[([A-Za-z0-9_]+)\\]");
+                Matcher matcher1 = pattern1.matcher(value);
+                if (matcher1.find()) {
+                    String schemaName = matcher1.group(1);
+                    String tableName = matcher1.group(2);
+                    logger.info("SchemaName = {} tableNames = {}", schemaName, tableName);
+                    map.put(tableName, schemaName);
+                }
             }
         }
         return map;

@@ -102,20 +102,14 @@ public class MySqlJdbcContext implements AutoCloseable {
     }
 
     public void shutdown() {
-        try {
-            jdbc.close();
-        } catch (SQLException e) {
-            logger.error("Unexpected error shutting down the database connection", e);
-        } finally {
-            // Reset the system properties to their original value ...
-            originalSystemProperties.forEach((name, value) -> {
-                if (value != null) {
-                    System.setProperty(name, value);
-                } else {
-                    System.clearProperty(name);
-                }
-            });
-        }
+        // Reset the system properties to their original value ...
+        originalSystemProperties.forEach((name, value) -> {
+            if (value != null) {
+                System.setProperty(name, value);
+            } else {
+                System.clearProperty(name);
+            }
+        });
     }
 
     @Override
