@@ -9,9 +9,6 @@ import org.fest.assertions.StringAssert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.IOException;
-import java.util.List;
-
 import static org.fest.assertions.Assertions.assertThat;
 
 /**

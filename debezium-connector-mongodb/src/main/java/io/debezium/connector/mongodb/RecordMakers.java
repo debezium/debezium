@@ -11,9 +11,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+import com.datapipeline.base.converter.DataConverter;
+import com.datapipeline.base.converter.ConverterExceptionHandler;
 import com.datapipeline.base.converter.ConnectorDataGenerator;
 import com.datapipeline.base.converter.ConnectorType;
-import com.datapipeline.base.converter.Converters;
+import com.datapipeline.base.converter.DataType;
 import com.datapipeline.base.mongodb.MongodbSchema;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -55,6 +57,7 @@ public class RecordMakers {
     private final Map<CollectionId, RecordsForCollection> recordMakerByCollectionId = new HashMap<>();
     private final Function<Document, String> valueTransformer;
     private final BlockingConsumer<SourceRecord> recorder;
+    private final DataConverter dataConverter;
 
     /**
      * Create the record makers using the supplied components.
@@ -69,6 +72,7 @@ public class RecordMakers {
         JsonWriterSettings writerSettings = new JsonWriterSettings(JsonMode.STRICT, "", ""); // most compact JSON
         this.valueTransformer = (doc) -> doc.toJson(writerSettings);
         this.recorder = recorder;
+        this.dataConverter = new DataConverter(new MongoDBConvertExceptionHandler());
     }
 
     /**
@@ -86,7 +90,8 @@ public class RecordMakers {
         }
         return recordMakerByCollectionId.computeIfAbsent(collectionId, id -> {
             String topicName = topicSelector.getTopic(collectionId);
-            return new RecordsForCollection(collectionId, source, topicName, schemaNameValidator, valueTransformer, recorder,mongodbSchemaFields);
+            return new RecordsForCollection(collectionId, source, topicName, schemaNameValidator, valueTransformer, recorder,
+                    mongodbSchemaFields, dataConverter);
         });
     }
 
@@ -112,9 +117,11 @@ public class RecordMakers {
 
         private final ConnectorDataGenerator dataGenerator;
         private final List<MongodbSchema> mongodbSchemaFields;
+        private final DataConverter dataConverter;
 
         protected RecordsForCollection(CollectionId collectionId, SourceInfo source, String topicName, AvroValidator validator,
-                Function<Document, String> valueTransformer, BlockingConsumer<SourceRecord> recorder, List<MongodbSchema> mongodbSchemaFields) {
+                Function<Document, String> valueTransformer, BlockingConsumer<SourceRecord> recorder, List<MongodbSchema> mongodbSchemaFields,
+                DataConverter dataConverter) {
             this.sourcePartition = source.partition(collectionId.replicaSetName());
             this.collectionId = collectionId;
             this.replicaSetName = this.collectionId.replicaSetName();
@@ -137,6 +144,7 @@ public class RecordMakers {
             JsonWriterSettings writerSettings = new JsonWriterSettings(JsonMode.STRICT, "", ""); // most compact JSON
             this.valueTransformer = (doc) -> doc.toJson(writerSettings);
             this.recorder = recorder;
+            this.dataConverter = dataConverter;
         }
 
         /**
@@ -196,7 +204,7 @@ public class RecordMakers {
             for(MongodbSchema schema: mongodbSchemaFields){
                 if(objectValue.get(schema.getName())!=null){
                     try {
-                        Object value = Converters.getConverter(schema.getDataType()).convert(objectValue.get(schema.getName()).toString());
+                        Object value = dataConverter.convert(schema.getDataType(), objectValue.get(schema.getName()).toString(),null);
                         MongoDbColumnData data = new MongoDbColumnData(value, schema);
                         datas.add(data);
                     }catch(Throwable e){
@@ -277,5 +285,13 @@ public class RecordMakers {
         recordMakerByCollectionId.clear();
     }
 
+    private class MongoDBConvertExceptionHandler extends ConverterExceptionHandler{
+
+        @Override
+        public void handleConvertException(Exception e, String data, DataType dataType) {
+            logger.error("Failed to convert data: "+ data + " to type: "+ dataType.toString(), e);
+
+        }
+    }
 
 }
