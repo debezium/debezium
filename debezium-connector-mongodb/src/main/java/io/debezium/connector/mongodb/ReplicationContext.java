@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.function.Predicate;
 
 import com.datapipeline.base.mongodb.MongodbSchemaConfig;
-import com.datapipeline.base.mongodb.MongodbSchemaNameConfig;
 import com.fasterxml.jackson.core.type.TypeReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
