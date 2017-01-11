@@ -75,9 +75,9 @@ public final class GtidSet {
     }
 
     /**
-     * Find the {@link UUIDSet} for the server with the specified UUID.
+     * Find the {@link UUIDSet} for the server with the specified Uuid.
      * 
-     * @param uuid the UUID of the server
+     * @param uuid the Uuid of the server
      * @return the {@link UUIDSet} for the identified server, or {@code null} if there are no GTIDs from that server.
      */
     public UUIDSet forServerWithId(String uuid) {
@@ -139,7 +139,7 @@ public final class GtidSet {
     }
 
     /**
-     * A range of GTIDs for a single server with a specific UUID.
+     * A range of GTIDs for a single server with a specific Uuid.
      */
     @Immutable
     public static class UUIDSet {
@@ -167,9 +167,9 @@ public final class GtidSet {
         }
 
         /**
-         * Get the UUID for the server that generated the GTIDs.
+         * Get the Uuid for the server that generated the GTIDs.
          * 
-         * @return the server's UUID; never null
+         * @return the server's Uuid; never null
          */
         public String getUUID() {
             return uuid;

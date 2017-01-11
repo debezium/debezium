@@ -5,6 +5,7 @@
  */
 package io.debezium.data;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
@@ -32,8 +33,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.confluent.connect.avro.AvroConverter;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
@@ -107,6 +106,22 @@ public class VerifyRecord {
         assertThat(value.get(FieldName.AFTER)).isNotNull();
         assertThat(value.get(FieldName.BEFORE)).isNull();
     }
+    
+    /**
+     * Verify that the given {@link SourceRecord} is a {@link Operation#READ READ} record.
+     * 
+     * @param record the source record; may not be null
+     */
+    public static void isValidRead(SourceRecord record) {
+        assertThat(record.key()).isNotNull();
+        assertThat(record.keySchema()).isNotNull();
+        assertThat(record.valueSchema()).isNotNull();
+        Struct value = (Struct) record.value();
+        assertThat(value).isNotNull();
+        assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.READ.code());
+        assertThat(value.get(FieldName.AFTER)).isNotNull();
+        assertThat(value.get(FieldName.BEFORE)).isNull();
+    }
 
     /**
      * Verify that the given {@link SourceRecord} is a {@link Operation#UPDATE UPDATE} record.
@@ -176,6 +191,19 @@ public class VerifyRecord {
     public static void isValidInsert(SourceRecord record, String pkField, int pk) {
         hasValidKey(record, pkField, pk);
         isValidInsert(record);
+    }
+
+    /**
+     * Verify that the given {@link SourceRecord} is a {@link Operation#CREATE READ} record, and that the integer key
+     * matches the expected value.
+     * 
+     * @param record the source record; may not be null
+     * @param pkField the single field defining the primary key of the struct; may not be null
+     * @param pk the expected integer value of the primary key in the struct
+     */
+    public static void isValidRead(SourceRecord record, String pkField, int pk) {
+        hasValidKey(record, pkField, pk);
+        isValidRead(record);
     }
 
     /**

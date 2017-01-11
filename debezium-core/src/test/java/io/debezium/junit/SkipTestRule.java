@@ -6,7 +6,6 @@
 package io.debezium.junit;
 
 import java.lang.annotation.Annotation;
-
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
@@ -25,8 +24,8 @@ public class SkipTestRule implements TestRule {
                             Description description ) {
         SkipLongRunning skipLongRunningAnnotation = hasAnnotation(description, SkipLongRunning.class);
         if (skipLongRunningAnnotation != null) {
-            boolean skipLongRunning = Boolean.valueOf(System.getProperty(SkipLongRunning.SKIP_LONG_RUNNING_PROPERTY));
-            if (skipLongRunning) {
+            String skipLongRunning = System.getProperty(SkipLongRunning.SKIP_LONG_RUNNING_PROPERTY);
+            if (skipLongRunning == null || Boolean.valueOf(skipLongRunning)) {
                 return emptyStatement(skipLongRunningAnnotation.value(), description);
             }
         }

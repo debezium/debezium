@@ -60,13 +60,15 @@
         <version.confluent.platform>3.0.0</version.confluent.platform>
 
         <!-- Databases -->
-        <version.postgresql.driver>9.4-1205-jdbc42</version.postgresql.driver>
-        <version.postgresql.server>9.4</version.postgresql.server>
+        <version.postgresql.driver>42.0.0-SNAPSHOT</version.postgresql.driver>
         <version.mysql.server>5.7</version.mysql.server>
         <version.mysql.driver>5.1.40</version.mysql.driver>
         <version.mysql.binlog>0.5.1</version.mysql.binlog>
         <version.mongo.server>3.2.6</version.mongo.server>
         <version.mongo.driver>3.2.2</version.mongo.driver>
+        
+        <!-- Connectors -->
+        <version.com.google.protobuf>2.6.1</version.com.google.protobuf>
 
         <!-- Testing -->
         <version.junit>4.12</version.junit>
@@ -81,6 +83,7 @@
         <version.google.formatter.plugin>0.3.1</version.google.formatter.plugin>
         <version.docker.maven.plugin>0.18.1</version.docker.maven.plugin>
         <version.staging.plugin>1.6.3</version.staging.plugin>
+        <version.protoc.maven.plugin>3.0.0.1</version.protoc.maven.plugin>
 
         <!-- Dockerfiles -->
         <docker.maintainer>Debezium community</docker.maintainer>
@@ -90,6 +93,9 @@
 
         <!-- Don't skip integration tests by default -->
         <skipITs>false</skipITs>
+
+        <!-- No debug options by default -->
+        <debug.argline/>
     </properties>
 
     <modules>
@@ -98,6 +104,7 @@
         <module>debezium-core</module>
         <module>debezium-embedded</module>
         <module>debezium-connector-mysql</module>
+        <module>debezium-connector-postgres</module>
         <module>debezium-connector-mongodb</module>
     </modules>
 
@@ -119,6 +126,19 @@
             <id>confluent</id>
             <name>Confluent</name>
             <url>http://packages.confluent.io/maven/</url>
+            <snapshots>
+                <enabled>true</enabled>
+                <updatePolicy>never</updatePolicy>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>ossrh</id>
+            <name>OSS Sonatype Nexus </name>
+            <url>https://oss.sonatype.org/content/groups/public/</url>
+            <releases>
+                <enabled>true</enabled>
+                <updatePolicy>never</updatePolicy>
+            </releases>
             <snapshots>
                 <enabled>true</enabled>
                 <updatePolicy>never</updatePolicy>
@@ -193,12 +213,20 @@
                 <scope>test</scope>
             </dependency>
 
-            <!-- PostgreSQL JDBC driver -->
+            <!-- PostgreSQL connector -->
+             
             <dependency>
                 <groupId>org.postgresql</groupId>
                 <artifactId>postgresql</artifactId>
                 <version>${version.postgresql.driver}</version>
             </dependency>
+           
+            <!--Make sure this version is compatible with the Protbuf-C version used on the server -->
+            <dependency>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java</artifactId>
+                <version>${version.com.google.protobuf}</version>
+            </dependency> 
 
             <!-- MySQL JDBC Driver and Binlog reader -->
             <dependency>
@@ -377,6 +405,9 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-failsafe-plugin</artifactId>
                     <version>${version.failsafe.plugin}</version>
+                    <configuration>
+                        <argLine>${debug.argline}</argLine>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
@@ -392,6 +423,11 @@
                     <groupId>io.fabric8</groupId>
                     <artifactId>docker-maven-plugin</artifactId>
                     <version>${version.docker.maven.plugin}</version>
+                </plugin>
+                <plugin>
+                    <groupId>com.github.os72</groupId>
+                    <artifactId>protoc-jar-maven-plugin</artifactId>
+                    <version>${version.protoc.maven.plugin}</version>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -507,7 +543,7 @@
                             <value>${skipLongRunningTests}</value>
                         </property>
                     </systemProperties>
-                    <argLine>-Djava.awt.headless=true</argLine>
+                    <argLine>-Djava.awt.headless=true ${debug.argline}</argLine>
                     <!--runOrder>alphabetical</runOrder-->
                     <useFile>false</useFile>
                     <enableAssertions>true</enableAssertions>
@@ -525,6 +561,8 @@
                 </dependencies>
                 <configuration>
                     <configLocation>checkstyle.xml</configLocation>
+                    <suppressionsLocation>checkstyle-suppressions.xml</suppressionsLocation>
+                    <suppressionsFileExpression>checkstyle.suppressions.file</suppressionsFileExpression>
                     <consoleOutput>true</consoleOutput>
                     <failsOnError>true</failsOnError>
                     <linkXRef>false</linkXRef>
@@ -544,6 +582,29 @@
         </plugins>
     </build>
     <profiles>
+        <!--
+           ###################################################################
+           Enable remotely debugging on the command line
+           ###################################################################
+
+           To use, specify "-Ddebug=true" on the Maven command line
+           (typically used when running a single test). Then, start
+           remote debugger (on port 1044) and connect.
+       -->
+        <profile>
+            <id>debug</id>
+            <activation>
+                <property>
+                    <name>debug</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <!-- Useful for remotely debugging the unit tests run by Surefire ... -->
+                <debug.argline>-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=1044</debug.argline>
+            </properties>
+        </profile>
+
         <profile>
             <id>assembly</id>
             <properties>

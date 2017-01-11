@@ -123,9 +123,8 @@
                   <!-- A container that initiates the data replica set and adds it as shard to router -->
                   <image>
                     <name>debezium/mongo-initiator:3.2</name>
-                    <alias>mongo-init</alias>
                     <run>
-                      <namingStrategy>alias</namingStrategy>
+                      <namingStrategy>none</namingStrategy>
                       <env>
                         <VERBOSE>true</VERBOSE>
                         <REPLICASET>${mongo.data.replicaset.name}</REPLICASET>

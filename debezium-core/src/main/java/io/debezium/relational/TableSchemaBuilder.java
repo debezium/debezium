@@ -325,7 +325,7 @@ public class TableSchemaBuilder {
                              column);
             }
         } else {
-            LOGGER.warn("Unexpected JDBC type {} that will be ignored", column.jdbcType());
+            LOGGER.warn("Unexpected JDBC type '{}' for column '{}' that will be ignored", column.jdbcType(), column.name());
         }
     }
 

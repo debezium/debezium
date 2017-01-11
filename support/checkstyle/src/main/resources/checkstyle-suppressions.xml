@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+        "-//Puppy Crawl//DTD Suppressions 1.1//EN"
+        "http://www.puppycrawl.com/dtds/suppressions_1_1.dtd">
+<!--
+    Checkstyle file which allow for custom file/package exclusions
+-->
+<suppressions>
+    <!--we're only including the PG driver temporarily (hopefully) so we don't want to checkstyle it...-->
+    <suppress checks="." files="[\\/]org[\\/]postgresql[\\/].*\.java$"/>
+    <!--exclude any protobuf generated files-->
+    <suppress checks="." files=".[\\/]io[\\/]debezium[\\/]connector[\\/]postgresql[\\/]proto[\\/].*\.java$"/>
+</suppressions>
