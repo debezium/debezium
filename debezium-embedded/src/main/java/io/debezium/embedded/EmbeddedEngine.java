@@ -464,7 +464,7 @@ public final class EmbeddedEngine implements Runnable {
         this.classLoader = classLoader;
         this.clock = clock;
         this.completionCallback = completionCallback != null ? completionCallback : (success, msg, error) -> {
-            if (success) logger.error(msg, error);
+            if (!success) logger.error(msg, error);
         };
         this.connectorCallback = connectorCallback;
         this.completionResult = new CompletionResult();
