@@ -131,7 +131,6 @@ public class KafkaServer {
     }
 
 
-
     /**
      * Set the port for the server.
      * 

@@ -105,20 +105,6 @@
         <module>debezium-connector-mysql</module>
         <module>debezium-connector-mongodb</module>
     </modules>
-
-    <!--<distributionManagement>-->
-      <!--<repository>-->
-        <!--<id>ossrh</id>-->
-        <!--<name>Sonatype Staging Repository</name>-->
-        <!--<url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>-->
-      <!--</repository>-->
-      <!--<snapshotRepository>-->
-        <!--<id>ossrh</id>-->
-        <!--<name>OSS Sonatype Nexus Snapshots</name>-->
-        <!--<url>https://oss.sonatype.org/content/repositories/snapshots</url>-->
-      <!--</snapshotRepository>-->
-    <!--</distributionManagement>-->
-
     <distributionManagement>
       <!--<repository>-->
         <!--<id>ossrh</id>-->
