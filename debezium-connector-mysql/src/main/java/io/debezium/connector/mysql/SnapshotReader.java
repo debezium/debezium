@@ -213,7 +213,7 @@ public class SnapshotReader extends AbstractReader {
             long lockAcquired = clock.currentTimeInMillis();
             logger.info("Step 2: flush and obtain global read lock (preventing writes to database)");
             sql.set("FLUSH TABLES WITH READ LOCK");
-            mysql.execute(sql.get());
+            //mysql.execute(sql.get());
 
             // ------
             // STEP 3
@@ -333,7 +333,7 @@ public class SnapshotReader extends AbstractReader {
                 // we can release the lock now ...
                 logger.info("Step 7: releasing global read lock to enable MySQL writes");
                 sql.set("UNLOCK TABLES");
-                mysql.execute(sql.get());
+                //mysql.execute(sql.get());
                 unlocked = true;
                 long lockReleased = clock.currentTimeInMillis();
                 metrics.globalLockReleased();

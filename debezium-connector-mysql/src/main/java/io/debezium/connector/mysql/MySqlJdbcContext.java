@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import com.datapipeline.clients.DpAES;
+
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -70,7 +72,7 @@ public class MySqlJdbcContext implements AutoCloseable {
     }
 
     public String password() {
-        return config.getString(MySqlConnectorConfig.PASSWORD);
+        return DpAES.decrypt(config.getString(MySqlConnectorConfig.PASSWORD));
     }
 
     public String hostname() {

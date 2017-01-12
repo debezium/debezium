@@ -297,7 +297,7 @@ public class Replicator {
      * @return number of documents that were copied
      * @throws InterruptedException if the thread was interrupted while the copy operation was running
      */
-    protected long copyCollection(CollectionId collectionId, long timestamp) throws InterruptedException {
+    protected long copyCollection(CollectionId collectionId, long timestamp) throws InterruptedException{
         AtomicLong docCount = new AtomicLong();
         primaryClient.executeBlocking("sync '" + collectionId + "'", primary -> {
             docCount.set(copyCollection(primary, collectionId, timestamp));
@@ -316,6 +316,9 @@ public class Replicator {
      */
     protected long copyCollection(MongoClient primary, CollectionId collectionId, long timestamp) throws InterruptedException {
         RecordsForCollection factory = recordMakers.forCollection(collectionId);
+        if(factory == null){
+            return 0;
+        }
         MongoDatabase db = primary.getDatabase(collectionId.dbName());
         MongoCollection<Document> docCollection = db.getCollection(collectionId.name());
         long counter = 0;
