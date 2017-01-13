@@ -116,7 +116,56 @@ public class JdbcConnection implements AutoCloseable {
             return conn;
         };
     }
-
+    
+    /**
+     * Create a {@link ConnectionFactory} that uses the specific JDBC driver class loaded with the given class loader, and obtains the connection URL by replacing the following variables in the URL pattern:
+     * <ul>
+     * <li><code>${hostname}</code></li>
+     * <li><code>${port}</code></li>
+     * <li><code>${dbname}</code></li>
+     * <li><code>${username}</code></li>
+     * <li><code>${password}</code></li>
+     * </ul>
+     * <p>
+     * This method attempts to instantiate the JDBC driver class and use that instance to connect to the database.
+     * @param urlPattern the URL pattern string; may not be null
+     * @param driverClassName the name of the JDBC driver class; may not be null
+     * @param classloader the ClassLoader that should be used to load the JDBC driver class given by `driverClassName`; may be null if this class' class loader should be used
+     * @param variables any custom or overridden configuration variables
+     * @return the connection factory
+     */
+    @SuppressWarnings("unchecked")
+    public static ConnectionFactory patternBasedFactory(String urlPattern, String driverClassName,
+            ClassLoader classloader, Field... variables) {
+        return (config) -> {
+            LOGGER.trace("Config: {}", config.asProperties());
+            Properties props = config.asProperties();
+            Field[] varsWithDefaults = combineVariables(variables,
+                                                        JdbcConfiguration.HOSTNAME,
+                                                        JdbcConfiguration.PORT,
+                                                        JdbcConfiguration.USER,
+                                                        JdbcConfiguration.PASSWORD,
+                                                        JdbcConfiguration.DATABASE);
+            String url = findAndReplace(urlPattern, props, varsWithDefaults);
+            LOGGER.trace("Props: {}", props);
+            LOGGER.trace("URL: {}", url);
+            Connection conn = null;
+            try {
+                ClassLoader driverClassLoader = classloader;
+                if (driverClassLoader == null) {
+                    driverClassLoader = JdbcConnection.class.getClassLoader();
+                }                
+                Class<java.sql.Driver> driverClazz = (Class<java.sql.Driver>) Class.forName(driverClassName, true, driverClassLoader);
+                java.sql.Driver driver = driverClazz.newInstance();
+                conn = driver.connect(url, props);
+            } catch (ClassNotFoundException|IllegalAccessException|InstantiationException e) {
+                throw new SQLException(e);
+            } 
+            LOGGER.debug("Connected to {} with {}", url, props);
+            return conn;
+        };
+    } 
+    
     private static Field[] combineVariables(Field[] overriddenVariables,
                                             Field... defaultVariables) {
         Map<String, Field> fields = new HashMap<>();

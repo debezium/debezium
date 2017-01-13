@@ -50,7 +50,9 @@ public class MySqlJdbcContext implements AutoCloseable {
                                          .edit()
                                          .with("useSSL", Boolean.toString(useSSL))
                                          .build();
-        this.jdbc = new JdbcConnection(jdbcConfig, FACTORY);
+        String driverClassName = jdbcConfig.getString(MySqlConnectorConfig.JDBC_DRIVER);
+        this.jdbc = new JdbcConnection(jdbcConfig,
+                JdbcConnection.patternBasedFactory(MYSQL_CONNECTION_URL, driverClassName, getClass().getClassLoader()));
     }
 
     public Configuration config() {
