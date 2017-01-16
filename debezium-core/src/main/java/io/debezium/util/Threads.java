@@ -5,8 +5,11 @@
  */
 package io.debezium.util;
 
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.LongSupplier;
+import java.util.function.Supplier;
 
 /**
  * Utilities related to threads and threading.
@@ -176,6 +179,81 @@ public class Threads {
             uponTimeout.run();
         };
         return new Thread(r, threadName);
+    }
+
+    /**
+     * Return a new {@link ThreadFactory} that creates threads with names that begin with the given prefix and end with
+     * an monotonically increasing integer value.
+     * 
+     * @param threadNamePrefix the prefix for all thread names; may not be null
+     * @return the new thread factory; never null
+     */
+    public static ThreadFactory createFactory(String threadNamePrefix) {
+        AtomicInteger counter = new AtomicInteger();
+        return createFactory(() -> threadNamePrefix + counter.get());
+    }
+
+    /**
+     * Return a new {@link ThreadFactory} that creates threads with names obtained from the given supplier function.
+     * 
+     * @param threadNames the function that returns new thread names; may not be null
+     * @return the new thread factory; never null
+     */
+    public static ThreadFactory createFactory(Supplier<String> threadNames) {
+        return r -> {
+            return new Thread(r, threadNames.get());
+        };
+    }
+
+    /**
+     * Return a new {@link ThreadFactory} that creates threads with names that begin with the given prefix and end with
+     * an monotonically increasing integer value.
+     * 
+     * @param threadGroupName the name of the thread group; may not be null
+     * @param threadNamePrefix the prefix for all thread names; may not be null
+     * @return the new thread factory; never null
+     */
+    public static ThreadFactory createFactory(String threadGroupName, String threadNamePrefix) {
+        ThreadGroup threadGroup = new ThreadGroup(threadGroupName);
+        return createFactory(threadGroup, threadNamePrefix);
+    }
+
+    /**
+     * Return a new {@link ThreadFactory} that creates threads with names obtained from the given supplier function.
+     * 
+     * @param threadGroupName the name of the thread group; may not be null
+     * @param threadNames the function that returns new thread names; may not be null
+     * @return the new thread factory; never null
+     */
+    public static ThreadFactory createFactory(String threadGroupName, Supplier<String> threadNames) {
+        ThreadGroup threadGroup = new ThreadGroup(threadGroupName);
+        return createFactory(threadGroup, threadNames);
+    }
+
+    /**
+     * Return a new {@link ThreadFactory} that creates threads with names that begin with the given prefix and end with
+     * an monotonically increasing integer value.
+     * 
+     * @param threadGroup the thread group for all the new threads; may not be null
+     * @param threadNamePrefix the prefix for all thread names; may not be null
+     * @return the new thread factory; never null
+     */
+    public static ThreadFactory createFactory(ThreadGroup threadGroup, String threadNamePrefix) {
+        AtomicInteger counter = new AtomicInteger();
+        return createFactory(threadGroup, () -> threadNamePrefix + counter.get());
+    }
+
+    /**
+     * Return a new {@link ThreadFactory} that creates threads with names obtained from the given supplier function.
+     * 
+     * @param threadGroup the thread group for all the new threads; may not be null
+     * @param threadNames the function that returns new thread names; may not be null
+     * @return the new thread factory; never null
+     */
+    public static ThreadFactory createFactory(ThreadGroup threadGroup, Supplier<String> threadNames) {
+        return r -> {
+            return new Thread(threadGroup, r, threadNames.get());
+        };
     }
 
     private Threads() {

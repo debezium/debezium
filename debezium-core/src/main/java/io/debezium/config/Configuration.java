@@ -1775,6 +1775,37 @@ public interface Configuration {
     }
 
     /**
+     * Validate the supplied fields in this configuration and throw an exception if any fields are invalid.
+     * Extra fields not described by the supplied {@code fields} parameter are not validated.
+     * 
+     * @param fields the fields; may not be null
+     * @throws InvalidConfigurationException if any fields in the the configuration are invalid
+     */
+    default void validateAndThrow(Field.Set fields) throws InvalidConfigurationException {
+        validateAndThrow(fields, null);
+    }
+
+    /**
+     * Validate the supplied fields in this configuration and throw an exception if any fields are invalid.
+     * Extra fields not described by the supplied {@code fields} parameter are not validated.
+     * 
+     * @param fields the fields; may not be null
+     * @param message the error message that should be used in the exception; may be null
+     * @throws InvalidConfigurationException if any fields in the the configuration are invalid
+     */
+    default void validateAndThrow(Field.Set fields, String message) throws InvalidConfigurationException {
+        Map<String, ConfigValue> configVals = validate(fields);
+        List<ConfigValue> invalid = configVals.values()
+                                              .stream()
+                                              .filter(c -> c.errorMessages() != null && !c.errorMessages().isEmpty())
+                                              .collect(Collectors.toList());
+        if (!invalid.isEmpty()) {
+            if (message == null) message = "At least one field in the configuration is invalid";
+            throw new InvalidConfigurationException(message, invalid);
+        }
+    }
+
+    /**
      * Validate the supplied fields in this configuration. Extra fields not described by the supplied {@code fields} parameter
      * are not validated.
      * 

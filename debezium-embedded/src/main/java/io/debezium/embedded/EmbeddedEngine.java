@@ -776,6 +776,7 @@ public final class EmbeddedEngine implements Runnable {
         if (flush == null) return; // no offsets to commit ...
 
         // Wait until the offsets are flushed ...
+        logger.trace("Committing {} offsets", recordsSinceLastCommit);
         try {
             flush.get(Math.max(timeout - clock.currentTimeInMillis(), 0), TimeUnit.MILLISECONDS);
             // if we've gotten this far, the offsets have been committed so notify the task

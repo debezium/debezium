@@ -59,9 +59,9 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
         config.put(ConnectorConfig.NAME_CONFIG, "simple-connector-1");
         config.put(ConnectorConfig.CONNECTOR_CLASS_CONFIG, SimpleSourceConnector.class.getName());
         config.put(ConnectorConfig.TASKS_MAX_CONFIG, "1");
-        config.put(SimpleSourceConnector.BATCH_COUNT, Integer.toString(numBatches));
-        config.put(SimpleSourceConnector.RECORD_COUNT_PER_BATCH, Integer.toString(numRecordsPerBatch));
-        config.put(SimpleSourceConnector.TOPIC_NAME, TOPIC_NAME);
+        config.put(SimpleSourceConnector.BATCH_COUNT.name(), Integer.toString(numBatches));
+        config.put(SimpleSourceConnector.RECORD_COUNT_PER_BATCH.name(), Integer.toString(numRecordsPerBatch));
+        config.put(SimpleSourceConnector.TOPIC_NAME.name(), TOPIC_NAME);
         writeConfigurationFileWithDefaultName(dir, config);
         
         Properties env = new Properties();

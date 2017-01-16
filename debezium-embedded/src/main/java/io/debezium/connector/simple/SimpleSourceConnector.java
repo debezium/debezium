@@ -10,7 +10,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -18,11 +17,15 @@ import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.util.Collect;
 
 /**
@@ -56,15 +59,19 @@ public class SimpleSourceConnector extends SourceConnector {
 
     protected static final String VERSION = "1.0";
 
-    public static final String TOPIC_NAME = "topic.name";
-    public static final String RECORD_COUNT_PER_BATCH = "record.count.per.batch";
-    public static final String BATCH_COUNT = "batch.count";
-    public static final String DEFAULT_TOPIC_NAME = "simple.topic";
-    public static final String INCLUDE_TIMESTAMP = "include.timestamp";
-    public static final int DEFAULT_RECORD_COUNT_PER_BATCH = 1;
-    public static final int DEFAULT_BATCH_COUNT = 10;
-    public static final boolean DEFAULT_INCLUDE_TIMESTAMP = false;
+    public static final Field TOPIC_NAME = Field.create("topic.name").withDefault("simple.topic");
+    public static final Field RECORD_COUNT_PER_BATCH = Field.create("record.count.per.batch").withDefault(1);
+    public static final Field BATCH_COUNT = Field.create("batch.count").withDefault(10);
+    public static final Field INCLUDE_TIMESTAMP = Field.create("include.timestamp").withDefault(false);
+    public static final Field TASK_COUNT = Field.create("task.count").withDefault(1);
+    protected static final Field TASK_ID = Field.create("task.id").withDefault(1);
 
+    /**
+     * Includes only the public fields
+     */
+    public static final Field.Set ALL_FIELDS = Field.setOf(TOPIC_NAME, RECORD_COUNT_PER_BATCH, BATCH_COUNT, INCLUDE_TIMESTAMP, TASK_COUNT);
+
+    private Logger logger = LoggerFactory.getLogger(getClass());
     private Map<String, String> config;
 
     public SimpleSourceConnector() {
@@ -78,6 +85,11 @@ public class SimpleSourceConnector extends SourceConnector {
     @Override
     public void start(Map<String, String> props) {
         config = props;
+        Configuration config = Configuration.from(props);
+        if (!config.validateAndRecord(ALL_FIELDS, logger::error)) {
+            throw new ConnectException(
+                    "Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
+        }
     }
 
     @Override
@@ -87,9 +99,17 @@ public class SimpleSourceConnector extends SourceConnector {
 
     @Override
     public List<Map<String, String>> taskConfigs(int maxTasks) {
+        Configuration config = Configuration.from(this.config);
+        int taskCount = config.getInteger(TASK_COUNT);
         List<Map<String, String>> configs = new ArrayList<>();
-        configs.add(config);
+        for (int i = 0; i != taskCount; ++i) {
+            configs.add(taskConfigForTask(config, i + 1, taskCount).asMap());
+        }
         return configs;
+    }
+
+    protected Configuration taskConfigForTask(Configuration config, int taskNumber, int taskCount) {
+        return config.edit().with(TASK_ID, taskNumber).build();
     }
 
     @Override
@@ -104,9 +124,10 @@ public class SimpleSourceConnector extends SourceConnector {
 
     public static class SimpleConnectorTask extends SourceTask {
 
+        private Logger logger = LoggerFactory.getLogger(getClass());
         private int recordsPerBatch;
         private Queue<SourceRecord> records;
-        private final AtomicBoolean running = new AtomicBoolean();
+        protected final AtomicBoolean running = new AtomicBoolean();
 
         @Override
         public String version() {
@@ -117,10 +138,15 @@ public class SimpleSourceConnector extends SourceConnector {
         public void start(Map<String, String> props) {
             if (running.compareAndSet(false, true)) {
                 Configuration config = Configuration.from(props);
-                recordsPerBatch = config.getInteger(RECORD_COUNT_PER_BATCH, DEFAULT_RECORD_COUNT_PER_BATCH);
-                int batchCount = config.getInteger(BATCH_COUNT, DEFAULT_BATCH_COUNT);
-                String topic = config.getString(TOPIC_NAME, DEFAULT_TOPIC_NAME);
-                boolean includeTimestamp = config.getBoolean(INCLUDE_TIMESTAMP, DEFAULT_INCLUDE_TIMESTAMP);
+                if (!config.validateAndRecord(ALL_FIELDS, logger::error)) {
+                    throw new ConnectException(
+                            "Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
+                }
+                preStart(config);
+                recordsPerBatch = config.getInteger(RECORD_COUNT_PER_BATCH);
+                int batchCount = config.getInteger(BATCH_COUNT);
+                String topic = config.getString(TOPIC_NAME);
+                boolean includeTimestamp = config.getBoolean(INCLUDE_TIMESTAMP);
 
                 // Create the partition and schemas ...
                 Map<String, ?> partition = Collect.hashMapOf("source", "simple");
@@ -144,8 +170,10 @@ public class SimpleSourceConnector extends SourceConnector {
                 long initialTimestamp = System.currentTimeMillis();
                 int id = 0;
                 for (int batch = 0; batch != batchCount; ++batch) {
+                    preBatch(batch);
                     for (int recordNum = 0; recordNum != recordsPerBatch; ++recordNum) {
                         ++id;
+                        preRecord(recordNum, id);
                         if (id <= lastId) {
                             // We already produced this record, so skip it ...
                             continue;
@@ -166,19 +194,21 @@ public class SimpleSourceConnector extends SourceConnector {
                         }
                         SourceRecord record = new SourceRecord(partition, offset, topic, 1, keySchema, key, valueSchema, value);
                         records.add(record);
+                        postRecord(recordNum, id, record);
                     }
+                    postBatch(batch);
                 }
             }
         }
 
         @Override
         public List<SourceRecord> poll() throws InterruptedException {
-            if (records.isEmpty()) {
-                // block forever, as this thread will be interrupted if/when the task is stopped ...
-                new CountDownLatch(1).await();
+            while (running.get() && records.isEmpty()) {
+                // block for a while ...
+                Thread.sleep(100);
             }
             if (running.get()) {
-                // Still running, so process whatever is in the queue ...
+                // Still running but something in the queue ...
                 List<SourceRecord> results = new ArrayList<>();
                 int record = 0;
                 while (record < recordsPerBatch && !records.isEmpty()) {
@@ -194,6 +224,49 @@ public class SimpleSourceConnector extends SourceConnector {
         public void stop() {
             // Request the task to stop and return immediately ...
             running.set(false);
+        }
+
+        /**
+         * Called during {@link #start(Map)} but after only the configuration has been validated.
+         * 
+         * @param config the validated task configuration
+         */
+        protected void preStart(Configuration config) {
+        }
+
+        /**
+         * Called before each batch is started.
+         * 
+         * @param batchNumber the 0-based batch number
+         */
+        protected void preBatch(int batchNumber) {
+        }
+
+        /**
+         * Called after each batch is completed.
+         * 
+         * @param batchNumber the 0-based batch number
+         */
+        protected void postBatch(int batchNumber) {
+        }
+
+        /**
+         * Called before each record is created.
+         * 
+         * @param recordNumber the 0-based record number in the batch
+         * @param recordId the unique ID of the record that will be created
+         */
+        protected void preRecord(int recordNumber, long recordId) {
+        }
+
+        /**
+         * Called after each record is created and enqueued.
+         * 
+         * @param recordNumber the 0-based record number in the batch
+         * @param recordId the unique ID of the record
+         * @param record the source record
+         */
+        protected void postRecord(int recordNumber, long recordId, SourceRecord record) {
         }
     }
 }

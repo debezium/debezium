@@ -105,6 +105,7 @@
         <module>support/checkstyle</module>
         <module>debezium-assembly-descriptors</module>
         <module>debezium-core</module>
+        <module>debezium-event-api</module>
         <module>debezium-embedded</module>
         <module>debezium-connector-mysql</module>
         <module>debezium-connector-postgres</module>
@@ -292,6 +293,11 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-embedded</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-event-api</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
