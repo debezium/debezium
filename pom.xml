@@ -81,7 +81,7 @@
         <version.war.plugin>2.5</version.war.plugin>
         <version.codehaus.helper.plugin>1.8</version.codehaus.helper.plugin>
         <version.google.formatter.plugin>0.3.1</version.google.formatter.plugin>
-        <version.docker.maven.plugin>0.18.1</version.docker.maven.plugin>
+        <version.docker.maven.plugin>0.19.0</version.docker.maven.plugin>
         <version.staging.plugin>1.6.3</version.staging.plugin>
         <version.protoc.maven.plugin>3.0.0.1</version.protoc.maven.plugin>
 

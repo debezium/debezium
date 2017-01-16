@@ -138,16 +138,7 @@
                                 </log>
                                 <wait>
                                     <time>30000</time> <!-- 30 seconds max -->
-                                    <!--
-                                        The current debezium/postgres docker image restarts the server once when it initializes 
-                                        permissions, so we can't really wait for a log. Instead, we'll wait for the PG port
-                                        to become available
-                                    -->
-                                    <tcp>
-                                        <ports>
-                                            <port>5432</port>
-                                        </ports>
-                                    </tcp>
+                                    <log>PostgreSQL init process complete</log>
                                 </wait>
                             </run>
                         </image>
