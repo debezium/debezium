@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import com.datapipeline.clients.DpAES;
+
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -70,7 +72,7 @@ public class MySqlJdbcContext implements AutoCloseable {
     }
 
     public String password() {
-        return config.getString(MySqlConnectorConfig.PASSWORD);
+        return DpAES.decrypt(config.getString(MySqlConnectorConfig.PASSWORD));
     }
 
     public String hostname() {
@@ -102,20 +104,14 @@ public class MySqlJdbcContext implements AutoCloseable {
     }
 
     public void shutdown() {
-        try {
-            jdbc.close();
-        } catch (SQLException e) {
-            logger.error("Unexpected error shutting down the database connection", e);
-        } finally {
-            // Reset the system properties to their original value ...
-            originalSystemProperties.forEach((name, value) -> {
-                if (value != null) {
-                    System.setProperty(name, value);
-                } else {
-                    System.clearProperty(name);
-                }
-            });
-        }
+        // Reset the system properties to their original value ...
+        originalSystemProperties.forEach((name, value) -> {
+            if (value != null) {
+                System.setProperty(name, value);
+            } else {
+                System.clearProperty(name);
+            }
+        });
     }
 
     @Override

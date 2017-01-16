@@ -5,19 +5,27 @@
  */
 package io.debezium.connector.mysql;
 
+import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.connector.mysql.MySqlConnectorConfig.TopicGenerationMode;
 import io.debezium.function.Predicates;
 import io.debezium.util.Clock;
+import io.debezium.util.Collect;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.LoggingContext.PreviousContext;
 import io.debezium.util.Strings;
+
+import static io.debezium.connector.mysql.MySqlConnectorConfig.TABLE_SCHEMA;
 
 /**
  * A Kafka Connect source task reads the MySQL binary log and generate the corresponding data change events.
@@ -36,16 +44,19 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
 
     public MySqlTaskContext(Configuration config) {
         super(config);
-
         // Set up the topic selector ...
-        this.topicSelector = TopicSelector.defaultSelector(serverName());
-
+        if (isMergeTopicGenerationMode()) {
+            this.topicSelector = TopicSelector.mergeTopicSelector(serverName(), ".", getTableSchemaMap());
+        } else {
+            this.topicSelector = TopicSelector.defaultSelector(serverName());
+        }
         // Set up the source information ...
         this.source = new SourceInfo();
         this.source.setServerName(serverName());
 
         // Set up the MySQL schema ...
-        this.dbSchema = new MySqlSchema(config, serverName());
+        // shao@datapipeline.com We use topic name as the schema name.
+        this.dbSchema = new MySqlSchema(config, serverName(), this.topicSelector::getTopic);
 
         // Set up the record processor ...
         this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector);
@@ -190,6 +201,44 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
 
     public boolean useMinimalSnapshotLocking() {
         return config.getBoolean(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING);
+    }
+
+    protected TopicGenerationMode topicGenerationMode() {
+        String value = config.getString(MySqlConnectorConfig.TOPIC_GENERATION_MODE);
+        return TopicGenerationMode.parse(value, MySqlConnectorConfig.TOPIC_GENERATION_MODE.defaultValueAsString());
+    }
+
+    protected boolean isMergeTopicGenerationMode() {
+        return topicGenerationMode() == TopicGenerationMode.MERGE;
+    }
+
+    protected Map<String, String> getTableSchemaMap() {
+        Map<String, String> map = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        logger.info("TableSchemaMap = {}", config.getString(TABLE_SCHEMA.name()));
+        for (String value : config.getString(TABLE_SCHEMA.name()).toLowerCase().split("],")) {
+            logger.info("TableSchemaChild = {}", value);
+            Pattern pattern = Pattern.compile("(.+):\\[(([^,]+,)+[^.]+)]");
+            Matcher matcher = pattern.matcher(value);
+            if (matcher.find()) {
+                String schemaName = matcher.group(1);
+                List<String> tableNames = Collect.arrayListOf(matcher.group(2).split(","));
+                logger.info("SchemaName = {} tableNames = {}", schemaName, tableNames);
+                for (String tableName : tableNames) {
+                    map.put(tableName, schemaName);
+                }
+            } else {
+                //TODO: single table rename
+                Pattern pattern1 = Pattern.compile("(.+):\\[([A-Za-z0-9_]+)\\]");
+                Matcher matcher1 = pattern1.matcher(value);
+                if (matcher1.find()) {
+                    String schemaName = matcher1.group(1);
+                    String tableName = matcher1.group(2);
+                    logger.info("SchemaName = {} tableNames = {}", schemaName, tableName);
+                    map.put(tableName, schemaName);
+                }
+            }
+        }
+        return map;
     }
 
     @Override

@@ -14,6 +14,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import com.datapipeline.clients.DpAES;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
@@ -53,7 +54,7 @@ public class ConnectionContext implements AutoCloseable {
 
         this.useHostsAsSeeds = config.getBoolean(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS);
         final String username = config.getString(MongoDbConnectorConfig.USER);
-        final String password = config.getString(MongoDbConnectorConfig.PASSWORD);
+        final String password = DpAES.decrypt(config.getString(MongoDbConnectorConfig.PASSWORD));
         final String configDbName = ReplicaSetDiscovery.CONFIG_DATABASE_NAME;
         final String adminDbName = ReplicaSetDiscovery.ADMIN_DATABASE_NAME;
 

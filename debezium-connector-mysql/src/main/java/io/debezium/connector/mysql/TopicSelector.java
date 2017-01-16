@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import java.util.Map;
+
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.relational.TableId;
 
@@ -60,6 +62,23 @@ public interface TopicSelector {
                 return String.join(delimiter, prefix, databaseName, tableName);
             }
 
+        };
+    }
+
+
+
+    static TopicSelector mergeTopicSelector(String prefix, String delimiter, Map<String, String> tableSchemaMap) {
+
+        return new TopicSelector() {
+            @Override
+            public String getTopic(String databaseName, String tableName) {
+                return String.join(delimiter, prefix, databaseName, tableSchemaMap.getOrDefault(tableName, tableName));
+            }
+
+            @Override
+            public String getPrimaryTopic() {
+                return prefix;
+            }
         };
     }
 

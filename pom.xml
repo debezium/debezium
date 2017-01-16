@@ -105,7 +105,6 @@
         <module>debezium-connector-mysql</module>
         <module>debezium-connector-mongodb</module>
     </modules>
-
     <distributionManagement>
       <!--<repository>-->
         <!--<id>ossrh</id>-->
@@ -122,12 +121,19 @@
             <url>http://${nexus.ip}:8081/nexus/content/repositories/snapshots</url>
         </snapshotRepository>
     </distributionManagement>
-
     <repositories>
         <repository>
             <id>confluent</id>
             <name>Confluent</name>
             <url>http://packages.confluent.io/maven/</url>
+            <!--<snapshots>-->
+                <!--<enabled>true</enabled>-->
+                <!--<updatePolicy>never</updatePolicy>-->
+            <!--</snapshots>-->
+        </repository>
+        <repository>
+            <id>datapipeline</id>
+            <url>http://${nexus.ip}:8081/nexus/content/repositories/snapshots</url>
             <snapshots>
                 <enabled>true</enabled>
                 <updatePolicy>never</updatePolicy>
@@ -199,7 +205,6 @@
                 <groupId>io.confluent</groupId>
                 <artifactId>kafka-connect-avro-converter</artifactId>
                 <version>${version.confluent.platform}</version>
-                <scope>test</scope>
             </dependency>
 
             <!-- PostgreSQL JDBC driver -->
@@ -318,6 +323,11 @@
             <dependency>
                 <groupId>com.datapipeline</groupId>
                 <artifactId>dp-core</artifactId>
+                <version>${version.datapipeline}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.datapipeline</groupId>
+                <artifactId>dp-clients</artifactId>
                 <version>${version.datapipeline}</version>
             </dependency>
         </dependencies>
