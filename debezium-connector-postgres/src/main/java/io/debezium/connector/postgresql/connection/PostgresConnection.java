@@ -31,7 +31,9 @@ public class PostgresConnection extends JdbcConnection {
     
     private static final String URL_PATTERN = "jdbc:postgresql://${" + JdbcConfiguration.HOSTNAME + "}:${"
                                              + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
-    protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(URL_PATTERN);
+    protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(URL_PATTERN, 
+                                                                                    org.postgresql.Driver.class.getName(),
+                                                                                    PostgresConnection.class.getClassLoader());
  
     private static Logger LOGGER = LoggerFactory.getLogger(PostgresConnection.class);
  
