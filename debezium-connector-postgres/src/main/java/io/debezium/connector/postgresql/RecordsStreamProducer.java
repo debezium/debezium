@@ -17,6 +17,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -36,8 +37,8 @@ import io.debezium.relational.TableSchema;
 import io.debezium.util.LoggingContext;
 
 /**
- * A {@link RecordsProducer} which creates {@link org.apache.kafka.connect.source.SourceRecord records} from a Postgres 
- * streaming replication connection and {@link io.debezium.connector.postgresql.proto.PgProto messages}. 
+ * A {@link RecordsProducer} which creates {@link org.apache.kafka.connect.source.SourceRecord records} from a Postgres
+ * streaming replication connection and {@link io.debezium.connector.postgresql.proto.PgProto messages}.
  * 
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
@@ -46,7 +47,7 @@ public class RecordsStreamProducer extends RecordsProducer {
     
     private static final String CONTEXT_NAME = "records-stream-producer";
     
-    private final ExecutorService executorService;     
+    private final ExecutorService executorService;
     private final ReplicationConnection replicationConnection;
     private final AtomicReference<ReplicationStream> replicationStream;
     
@@ -84,20 +85,20 @@ public class RecordsStreamProducer extends RecordsProducer {
                 replicationStream.compareAndSet(null, replicationConnection.startStreaming());
             }
           
-            // refresh the schema so we have a latest view of the DB tables 
+            // refresh the schema so we have a latest view of the DB tables
             taskContext.refreshSchema(true);
             // the new thread will inherit it's parent MDC
             executorService.submit(() -> streamChanges(recordConsumer));
         } catch (Throwable t) {
             throw new ConnectException(t.getCause() != null ? t.getCause() : t);
         } finally {
-            previousContext.restore();        
+            previousContext.restore();
         }
     }
     
     private void streamChanges(Consumer<SourceRecord> consumer) {
         ReplicationStream stream = this.replicationStream.get();
-        // run while we haven't been requested to stop 
+        // run while we haven't been requested to stop
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 // this will block until a message is available
@@ -112,7 +113,7 @@ public class RecordsStreamProducer extends RecordsProducer {
                     logger.error("unexpected exception while streaming logical changes", e);
                 }
                 return;
-            } 
+            }
         }
     }
     
@@ -146,7 +147,7 @@ public class RecordsStreamProducer extends RecordsProducer {
             if (replicationConnection != null) {
                 logger.debug("stopping streaming...");
                 //TODO author=Horia Chiorean date=08/11/2016 description=Ideally we'd close the stream, but it's not reliable atm (see javadoc)
-                //replicationStream.close(); 
+                //replicationStream.close();
                 // close the connection - this should also disconnect the current stream even if it's blocking
                 replicationConnection.close();
             }
@@ -331,7 +332,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         recordConsumer.accept(record);
     }
     
-    private Object[] columnValues(List<PgProto.DatumMessage> messageList, TableId tableId, boolean refreshSchemaIfChanged) 
+    private Object[] columnValues(List<PgProto.DatumMessage> messageList, TableId tableId, boolean refreshSchemaIfChanged)
             throws SQLException {
         if (messageList == null || messageList.isEmpty()) {
             return null;
@@ -339,7 +340,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         Table table = schema().tableFor(tableId);
         assert table != null;
     
-        // check if we need to refresh our local schema due to DB schema changes for this table 
+        // check if we need to refresh our local schema due to DB schema changes for this table
         if (refreshSchemaIfChanged && schemaChanged(messageList, table)) {
             schema().refresh(taskContext.createConnection(), tableId);
             table = schema().tableFor(tableId);
@@ -351,7 +352,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         messageList.forEach(message -> {
             int position = columnNames.indexOf(message.getColumnName());
             assert position >= 0;
-            values[position] = extractValueFromMessage(message);            
+            values[position] = extractValueFromMessage(message);
         });
         return values;
     }
@@ -360,12 +361,12 @@ public class RecordsStreamProducer extends RecordsProducer {
         List<String> columnNames = table.columnNames();
         int messagesCount = messageList.size();
         if (columnNames.size() != messagesCount) {
-            // the table metadata has less or more columns than the event, which means the table structure has changed, 
+            // the table metadata has less or more columns than the event, which means the table structure has changed,
             // so we need to trigger a refresh...
            return true;
         }
         
-        // go through the list of columns from the message to figure out if any of them are new or have changed their type based 
+        // go through the list of columns from the message to figure out if any of them are new or have changed their type based
         // on what we have in the table metadata....
         return messageList.stream().filter(message -> {
             String columnName = message.getColumnName();
@@ -376,7 +377,7 @@ public class RecordsStreamProducer extends RecordsProducer {
             } else if (!schema().isType(column.typeName(), column.jdbcType())) {
                 logger.debug("detected new type for column '{}', old type was '{}', new type is '{}'; refreshing table schema", columnName, column.jdbcType(),
                             message.getColumnType());
-                return true;                
+                return true;
             }
             return false;
         }).findFirst().isPresent();
@@ -406,14 +407,15 @@ public class RecordsStreamProducer extends RecordsProducer {
     }
     
     /**
-     * Converts the Protobuf value for a {@link io.debezium.connector.postgresql.proto.PgProto.DatumMessage plugin message} to 
+     * Converts the Protobuf value for a {@link io.debezium.connector.postgresql.proto.PgProto.DatumMessage plugin message} to
      * a Java value based on the type of the column from the message. This value will be converted later on if necessary by the
      * {@link PostgresValueConverter#converter(Column, Field)} instance to match whatever the Connect schema type expects.
      *
-     * Note that the logic here is tightly coupled (i.e. dependent) on the Postgres plugin logic which writes the actual 
+     * Note that the logic here is tightly coupled (i.e. dependent) on the Postgres plugin logic which writes the actual
      * Protobuf messages.
      *
      * @param datumMessage  a {@link io.debezium.connector.postgresql.proto.PgProto.DatumMessage} instance; never {@code null}
+     * @return the value; may be null
      */
     protected Object extractValueFromMessage(PgProto.DatumMessage datumMessage) {
         int columnType = (int) datumMessage.getColumnType();
@@ -451,8 +453,8 @@ public class RecordsStreamProducer extends RecordsProducer {
                 if (!datumMessage.hasDatumInt64()) {
                     return null;
                 }
-                // these types are sent by the plugin as LONG - microseconds since Unix Epoch 
-                // but we'll convert them to nanos which is the smallest unit 
+                // these types are sent by the plugin as LONG - microseconds since Unix Epoch
+                // but we'll convert them to nanos which is the smallest unit
                 return TimeUnit.NANOSECONDS.convert(datumMessage.getDatumInt64(), TimeUnit.MICROSECONDS);
             case PgOid.TIMETZ:
                 if (!datumMessage.hasDatumDouble()) {
@@ -463,7 +465,7 @@ public class RecordsStreamProducer extends RecordsProducer {
             case PgOid.INTERVAL:
                 // these are sent as doubles by the plugin since their storage is larger than 8 bytes
                 return datumMessage.hasDatumDouble() ? datumMessage.getDatumDouble() : null;
-            // the plugin will send back a TZ formatted string                
+            // the plugin will send back a TZ formatted string
             case PgOid.BYTEA:
                 return datumMessage.hasDatumBytes() ? datumMessage.getDatumBytes().toByteArray() : null;
             case PgOid.POINT: {

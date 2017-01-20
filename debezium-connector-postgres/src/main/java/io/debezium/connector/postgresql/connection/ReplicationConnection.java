@@ -7,6 +7,7 @@
 package io.debezium.connector.postgresql.connection;
 
 import java.sql.SQLException;
+
 import org.postgresql.replication.LogSequenceNumber;
 import org.postgresql.replication.PGReplicationStream;
 
@@ -18,7 +19,7 @@ import io.debezium.config.Configuration;
  * and WAL offset tracking is specific to the [database name, plugin name, slot name] triple.
  *
  * @author Horia Chiorean (hchiorea@redhat.com)
- */              
+ */
 @NotThreadSafe
 public interface ReplicationConnection extends AutoCloseable {
     
@@ -32,18 +33,19 @@ public interface ReplicationConnection extends AutoCloseable {
      * </p>
      *
      * @return a {@link PGReplicationStream} from which data is read; never null
+     * @throws SQLException if there is a problem obtaining the replication stream
      */
     ReplicationStream startStreaming() throws SQLException;
     
     /**
-     * Opens a stream for reading logical replication changes from a given LSN position. 
+     * Opens a stream for reading logical replication changes from a given LSN position.
      * <p>
      * Note that it is possible for a server to have recycled old WAL segments (see the {@code wal_keep_segments} setting). If
      * that is the case, then even though a LSN number may be valid, the server will not stream back any changes because they
      * are not available.
      * </p>
      * @param offset a value representing the WAL sequence number where replication should start from; if the value
-     * is {@code null} or negative, this behaves exactly like {@link #startStreaming()}. 
+     * is {@code null} or negative, this behaves exactly like {@link #startStreaming()}.
      * @return a {@link PGReplicationStream} from which data is read; never null
      * @see org.postgresql.replication.LogSequenceNumber
      * @throws SQLException if anything fails
@@ -61,15 +63,15 @@ public interface ReplicationConnection extends AutoCloseable {
     /**
      * Creates a new {@link Builder} instance which can be used for creating replication connections.
      * 
-     * @param jdbcConfig a {@link Configuration} instance that contains JDBC settings; may not be null 
+     * @param jdbcConfig a {@link Configuration} instance that contains JDBC settings; may not be null
      * @return a builder, never null
      */
     static Builder builder(Configuration jdbcConfig) {
-        return new PostgresReplicationConnection.ReplicationConnectionBuilder(jdbcConfig);           
+        return new PostgresReplicationConnection.ReplicationConnectionBuilder(jdbcConfig);
     }
     
     /**
-     * Formats a LSN long value as a String value which can be used for outputting user-friendly LSN values. 
+     * Formats a LSN long value as a String value which can be used for outputting user-friendly LSN values.
      * 
      * @param lsn the LSN value
      * @return a String format of the value, never {@code null}

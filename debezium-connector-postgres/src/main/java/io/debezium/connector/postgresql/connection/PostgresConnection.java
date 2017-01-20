@@ -12,6 +12,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+
 import org.postgresql.replication.LogSequenceNumber;
 import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
@@ -28,38 +29,40 @@ import io.debezium.relational.TableId;
  * @author Horia Chiorean
  */
 public class PostgresConnection extends JdbcConnection {
-    
+
     private static final String URL_PATTERN = "jdbc:postgresql://${" + JdbcConfiguration.HOSTNAME + "}:${"
-                                             + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
-    protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(URL_PATTERN, 
+            + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
+    protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(URL_PATTERN,
                                                                                     org.postgresql.Driver.class.getName(),
                                                                                     PostgresConnection.class.getClassLoader());
- 
     private static Logger LOGGER = LoggerFactory.getLogger(PostgresConnection.class);
- 
+
     /**
-     *  Creates a Postgres connection using the supplied configuration.
-     *  
-      * @param config {@link Configuration} instance, may not be null.
+     * Creates a Postgres connection using the supplied configuration.
+     * 
+     * @param config {@link Configuration} instance, may not be null.
      */
     public PostgresConnection(Configuration config) {
         super(config, FACTORY, PostgresConnection::validateServerVersion, PostgresConnection::defaultSettings);
     }
-    
+
     /**
-     * @see #connectionString(String)  
+     * Returns a JDBC connection string for the current configuration.
+     * 
+     * @return a {@code String} where the variables in {@code urlPattern} are replaced with values from the configuration
      */
     public String connectionString() {
         return connectionString(URL_PATTERN);
     }
-    
+
     /**
      * Executes a series of statements without explicitly committing the connection.
      * 
      * @param statements a series of statements to execute
+     * @return this object so methods can be chained together; never null
      * @throws SQLException if anything fails
      */
-    public PostgresConnection executeWithoutCommitting(String...statements) throws SQLException {
+    public PostgresConnection executeWithoutCommitting(String... statements) throws SQLException {
         Connection conn = connection();
         try (Statement statement = conn.createStatement()) {
             for (String stmt : statements) {
@@ -68,15 +71,19 @@ public class PostgresConnection extends JdbcConnection {
         }
         return this;
     }
-    
+
     /**
      * Prints out information about the REPLICA IDENTITY status of a table.
      * This in turn determines how much information is available for UPDATE and DELETE operations for logical replication.
+     * 
+     * @param tableId the identifier of the table
+     * @return the replica identity information; never null
+     * @throws SQLException if there is a problem obtaining the replica identity information for the given table
      */
     public ServerInfo.ReplicaIdentity readReplicaIdentityInfo(TableId tableId) throws SQLException {
         String statement = "SELECT relreplident FROM pg_catalog.pg_class c " +
-                           "LEFT JOIN pg_catalog.pg_namespace n ON c.relnamespace=n.oid " +
-                           "WHERE n.nspname=? and c.relname=?";
+                "LEFT JOIN pg_catalog.pg_namespace n ON c.relnamespace=n.oid " +
+                "WHERE n.nspname=? and c.relname=?";
         String schema = tableId.schema() != null && tableId.schema().length() > 0 ? tableId.schema() : "public";
         StringBuilder replIdentity = new StringBuilder();
         prepareQuery(statement, stmt -> {
@@ -91,36 +98,36 @@ public class PostgresConnection extends JdbcConnection {
         });
         return ServerInfo.ReplicaIdentity.parseFromDB(replIdentity.toString());
     }
-    
+
     protected ServerInfo.ReplicationSlot readReplicationSlotInfo(String slotName, String pluginName) throws SQLException {
         AtomicReference<ServerInfo.ReplicationSlot> replicationSlotInfo = new AtomicReference<>();
         String database = database();
         prepareQuery(
-                "select * from pg_replication_slots where slot_name = ? and database = ? and plugin = ?", statement -> {
-                    statement.setString(1, slotName);
-                    statement.setString(2, database);
-                    statement.setString(3, pluginName);
-                }, rs -> {
-                    if (rs.next()) {
-                        boolean active = rs.getBoolean("active");
-                        Long confirmedFlushedLSN = null;
-                        try {
-                            String confirmedFlushLSNString = rs.getString("confirmed_flush_lsn");
-                            confirmedFlushedLSN = LogSequenceNumber.valueOf(confirmedFlushLSNString).asLong();
-                        } catch (SQLException e) {
-                            //info not available, so we must be prior to PG 9.6
-                        }
-                        replicationSlotInfo.compareAndSet(null, new ServerInfo.ReplicationSlot(active, confirmedFlushedLSN));
-                    } else {
-                        LOGGER.debug("No replication slot '{}' is present for plugin '{}' and database '{}'", slotName,
-                                     pluginName, database);
-                        replicationSlotInfo.compareAndSet(null, ServerInfo.ReplicationSlot.INVALID);
-                    }
-                });
-    
+                     "select * from pg_replication_slots where slot_name = ? and database = ? and plugin = ?", statement -> {
+                         statement.setString(1, slotName);
+                         statement.setString(2, database);
+                         statement.setString(3, pluginName);
+                     }, rs -> {
+                         if (rs.next()) {
+                             boolean active = rs.getBoolean("active");
+                             Long confirmedFlushedLSN = null;
+                             try {
+                                 String confirmedFlushLSNString = rs.getString("confirmed_flush_lsn");
+                                 confirmedFlushedLSN = LogSequenceNumber.valueOf(confirmedFlushLSNString).asLong();
+                             } catch (SQLException e) {
+                                 // info not available, so we must be prior to PG 9.6
+                             }
+                             replicationSlotInfo.compareAndSet(null, new ServerInfo.ReplicationSlot(active, confirmedFlushedLSN));
+                         } else {
+                             LOGGER.debug("No replication slot '{}' is present for plugin '{}' and database '{}'", slotName,
+                                          pluginName, database);
+                             replicationSlotInfo.compareAndSet(null, ServerInfo.ReplicationSlot.INVALID);
+                         }
+                     });
+
         return replicationSlotInfo.get();
     }
-    
+
     /**
      * Drops a replication slot that was created on the DB
      * 
@@ -132,7 +139,7 @@ public class PostgresConnection extends JdbcConnection {
             execute("select pg_drop_replication_slot('" + slotName + "')");
             return true;
         } catch (SQLException e) {
-            //slot is active
+            // slot is active
             PSQLState currentState = new PSQLState(e.getSQLState());
             if (PSQLState.OBJECT_IN_USE.equals(currentState)) {
                 LOGGER.warn("Cannot drop replication slot '{}' because it's still in use", slotName);
@@ -146,7 +153,7 @@ public class PostgresConnection extends JdbcConnection {
             return false;
         }
     }
-    
+
     @Override
     public synchronized void close() {
         try {
@@ -155,9 +162,10 @@ public class PostgresConnection extends JdbcConnection {
             LOGGER.error("Unexpected error while closing Postgres connection", e);
         }
     }
-    
+
     /**
-     * Returns the PG id of the current active transaction 
+     * Returns the PG id of the current active transaction
+     * 
      * @return a PG transaction identifier, or null if no tx is active
      * @throws SQLException if anything fails.
      */
@@ -171,7 +179,7 @@ public class PostgresConnection extends JdbcConnection {
         long value = txId.get();
         return value > 0 ? value : null;
     }
-    
+
     /**
      * Returns the current position in the server tx log.
      * 
@@ -188,7 +196,7 @@ public class PostgresConnection extends JdbcConnection {
         });
         return result.get();
     }
-    
+
     /**
      * Returns information about the PG server to which this instance is connected.
      * 
@@ -205,24 +213,25 @@ public class PostgresConnection extends JdbcConnection {
         String username = serverInfo.username();
         if (username != null) {
             query("SELECT oid, rolname, rolsuper, rolinherit, rolcreaterole, rolcreatedb, rolcanlogin, rolreplication FROM pg_roles " +
-                  "WHERE pg_has_role('" + username +"', oid, 'member')", rs -> {
-                while (rs.next()) {
-                    String roleInfo = "superuser: " + rs.getBoolean(3) + ", replication: " + rs.getBoolean(8) + 
-                                      ", inherit: " + rs.getBoolean(4) + ", create role: " + rs.getBoolean(5) +
-                                      ", create db: " + rs.getBoolean(6) + ", can log in: " + rs.getBoolean(7);
-                    String roleName = rs.getString(2);
-                    serverInfo.addRole(roleName, roleInfo);
-                }
-            });
+                    "WHERE pg_has_role('" + username + "', oid, 'member')",
+                  rs -> {
+                      while (rs.next()) {
+                          String roleInfo = "superuser: " + rs.getBoolean(3) + ", replication: " + rs.getBoolean(8) +
+                                  ", inherit: " + rs.getBoolean(4) + ", create role: " + rs.getBoolean(5) +
+                                  ", create db: " + rs.getBoolean(6) + ", can log in: " + rs.getBoolean(7);
+                          String roleName = rs.getString(2);
+                          serverInfo.addRole(roleName, roleInfo);
+                      }
+                  });
         }
         return serverInfo;
     }
-    
+
     protected static void defaultSettings(Configuration.Builder builder) {
         // we require Postgres 9.4 as the minimum server version since that's where logical replication was first introduced
         builder.with("assumeMinServerVersion", "9.4");
     }
-    
+
     private static void validateServerVersion(Statement statement) throws SQLException {
         DatabaseMetaData metaData = statement.getConnection().getMetaData();
         int majorVersion = metaData.getDatabaseMajorVersion();
@@ -231,5 +240,5 @@ public class PostgresConnection extends JdbcConnection {
             throw new SQLException("Cannot connect to a version of Postgres lower than 9.4");
         }
     }
-    
+
 }

@@ -39,7 +39,9 @@ public final class TestHelper {
      * Obtain a replication connection instance for the given slot name.
      *
      * @param slotName the name of the logical decoding slot
+     * @param dropOnClose true if the slot should be dropped upon close
      * @return the PostgresConnection instance; never null
+     * @throws SQLException if there is a problem obtaining a replication connection
      */
     public static ReplicationConnection createForReplication(String slotName, boolean dropOnClose) throws SQLException {
         return ReplicationConnection.builder(defaultJdbcConfig())
@@ -58,7 +60,7 @@ public final class TestHelper {
     }
     
     /**
-     * Executes a JDBC statement using the default jdbc config without autocommitting the connection 
+     * Executes a JDBC statement using the default jdbc config without autocommitting the connection
      * 
      * @param statement an array of statement
      */
@@ -116,7 +118,7 @@ public final class TestHelper {
         jdbcConfiguration.forEach((field, value) -> builder.with(PostgresConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
         return builder.with(PostgresConnectorConfig.SERVER_NAME, TEST_SERVER)
                       .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, true);
-    } 
+    }
     
     protected static void executeDDL(String ddlFile) throws Exception {
         URL ddlTestFile = TestHelper.class.getClassLoader().getResource(ddlFile);
