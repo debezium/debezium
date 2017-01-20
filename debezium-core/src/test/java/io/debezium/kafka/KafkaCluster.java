@@ -352,7 +352,7 @@ public class KafkaCluster {
 
     private void shutdownReliably(KafkaServer server) {
         try {
-            server.shutdown();
+            server.shutdown(deleteDataUponShutdown);
         } catch (Throwable t) {
             LOGGER.error("Error while shutting down {}", server, t);
         }

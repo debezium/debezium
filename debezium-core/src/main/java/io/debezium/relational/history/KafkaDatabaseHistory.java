@@ -92,7 +92,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     private static final String PRODUCER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "producer.";
 
     private final DocumentReader reader = DocumentReader.defaultReader();
-    private final Integer partition = new Integer(0);
+    private final Integer partition = 0;
     private String topicName;
     private Configuration consumerConfig;
     private Configuration producerConfig;
@@ -119,7 +119,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                                     .withDefault(ConsumerConfig.GROUP_ID_CONFIG, dbHistoryName)
                                     .withDefault(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 1) // get even smallest message
                                     .withDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false)
-                                    .withDefault(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 30000)
+                                    .withDefault(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 10000) //readjusted since 0.10.1.0 
                                     .withDefault(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
                                                  OffsetResetStrategy.EARLIEST.toString().toLowerCase())
                                     .withDefault(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
@@ -176,7 +176,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
 
     @Override
     protected void recoverRecords(Tables schema, DdlParser ddlParser, Consumer<HistoryRecord> records) {
-        try (KafkaConsumer<String, String> historyConsumer = new KafkaConsumer<String, String>(consumerConfig.asProperties());) {
+        try (KafkaConsumer<String, String> historyConsumer = new KafkaConsumer<>(consumerConfig.asProperties());) {
             // Subscribe to the only partition for this topic, and seek to the beginning of that partition ...
             TopicPartition topicPartition = new TopicPartition(topicName, partition);
             logger.debug("Subscribing to database history topic '{}' partition {} at offset 0", topicPartition.topic(),
@@ -229,5 +229,9 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                     + " using brokers at " + producerConfig.getString(BOOTSTRAP_SERVERS);
         }
         return "Kafka topic";
+    }
+    
+    protected static String consumerConfigPropertyName(String kafkaConsumerPropertyName) {
+        return CONSUMER_PREFIX + kafkaConsumerPropertyName;
     }
 }

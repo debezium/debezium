@@ -5,11 +5,12 @@
  */
 package io.debezium.kafka;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.io.File;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.kafka.common.serialization.IntegerSerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.After;
@@ -17,8 +18,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.junit.SkipLongRunning;
 import io.debezium.junit.SkipTestRule;
@@ -39,8 +38,9 @@ public class KafkaClusterTest {
     @Before
     public void beforeEach() {
         dataDir = Testing.Files.createTestingDirectory("cluster");
-        Testing.Files.delete(dataDir);
-        cluster = new KafkaCluster().usingDirectory(dataDir);
+        cluster = new KafkaCluster().usingDirectory(dataDir)
+                                    .deleteDataPriorToStartup(true)
+                                    .deleteDataUponShutdown(true);
     }
 
     @After
@@ -52,7 +52,7 @@ public class KafkaClusterTest {
     @Test
     @SkipLongRunning
     public void shouldStartClusterWithOneBrokerAndRemoveData() throws Exception {
-        cluster.deleteDataUponShutdown(true).addBrokers(1).startup();
+        cluster.addBrokers(1).startup();
         cluster.onEachDirectory(this::assertValidDataDirectory);
         cluster.shutdown();
         cluster.onEachDirectory(this::assertDoesNotExist);
@@ -61,7 +61,7 @@ public class KafkaClusterTest {
     @Test
     @SkipLongRunning
     public void shouldStartClusterWithMultipleBrokerAndRemoveData() throws Exception {
-        cluster.deleteDataUponShutdown(true).addBrokers(3).startup();
+        cluster.addBrokers(3).startup();
         cluster.onEachDirectory(this::assertValidDataDirectory);
         cluster.shutdown();
         cluster.onEachDirectory(this::assertDoesNotExist);
@@ -95,7 +95,7 @@ public class KafkaClusterTest {
         final AtomicLong messagesRead = new AtomicLong(0);
 
         // Start a cluster and create a topic ...
-        cluster.deleteDataUponShutdown(false).addBrokers(1).startup();
+        cluster.addBrokers(1).startup();
         cluster.createTopics(topicName);
 
         // Consume messages asynchronously ...
@@ -128,7 +128,7 @@ public class KafkaClusterTest {
         final AtomicLong messagesRead = new AtomicLong(0);
 
         // Start a cluster and create a topic ...
-        cluster.deleteDataUponShutdown(false).addBrokers(1).startup();
+        cluster.addBrokers(1).startup();
         cluster.createTopics(topicName);
 
         // Consume messages asynchronously ...

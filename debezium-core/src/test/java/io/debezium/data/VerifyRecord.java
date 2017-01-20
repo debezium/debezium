@@ -17,7 +17,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
-
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Schema.Type;
@@ -28,7 +27,6 @@ import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.json.JsonDeserializer;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.fest.assertions.Delta;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
@@ -73,7 +71,7 @@ public class VerifyRecord {
     static {
         Map<String, Object> config = new HashMap<>();
         config.put("schemas.enable", Boolean.TRUE.toString());
-        config.put("schemas.cache.size", 100);
+        config.put("schemas.cache.size", String.valueOf(100));
         keyJsonConverter.configure(config, true);
         keyJsonDeserializer.configure(config, true);
         valueJsonConverter.configure(config, false);
@@ -364,7 +362,7 @@ public class VerifyRecord {
         if (schema == null) return null;
         String name = schema.name();
         if (name != null) name = name.trim();
-        return name.isEmpty() ? null : name;
+        return name == null || name.isEmpty() ? null : name;
     }
 
     @SuppressWarnings("unchecked")
