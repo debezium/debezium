@@ -4,8 +4,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "snapshot" : true
   },
   "topic" : "engineering",
@@ -82,7 +82,7 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
@@ -95,8 +95,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "snapshot" : true
   },
   "topic" : "engineering",
@@ -173,12 +173,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "databaseName" : "regression_test",
-    "ddl" : "DROP TABLE IF EXISTS regression_test.dbz84_integer_types_table"
+    "ddl" : "DROP TABLE IF EXISTS `regression_test`.`dbz84_integer_types_table`"
   }
 }, {
   "sourcePartition" : {
@@ -186,8 +186,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "snapshot" : true
   },
   "topic" : "engineering",
@@ -264,12 +264,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "databaseName" : "regression_test",
-    "ddl" : "DROP TABLE IF EXISTS regression_test.dbz_123_bitvaluetest"
+    "ddl" : "DROP TABLE IF EXISTS `regression_test`.`dbz_123_bitvaluetest`"
   }
 }, {
   "sourcePartition" : {
@@ -277,8 +277,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "snapshot" : true
   },
   "topic" : "engineering",
@@ -355,12 +355,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "databaseName" : "regression_test",
-    "ddl" : "DROP TABLE IF EXISTS regression_test.dbz_104_customers"
+    "ddl" : "DROP TABLE IF EXISTS `regression_test`.`dbz_104_customers`"
   }
 }, {
   "sourcePartition" : {
@@ -368,8 +368,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "snapshot" : true
   },
   "topic" : "engineering",
@@ -446,12 +446,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "databaseName" : "regression_test",
-    "ddl" : "DROP TABLE IF EXISTS regression_test.dbz_100_enumsettest"
+    "ddl" : "DROP TABLE IF EXISTS `regression_test`.`dbz_100_enumsettest`"
   }
 }, {
   "sourcePartition" : {
@@ -459,8 +459,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "snapshot" : true
   },
   "topic" : "engineering",
@@ -537,12 +537,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "databaseName" : "regression_test",
-    "ddl" : "DROP TABLE IF EXISTS regression_test.dbz_114_zerovaluetest"
+    "ddl" : "DROP TABLE IF EXISTS `regression_test`.`dbz_114_zerovaluetest`"
   }
 }, {
   "sourcePartition" : {
@@ -550,8 +550,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "snapshot" : true
   },
   "topic" : "engineering",
@@ -628,12 +628,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "databaseName" : "regression_test",
-    "ddl" : "DROP TABLE IF EXISTS regression_test.dbz_147_decimalvalues"
+    "ddl" : "DROP TABLE IF EXISTS `regression_test`.`dbz_147_decimalvalues`"
   }
 }, {
   "sourcePartition" : {
@@ -641,8 +641,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "snapshot" : true
   },
   "topic" : "engineering",
@@ -719,12 +719,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "databaseName" : "regression_test",
-    "ddl" : "DROP TABLE IF EXISTS regression_test.t1464075356413_testtable6"
+    "ddl" : "DROP TABLE IF EXISTS `regression_test`.`t1464075356413_testtable6`"
   }
 }, {
   "sourcePartition" : {
@@ -732,8 +732,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "snapshot" : true
   },
   "topic" : "engineering",
@@ -810,12 +810,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "databaseName" : "regression_test",
-    "ddl" : "DROP TABLE IF EXISTS regression_test.dbz_85_fractest"
+    "ddl" : "DROP TABLE IF EXISTS `regression_test`.`dbz_85_fractest`"
   }
 }, {
   "sourcePartition" : {
@@ -823,8 +823,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "snapshot" : true
   },
   "topic" : "engineering",
@@ -901,12 +901,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "databaseName" : "regression_test",
-    "ddl" : "DROP TABLE IF EXISTS regression_test.dbz_102_charsettest"
+    "ddl" : "DROP TABLE IF EXISTS `regression_test`.`dbz_102_charsettest`"
   }
 }, {
   "sourcePartition" : {
@@ -914,8 +914,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "snapshot" : true
   },
   "topic" : "engineering",
@@ -992,12 +992,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "databaseName" : "regression_test",
-    "ddl" : "DROP DATABASE IF EXISTS regression_test"
+    "ddl" : "DROP DATABASE IF EXISTS `regression_test`"
   }
 }, {
   "sourcePartition" : {
@@ -1005,8 +1005,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "snapshot" : true
   },
   "topic" : "engineering",
@@ -1083,12 +1083,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "databaseName" : "regression_test",
-    "ddl" : "CREATE DATABASE regression_test"
+    "ddl" : "CREATE DATABASE `regression_test`"
   }
 }, {
   "sourcePartition" : {
@@ -1096,8 +1096,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "snapshot" : true
   },
   "topic" : "engineering",
@@ -1174,12 +1174,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "databaseName" : "regression_test",
-    "ddl" : "USE regression_test"
+    "ddl" : "USE `regression_test`"
   }
 }, {
   "sourcePartition" : {
@@ -1187,8 +1187,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "snapshot" : true
   },
   "topic" : "engineering",
@@ -1265,7 +1265,7 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
@@ -1278,8 +1278,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "snapshot" : true
   },
   "topic" : "engineering",
@@ -1356,7 +1356,7 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
@@ -1369,8 +1369,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "snapshot" : true
   },
   "topic" : "engineering",
@@ -1447,7 +1447,7 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
@@ -1460,8 +1460,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "snapshot" : true
   },
   "topic" : "engineering",
@@ -1538,7 +1538,7 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
@@ -1551,8 +1551,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "snapshot" : true
   },
   "topic" : "engineering",
@@ -1629,7 +1629,7 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
@@ -1642,8 +1642,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "snapshot" : true
   },
   "topic" : "engineering",
@@ -1720,7 +1720,7 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
@@ -1733,8 +1733,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "snapshot" : true
   },
   "topic" : "engineering",
@@ -1811,7 +1811,7 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
@@ -1824,8 +1824,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "snapshot" : true
   },
   "topic" : "engineering",
@@ -1902,7 +1902,7 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
@@ -1915,8 +1915,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "snapshot" : true
   },
   "topic" : "engineering",
@@ -1993,7 +1993,7 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
@@ -2006,8 +2006,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "row" : 1,
     "snapshot" : true
   },
@@ -2270,12 +2270,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252108843
+    "ts_ms" : 1484936365720
   }
 }, {
   "sourcePartition" : {
@@ -2283,8 +2283,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "row" : 1,
     "snapshot" : true
   },
@@ -2405,12 +2405,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252108843
+    "ts_ms" : 1484936365720
   }
 }, {
   "sourcePartition" : {
@@ -2418,8 +2418,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "row" : 1,
     "snapshot" : true
   },
@@ -2540,12 +2540,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252108843
+    "ts_ms" : 1484936365720
   }
 }, {
   "sourcePartition" : {
@@ -2553,8 +2553,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "row" : 1,
     "snapshot" : true
   },
@@ -2675,12 +2675,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252108843
+    "ts_ms" : 1484936365720
   }
 }, {
   "sourcePartition" : {
@@ -2688,8 +2688,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "row" : 1,
     "snapshot" : true
   },
@@ -2801,12 +2801,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252108843
+    "ts_ms" : 1484936365720
   }
 }, {
   "sourcePartition" : {
@@ -2814,8 +2814,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "row" : 1,
     "snapshot" : true
   },
@@ -2945,12 +2945,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252108843
+    "ts_ms" : 1484936365720
   }
 }, {
   "sourcePartition" : {
@@ -2958,8 +2958,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "row" : 1,
     "snapshot" : true
   },
@@ -3089,12 +3089,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252108843
+    "ts_ms" : 1484936365720
   }
 }, {
   "sourcePartition" : {
@@ -3102,8 +3102,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "row" : 1,
     "snapshot" : true
   },
@@ -3233,12 +3233,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252108843
+    "ts_ms" : 1484936365720
   }
 }, {
   "sourcePartition" : {
@@ -3246,8 +3246,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "row" : 1,
     "snapshot" : true
   },
@@ -3377,12 +3377,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252108843
+    "ts_ms" : 1484936365720
   }
 }, {
   "sourcePartition" : {
@@ -3390,8 +3390,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "row" : 1,
     "snapshot" : true
   },
@@ -3526,12 +3526,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252108843
+    "ts_ms" : 1484936365720
   }
 }, {
   "sourcePartition" : {
@@ -3539,8 +3539,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "row" : 1,
     "snapshot" : true
   },
@@ -3675,12 +3675,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252108843
+    "ts_ms" : 1484936365720
   }
 }, {
   "sourcePartition" : {
@@ -3688,8 +3688,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "row" : 1,
     "snapshot" : true
   },
@@ -3838,12 +3838,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252108843
+    "ts_ms" : 1484936365720
   }
 }, {
   "sourcePartition" : {
@@ -3851,8 +3851,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "row" : 1,
     "snapshot" : true
   },
@@ -4001,12 +4001,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252108843
+    "ts_ms" : 1484936365720
   }
 }, {
   "sourcePartition" : {
@@ -4014,8 +4014,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "row" : 1,
     "snapshot" : true
   },
@@ -4137,12 +4137,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252108843
+    "ts_ms" : 1484936365720
   }
 }, {
   "sourcePartition" : {
@@ -4150,8 +4150,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912",
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936",
     "row" : 1,
     "snapshot" : true
   },
@@ -4286,12 +4286,12 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252108843
+    "ts_ms" : 1484936365720
   }
 }, {
   "sourcePartition" : {
@@ -4299,8 +4299,8 @@
   },
   "sourceOffset" : {
     "file" : "mysql-bin-slave.000004",
-    "pos" : 4139461,
-    "gtids" : "${master_uuid}:1-6975,${server_uuid}:1-6912"
+    "pos" : 4152952,
+    "gtids" : "${master_uuid}:1-6999,${server_uuid}:1-6936"
   },
   "topic" : "engineering.regression_test.t1464075356413_testtable6",
   "kafkaPartition" : null,
@@ -4410,11 +4410,11 @@
       "ts_sec" : 0,
       "gtid" : null,
       "file" : "mysql-bin-slave.000004",
-      "pos" : 4139461,
+      "pos" : 4152952,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252108843
+    "ts_ms" : 1484936365720
   }
 } ]

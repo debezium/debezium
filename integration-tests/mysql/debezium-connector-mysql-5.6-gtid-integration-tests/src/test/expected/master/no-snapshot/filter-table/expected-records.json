@@ -3,10 +3,10 @@
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252071,
+    "ts_sec" : 1484936327,
     "file" : "mysql-bin.000003",
-    "pos" : 4259161,
-    "gtids" : "${server_uuid}:1-6914",
+    "pos" : 4273132,
+    "gtids" : "${server_uuid}:1-6938",
     "server_id" : 112233,
     "event" : 20
   },
@@ -81,10 +81,10 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252071,
-      "gtid" : "${server_uuid}:6915",
+      "ts_sec" : 1484936327,
+      "gtid" : "${server_uuid}:6939",
       "file" : "mysql-bin.000003",
-      "pos" : 4259058,
+      "pos" : 4273029,
       "row" : 0,
       "snapshot" : true
     },
@@ -96,10 +96,10 @@
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252071,
+    "ts_sec" : 1484936327,
     "file" : "mysql-bin.000003",
-    "pos" : 4259336,
-    "gtids" : "${server_uuid}:1-6915",
+    "pos" : 4273307,
+    "gtids" : "${server_uuid}:1-6939",
     "server_id" : 112233,
     "event" : 22
   },
@@ -174,10 +174,10 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252071,
-      "gtid" : "${server_uuid}:6916",
+      "ts_sec" : 1484936327,
+      "gtid" : "${server_uuid}:6940",
       "file" : "mysql-bin.000003",
-      "pos" : 4259209,
+      "pos" : 4273180,
       "row" : 0,
       "snapshot" : true
     },
@@ -189,10 +189,10 @@
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252071,
+    "ts_sec" : 1484936327,
     "file" : "mysql-bin.000003",
-    "pos" : 4259508,
-    "gtids" : "${server_uuid}:1-6916",
+    "pos" : 4273479,
+    "gtids" : "${server_uuid}:1-6940",
     "server_id" : 112233,
     "event" : 24
   },
@@ -267,10 +267,10 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252071,
-      "gtid" : "${server_uuid}:6917",
+      "ts_sec" : 1484936327,
+      "gtid" : "${server_uuid}:6941",
       "file" : "mysql-bin.000003",
-      "pos" : 4259384,
+      "pos" : 4273355,
       "row" : 0,
       "snapshot" : true
     },
@@ -282,10 +282,10 @@
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252071,
+    "ts_sec" : 1484936327,
     "file" : "mysql-bin.000003",
-    "pos" : 4259798,
-    "gtids" : "${server_uuid}:1-6917",
+    "pos" : 4273769,
+    "gtids" : "${server_uuid}:1-6941",
     "server_id" : 112233,
     "event" : 26
   },
@@ -360,10 +360,10 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252071,
-      "gtid" : "${server_uuid}:6918",
+      "ts_sec" : 1484936327,
+      "gtid" : "${server_uuid}:6942",
       "file" : "mysql-bin.000003",
-      "pos" : 4259556,
+      "pos" : 4273527,
       "row" : 0,
       "snapshot" : true
     },
@@ -375,10 +375,10 @@
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252071,
+    "ts_sec" : 1484936327,
     "file" : "mysql-bin.000003",
-    "pos" : 4259981,
-    "gtids" : "${server_uuid}:1-6918",
+    "pos" : 4273952,
+    "gtids" : "${server_uuid}:1-6942",
     "server_id" : 112233,
     "event" : 28
   },
@@ -453,10 +453,10 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252071,
-      "gtid" : "${server_uuid}:6919",
+      "ts_sec" : 1484936327,
+      "gtid" : "${server_uuid}:6943",
       "file" : "mysql-bin.000003",
-      "pos" : 4259846,
+      "pos" : 4273817,
       "row" : 0,
       "snapshot" : true
     },
@@ -468,10 +468,10 @@
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252071,
+    "ts_sec" : 1484936327,
     "file" : "mysql-bin.000003",
-    "pos" : 4260029,
-    "gtids" : "${server_uuid}:1-6920",
+    "pos" : 4274000,
+    "gtids" : "${server_uuid}:1-6944",
     "server_id" : 112233,
     "event" : 5
   },
@@ -546,10 +546,10 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252071,
-      "gtid" : "${server_uuid}:6921",
+      "ts_sec" : 1484936327,
+      "gtid" : "${server_uuid}:6945",
       "file" : "mysql-bin.000003",
-      "pos" : 4260710,
+      "pos" : 4274681,
       "row" : 0,
       "snapshot" : true
     },
@@ -561,10 +561,10 @@
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252071,
+    "ts_sec" : 1484936327,
     "file" : "mysql-bin.000003",
-    "pos" : 4263208,
-    "gtids" : "${server_uuid}:1-6930",
+    "pos" : 4277179,
+    "gtids" : "${server_uuid}:1-6954",
     "server_id" : 112233,
     "event" : 5
   },
@@ -639,10 +639,10 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252071,
-      "gtid" : "${server_uuid}:6931",
+      "ts_sec" : 1484936327,
+      "gtid" : "${server_uuid}:6955",
       "file" : "mysql-bin.000003",
-      "pos" : 4263483,
+      "pos" : 4277454,
       "row" : 0,
       "snapshot" : true
     },
@@ -654,10 +654,10 @@
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252071,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4263833,
-    "gtids" : "${server_uuid}:1-6932",
+    "pos" : 4277804,
+    "gtids" : "${server_uuid}:1-6956",
     "server_id" : 112233,
     "event" : 5
   },
@@ -732,10 +732,10 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252071,
-      "gtid" : "${server_uuid}:6933",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6957",
       "file" : "mysql-bin.000003",
-      "pos" : 4264250,
+      "pos" : 4278221,
       "row" : 0,
       "snapshot" : true
     },
@@ -747,10 +747,10 @@
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4264750,
-    "gtids" : "${server_uuid}:1-6934",
+    "pos" : 4278721,
+    "gtids" : "${server_uuid}:1-6958",
     "server_id" : 112233,
     "event" : 5
   },
@@ -825,10 +825,10 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6935",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6959",
       "file" : "mysql-bin.000003",
-      "pos" : 4265109,
+      "pos" : 4279080,
       "row" : 0,
       "snapshot" : true
     },
@@ -840,10 +840,10 @@
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4264750,
-    "gtids" : "${server_uuid}:1-6935",
+    "pos" : 4278721,
+    "gtids" : "${server_uuid}:1-6959",
     "server_id" : 112233,
     "event" : 7
   },
@@ -918,10 +918,10 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6936",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6960",
       "file" : "mysql-bin.000003",
-      "pos" : 4265290,
+      "pos" : 4279261,
       "row" : 0,
       "snapshot" : true
     },
@@ -933,10 +933,10 @@
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4264750,
-    "gtids" : "${server_uuid}:1-6936",
+    "pos" : 4278721,
+    "gtids" : "${server_uuid}:1-6960",
     "server_id" : 112233,
     "event" : 9
   },
@@ -1011,10 +1011,10 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6937",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6961",
       "file" : "mysql-bin.000003",
-      "pos" : 4265586,
+      "pos" : 4279557,
       "row" : 0,
       "snapshot" : true
     },
@@ -1026,10 +1026,10 @@
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4265775,
-    "gtids" : "${server_uuid}:1-6937",
+    "pos" : 4279746,
+    "gtids" : "${server_uuid}:1-6961",
     "row" : 1,
     "server_id" : 112233,
     "event" : 2
@@ -1157,25 +1157,25 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6938",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6962",
       "file" : "mysql-bin.000003",
-      "pos" : 4265932,
+      "pos" : 4279903,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252095604
+    "ts_ms" : 1484936352594
   }
 }, {
   "sourcePartition" : {
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4265775,
-    "gtids" : "${server_uuid}:1-6937",
+    "pos" : 4279746,
+    "gtids" : "${server_uuid}:1-6961",
     "row" : 2,
     "server_id" : 112233,
     "event" : 2
@@ -1303,25 +1303,25 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6938",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6962",
       "file" : "mysql-bin.000003",
-      "pos" : 4265932,
+      "pos" : 4279903,
       "row" : 1,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252095604
+    "ts_ms" : 1484936352594
   }
 }, {
   "sourcePartition" : {
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4265775,
-    "gtids" : "${server_uuid}:1-6937",
+    "pos" : 4279746,
+    "gtids" : "${server_uuid}:1-6961",
     "row" : 3,
     "server_id" : 112233,
     "event" : 2
@@ -1449,25 +1449,25 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6938",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6962",
       "file" : "mysql-bin.000003",
-      "pos" : 4265932,
+      "pos" : 4279903,
       "row" : 2,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252095604
+    "ts_ms" : 1484936352594
   }
 }, {
   "sourcePartition" : {
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4265775,
-    "gtids" : "${server_uuid}:1-6937",
+    "pos" : 4279746,
+    "gtids" : "${server_uuid}:1-6961",
     "row" : 4,
     "server_id" : 112233,
     "event" : 2
@@ -1595,25 +1595,25 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6938",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6962",
       "file" : "mysql-bin.000003",
-      "pos" : 4265932,
+      "pos" : 4279903,
       "row" : 3,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252095604
+    "ts_ms" : 1484936352594
   }
 }, {
   "sourcePartition" : {
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4265775,
-    "gtids" : "${server_uuid}:1-6937",
+    "pos" : 4279746,
+    "gtids" : "${server_uuid}:1-6961",
     "row" : 5,
     "server_id" : 112233,
     "event" : 2
@@ -1741,25 +1741,25 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6938",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6962",
       "file" : "mysql-bin.000003",
-      "pos" : 4265932,
+      "pos" : 4279903,
       "row" : 4,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252095604
+    "ts_ms" : 1484936352594
   }
 }, {
   "sourcePartition" : {
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4265775,
-    "gtids" : "${server_uuid}:1-6937",
+    "pos" : 4279746,
+    "gtids" : "${server_uuid}:1-6961",
     "row" : 6,
     "server_id" : 112233,
     "event" : 2
@@ -1887,25 +1887,25 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6938",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6962",
       "file" : "mysql-bin.000003",
-      "pos" : 4265932,
+      "pos" : 4279903,
       "row" : 5,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252095604
+    "ts_ms" : 1484936352594
   }
 }, {
   "sourcePartition" : {
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4265775,
-    "gtids" : "${server_uuid}:1-6937",
+    "pos" : 4279746,
+    "gtids" : "${server_uuid}:1-6961",
     "row" : 7,
     "server_id" : 112233,
     "event" : 2
@@ -2033,25 +2033,25 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6938",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6962",
       "file" : "mysql-bin.000003",
-      "pos" : 4265932,
+      "pos" : 4279903,
       "row" : 6,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252095604
+    "ts_ms" : 1484936352594
   }
 }, {
   "sourcePartition" : {
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4265775,
-    "gtids" : "${server_uuid}:1-6937",
+    "pos" : 4279746,
+    "gtids" : "${server_uuid}:1-6961",
     "row" : 8,
     "server_id" : 112233,
     "event" : 2
@@ -2179,25 +2179,25 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6938",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6962",
       "file" : "mysql-bin.000003",
-      "pos" : 4265932,
+      "pos" : 4279903,
       "row" : 7,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252095604
+    "ts_ms" : 1484936352594
   }
 }, {
   "sourcePartition" : {
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4265775,
-    "gtids" : "${server_uuid}:1-6937",
+    "pos" : 4279746,
+    "gtids" : "${server_uuid}:1-6961",
     "row" : 9,
     "server_id" : 112233,
     "event" : 2
@@ -2325,25 +2325,25 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6938",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6962",
       "file" : "mysql-bin.000003",
-      "pos" : 4265932,
+      "pos" : 4279903,
       "row" : 8,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252095604
+    "ts_ms" : 1484936352594
   }
 }, {
   "sourcePartition" : {
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4265775,
-    "gtids" : "${server_uuid}:1-6938",
+    "pos" : 4279746,
+    "gtids" : "${server_uuid}:1-6962",
     "server_id" : 112233,
     "event" : 5
   },
@@ -2418,10 +2418,10 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6939",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6963",
       "file" : "mysql-bin.000003",
-      "pos" : 4266462,
+      "pos" : 4280433,
       "row" : 8,
       "snapshot" : true
     },
@@ -2433,10 +2433,10 @@
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4266766,
-    "gtids" : "${server_uuid}:1-6939",
+    "pos" : 4280737,
+    "gtids" : "${server_uuid}:1-6963",
     "row" : 1,
     "server_id" : 112233,
     "event" : 2
@@ -2546,25 +2546,25 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6940",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6964",
       "file" : "mysql-bin.000003",
-      "pos" : 4266924,
+      "pos" : 4280895,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252095605
+    "ts_ms" : 1484936352596
   }
 }, {
   "sourcePartition" : {
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4267047,
-    "gtids" : "${server_uuid}:1-6940",
+    "pos" : 4281018,
+    "gtids" : "${server_uuid}:1-6964",
     "row" : 1,
     "server_id" : 112233,
     "event" : 2
@@ -2674,25 +2674,25 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6941",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6965",
       "file" : "mysql-bin.000003",
-      "pos" : 4267205,
+      "pos" : 4281176,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252095605
+    "ts_ms" : 1484936352596
   }
 }, {
   "sourcePartition" : {
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4267328,
-    "gtids" : "${server_uuid}:1-6941",
+    "pos" : 4281299,
+    "gtids" : "${server_uuid}:1-6965",
     "row" : 1,
     "server_id" : 112233,
     "event" : 2
@@ -2802,25 +2802,25 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6942",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6966",
       "file" : "mysql-bin.000003",
-      "pos" : 4267486,
+      "pos" : 4281457,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252095605
+    "ts_ms" : 1484936352597
   }
 }, {
   "sourcePartition" : {
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4267609,
-    "gtids" : "${server_uuid}:1-6942",
+    "pos" : 4281580,
+    "gtids" : "${server_uuid}:1-6966",
     "row" : 1,
     "server_id" : 112233,
     "event" : 2
@@ -2930,25 +2930,25 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6943",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6967",
       "file" : "mysql-bin.000003",
-      "pos" : 4267767,
+      "pos" : 4281738,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252095605
+    "ts_ms" : 1484936352597
   }
 }, {
   "sourcePartition" : {
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4267890,
-    "gtids" : "${server_uuid}:1-6943",
+    "pos" : 4281861,
+    "gtids" : "${server_uuid}:1-6967",
     "row" : 1,
     "server_id" : 112233,
     "event" : 2
@@ -3058,25 +3058,25 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6944",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6968",
       "file" : "mysql-bin.000003",
-      "pos" : 4268048,
+      "pos" : 4282019,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252095605
+    "ts_ms" : 1484936352597
   }
 }, {
   "sourcePartition" : {
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4268171,
-    "gtids" : "${server_uuid}:1-6944",
+    "pos" : 4282142,
+    "gtids" : "${server_uuid}:1-6968",
     "row" : 1,
     "server_id" : 112233,
     "event" : 2
@@ -3186,25 +3186,25 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6945",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6969",
       "file" : "mysql-bin.000003",
-      "pos" : 4268329,
+      "pos" : 4282300,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252095605
+    "ts_ms" : 1484936352597
   }
 }, {
   "sourcePartition" : {
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4268452,
-    "gtids" : "${server_uuid}:1-6945",
+    "pos" : 4282423,
+    "gtids" : "${server_uuid}:1-6969",
     "row" : 1,
     "server_id" : 112233,
     "event" : 2
@@ -3314,25 +3314,25 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6946",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6970",
       "file" : "mysql-bin.000003",
-      "pos" : 4268610,
+      "pos" : 4282581,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252095605
+    "ts_ms" : 1484936352597
   }
 }, {
   "sourcePartition" : {
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4268733,
-    "gtids" : "${server_uuid}:1-6946",
+    "pos" : 4282704,
+    "gtids" : "${server_uuid}:1-6970",
     "row" : 1,
     "server_id" : 112233,
     "event" : 2
@@ -3442,25 +3442,25 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6947",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6971",
       "file" : "mysql-bin.000003",
-      "pos" : 4268891,
+      "pos" : 4282862,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252095605
+    "ts_ms" : 1484936352597
   }
 }, {
   "sourcePartition" : {
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4269014,
-    "gtids" : "${server_uuid}:1-6947",
+    "pos" : 4282985,
+    "gtids" : "${server_uuid}:1-6971",
     "row" : 1,
     "server_id" : 112233,
     "event" : 2
@@ -3570,25 +3570,25 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6948",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6972",
       "file" : "mysql-bin.000003",
-      "pos" : 4269172,
+      "pos" : 4283143,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252095605
+    "ts_ms" : 1484936352597
   }
 }, {
   "sourcePartition" : {
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4269014,
-    "gtids" : "${server_uuid}:1-6948",
+    "pos" : 4282985,
+    "gtids" : "${server_uuid}:1-6972",
     "server_id" : 112233,
     "event" : 5
   },
@@ -3663,10 +3663,10 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6949",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6973",
       "file" : "mysql-bin.000003",
-      "pos" : 4269295,
+      "pos" : 4283266,
       "row" : 0,
       "snapshot" : true
     },
@@ -3678,10 +3678,10 @@
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4269651,
-    "gtids" : "${server_uuid}:1-6949",
+    "pos" : 4283622,
+    "gtids" : "${server_uuid}:1-6973",
     "row" : 1,
     "server_id" : 112233,
     "event" : 2
@@ -3809,25 +3809,25 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6950",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6974",
       "file" : "mysql-bin.000003",
-      "pos" : 4269810,
+      "pos" : 4283781,
       "row" : 0,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252095606
+    "ts_ms" : 1484936352599
   }
 }, {
   "sourcePartition" : {
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4269651,
-    "gtids" : "${server_uuid}:1-6949",
+    "pos" : 4283622,
+    "gtids" : "${server_uuid}:1-6973",
     "row" : 2,
     "server_id" : 112233,
     "event" : 2
@@ -3955,25 +3955,25 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6950",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6974",
       "file" : "mysql-bin.000003",
-      "pos" : 4269810,
+      "pos" : 4283781,
       "row" : 1,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252095606
+    "ts_ms" : 1484936352599
   }
 }, {
   "sourcePartition" : {
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4269651,
-    "gtids" : "${server_uuid}:1-6949",
+    "pos" : 4283622,
+    "gtids" : "${server_uuid}:1-6973",
     "row" : 3,
     "server_id" : 112233,
     "event" : 2
@@ -4101,25 +4101,25 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6950",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6974",
       "file" : "mysql-bin.000003",
-      "pos" : 4269810,
+      "pos" : 4283781,
       "row" : 2,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252095606
+    "ts_ms" : 1484936352599
   }
 }, {
   "sourcePartition" : {
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4269651,
-    "gtids" : "${server_uuid}:1-6949",
+    "pos" : 4283622,
+    "gtids" : "${server_uuid}:1-6973",
     "row" : 4,
     "server_id" : 112233,
     "event" : 2
@@ -4247,25 +4247,25 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6950",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6974",
       "file" : "mysql-bin.000003",
-      "pos" : 4269810,
+      "pos" : 4283781,
       "row" : 3,
       "snapshot" : true
     },
     "op" : "c",
-    "ts_ms" : 1482252095606
+    "ts_ms" : 1484936352599
   }
 }, {
   "sourcePartition" : {
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252072,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4269651,
-    "gtids" : "${server_uuid}:1-6950",
+    "pos" : 4283622,
+    "gtids" : "${server_uuid}:1-6974",
     "server_id" : 112233,
     "event" : 5
   },
@@ -4340,10 +4340,10 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252072,
-      "gtid" : "${server_uuid}:6951",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6975",
       "file" : "mysql-bin.000003",
-      "pos" : 4270074,
+      "pos" : 4284045,
       "row" : 3,
       "snapshot" : true
     },
@@ -4355,10 +4355,10 @@
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252073,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4270580,
-    "gtids" : "${server_uuid}:1-6952",
+    "pos" : 4284551,
+    "gtids" : "${server_uuid}:1-6976",
     "server_id" : 112233,
     "event" : 5
   },
@@ -4433,10 +4433,10 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252073,
-      "gtid" : "${server_uuid}:6953",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6977",
       "file" : "mysql-bin.000003",
-      "pos" : 4270945,
+      "pos" : 4284916,
       "row" : 3,
       "snapshot" : true
     },
@@ -4448,10 +4448,10 @@
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252073,
+    "ts_sec" : 1484936328,
     "file" : "mysql-bin.000003",
-    "pos" : 4270580,
-    "gtids" : "${server_uuid}:1-6953",
+    "pos" : 4284551,
+    "gtids" : "${server_uuid}:1-6977",
     "server_id" : 112233,
     "event" : 7
   },
@@ -4526,10 +4526,10 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252073,
-      "gtid" : "${server_uuid}:6954",
+      "ts_sec" : 1484936328,
+      "gtid" : "${server_uuid}:6978",
       "file" : "mysql-bin.000003",
-      "pos" : 4271120,
+      "pos" : 4285091,
       "row" : 3,
       "snapshot" : true
     },
@@ -4541,10 +4541,10 @@
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252073,
+    "ts_sec" : 1484936329,
     "file" : "mysql-bin.000003",
-    "pos" : 4271412,
-    "gtids" : "${server_uuid}:1-6955",
+    "pos" : 4285383,
+    "gtids" : "${server_uuid}:1-6979",
     "server_id" : 112233,
     "event" : 5
   },
@@ -4619,10 +4619,10 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252073,
-      "gtid" : "${server_uuid}:6956",
+      "ts_sec" : 1484936329,
+      "gtid" : "${server_uuid}:6980",
       "file" : "mysql-bin.000003",
-      "pos" : 4271702,
+      "pos" : 4285673,
       "row" : 3,
       "snapshot" : true
     },
@@ -4634,10 +4634,10 @@
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252073,
+    "ts_sec" : 1484936329,
     "file" : "mysql-bin.000003",
-    "pos" : 4272817,
-    "gtids" : "${server_uuid}:1-6957",
+    "pos" : 4286788,
+    "gtids" : "${server_uuid}:1-6981",
     "server_id" : 112233,
     "event" : 5
   },
@@ -4712,10 +4712,10 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252073,
-      "gtid" : "${server_uuid}:6958",
+      "ts_sec" : 1484936329,
+      "gtid" : "${server_uuid}:6982",
       "file" : "mysql-bin.000003",
-      "pos" : 4273191,
+      "pos" : 4287162,
       "row" : 3,
       "snapshot" : true
     },
@@ -4727,10 +4727,10 @@
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252073,
+    "ts_sec" : 1484936329,
     "file" : "mysql-bin.000003",
-    "pos" : 4273428,
-    "gtids" : "${server_uuid}:1-6959",
+    "pos" : 4287399,
+    "gtids" : "${server_uuid}:1-6983",
     "server_id" : 112233,
     "event" : 5
   },
@@ -4805,10 +4805,10 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252073,
-      "gtid" : "${server_uuid}:6960",
+      "ts_sec" : 1484936329,
+      "gtid" : "${server_uuid}:6984",
       "file" : "mysql-bin.000003",
-      "pos" : 4273727,
+      "pos" : 4287698,
       "row" : 3,
       "snapshot" : true
     },
@@ -4820,10 +4820,10 @@
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252073,
+    "ts_sec" : 1484936329,
     "file" : "mysql-bin.000003",
-    "pos" : 4274509,
-    "gtids" : "${server_uuid}:1-6963",
+    "pos" : 4288480,
+    "gtids" : "${server_uuid}:1-6987",
     "server_id" : 112233,
     "event" : 5
   },
@@ -4898,10 +4898,10 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252073,
-      "gtid" : "${server_uuid}:6964",
+      "ts_sec" : 1484936329,
+      "gtid" : "${server_uuid}:6988",
       "file" : "mysql-bin.000003",
-      "pos" : 4274787,
+      "pos" : 4288758,
       "row" : 3,
       "snapshot" : true
     },
@@ -4913,10 +4913,10 @@
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252073,
+    "ts_sec" : 1484936329,
     "file" : "mysql-bin.000003",
-    "pos" : 4275115,
-    "gtids" : "${server_uuid}:1-6965",
+    "pos" : 4289086,
+    "gtids" : "${server_uuid}:1-6989",
     "server_id" : 112233,
     "event" : 5
   },
@@ -4991,10 +4991,10 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252073,
-      "gtid" : "${server_uuid}:6966",
+      "ts_sec" : 1484936329,
+      "gtid" : "${server_uuid}:6990",
       "file" : "mysql-bin.000003",
-      "pos" : 4275401,
+      "pos" : 4289372,
       "row" : 3,
       "snapshot" : true
     },
@@ -5006,10 +5006,10 @@
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252073,
+    "ts_sec" : 1484936329,
     "file" : "mysql-bin.000003",
-    "pos" : 4275941,
-    "gtids" : "${server_uuid}:1-6968",
+    "pos" : 4289912,
+    "gtids" : "${server_uuid}:1-6992",
     "server_id" : 112233,
     "event" : 5
   },
@@ -5084,10 +5084,10 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252073,
-      "gtid" : "${server_uuid}:6969",
+      "ts_sec" : 1484936329,
+      "gtid" : "${server_uuid}:6993",
       "file" : "mysql-bin.000003",
-      "pos" : 4276238,
+      "pos" : 4290209,
       "row" : 3,
       "snapshot" : true
     },
@@ -5099,10 +5099,10 @@
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252073,
+    "ts_sec" : 1484936329,
     "file" : "mysql-bin.000003",
-    "pos" : 4276771,
-    "gtids" : "${server_uuid}:1-6971",
+    "pos" : 4290742,
+    "gtids" : "${server_uuid}:1-6995",
     "server_id" : 112233,
     "event" : 5
   },
@@ -5177,10 +5177,10 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252073,
-      "gtid" : "${server_uuid}:6972",
+      "ts_sec" : 1484936329,
+      "gtid" : "${server_uuid}:6996",
       "file" : "mysql-bin.000003",
-      "pos" : 4277065,
+      "pos" : 4291036,
       "row" : 3,
       "snapshot" : true
     },
@@ -5192,10 +5192,10 @@
     "server" : "engineering"
   },
   "sourceOffset" : {
-    "ts_sec" : 1482252074,
+    "ts_sec" : 1484936329,
     "file" : "mysql-bin.000003",
-    "pos" : 4277251,
-    "gtids" : "${server_uuid}:1-6973",
+    "pos" : 4291222,
+    "gtids" : "${server_uuid}:1-6997",
     "server_id" : 112233,
     "event" : 5
   },
@@ -5270,10 +5270,10 @@
     "source" : {
       "name" : "engineering",
       "server_id" : 112233,
-      "ts_sec" : 1482252074,
-      "gtid" : "${server_uuid}:6974",
+      "ts_sec" : 1484936329,
+      "gtid" : "${server_uuid}:6998",
       "file" : "mysql-bin.000003",
-      "pos" : 4277680,
+      "pos" : 4291651,
       "row" : 3,
       "snapshot" : true
     },
