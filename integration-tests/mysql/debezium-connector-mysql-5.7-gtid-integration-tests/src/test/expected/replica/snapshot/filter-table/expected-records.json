@@ -178,7 +178,7 @@
       "snapshot" : true
     },
     "databaseName" : "connector_test_ro",
-    "ddl" : "DROP TABLE IF EXISTS connector_test_ro.products_on_hand"
+    "ddl" : "DROP TABLE IF EXISTS `connector_test_ro`.`products_on_hand`"
   }
 }, {
   "sourcePartition" : {
@@ -269,7 +269,7 @@
       "snapshot" : true
     },
     "databaseName" : "connector_test_ro",
-    "ddl" : "DROP TABLE IF EXISTS connector_test_ro.customers"
+    "ddl" : "DROP TABLE IF EXISTS `connector_test_ro`.`customers`"
   }
 }, {
   "sourcePartition" : {
@@ -360,7 +360,7 @@
       "snapshot" : true
     },
     "databaseName" : "connector_test_ro",
-    "ddl" : "DROP TABLE IF EXISTS connector_test_ro.products"
+    "ddl" : "DROP TABLE IF EXISTS `connector_test_ro`.`products`"
   }
 }, {
   "sourcePartition" : {
@@ -451,7 +451,7 @@
       "snapshot" : true
     },
     "databaseName" : "connector_test_ro",
-    "ddl" : "DROP DATABASE IF EXISTS connector_test_ro"
+    "ddl" : "DROP DATABASE IF EXISTS `connector_test_ro`"
   }
 }, {
   "sourcePartition" : {
@@ -542,7 +542,7 @@
       "snapshot" : true
     },
     "databaseName" : "connector_test_ro",
-    "ddl" : "CREATE DATABASE connector_test_ro"
+    "ddl" : "CREATE DATABASE `connector_test_ro`"
   }
 }, {
   "sourcePartition" : {
@@ -633,7 +633,7 @@
       "snapshot" : true
     },
     "databaseName" : "connector_test_ro",
-    "ddl" : "USE connector_test_ro"
+    "ddl" : "USE `connector_test_ro`"
   }
 }, {
   "sourcePartition" : {
