@@ -167,7 +167,7 @@ public class KafkaClusterTest {
         final AtomicLong messagesRead = new AtomicLong(0);
 
         // Start a cluster and create a topic ...
-        cluster.deleteDataUponShutdown(false).addBrokers(1).startup();
+        cluster.addBrokers(1).startup();
         cluster.createTopics(topicName);
 
         // Consume messages asynchronously ...

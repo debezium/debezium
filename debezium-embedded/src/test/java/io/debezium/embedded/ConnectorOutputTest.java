@@ -241,6 +241,7 @@ public abstract class ConnectorOutputTest {
 
         private AvailableVariables builtInVariables() {
             Map<String, String> builtIns = Collect.hashMapOf("dbz.test.name", name());
+            System.getProperties().forEach((key, value) -> builtIns.put(key.toString(), value.toString()));
             return builtIns::get;
         }
 
@@ -560,6 +561,7 @@ public abstract class ConnectorOutputTest {
                 Map<String, String> variables = variableSupplier.get(config);
                 return withVariables(variables::get);
             } catch (Throwable t) {
+                t.printStackTrace(System.err);
                 fail("Unable to read variables using configuration: " + config);
                 return null;
             }
