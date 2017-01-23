@@ -176,7 +176,7 @@
       "snapshot" : true
     },
     "databaseName" : "connector_test",
-    "ddl" : "DROP TABLE IF EXISTS connector_test.customers"
+    "ddl" : "DROP TABLE IF EXISTS `connector_test`.`customers`"
   }
 }, {
   "sourcePartition" : {
@@ -266,7 +266,7 @@
       "snapshot" : true
     },
     "databaseName" : "regression_test",
-    "ddl" : "DROP TABLE IF EXISTS regression_test.dbz84_integer_types_table"
+    "ddl" : "DROP TABLE IF EXISTS `regression_test`.`dbz84_integer_types_table`"
   }
 }, {
   "sourcePartition" : {
@@ -356,7 +356,7 @@
       "snapshot" : true
     },
     "databaseName" : "regression_test",
-    "ddl" : "DROP TABLE IF EXISTS regression_test.dbz_123_bitvaluetest"
+    "ddl" : "DROP TABLE IF EXISTS `regression_test`.`dbz_123_bitvaluetest`"
   }
 }, {
   "sourcePartition" : {
@@ -446,7 +446,7 @@
       "snapshot" : true
     },
     "databaseName" : "regression_test",
-    "ddl" : "DROP TABLE IF EXISTS regression_test.dbz_104_customers"
+    "ddl" : "DROP TABLE IF EXISTS `regression_test`.`dbz_104_customers`"
   }
 }, {
   "sourcePartition" : {
@@ -536,7 +536,7 @@
       "snapshot" : true
     },
     "databaseName" : "regression_test",
-    "ddl" : "DROP TABLE IF EXISTS regression_test.dbz_100_enumsettest"
+    "ddl" : "DROP TABLE IF EXISTS `regression_test`.`dbz_100_enumsettest`"
   }
 }, {
   "sourcePartition" : {
@@ -626,7 +626,7 @@
       "snapshot" : true
     },
     "databaseName" : "regression_test",
-    "ddl" : "DROP TABLE IF EXISTS regression_test.dbz_147_decimalvalues"
+    "ddl" : "DROP TABLE IF EXISTS `regression_test`.`dbz_147_decimalvalues`"
   }
 }, {
   "sourcePartition" : {
@@ -716,7 +716,7 @@
       "snapshot" : true
     },
     "databaseName" : "regression_test",
-    "ddl" : "DROP TABLE IF EXISTS regression_test.t1464075356413_testtable6"
+    "ddl" : "DROP TABLE IF EXISTS `regression_test`.`t1464075356413_testtable6`"
   }
 }, {
   "sourcePartition" : {
@@ -806,7 +806,7 @@
       "snapshot" : true
     },
     "databaseName" : "connector_test",
-    "ddl" : "DROP TABLE IF EXISTS connector_test.products_on_hand"
+    "ddl" : "DROP TABLE IF EXISTS `connector_test`.`products_on_hand`"
   }
 }, {
   "sourcePartition" : {
@@ -896,7 +896,7 @@
       "snapshot" : true
     },
     "databaseName" : "connector_test_ro",
-    "ddl" : "DROP TABLE IF EXISTS connector_test_ro.products"
+    "ddl" : "DROP TABLE IF EXISTS `connector_test_ro`.`products`"
   }
 }, {
   "sourcePartition" : {
@@ -986,7 +986,7 @@
       "snapshot" : true
     },
     "databaseName" : "connector_test",
-    "ddl" : "DROP TABLE IF EXISTS connector_test.orders"
+    "ddl" : "DROP TABLE IF EXISTS `connector_test`.`orders`"
   }
 }, {
   "sourcePartition" : {
@@ -1076,7 +1076,7 @@
       "snapshot" : true
     },
     "databaseName" : "regression_test",
-    "ddl" : "DROP TABLE IF EXISTS regression_test.dbz_102_charsettest"
+    "ddl" : "DROP TABLE IF EXISTS `regression_test`.`dbz_102_charsettest`"
   }
 }, {
   "sourcePartition" : {
@@ -1166,7 +1166,7 @@
       "snapshot" : true
     },
     "databaseName" : "connector_test",
-    "ddl" : "DROP TABLE IF EXISTS connector_test.products"
+    "ddl" : "DROP TABLE IF EXISTS `connector_test`.`products`"
   }
 }, {
   "sourcePartition" : {
@@ -1256,7 +1256,7 @@
       "snapshot" : true
     },
     "databaseName" : "connector_test_ro",
-    "ddl" : "DROP TABLE IF EXISTS connector_test_ro.products_on_hand"
+    "ddl" : "DROP TABLE IF EXISTS `connector_test_ro`.`products_on_hand`"
   }
 }, {
   "sourcePartition" : {
@@ -1346,7 +1346,7 @@
       "snapshot" : true
     },
     "databaseName" : "regression_test",
-    "ddl" : "DROP TABLE IF EXISTS regression_test.dbz_114_zerovaluetest"
+    "ddl" : "DROP TABLE IF EXISTS `regression_test`.`dbz_114_zerovaluetest`"
   }
 }, {
   "sourcePartition" : {
@@ -1436,7 +1436,7 @@
       "snapshot" : true
     },
     "databaseName" : "regression_test",
-    "ddl" : "DROP TABLE IF EXISTS regression_test.dbz_85_fractest"
+    "ddl" : "DROP TABLE IF EXISTS `regression_test`.`dbz_85_fractest`"
   }
 }, {
   "sourcePartition" : {
@@ -1526,7 +1526,7 @@
       "snapshot" : true
     },
     "databaseName" : "connector_test_ro",
-    "ddl" : "DROP TABLE IF EXISTS connector_test_ro.customers"
+    "ddl" : "DROP TABLE IF EXISTS `connector_test_ro`.`customers`"
   }
 }, {
   "sourcePartition" : {
@@ -1616,7 +1616,7 @@
       "snapshot" : true
     },
     "databaseName" : "connector_test_ro",
-    "ddl" : "DROP TABLE IF EXISTS connector_test_ro.orders"
+    "ddl" : "DROP TABLE IF EXISTS `connector_test_ro`.`orders`"
   }
 }, {
   "sourcePartition" : {
@@ -1706,7 +1706,7 @@
       "snapshot" : true
     },
     "databaseName" : "connector_test",
-    "ddl" : "DROP DATABASE IF EXISTS connector_test"
+    "ddl" : "DROP DATABASE IF EXISTS `connector_test`"
   }
 }, {
   "sourcePartition" : {
@@ -1796,7 +1796,7 @@
       "snapshot" : true
     },
     "databaseName" : "connector_test",
-    "ddl" : "CREATE DATABASE connector_test"
+    "ddl" : "CREATE DATABASE `connector_test`"
   }
 }, {
   "sourcePartition" : {
@@ -1886,7 +1886,7 @@
       "snapshot" : true
     },
     "databaseName" : "connector_test",
-    "ddl" : "USE connector_test"
+    "ddl" : "USE `connector_test`"
   }
 }, {
   "sourcePartition" : {
@@ -2336,7 +2336,7 @@
       "snapshot" : true
     },
     "databaseName" : "regression_test",
-    "ddl" : "DROP DATABASE IF EXISTS regression_test"
+    "ddl" : "DROP DATABASE IF EXISTS `regression_test`"
   }
 }, {
   "sourcePartition" : {
@@ -2426,7 +2426,7 @@
       "snapshot" : true
     },
     "databaseName" : "regression_test",
-    "ddl" : "CREATE DATABASE regression_test"
+    "ddl" : "CREATE DATABASE `regression_test`"
   }
 }, {
   "sourcePartition" : {
@@ -2516,7 +2516,7 @@
       "snapshot" : true
     },
     "databaseName" : "regression_test",
-    "ddl" : "USE regression_test"
+    "ddl" : "USE `regression_test`"
   }
 }, {
   "sourcePartition" : {
@@ -3416,7 +3416,7 @@
       "snapshot" : true
     },
     "databaseName" : "connector_test_ro",
-    "ddl" : "DROP DATABASE IF EXISTS connector_test_ro"
+    "ddl" : "DROP DATABASE IF EXISTS `connector_test_ro`"
   }
 }, {
   "sourcePartition" : {
@@ -3506,7 +3506,7 @@
       "snapshot" : true
     },
     "databaseName" : "connector_test_ro",
-    "ddl" : "CREATE DATABASE connector_test_ro"
+    "ddl" : "CREATE DATABASE `connector_test_ro`"
   }
 }, {
   "sourcePartition" : {
@@ -3596,7 +3596,7 @@
       "snapshot" : true
     },
     "databaseName" : "connector_test_ro",
-    "ddl" : "USE connector_test_ro"
+    "ddl" : "USE `connector_test_ro`"
   }
 }, {
   "sourcePartition" : {
