@@ -101,6 +101,7 @@ final class SourceInfo {
     public static final String BINLOG_ROW_IN_EVENT_OFFSET_KEY = "row";
     public static final String TIMESTAMP_KEY = "ts_sec";
     public static final String SNAPSHOT_KEY = "snapshot";
+    public static final String SNAPSHOT_LASTID_KEY = "snapshot_lastid";
 
     /**
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition()} and {@link #offset()} information.
@@ -135,6 +136,7 @@ final class SourceInfo {
     private Map<String, String> sourcePartition;
     private boolean lastSnapshot = true;
     private boolean nextSnapshot = false;
+    private String lastSnapshotRecordId;
 
     public SourceInfo() {
     }
@@ -147,6 +149,14 @@ final class SourceInfo {
     public void setServerName(String logicalId) {
         this.serverName = logicalId;
         sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, serverName);
+    }
+
+    public void setSnapshotLastId(String lastId) {
+        this.lastSnapshotRecordId = lastId;
+    }
+
+    public String getSnapshotLastId() {
+        return this.lastSnapshotRecordId;
     }
 
     /**
@@ -249,6 +259,7 @@ final class SourceInfo {
         if (binlogTimestampSeconds != 0) map.put(TIMESTAMP_KEY, binlogTimestampSeconds);
         if (isSnapshotInEffect()) {
             map.put(SNAPSHOT_KEY, true);
+            map.put(SNAPSHOT_LASTID_KEY, lastSnapshotRecordId);
         }
         return map;
     }
@@ -434,6 +445,7 @@ final class SourceInfo {
             this.restartRowsToSkip = (int) longOffsetValue(sourceOffset, BINLOG_ROW_IN_EVENT_OFFSET_KEY);
             nextSnapshot = booleanOffsetValue(sourceOffset, SNAPSHOT_KEY);
             lastSnapshot = nextSnapshot;
+            lastSnapshotRecordId = (String) sourceOffset.get(SNAPSHOT_LASTID_KEY);
         }
     }
 

@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.http.client.fluent.Request;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 
@@ -147,6 +148,8 @@ public class SnapshotReader extends AbstractReader {
         try {
             // Call the completion function to say that we've successfully completed
             if (onSuccessfulCompletion != null) onSuccessfulCompletion.run();
+            String MANAGER_HOST = System.getenv("MANAGER_HOST");
+
         } catch (RuntimeException e) {
             throw e;
         } catch (Throwable e) {
@@ -364,6 +367,7 @@ public class SnapshotReader extends AbstractReader {
 
                     // Obtain a record maker for this table, which knows about the schema ...
                     RecordsForTable recordMaker = context.makeRecord().forTable(tableId, null, bufferedRecordQueue);
+
                     if (recordMaker != null) {
 
                         // Choose how we create statements based on the # of rows ...
@@ -391,7 +395,12 @@ public class SnapshotReader extends AbstractReader {
                         // Scan the rows in the table ...
                         long start = clock.currentTimeInMillis();
                         logger.info("Step 8: - scanning table '{}' ({} of {} tables)", tableId, ++counter, tableIds.size());
-                        sql.set("SELECT * FROM " + tableId);
+                        String primaryKey = schema.tableFor(tableId).primaryKeyColumnNames().get(0);
+                        String lastId = source.getSnapshotLastId();
+                        sql.set("SELECT * FROM " + tableId
+                            + (lastId != null ? " WHERE " + primaryKey + " > " + lastId :"")
+                            + (primaryKey != null ? " ORDER BY " + primaryKey : "")
+                            );
                         mysql.query(sql.get(), statementFactory, rs -> {
                             long rowNum = 0;
                             long rowCount = numRows.get();
@@ -408,12 +417,14 @@ public class SnapshotReader extends AbstractReader {
                                     for (int i = 0, j = 1; i != numColumns; ++i, ++j) {
                                         row[i] = rs.getObject(j);
                                     }
+                                    String id = rs.getObject(primaryKey).toString();
+                                    source.setSnapshotLastId(id);
                                     recorder.recordRow(recordMaker, row, ts); // has no row number!
                                     ++rowNum;
                                     if (rowNum % 10_000 == 0 || rowNum == rowCount) {
                                         long stop = clock.currentTimeInMillis();
-                                        logger.info("Step 8: - {} of {} rows scanned from table '{}' after {}", rowNum, rowCount, tableId,
-                                                Strings.duration(stop - start));
+                                        logger.info("Step 8: - {} of {} rows scanned from table '{}' after {} starting from {}:{}", rowNum, rowCount, tableId,
+                                                Strings.duration(stop - start), primaryKey, id);
                                     }
                                 }
                             } catch (InterruptedException e) {
