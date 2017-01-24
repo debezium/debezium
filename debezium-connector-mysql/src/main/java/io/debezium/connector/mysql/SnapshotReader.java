@@ -20,7 +20,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.apache.http.client.fluent.Request;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 
@@ -148,8 +147,6 @@ public class SnapshotReader extends AbstractReader {
         try {
             // Call the completion function to say that we've successfully completed
             if (onSuccessfulCompletion != null) onSuccessfulCompletion.run();
-            String MANAGER_HOST = System.getenv("MANAGER_HOST");
-
         } catch (RuntimeException e) {
             throw e;
         } catch (Throwable e) {
@@ -369,7 +366,6 @@ public class SnapshotReader extends AbstractReader {
                     RecordsForTable recordMaker = context.makeRecord().forTable(tableId, null, bufferedRecordQueue);
 
                     if (recordMaker != null) {
-
                         // Choose how we create statements based on the # of rows ...
                         mysql.query("SELECT CONNECTION_ID();", rs -> {
                             while(rs.next()) {
