@@ -202,6 +202,10 @@ public class MongoDbConnectorConfig {
                                                 .withValidation(Field::isInteger)
                                                 .withInvisibleRecommender();
 
+    public static final Field DP_TASK_ID = Field.create("taskId")
+            .withDependents("The data pipeline task id.")
+            .withType(Type.STRING).withImportance(Importance.HIGH);
+
 
     public static final Field COLLECTION_SCHEMA_CONFIGURATION = Field.create("mongodb.collection.schemas")
             .withDependents("The schema configuration describing each collection")

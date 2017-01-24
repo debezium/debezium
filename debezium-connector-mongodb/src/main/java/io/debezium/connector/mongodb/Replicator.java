@@ -5,9 +5,11 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -18,11 +20,19 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
+import com.datapipeline.base.configuration.DpConf;
+import com.datapipeline.clients.dpthrall.DpThrallClient;
+import com.datapipeline.clients.dpthrall.HttpClientUtil;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import org.apache.http.HttpResponse;
+import org.apache.http.concurrent.FutureCallback;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.bson.BsonDocument;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
 import org.bson.conversions.Bson;
+import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +44,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
+import static com.mongodb.client.model.Filters.*;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.mongodb.RecordMakers.RecordsForCollection;
@@ -44,7 +55,7 @@ import io.debezium.util.Strings;
 /**
  * A component that replicates the content of a replica set, starting with an initial sync or continuing to read the oplog where
  * it last left off.
- * 
+ *
  * <h2>Initial Sync</h2>
  * If no offsets have been recorded for this replica set, replication begins with an
  * <a href="https://docs.mongodb.com/manual/core/replica-set-sync/#initial-sync">MongoDB initial sync</a> of the replica set.
@@ -66,11 +77,11 @@ import io.debezium.util.Strings;
  * oplog is <a href="https://docs.mongodb.com/manual/core/replica-set-oplog/">idempotent</a>. So, as long as we read the oplog
  * from the same point in time (or earlier) than we <em>started</em> our copy operation, and apply <em>all</em> of the changes
  * <em>in the same order</em>, then the state of all documents described by this connector will be the same.
- * 
+ *
  * <h2>Restart</h2>
  * If prior runs of the replicator have recorded offsets in the {@link ReplicationContext#source() source information}, then
  * when the replicator starts it will simply start reading the primary's oplog starting at the same point it last left off.
- * 
+ *
  * <h2>Handling problems</h2>
  * <p>
  * This replicator does each of its tasks using a connection to the primary. If the replicator is not able to establish a
@@ -78,7 +89,7 @@ import io.debezium.util.Strings;
  * will continue to try to establish a connection, using an exponential back-off strategy to prevent saturating the system.
  * After a {@link ReplicationContext#maxConnectionAttemptsForPrimary() configurable} number of failed attempts, the replicator
  * will fail by throwing a {@link ConnectException}.
- * 
+ *
  * @author Randall Hauch
  */
 @ThreadSafe
@@ -101,7 +112,7 @@ public class Replicator {
      * @param replicaSet the replica set to be replicated; may not be null
      * @param recorder the recorder for source record produced by this replicator; may not be null
      */
-    public Replicator(ReplicationContext context, ReplicaSet replicaSet, BlockingConsumer<SourceRecord> recorder) {
+    public Replicator(ReplicationContext context, ReplicaSet replicaSet, BlockingConsumer<SourceRecord> recorder, String dpTaskId) {
         assert context != null;
         assert replicaSet != null;
         assert recorder != null;
@@ -132,7 +143,9 @@ public class Replicator {
             try {
                 if (establishConnectionToPrimary()) {
                     if (isInitialSyncExpected()) {
-                        recordCurrentOplogPosition();
+                        if(!source.lastOffsetInitialSync(rsName)) {
+                            recordCurrentOplogPosition();
+                        }
                         if (!performInitialSync()) {
                             return;
                         }
@@ -147,7 +160,7 @@ public class Replicator {
 
     /**
      * Establish a connection to the primary.
-     * 
+     *
      * @return {@code true} if a connection was established, or {@code false} otherwise
      */
     protected boolean establishConnectionToPrimary() {
@@ -168,12 +181,12 @@ public class Replicator {
             source.offsetStructForEvent(replicaSet.replicaSetName(), last);
         });
     }
-    
+
     /**
      * Determine if an initial sync should be performed. An initial sync is expected if the {@link #source} has no previously
      * recorded offsets for this replica set, or if {@link ReplicationContext#performSnapshotEvenIfNotNeeded() a snapshot should
      * always be performed}.
-     * 
+     *
      * @return {@code true} if the initial sync should be performed, or {@code false} otherwise
      */
     protected boolean isInitialSyncExpected() {
@@ -185,24 +198,28 @@ public class Replicator {
                 logger.info("Configured to performing initial sync of replica set '{}'", rsName);
                 performSnapshot = true;
             } else {
-                // Look to see if our last recorded offset still exists in the oplog.
-                BsonTimestamp lastRecordedTs = source.lastOffsetTimestamp(rsName);
-                AtomicReference<BsonTimestamp> firstExistingTs = new AtomicReference<>();
-                primaryClient.execute("get oplog position", primary -> {
-                    MongoCollection<Document> oplog = primary.getDatabase("local").getCollection("oplog.rs");
-                    Document firstEvent = oplog.find().sort(new Document("$natural", 1)).limit(1).first(); // may be null
-                    firstExistingTs.set(SourceInfo.extractEventTimestamp(firstEvent));
-                });
-                BsonTimestamp firstAvailableTs = firstExistingTs.get();
-                if ( firstAvailableTs == null ) {
-                    logger.info("The oplog contains no entries, so performing initial sync of replica set '{}'", rsName);
+                if(source.lastOffsetInitialSync(rsName)){
                     performSnapshot = true;
-                } else if ( lastRecordedTs.compareTo(firstAvailableTs) < 0 ) {
-                    // The last recorded timestamp is *before* the first existing oplog event, which means there is
-                    // almost certainly some history lost since we last processed the oplog ...
-                    logger.info("Initial sync is required since the oplog for replica set '{}' starts at {}, which is later than the timestamp of the last offset {}",
+                }else {
+                    // Look to see if our last recorded offset still exists in the oplog.
+                    BsonTimestamp lastRecordedTs = source.lastOffsetTimestamp(rsName);
+                    AtomicReference<BsonTimestamp> firstExistingTs = new AtomicReference<>();
+                    primaryClient.execute("get oplog position", primary -> {
+                        MongoCollection<Document> oplog = primary.getDatabase("local").getCollection("oplog.rs");
+                        Document firstEvent = oplog.find().sort(new Document("$natural", 1)).limit(1).first(); // may be null
+                        firstExistingTs.set(SourceInfo.extractEventTimestamp(firstEvent));
+                    });
+                    BsonTimestamp firstAvailableTs = firstExistingTs.get();
+                    if (firstAvailableTs == null) {
+                        logger.info("The oplog contains no entries, so performing initial sync of replica set '{}'", rsName);
+                        performSnapshot = true;
+                    } else if (lastRecordedTs.compareTo(firstAvailableTs) < 0) {
+                        // The last recorded timestamp is *before* the first existing oplog event, which means there is
+                        // almost certainly some history lost since we last processed the oplog ...
+                        logger.info("Initial sync is required since the oplog for replica set '{}' starts at {}, which is later than the timestamp of the last offset {}",
                                 rsName, firstAvailableTs, lastRecordedTs);
-                    performSnapshot = true;
+                        performSnapshot = true;
+                    }
                 }
             }
         } else {
@@ -214,7 +231,7 @@ public class Replicator {
 
     /**
      * Perform the initial sync of the collections in the replica set.
-     * 
+     *
      * @return {@code true} if the initial sync was completed, or {@code false} if it was stopped for any reason
      */
     protected boolean performInitialSync() {
@@ -225,9 +242,14 @@ public class Replicator {
         final long syncStart = clock.currentTimeInMillis();
 
         // We need to copy each collection, so put the collection IDs into a queue ...
+        final Set<String> finishedCollection = source.lastOffsetFinishedCollection(rsName);
         final List<CollectionId> collections = new ArrayList<>();
         primaryClient.collections().forEach(id -> {
-            if (collectionFilter.test(id)) collections.add(id);
+            if (collectionFilter.test(id)){
+                if(finishedCollection == null || !finishedCollection.contains(id.namespace())){
+                    collections.add(id);
+                }
+            }
         });
         final Queue<CollectionId> collectionsToCopy = new ConcurrentLinkedQueue<>(collections);
         final int numThreads = Math.min(collections.size(), context.maxNumberOfCopyThreads());
@@ -249,9 +271,19 @@ public class Replicator {
                     while (!aborted.get() && (id = collectionsToCopy.poll()) != null) {
                         long start = clock.currentTimeInMillis();
                         logger.info("Starting initial sync of '{}'", id);
-                        long numDocs = copyCollection(id, syncStart);
+                        String ongoingCollection = source.lastOffsetOngoingCollection(rsName);
+                        String ongoingCollectionName = null;
+                        String ongoingCollectionOffset = null;
+                        if(ongoingCollection != null){
+                            String[] splits = ongoingCollection.split(":");
+                            ongoingCollectionName = splits[0];
+                            ongoingCollectionOffset = splits[1];
+                        }
+                        long expectedNumDocs = countCollection(id);
+                        long numDocs = copyCollection(id, syncStart, ongoingCollectionName, ongoingCollectionOffset, expectedNumDocs);
                         numCollectionsCopied.incrementAndGet();
                         numDocumentsCopied.addAndGet(numDocs);
+                        source.updatePosition(rsName, id);
                         long duration = clock.currentTimeInMillis() - start;
                         logger.info("Completing initial sync of {} documents from '{}' in {}", numDocs, id, Strings.duration(duration));
                     }
@@ -291,42 +323,57 @@ public class Replicator {
 
     /**
      * Copy the collection, sending to the recorder a record for each document.
-     * 
+     *
      * @param collectionId the identifier of the collection to be copied; may not be null
      * @param timestamp the timestamp in milliseconds at which the copy operation was started
      * @return number of documents that were copied
      * @throws InterruptedException if the thread was interrupted while the copy operation was running
      */
-    protected long copyCollection(CollectionId collectionId, long timestamp) throws InterruptedException{
+    protected long copyCollection(CollectionId collectionId, long timestamp, String ongoingCollectionName, String ongoingCollectionOffset, long expectedNumDocs) throws InterruptedException{
         AtomicLong docCount = new AtomicLong();
         primaryClient.executeBlocking("sync '" + collectionId + "'", primary -> {
-            docCount.set(copyCollection(primary, collectionId, timestamp));
+            docCount.set(copyCollection(primary, collectionId, timestamp,ongoingCollectionName, ongoingCollectionOffset, expectedNumDocs));
         });
         return docCount.get();
     }
 
+    protected long countCollection(CollectionId collectionId) throws InterruptedException {
+        AtomicLong count = new AtomicLong();
+        primaryClient.executeBlocking("Counting '"+ collectionId + "'", primary-> {
+            MongoDatabase db = primary.getDatabase(collectionId.dbName());
+            MongoCollection<Document> collection = db.getCollection(collectionId.name());
+            count.set(collection.count());
+        });
+        return count.get();
+    }
+
     /**
      * Copy the collection, sending to the recorder a record for each document.
-     * 
+     *
      * @param primary the connection to the replica set's primary node; may not be null
      * @param collectionId the identifier of the collection to be copied; may not be null
      * @param timestamp the timestamp in milliseconds at which the copy operation was started
      * @return number of documents that were copied
      * @throws InterruptedException if the thread was interrupted while the copy operation was running
      */
-    protected long copyCollection(MongoClient primary, CollectionId collectionId, long timestamp) throws InterruptedException {
+    protected long copyCollection(MongoClient primary, CollectionId collectionId, long timestamp,
+              String ongoingCollectionName, String ongoingCollectionOffset, long expectedNumDocs) throws InterruptedException {
         RecordsForCollection factory = recordMakers.forCollection(collectionId);
         if(factory == null){
             return 0;
         }
         MongoDatabase db = primary.getDatabase(collectionId.dbName());
         MongoCollection<Document> docCollection = db.getCollection(collectionId.name());
+        Bson query = new BsonDocument();
+        if(collectionId.namespace().equals(ongoingCollectionName)){
+            query = gt("_id", new ObjectId(ongoingCollectionOffset));
+        }
         long counter = 0;
-        try (MongoCursor<Document> cursor = docCollection.find().iterator()) {
+        try (MongoCursor<Document> cursor = docCollection.find(query).sort(new Document("_id", 1)).iterator()) {
             while (cursor.hasNext()) {
                 Document doc = cursor.next();
                 logger.trace("Found existing doc in {}: {}", collectionId, doc);
-                counter += factory.recordObject(collectionId, doc, timestamp);
+                counter += factory.recordObject(collectionId, doc, timestamp, expectedNumDocs);
             }
         }
         return counter;
@@ -344,7 +391,7 @@ public class Replicator {
 
     /**
      * Use the given primary to read the oplog.
-     * 
+     *
      * @param primary the connection to the replica set's primary node; may not be null
      */
     protected void readOplog(MongoClient primary) {
@@ -374,7 +421,7 @@ public class Replicator {
 
     /**
      * Handle a single oplog event.
-     * 
+     *
      * @param primaryAddress the address of the primary server from which the event was obtained; may not be null
      * @param event the oplog event; may not be null
      * @return {@code true} if additional events should be processed, or {@code false} if the caller should stop
@@ -425,5 +472,23 @@ public class Replicator {
             }
         }
         return true;
+    }
+
+    private class UpdateTotalCallback implements FutureCallback<HttpResponse>{
+
+        @Override
+        public void completed(HttpResponse httpResponse) {
+
+        }
+
+        @Override
+        public void failed(Exception e) {
+
+        }
+
+        @Override
+        public void cancelled() {
+
+        }
     }
 }
