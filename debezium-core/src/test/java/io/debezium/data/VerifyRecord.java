@@ -10,6 +10,10 @@ import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -36,6 +40,7 @@ import io.confluent.connect.avro.AvroConverter;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
+import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.AvroValidator;
 import io.debezium.util.Testing;
 
@@ -45,7 +50,7 @@ import io.debezium.util.Testing;
  * @author Randall Hauch
  */
 public class VerifyRecord {
-
+    
     @FunctionalInterface
     public static interface RecordValueComparator {
         /**
@@ -493,6 +498,22 @@ public class VerifyRecord {
             boolean actualValue = ((Boolean) o1).booleanValue();
             String desc = "found " + nameOf(keyOrValue, field) + " is " + o1 + " but expected " + o2;
             assertThat(actualValue).as(desc).isEqualTo(expectedValue);
+        } else if (ZonedTimestamp.SCHEMA_NAME.equals(schemaName)) {
+            // the actual value (produced by the connectors) should always be properly formatted
+            String actualValueString = o1.toString();
+            ZonedDateTime actualValue = ZonedDateTime.parse(o1.toString(), ZonedTimestamp.FORMATTER);
+
+            String expectedValueString = o2.toString();
+            ZonedDateTime expectedValue ;    
+            try {
+                // first try a standard offset format which contains the TZ information
+                expectedValue = ZonedDateTime.parse(expectedValueString, ZonedTimestamp.FORMATTER);
+            } catch (DateTimeParseException e) {
+                // then try a local format using the system default offset
+                LocalDateTime localDateTime = LocalDateTime.parse(expectedValueString);
+                expectedValue = ZonedDateTime.of(localDateTime, ZoneId.systemDefault());
+            }
+            assertThat(actualValue.toInstant()).as(actualValueString).isEqualTo(expectedValue.toInstant()).as(expectedValueString);
         } else {
             assertThat(o1).isEqualTo(o2);
         }

@@ -1190,7 +1190,7 @@ public abstract class ConnectorOutputTest {
                 } catch (IOException e) {
                     throw new RuntimeException("Error writing to file '" + tmpFile + "'", e);
                 }
-            });
+            }, StandardCharsets.UTF_8);
         }
         return tmpFile;
     }
