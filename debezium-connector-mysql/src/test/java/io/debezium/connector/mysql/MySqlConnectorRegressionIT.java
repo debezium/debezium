@@ -15,7 +15,9 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.Month;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
@@ -178,19 +180,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
 
                 // '2014-09-08 17:51:04.777'
                 String c4 = after.getString("c4"); // timestamp
-                OffsetDateTime c4DateTime = OffsetDateTime.parse(c4, ZonedTimestamp.FORMATTER);
-                // In case the timestamp string not in our timezone, convert to ours so we can compare ...
-                c4DateTime = c4DateTime.withOffsetSameInstant(OffsetDateTime.now().getOffset());
-                assertThat(c4DateTime.getYear()).isEqualTo(2014);
-                assertThat(c4DateTime.getMonth()).isEqualTo(Month.SEPTEMBER);
-                assertThat(c4DateTime.getDayOfMonth()).isEqualTo(8);
-                assertThat(c4DateTime.getHour()).isEqualTo(17);
-                assertThat(c4DateTime.getMinute()).isEqualTo(51);
-                assertThat(c4DateTime.getSecond()).isEqualTo(4);
-                assertThat(c4DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
-                // We're running the connector in the same timezone as the server, so the timezone in the timestamp
-                // should match our current offset ...
-                assertThat(c4DateTime.getOffset()).isEqualTo(OffsetDateTime.now().getOffset());
+                assertTimestamp(c4);
             } else if (record.topic().endsWith("dbz_114_zerovaluetest")) {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
                 // c1 DATE,
@@ -280,7 +270,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
             }
         });
     }
-
+    
     @Test
     @FixFor("DBZ-61")
     public void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshotAndConnectTimesTypes() throws SQLException, InterruptedException {
@@ -396,19 +386,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
 
                 // '2014-09-08 17:51:04.777'
                 String c4 = after.getString("c4"); // MySQL timestamp, so always ZonedTimestamp
-                OffsetDateTime c4DateTime = OffsetDateTime.parse(c4, ZonedTimestamp.FORMATTER);
-                // In case the timestamp string not in our timezone, convert to ours so we can compare ...
-                c4DateTime = c4DateTime.withOffsetSameInstant(OffsetDateTime.now().getOffset());
-                assertThat(c4DateTime.getYear()).isEqualTo(2014);
-                assertThat(c4DateTime.getMonth()).isEqualTo(Month.SEPTEMBER);
-                assertThat(c4DateTime.getDayOfMonth()).isEqualTo(8);
-                assertThat(c4DateTime.getHour()).isEqualTo(17);
-                assertThat(c4DateTime.getMinute()).isEqualTo(51);
-                assertThat(c4DateTime.getSecond()).isEqualTo(4);
-                assertThat(c4DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
-                // We're running the connector in the same timezone as the server, so the timezone in the timestamp
-                // should match our current offset ...
-                assertThat(c4DateTime.getOffset()).isEqualTo(OffsetDateTime.now().getOffset());
+                assertTimestamp(c4);
             } else if (record.topic().endsWith("dbz_114_zerovaluetest")) {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
                 // c1 DATE,
@@ -721,5 +699,22 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
             }
         });
     }
-
+    
+    private void assertTimestamp(String c4) {
+        // '2014-09-08 17:51:04.777'
+        ZoneId defaultZoneId = ZoneId.systemDefault();
+        ZonedDateTime c4DateTime = ZonedDateTime.parse(c4, ZonedTimestamp.FORMATTER).withZoneSameInstant(defaultZoneId);
+        assertThat(c4DateTime.getYear()).isEqualTo(2014);
+        assertThat(c4DateTime.getMonth()).isEqualTo(Month.SEPTEMBER);
+        assertThat(c4DateTime.getDayOfMonth()).isEqualTo(8);
+        assertThat(c4DateTime.getHour()).isEqualTo(17);
+        assertThat(c4DateTime.getMinute()).isEqualTo(51);
+        assertThat(c4DateTime.getSecond()).isEqualTo(4);
+        assertThat(c4DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
+        // We're running the connector in the same timezone as the server, so the timezone in the timestamp
+        // should match our current offset ...
+        LocalDateTime expectedLocalDateTime = LocalDateTime.parse("2014-09-08T17:51:04.780");
+        ZoneOffset expectedOffset = defaultZoneId.getRules().getOffset(expectedLocalDateTime);
+        assertThat(c4DateTime.getOffset()).isEqualTo(expectedOffset);
+    }
 }
