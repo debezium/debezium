@@ -12,10 +12,11 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.Year;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Map;
-
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.event.deserialization.DeleteRowsEventDataDeserializer;
@@ -43,8 +44,6 @@ import com.github.shyiko.mysql.binlog.io.ByteArrayInputStream;
  * @author Randall Hauch
  */
 class RowDeserializers {
-
-    private static final ZoneOffset LOCAL_TIMEZONE_OFFSET = OffsetDateTime.now().getOffset();
 
     /**
      * A specialization of {@link DeleteRowsEventDataDeserializer} that converts MySQL {@code DATE}, {@code TIME},
@@ -409,7 +408,7 @@ class RowDeserializers {
         long epochSecond = inputStream.readLong(4);
         int nanoSeconds = 0; // no fractional seconds
         LocalDateTime localDateTime = LocalDateTime.ofEpochSecond(epochSecond, nanoSeconds, ZoneOffset.UTC);
-        return OffsetDateTime.of(localDateTime, LOCAL_TIMEZONE_OFFSET);
+        return ZonedDateTime.of(localDateTime, ZoneId.systemDefault());
     }
 
     /**
@@ -426,7 +425,7 @@ class RowDeserializers {
         long epochSecond = bigEndianLong(inputStream.read(4), 0, 4);
         int nanoSeconds = deserializeFractionalSecondsInNanos(meta, inputStream);
         LocalDateTime localDateTime = LocalDateTime.ofEpochSecond(epochSecond, nanoSeconds, ZoneOffset.UTC);
-        return OffsetDateTime.of(localDateTime, LOCAL_TIMEZONE_OFFSET);
+        return ZonedDateTime.of(localDateTime, ZoneId.systemDefault());
     }
 
     /**
