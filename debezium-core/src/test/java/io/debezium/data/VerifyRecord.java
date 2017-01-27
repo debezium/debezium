@@ -10,6 +10,10 @@ import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -17,7 +21,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
-
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Schema.Type;
@@ -28,7 +31,6 @@ import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.json.JsonDeserializer;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.fest.assertions.Delta;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
@@ -38,6 +40,7 @@ import io.confluent.connect.avro.AvroConverter;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
+import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.AvroValidator;
 import io.debezium.util.Testing;
 
@@ -47,7 +50,7 @@ import io.debezium.util.Testing;
  * @author Randall Hauch
  */
 public class VerifyRecord {
-
+    
     @FunctionalInterface
     public static interface RecordValueComparator {
         /**
@@ -73,7 +76,7 @@ public class VerifyRecord {
     static {
         Map<String, Object> config = new HashMap<>();
         config.put("schemas.enable", Boolean.TRUE.toString());
-        config.put("schemas.cache.size", 100);
+        config.put("schemas.cache.size", String.valueOf(100));
         keyJsonConverter.configure(config, true);
         keyJsonDeserializer.configure(config, true);
         valueJsonConverter.configure(config, false);
@@ -364,7 +367,7 @@ public class VerifyRecord {
         if (schema == null) return null;
         String name = schema.name();
         if (name != null) name = name.trim();
-        return name.isEmpty() ? null : name;
+        return name == null || name.isEmpty() ? null : name;
     }
 
     @SuppressWarnings("unchecked")
@@ -495,6 +498,22 @@ public class VerifyRecord {
             boolean actualValue = ((Boolean) o1).booleanValue();
             String desc = "found " + nameOf(keyOrValue, field) + " is " + o1 + " but expected " + o2;
             assertThat(actualValue).as(desc).isEqualTo(expectedValue);
+        } else if (ZonedTimestamp.SCHEMA_NAME.equals(schemaName)) {
+            // the actual value (produced by the connectors) should always be properly formatted
+            String actualValueString = o1.toString();
+            ZonedDateTime actualValue = ZonedDateTime.parse(o1.toString(), ZonedTimestamp.FORMATTER);
+
+            String expectedValueString = o2.toString();
+            ZonedDateTime expectedValue ;    
+            try {
+                // first try a standard offset format which contains the TZ information
+                expectedValue = ZonedDateTime.parse(expectedValueString, ZonedTimestamp.FORMATTER);
+            } catch (DateTimeParseException e) {
+                // then try a local format using the system default offset
+                LocalDateTime localDateTime = LocalDateTime.parse(expectedValueString);
+                expectedValue = ZonedDateTime.of(localDateTime, ZoneId.systemDefault());
+            }
+            assertThat(actualValue.toInstant()).as(actualValueString).isEqualTo(expectedValue.toInstant()).as(expectedValueString);
         } else {
             assertThat(o1).isEqualTo(o2);
         }

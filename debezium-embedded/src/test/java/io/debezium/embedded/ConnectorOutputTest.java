@@ -241,6 +241,7 @@ public abstract class ConnectorOutputTest {
 
         private AvailableVariables builtInVariables() {
             Map<String, String> builtIns = Collect.hashMapOf("dbz.test.name", name());
+            System.getProperties().forEach((key, value) -> builtIns.put(key.toString(), value.toString()));
             return builtIns::get;
         }
 
@@ -560,6 +561,7 @@ public abstract class ConnectorOutputTest {
                 Map<String, String> variables = variableSupplier.get(config);
                 return withVariables(variables::get);
             } catch (Throwable t) {
+                t.printStackTrace(System.err);
                 fail("Unable to read variables using configuration: " + config);
                 return null;
             }
@@ -876,26 +878,6 @@ public abstract class ConnectorOutputTest {
                 }
             };
 
-            // Define what happens each time the connector completes ...
-            CompletionCallback wrapperCallback = (success, msg, error) -> {
-                try {
-                    result.stop();
-                    switch (result.get()) {
-                        case ERROR:
-                        case EXCEPTION:
-                            problem.handle(success, msg, error);
-                            break;
-                        case RESTART_REQUESTED:
-                        case STOPPED:
-                            // These are not error conditions ...
-                            problem.handle(true, msg, null);
-                            break;
-                    }
-                } finally {
-                    Testing.debug("Stopped connector");
-                }
-            };
-
             // Set up the configuration for the engine to include the connector configuration and apply as defaults
             // the environment and engine parameters ...
             Configuration engineConfig = Configuration.copy(connectorConfig)
@@ -910,7 +892,7 @@ public abstract class ConnectorOutputTest {
                                                   .using(engineConfig)
                                                   .notifying(consumer)
                                                   .using(this.getClass().getClassLoader())
-                                                  .using(wrapperCallback)
+                                                  .using(problem)
                                                   .build();
 
             long connectorTimeoutInSeconds = environmentConfig.getLong(ENV_CONNECTOR_TIMEOUT_IN_SECONDS, 10);
@@ -1208,7 +1190,7 @@ public abstract class ConnectorOutputTest {
                 } catch (IOException e) {
                     throw new RuntimeException("Error writing to file '" + tmpFile + "'", e);
                 }
-            });
+            }, StandardCharsets.UTF_8);
         }
         return tmpFile;
     }

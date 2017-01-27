@@ -5,14 +5,14 @@
  */
 package io.debezium.relational.history;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.io.File;
 import java.util.Map;
-
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
 import io.debezium.kafka.KafkaCluster;
@@ -26,11 +26,9 @@ import io.debezium.util.Testing;
  * @author Randall Hauch
  */
 public class KafkaDatabaseHistoryTest {
-
-    private Configuration config;
+    
     private KafkaDatabaseHistory history;
     private KafkaCluster kafka;
-    private File dataDir;
     private Map<String, String> source;
     private Map<String, Object> position;
     private String topicName;
@@ -41,9 +39,10 @@ public class KafkaDatabaseHistoryTest {
         source = Collect.hashMapOf("server", "my-server");
         setLogPosition(0);
         topicName = "schema-changes-topic";
-
-        dataDir = Testing.Files.createTestingDirectory("cluster");
+    
+        File dataDir = Testing.Files.createTestingDirectory("history_cluster");
         Testing.Files.delete(dataDir);
+    
         kafka = new KafkaCluster().usingDirectory(dataDir)
                                   .deleteDataPriorToStartup(true)
                                   .deleteDataUponShutdown(true)
@@ -72,12 +71,16 @@ public class KafkaDatabaseHistoryTest {
         kafka.createTopic(topicName, 1, 1);
 
         // Start up the history ...
-        config = Configuration.create()
-                              .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
-                              .with(KafkaDatabaseHistory.TOPIC, topicName)
-                              .with(DatabaseHistory.NAME, "my-db-history")
-                              .build();
-        history.configure(config,null);
+        Configuration config = Configuration.create()
+                                            .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
+                                            .with(KafkaDatabaseHistory.TOPIC, topicName)
+                                            .with(DatabaseHistory.NAME, "my-db-history")
+                                            // new since 0.10.1.0 - we want a low value because we're running everything locally in this test
+                                            .with(KafkaDatabaseHistory.consumerConfigPropertyName(
+                                                    ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG),
+                                                  100)
+                                            .build();
+        history.configure(config, null);
         history.start();
         
         // Should be able to call start more than once ...
