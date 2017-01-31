@@ -194,7 +194,7 @@ public class RecordMakers {
                     Schema keySchema = tableSchema.keySchema();
                     Map<String, ?> partition = source.partition();
                     Map<String, ?> offset = source.offsetForRow(rowNumber, numberOfRows);
-                    Struct origin = source.struct();
+                    Struct origin = source.struct(id);
                     SourceRecord record = new SourceRecord(partition, offset, topicName, partitionNum,
                             keySchema, key, envelope.schema(), envelope.read(value, origin, ts));
                     consumer.accept(record);
@@ -213,7 +213,7 @@ public class RecordMakers {
                     Schema keySchema = tableSchema.keySchema();
                     Map<String, ?> partition = source.partition();
                     Map<String, ?> offset = source.offsetForRow(rowNumber, numberOfRows);
-                    Struct origin = source.struct();
+                    Struct origin = source.struct(id);
                     SourceRecord record = new SourceRecord(partition, offset, topicName, partitionNum,
                             keySchema, key, envelope.schema(), envelope.create(value, origin, ts));
                     consumer.accept(record);
@@ -236,7 +236,7 @@ public class RecordMakers {
                     Schema keySchema = tableSchema.keySchema();
                     Map<String, ?> partition = source.partition();
                     Map<String, ?> offset = source.offsetForRow(rowNumber, numberOfRows);
-                    Struct origin = source.struct();
+                    Struct origin = source.struct(id);
                     if (key != null && !Objects.equals(key, oldKey)) {
                         // The key has changed, so we need to deal with both the new key and old key.
                         // Consumers may push the events into a system that won't allow both records to exist at the same time,
@@ -278,7 +278,7 @@ public class RecordMakers {
                     Schema keySchema = tableSchema.keySchema();
                     Map<String, ?> partition = source.partition();
                     Map<String, ?> offset = source.offsetForRow(rowNumber, numberOfRows);
-                    Struct origin = source.struct();
+                    Struct origin = source.struct(id);
                     // Send a delete message ...
                     SourceRecord record = new SourceRecord(partition, offset, topicName, partitionNum,
                             keySchema, key, envelope.schema(), envelope.delete(value, origin, ts));
@@ -322,7 +322,7 @@ public class RecordMakers {
         result.put(Fields.DDL_STATEMENTS, ddlStatements);
         return result;
     }
-
+    
     protected static interface Converter {
         int read(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
                  BlockingConsumer<SourceRecord> consumer)
