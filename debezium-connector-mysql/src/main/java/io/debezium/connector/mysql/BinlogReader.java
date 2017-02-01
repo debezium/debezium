@@ -156,6 +156,8 @@ public class BinlogReader extends AbstractReader {
         eventHandlers.put(EventType.EXT_WRITE_ROWS, this::handleInsert);
         eventHandlers.put(EventType.EXT_UPDATE_ROWS, this::handleUpdate);
         eventHandlers.put(EventType.EXT_DELETE_ROWS, this::handleDelete);
+        eventHandlers.put(EventType.VIEW_CHANGE, this::viewChange);
+        eventHandlers.put(EventType.XA_PREPARE, this::prepareTransaction);
 
         // Get the current GtidSet from MySQL so we can get a filtered/merged GtidSet based off of the last Debezium checkpoint.
         String availableServerGtidStr = context.knownGtidSet();
@@ -607,6 +609,28 @@ public class BinlogReader extends AbstractReader {
         startingRowNumber = 0;
     }
 
+    /**
+     * Handle a {@link EventType#VIEW_CHANGE} event.
+     * 
+     * @param event the database change data event to be processed; may not be null
+     * @throws InterruptedException if this thread is interrupted while blocking
+     */
+    protected void viewChange(Event event) throws InterruptedException {
+        logger.debug("View Change event: {}", event);
+        // do nothing
+    }
+    
+    /**
+     * Handle a {@link EventType#XA_PREPARE} event.
+     * 
+     * @param event the database change data event to be processed; may not be null
+     * @throws InterruptedException if this thread is interrupted while blocking
+     */
+    protected void prepareTransaction(Event event) throws InterruptedException {
+        logger.debug("XA Prepare event: {}", event);
+        // do nothing
+    }
+    
     protected SSLMode sslModeFor(SecureConnectionMode mode) {
         switch (mode) {
             case DISABLED:
