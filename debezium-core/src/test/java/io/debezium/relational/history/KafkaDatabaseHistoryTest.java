@@ -5,14 +5,15 @@
  */
 package io.debezium.relational.history;
 
-import static org.fest.assertions.Assertions.assertThat;
-
 import java.io.File;
 import java.util.Map;
+
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
 import io.debezium.kafka.KafkaCluster;
@@ -26,7 +27,7 @@ import io.debezium.util.Testing;
  * @author Randall Hauch
  */
 public class KafkaDatabaseHistoryTest {
-    
+
     private KafkaDatabaseHistory history;
     private KafkaCluster kafka;
     private Map<String, String> source;
@@ -39,10 +40,11 @@ public class KafkaDatabaseHistoryTest {
         source = Collect.hashMapOf("server", "my-server");
         setLogPosition(0);
         topicName = "schema-changes-topic";
-    
+
         File dataDir = Testing.Files.createTestingDirectory("history_cluster");
         Testing.Files.delete(dataDir);
-    
+
+        // Configure the extra properties to
         kafka = new KafkaCluster().usingDirectory(dataDir)
                                   .deleteDataPriorToStartup(true)
                                   .deleteDataUponShutdown(true)
@@ -75,14 +77,20 @@ public class KafkaDatabaseHistoryTest {
                                             .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
                                             .with(KafkaDatabaseHistory.TOPIC, topicName)
                                             .with(DatabaseHistory.NAME, "my-db-history")
-                                            // new since 0.10.1.0 - we want a low value because we're running everything locally in this test
+                                            .with(KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, 1000)
+                                            // new since 0.10.1.0 - we want a low value because we're running everything locally
+                                            // in this test. However, it can't be so low that the broker returns the same
+                                            // messages more than once.
                                             .with(KafkaDatabaseHistory.consumerConfigPropertyName(
-                                                    ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG),
+                                                  ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG),
                                                   100)
+                                            .with(KafkaDatabaseHistory.consumerConfigPropertyName(
+                                                  ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG),
+                                                  50000)
                                             .build();
         history.configure(config, null);
         history.start();
-        
+
         // Should be able to call start more than once ...
         history.start();
 
@@ -106,6 +114,8 @@ public class KafkaDatabaseHistoryTest {
                 "CREATE TABLE customers ( id INTEGER NOT NULL PRIMARY KEY, name VARCHAR(100) NOT NULL ); \n" +
                 "CREATE TABLE products ( productId INTEGER NOT NULL PRIMARY KEY, desc VARCHAR(255) NOT NULL); \n";
         history.record(source, position, "db1", tables1, ddl);
+
+        // Parse the DDL statement 3x and each time update a different Tables object ...
         ddlParser.parse(ddl, tables1);
         assertThat(tables1.size()).isEqualTo(3);
         ddlParser.parse(ddl, tables2);
@@ -113,6 +123,7 @@ public class KafkaDatabaseHistoryTest {
         ddlParser.parse(ddl, tables3);
         assertThat(tables3.size()).isEqualTo(3);
 
+        // Record a drop statement and parse it for 2 of our 3 Tables...
         setLogPosition(39);
         ddl = "DROP TABLE foo;";
         history.record(source, position, "db1", tables2, ddl);
@@ -121,6 +132,7 @@ public class KafkaDatabaseHistoryTest {
         ddlParser.parse(ddl, tables3);
         assertThat(tables3.size()).isEqualTo(2);
 
+        // Record another DDL statement and parse it for 1 of our 3 Tables...
         setLogPosition(10003);
         ddl = "CREATE TABLE suppliers ( supplierId INTEGER NOT NULL PRIMARY KEY, name VARCHAR(255) NOT NULL);";
         history.record(source, position, "db1", tables3, ddl);
