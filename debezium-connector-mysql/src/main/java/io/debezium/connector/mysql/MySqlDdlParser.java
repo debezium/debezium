@@ -269,7 +269,7 @@ public class MySqlDdlParser extends DdlParser {
         } else if (tokens.matchesAnyOf("DATABASE", "SCHEMA")) {
             parseCreateDatabase(marker);
         } else if (tokens.matchesAnyOf("EVENT")) {
-            parseCreateUnknown(marker);
+            parseCreateEvent(marker);
         } else if (tokens.matchesAnyOf("FUNCTION", "PROCEDURE")) {
             parseCreateProcedure(marker);
         } else if (tokens.matchesAnyOf("UNIQUE", "FULLTEXT", "SPATIAL", "INDEX")) {
@@ -279,11 +279,13 @@ public class MySqlDdlParser extends DdlParser {
         } else if (tokens.matchesAnyOf("TABLESPACE")) {
             parseCreateUnknown(marker);
         } else if (tokens.matchesAnyOf("TRIGGER")) {
-            parseCreateUnknown(marker);
+            parseCreateTrigger(marker);
         } else {
             // It could be several possible things (including more elaborate forms of those matches tried above),
             sequentially(this::parseCreateView,
                          this::parseCreateProcedure,
+                         this::parseCreateTrigger,
+                         this::parseCreateEvent,
                          this::parseCreateUnknown);
         }
     }
@@ -998,6 +1000,20 @@ public class MySqlDdlParser extends DdlParser {
     protected void parseCreateProcedure(Marker start) {
         parseDefiner(tokens.mark());
         tokens.consume("FUNCTION");
+        tokens.consume(); // name
+        consumeRemainingStatement(start);
+    }
+
+    protected void parseCreateTrigger(Marker start) {
+        parseDefiner(tokens.mark());
+        tokens.consume("TRIGGER");
+        tokens.consume(); // name
+        consumeRemainingStatement(start);
+    }
+
+    protected void parseCreateEvent(Marker start) {
+        parseDefiner(tokens.mark());
+        tokens.consume("EVENT");
         tokens.consume(); // name
         consumeRemainingStatement(start);
     }

@@ -468,7 +468,7 @@ public class MySqlDdlParserTest {
 
     @Test
     public void shouldParseDefiner() {
-        String function = "FUNCTION fnA`( a int, b int ) RETURNS tinyint(1) begin anything end;";
+        String function = "FUNCTION fnA( a int, b int ) RETURNS tinyint(1) begin anything end;";
         String ddl = "CREATE DEFINER='mysqluser'@'%' " + function;
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(0); // no tables
@@ -761,6 +761,16 @@ public class MySqlDdlParserTest {
         assertThat(t.columnNames()).containsExactly("collection_id");
         assertThat(t.primaryKeyColumnNames()).containsExactly("collection_id");
         assertColumn(t, "collection_id", "INT UNSIGNED", Types.INTEGER, 11, -1, false, true, true);
+    }
+    
+    @FixFor("DBZ-176")
+    @Test
+    public void shouldParseButIgnoreCreateTriggerWithDefiner() {
+        parser.parse(readFile("ddl/mysql-dbz-176.ddl"), tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(0); // 0 table
+        assertThat(listener.total()).isEqualTo(0);
+        listener.forEach(this::printEvent);
     }
     
     @Test
