@@ -422,6 +422,7 @@ public class BinlogReader extends AbstractReader {
         if (sql.equalsIgnoreCase("BEGIN")) {
             // We are starting a new transaction ...
             source.startNextTransaction();
+            source.setBinlogThread(command.getThreadId());
             if (initialEventsToSkip != 0) {
                 logger.debug("Restarting partially-processed transaction; change events will not be created for the first {} events plus {} more rows in the next event",
                              initialEventsToSkip, startingRowNumber);
@@ -433,6 +434,7 @@ public class BinlogReader extends AbstractReader {
         if (sql.equalsIgnoreCase("COMMIT")) {
             // We are completing the transaction ...
             source.commitTransaction();
+            source.setBinlogThread(-1L);
             skipEvent = false;
             return;
         }

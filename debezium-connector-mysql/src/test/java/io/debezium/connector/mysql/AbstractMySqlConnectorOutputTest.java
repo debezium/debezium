@@ -153,6 +153,11 @@ public class AbstractMySqlConnectorOutputTest extends ConnectorOutputTest {
         }
         return variables;
     }
+    
+    @Override
+    protected String[] globallyIgnorableFieldNames() {
+        return new String[]{"VALUE/source/thread"};
+    }
 
     @Override
     protected void addValueComparatorsByFieldPath(BiConsumer<String, RecordValueComparator> comparatorsByPath) {
