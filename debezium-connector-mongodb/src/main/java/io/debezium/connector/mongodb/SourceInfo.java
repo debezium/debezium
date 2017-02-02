@@ -196,7 +196,7 @@ public final class SourceInfo {
     public Map<String, ?> lastOffset(String replicaSetName) {
         Position existing = positionsByReplicaSetName.get(replicaSetName);
         if (existing == null) existing = INITIAL_POSITION;
-        if (initialSyncReplicaSets.contains(replicaSetName)) {
+        if (isInitialSyncOngoing(replicaSetName)) {
             return Collect.hashMapOf(TIMESTAMP, new Integer(existing.getTime()),
                                      ORDER, new Integer(existing.getInc()),
                                      OPERATION_ID, existing.getOperationId(),
@@ -218,7 +218,7 @@ public final class SourceInfo {
      */
     public Struct lastOffsetStruct(String replicaSetName, CollectionId collectionId) {
         return offsetStructFor(replicaSetName, collectionId.namespace(), positionsByReplicaSetName.get(replicaSetName),
-                               initialSyncReplicaSets.contains(replicaSetName));
+                               isInitialSyncOngoing(replicaSetName));
     }
 
     /**
@@ -241,7 +241,7 @@ public final class SourceInfo {
             namespace = oplogEvent.getString("ns");
         }
         positionsByReplicaSetName.put(replicaSetName, position);
-        return offsetStructFor(replicaSetName, namespace, position, initialSyncReplicaSets.contains(replicaSetName));
+        return offsetStructFor(replicaSetName, namespace, position, isInitialSyncOngoing(replicaSetName));
     }
 
     /**
@@ -330,6 +330,17 @@ public final class SourceInfo {
      */
     public void stopInitialSync(String replicaSetName) {
         initialSyncReplicaSets.remove(replicaSetName);
+    }
+
+    /**
+     * Determine if the initial sync for the given replica set is still ongoing.
+     * 
+     * @param replicaSetName the name of the replica set; never null
+     * @return {@code true} if the initial sync for this replica is still ongoing or was not completed before restarting, or
+     *         {@code false} if there is currently no initial sync operation for this replica set
+     */
+    public boolean isInitialSyncOngoing(String replicaSetName) {
+        return initialSyncReplicaSets.contains(replicaSetName);
     }
 
     private static int intOffsetValue(Map<String, ?> values, String key) {

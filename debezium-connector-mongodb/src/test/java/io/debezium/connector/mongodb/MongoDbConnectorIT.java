@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
@@ -189,12 +190,14 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertThat(records.recordsForTopic("mongo.dbit.simpletons").size()).isEqualTo(6);
         assertThat(records.recordsForTopic("mongo.dbit.restaurants").size()).isEqualTo(6);
         assertThat(records.topics().size()).isEqualTo(2);
+        AtomicBoolean foundLast = new AtomicBoolean(false);
         records.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyFromInitialSync(record);
+            verifyFromInitialSync(record, foundLast);
             verifyReadOperation(record);
         });
+        assertThat(foundLast.get()).isTrue();
 
         // At this point, the connector has performed the initial sync and awaits changes ...
 
@@ -258,10 +261,15 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
 
     }
 
-    protected void verifyFromInitialSync(SourceRecord record) {
-        assertThat(record.sourceOffset().containsKey(SourceInfo.INITIAL_SYNC)).isTrue();
-        Struct value = (Struct) record.value();
-        assertThat(value.getStruct(Envelope.FieldName.SOURCE).getBoolean(SourceInfo.INITIAL_SYNC)).isTrue();
+    protected void verifyFromInitialSync(SourceRecord record, AtomicBoolean foundLast) {
+        if (record.sourceOffset().containsKey(SourceInfo.INITIAL_SYNC)) {
+            assertThat(record.sourceOffset().containsKey(SourceInfo.INITIAL_SYNC)).isTrue();
+            Struct value = (Struct) record.value();
+            assertThat(value.getStruct(Envelope.FieldName.SOURCE).getBoolean(SourceInfo.INITIAL_SYNC)).isTrue();
+        } else {
+            // Only the last record in the initial sync should be marked as not being part of the initial sync ...
+            assertThat(foundLast.getAndSet(true)).isFalse();
+        }
     }
 
     protected void verifyNotFromInitialSync(SourceRecord record) {
