@@ -632,7 +632,7 @@
                 <skipLongRunningTests>false</skipLongRunningTests>
             </properties>
             <modules>
-                <module>integration-tests</module>
+                <!--module>integration-tests</module-->
             </modules>
         </profile>
         <profile>

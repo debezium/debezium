@@ -38,7 +38,7 @@ import io.debezium.util.Collect;
  * {@link #eventsToSkipUponRestart() number of events to skip}, and the
  * {@link #rowsToSkipUponRestart() number of rows to also skip}.
  * <p>
- * Here's a JSON-like representation of an example:
+ * Here's a JSON-like representation of an example offset:
  * 
  * <pre>
  * {
@@ -66,7 +66,7 @@ import io.debezium.util.Collect;
  * since the connector may need to restart from either just after the most recently completed transaction or the beginning
  * of the most recently started transaction (whichever appears later in the binlog).
  * <p>
- * Here's a JSON-like representation of the source for an event that corresponds to the above partition and
+ * Here's a JSON-like representation of the source for the metadata for an event that corresponds to the above partition and
  * offset:
  * 
  * <pre>
@@ -78,7 +78,8 @@ import io.debezium.util.Collect;
  *     "file": "mysql-bin.000003",
  *     "pos" = 1081,
  *     "row": 0,
- *     "snapshot": true
+ *     "snapshot": true,
+ *     "thread" : 1
  * }
  * </pre>
  * 
@@ -101,6 +102,7 @@ final class SourceInfo {
     public static final String BINLOG_ROW_IN_EVENT_OFFSET_KEY = "row";
     public static final String TIMESTAMP_KEY = "ts_sec";
     public static final String SNAPSHOT_KEY = "snapshot";
+    public static final String THREAD_KEY = "thread";
 
     /**
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition()} and {@link #offset()} information.
@@ -115,6 +117,7 @@ final class SourceInfo {
                                                      .field(BINLOG_POSITION_OFFSET_KEY, Schema.INT64_SCHEMA)
                                                      .field(BINLOG_ROW_IN_EVENT_OFFSET_KEY, Schema.INT32_SCHEMA)
                                                      .field(SNAPSHOT_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
+                                                     .field(THREAD_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                      .build();
 
     private String currentGtidSet;
@@ -132,6 +135,7 @@ final class SourceInfo {
     private String serverName;
     private long serverId = 0;
     private long binlogTimestampSeconds = 0;
+    private long threadId = -1L;
     private Map<String, String> sourcePartition;
     private boolean lastSnapshot = true;
     private boolean nextSnapshot = false;
@@ -288,6 +292,9 @@ final class SourceInfo {
         if (lastSnapshot) {
             result.put(SNAPSHOT_KEY, true);
         }
+        if (threadId >= 0) {
+            result.put(THREAD_KEY, threadId);
+        }
         return result;
     }
 
@@ -388,6 +395,15 @@ final class SourceInfo {
      */
     public void setBinlogTimestampSeconds(long timestampInSeconds) {
         this.binlogTimestampSeconds = timestampInSeconds;
+    }
+
+    /**
+     * Set the identifier of the MySQL thread that generated the most recent event.
+     * 
+     * @param threadId the thread identifier; may be negative if not known
+     */
+    public void setBinlogThread(long threadId) {
+        this.threadId = threadId;
     }
 
     /**

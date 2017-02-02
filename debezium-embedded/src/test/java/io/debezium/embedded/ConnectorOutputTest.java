@@ -688,6 +688,15 @@ public abstract class ConnectorOutputTest {
     }
 
     /**
+     * Return the names of the fields that should always be ignored for all tests. By default this method returns {@code null}.
+     * 
+     * @return the array of field names that should always be ignored, or empty or null if there are no such fields
+     */
+    protected String[] globallyIgnorableFieldNames() {
+        return null;
+    }
+
+    /**
      * Run the connector that uses the files in the given directory for the connector configuration, environment configuration,
      * and expected results. These names of these files are as follows:
      * 
@@ -768,6 +777,10 @@ public abstract class ConnectorOutputTest {
         final Configuration connectorConfig = spec.config();
         String[] ignorableFieldNames = environmentConfig.getString(ENV_IGNORE_FIELDS, "").split(",");
         final Set<String> ignorableFields = Arrays.stream(ignorableFieldNames).map(String::trim).collect(Collectors.toSet());
+        String[] globallyIgnorableFieldNames = globallyIgnorableFieldNames();
+        if (globallyIgnorableFieldNames != null && globallyIgnorableFieldNames.length != 0) {
+            ignorableFields.addAll(Arrays.stream(globallyIgnorableFieldNames).map(String::trim).collect(Collectors.toSet()));
+        }
         final SchemaAndValueConverter keyConverter = new SchemaAndValueConverter(environmentConfig, true);
         final SchemaAndValueConverter valueConverter = new SchemaAndValueConverter(environmentConfig, false);
         final TestData testData = spec.testData();
