@@ -16,6 +16,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.data.Envelope;
 import io.debezium.document.Document;
+import io.debezium.relational.TableId;
 import io.debezium.util.Collect;
 
 /**
@@ -79,7 +80,9 @@ import io.debezium.util.Collect;
  *     "pos" = 1081,
  *     "row": 0,
  *     "snapshot": true,
- *     "thread" : 1
+ *     "thread" : 1,
+ *     "db" : "inventory",
+ *     "table" : "products"
  * }
  * </pre>
  * 
@@ -103,6 +106,8 @@ final class SourceInfo {
     public static final String TIMESTAMP_KEY = "ts_sec";
     public static final String SNAPSHOT_KEY = "snapshot";
     public static final String THREAD_KEY = "thread";
+    public static final String DB_NAME_KEY = "db";
+    public static final String TABLE_NAME_KEY = "table";
 
     /**
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition()} and {@link #offset()} information.
@@ -118,6 +123,8 @@ final class SourceInfo {
                                                      .field(BINLOG_ROW_IN_EVENT_OFFSET_KEY, Schema.INT32_SCHEMA)
                                                      .field(SNAPSHOT_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
                                                      .field(THREAD_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+                                                     .field(DB_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                                                     .field(TABLE_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .build();
 
     private String currentGtidSet;
@@ -277,6 +284,20 @@ final class SourceInfo {
      * @see #schema()
      */
     public Struct struct() {
+        return struct(null);
+    }
+
+    /**
+     * Get a {@link Struct} representation of the source {@link #partition()} and {@link #offset()} information. The Struct
+     * complies with the {@link #SCHEMA} for the MySQL connector.
+     * <p>
+     * This method should always be called after {@link #offsetForRow(int, int)}.
+     * 
+     * @param tableId the table that should be included in the struct; may be null
+     * @return the source partition and offset {@link Struct}; never null
+     * @see #schema()
+     */
+    public Struct struct(TableId tableId) {
         assert serverName != null;
         Struct result = new Struct(SCHEMA);
         result.put(SERVER_NAME_KEY, serverName);
@@ -294,6 +315,10 @@ final class SourceInfo {
         }
         if (threadId >= 0) {
             result.put(THREAD_KEY, threadId);
+        }
+        if (tableId != null) {
+            result.put(DB_NAME_KEY, tableId.catalog());
+            result.put(TABLE_NAME_KEY, tableId.table());
         }
         return result;
     }
