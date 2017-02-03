@@ -7,6 +7,7 @@ package io.debezium.connector.mongodb;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
@@ -38,6 +39,7 @@ import com.mongodb.client.model.Filters;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.mongodb.RecordMakers.RecordsForCollection;
 import io.debezium.function.BlockingConsumer;
+import io.debezium.function.BufferedBlockingConsumer;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
 
@@ -92,6 +94,7 @@ public class Replicator {
     private final AtomicBoolean running = new AtomicBoolean();
     private final SourceInfo source;
     private final RecordMakers recordMakers;
+    private final BufferableRecorder bufferedRecorder;
     private final Predicate<CollectionId> collectionFilter;
     private final Clock clock;
     private ReplicationContext.MongoPrimary primaryClient;
@@ -110,7 +113,8 @@ public class Replicator {
         this.replicaSet = replicaSet;
         this.rsName = replicaSet.replicaSetName();
         this.copyThreads = Executors.newFixedThreadPool(context.maxNumberOfCopyThreads());
-        this.recordMakers = new RecordMakers(this.source, context.topicSelector(), recorder);
+        this.bufferedRecorder = new BufferableRecorder(recorder);
+        this.recordMakers = new RecordMakers(this.source, context.topicSelector(), this.bufferedRecorder);
         this.collectionFilter = this.context.collectionFilter();
         this.clock = this.context.clock();
     }
@@ -168,7 +172,7 @@ public class Replicator {
             source.offsetStructForEvent(replicaSet.replicaSetName(), last);
         });
     }
-    
+
     /**
      * Determine if an initial sync should be performed. An initial sync is expected if the {@link #source} has no previously
      * recorded offsets for this replica set, or if {@link ReplicationContext#performSnapshotEvenIfNotNeeded() a snapshot should
@@ -185,24 +189,34 @@ public class Replicator {
                 logger.info("Configured to performing initial sync of replica set '{}'", rsName);
                 performSnapshot = true;
             } else {
-                // Look to see if our last recorded offset still exists in the oplog.
-                BsonTimestamp lastRecordedTs = source.lastOffsetTimestamp(rsName);
-                AtomicReference<BsonTimestamp> firstExistingTs = new AtomicReference<>();
-                primaryClient.execute("get oplog position", primary -> {
-                    MongoCollection<Document> oplog = primary.getDatabase("local").getCollection("oplog.rs");
-                    Document firstEvent = oplog.find().sort(new Document("$natural", 1)).limit(1).first(); // may be null
-                    firstExistingTs.set(SourceInfo.extractEventTimestamp(firstEvent));
-                });
-                BsonTimestamp firstAvailableTs = firstExistingTs.get();
-                if ( firstAvailableTs == null ) {
-                    logger.info("The oplog contains no entries, so performing initial sync of replica set '{}'", rsName);
+                if (source.isInitialSyncOngoing(rsName)) {
+                    // The last snapshot was not completed, so do it again ...
+                    logger.info("The previous initial sync was incomplete for '{}', so initiating another initial sync", rsName);
                     performSnapshot = true;
-                } else if ( lastRecordedTs.compareTo(firstAvailableTs) < 0 ) {
-                    // The last recorded timestamp is *before* the first existing oplog event, which means there is
-                    // almost certainly some history lost since we last processed the oplog ...
-                    logger.info("Initial sync is required since the oplog for replica set '{}' starts at {}, which is later than the timestamp of the last offset {}",
-                                rsName, firstAvailableTs, lastRecordedTs);
-                    performSnapshot = true;
+                } else {
+                    // There is no ongoing initial sync, so look to see if our last recorded offset still exists in the oplog.
+                    BsonTimestamp lastRecordedTs = source.lastOffsetTimestamp(rsName);
+                    AtomicReference<BsonTimestamp> firstExistingTs = new AtomicReference<>();
+                    primaryClient.execute("get oplog position", primary -> {
+                        MongoCollection<Document> oplog = primary.getDatabase("local").getCollection("oplog.rs");
+                        Document firstEvent = oplog.find().sort(new Document("$natural", 1)).limit(1).first(); // may be null
+                        firstExistingTs.set(SourceInfo.extractEventTimestamp(firstEvent));
+                    });
+                    BsonTimestamp firstAvailableTs = firstExistingTs.get();
+                    if (firstAvailableTs == null) {
+                        logger.info("The oplog contains no entries, so performing initial sync of replica set '{}'", rsName);
+                        performSnapshot = true;
+                    } else if (lastRecordedTs.compareTo(firstAvailableTs) < 0) {
+                        // The last recorded timestamp is *before* the first existing oplog event, which means there is
+                        // almost certainly some history lost since we last processed the oplog ...
+                        logger.info("Initial sync is required since the oplog for replica set '{}' starts at {}, which is later than the timestamp of the last offset {}",
+                                    rsName, firstAvailableTs, lastRecordedTs);
+                        performSnapshot = true;
+                    } else {
+                        // Otherwise we'll not perform an initial sync
+                        logger.info("The oplog contains the last entry previously read for '{}', so no initial sync will be performed",
+                                    rsName);
+                    }
                 }
             }
         } else {
@@ -220,6 +234,15 @@ public class Replicator {
     protected boolean performInitialSync() {
         logger.info("Beginning initial sync of '{}' at {}", rsName, source.lastOffset(rsName));
         source.startInitialSync(replicaSet.replicaSetName());
+
+        // Set up our recorder to buffer the last record ...
+        try {
+            bufferedRecorder.startBuffering();
+        } catch (InterruptedException e) {
+            // Do nothing so that this thread is terminated ...
+            logger.info("Interrupted while waiting to flush the buffer before starting an initial sync of '{}'", rsName);
+            return false;
+        }
 
         // Get the current timestamp of this processor ...
         final long syncStart = clock.currentTimeInMillis();
@@ -284,6 +307,14 @@ public class Replicator {
 
         // We completed the initial sync, so record this in the source ...
         source.stopInitialSync(replicaSet.replicaSetName());
+        try {
+            // And immediately flush the last buffered source record with the updated offset ...
+            bufferedRecorder.stopBuffering(source.lastOffset(rsName));
+        } catch (InterruptedException e) {
+            logger.info("Interrupted while waiting for last initial sync record from replica set '{}' to be recorded", rsName);
+            return false;
+        }
+
         logger.info("Initial sync of {} collections with a total of {} documents completed in {}",
                     collections.size(), numDocumentsCopied.get(), Strings.duration(syncDuration));
         return true;
@@ -422,5 +453,62 @@ public class Replicator {
             }
         }
         return true;
+    }
+
+    /**
+     * A {@link BlockingConsumer BlockingConsumer<SourceRecord>} implementation that will buffer the last source record
+     * only during an initial sync, so that when the initial sync is complete the last record's offset can be updated
+     * to reflect the completion of the initial sync before it is flushed.
+     */
+    protected final class BufferableRecorder implements BlockingConsumer<SourceRecord> {
+        private final BlockingConsumer<SourceRecord> actual;
+        private final BufferedBlockingConsumer<SourceRecord> buffered;
+        private volatile BlockingConsumer<SourceRecord> current;
+
+        public BufferableRecorder(BlockingConsumer<SourceRecord> actual) {
+            this.actual = actual;
+            this.buffered = BufferedBlockingConsumer.bufferLast(actual);
+            this.current = this.actual;
+        }
+
+        /**
+         * Start buffering the most recently source record so it can be updated before the {@link #stopBuffering(Map) initial sync
+         * is completed}.
+         * 
+         * @throws InterruptedException if the thread is interrupted while waiting for any existing record to be flushed
+         */
+        protected synchronized void startBuffering() throws InterruptedException {
+            this.buffered.flush();
+            this.current = this.buffered;
+        }
+
+        /**
+         * Stop buffering source records, and flush any buffered records by replacing their offset with the provided offset.
+         * Note that this only replaces the record's {@link SourceRecord#sourceOffset() offset} and does not change the
+         * value of the record, which may contain information about the snapshot.
+         * 
+         * @param newOffset the offset that reflects that the snapshot has been completed; may not be null
+         * @throws InterruptedException if the thread is interrupted while waiting for the new record to be flushed
+         */
+        protected synchronized void stopBuffering(Map<String, ?> newOffset) throws InterruptedException {
+            assert newOffset != null;
+            this.buffered.flush(record -> {
+                if (record == null) return null;
+                return new SourceRecord(record.sourcePartition(),
+                        newOffset,
+                        record.topic(),
+                        record.kafkaPartition(),
+                        record.keySchema(),
+                        record.key(),
+                        record.valueSchema(),
+                        record.value());
+            });
+            this.current = this.actual;
+        }
+
+        @Override
+        public void accept(SourceRecord t) throws InterruptedException {
+            this.current.accept(t);
+        }
     }
 }
