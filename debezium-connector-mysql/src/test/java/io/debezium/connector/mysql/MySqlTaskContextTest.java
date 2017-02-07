@@ -18,7 +18,10 @@ import static org.fest.assertions.Assertions.assertThat;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.document.Document;
 import io.debezium.relational.history.FileDatabaseHistory;
+import io.debezium.relational.history.HistoryRecord;
+import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.util.Testing;
 
 /**
@@ -199,17 +202,17 @@ public class MySqlTaskContextTest {
                                      "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-41")
                                .build();
         context = new MySqlTaskContext(config);
-        boolean valid = config.validateAndRecord(MySqlConnectorConfig.ALL_FIELDS,msg->{});
+        boolean valid = config.validateAndRecord(MySqlConnectorConfig.ALL_FIELDS, msg -> {});
         assertThat(valid).isFalse();
     }
 
     @Test
     public void shouldFilterAndMergeGtidSet() throws Exception {
         String gtidStr = "036d85a9-64e5-11e6-9b48-42010af0000c:1-2,"
-          + "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:5-41";
+                + "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:5-41";
         String availableServerGtidStr = "036d85a9-64e5-11e6-9b48-42010af0000c:1-20,"
-          + "7145bf69-d1ca-11e5-a588-0242ac110004:1-3200,"
-          + "123e4567-e89b-12d3-a456-426655440000:1-41";
+                + "7145bf69-d1ca-11e5-a588-0242ac110004:1-3200,"
+                + "123e4567-e89b-12d3-a456-426655440000:1-41";
         config = simpleConfig().with(MySqlConnectorConfig.GTID_SOURCE_INCLUDES,
                                      "036d85a9-64e5-11e6-9b48-42010af0000c")
                                .build();
@@ -229,4 +232,60 @@ public class MySqlTaskContextTest {
         assertThat(uuidSet3.getIntervals()).isEqualTo(Arrays.asList(new GtidSet.Interval(1, 41)));
         assertThat(uuidSet4).isNull();
     }
+
+    @Test
+    public void shouldComparePositionsWithDifferentFields() {
+        String lastGtidStr = "01261278-6ade-11e6-b36a-42010af00790:1-400944168,"
+                + "30efb117-e42a-11e6-ba9e-42010a28002e:1-9,"
+                + "4d1a4918-44ba-11e6-bf12-42010af0040b:1-11604379,"
+                + "621dc2f6-803b-11e6-acc1-42010af000a4:1-7963838,"
+                + "716ec46f-d522-11e5-bb56-0242ac110004:1-35850702,"
+                + "c627b2bc-9647-11e6-a886-42010af0044a:1-10426868,"
+                + "d079cbb3-750f-11e6-954e-42010af00c28:1-11544291:11544293-11885648";
+        config = simpleConfig().with(MySqlConnectorConfig.GTID_SOURCE_EXCLUDES, "96c2072e-e428-11e6-9590-42010a28002d")
+                               .build();
+        context = new MySqlTaskContext(config);
+        context.start();
+        context.source().setCompletedGtidSet(lastGtidStr);
+        HistoryRecordComparator comparator = context.dbSchema().historyComparator();
+
+        String server = "mysql-server-1";
+        HistoryRecord rec1 = historyRecord(server, "mysql-bin.000008", 380941551, "01261278-6ade-11e6-b36a-42010af00790:1-378422946,"
+                + "4d1a4918-44ba-11e6-bf12-42010af0040b:1-11002284,"
+                + "716ec46f-d522-11e5-bb56-0242ac110004:1-34673215,"
+                + "96c2072e-e428-11e6-9590-42010a28002d:1-3,"
+                + "c627b2bc-9647-11e6-a886-42010af0044a:1-9541144", 0, 0, true);
+        HistoryRecord rec2 = historyRecord(server, "mysql-bin.000016", 645115324, "01261278-6ade-11e6-b36a-42010af00790:1-400944168,"
+                + "30efb117-e42a-11e6-ba9e-42010a28002e:1-9,"
+                + "4d1a4918-44ba-11e6-bf12-42010af0040b:1-11604379,"
+                + "621dc2f6-803b-11e6-acc1-42010af000a4:1-7963838,"
+                + "716ec46f-d522-11e5-bb56-0242ac110004:1-35850702,"
+                + "c627b2bc-9647-11e6-a886-42010af0044a:1-10426868,"
+                + "d079cbb3-750f-11e6-954e-42010af00c28:1-11544291:11544293-11885648", 2, 1, false);
+
+        assertThat(comparator.isAtOrBefore(rec1, rec2)).isTrue();
+        assertThat(comparator.isAtOrBefore(rec2, rec1)).isFalse();
+    }
+
+    protected HistoryRecord historyRecord(String serverName, String binlogFilename, int position, String gtids,
+                                          int event, int row, boolean snapshot) {
+        Document source = Document.create(SourceInfo.SERVER_NAME_KEY, serverName);
+        Document pos = Document.create(SourceInfo.BINLOG_FILENAME_OFFSET_KEY, binlogFilename,
+                                       SourceInfo.BINLOG_POSITION_OFFSET_KEY, position);
+        if (row >= 0) {
+            pos = pos.set(SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY, row);
+        }
+        if (event >= 0) {
+            pos = pos.set(SourceInfo.EVENTS_TO_SKIP_OFFSET_KEY, event);
+        }
+        if (gtids != null && gtids.trim().length() != 0) {
+            pos = pos.set(SourceInfo.GTID_SET_KEY, gtids);
+        }
+        if (snapshot) {
+            pos = pos.set(SourceInfo.SNAPSHOT_KEY, true);
+        }
+        return new HistoryRecord(Document.create(HistoryRecord.Fields.SOURCE, source,
+                                                 HistoryRecord.Fields.POSITION, pos));
+    }
+
 }

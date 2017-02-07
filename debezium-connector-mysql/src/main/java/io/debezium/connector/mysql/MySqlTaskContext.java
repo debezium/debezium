@@ -44,16 +44,17 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         this.source = new SourceInfo();
         this.source.setServerName(serverName());
 
-        // Set up the MySQL schema ...
-        this.dbSchema = new MySqlSchema(config, serverName());
-
-        // Set up the record processor ...
-        this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector);
-
+        // Set up the GTID filter ...
         String gtidSetIncludes = config.getString(MySqlConnectorConfig.GTID_SOURCE_INCLUDES);
         String gtidSetExcludes = config.getString(MySqlConnectorConfig.GTID_SOURCE_EXCLUDES);
         this.gtidSourceFilter = gtidSetIncludes != null ? Predicates.includes(gtidSetIncludes)
                 : (gtidSetExcludes != null ? Predicates.excludes(gtidSetExcludes) : null);
+
+        // Set up the MySQL schema ...
+        this.dbSchema = new MySqlSchema(config, serverName(), this.gtidSourceFilter);
+
+        // Set up the record processor ...
+        this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector);
     }
 
     public String connectorName() {
