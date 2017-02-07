@@ -109,6 +109,7 @@ final class SourceInfo {
     public static final String SNAPSHOTTED_ENTITIES = "se";
     public static final String ENTITY_NAME = "entity";
     public static final String ENTITY_SIZE = "entitySize";
+    private static final String DELIMITER = ":";
 
     /**
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition()} and {@link #offset()} information.
@@ -145,7 +146,7 @@ final class SourceInfo {
     private Map<String, String> sourcePartition;
     private boolean lastSnapshot = true;
     private boolean nextSnapshot = false;
-    private String lastSnapshotRecordId;
+    private String lastRecordMeta;
     private List<String> snapshottedEntities = new ArrayList<>();
     private String entityName;
     private long entitySize;
@@ -163,8 +164,13 @@ final class SourceInfo {
         sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, serverName);
     }
 
-    public void setSnapshotLastId(String lastId) {
-        this.lastSnapshotRecordId = lastId;
+    /**
+     * Meta String formatted as [TABLE NAME]:[PRIMARY KEY]
+     * @param tableName last recorded table name
+     * @param lastId last recorded primary key
+     */
+    public void setSnapshotLastId(String tableName, String lastId) {
+        this.lastRecordMeta = tableName + DELIMITER + lastId;
     }
 
     public void addSnapshottedEntities(String entityName) {
@@ -179,8 +185,17 @@ final class SourceInfo {
         this.entitySize = size;
     }
 
-    public String getSnapshotLastId() {
-        return this.lastSnapshotRecordId;
+    /**
+     * Meta String formatted as [TABLE NAME]:[PRIMARY KEY] return the primary key if the table name matches.
+     * @param tableName last recorded table name
+     * @return last recorded primary key
+     */
+    public String getSnapshotLastId(String tableName) {
+        String[] meta = lastRecordMeta.split(DELIMITER);
+        if (meta.length == 2 && meta[0].equals(tableName)) {
+            return meta[1];
+        }
+        return null;
     }
 
     public List<String> getSnapshottedEntities() {
@@ -287,7 +302,7 @@ final class SourceInfo {
         if (binlogTimestampSeconds != 0) map.put(TIMESTAMP_KEY, binlogTimestampSeconds);
         if (isSnapshotInEffect()) {
             map.put(SNAPSHOT_KEY, true);
-            map.put(SNAPSHOT_LASTID_KEY, lastSnapshotRecordId);
+            map.put(SNAPSHOT_LASTID_KEY, lastRecordMeta);
             map.put(SNAPSHOTTED_ENTITIES, String.join(",", snapshottedEntities));
         }
         return map;
@@ -476,7 +491,7 @@ final class SourceInfo {
             this.restartRowsToSkip = (int) longOffsetValue(sourceOffset, BINLOG_ROW_IN_EVENT_OFFSET_KEY);
             nextSnapshot = booleanOffsetValue(sourceOffset, SNAPSHOT_KEY);
             lastSnapshot = nextSnapshot;
-            lastSnapshotRecordId = (String) sourceOffset.get(SNAPSHOT_LASTID_KEY);
+            lastRecordMeta = (String) sourceOffset.get(SNAPSHOT_LASTID_KEY);
             String snapshotted = (String) sourceOffset.get(SNAPSHOTTED_ENTITIES);
             if (StringUtils.isBlank(snapshotted))
             snapshottedEntities = Arrays.asList(snapshotted.split(","));

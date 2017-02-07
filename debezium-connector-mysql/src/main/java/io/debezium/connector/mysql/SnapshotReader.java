@@ -393,7 +393,7 @@ public class SnapshotReader extends AbstractReader {
                         long start = clock.currentTimeInMillis();
                         logger.info("Step 8: - scanning table '{}' ({} of {} tables)", tableId, ++counter, tableIds.size());
                         String primaryKey = schema.tableFor(tableId).primaryKeyColumnNames().get(0);
-                        String lastId = source.getSnapshotLastId();
+                        String lastId = source.getSnapshotLastId(tableId.table());
                         sql.set("SELECT * FROM " + tableId
                             + (lastId != null ? " WHERE " + primaryKey + " > " + lastId :"")
                             + (primaryKey != null ? " ORDER BY " + primaryKey : "")
@@ -415,7 +415,7 @@ public class SnapshotReader extends AbstractReader {
                                         row[i] = rs.getObject(j);
                                     }
                                     String id = rs.getObject(primaryKey).toString();
-                                    source.setSnapshotLastId(id);
+                                    source.setSnapshotLastId(tableId.table(), id);
                                     source.setEntityName(tableId.table());
                                     source.setEntitySize(rowCount);
                                     recorder.recordRow(recordMaker, row, ts); // has no row number!
