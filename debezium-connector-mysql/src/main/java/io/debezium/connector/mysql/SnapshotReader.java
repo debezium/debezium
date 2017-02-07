@@ -275,7 +275,8 @@ public class SnapshotReader extends AbstractReader {
                 mysql.query(sql.get(), rs -> {
                     while (rs.next()) {
                         TableId id = new TableId(dbName, null, rs.getString(1));
-                        if (filters.tableFilter().test(id)) {
+                        if (filters.tableFilter().test(id)
+                            && !source.getSnapshottedEntities().contains(id.table())) {
                             tableIds.add(id);
                             tableIdsByDbName.computeIfAbsent(dbName, k -> new ArrayList<>()).add(id);
                             logger.info("\t including '{}'", id);
@@ -415,6 +416,8 @@ public class SnapshotReader extends AbstractReader {
                                     }
                                     String id = rs.getObject(primaryKey).toString();
                                     source.setSnapshotLastId(id);
+                                    source.setEntityName(tableId.table());
+                                    source.setEntitySize(rowCount);
                                     recorder.recordRow(recordMaker, row, ts); // has no row number!
                                     ++rowNum;
                                     if (rowNum % 10_000 == 0 || rowNum == rowCount) {
@@ -436,6 +439,7 @@ public class SnapshotReader extends AbstractReader {
                         });
 
                         metrics.completeTable();
+                        source.addSnapshottedEntities(tableId.table());
                         if (interrupted.get()) break;
                     }
                     ++completedCounter;

@@ -5,13 +5,17 @@
  */
 package io.debezium.connector.mysql;
 
-import java.util.HashMap;
-import java.util.Map;
-
+import org.apache.commons.lang.StringUtils;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.data.Envelope;
@@ -101,7 +105,10 @@ final class SourceInfo {
     public static final String BINLOG_ROW_IN_EVENT_OFFSET_KEY = "row";
     public static final String TIMESTAMP_KEY = "ts_sec";
     public static final String SNAPSHOT_KEY = "snapshot";
-    public static final String SNAPSHOT_LASTID_KEY = "snapshot_lastid";
+    public static final String SNAPSHOT_LASTID_KEY = "lastid";
+    public static final String SNAPSHOTTED_ENTITIES = "se";
+    public static final String ENTITY_NAME = "entity";
+    public static final String ENTITY_SIZE = "entitySize";
 
     /**
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition()} and {@link #offset()} information.
@@ -116,6 +123,8 @@ final class SourceInfo {
                                                      .field(BINLOG_POSITION_OFFSET_KEY, Schema.INT64_SCHEMA)
                                                      .field(BINLOG_ROW_IN_EVENT_OFFSET_KEY, Schema.INT32_SCHEMA)
                                                      .field(SNAPSHOT_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
+                                                     .field(ENTITY_NAME, Schema.STRING_SCHEMA)
+                                                     .field(ENTITY_SIZE, Schema.INT32_SCHEMA)
                                                      .build();
 
     private String currentGtidSet;
@@ -137,6 +146,9 @@ final class SourceInfo {
     private boolean lastSnapshot = true;
     private boolean nextSnapshot = false;
     private String lastSnapshotRecordId;
+    private List<String> snapshottedEntities = new ArrayList<>();
+    private String entityName;
+    private long entitySize;
 
     public SourceInfo() {
     }
@@ -155,8 +167,24 @@ final class SourceInfo {
         this.lastSnapshotRecordId = lastId;
     }
 
+    public void addSnapshottedEntities(String entityName) {
+        snapshottedEntities.add(entityName);
+    }
+
+    public void setEntityName(String entityName) {
+        this.entityName = entityName;
+    }
+
+    public void setEntitySize(long size) {
+        this.entitySize = size;
+    }
+
     public String getSnapshotLastId() {
         return this.lastSnapshotRecordId;
+    }
+
+    public List<String> getSnapshottedEntities() {
+        return snapshottedEntities;
     }
 
     /**
@@ -194,7 +222,7 @@ final class SourceInfo {
      * Set the position within the MySQL binary log file of the <em>current event</em>.
      * 
      * @param positionOfCurrentEvent the position within the binary log file of the current event
-     * @param eventSizeInBytes the size in bytes of this event
+     * @param eventSizeInBytes the entitySize in bytes of this event
      */
     public void setEventPosition(long positionOfCurrentEvent, long eventSizeInBytes) {
         this.currentBinlogPosition = positionOfCurrentEvent;
@@ -260,6 +288,7 @@ final class SourceInfo {
         if (isSnapshotInEffect()) {
             map.put(SNAPSHOT_KEY, true);
             map.put(SNAPSHOT_LASTID_KEY, lastSnapshotRecordId);
+            map.put(SNAPSHOTTED_ENTITIES, String.join(",", snapshottedEntities));
         }
         return map;
     }
@@ -296,6 +325,8 @@ final class SourceInfo {
         result.put(BINLOG_POSITION_OFFSET_KEY, currentBinlogPosition);
         result.put(BINLOG_ROW_IN_EVENT_OFFSET_KEY, currentRowNumber);
         result.put(TIMESTAMP_KEY, binlogTimestampSeconds);
+        result.put(ENTITY_NAME, entityName);
+        result.put(ENTITY_SIZE, entitySize);
         if (lastSnapshot) {
             result.put(SNAPSHOT_KEY, true);
         }
@@ -446,6 +477,9 @@ final class SourceInfo {
             nextSnapshot = booleanOffsetValue(sourceOffset, SNAPSHOT_KEY);
             lastSnapshot = nextSnapshot;
             lastSnapshotRecordId = (String) sourceOffset.get(SNAPSHOT_LASTID_KEY);
+            String snapshotted = (String) sourceOffset.get(SNAPSHOTTED_ENTITIES);
+            if (StringUtils.isBlank(snapshotted))
+            snapshottedEntities = Arrays.asList(snapshotted.split(","));
         }
     }
 
