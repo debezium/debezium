@@ -275,8 +275,7 @@ public class SnapshotReader extends AbstractReader {
                 mysql.query(sql.get(), rs -> {
                     while (rs.next()) {
                         TableId id = new TableId(dbName, null, rs.getString(1));
-                        if (filters.tableFilter().test(id)
-                            && !source.getSnapshottedEntities().contains(id.table())) {
+                        if (filters.tableFilter().test(id) && ! source.isSnapshotted(id.table())) {
                             tableIds.add(id);
                             tableIdsByDbName.computeIfAbsent(dbName, k -> new ArrayList<>()).add(id);
                             logger.info("\t including '{}'", id);
@@ -393,7 +392,7 @@ public class SnapshotReader extends AbstractReader {
                         long start = clock.currentTimeInMillis();
                         logger.info("Step 8: - scanning table '{}' ({} of {} tables)", tableId, ++counter, tableIds.size());
                         String primaryKey = schema.tableFor(tableId).primaryKeyColumnNames().get(0);
-                        String lastId = source.getSnapshotLastId(tableId.table());
+                        String lastId = source.getLastRecordId(tableId.table());
                         sql.set("SELECT * FROM " + tableId
                             + (lastId != null ? " WHERE " + primaryKey + " > " + lastId :"")
                             + (primaryKey != null ? " ORDER BY " + primaryKey : "")
@@ -415,7 +414,7 @@ public class SnapshotReader extends AbstractReader {
                                         row[i] = rs.getObject(j);
                                     }
                                     String id = rs.getObject(primaryKey).toString();
-                                    source.setSnapshotLastId(tableId.table(), id);
+                                    source.setLastRecordId(tableId.table(), id);
                                     source.setEntityName(tableId.table());
                                     source.setEntitySize(rowCount);
                                     recorder.recordRow(recordMaker, row, ts); // has no row number!
@@ -439,7 +438,7 @@ public class SnapshotReader extends AbstractReader {
                         });
 
                         metrics.completeTable();
-                        source.addSnapshottedEntities(tableId.table());
+                        source.markSnapshotted(tableId.table());
                         if (interrupted.get()) break;
                     }
                     ++completedCounter;

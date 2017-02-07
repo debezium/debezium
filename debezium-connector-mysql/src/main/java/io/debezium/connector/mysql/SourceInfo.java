@@ -105,10 +105,10 @@ final class SourceInfo {
     public static final String BINLOG_ROW_IN_EVENT_OFFSET_KEY = "row";
     public static final String TIMESTAMP_KEY = "ts_sec";
     public static final String SNAPSHOT_KEY = "snapshot";
-    public static final String SNAPSHOT_LASTID_KEY = "lastid";
-    public static final String SNAPSHOTTED_ENTITIES = "se";
-    public static final String ENTITY_NAME = "entity";
-    public static final String ENTITY_SIZE = "entitySize";
+    public static final String SNAPSHOT_LAST_RECORD_KEY = "last";
+    public static final String SNAPSHOTTED_KEY = "snapshotted";
+    public static final String ENTITY_NAME_KEY = "entity";
+    public static final String ENTITY_SIZE_KEY = "size";
     private static final String DELIMITER = ":";
 
     /**
@@ -124,8 +124,8 @@ final class SourceInfo {
                                                      .field(BINLOG_POSITION_OFFSET_KEY, Schema.INT64_SCHEMA)
                                                      .field(BINLOG_ROW_IN_EVENT_OFFSET_KEY, Schema.INT32_SCHEMA)
                                                      .field(SNAPSHOT_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
-                                                     .field(ENTITY_NAME, Schema.STRING_SCHEMA)
-                                                     .field(ENTITY_SIZE, Schema.INT32_SCHEMA)
+                                                     .field(ENTITY_NAME_KEY, Schema.STRING_SCHEMA)
+                                                     .field(ENTITY_SIZE_KEY, Schema.INT32_SCHEMA)
                                                      .build();
 
     private String currentGtidSet;
@@ -169,11 +169,11 @@ final class SourceInfo {
      * @param tableName last recorded table name
      * @param lastId last recorded primary key
      */
-    public void setSnapshotLastId(String tableName, String lastId) {
+    public void setLastRecordId(String tableName, String lastId) {
         this.lastRecordMeta = tableName + DELIMITER + lastId;
     }
 
-    public void addSnapshottedEntities(String entityName) {
+    public void markSnapshotted(String entityName) {
         snapshottedEntities.add(entityName);
     }
 
@@ -190,7 +190,7 @@ final class SourceInfo {
      * @param tableName last recorded table name
      * @return last recorded primary key
      */
-    public String getSnapshotLastId(String tableName) {
+    public String getLastRecordId(String tableName) {
         String[] meta = lastRecordMeta.split(DELIMITER);
         if (meta.length == 2 && meta[0].equals(tableName)) {
             return meta[1];
@@ -198,8 +198,8 @@ final class SourceInfo {
         return null;
     }
 
-    public List<String> getSnapshottedEntities() {
-        return snapshottedEntities;
+    public boolean isSnapshotted(String tableName) {
+        return snapshottedEntities.contains(tableName);
     }
 
     /**
@@ -237,7 +237,7 @@ final class SourceInfo {
      * Set the position within the MySQL binary log file of the <em>current event</em>.
      * 
      * @param positionOfCurrentEvent the position within the binary log file of the current event
-     * @param eventSizeInBytes the entitySize in bytes of this event
+     * @param eventSizeInBytes the size in bytes of this event
      */
     public void setEventPosition(long positionOfCurrentEvent, long eventSizeInBytes) {
         this.currentBinlogPosition = positionOfCurrentEvent;
@@ -302,8 +302,8 @@ final class SourceInfo {
         if (binlogTimestampSeconds != 0) map.put(TIMESTAMP_KEY, binlogTimestampSeconds);
         if (isSnapshotInEffect()) {
             map.put(SNAPSHOT_KEY, true);
-            map.put(SNAPSHOT_LASTID_KEY, lastRecordMeta);
-            map.put(SNAPSHOTTED_ENTITIES, String.join(",", snapshottedEntities));
+            map.put(SNAPSHOT_LAST_RECORD_KEY, lastRecordMeta);
+            map.put(SNAPSHOTTED_KEY, String.join(",", snapshottedEntities));
         }
         return map;
     }
@@ -340,8 +340,8 @@ final class SourceInfo {
         result.put(BINLOG_POSITION_OFFSET_KEY, currentBinlogPosition);
         result.put(BINLOG_ROW_IN_EVENT_OFFSET_KEY, currentRowNumber);
         result.put(TIMESTAMP_KEY, binlogTimestampSeconds);
-        result.put(ENTITY_NAME, entityName);
-        result.put(ENTITY_SIZE, entitySize);
+        result.put(ENTITY_NAME_KEY, entityName);
+        result.put(ENTITY_SIZE_KEY, entitySize);
         if (lastSnapshot) {
             result.put(SNAPSHOT_KEY, true);
         }
@@ -491,8 +491,8 @@ final class SourceInfo {
             this.restartRowsToSkip = (int) longOffsetValue(sourceOffset, BINLOG_ROW_IN_EVENT_OFFSET_KEY);
             nextSnapshot = booleanOffsetValue(sourceOffset, SNAPSHOT_KEY);
             lastSnapshot = nextSnapshot;
-            lastRecordMeta = (String) sourceOffset.get(SNAPSHOT_LASTID_KEY);
-            String snapshotted = (String) sourceOffset.get(SNAPSHOTTED_ENTITIES);
+            lastRecordMeta = (String) sourceOffset.get(SNAPSHOT_LAST_RECORD_KEY);
+            String snapshotted = (String) sourceOffset.get(SNAPSHOTTED_KEY);
             if (StringUtils.isBlank(snapshotted))
             snapshottedEntities = Arrays.asList(snapshotted.split(","));
         }
