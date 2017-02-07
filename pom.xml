@@ -86,7 +86,7 @@
         <version.staging.plugin>1.6.3</version.staging.plugin>
 
         <!-- Data pipeline internal dependency-->
-        <version.datapipeline>0.2.6-SNAPSHOT</version.datapipeline>
+        <version.datapipeline>0.2.8-SNAPSHOT</version.datapipeline>
         <!-- Dockerfiles -->
         <docker.maintainer>Debezium community</docker.maintainer>
 

@@ -275,7 +275,7 @@ public class SnapshotReader extends AbstractReader {
                 mysql.query(sql.get(), rs -> {
                     while (rs.next()) {
                         TableId id = new TableId(dbName, null, rs.getString(1));
-                        if (filters.tableFilter().test(id)) {
+                        if (filters.tableFilter().test(id) && ! source.isSnapshotted(id.table())) {
                             tableIds.add(id);
                             tableIdsByDbName.computeIfAbsent(dbName, k -> new ArrayList<>()).add(id);
                             logger.info("\t including '{}'", id);
@@ -364,8 +364,8 @@ public class SnapshotReader extends AbstractReader {
 
                     // Obtain a record maker for this table, which knows about the schema ...
                     RecordsForTable recordMaker = context.makeRecord().forTable(tableId, null, bufferedRecordQueue);
-                    if (recordMaker != null) {
 
+                    if (recordMaker != null) {
                         // Choose how we create statements based on the # of rows ...
                         mysql.query("SELECT CONNECTION_ID();", rs -> {
                             while(rs.next()) {
@@ -391,7 +391,12 @@ public class SnapshotReader extends AbstractReader {
                         // Scan the rows in the table ...
                         long start = clock.currentTimeInMillis();
                         logger.info("Step 8: - scanning table '{}' ({} of {} tables)", tableId, ++counter, tableIds.size());
-                        sql.set("SELECT * FROM " + tableId);
+                        String primaryKey = schema.tableFor(tableId).primaryKeyColumnNames().get(0);
+                        String lastId = source.getLastRecordId(tableId.table());
+                        sql.set("SELECT * FROM " + tableId
+                            + (lastId != null ? " WHERE " + primaryKey + " > " + lastId :"")
+                            + (primaryKey != null ? " ORDER BY " + primaryKey : "")
+                            );
                         mysql.query(sql.get(), statementFactory, rs -> {
                             long rowNum = 0;
                             long rowCount = numRows.get();
@@ -408,12 +413,16 @@ public class SnapshotReader extends AbstractReader {
                                     for (int i = 0, j = 1; i != numColumns; ++i, ++j) {
                                         row[i] = rs.getObject(j);
                                     }
+                                    String id = rs.getObject(primaryKey).toString();
+                                    source.setLastRecordId(tableId.table(), id);
+                                    source.setEntityName(tableId.table());
+                                    source.setEntitySize(rowCount);
                                     recorder.recordRow(recordMaker, row, ts); // has no row number!
                                     ++rowNum;
                                     if (rowNum % 10_000 == 0 || rowNum == rowCount) {
                                         long stop = clock.currentTimeInMillis();
-                                        logger.info("Step 8: - {} of {} rows scanned from table '{}' after {}", rowNum, rowCount, tableId,
-                                                Strings.duration(stop - start));
+                                        logger.info("Step 8: - {} of {} rows scanned from table '{}' after {} starting from {}:{}", rowNum, rowCount, tableId,
+                                                Strings.duration(stop - start), primaryKey, id);
                                     }
                                 }
                             } catch (InterruptedException e) {
@@ -429,6 +438,7 @@ public class SnapshotReader extends AbstractReader {
                         });
 
                         metrics.completeTable();
+                        source.markSnapshotted(tableId.table());
                         if (interrupted.get()) break;
                     }
                     ++completedCounter;
