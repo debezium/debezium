@@ -7,6 +7,7 @@ package io.debezium.connector.mysql;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -594,9 +595,11 @@ final class SourceInfo {
      * @param recorded the position obtained from recorded history; never null
      * @param desired the desired position that we want to obtain, which should be after some recorded positions,
      *            at some recorded positions, and before other recorded positions; never null
+     * @param gtidFilter the predicate function that will return {@code true} if a GTID source is to be included, or
+     *            {@code false} if a GTID source is to be excluded; may be null if no filtering is to be done
      * @return {@code true} if the recorded position is at or before the desired position; or {@code false} otherwise
      */
-    public static boolean isPositionAtOrBefore(Document recorded, Document desired) {
+    public static boolean isPositionAtOrBefore(Document recorded, Document desired, Predicate<String> gtidFilter) {
         String recordedGtidSetStr = recorded.getString(GTID_SET_KEY);
         String desiredGtidSetStr = desired.getString(GTID_SET_KEY);
         if (desiredGtidSetStr != null) {
@@ -605,6 +608,11 @@ final class SourceInfo {
                 // Both have GTIDs, so base the comparison entirely on the GTID sets.
                 GtidSet recordedGtidSet = new GtidSet(recordedGtidSetStr);
                 GtidSet desiredGtidSet = new GtidSet(desiredGtidSetStr);
+                if (gtidFilter != null) {
+                    // Apply the GTID source filter before we do any comparisons ...
+                    recordedGtidSet = recordedGtidSet.retainAll(gtidFilter);
+                    desiredGtidSet = desiredGtidSet.retainAll(gtidFilter);
+                }
                 if (recordedGtidSet.equals(desiredGtidSet)) {
                     // They are exactly the same, which means the recorded position exactly matches the desired ...
                     if (!recorded.has(SNAPSHOT_KEY) && desired.has(SNAPSHOT_KEY)) {

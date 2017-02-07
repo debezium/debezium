@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -21,6 +22,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.DecimalHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.TemporalPrecisionMode;
 import io.debezium.connector.mysql.MySqlSystemVariables.Scope;
+import io.debezium.document.Document;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.relational.Table;
@@ -57,8 +59,6 @@ import io.debezium.util.Collect;
 @NotThreadSafe
 public class MySqlSchema {
 
-    private static final HistoryRecordComparator HISTORY_COMPARATOR = HistoryRecordComparator.usingPositions(SourceInfo::isPositionAtOrBefore);
-
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final AvroValidator schemaNameValidator = AvroValidator.create(logger);
     private final Set<String> ignoredQueryStatements = Collect.unmodifiableSet("BEGIN", "END", "FLUSH PRIVILEGES");
@@ -70,6 +70,7 @@ public class MySqlSchema {
     private final DdlChanges ddlChanges;
     private final String serverName;
     private final String schemaPrefix;
+    private final HistoryRecordComparator historyComparator;
     private Tables tables;
 
     /**
@@ -77,8 +78,11 @@ public class MySqlSchema {
      * 
      * @param config the connector configuration, which is presumed to be valid
      * @param serverName the name of the server
+     * @param gtidFilter the predicate function that should be applied to GTID sets in database history, and which
+     *          returns {@code true} if a GTID source is to be included, or {@code false} if a GTID source is to be excluded;
+     *          may be null if not needed
      */
-    public MySqlSchema(Configuration config, String serverName) {
+    public MySqlSchema(Configuration config, String serverName, Predicate<String> gtidFilter) {
         this.filters = new Filters(config);
         this.ddlParser = new MySqlDdlParser(false);
         this.tables = new Tables();
@@ -116,9 +120,21 @@ public class MySqlSchema {
                                               .edit()
                                               .withDefault(DatabaseHistory.NAME, connectorName + "-dbhistory")
                                               .build();
-        this.dbHistory.configure(dbHistoryConfig, HISTORY_COMPARATOR); // validates
+        
+        // Set up a history record comparator that uses the GTID filter ...
+        this.historyComparator = new HistoryRecordComparator() {
+            @Override
+            protected boolean isPositionAtOrBefore(Document recorded, Document desired) {
+                return SourceInfo.isPositionAtOrBefore(recorded, desired, gtidFilter);
+            }
+        };
+        this.dbHistory.configure(dbHistoryConfig, historyComparator); // validates
     }
-
+    
+    protected HistoryRecordComparator historyComparator() {
+        return this.historyComparator;
+    }
+    
     /**
      * Start by acquiring resources needed to persist the database history
      */
