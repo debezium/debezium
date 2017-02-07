@@ -493,8 +493,9 @@ final class SourceInfo {
             lastSnapshot = nextSnapshot;
             lastRecordMeta = (String) sourceOffset.get(SNAPSHOT_LAST_RECORD_KEY);
             String snapshotted = (String) sourceOffset.get(SNAPSHOTTED_KEY);
-            if (StringUtils.isBlank(snapshotted))
-            snapshottedEntities = Arrays.asList(snapshotted.split(","));
+            if (!StringUtils.isBlank(snapshotted)) {
+                snapshottedEntities = Arrays.asList(snapshotted.split(","));
+            }
         }
     }
 
