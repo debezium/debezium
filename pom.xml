@@ -10,7 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.debezium</groupId>
     <artifactId>debezium-parent</artifactId>
-    <version>0.4.0-SNAPSHOT</version>
+    <version>0.4.0</version>
     <name>Debezium Parent POM</name>
     <description>Debezium is an open source change data capture platform</description>
     <packaging>pom</packaging>
@@ -19,7 +19,7 @@
         <connection>scm:git:git@github.com:debezium/debezium.git</connection>
         <developerConnection>scm:git:git@github.com:debezium/debezium.git</developerConnection>
         <url>https://github.com/debezium/debezium</url>
-      <tag>HEAD</tag>
+      <tag>v0.4.0</tag>
   </scm>
     <issueManagement>
         <system>jira</system>
@@ -98,7 +98,7 @@
         <skipITs>false</skipITs>
 
         <!-- No debug options by default -->
-        <debug.argline/>
+        <debug.argline />
     </properties>
 
     <modules>
@@ -221,7 +221,7 @@
             <dependency>
                 <groupId>org.postgresql</groupId>
                 <artifactId>postgresql</artifactId>
-                <version>${version.postgresql.driver}</version>
+                <version>42.0.0-SNAPSHOT</version>
             </dependency>
            
             <!--Make sure this version is compatible with the Protbuf-C version used on the server -->
