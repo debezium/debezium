@@ -515,6 +515,23 @@ public class MySqlConnectorConfig {
                                                           .withInvisibleRecommender()
                                                           .withDescription("The source UUIDs used to exclude GTID ranges when determine the starting position in the MySQL server's binlog.");
 
+    /**
+     * If set to true, we will only produce DML events into Kafka for transactions that were written on mysql servers
+     * with UUIDs matching the filters defined by the {@link GTID_SOURCE_INCLUDES} or {@link GTID_SOURCE_EXCLUDES}
+     * configuration options, if they are specified.
+     *
+     * Defaults to true.
+     *
+     * When true, either {@link GTID_SOURCE_INCLUDES} or {@link GTID_SOURCE_EXCLUDES} must be set.
+     */
+    public static final Field GTID_SOURCE_FILTER_DML_EVENTS = Field.create("gtid.source.filter.dml.events")
+                                                          .withDisplayName("Filter DML events")
+                                                          .withType(Type.BOOLEAN)
+                                                          .withWidth(Width.SHORT)
+                                                          .withImportance(Importance.MEDIUM)
+                                                          .withDefault(true)
+                                                          .withDescription("If set to true, we will only produce DML events into Kafka for transactions that were written on mysql servers with UUIDs matching the filters defined by the gtid.source.includes or gtid.source.excludes configuration options, if they are specified.");
+
     public static final Field CONNECTION_TIMEOUT_MS = Field.create("connect.timeout.ms")
                                                            .withDisplayName("Connection Timeout (ms)")
                                                            .withType(Type.INT)
@@ -685,6 +702,7 @@ public class MySqlConnectorConfig {
                                                      DATABASE_WHITELIST, DATABASE_BLACKLIST,
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING,
                                                      GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
+                                                     GTID_SOURCE_FILTER_DML_EVENTS,
                                                      TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                                                      SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD,
                                                      SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER);
@@ -709,7 +727,7 @@ public class MySqlConnectorConfig {
                     KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, DATABASE_HISTORY);
         Field.group(config, "Events", INCLUDE_SCHEMA_CHANGES, TABLES_IGNORE_BUILTIN, DATABASE_WHITELIST, TABLE_WHITELIST,
                     COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST,
-                    GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES);
+                    GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
                     SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE);
         return config;
