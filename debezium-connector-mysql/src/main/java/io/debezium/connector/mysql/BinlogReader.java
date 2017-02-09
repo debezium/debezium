@@ -105,8 +105,8 @@ public class BinlogReader extends AbstractReader {
         client.registerLifecycleListener(new ReaderThreadLifecycleListener());
         if (logger.isDebugEnabled()) client.registerEventListener(this::logEvent);
 
-        String gtidDmlSourceIncludes = context.config().getString(MySqlConnectorConfig.GTID_DML_SOURCE_INCLUDES);
-        gtidDmlSourceFilter = gtidDmlSourceIncludes != null ? Predicates.includes(gtidDmlSourceIncludes) : null;
+        Boolean filterDmlEventsByGtidSource = context.config().getBoolean(MySqlConnectorConfig.GTID_SOURCE_FILTER_DML_EVENTS);
+        gtidDmlSourceFilter = filterDmlEventsByGtidSource ? context.gtidSourceFilter() : null;
 
         // Set up the event deserializer with additional type(s) ...
         final Map<Long, TableMapEventData> tableMapEventByTableId = new HashMap<Long, TableMapEventData>();
@@ -505,6 +505,7 @@ public class BinlogReader extends AbstractReader {
             return;
         }
         if (ignoreDmlEventByGtidSource) {
+            logger.debug("Skipping DML event because this GTID source is filtered: {}", event);
             return;
         }
         WriteRowsEventData write = unwrapData(event);
@@ -551,6 +552,7 @@ public class BinlogReader extends AbstractReader {
             return;
         }
         if (ignoreDmlEventByGtidSource) {
+            logger.debug("Skipping DML event because this GTID source is filtered: {}", event);
             return;
         }
         UpdateRowsEventData update = unwrapData(event);
@@ -601,6 +603,7 @@ public class BinlogReader extends AbstractReader {
             return;
         }
         if (ignoreDmlEventByGtidSource) {
+            logger.debug("Skipping DML event because this GTID source is filtered: {}", event);
             return;
         }
         DeleteRowsEventData deleted = unwrapData(event);
