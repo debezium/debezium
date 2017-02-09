@@ -62,7 +62,7 @@ public class MySqlConnectorConfig {
 
         /**
          * Determine if the supplied value is one of the predefined options.
-         *
+         * 
          * @param value the configuration property value; may not be null
          * @return the matching option, or null if no match is found
          */
@@ -77,7 +77,7 @@ public class MySqlConnectorConfig {
 
         /**
          * Determine if the supplied value is one of the predefined options.
-         *
+         * 
          * @param value the configuration property value; may not be null
          * @param defaultValue the default value; may be null
          * @return the matching option, or null if no match is found and the non-null default is invalid
@@ -127,7 +127,7 @@ public class MySqlConnectorConfig {
 
         /**
          * Determine if the supplied value is one of the predefined options.
-         *
+         * 
          * @param value the configuration property value; may not be null
          * @return the matching option, or null if no match is found
          */
@@ -142,7 +142,7 @@ public class MySqlConnectorConfig {
 
         /**
          * Determine if the supplied value is one of the predefined options.
-         *
+         * 
          * @param value the configuration property value; may not be null
          * @param defaultValue the default value; may be null
          * @return the matching option, or null if no match is found and the non-null default is invalid
@@ -199,7 +199,7 @@ public class MySqlConnectorConfig {
 
         /**
          * Determine if the supplied value is one of the predefined options.
-         *
+         * 
          * @param value the configuration property value; may not be null
          * @return the matching option, or null if no match is found
          */
@@ -214,7 +214,7 @@ public class MySqlConnectorConfig {
 
         /**
          * Determine if the supplied value is one of the predefined options.
-         *
+         * 
          * @param value the configuration property value; may not be null
          * @param defaultValue the default value; may be null
          * @return the matching option, or null if no match is found and the non-null default is invalid
@@ -268,7 +268,7 @@ public class MySqlConnectorConfig {
 
         /**
          * Determine if the supplied value is one of the predefined options.
-         *
+         * 
          * @param value the configuration property value; may not be null
          * @return the matching option, or null if no match is found
          */
@@ -283,7 +283,7 @@ public class MySqlConnectorConfig {
 
         /**
          * Determine if the supplied value is one of the predefined options.
-         *
+         * 
          * @param value the configuration property value; may not be null
          * @param defaultValue the default value; may be null
          * @return the matching option, or null if no match is found and the non-null default is invalid
@@ -662,7 +662,7 @@ public class MySqlConnectorConfig {
     /**
      * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
      * have their values truncated to be no longer than the specified number of characters.
-     *
+     * 
      * @param length the maximum length of the column's string values written in source records; must be positive
      * @return the field; never null
      */
@@ -677,7 +677,7 @@ public class MySqlConnectorConfig {
     /**
      * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
      * have their values masked by the specified number of asterisk ('*') characters.
-     *
+     * 
      * @param length the number of asterisks that should appear in place of the column's string values written in source records;
      *            must be positive
      * @return the field; never null
