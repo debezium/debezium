@@ -451,6 +451,7 @@ public class BinlogReader extends AbstractReader {
             source.commitTransaction();
             source.setBinlogThread(-1L);
             skipEvent = false;
+            ignoreDmlEventByGtidSource = false;
             return;
         }
         if (sql.toUpperCase().startsWith("XA ")) {

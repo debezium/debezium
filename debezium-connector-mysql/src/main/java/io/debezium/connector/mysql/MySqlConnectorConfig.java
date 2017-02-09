@@ -521,7 +521,7 @@ public class MySqlConnectorConfig {
      *
      * Defaults to false.
      *
-     * Must be used with either {@link GTID_SOURCE_INCLUDES} or {@link GTID_SOURCE_EXCLUDES}.
+     * When true, either {@link GTID_SOURCE_INCLUDES} or {@link GTID_SOURCE_EXCLUDES} must be set.
      */
     public static final Field GTID_SOURCE_FILTER_DML_EVENTS = Field.create("gtid.source.filter.dml_events")
                                                           .withDisplayName("Filter DML events")
@@ -839,7 +839,7 @@ public class MySqlConnectorConfig {
         String includes = config.getString(GTID_SOURCE_INCLUDES);
         String excludes = config.getString(GTID_SOURCE_EXCLUDES);
         Boolean filterDmlEvents = config.getBoolean(GTID_SOURCE_FILTER_DML_EVENTS);
-        if (includes == null && excludes == null) {
+        if (filterDmlEvents && includes == null && excludes == null) {
             problems.accept(GTID_SOURCE_FILTER_DML_EVENTS, filterDmlEvents , "Either gtid.source.includes or gtid.source.excludes must be specified.");
             return 1;
         }
