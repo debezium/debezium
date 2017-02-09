@@ -499,6 +499,7 @@ public class MySqlConnectorConfig {
                                                           .withRecommender(DATABASE_LIST_RECOMMENDER)
                                                           .withDependents(TABLE_WHITELIST_NAME)
                                                           .withDescription("The source UUIDs used to include GTID ranges when determine the starting position in the MySQL server's binlog.");
+
     /**
      * A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog
      * position in the MySQL server. Only the GTID ranges that have sources matching none of these exclude patterns will
@@ -517,9 +518,9 @@ public class MySqlConnectorConfig {
     /**
      * If set to true, we will only produce DML events into Kafka for transactions that were written on mysql servers
      * with UUIDs matching the filters defined by the {@link GTID_SOURCE_INCLUDES} or {@link GTID_SOURCE_EXCLUDES}
-     * configuration options.
+     * configuration options, if they are specified.
      *
-     * Defaults to false.
+     * Defaults to true.
      *
      * When true, either {@link GTID_SOURCE_INCLUDES} or {@link GTID_SOURCE_EXCLUDES} must be set.
      */
@@ -528,9 +529,8 @@ public class MySqlConnectorConfig {
                                                           .withType(Type.BOOLEAN)
                                                           .withWidth(Width.SHORT)
                                                           .withImportance(Importance.MEDIUM)
-                                                          .withDefault(false)
-                                                          .withValidation(MySqlConnectorConfig::validateGtidSourceFilterDmlEvents)
-                                                          .withDescription("If set to true, we will only produce DML events into Kafka for transactions that were written on mysql servers with UUIDs matching the filters defined by the gtid.source.includes or gtid.source.excludes configuration options.");
+                                                          .withDefault(true)
+                                                          .withDescription("If set to true, we will only produce DML events into Kafka for transactions that were written on mysql servers with UUIDs matching the filters defined by the gtid.source.includes or gtid.source.excludes configuration options, if they are specified.");
 
     public static final Field CONNECTION_TIMEOUT_MS = Field.create("connect.timeout.ms")
                                                            .withDisplayName("Connection Timeout (ms)")
@@ -830,17 +830,6 @@ public class MySqlConnectorConfig {
         String excludes = config.getString(GTID_SOURCE_EXCLUDES);
         if (includes != null && excludes != null) {
             problems.accept(GTID_SOURCE_EXCLUDES, excludes, "Included GTID source UUIDs are already specified");
-            return 1;
-        }
-        return 0;
-    }
-
-    private static int validateGtidSourceFilterDmlEvents(Configuration config, Field field, ValidationOutput problems) {
-        String includes = config.getString(GTID_SOURCE_INCLUDES);
-        String excludes = config.getString(GTID_SOURCE_EXCLUDES);
-        Boolean filterDmlEvents = config.getBoolean(GTID_SOURCE_FILTER_DML_EVENTS);
-        if (filterDmlEvents && includes == null && excludes == null) {
-            problems.accept(GTID_SOURCE_FILTER_DML_EVENTS, filterDmlEvents , "Either gtid.source.includes or gtid.source.excludes must be specified.");
             return 1;
         }
         return 0;

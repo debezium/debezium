@@ -416,7 +416,7 @@ public class BinlogReader extends AbstractReader {
         source.startGtid(gtid, gtidSet.toString()); // rather than use the client's GTID set
         ignoreDmlEventByGtidSource = false;
         if (gtidDmlSourceFilter != null && gtid != null) {
-            String uuid = gtid.substring(0, gtid.indexOf(":"));
+            String uuid = gtid.trim().substring(0, gtid.indexOf(":"));
             if (!gtidDmlSourceFilter.test(uuid)) {
                 ignoreDmlEventByGtidSource = true;
             }
