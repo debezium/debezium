@@ -62,7 +62,7 @@ public class MySqlConnectorConfig {
 
         /**
          * Determine if the supplied value is one of the predefined options.
-         * 
+         *
          * @param value the configuration property value; may not be null
          * @return the matching option, or null if no match is found
          */
@@ -77,7 +77,7 @@ public class MySqlConnectorConfig {
 
         /**
          * Determine if the supplied value is one of the predefined options.
-         * 
+         *
          * @param value the configuration property value; may not be null
          * @param defaultValue the default value; may be null
          * @return the matching option, or null if no match is found and the non-null default is invalid
@@ -127,7 +127,7 @@ public class MySqlConnectorConfig {
 
         /**
          * Determine if the supplied value is one of the predefined options.
-         * 
+         *
          * @param value the configuration property value; may not be null
          * @return the matching option, or null if no match is found
          */
@@ -142,7 +142,7 @@ public class MySqlConnectorConfig {
 
         /**
          * Determine if the supplied value is one of the predefined options.
-         * 
+         *
          * @param value the configuration property value; may not be null
          * @param defaultValue the default value; may be null
          * @return the matching option, or null if no match is found and the non-null default is invalid
@@ -199,7 +199,7 @@ public class MySqlConnectorConfig {
 
         /**
          * Determine if the supplied value is one of the predefined options.
-         * 
+         *
          * @param value the configuration property value; may not be null
          * @return the matching option, or null if no match is found
          */
@@ -214,7 +214,7 @@ public class MySqlConnectorConfig {
 
         /**
          * Determine if the supplied value is one of the predefined options.
-         * 
+         *
          * @param value the configuration property value; may not be null
          * @param defaultValue the default value; may be null
          * @return the matching option, or null if no match is found and the non-null default is invalid
@@ -268,7 +268,7 @@ public class MySqlConnectorConfig {
 
         /**
          * Determine if the supplied value is one of the predefined options.
-         * 
+         *
          * @param value the configuration property value; may not be null
          * @return the matching option, or null if no match is found
          */
@@ -283,7 +283,7 @@ public class MySqlConnectorConfig {
 
         /**
          * Determine if the supplied value is one of the predefined options.
-         * 
+         *
          * @param value the configuration property value; may not be null
          * @param defaultValue the default value; may be null
          * @return the matching option, or null if no match is found and the non-null default is invalid
@@ -486,6 +486,18 @@ public class MySqlConnectorConfig {
                                                       .withDescription("");
 
     /**
+     * A comma-separated list of regular expressions that match source UUIDs of transactions for which we will produce
+     * DML events into Kafka. When DML events having UUIDs that do not match any of these regular expressions are
+     * processed, they will be ignored and not produced into Kafka.
+     */
+    public static final Field GTID_DML_SOURCE_INCLUDES = Field.create("gtid.dml_source.includes")
+                                                          .withDisplayName("Include GTID sources for DML production into Kafka")
+                                                          .withType(Type.LIST)
+                                                          .withWidth(Width.LONG)
+                                                          .withImportance(Importance.HIGH)
+                                                          .withDescription("We will only produce DML events into Kafka for transactions that were written on mysql servers with UUIDs included in this list.");
+
+    /**
      * A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog
      * position in the MySQL server. Only the GTID ranges that have sources matching one of these include patterns will
      * be used.
@@ -499,7 +511,6 @@ public class MySqlConnectorConfig {
                                                           .withRecommender(DATABASE_LIST_RECOMMENDER)
                                                           .withDependents(TABLE_WHITELIST_NAME)
                                                           .withDescription("The source UUIDs used to include GTID ranges when determine the starting position in the MySQL server's binlog.");
-
     /**
      * A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog
      * position in the MySQL server. Only the GTID ranges that have sources matching none of these exclude patterns will
@@ -645,7 +656,7 @@ public class MySqlConnectorConfig {
     /**
      * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
      * have their values truncated to be no longer than the specified number of characters.
-     * 
+     *
      * @param length the maximum length of the column's string values written in source records; must be positive
      * @return the field; never null
      */
@@ -660,7 +671,7 @@ public class MySqlConnectorConfig {
     /**
      * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
      * have their values masked by the specified number of asterisk ('*') characters.
-     * 
+     *
      * @param length the number of asterisks that should appear in place of the column's string values written in source records;
      *            must be positive
      * @return the field; never null
@@ -684,6 +695,7 @@ public class MySqlConnectorConfig {
                                                      TABLE_WHITELIST, TABLE_BLACKLIST, TABLES_IGNORE_BUILTIN,
                                                      DATABASE_WHITELIST, DATABASE_BLACKLIST,
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING,
+                                                     GTID_DML_SOURCE_INCLUDES,
                                                      GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
                                                      TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                                                      SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD,
@@ -708,7 +720,7 @@ public class MySqlConnectorConfig {
                     KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
                     KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, DATABASE_HISTORY);
         Field.group(config, "Events", INCLUDE_SCHEMA_CHANGES, TABLES_IGNORE_BUILTIN, DATABASE_WHITELIST, TABLE_WHITELIST,
-                    COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST,
+                    COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST, GTID_DML_SOURCE_INCLUDES,
                     GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
                     SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE);
