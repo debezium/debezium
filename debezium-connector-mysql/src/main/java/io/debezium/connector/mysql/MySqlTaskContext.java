@@ -73,7 +73,6 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
             if (gtidSetIncludes != null) {
                 gtidSourceFilter = filterIncludesRegex ? Predicates.includes(gtidSetIncludes) :
                         Predicates.includesNonRegex(gtidSetIncludes);
-
             } else if (gtidSetExcludes != null) {
                 gtidSourceFilter = filterIncludesRegex ? Predicates.excludes(gtidSetExcludes) :
                         Predicates.excludesNonRegex(gtidSetExcludes);
