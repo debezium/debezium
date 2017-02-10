@@ -5,6 +5,11 @@
  */
 package io.debezium.function;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -15,10 +20,141 @@ import io.debezium.util.Strings;
 
 /**
  * Utilities for constructing various predicates.
+ * 
  * @author Randall Hauch
  *
  */
 public class Predicates {
+
+    /**
+     * Generate a predicate function that for any supplied UUID strings returns {@code true} if <i>any</i> of the comma-separated
+     * UUID literals or regular expressions matches the predicate parameter. This supplied strings can be a mixture
+     * of regular expressions and UUID literals, and the most efficient method will be used for each.
+     * 
+     * @param uuidPatterns the comma-separated UUID literals or regular expression patterns; may not be null
+     * @return the predicate function that performs the matching
+     * @throws PatternSyntaxException if the string includes an invalid regular expression
+     */
+    public static Predicate<String> includesUuids(String uuidPatterns) {
+        return includesLiteralsOrPatterns(uuidPatterns, Strings::isUuid, (s) -> s);
+    }
+
+    /**
+     * Generate a predicate function that for any supplied string returns {@code true} if <i>none</i> of the regular
+     * expressions or literals in the supplied comma-separated list matches the predicate parameter. This supplied strings can be
+     * a mixture of regular expressions and UUID literals, and the most efficient method will be used for each.
+     * 
+     * @param uuidPatterns the comma-separated regular expression pattern (or literal) strings; may not be null
+     * @return the predicate function that performs the matching
+     * @throws PatternSyntaxException if the string includes an invalid regular expression
+     */
+    public static Predicate<String> excludesUuids(String uuidPatterns) {
+        return includesUuids(uuidPatterns).negate();
+    }
+
+    /**
+     * Generate a predicate function that for any supplied string returns {@code true} if <i>any</i> of the regular expressions
+     * or literals in the supplied comma-separated list matches the predicate parameter. This supplied strings can be a mixture
+     * of regular expressions and literals, and the most efficient method will be used for each.
+     * 
+     * @param literalsOrPatterns the comma-separated regular expression pattern (or literal) strings; may not be null
+     * @param isLiteral function that determines if a given pattern is a literal string; may not be null
+     * @param conversion the function that converts each predicate-supplied value to a string that can be matched against the
+     *            regular expressions; may not be null
+     * @return the predicate function that performs the matching
+     * @throws PatternSyntaxException if the string includes an invalid regular expression
+     */
+    public static <T> Predicate<T> includesLiteralsOrPatterns(String literalsOrPatterns, Predicate<String> isLiteral,
+                                                              Function<T, String> conversion) {
+        // First create the predicates that handle either literals or patterns ...
+        Set<String> literals = new HashSet<>();
+        List<Pattern> patterns = new ArrayList<>();
+        for (String literalOrPattern : literalsOrPatterns.split(",")) {
+            if (isLiteral.test(literalOrPattern)) {
+                literals.add(literalOrPattern.toLowerCase());
+            } else {
+                patterns.add(Pattern.compile(literalOrPattern, Pattern.CASE_INSENSITIVE));
+            }
+        }
+        Predicate<T> patternsPredicate = includedInPatterns(patterns, conversion);
+        Predicate<T> literalsPredicate = includedInLiterals(literals, conversion);
+        
+        // Now figure out which predicate(s) we need to use ...
+        if (patterns.isEmpty()) {
+            return literalsPredicate;
+        }
+        if (literals.isEmpty()) {
+            return patternsPredicate;
+        }
+        return literalsPredicate.or(patternsPredicate);
+    }
+
+    /**
+     * Generate a predicate function that for any supplied string returns {@code true} if <i>none</i> of the regular
+     * expressions or literals in the supplied comma-separated list matches the predicate parameter. This supplied strings can be
+     * a mixture of regular expressions and literals, and the most efficient method will be used for each.
+     * 
+     * @param patterns the comma-separated regular expression pattern (or literal) strings; may not be null
+     * @param isLiteral function that determines if a given pattern is a literal string; may not be null
+     * @param conversion the function that converts each predicate-supplied value to a string that can be matched against the
+     *            regular expressions; may not be null
+     * @return the predicate function that performs the matching
+     * @throws PatternSyntaxException if the string includes an invalid regular expression
+     */
+    public static <T> Predicate<T> excludesLiteralsOrPatterns(String patterns, Predicate<String> isLiteral,
+                                                              Function<T, String> conversion) {
+        return includesLiteralsOrPatterns(patterns, isLiteral, conversion).negate();
+    }
+
+    /**
+     * Generate a predicate function that for any supplied string returns {@code true} if <i>any</i> of the literals in
+     * the supplied comma-separated list case insensitively matches the predicate parameter.
+     * 
+     * @param literals the comma-separated literal strings; may not be null
+     * @return the predicate function that performs the matching
+     */
+    public static Predicate<String> includesLiterals(String literals) {
+        return includesLiterals(literals, (s) -> s);
+    }
+
+    /**
+     * Generate a predicate function that for any supplied string returns {@code true} if <i>none</i> of the literals in
+     * the supplied comma-separated list case insensitively matches the predicate parameter.
+     * 
+     * @param literals the comma-separated literal strings; may not be null
+     * @return the predicate function that performs the matching
+     */
+    public static Predicate<String> excludesLiterals(String literals) {
+        return includesLiterals(literals).negate();
+    }
+
+    /**
+     * Generate a predicate function that for any supplied string returns {@code true} if <i>any</i> of the literals in
+     * the supplied comma-separated list case insensitively matches the predicate parameter.
+     * 
+     * @param literals the comma-separated literal strings; may not be null
+     * @param conversion the function that converts each predicate-supplied value to a string that can be matched against the
+     *            regular expressions; may not be null
+     * @return the predicate function that performs the matching
+     */
+    public static <T> Predicate<T> includesLiterals(String literals, Function<T, String> conversion) {
+        String[] literalValues = literals.toLowerCase().split(",");
+        Set<String> literalSet = new HashSet<>(Arrays.asList(literalValues));
+        return includedInLiterals(literalSet, conversion);
+    }
+
+    /**
+     * Generate a predicate function that for any supplied string returns {@code true} if <i>none</i> of the literals in
+     * the supplied comma-separated list case insensitively matches the predicate parameter.
+     * 
+     * @param literals the comma-separated literal strings; may not be null
+     * @param conversion the function that converts each predicate-supplied value to a string that can be matched against the
+     *            regular expressions; may not be null
+     * @return the predicate function that performs the matching
+     */
+    public static <T> Predicate<T> excludesLiterals(String literals, Function<T, String> conversion) {
+        return includesLiterals(literals, conversion).negate();
+    }
 
     /**
      * Generate a predicate function that for any supplied string returns {@code true} if <i>any</i> of the regular expressions in
@@ -55,15 +191,26 @@ public class Predicates {
      * @throws PatternSyntaxException if the string includes an invalid regular expression
      */
     public static <T> Predicate<T> includes(String regexPatterns, Function<T, String> conversion) {
-        Set<Pattern> patterns = Strings.listOfRegex(regexPatterns,Pattern.CASE_INSENSITIVE);
+        Set<Pattern> patterns = Strings.listOfRegex(regexPatterns, Pattern.CASE_INSENSITIVE);
+        return includedInPatterns(patterns, conversion);
+    }
+
+    protected static <T> Predicate<T> includedInPatterns(Collection<Pattern> patterns, Function<T, String> conversion) {
         return (t) -> {
             String str = conversion.apply(t);
-            if ( str != null ) {
-                for ( Pattern p : patterns ) {
-                    if ( p.matcher(str).matches()) return true;
+            if (str != null) {
+                for (Pattern p : patterns) {
+                    if (p.matcher(str).matches()) return true;
                 }
             }
             return false;
+        };
+    }
+    
+    protected static <T> Predicate<T> includedInLiterals(Collection<String> literals, Function<T, String> conversion) {
+        return (s) -> {
+            String str = conversion.apply(s).toLowerCase();
+            return literals.contains(str);
         };
     }
 
