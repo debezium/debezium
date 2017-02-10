@@ -61,9 +61,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
                 : (gtidSetExcludes != null ? Predicates.excludes(gtidSetExcludes) : null);
 
         // Set up the MySQL schema ...
-        // shao@datapipeline.com We use topic name as the schema name.
-        this.dbSchema = new MySqlSchema(config, serverName(), this.topicSelector::getTopic, this.gtidSourceFilter);
-
+        this.dbSchema = new MySqlSchema(config, serverName(), this.gtidSourceFilter, this.topicSelector::getTopic); // by datapipeline mergeable table --shao@datapipeline.com
         // Set up the record processor ...
         this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector);
     }

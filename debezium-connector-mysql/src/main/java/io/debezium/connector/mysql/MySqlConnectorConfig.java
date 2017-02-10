@@ -750,7 +750,7 @@ public class MySqlConnectorConfig {
                                                      GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
                                                      TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                                                      SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD,
-                                                     SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, TOPIC_GENERATION_MODE,JDBC_DRIVER);
+                                                     SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER, TOPIC_GENERATION_MODE);
 
     /**
      * The set of {@link Field}s that are included in the {@link #configDef() configuration definition}. This includes

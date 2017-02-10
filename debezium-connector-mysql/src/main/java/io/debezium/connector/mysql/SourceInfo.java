@@ -14,6 +14,12 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.data.Envelope;
 import io.debezium.document.Document;
@@ -110,6 +116,12 @@ final class SourceInfo {
     public static final String DB_NAME_KEY = "db";
     public static final String TABLE_NAME_KEY = "table";
 
+    public static final String SNAPSHOT_LAST_RECORD_KEY = "last";
+    public static final String SNAPSHOTTED_KEY = "snapshotted";
+    public static final String ENTITY_NAME_KEY = "entity";
+    public static final String ENTITY_SIZE_KEY = "size";
+    private static final String DELIMITER = ":";
+
     /**
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition()} and {@link #offset()} information.
      */
@@ -126,6 +138,8 @@ final class SourceInfo {
                                                      .field(THREAD_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                      .field(DB_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(TABLE_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                                                     .field(ENTITY_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                                                     .field(ENTITY_SIZE_KEY, Schema.OPTIONAL_INT32_SCHEMA)
                                                      .build();
 
     private String currentGtidSet;
@@ -147,6 +161,10 @@ final class SourceInfo {
     private Map<String, String> sourcePartition;
     private boolean lastSnapshot = true;
     private boolean nextSnapshot = false;
+    private String lastRecordMeta;
+    private List<String> snapshottedEntities = new ArrayList<>();
+    private String entityName;
+    private int entitySize;
 
     public SourceInfo() {
     }
@@ -159,6 +177,46 @@ final class SourceInfo {
     public void setServerName(String logicalId) {
         this.serverName = logicalId;
         sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, serverName);
+    }
+
+    /**
+     * Meta String formatted as [TABLE NAME]:[PRIMARY KEY]
+     * @param tableName last recorded table name
+     * @param lastId last recorded primary key
+     */
+    public void setLastRecordId(String tableName, String lastId) {
+        this.lastRecordMeta = tableName + DELIMITER + lastId;
+    }
+
+    public void markSnapshotted(String entityName) {
+        snapshottedEntities.add(entityName);
+    }
+
+    public void setEntityName(String entityName) {
+        this.entityName = entityName;
+    }
+
+    public void setEntitySize(int size) {
+        this.entitySize = size;
+    }
+
+    /**
+     * Meta String formatted as [TABLE NAME]:[PRIMARY KEY] return the primary key if the table name matches.
+     * @param tableName last recorded table name
+     * @return last recorded primary key
+     */
+    public String getLastRecordId(String tableName) {
+        if (lastRecordMeta != null) {
+            String[] meta = lastRecordMeta.split(DELIMITER);
+            if (meta.length == 2 && meta[0].equals(tableName)) {
+                return meta[1];
+            }
+        }
+        return null;
+    }
+
+    public boolean isSnapshotted(String tableName) {
+        return snapshottedEntities.contains(tableName);
     }
 
     /**
@@ -261,6 +319,8 @@ final class SourceInfo {
         if (binlogTimestampSeconds != 0) map.put(TIMESTAMP_KEY, binlogTimestampSeconds);
         if (isSnapshotInEffect()) {
             map.put(SNAPSHOT_KEY, true);
+            map.put(SNAPSHOT_LAST_RECORD_KEY, lastRecordMeta);
+            map.put(SNAPSHOTTED_KEY, String.join(",", snapshottedEntities));
         }
         return map;
     }
@@ -311,6 +371,8 @@ final class SourceInfo {
         result.put(BINLOG_POSITION_OFFSET_KEY, currentBinlogPosition);
         result.put(BINLOG_ROW_IN_EVENT_OFFSET_KEY, currentRowNumber);
         result.put(TIMESTAMP_KEY, binlogTimestampSeconds);
+        result.put(ENTITY_NAME_KEY, entityName);
+        result.put(ENTITY_SIZE_KEY, entitySize);
         if (lastSnapshot) {
             result.put(SNAPSHOT_KEY, true);
         }
@@ -476,6 +538,11 @@ final class SourceInfo {
             this.restartRowsToSkip = (int) longOffsetValue(sourceOffset, BINLOG_ROW_IN_EVENT_OFFSET_KEY);
             nextSnapshot = booleanOffsetValue(sourceOffset, SNAPSHOT_KEY);
             lastSnapshot = nextSnapshot;
+            lastRecordMeta = (String) sourceOffset.get(SNAPSHOT_LAST_RECORD_KEY);
+            String snapshotted = (String) sourceOffset.get(SNAPSHOTTED_KEY);
+            if (snapshotted != null && !snapshotted.isEmpty()) {
+                snapshottedEntities = Arrays.asList(snapshotted.split(","));
+            }
         }
     }
 
