@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
@@ -22,6 +23,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.data.Envelope;
+import io.debezium.data.OptionalSchema;
 import io.debezium.data.VerifyRecord;
 
 /**
@@ -38,7 +40,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Before
     public void before() throws Exception {
         TestHelper.dropAllSchemas();
-        String statements = "CREATE SCHEMA public;" + 
+        String statements = "CREATE SCHEMA public;" +
                             "DROP TABLE IF EXISTS test_table;" +
                             "CREATE TABLE test_table (pk SERIAL, text TEXT, PRIMARY KEY(pk));" +
                             "INSERT INTO test_table(text) VALUES ('insert');";
@@ -126,7 +128,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         
         // default replica identity only fires previous values for PK changes
         List<SchemaAndValueField> expectedAfter = Collections.singletonList(
-                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "update"));
+                new SchemaAndValueField("text", OptionalSchema.OPTIONAL_STRING_SCHEMA, "update"));
         assertRecordSchemaAndValues(expectedAfter, updatedRecord, Envelope.FieldName.AFTER);
 
         // alter the table and set its replica identity to full the issue another update
@@ -139,11 +141,11 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidUpdate(updatedRecord, PK_FIELD, 1);
         
         // now we should get both old and new values
-        List<SchemaAndValueField> expectedBefore = Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA,
+        List<SchemaAndValueField> expectedBefore = Collections.singletonList(new SchemaAndValueField("text", OptionalSchema.OPTIONAL_STRING_SCHEMA,
                                                                                                "update"));
         assertRecordSchemaAndValues(expectedBefore, updatedRecord, Envelope.FieldName.BEFORE);
     
-        expectedAfter = Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "update2"));
+        expectedAfter = Collections.singletonList(new SchemaAndValueField("text", OptionalSchema.OPTIONAL_STRING_SCHEMA, "update2"));
         assertRecordSchemaAndValues(expectedAfter, updatedRecord, Envelope.FieldName.AFTER);
     }
     
@@ -168,7 +170,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         List<SchemaAndValueField> expectedBefore = Collections.singletonList(new SchemaAndValueField("uvc", null, null));
         assertRecordSchemaAndValues(expectedBefore, updatedRecord, Envelope.FieldName.BEFORE);
     
-        List<SchemaAndValueField> expectedAfter = Collections.singletonList(new SchemaAndValueField("uvc", SchemaBuilder.OPTIONAL_STRING_SCHEMA, 
+        List<SchemaAndValueField> expectedAfter = Collections.singletonList(new SchemaAndValueField("uvc", OptionalSchema.OPTIONAL_STRING_SCHEMA,
                                                                                            "aa"));
         assertRecordSchemaAndValues(expectedAfter, updatedRecord, Envelope.FieldName.AFTER);
     
@@ -220,7 +222,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // and finally insert of the new value
         SourceRecord insertRecord = consumer.remove();
         assertEquals(topicName, insertRecord.topic());
-        VerifyRecord.isValidInsert(insertRecord, PK_FIELD, 2);    
+        VerifyRecord.isValidInsert(insertRecord, PK_FIELD, 2);
     }
     
     @Test
@@ -236,8 +238,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertEquals(topicName("public.test_table"), insertRecord.topic());
         VerifyRecord.isValidInsert(insertRecord, PK_FIELD, 2);
         List<SchemaAndValueField> expectedSchemaAndValues = Arrays.asList(
-                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "update"),
-                new SchemaAndValueField("default_column", SchemaBuilder.OPTIONAL_STRING_SCHEMA ,"default"));
+                new SchemaAndValueField("text", OptionalSchema.OPTIONAL_STRING_SCHEMA, "update"),
+                new SchemaAndValueField("default_column", OptionalSchema.OPTIONAL_STRING_SCHEMA ,"default"));
         assertRecordSchemaAndValues(expectedSchemaAndValues, insertRecord, Envelope.FieldName.AFTER);
     }
     

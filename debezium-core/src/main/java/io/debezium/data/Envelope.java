@@ -203,8 +203,8 @@ public final class Envelope {
 
             @Override
             public Envelope build() {
-                builder.field(FieldName.OPERATION, OPERATION_REQUIRED ? Schema.STRING_SCHEMA : Schema.OPTIONAL_STRING_SCHEMA);
-                builder.field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA);
+                builder.field(FieldName.OPERATION, OPERATION_REQUIRED ? Schema.STRING_SCHEMA : OptionalSchema.OPTIONAL_STRING_SCHEMA);
+                builder.field(FieldName.TIMESTAMP, OptionalSchema.OPTIONAL_INT64_SCHEMA);
                 builder.version(VERSION);
                 checkFieldIsDefined(FieldName.OPERATION, OPERATION_REQUIRED);
                 checkFieldIsDefined(FieldName.BEFORE, false);

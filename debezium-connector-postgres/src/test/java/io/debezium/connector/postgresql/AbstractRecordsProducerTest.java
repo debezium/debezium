@@ -30,16 +30,17 @@ import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Assert;
 
 import io.debezium.data.Bits;
 import io.debezium.data.Json;
+import io.debezium.data.OptionalSchema;
 import io.debezium.data.Uuid;
 import io.debezium.data.Xml;
 import io.debezium.data.geometry.Point;
@@ -52,7 +53,7 @@ import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.VariableLatch;
 
 /**
- * Base class for the integration tests for the different {@link RecordsProducer} instances 
+ * Base class for the integration tests for the different {@link RecordsProducer} instances
  * 
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
@@ -80,43 +81,43 @@ public abstract class AbstractRecordsProducerTest {
                                                                  INSERT_CASH_TYPES_STMT, INSERT_STRING_TYPES_STMT));
     
     protected List<SchemaAndValueField> schemasAndValuesForNumericType() {
-        return Arrays.asList(new SchemaAndValueField("si", SchemaBuilder.OPTIONAL_INT16_SCHEMA, (short) 1),
-                             new SchemaAndValueField("i", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 123456),
-                             new SchemaAndValueField("bi", SchemaBuilder.OPTIONAL_INT64_SCHEMA, 1234567890123L),
+        return Arrays.asList(new SchemaAndValueField("si", OptionalSchema.OPTIONAL_INT16_SCHEMA, (short) 1),
+                             new SchemaAndValueField("i", OptionalSchema.OPTIONAL_INT32_SCHEMA, 123456),
+                             new SchemaAndValueField("bi", OptionalSchema.OPTIONAL_INT64_SCHEMA, 1234567890123L),
                              new SchemaAndValueField("d", Decimal.builder(1).optional().build(), BigDecimal.valueOf(1.1d)),
                              new SchemaAndValueField("n", Decimal.builder(2).optional().build(), BigDecimal.valueOf(22.22d)),
-                             new SchemaAndValueField("r", Schema.OPTIONAL_FLOAT32_SCHEMA, 3.3f),
-                             new SchemaAndValueField("db", Schema.OPTIONAL_FLOAT64_SCHEMA, 4.44d),
+                             new SchemaAndValueField("r", OptionalSchema.OPTIONAL_FLOAT32_SCHEMA, 3.3f),
+                             new SchemaAndValueField("db", OptionalSchema.OPTIONAL_FLOAT64_SCHEMA, 4.44d),
                              new SchemaAndValueField("ss", Schema.INT16_SCHEMA, (short) 1),
                              new SchemaAndValueField("bs", Schema.INT64_SCHEMA, 123L),
-                             new SchemaAndValueField("b", Schema.OPTIONAL_BOOLEAN_SCHEMA, Boolean.TRUE));
+                             new SchemaAndValueField("b", OptionalSchema.OPTIONAL_BOOLEAN_SCHEMA, Boolean.TRUE));
     }
     
     protected List<SchemaAndValueField> schemasAndValuesForStringTypes() {
-       return Arrays.asList(new SchemaAndValueField("vc", Schema.OPTIONAL_STRING_SCHEMA, "aa"),
-                            new SchemaAndValueField("vcv", Schema.OPTIONAL_STRING_SCHEMA, "bb"),
-                            new SchemaAndValueField("ch", Schema.OPTIONAL_STRING_SCHEMA, "cdef"),
-                            new SchemaAndValueField("c", Schema.OPTIONAL_STRING_SCHEMA, "abc"),
-                            new SchemaAndValueField("t", Schema.OPTIONAL_STRING_SCHEMA, "some text"));
+       return Arrays.asList(new SchemaAndValueField("vc", OptionalSchema.OPTIONAL_STRING_SCHEMA, "aa"),
+                            new SchemaAndValueField("vcv", OptionalSchema.OPTIONAL_STRING_SCHEMA, "bb"),
+                            new SchemaAndValueField("ch", OptionalSchema.OPTIONAL_STRING_SCHEMA, "cdef"),
+                            new SchemaAndValueField("c", OptionalSchema.OPTIONAL_STRING_SCHEMA, "abc"),
+                            new SchemaAndValueField("t", OptionalSchema.OPTIONAL_STRING_SCHEMA, "some text"));
     }
    
     protected List<SchemaAndValueField> schemasAndValuesForTextTypes() {
-        return Arrays.asList(new SchemaAndValueField("j", Json.builder().optional().build(), "{\"bar\": \"baz\"}"),
-                             new SchemaAndValueField("jb", Json.builder().optional().build(), "{\"bar\": \"baz\"}"),
-                             new SchemaAndValueField("x", Xml.builder().optional().build(), "<foo>bar</foo><foo>bar</foo>"),
-                             new SchemaAndValueField("u", Uuid.builder().optional().build(), "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"));
+        return Arrays.asList(new SchemaAndValueField("j", Json.builder().optional().defaultValue(null).build(), "{\"bar\": \"baz\"}"),
+                             new SchemaAndValueField("jb", Json.builder().optional().defaultValue(null).build(), "{\"bar\": \"baz\"}"),
+                             new SchemaAndValueField("x", Xml.builder().optional().defaultValue(null).build(), "<foo>bar</foo><foo>bar</foo>"),
+                             new SchemaAndValueField("u", Uuid.builder().optional().defaultValue(null).build(), "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"));
     }
     
     protected List<SchemaAndValueField> schemaAndValuesForGeomTypes() {
-        Schema pointSchema = Point.builder().optional().build();
+        Schema pointSchema = Point.builder().optional().defaultValue(null).build();
         return Collections.singletonList(new SchemaAndValueField("p", pointSchema, Point.createValue(pointSchema, 1, 1)));
     }
     
     protected List<SchemaAndValueField> schemaAndValuesForBinTypes() {
        return Arrays.asList(new SchemaAndValueField("ba", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap(new byte[]{ 1, 2, 3})),
                             new SchemaAndValueField("bol", Schema.OPTIONAL_BOOLEAN_SCHEMA, false),
-                            new SchemaAndValueField("bs", Bits.builder(2).optional().build(), new byte[] { 3, 0 }),  // bitsets get converted from two's complement
-                            new SchemaAndValueField("bv", Bits.builder(2).optional().build(), new byte[] { 0, 0 }));
+                            new SchemaAndValueField("bs", Bits.builder(2).optional().defaultValue(null).build(), new byte[] { 3, 0 }),  // bitsets get converted from two's complement
+                            new SchemaAndValueField("bv", Bits.builder(2).optional().defaultValue(null).build(), new byte[] { 0, 0 }));
     }
     
     protected List<SchemaAndValueField> schemaAndValuesForDateTimeTypes() {
@@ -127,27 +128,27 @@ public abstract class AbstractRecordsProducerTest {
         String expectedTtz = "11:51:30Z";  //time is stored with TZ, should be read back at GMT
         double interval = MicroDuration.durationMicros(1, 2, 3, 4, 5, 0, PostgresValueConverter.DAYS_PER_MONTH_AVG);
     
-        return Arrays.asList(new SchemaAndValueField("ts", NanoTimestamp.builder().optional().build(), expectedTs),
-                             new SchemaAndValueField("tz", ZonedTimestamp.builder().optional().build(), expectedTz),
-                             new SchemaAndValueField("date", Date.builder().optional().build(), expectedDate),
-                             new SchemaAndValueField("ti", NanoTime.builder().optional().build(), expectedTi),
-                             new SchemaAndValueField("ttz", ZonedTime.builder().optional().build(), expectedTtz),
-                             new SchemaAndValueField("it", MicroDuration.builder().optional().build(), interval));
+        return Arrays.asList(new SchemaAndValueField("ts", NanoTimestamp.builder().optional().defaultValue(null).build(), expectedTs),
+                             new SchemaAndValueField("tz", ZonedTimestamp.builder().optional().defaultValue(null).build(), expectedTz),
+                             new SchemaAndValueField("date", Date.builder().optional().defaultValue(null).build(), expectedDate),
+                             new SchemaAndValueField("ti", NanoTime.builder().optional().defaultValue(null).build(), expectedTi),
+                             new SchemaAndValueField("ttz", ZonedTime.builder().optional().defaultValue(null).build(), expectedTtz),
+                             new SchemaAndValueField("it", MicroDuration.builder().optional().defaultValue(null).build(), interval));
     }
     
     protected List<SchemaAndValueField> schemaAndValuesForMoneyTypes() {
-        return Collections.singletonList(new SchemaAndValueField("csh", Decimal.builder(0).optional().build(), 
+        return Collections.singletonList(new SchemaAndValueField("csh", Decimal.builder(0).optional().defaultValue(null).build(),
                                                                  BigDecimal.valueOf(1234.11d)));
     }
     
     protected Map<String, List<SchemaAndValueField>> schemaAndValuesByTableName() {
         return ALL_STMTS.stream().collect(Collectors.toMap(AbstractRecordsProducerTest::tableNameFromInsertStmt,
-                                                           this::schemasAndValuesForTable));    
+                                                           this::schemasAndValuesForTable));
     }
     
     protected List<SchemaAndValueField> schemasAndValuesForTable(String insertTableStatement) {
         switch (insertTableStatement) {
-            case INSERT_NUMERIC_TYPES_STMT: 
+            case INSERT_NUMERIC_TYPES_STMT:
                 return schemasAndValuesForNumericType();
             case INSERT_BIN_TYPES_STMT:
                 return schemaAndValuesForBinTypes();
@@ -159,7 +160,7 @@ public abstract class AbstractRecordsProducerTest {
                 return schemaAndValuesForGeomTypes();
             case INSERT_STRING_TYPES_STMT:
                 return schemasAndValuesForStringTypes();
-            case INSERT_TEXT_TYPES_STMT: 
+            case INSERT_TEXT_TYPES_STMT:
                 return schemasAndValuesForTextTypes();
             default:
                 throw new IllegalArgumentException("unknown statement:" + insertTableStatement);
@@ -239,7 +240,7 @@ public abstract class AbstractRecordsProducerTest {
     }
     
     protected TestConsumer testConsumer(int expectedRecordsCount) {
-         return new TestConsumer(expectedRecordsCount);        
+         return new TestConsumer(expectedRecordsCount);
     }
     
     protected static class TestConsumer implements Consumer<SourceRecord> {
@@ -254,9 +255,9 @@ public abstract class AbstractRecordsProducerTest {
         @Override
         public void accept(SourceRecord record) {
             if (latch.getCount() == 0) {
-                fail("received more events than expected");                
+                fail("received more events than expected");
             }
-            records.add(record);  
+            records.add(record);
             latch.countDown();
         }
         
@@ -283,8 +284,8 @@ public abstract class AbstractRecordsProducerTest {
    
         protected void await(long timeout, TimeUnit unit) throws InterruptedException {
             if (!latch.await(timeout, unit)) {
-                fail("Consumer expected " + latch.getCount() + " records, but received " + records.size());                
-            } 
+                fail("Consumer expected " + latch.getCount() + " records, but received " + records.size());
+            }
         }
     }
 }

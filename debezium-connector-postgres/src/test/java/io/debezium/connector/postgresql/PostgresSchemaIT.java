@@ -7,7 +7,6 @@
 package io.debezium.connector.postgresql;
 
 import static io.debezium.connector.postgresql.PostgresConnectorConfig.SCHEMA_BLACKLIST;
-import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -15,15 +14,19 @@ import static org.junit.Assert.assertNull;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.stream.IntStream;
+
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.junit.Before;
 import org.junit.Test;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.data.Bits;
 import io.debezium.data.Json;
+import io.debezium.data.OptionalSchema;
 import io.debezium.data.Uuid;
 import io.debezium.data.Xml;
 import io.debezium.data.geometry.Point;
@@ -52,7 +55,7 @@ public class PostgresSchemaIT {
     
     @Before
     public void before() throws SQLException {
-        TestHelper.dropAllSchemas();        
+        TestHelper.dropAllSchemas();
     }
     
     @Test
@@ -65,23 +68,30 @@ public class PostgresSchemaIT {
             Arrays.stream(TEST_TABLES).forEach(tableId -> assertKeySchema(tableId, "pk", Schema.INT32_SCHEMA));
             assertTableSchema("public.numeric_table", "si, i, bi, d, n, r, db, ss, bs, b",
                               Schema.OPTIONAL_INT16_SCHEMA, Schema.OPTIONAL_INT32_SCHEMA, Schema.OPTIONAL_INT64_SCHEMA,
-                              Decimal.builder(1).optional().build(), Decimal.builder(2).optional().build(), Schema.OPTIONAL_FLOAT32_SCHEMA,
+                              Decimal.builder(1).optional().defaultValue(null).build(),
+                              Decimal.builder(2).optional().defaultValue(null).build(), Schema.OPTIONAL_FLOAT32_SCHEMA,
                               Schema.OPTIONAL_FLOAT64_SCHEMA, Schema.INT16_SCHEMA, Schema.INT64_SCHEMA, Schema.OPTIONAL_BOOLEAN_SCHEMA);
             assertTableSchema("public.string_table", "vc, vcv, ch, c, t",
                               Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA,
                               Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA);
-            assertTableSchema("public.cash_table", "csh", Decimal.builder(0).optional().build());
+            assertTableSchema("public.cash_table", "csh", Decimal.builder(0).optional().defaultValue(null).build());
             assertTableSchema("public.bitbin_table", "ba, bol, bs, bv",
-                              Schema.OPTIONAL_BYTES_SCHEMA, Schema.OPTIONAL_BOOLEAN_SCHEMA, Bits.builder(2).optional().build(),
-                              Bits.builder(2).optional().build());
+                              Schema.OPTIONAL_BYTES_SCHEMA, Schema.OPTIONAL_BOOLEAN_SCHEMA,
+                              Bits.builder(2).optional().defaultValue(null).build(),
+                              Bits.builder(2).optional().defaultValue(null).build());
             assertTableSchema("public.time_table", "ts, tz, date, ti, ttz, it",
-                              NanoTimestamp.builder().optional().build(), ZonedTimestamp.builder().optional().build(),
-                              Date.builder().optional().build(), NanoTime.builder().optional().build(), ZonedTime.builder().optional().build(),
-                              MicroDuration.builder().optional().build());
+                              NanoTimestamp.builder().optional().defaultValue(null).build(),
+                              ZonedTimestamp.builder().optional().defaultValue(null).build(),
+                              Date.builder().optional().defaultValue(null).build(),
+                              NanoTime.builder().optional().defaultValue(null).build(),
+                              ZonedTime.builder().optional().defaultValue(null).build(),
+                              MicroDuration.builder().optional().defaultValue(null).build());
             assertTableSchema("public.text_table", "j, jb, x, u",
-                              Json.builder().optional().build(), Json.builder().optional().build(), Xml.builder().optional().build(),
-                              Uuid.builder().optional().build());
-            assertTableSchema("public.geom_table", "p", Point.builder().optional().build());
+                              Json.builder().optional().defaultValue(null).build(),
+                              Json.builder().optional().defaultValue(null).build(),
+                              Xml.builder().optional().defaultValue(null).build(),
+                              Uuid.builder().optional().defaultValue(null).build());
+            assertTableSchema("public.geom_table", "p", Point.builder().optional().defaultValue(null).build());
         }
     }
     
@@ -160,7 +170,7 @@ public class PostgresSchemaIT {
             schema.refresh(connection, false);
             assertTablesIncluded(tableId);
             assertTablesExcluded("public.table1");
-            assertTableSchema(tableId, "strcol", Schema.OPTIONAL_STRING_SCHEMA);
+            assertTableSchema(tableId, "strcol", OptionalSchema.OPTIONAL_STRING_SCHEMA);
         }
         
         statements = "ALTER TABLE table2 ADD COLUMN vc VARCHAR(2);" +
@@ -173,7 +183,7 @@ public class PostgresSchemaIT {
             assertTablesIncluded(tableId);
             assertTablesExcluded("public.table1");
             assertTableSchema(tableId, "vc, si",
-                              Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_INT16_SCHEMA);
+                              OptionalSchema.OPTIONAL_STRING_SCHEMA, OptionalSchema.OPTIONAL_INT16_SCHEMA);
             assertColumnsExcluded(tableId + ".strcol");
         }
     }

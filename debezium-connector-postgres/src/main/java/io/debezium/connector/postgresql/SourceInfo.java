@@ -9,20 +9,22 @@ package io.debezium.connector.postgresql;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.data.OptionalSchema;
 
 /**
  * Information about the source of information, which for normal events contains information about the transaction id and the
- * LSN position in the server WAL. 
+ * LSN position in the server WAL.
  * 
  * <p>
- * The {@link #partition() source partition} information describes the database server for which we're streaming changes. 
- * Typically, the server is identified by the host address port number and the name of the database. Here's a JSON-like 
+ * The {@link #partition() source partition} information describes the database server for which we're streaming changes.
+ * Typically, the server is identified by the host address port number and the name of the database. Here's a JSON-like
  * representation of an example database:
  * 
  * <pre>
@@ -32,9 +34,9 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
  * </pre>
  * 
  * <p>
- * The {@link #offset() source offset} information describes a structure containing the position in the server's WAL for any 
- * particular event, transaction id and the server timestamp at which the transaction that generated that particular event has 
- * been committed. When performing snapshots, it may also contain a snapshot field which indicates that a particular record 
+ * The {@link #offset() source offset} information describes a structure containing the position in the server's WAL for any
+ * particular event, transaction id and the server timestamp at which the transaction that generated that particular event has
+ * been committed. When performing snapshots, it may also contain a snapshot field which indicates that a particular record
  * is created while a snapshot it taking place.
  * Here's a JSON-like representation of an example:
  * 
@@ -42,28 +44,29 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
  * {
  *     "ts_usec": 1465937,
  *     "lsn" : 99490,
- *     "txId" : 123, 
+ *     "txId" : 123,
  *     "snapshot": true
  * }
  * </pre>
  * 
  * The "{@code ts_usec}" field contains the <em>microseconds</em> since Unix epoch (since Jan 1, 1970) representing the time at
- * which the transaction that generated the event was committed while the "{@code txId}" represents the server's unique transaction
- * identifier. The "{@code lsn}" field represent a numerical (long) value corresponding to the server's LSN for that particular 
+ * which the transaction that generated the event was committed while the "{@code txId}" represents the server's unique
+ * transaction
+ * identifier. The "{@code lsn}" field represent a numerical (long) value corresponding to the server's LSN for that particular
  * event and can be used to uniquely identify an event within the WAL.
  * 
  * The {@link #source() source} struct appears in each message envelope and contains information about the event. It is
- * a mixture the fields from the {@link #partition() partition} and {@link #offset() offset}. 
+ * a mixture the fields from the {@link #partition() partition} and {@link #offset() offset}.
  * Like with the offset, the "{@code snapshot}" field only appears for events produced when the connector is in the
  * middle of a snapshot. Here's a JSON-like representation of the source for an event that corresponds to the above partition and
  * offset:
  * 
  * <pre>
  * {
- *     "name": "production-server",     
+ *     "name": "production-server",
  *     "ts_usec": 1465937,
  *     "lsn" : 99490,
- *     "txId" : 123, 
+ *     "txId" : 123,
  *     "snapshot": true
  * }
  * </pre>
@@ -87,27 +90,27 @@ final class SourceInfo {
     public static final Schema SCHEMA = SchemaBuilder.struct()
                                                      .name("io.debezium.connector.postgresql.Source")
                                                      .field(SERVER_NAME_KEY, Schema.STRING_SCHEMA)
-                                                     .field(TIMESTAMP_KEY, Schema.OPTIONAL_INT64_SCHEMA)
-                                                     .field(TXID_KEY, Schema.OPTIONAL_INT32_SCHEMA)
-                                                     .field(LSN_KEY, Schema.OPTIONAL_INT64_SCHEMA)
-                                                     .field(SNAPSHOT_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
-                                                     .field(LAST_SNAPSHOT_RECORD_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
+                                                     .field(TIMESTAMP_KEY, OptionalSchema.OPTIONAL_INT64_SCHEMA)
+                                                     .field(TXID_KEY, OptionalSchema.OPTIONAL_INT32_SCHEMA)
+                                                     .field(LSN_KEY, OptionalSchema.OPTIONAL_INT64_SCHEMA)
+                                                     .field(SNAPSHOT_KEY, OptionalSchema.OPTIONAL_BOOLEAN_SCHEMA)
+                                                     .field(LAST_SNAPSHOT_RECORD_KEY, OptionalSchema.OPTIONAL_BOOLEAN_SCHEMA)
                                                      .build();
 
     private final String serverName;
     private final Map<String, String> sourcePartition;
-    
+
     private Long lsn;
     private Integer txId;
     private Long useconds;
     private boolean snapshot = false;
     private Boolean lastSnapshotRecord;
-     
+
     protected SourceInfo(String serverName) {
         this.serverName = serverName;
         this.sourcePartition = Collections.singletonMap(SERVER_PARTITION_KEY, serverName);
     }
-    
+
     protected void load(Map<String, Object> lastStoredOffset) {
         this.lsn = ((Number) lastStoredOffset.get(LSN_KEY)).longValue();
         this.txId = ((Number) lastStoredOffset.get(TXID_KEY)).intValue();
@@ -153,14 +156,14 @@ final class SourceInfo {
         }
         return result;
     }
-    
+
     /**
-     * Updates the source with information about a particular received or read event. 
+     * Updates the source with information about a particular received or read event.
      * 
-     * @param lsn the position in the server WAL for a particular event; may be null indicating that this information is not 
-     * available
-     * @param useconds the commit time (in microseconds since epoch) of the transaction that generated the event; 
-     * may be null indicating that this information is not available
+     * @param lsn the position in the server WAL for a particular event; may be null indicating that this information is not
+     *            available
+     * @param useconds the commit time (in microseconds since epoch) of the transaction that generated the event;
+     *            may be null indicating that this information is not available
      * @param txId the ID of the transaction that generated the transaction; may be null if this information nis not available
      * @return this instance
      */
@@ -170,17 +173,17 @@ final class SourceInfo {
         this.txId = txId;
         return this;
     }
-    
+
     protected SourceInfo update(Long useconds) {
         this.useconds = useconds;
         return this;
     }
-    
+
     protected SourceInfo markLastSnapshotRecord() {
         this.lastSnapshotRecord = true;
         return this;
     }
-    
+
     /**
      * Get a {@link Schema} representation of the source {@link #partition()} and {@link #offset()} information.
      * 
@@ -217,7 +220,7 @@ final class SourceInfo {
     protected boolean isSnapshotInEffect() {
         return snapshot && (this.lastSnapshotRecord == null || !this.lastSnapshotRecord);
     }
-    
+
     /**
      * Denote that a snapshot is being (or has been) started.
      */
@@ -232,15 +235,15 @@ final class SourceInfo {
     protected void completeSnapshot() {
         this.snapshot = false;
     }
-    
+
     protected Long lsn() {
         return this.lsn;
     }
-    
+
     protected boolean hasLastKnownPosition() {
         return this.lsn != null;
     }
-    
+
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder("source_info[");

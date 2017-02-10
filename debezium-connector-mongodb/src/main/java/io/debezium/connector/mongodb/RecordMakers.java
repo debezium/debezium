@@ -24,6 +24,7 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.data.Json;
+import io.debezium.data.OptionalSchema;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.util.AvroValidator;
 
@@ -105,11 +106,11 @@ public class RecordMakers {
                                           .build();
             this.valueSchema = SchemaBuilder.struct()
                                             .name(validator.validate(topicName + ".Envelope"))
-                                            .field(FieldName.AFTER, Json.builder().optional().build())
-                                            .field("patch", Json.builder().optional().build())
+                                            .field(FieldName.AFTER, Json.builder().optional().defaultValue(null).build())
+                                            .field("patch", Json.builder().optional().defaultValue(null).build())
                                             .field(FieldName.SOURCE, source.schema())
-                                            .field(FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
-                                            .field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
+                                            .field(FieldName.OPERATION, OptionalSchema.OPTIONAL_STRING_SCHEMA)
+                                            .field(FieldName.TIMESTAMP, OptionalSchema.OPTIONAL_INT64_SCHEMA)
                                             .build();
             JsonWriterSettings writerSettings = new JsonWriterSettings(JsonMode.STRICT, "", ""); // most compact JSON
             this.valueTransformer = (doc) -> doc.toJson(writerSettings);
