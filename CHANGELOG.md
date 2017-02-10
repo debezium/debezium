@@ -4,7 +4,7 @@ All notable changes are documented in this file. Release numbers follow [Semanti
 
 ## 0.4.0
 
-February 7, 2017 - [Detailed release notes](https://issues.jboss.org/projects/DBZ/versions/12330743)
+February 7, 2017 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12330743)
 
 ### New features since 0.3.6
 
@@ -36,7 +36,7 @@ This release includes the following fixes, changes, or improvements since the li
 
 ## 0.3.6
 
-December 21, 2016 - [Detailed release notes](https://issues.jboss.org/projects/DBZ/versions/12332775)
+December 21, 2016 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12332775)
 
 ### New features since 0.3.5
 
@@ -67,7 +67,7 @@ This release includes the following fixes since the link:release-0-3-5[0.3.5] re
 
 ## 0.3.5
 
-November 9, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12332052)
+November 9, 2016 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12332052)
 
 ### New features since 0.3.4
 
@@ -98,7 +98,7 @@ Additionally, this release includes the following fixes since the link:release-0
 
 ## 0.3.4
 
-October 25, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12331759)
+October 25, 2016 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12331759)
 
 ### New features since 0.3.3
 
@@ -119,7 +119,7 @@ This release includes all of the fixes from the link:release-0-3-3[0.3.3] releas
 
 ## 0.3.3
 
-October 18, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12331604)
+October 18, 2016 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12331604)
 
 ### New features since 0.3.2
 
@@ -143,7 +143,7 @@ This release includes all of the fixes from the link:release-0-3-2[0.3.2] releas
 
 ## 0.3.2
 
-September 26, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12331401)
+September 26, 2016 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12331401)
 
 ### New features since 0.3.1
 
@@ -168,7 +168,7 @@ This release includes all of the fixes from the link:release-0-3-1[0.3.1] releas
 
 ## 0.3.1
 
-August 30, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12331359)
+August 30, 2016 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12331359)
 
 ### New features
 
@@ -192,7 +192,7 @@ This release includes all of the fixes from the link:release-0-2-4[0.2.4] releas
 
 ## 0.3.0
 
-August 16, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12329661)
+August 16, 2016 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12329661)
 
 ### New features
 
@@ -226,7 +226,7 @@ August 16, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/f
 
 ## 0.2.4
 
-August 16, 2016 - [Detailed release notes](https://issues.jboss.org/projects/DBZ/versions/12331221)
+August 16, 2016 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12331221)
 
 ### Fixes since 0.2.3
 
@@ -237,7 +237,7 @@ August 16, 2016 - [Detailed release notes](https://issues.jboss.org/projects/DBZ
 
 ## 0.2.3
 
-July 26, 2016 - [Detailed release notes](https://issues.jboss.org/projects/DBZ/versions/12330932)
+July 26, 2016 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12330932)
 
 ### Backwards-incompatible changes since 0.2.2
 
@@ -269,7 +269,7 @@ June 22, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/ver
 
 ## 0.2.1
 
-June 10, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12330752)
+June 10, 2016 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12330752)
 
 ### Backwards-incompatible changes since 0.2.0
 
@@ -281,7 +281,7 @@ June 10, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fix
 
 ## 0.2.0
 
-June 8, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12329465)
+June 8, 2016 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12329465)
 
 ### New features
 
@@ -308,7 +308,7 @@ June 8, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixf
 
 ## 0.1
 
-March 17, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12329464)
+March 17, 2016 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12329464)
 
 ### New features
 
