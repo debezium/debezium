@@ -5,6 +5,7 @@
  */
 package io.debezium.function;
 
+import java.util.UUID;
 import java.util.function.Predicate;
 
 import org.junit.Test;
@@ -53,6 +54,39 @@ public class PredicatesTest {
         assertThat(p.test(0)).isTrue();
         assertThat(p.test(6)).isTrue();
         assertThat(p.test(-1)).isTrue();
+    }
+
+    @Test
+    public void shouldMatchCommaSeparatedUuidLiterals() {
+        String uuid1 = UUID.randomUUID().toString();
+        String uuid2 = UUID.randomUUID().toString();
+        String uuid3 = UUID.randomUUID().toString();
+        String uuid4 = UUID.randomUUID().toString();
+        String uuid4Prefix = uuid4.substring(0,10) + ".*";
+        Predicate<String> p = Predicates.includesUuids(uuid1 + "," + uuid2);
+        assertThat(p.test(uuid1)).isTrue();
+        assertThat(p.test(uuid2)).isTrue();
+        assertThat(p.test(uuid3)).isFalse();
+        assertThat(p.test(uuid4)).isFalse();
+        
+        p = Predicates.excludesUuids(uuid1 + "," + uuid2);
+        assertThat(p.test(uuid1)).isFalse();
+        assertThat(p.test(uuid2)).isFalse();
+        assertThat(p.test(uuid3)).isTrue();
+        assertThat(p.test(uuid4)).isTrue();
+        
+        p = Predicates.includesUuids(uuid1 + "," + uuid2 + "," + uuid4Prefix);
+        assertThat(p.test(uuid1)).isTrue();
+        assertThat(p.test(uuid2)).isTrue();
+        assertThat(p.test(uuid3)).isFalse();
+        assertThat(p.test(uuid4)).isTrue();
+        
+        p = Predicates.excludesUuids(uuid1 + "," + uuid2 + "," + uuid4Prefix);
+        assertThat(p.test(uuid1)).isFalse();
+        assertThat(p.test(uuid2)).isFalse();
+        assertThat(p.test(uuid3)).isTrue();
+        assertThat(p.test(uuid4)).isFalse();
+        
     }
 
 }
