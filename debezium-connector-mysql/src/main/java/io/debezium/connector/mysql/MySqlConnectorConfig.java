@@ -516,13 +516,13 @@ public class MySqlConnectorConfig {
                                                           .withDescription("The source UUIDs used to exclude GTID ranges when determine the starting position in the MySQL server's binlog.");
 
     /**
-     * If set to true, we will only produce DML events into Kafka for transactions that were written on mysql servers
-     * with UUIDs matching the filters defined by the {@link GTID_SOURCE_INCLUDES} or {@link GTID_SOURCE_EXCLUDES}
+     * If set to true, we will only produce DML events into Kafka for transactions that were written on MySQL servers
+     * with UUIDs matching the filters defined by the {@link #GTID_SOURCE_INCLUDES} or {@link #GTID_SOURCE_EXCLUDES}
      * configuration options, if they are specified.
      *
      * Defaults to true.
      *
-     * When true, either {@link GTID_SOURCE_INCLUDES} or {@link GTID_SOURCE_EXCLUDES} must be set.
+     * When true, either {@link #GTID_SOURCE_INCLUDES} or {@link #GTID_SOURCE_EXCLUDES} must be set.
      */
     public static final Field GTID_SOURCE_FILTER_DML_EVENTS = Field.create("gtid.source.filter.dml.events")
                                                           .withDisplayName("Filter DML events")

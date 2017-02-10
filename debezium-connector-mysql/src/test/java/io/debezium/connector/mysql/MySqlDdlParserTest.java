@@ -773,6 +773,33 @@ public class MySqlDdlParserTest {
         listener.forEach(this::printEvent);
     }
     
+    @FixFor("DBZ-193")
+    @Test
+    public void shouldParseFulltextKeyInCreateTable() {
+        parser.parse(readFile("ddl/mysql-dbz-193.ddl"), tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(1); // 1 table
+        assertThat(listener.total()).isEqualTo(1);
+        listener.forEach(this::printEvent);
+
+        Table t = tables.forTable(new TableId(null, null, "roles"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("id", "name", "context", "organization_id", "client_id", "scope_action_ids");
+        assertThat(t.primaryKeyColumnNames()).containsExactly("id");
+        assertColumn(t, "id", "VARCHAR", Types.VARCHAR, 32, -1, false, false, false);
+        assertColumn(t, "name", "VARCHAR", Types.VARCHAR, 100, -1, false, false, false);
+        assertColumn(t, "context", "VARCHAR", Types.VARCHAR, 20, -1, false, false, false);
+        assertColumn(t, "organization_id", "INT", Types.INTEGER, 11, -1, true, false, false);
+        assertColumn(t, "client_id", "VARCHAR", Types.VARCHAR, 32, -1, false, false, false);
+        assertColumn(t, "scope_action_ids", "TEXT", Types.VARCHAR, -1, -1, false, false, false);
+        assertThat(t.columnWithName("id").position()).isEqualTo(1);
+        assertThat(t.columnWithName("name").position()).isEqualTo(2);
+        assertThat(t.columnWithName("context").position()).isEqualTo(3);
+        assertThat(t.columnWithName("organization_id").position()).isEqualTo(4);
+        assertThat(t.columnWithName("client_id").position()).isEqualTo(5);
+        assertThat(t.columnWithName("scope_action_ids").position()).isEqualTo(6);
+    }
+    
     @Test
     public void shouldParseTicketMonsterLiquibaseStatements() {
         parser.parse(readLines(1, "ddl/mysql-ticketmonster-liquibase.ddl"), tables);
