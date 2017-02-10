@@ -606,7 +606,7 @@ public class MySqlDdlParser extends DdlParser {
             }
             parseIndexColumnNames(start);
             parseIndexOptions(start);
-        } else if (!quoted && tokens.canConsume("FULLTEXT", "SPATIAL")) {
+        } else if (!quoted && tokens.canConsumeAnyOf("FULLTEXT", "SPATIAL")) {
             tokens.canConsumeAnyOf("INDEX", "KEY");
             if (!tokens.matches('(')) {
                 tokens.consume(); // name of unique index ...
