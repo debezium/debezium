@@ -28,6 +28,9 @@ import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.KafkaDatabaseHistory;
+import io.debezium.relational.topic.ByDatabaseTopicNamingStrategy;
+import io.debezium.relational.topic.ByTableTopicNamingStrategy;
+import io.debezium.relational.topic.TopicNamingStrategy;
 
 /**
  * The configuration properties.
@@ -400,6 +403,22 @@ public class MySqlConnectorConfig {
                                                              .withImportance(Importance.MEDIUM)
                                                              .withDescription("Password to unlock the keystore file (store password) specified by 'ssl.trustore' configuration property or the 'javax.net.ssl.trustStore' system or JVM property.");
 
+    public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
+                                                           .withDisplayName("Topic naming strategy")
+                                                           .withType(Type.STRING)
+                                                           .withWidth(Width.MEDIUM)
+                                                           .withImportance(Importance.LOW)
+                                                           .withDefault(ByTableTopicNamingStrategy.ALIAS)
+                                                           .withDescription("Specify the comma-separated list of topic naming strategies. "
+                                                                   + "Valid strategies include the literal '"
+                                                                   + ByTableTopicNamingStrategy.ALIAS
+                                                                   + "' if change events for each table should be written to a separate topic, the literal '"
+                                                                   + ByDatabaseTopicNamingStrategy.ALIAS
+                                                                   + "' if change events for all tables in a database should be written to a separate topic, "
+                                                                   + "a pattern (consisting of a regular expression followed by ' = ' followed by the replacement pattern), "
+                                                                   + "or the name of a class that implements the '"
+                                                                   + TopicNamingStrategy.class.getName() + "' interface.");
+
     public static final Field TABLES_IGNORE_BUILTIN = Field.create(TABLE_IGNORE_BUILTIN_NAME)
                                                            .withDisplayName("Ignore system databases")
                                                            .withType(Type.BOOLEAN)
@@ -681,6 +700,7 @@ public class MySqlConnectorConfig {
                                                      CONNECTION_TIMEOUT_MS, KEEP_ALIVE,
                                                      MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
                                                      DATABASE_HISTORY, INCLUDE_SCHEMA_CHANGES,
+                                                     TOPIC_NAMING_STRATEGY,
                                                      TABLE_WHITELIST, TABLE_BLACKLIST, TABLES_IGNORE_BUILTIN,
                                                      DATABASE_WHITELIST, DATABASE_BLACKLIST,
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING,
@@ -709,6 +729,7 @@ public class MySqlConnectorConfig {
                     KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, DATABASE_HISTORY);
         Field.group(config, "Events", INCLUDE_SCHEMA_CHANGES, TABLES_IGNORE_BUILTIN, DATABASE_WHITELIST, TABLE_WHITELIST,
                     COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST,
+                    TOPIC_NAMING_STRATEGY,
                     GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
                     SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE);

@@ -25,6 +25,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.relational.history.HistoryRecord.Fields;
+import io.debezium.relational.topic.TopicSelector;
 import io.debezium.util.AvroValidator;
 
 /**
