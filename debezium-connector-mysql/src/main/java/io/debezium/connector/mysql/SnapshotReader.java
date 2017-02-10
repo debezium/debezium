@@ -437,7 +437,12 @@ public class SnapshotReader extends AbstractReader {
                             // Scan the rows in the table ...
                             long start = clock.currentTimeInMillis();
                             logger.info("Step {}: - scanning table '{}' ({} of {} tables)", step, tableId, ++counter, tableIds.size());
-                            sql.set("SELECT * FROM " + quote(tableId));
+                            String primaryKey = schema.tableFor(tableId).primaryKeyColumnNames().get(0);
+                            String lastId = source.getLastRecordId(tableId.table());
+                            sql.set("SELECT * FROM " + quote(tableId)
+                                + (lastId != null ? " WHERE " + primaryKey + " > " + lastId :"")
+                                + (primaryKey != null ? " ORDER BY " + primaryKey : "")
+                            );
                             try {
                                 int stepNum = step;
                                 mysql.query(sql.get(), statementFactory, rs -> {
@@ -452,6 +457,10 @@ public class SnapshotReader extends AbstractReader {
                                             for (int i = 0, j = 1; i != numColumns; ++i, ++j) {
                                                 row[i] = rs.getObject(j);
                                             }
+                                            String id = rs.getObject(primaryKey).toString();
+                                            source.setLastRecordId(tableId.table(), id);
+                                            source.setEntityName(tableId.table());
+                                            source.setEntitySize((int)numRows.get());
                                             recorder.recordRow(recordMaker, row, ts); // has no row number!
                                             ++rowNum;
                                             if (rowNum % 100 == 0 && !isRunning()) {
@@ -480,6 +489,7 @@ public class SnapshotReader extends AbstractReader {
                                 });
                             } finally {
                                 metrics.completeTable();
+                                source.markSnapshotted(tableId.table());
                                 if (interrupted.get()) break;
                             }
                         }
