@@ -416,7 +416,7 @@ public class SnapshotReader extends AbstractReader {
                                     String id = rs.getObject(primaryKey).toString();
                                     source.setLastRecordId(tableId.table(), id);
                                     source.setEntityName(tableId.table());
-                                    source.setEntitySize(rowCount);
+                                    source.setEntitySize((int)rowCount);
                                     recorder.recordRow(recordMaker, row, ts); // has no row number!
                                     ++rowNum;
                                     if (rowNum % 10_000 == 0 || rowNum == rowCount) {

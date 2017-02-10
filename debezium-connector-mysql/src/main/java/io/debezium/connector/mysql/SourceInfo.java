@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.mysql;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -124,8 +123,8 @@ final class SourceInfo {
                                                      .field(BINLOG_POSITION_OFFSET_KEY, Schema.INT64_SCHEMA)
                                                      .field(BINLOG_ROW_IN_EVENT_OFFSET_KEY, Schema.INT32_SCHEMA)
                                                      .field(SNAPSHOT_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
-                                                     .field(ENTITY_NAME_KEY, Schema.STRING_SCHEMA)
-                                                     .field(ENTITY_SIZE_KEY, Schema.INT32_SCHEMA)
+                                                     .field(ENTITY_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                                                     .field(ENTITY_SIZE_KEY, Schema.OPTIONAL_INT32_SCHEMA)
                                                      .build();
 
     private String currentGtidSet;
@@ -149,7 +148,7 @@ final class SourceInfo {
     private String lastRecordMeta;
     private List<String> snapshottedEntities = new ArrayList<>();
     private String entityName;
-    private long entitySize;
+    private int entitySize;
 
     public SourceInfo() {
     }
@@ -181,7 +180,7 @@ final class SourceInfo {
         this.entityName = entityName;
     }
 
-    public void setEntitySize(long size) {
+    public void setEntitySize(int size) {
         this.entitySize = size;
     }
 
@@ -191,9 +190,11 @@ final class SourceInfo {
      * @return last recorded primary key
      */
     public String getLastRecordId(String tableName) {
-        String[] meta = lastRecordMeta.split(DELIMITER);
-        if (meta.length == 2 && meta[0].equals(tableName)) {
-            return meta[1];
+        if (lastRecordMeta != null) {
+            String[] meta = lastRecordMeta.split(DELIMITER);
+            if (meta.length == 2 && meta[0].equals(tableName)) {
+                return meta[1];
+            }
         }
         return null;
     }
@@ -493,7 +494,7 @@ final class SourceInfo {
             lastSnapshot = nextSnapshot;
             lastRecordMeta = (String) sourceOffset.get(SNAPSHOT_LAST_RECORD_KEY);
             String snapshotted = (String) sourceOffset.get(SNAPSHOTTED_KEY);
-            if (!StringUtils.isBlank(snapshotted)) {
+            if (snapshotted != null && !snapshotted.isEmpty()) {
                 snapshottedEntities = Arrays.asList(snapshotted.split(","));
             }
         }

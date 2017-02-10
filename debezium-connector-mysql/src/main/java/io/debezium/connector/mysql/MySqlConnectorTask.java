@@ -387,6 +387,6 @@ public final class MySqlConnectorTask extends SourceTask {
         }
 
         logger.debug("binlog_format={}", mode.get());
-        return "ROW".equalsIgnoreCase(mode.get());
+        return "ROW".equalsIgnoreCase(mode.get()) || "MIXED".equalsIgnoreCase(mode.get());
     }
 }
