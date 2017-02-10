@@ -158,4 +158,10 @@
     <!-- Allow for some code sanity rules to be violated by test code -->
     <module name="io.debezium.checkstyle.ExcludeTestPackages" />
 
+    <!-- Allow custom files set supression -->
+    <module name="SuppressionFilter">
+        <!--The system property is set via Maven-->
+        <property name="file" value="${checkstyle.suppressions.file}"/>
+    </module>
+
 </module>

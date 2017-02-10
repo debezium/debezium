@@ -1,0 +1,5469 @@
+[ {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496159,
+    "file" : "mysql-bin.000002",
+    "pos" : 879,
+    "gtids" : "${server_uuid}:1-12",
+    "server_id" : 112233,
+    "event" : 13771
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "emptydb"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496159,
+      "gtid" : "${server_uuid}:13",
+      "file" : "mysql-bin.000002",
+      "pos" : 2913160,
+      "row" : 0,
+      "snapshot" : true
+    },
+    "databaseName" : "emptydb",
+    "ddl" : "CREATE DATABASE emptydb"
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496159,
+    "file" : "mysql-bin.000002",
+    "pos" : 879,
+    "gtids" : "${server_uuid}:1-13",
+    "server_id" : 112233,
+    "event" : 13773
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "readbinlog_test"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496159,
+      "gtid" : "${server_uuid}:14",
+      "file" : "mysql-bin.000002",
+      "pos" : 2913328,
+      "row" : 0,
+      "snapshot" : true
+    },
+    "databaseName" : "readbinlog_test",
+    "ddl" : "CREATE DATABASE readbinlog_test"
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496159,
+    "file" : "mysql-bin.000002",
+    "pos" : 879,
+    "gtids" : "${server_uuid}:1-14",
+    "server_id" : 112233,
+    "event" : 13775
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "connector_test"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496159,
+      "gtid" : "${server_uuid}:15",
+      "file" : "mysql-bin.000002",
+      "pos" : 2913520,
+      "row" : 0,
+      "snapshot" : true
+    },
+    "databaseName" : "connector_test",
+    "ddl" : "CREATE DATABASE connector_test"
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496159,
+    "file" : "mysql-bin.000002",
+    "pos" : 879,
+    "gtids" : "${server_uuid}:1-15",
+    "server_id" : 112233,
+    "event" : 13777
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "connector_test"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496159,
+      "gtid" : "${server_uuid}:16",
+      "file" : "mysql-bin.000002",
+      "pos" : 2913709,
+      "row" : 0,
+      "snapshot" : true
+    },
+    "databaseName" : "connector_test",
+    "ddl" : "CREATE TABLE products (\n  id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  name VARCHAR(255) NOT NULL,\n  description VARCHAR(512),\n  weight FLOAT\n)"
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496159,
+    "file" : "mysql-bin.000002",
+    "pos" : 879,
+    "gtids" : "${server_uuid}:1-16",
+    "server_id" : 112233,
+    "event" : 13779
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "connector_test"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496159,
+      "gtid" : "${server_uuid}:17",
+      "file" : "mysql-bin.000002",
+      "pos" : 2914016,
+      "row" : 0,
+      "snapshot" : true
+    },
+    "databaseName" : "connector_test",
+    "ddl" : "ALTER TABLE products AUTO_INCREMENT = 101"
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496159,
+    "file" : "mysql-bin.000002",
+    "pos" : 2914216,
+    "gtids" : "${server_uuid}:1-18",
+    "server_id" : 112233,
+    "event" : 5
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "connector_test"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496159,
+      "gtid" : "${server_uuid}:19",
+      "file" : "mysql-bin.000002",
+      "pos" : 2914914,
+      "row" : 0,
+      "snapshot" : true
+    },
+    "databaseName" : "connector_test",
+    "ddl" : "CREATE TABLE products_on_hand (\n  product_id INTEGER NOT NULL PRIMARY KEY,\n  quantity INTEGER NOT NULL,\n  FOREIGN KEY (product_id) REFERENCES products(id)\n)"
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496160,
+    "file" : "mysql-bin.000002",
+    "pos" : 2917565,
+    "gtids" : "${server_uuid}:1-28",
+    "server_id" : 112233,
+    "event" : 5
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "connector_test"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496160,
+      "gtid" : "${server_uuid}:29",
+      "file" : "mysql-bin.000002",
+      "pos" : 2917857,
+      "row" : 0,
+      "snapshot" : true
+    },
+    "databaseName" : "connector_test",
+    "ddl" : "CREATE TABLE customers (\n  id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  first_name VARCHAR(255) NOT NULL,\n  last_name VARCHAR(255) NOT NULL,\n  email VARCHAR(255) NOT NULL UNIQUE KEY\n) AUTO_INCREMENT=1001"
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496160,
+    "file" : "mysql-bin.000002",
+    "pos" : 2918224,
+    "gtids" : "${server_uuid}:1-30",
+    "server_id" : 112233,
+    "event" : 5
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "connector_test"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496160,
+      "gtid" : "${server_uuid}:31",
+      "file" : "mysql-bin.000002",
+      "pos" : 2918658,
+      "row" : 0,
+      "snapshot" : true
+    },
+    "databaseName" : "connector_test",
+    "ddl" : "CREATE TABLE orders (\n  order_number INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  order_date DATE NOT NULL,\n  purchaser INTEGER NOT NULL,\n  quantity INTEGER NOT NULL,\n  product_id INTEGER NOT NULL,\n  FOREIGN KEY order_customer (purchaser) REFERENCES customers(id),\n  FOREIGN KEY ordered_product (product_id) REFERENCES products(id)\n) AUTO_INCREMENT = 10001"
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496160,
+    "file" : "mysql-bin.000002",
+    "pos" : 2919175,
+    "gtids" : "${server_uuid}:1-32",
+    "server_id" : 112233,
+    "event" : 5
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "connector_test_ro"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496160,
+      "gtid" : "${server_uuid}:33",
+      "file" : "mysql-bin.000002",
+      "pos" : 2919551,
+      "row" : 0,
+      "snapshot" : true
+    },
+    "databaseName" : "connector_test_ro",
+    "ddl" : "CREATE DATABASE connector_test_ro"
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496160,
+    "file" : "mysql-bin.000002",
+    "pos" : 2919175,
+    "gtids" : "${server_uuid}:1-33",
+    "server_id" : 112233,
+    "event" : 7
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "connector_test_ro"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496160,
+      "gtid" : "${server_uuid}:34",
+      "file" : "mysql-bin.000002",
+      "pos" : 2919749,
+      "row" : 0,
+      "snapshot" : true
+    },
+    "databaseName" : "connector_test_ro",
+    "ddl" : "CREATE TABLE products (\n  id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  name VARCHAR(255) NOT NULL,\n  description VARCHAR(512),\n  weight FLOAT\n)"
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496160,
+    "file" : "mysql-bin.000002",
+    "pos" : 2919175,
+    "gtids" : "${server_uuid}:1-34",
+    "server_id" : 112233,
+    "event" : 9
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "connector_test_ro"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496160,
+      "gtid" : "${server_uuid}:35",
+      "file" : "mysql-bin.000002",
+      "pos" : 2920062,
+      "row" : 0,
+      "snapshot" : true
+    },
+    "databaseName" : "connector_test_ro",
+    "ddl" : "ALTER TABLE products AUTO_INCREMENT = 101"
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496160,
+    "file" : "mysql-bin.000002",
+    "pos" : 2920268,
+    "gtids" : "${server_uuid}:1-35",
+    "row" : 1,
+    "server_id" : 112233,
+    "event" : 2
+  },
+  "topic" : "engineering.connector_test_ro.products",
+  "kafkaPartition" : null,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "int32",
+      "optional" : false,
+      "field" : "id"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products.Key"
+  },
+  "key" : {
+    "id" : 101
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "description"
+      }, {
+        "type" : "double",
+        "optional" : true,
+        "field" : "weight"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products.Value",
+      "field" : "before"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "description"
+      }, {
+        "type" : "double",
+        "optional" : true,
+        "field" : "weight"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products.Value",
+      "field" : "after"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "op"
+    }, {
+      "type" : "int64",
+      "optional" : true,
+      "field" : "ts_ms"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products.Envelope",
+    "version" : 1
+  },
+  "value" : {
+    "before" : null,
+    "after" : {
+      "id" : 101,
+      "name" : "scooter",
+      "description" : "Small 2-wheel scooter",
+      "weight" : 3.140000104904175
+    },
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496160,
+      "gtid" : "${server_uuid}:36",
+      "file" : "mysql-bin.000002",
+      "pos" : 2920425,
+      "row" : 0,
+      "snapshot" : true
+    },
+    "op" : "c",
+    "ts_ms" : 1479496352804
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496160,
+    "file" : "mysql-bin.000002",
+    "pos" : 2920268,
+    "gtids" : "${server_uuid}:1-35",
+    "row" : 2,
+    "server_id" : 112233,
+    "event" : 2
+  },
+  "topic" : "engineering.connector_test_ro.products",
+  "kafkaPartition" : null,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "int32",
+      "optional" : false,
+      "field" : "id"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products.Key"
+  },
+  "key" : {
+    "id" : 102
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "description"
+      }, {
+        "type" : "double",
+        "optional" : true,
+        "field" : "weight"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products.Value",
+      "field" : "before"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "description"
+      }, {
+        "type" : "double",
+        "optional" : true,
+        "field" : "weight"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products.Value",
+      "field" : "after"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "op"
+    }, {
+      "type" : "int64",
+      "optional" : true,
+      "field" : "ts_ms"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products.Envelope",
+    "version" : 1
+  },
+  "value" : {
+    "before" : null,
+    "after" : {
+      "id" : 102,
+      "name" : "car battery",
+      "description" : "12V car battery",
+      "weight" : 8.100000381469727
+    },
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496160,
+      "gtid" : "${server_uuid}:36",
+      "file" : "mysql-bin.000002",
+      "pos" : 2920425,
+      "row" : 1,
+      "snapshot" : true
+    },
+    "op" : "c",
+    "ts_ms" : 1479496352804
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496160,
+    "file" : "mysql-bin.000002",
+    "pos" : 2920268,
+    "gtids" : "${server_uuid}:1-35",
+    "row" : 3,
+    "server_id" : 112233,
+    "event" : 2
+  },
+  "topic" : "engineering.connector_test_ro.products",
+  "kafkaPartition" : null,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "int32",
+      "optional" : false,
+      "field" : "id"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products.Key"
+  },
+  "key" : {
+    "id" : 103
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "description"
+      }, {
+        "type" : "double",
+        "optional" : true,
+        "field" : "weight"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products.Value",
+      "field" : "before"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "description"
+      }, {
+        "type" : "double",
+        "optional" : true,
+        "field" : "weight"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products.Value",
+      "field" : "after"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "op"
+    }, {
+      "type" : "int64",
+      "optional" : true,
+      "field" : "ts_ms"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products.Envelope",
+    "version" : 1
+  },
+  "value" : {
+    "before" : null,
+    "after" : {
+      "id" : 103,
+      "name" : "12-pack drill bits",
+      "description" : "12-pack of drill bits with sizes ranging from #40 to #3",
+      "weight" : 0.800000011920929
+    },
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496160,
+      "gtid" : "${server_uuid}:36",
+      "file" : "mysql-bin.000002",
+      "pos" : 2920425,
+      "row" : 2,
+      "snapshot" : true
+    },
+    "op" : "c",
+    "ts_ms" : 1479496352804
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496160,
+    "file" : "mysql-bin.000002",
+    "pos" : 2920268,
+    "gtids" : "${server_uuid}:1-35",
+    "row" : 4,
+    "server_id" : 112233,
+    "event" : 2
+  },
+  "topic" : "engineering.connector_test_ro.products",
+  "kafkaPartition" : null,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "int32",
+      "optional" : false,
+      "field" : "id"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products.Key"
+  },
+  "key" : {
+    "id" : 104
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "description"
+      }, {
+        "type" : "double",
+        "optional" : true,
+        "field" : "weight"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products.Value",
+      "field" : "before"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "description"
+      }, {
+        "type" : "double",
+        "optional" : true,
+        "field" : "weight"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products.Value",
+      "field" : "after"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "op"
+    }, {
+      "type" : "int64",
+      "optional" : true,
+      "field" : "ts_ms"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products.Envelope",
+    "version" : 1
+  },
+  "value" : {
+    "before" : null,
+    "after" : {
+      "id" : 104,
+      "name" : "hammer",
+      "description" : "12oz carpenter's hammer",
+      "weight" : 0.75
+    },
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496160,
+      "gtid" : "${server_uuid}:36",
+      "file" : "mysql-bin.000002",
+      "pos" : 2920425,
+      "row" : 3,
+      "snapshot" : true
+    },
+    "op" : "c",
+    "ts_ms" : 1479496352804
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496160,
+    "file" : "mysql-bin.000002",
+    "pos" : 2920268,
+    "gtids" : "${server_uuid}:1-35",
+    "row" : 5,
+    "server_id" : 112233,
+    "event" : 2
+  },
+  "topic" : "engineering.connector_test_ro.products",
+  "kafkaPartition" : null,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "int32",
+      "optional" : false,
+      "field" : "id"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products.Key"
+  },
+  "key" : {
+    "id" : 105
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "description"
+      }, {
+        "type" : "double",
+        "optional" : true,
+        "field" : "weight"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products.Value",
+      "field" : "before"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "description"
+      }, {
+        "type" : "double",
+        "optional" : true,
+        "field" : "weight"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products.Value",
+      "field" : "after"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "op"
+    }, {
+      "type" : "int64",
+      "optional" : true,
+      "field" : "ts_ms"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products.Envelope",
+    "version" : 1
+  },
+  "value" : {
+    "before" : null,
+    "after" : {
+      "id" : 105,
+      "name" : "hammer",
+      "description" : "14oz carpenter's hammer",
+      "weight" : 0.875
+    },
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496160,
+      "gtid" : "${server_uuid}:36",
+      "file" : "mysql-bin.000002",
+      "pos" : 2920425,
+      "row" : 4,
+      "snapshot" : true
+    },
+    "op" : "c",
+    "ts_ms" : 1479496352804
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496160,
+    "file" : "mysql-bin.000002",
+    "pos" : 2920268,
+    "gtids" : "${server_uuid}:1-35",
+    "row" : 6,
+    "server_id" : 112233,
+    "event" : 2
+  },
+  "topic" : "engineering.connector_test_ro.products",
+  "kafkaPartition" : null,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "int32",
+      "optional" : false,
+      "field" : "id"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products.Key"
+  },
+  "key" : {
+    "id" : 106
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "description"
+      }, {
+        "type" : "double",
+        "optional" : true,
+        "field" : "weight"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products.Value",
+      "field" : "before"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "description"
+      }, {
+        "type" : "double",
+        "optional" : true,
+        "field" : "weight"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products.Value",
+      "field" : "after"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "op"
+    }, {
+      "type" : "int64",
+      "optional" : true,
+      "field" : "ts_ms"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products.Envelope",
+    "version" : 1
+  },
+  "value" : {
+    "before" : null,
+    "after" : {
+      "id" : 106,
+      "name" : "hammer",
+      "description" : "16oz carpenter's hammer",
+      "weight" : 1.0
+    },
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496160,
+      "gtid" : "${server_uuid}:36",
+      "file" : "mysql-bin.000002",
+      "pos" : 2920425,
+      "row" : 5,
+      "snapshot" : true
+    },
+    "op" : "c",
+    "ts_ms" : 1479496352804
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496160,
+    "file" : "mysql-bin.000002",
+    "pos" : 2920268,
+    "gtids" : "${server_uuid}:1-35",
+    "row" : 7,
+    "server_id" : 112233,
+    "event" : 2
+  },
+  "topic" : "engineering.connector_test_ro.products",
+  "kafkaPartition" : null,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "int32",
+      "optional" : false,
+      "field" : "id"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products.Key"
+  },
+  "key" : {
+    "id" : 107
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "description"
+      }, {
+        "type" : "double",
+        "optional" : true,
+        "field" : "weight"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products.Value",
+      "field" : "before"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "description"
+      }, {
+        "type" : "double",
+        "optional" : true,
+        "field" : "weight"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products.Value",
+      "field" : "after"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "op"
+    }, {
+      "type" : "int64",
+      "optional" : true,
+      "field" : "ts_ms"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products.Envelope",
+    "version" : 1
+  },
+  "value" : {
+    "before" : null,
+    "after" : {
+      "id" : 107,
+      "name" : "rocks",
+      "description" : "box of assorted rocks",
+      "weight" : 5.300000190734863
+    },
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496160,
+      "gtid" : "${server_uuid}:36",
+      "file" : "mysql-bin.000002",
+      "pos" : 2920425,
+      "row" : 6,
+      "snapshot" : true
+    },
+    "op" : "c",
+    "ts_ms" : 1479496352804
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496160,
+    "file" : "mysql-bin.000002",
+    "pos" : 2920268,
+    "gtids" : "${server_uuid}:1-35",
+    "row" : 8,
+    "server_id" : 112233,
+    "event" : 2
+  },
+  "topic" : "engineering.connector_test_ro.products",
+  "kafkaPartition" : null,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "int32",
+      "optional" : false,
+      "field" : "id"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products.Key"
+  },
+  "key" : {
+    "id" : 108
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "description"
+      }, {
+        "type" : "double",
+        "optional" : true,
+        "field" : "weight"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products.Value",
+      "field" : "before"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "description"
+      }, {
+        "type" : "double",
+        "optional" : true,
+        "field" : "weight"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products.Value",
+      "field" : "after"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "op"
+    }, {
+      "type" : "int64",
+      "optional" : true,
+      "field" : "ts_ms"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products.Envelope",
+    "version" : 1
+  },
+  "value" : {
+    "before" : null,
+    "after" : {
+      "id" : 108,
+      "name" : "jacket",
+      "description" : "water resistent black wind breaker",
+      "weight" : 0.10000000149011612
+    },
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496160,
+      "gtid" : "${server_uuid}:36",
+      "file" : "mysql-bin.000002",
+      "pos" : 2920425,
+      "row" : 7,
+      "snapshot" : true
+    },
+    "op" : "c",
+    "ts_ms" : 1479496352804
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496160,
+    "file" : "mysql-bin.000002",
+    "pos" : 2920268,
+    "gtids" : "${server_uuid}:1-35",
+    "row" : 9,
+    "server_id" : 112233,
+    "event" : 2
+  },
+  "topic" : "engineering.connector_test_ro.products",
+  "kafkaPartition" : null,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "int32",
+      "optional" : false,
+      "field" : "id"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products.Key"
+  },
+  "key" : {
+    "id" : 109
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "description"
+      }, {
+        "type" : "double",
+        "optional" : true,
+        "field" : "weight"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products.Value",
+      "field" : "before"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "description"
+      }, {
+        "type" : "double",
+        "optional" : true,
+        "field" : "weight"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products.Value",
+      "field" : "after"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "op"
+    }, {
+      "type" : "int64",
+      "optional" : true,
+      "field" : "ts_ms"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products.Envelope",
+    "version" : 1
+  },
+  "value" : {
+    "before" : null,
+    "after" : {
+      "id" : 109,
+      "name" : "spare tire",
+      "description" : "24 inch spare tire",
+      "weight" : 22.200000762939453
+    },
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496160,
+      "gtid" : "${server_uuid}:36",
+      "file" : "mysql-bin.000002",
+      "pos" : 2920425,
+      "row" : 8,
+      "snapshot" : true
+    },
+    "op" : "c",
+    "ts_ms" : 1479496352804
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496160,
+    "file" : "mysql-bin.000002",
+    "pos" : 2920268,
+    "gtids" : "${server_uuid}:1-36",
+    "server_id" : 112233,
+    "event" : 5
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "connector_test_ro"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496160,
+      "gtid" : "${server_uuid}:37",
+      "file" : "mysql-bin.000002",
+      "pos" : 2920972,
+      "row" : 8,
+      "snapshot" : true
+    },
+    "databaseName" : "connector_test_ro",
+    "ddl" : "CREATE TABLE products_on_hand (\n  product_id INTEGER NOT NULL PRIMARY KEY,\n  quantity INTEGER NOT NULL,\n  FOREIGN KEY (product_id) REFERENCES products(id)\n)"
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496160,
+    "file" : "mysql-bin.000002",
+    "pos" : 2921293,
+    "gtids" : "${server_uuid}:1-37",
+    "row" : 1,
+    "server_id" : 112233,
+    "event" : 2
+  },
+  "topic" : "engineering.connector_test_ro.products_on_hand",
+  "kafkaPartition" : null,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "int32",
+      "optional" : false,
+      "field" : "product_id"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products_on_hand.Key"
+  },
+  "key" : {
+    "product_id" : 101
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "product_id"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "quantity"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products_on_hand.Value",
+      "field" : "before"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "product_id"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "quantity"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products_on_hand.Value",
+      "field" : "after"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "op"
+    }, {
+      "type" : "int64",
+      "optional" : true,
+      "field" : "ts_ms"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products_on_hand.Envelope",
+    "version" : 1
+  },
+  "value" : {
+    "before" : null,
+    "after" : {
+      "product_id" : 101,
+      "quantity" : 3
+    },
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496160,
+      "gtid" : "${server_uuid}:38",
+      "file" : "mysql-bin.000002",
+      "pos" : 2921451,
+      "row" : 0,
+      "snapshot" : true
+    },
+    "op" : "c",
+    "ts_ms" : 1479496352807
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496160,
+    "file" : "mysql-bin.000002",
+    "pos" : 2921591,
+    "gtids" : "${server_uuid}:1-38",
+    "row" : 1,
+    "server_id" : 112233,
+    "event" : 2
+  },
+  "topic" : "engineering.connector_test_ro.products_on_hand",
+  "kafkaPartition" : null,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "int32",
+      "optional" : false,
+      "field" : "product_id"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products_on_hand.Key"
+  },
+  "key" : {
+    "product_id" : 102
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "product_id"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "quantity"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products_on_hand.Value",
+      "field" : "before"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "product_id"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "quantity"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products_on_hand.Value",
+      "field" : "after"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "op"
+    }, {
+      "type" : "int64",
+      "optional" : true,
+      "field" : "ts_ms"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products_on_hand.Envelope",
+    "version" : 1
+  },
+  "value" : {
+    "before" : null,
+    "after" : {
+      "product_id" : 102,
+      "quantity" : 8
+    },
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496160,
+      "gtid" : "${server_uuid}:39",
+      "file" : "mysql-bin.000002",
+      "pos" : 2921749,
+      "row" : 0,
+      "snapshot" : true
+    },
+    "op" : "c",
+    "ts_ms" : 1479496352807
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496160,
+    "file" : "mysql-bin.000002",
+    "pos" : 2921889,
+    "gtids" : "${server_uuid}:1-39",
+    "row" : 1,
+    "server_id" : 112233,
+    "event" : 2
+  },
+  "topic" : "engineering.connector_test_ro.products_on_hand",
+  "kafkaPartition" : null,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "int32",
+      "optional" : false,
+      "field" : "product_id"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products_on_hand.Key"
+  },
+  "key" : {
+    "product_id" : 103
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "product_id"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "quantity"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products_on_hand.Value",
+      "field" : "before"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "product_id"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "quantity"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products_on_hand.Value",
+      "field" : "after"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "op"
+    }, {
+      "type" : "int64",
+      "optional" : true,
+      "field" : "ts_ms"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products_on_hand.Envelope",
+    "version" : 1
+  },
+  "value" : {
+    "before" : null,
+    "after" : {
+      "product_id" : 103,
+      "quantity" : 18
+    },
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496160,
+      "gtid" : "${server_uuid}:40",
+      "file" : "mysql-bin.000002",
+      "pos" : 2922047,
+      "row" : 0,
+      "snapshot" : true
+    },
+    "op" : "c",
+    "ts_ms" : 1479496352807
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496160,
+    "file" : "mysql-bin.000002",
+    "pos" : 2922187,
+    "gtids" : "${server_uuid}:1-40",
+    "row" : 1,
+    "server_id" : 112233,
+    "event" : 2
+  },
+  "topic" : "engineering.connector_test_ro.products_on_hand",
+  "kafkaPartition" : null,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "int32",
+      "optional" : false,
+      "field" : "product_id"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products_on_hand.Key"
+  },
+  "key" : {
+    "product_id" : 104
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "product_id"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "quantity"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products_on_hand.Value",
+      "field" : "before"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "product_id"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "quantity"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products_on_hand.Value",
+      "field" : "after"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "op"
+    }, {
+      "type" : "int64",
+      "optional" : true,
+      "field" : "ts_ms"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products_on_hand.Envelope",
+    "version" : 1
+  },
+  "value" : {
+    "before" : null,
+    "after" : {
+      "product_id" : 104,
+      "quantity" : 4
+    },
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496160,
+      "gtid" : "${server_uuid}:41",
+      "file" : "mysql-bin.000002",
+      "pos" : 2922345,
+      "row" : 0,
+      "snapshot" : true
+    },
+    "op" : "c",
+    "ts_ms" : 1479496352807
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496160,
+    "file" : "mysql-bin.000002",
+    "pos" : 2922485,
+    "gtids" : "${server_uuid}:1-41",
+    "row" : 1,
+    "server_id" : 112233,
+    "event" : 2
+  },
+  "topic" : "engineering.connector_test_ro.products_on_hand",
+  "kafkaPartition" : null,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "int32",
+      "optional" : false,
+      "field" : "product_id"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products_on_hand.Key"
+  },
+  "key" : {
+    "product_id" : 105
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "product_id"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "quantity"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products_on_hand.Value",
+      "field" : "before"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "product_id"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "quantity"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products_on_hand.Value",
+      "field" : "after"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "op"
+    }, {
+      "type" : "int64",
+      "optional" : true,
+      "field" : "ts_ms"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products_on_hand.Envelope",
+    "version" : 1
+  },
+  "value" : {
+    "before" : null,
+    "after" : {
+      "product_id" : 105,
+      "quantity" : 5
+    },
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496160,
+      "gtid" : "${server_uuid}:42",
+      "file" : "mysql-bin.000002",
+      "pos" : 2922643,
+      "row" : 0,
+      "snapshot" : true
+    },
+    "op" : "c",
+    "ts_ms" : 1479496352808
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496161,
+    "file" : "mysql-bin.000002",
+    "pos" : 2922783,
+    "gtids" : "${server_uuid}:1-42",
+    "row" : 1,
+    "server_id" : 112233,
+    "event" : 2
+  },
+  "topic" : "engineering.connector_test_ro.products_on_hand",
+  "kafkaPartition" : null,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "int32",
+      "optional" : false,
+      "field" : "product_id"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products_on_hand.Key"
+  },
+  "key" : {
+    "product_id" : 106
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "product_id"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "quantity"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products_on_hand.Value",
+      "field" : "before"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "product_id"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "quantity"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products_on_hand.Value",
+      "field" : "after"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "op"
+    }, {
+      "type" : "int64",
+      "optional" : true,
+      "field" : "ts_ms"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products_on_hand.Envelope",
+    "version" : 1
+  },
+  "value" : {
+    "before" : null,
+    "after" : {
+      "product_id" : 106,
+      "quantity" : 0
+    },
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496161,
+      "gtid" : "${server_uuid}:43",
+      "file" : "mysql-bin.000002",
+      "pos" : 2922941,
+      "row" : 0,
+      "snapshot" : true
+    },
+    "op" : "c",
+    "ts_ms" : 1479496352808
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496161,
+    "file" : "mysql-bin.000002",
+    "pos" : 2923081,
+    "gtids" : "${server_uuid}:1-43",
+    "row" : 1,
+    "server_id" : 112233,
+    "event" : 2
+  },
+  "topic" : "engineering.connector_test_ro.products_on_hand",
+  "kafkaPartition" : null,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "int32",
+      "optional" : false,
+      "field" : "product_id"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products_on_hand.Key"
+  },
+  "key" : {
+    "product_id" : 107
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "product_id"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "quantity"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products_on_hand.Value",
+      "field" : "before"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "product_id"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "quantity"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products_on_hand.Value",
+      "field" : "after"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "op"
+    }, {
+      "type" : "int64",
+      "optional" : true,
+      "field" : "ts_ms"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products_on_hand.Envelope",
+    "version" : 1
+  },
+  "value" : {
+    "before" : null,
+    "after" : {
+      "product_id" : 107,
+      "quantity" : 44
+    },
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496161,
+      "gtid" : "${server_uuid}:44",
+      "file" : "mysql-bin.000002",
+      "pos" : 2923239,
+      "row" : 0,
+      "snapshot" : true
+    },
+    "op" : "c",
+    "ts_ms" : 1479496352808
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496161,
+    "file" : "mysql-bin.000002",
+    "pos" : 2923379,
+    "gtids" : "${server_uuid}:1-44",
+    "row" : 1,
+    "server_id" : 112233,
+    "event" : 2
+  },
+  "topic" : "engineering.connector_test_ro.products_on_hand",
+  "kafkaPartition" : null,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "int32",
+      "optional" : false,
+      "field" : "product_id"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products_on_hand.Key"
+  },
+  "key" : {
+    "product_id" : 108
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "product_id"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "quantity"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products_on_hand.Value",
+      "field" : "before"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "product_id"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "quantity"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products_on_hand.Value",
+      "field" : "after"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "op"
+    }, {
+      "type" : "int64",
+      "optional" : true,
+      "field" : "ts_ms"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products_on_hand.Envelope",
+    "version" : 1
+  },
+  "value" : {
+    "before" : null,
+    "after" : {
+      "product_id" : 108,
+      "quantity" : 2
+    },
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496161,
+      "gtid" : "${server_uuid}:45",
+      "file" : "mysql-bin.000002",
+      "pos" : 2923537,
+      "row" : 0,
+      "snapshot" : true
+    },
+    "op" : "c",
+    "ts_ms" : 1479496352808
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496161,
+    "file" : "mysql-bin.000002",
+    "pos" : 2923677,
+    "gtids" : "${server_uuid}:1-45",
+    "row" : 1,
+    "server_id" : 112233,
+    "event" : 2
+  },
+  "topic" : "engineering.connector_test_ro.products_on_hand",
+  "kafkaPartition" : null,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "int32",
+      "optional" : false,
+      "field" : "product_id"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products_on_hand.Key"
+  },
+  "key" : {
+    "product_id" : 109
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "product_id"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "quantity"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products_on_hand.Value",
+      "field" : "before"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "product_id"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "quantity"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.products_on_hand.Value",
+      "field" : "after"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "op"
+    }, {
+      "type" : "int64",
+      "optional" : true,
+      "field" : "ts_ms"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.products_on_hand.Envelope",
+    "version" : 1
+  },
+  "value" : {
+    "before" : null,
+    "after" : {
+      "product_id" : 109,
+      "quantity" : 5
+    },
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496161,
+      "gtid" : "${server_uuid}:46",
+      "file" : "mysql-bin.000002",
+      "pos" : 2923835,
+      "row" : 0,
+      "snapshot" : true
+    },
+    "op" : "c",
+    "ts_ms" : 1479496352809
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496161,
+    "file" : "mysql-bin.000002",
+    "pos" : 2923677,
+    "gtids" : "${server_uuid}:1-46",
+    "server_id" : 112233,
+    "event" : 5
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "connector_test_ro"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496161,
+      "gtid" : "${server_uuid}:47",
+      "file" : "mysql-bin.000002",
+      "pos" : 2923975,
+      "row" : 0,
+      "snapshot" : true
+    },
+    "databaseName" : "connector_test_ro",
+    "ddl" : "CREATE TABLE customers (\n  id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  first_name VARCHAR(255) NOT NULL,\n  last_name VARCHAR(255) NOT NULL,\n  email VARCHAR(255) NOT NULL UNIQUE KEY\n) AUTO_INCREMENT=1001"
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496161,
+    "file" : "mysql-bin.000002",
+    "pos" : 2924348,
+    "gtids" : "${server_uuid}:1-47",
+    "row" : 1,
+    "server_id" : 112233,
+    "event" : 2
+  },
+  "topic" : "engineering.connector_test_ro.customers",
+  "kafkaPartition" : null,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "int32",
+      "optional" : false,
+      "field" : "id"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.customers.Key"
+  },
+  "key" : {
+    "id" : 1001
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "first_name"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "last_name"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "email"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.customers.Value",
+      "field" : "before"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "first_name"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "last_name"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "email"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.customers.Value",
+      "field" : "after"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "op"
+    }, {
+      "type" : "int64",
+      "optional" : true,
+      "field" : "ts_ms"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.customers.Envelope",
+    "version" : 1
+  },
+  "value" : {
+    "before" : null,
+    "after" : {
+      "id" : 1001,
+      "first_name" : "Sally",
+      "last_name" : "Thomas",
+      "email" : "sally.thomas@acme.com"
+    },
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496161,
+      "gtid" : "${server_uuid}:48",
+      "file" : "mysql-bin.000002",
+      "pos" : 2924507,
+      "row" : 0,
+      "snapshot" : true
+    },
+    "op" : "c",
+    "ts_ms" : 1479496352811
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496161,
+    "file" : "mysql-bin.000002",
+    "pos" : 2924348,
+    "gtids" : "${server_uuid}:1-47",
+    "row" : 2,
+    "server_id" : 112233,
+    "event" : 2
+  },
+  "topic" : "engineering.connector_test_ro.customers",
+  "kafkaPartition" : null,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "int32",
+      "optional" : false,
+      "field" : "id"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.customers.Key"
+  },
+  "key" : {
+    "id" : 1002
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "first_name"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "last_name"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "email"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.customers.Value",
+      "field" : "before"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "first_name"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "last_name"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "email"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.customers.Value",
+      "field" : "after"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "op"
+    }, {
+      "type" : "int64",
+      "optional" : true,
+      "field" : "ts_ms"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.customers.Envelope",
+    "version" : 1
+  },
+  "value" : {
+    "before" : null,
+    "after" : {
+      "id" : 1002,
+      "first_name" : "George",
+      "last_name" : "Bailey",
+      "email" : "gbailey@foobar.com"
+    },
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496161,
+      "gtid" : "${server_uuid}:48",
+      "file" : "mysql-bin.000002",
+      "pos" : 2924507,
+      "row" : 1,
+      "snapshot" : true
+    },
+    "op" : "c",
+    "ts_ms" : 1479496352811
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496161,
+    "file" : "mysql-bin.000002",
+    "pos" : 2924348,
+    "gtids" : "${server_uuid}:1-47",
+    "row" : 3,
+    "server_id" : 112233,
+    "event" : 2
+  },
+  "topic" : "engineering.connector_test_ro.customers",
+  "kafkaPartition" : null,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "int32",
+      "optional" : false,
+      "field" : "id"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.customers.Key"
+  },
+  "key" : {
+    "id" : 1003
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "first_name"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "last_name"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "email"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.customers.Value",
+      "field" : "before"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "first_name"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "last_name"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "email"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.customers.Value",
+      "field" : "after"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "op"
+    }, {
+      "type" : "int64",
+      "optional" : true,
+      "field" : "ts_ms"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.customers.Envelope",
+    "version" : 1
+  },
+  "value" : {
+    "before" : null,
+    "after" : {
+      "id" : 1003,
+      "first_name" : "Edward",
+      "last_name" : "Walker",
+      "email" : "ed@walker.com"
+    },
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496161,
+      "gtid" : "${server_uuid}:48",
+      "file" : "mysql-bin.000002",
+      "pos" : 2924507,
+      "row" : 2,
+      "snapshot" : true
+    },
+    "op" : "c",
+    "ts_ms" : 1479496352811
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496161,
+    "file" : "mysql-bin.000002",
+    "pos" : 2924348,
+    "gtids" : "${server_uuid}:1-47",
+    "row" : 4,
+    "server_id" : 112233,
+    "event" : 2
+  },
+  "topic" : "engineering.connector_test_ro.customers",
+  "kafkaPartition" : null,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "int32",
+      "optional" : false,
+      "field" : "id"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.customers.Key"
+  },
+  "key" : {
+    "id" : 1004
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "first_name"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "last_name"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "email"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.customers.Value",
+      "field" : "before"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "id"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "first_name"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "last_name"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "email"
+      } ],
+      "optional" : true,
+      "name" : "engineering.connector_test_ro.customers.Value",
+      "field" : "after"
+    }, {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "op"
+    }, {
+      "type" : "int64",
+      "optional" : true,
+      "field" : "ts_ms"
+    } ],
+    "optional" : false,
+    "name" : "engineering.connector_test_ro.customers.Envelope",
+    "version" : 1
+  },
+  "value" : {
+    "before" : null,
+    "after" : {
+      "id" : 1004,
+      "first_name" : "Anne",
+      "last_name" : "Kretchmar",
+      "email" : "annek@noanswer.org"
+    },
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496161,
+      "gtid" : "${server_uuid}:48",
+      "file" : "mysql-bin.000002",
+      "pos" : 2924507,
+      "row" : 3,
+      "snapshot" : true
+    },
+    "op" : "c",
+    "ts_ms" : 1479496352811
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496161,
+    "file" : "mysql-bin.000002",
+    "pos" : 2924348,
+    "gtids" : "${server_uuid}:1-48",
+    "server_id" : 112233,
+    "event" : 5
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "connector_test_ro"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496161,
+      "gtid" : "${server_uuid}:49",
+      "file" : "mysql-bin.000002",
+      "pos" : 2924788,
+      "row" : 3,
+      "snapshot" : true
+    },
+    "databaseName" : "connector_test_ro",
+    "ddl" : "CREATE TABLE orders (\n  order_number INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  order_date DATE NOT NULL,\n  purchaser INTEGER NOT NULL,\n  quantity INTEGER NOT NULL,\n  product_id INTEGER NOT NULL,\n  FOREIGN KEY order_customer (purchaser) REFERENCES customers(id),\n  FOREIGN KEY ordered_product (product_id) REFERENCES products(id)\n) AUTO_INCREMENT = 10001"
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496161,
+    "file" : "mysql-bin.000002",
+    "pos" : 2925311,
+    "gtids" : "${server_uuid}:1-50",
+    "server_id" : 112233,
+    "event" : 5
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "regression_test"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496161,
+      "gtid" : "${server_uuid}:51",
+      "file" : "mysql-bin.000002",
+      "pos" : 2925693,
+      "row" : 3,
+      "snapshot" : true
+    },
+    "databaseName" : "regression_test",
+    "ddl" : "CREATE DATABASE regression_test"
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496161,
+    "file" : "mysql-bin.000002",
+    "pos" : 2925311,
+    "gtids" : "${server_uuid}:1-51",
+    "server_id" : 112233,
+    "event" : 7
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "regression_test"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496161,
+      "gtid" : "${server_uuid}:52",
+      "file" : "mysql-bin.000002",
+      "pos" : 2925885,
+      "row" : 3,
+      "snapshot" : true
+    },
+    "databaseName" : "regression_test",
+    "ddl" : "CREATE TABLE t1464075356413_testtable6 (\n  pk_column int auto_increment NOT NULL,\n  varbinary_col varbinary(20) NOT NULL,\n  PRIMARY KEY(pk_column)\n)"
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496161,
+    "file" : "mysql-bin.000002",
+    "pos" : 2926194,
+    "gtids" : "${server_uuid}:1-53",
+    "server_id" : 112233,
+    "event" : 5
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "regression_test"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496161,
+      "gtid" : "${server_uuid}:54",
+      "file" : "mysql-bin.000002",
+      "pos" : 2926501,
+      "row" : 3,
+      "snapshot" : true
+    },
+    "databaseName" : "regression_test",
+    "ddl" : "CREATE TABLE dbz84_integer_types_table (\n  \n  colTinyIntA tinyint NOT NULL DEFAULT 100,\n  colTinyIntB tinyint(1) NOT NULL DEFAULT 101,\n  colTinyIntC tinyint(2) UNSIGNED NOT NULL DEFAULT 102,\n  colTinyIntD tinyint(3) UNSIGNED NOT NULL DEFAULT 103,\n  colSmallIntA smallint NOT NULL DEFAULT 200,\n  colSmallIntB smallint(1) NOT NULL DEFAULT 201,\n  colSmallIntC smallint(2) NOT NULL DEFAULT 201,\n  colSmallIntD smallint(3) NOT NULL DEFAULT 201,\n  colMediumIntA mediumint NOT NULL DEFAULT 300,\n  colMediumIntB mediumint(1) NOT NULL DEFAULT 301,\n  colMediumIntC mediumint(2) NOT NULL DEFAULT 302,\n  colMediumIntD mediumint(3) NOT NULL DEFAULT 303,\n  colIntA int NOT NULL DEFAULT 400,\n  colIntB int(1) NOT NULL DEFAULT 401,\n  colIntC int(2) NOT NULL DEFAULT 402,\n  colIntD int(3) NOT NULL DEFAULT 403,\n  colBigIntA bigint NOT NULL DEFAULT 500,\n  colBigIntB bigint(1) NOT NULL DEFAULT 501,\n  colBigIntC bigint(2) NOT NULL DEFAULT 502,\n  colBigIntD bigint(3) NOT NULL DEFAULT 503\n)"
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496161,
+    "file" : "mysql-bin.000002",
+    "pos" : 2927633,
+    "gtids" : "${server_uuid}:1-55",
+    "server_id" : 112233,
+    "event" : 5
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "regression_test"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496161,
+      "gtid" : "${server_uuid}:56",
+      "file" : "mysql-bin.000002",
+      "pos" : 2928024,
+      "row" : 3,
+      "snapshot" : true
+    },
+    "databaseName" : "regression_test",
+    "ddl" : "CREATE TABLE dbz_85_fractest (\n  c1 DATE,\n  c2 TIME(2),\n  c3 DATETIME(2),\n  c4 TIMESTAMP(2)\n)"
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496162,
+    "file" : "mysql-bin.000002",
+    "pos" : 2928280,
+    "gtids" : "${server_uuid}:1-57",
+    "server_id" : 112233,
+    "event" : 5
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "regression_test"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496162,
+      "gtid" : "${server_uuid}:58",
+      "file" : "mysql-bin.000002",
+      "pos" : 2928596,
+      "row" : 3,
+      "snapshot" : true
+    },
+    "databaseName" : "regression_test",
+    "ddl" : "CREATE TABLE dbz_100_enumsettest (\n  c1 ENUM('a','b','c'),\n  c2 SET('a','b','c')\n)"
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496162,
+    "file" : "mysql-bin.000002",
+    "pos" : 2929429,
+    "gtids" : "${server_uuid}:1-61",
+    "server_id" : 112233,
+    "event" : 5
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "regression_test"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496162,
+      "gtid" : "${server_uuid}:62",
+      "file" : "mysql-bin.000002",
+      "pos" : 2929724,
+      "row" : 3,
+      "snapshot" : true
+    },
+    "databaseName" : "regression_test",
+    "ddl" : "CREATE TABLE dbz_102_charsettest (\n  id INT(11) NOT NULL AUTO_INCREMENT,\n  text VARCHAR(255) DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=2001 DEFAULT CHARSET=utf8"
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496162,
+    "file" : "mysql-bin.000002",
+    "pos" : 2930069,
+    "gtids" : "${server_uuid}:1-63",
+    "server_id" : 112233,
+    "event" : 5
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "regression_test"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496162,
+      "gtid" : "${server_uuid}:64",
+      "file" : "mysql-bin.000002",
+      "pos" : 2930372,
+      "row" : 3,
+      "snapshot" : true
+    },
+    "databaseName" : "regression_test",
+    "ddl" : "CREATE TABLE dbz_114_zerovaluetest (\n  c1 DATE,\n  c2 TIME(2),\n  c3 DATETIME(2),\n  c4 TIMESTAMP(2)\n)"
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496162,
+    "file" : "mysql-bin.000002",
+    "pos" : 2930948,
+    "gtids" : "${server_uuid}:1-66",
+    "server_id" : 112233,
+    "event" : 5
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "regression_test"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496162,
+      "gtid" : "${server_uuid}:67",
+      "file" : "mysql-bin.000002",
+      "pos" : 2931262,
+      "row" : 3,
+      "snapshot" : true
+    },
+    "databaseName" : "regression_test",
+    "ddl" : "CREATE TABLE dbz_123_bitvaluetest (\n  c1 BIT,\n  c2 BIT(2),\n  c3 BIT(8) NOT NULL,\n  c4 BIT(64)\n)"
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496162,
+    "file" : "mysql-bin.000002",
+    "pos" : 2931829,
+    "gtids" : "${server_uuid}:1-69",
+    "server_id" : 112233,
+    "event" : 5
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "regression_test"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496162,
+      "gtid" : "${server_uuid}:70",
+      "file" : "mysql-bin.000002",
+      "pos" : 2932140,
+      "row" : 3,
+      "snapshot" : true
+    },
+    "databaseName" : "regression_test",
+    "ddl" : "CREATE TABLE dbz_104_customers LIKE connector_test.customers"
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496162,
+    "file" : "mysql-bin.000002",
+    "pos" : 2932343,
+    "gtids" : "${server_uuid}:1-71",
+    "server_id" : 112233,
+    "event" : 5
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "regression_test"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496162,
+      "gtid" : "${server_uuid}:72",
+      "file" : "mysql-bin.000002",
+      "pos" : 2932789,
+      "row" : 3,
+      "snapshot" : true
+    },
+    "databaseName" : "regression_test",
+    "ddl" : "CREATE TABLE dbz_147_decimalvalues (\n  pk_column int auto_increment NOT NULL,\n  decimal_value decimal(7,2) NOT NULL,\n  PRIMARY KEY(pk_column)\n)"
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496162,
+    "file" : "mysql-bin.000002",
+    "pos" : 2933093,
+    "gtids" : "${server_uuid}:1-73",
+    "server_id" : 112233,
+    "event" : 5
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "json_test"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496162,
+      "gtid" : "${server_uuid}:74",
+      "file" : "mysql-bin.000002",
+      "pos" : 2933394,
+      "row" : 3,
+      "snapshot" : true
+    },
+    "databaseName" : "json_test",
+    "ddl" : "CREATE DATABASE json_test"
+  }
+}, {
+  "sourcePartition" : {
+    "server" : "engineering"
+  },
+  "sourceOffset" : {
+    "ts_sec" : 1479496162,
+    "file" : "mysql-bin.000002",
+    "pos" : 2933093,
+    "gtids" : "${server_uuid}:1-74",
+    "server_id" : 112233,
+    "event" : 7
+  },
+  "topic" : "engineering",
+  "kafkaPartition" : 0,
+  "keySchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeKey"
+  },
+  "key" : {
+    "databaseName" : "json_test"
+  },
+  "valueSchema" : {
+    "type" : "struct",
+    "fields" : [ {
+      "type" : "struct",
+      "fields" : [ {
+        "type" : "string",
+        "optional" : false,
+        "field" : "name"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "server_id"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "ts_sec"
+      }, {
+        "type" : "string",
+        "optional" : true,
+        "field" : "gtid"
+      }, {
+        "type" : "string",
+        "optional" : false,
+        "field" : "file"
+      }, {
+        "type" : "int64",
+        "optional" : false,
+        "field" : "pos"
+      }, {
+        "type" : "int32",
+        "optional" : false,
+        "field" : "row"
+      }, {
+        "type" : "boolean",
+        "optional" : true,
+        "field" : "snapshot"
+      } ],
+      "optional" : false,
+      "name" : "io.debezium.connector.mysql.Source",
+      "field" : "source"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "databaseName"
+    }, {
+      "type" : "string",
+      "optional" : false,
+      "field" : "ddl"
+    } ],
+    "optional" : false,
+    "name" : "io.debezium.connector.mysql.SchemaChangeValue"
+  },
+  "value" : {
+    "source" : {
+      "name" : "engineering",
+      "server_id" : 112233,
+      "ts_sec" : 1479496162,
+      "gtid" : "${server_uuid}:75",
+      "file" : "mysql-bin.000002",
+      "pos" : 2933568,
+      "row" : 3,
+      "snapshot" : true
+    },
+    "databaseName" : "json_test",
+    "ddl" : "CREATE TABLE dbz_126_jsontable (\n  id INT AUTO_INCREMENT NOT NULL,\n  json JSON,\n  expectedJdbcStr VARCHAR(256), \n  expectedBinlogStr VARCHAR(256), \n  PRIMARY KEY(id)\n) DEFAULT CHARSET=utf8"
+  }
+} ]

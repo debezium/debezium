@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -52,7 +53,9 @@ public class MySqlJdbcContext implements AutoCloseable {
                                          .edit()
                                          .with("useSSL", Boolean.toString(useSSL))
                                          .build();
-        this.jdbc = new JdbcConnection(jdbcConfig, FACTORY);
+        String driverClassName = jdbcConfig.getString(MySqlConnectorConfig.JDBC_DRIVER);
+        this.jdbc = new JdbcConnection(jdbcConfig,
+                JdbcConnection.patternBasedFactory(MYSQL_CONNECTION_URL, driverClassName, getClass().getClassLoader()));
     }
 
     public Configuration config() {
@@ -122,13 +125,13 @@ public class MySqlJdbcContext implements AutoCloseable {
     /**
      * Determine the available GTID set for MySQL.
      *
-     * @return the string representation of MySQL's GTID sets.
+     * @return the string representation of MySQL's GTID sets; never null but an empty string if the server does not use GTIDs
      */
     public String knownGtidSet() {
         AtomicReference<String> gtidSetStr = new AtomicReference<String>();
         try {
             jdbc.query("SHOW MASTER STATUS", rs -> {
-                if (rs.next()) {
+                if (rs.next() && rs.getMetaData().getColumnCount() > 4) {
                     gtidSetStr.set(rs.getString(5));// GTID set, may be null, blank, or contain a GTID set
                 }
             });
@@ -136,7 +139,35 @@ public class MySqlJdbcContext implements AutoCloseable {
             throw new ConnectException("Unexpected error while connecting to MySQL and looking at GTID mode: ", e);
         }
 
-        return gtidSetStr.get();
+        String result = gtidSetStr.get();
+        return result != null ? result : "";
+    }
+
+    /**
+     * Determine if the current user has the named privilege. Note that if the user has the "ALL" privilege this method
+     * returns {@code true}.
+     * 
+     * @param grantName the name of the MySQL privilege; may not be null
+     * @return {@code true} if the user has the named privilege, or {@code false} otherwise
+     */
+    public boolean userHasPrivileges(String grantName) {
+        AtomicBoolean result = new AtomicBoolean(false);
+        try {
+            jdbc.query("SHOW GRANTS FOR CURRENT_USER", rs -> {
+                if (rs.next()) {
+                    String grants = rs.getString(1);
+                    logger.debug(grants);
+                    if (grants == null) return;
+                    grants = grants.toUpperCase();
+                    if (grants.contains("ALL") || grants.contains(grantName.toUpperCase())) {
+                        result.set(true);
+                    }
+                }
+            });
+        } catch (SQLException e) {
+            throw new ConnectException("Unexpected error while connecting to MySQL and looking at privileges for current user: ", e);
+        }
+        return result.get();
     }
 
     protected String connectionString() {
@@ -155,6 +186,37 @@ public class MySqlJdbcContext implements AutoCloseable {
         try (JdbcConnection mysql = jdbc.connect()) {
             logger.debug("Reading MySQL charset-related system variables before parsing DDL history.");
             String statement = "SHOW VARIABLES WHERE Variable_name IN ('character_set_server','collation_server')";
+            if (sql != null) sql.set(statement);
+            mysql.query(statement, rs -> {
+                while (rs.next()) {
+                    String varName = rs.getString(1);
+                    String value = rs.getString(2);
+                    if (varName != null && value != null) {
+                        variables.put(varName, value);
+                        logger.debug("\t{} = {}",
+                                     Strings.pad(varName, 45, ' '),
+                                     Strings.pad(value, 45, ' '));
+                    }
+                }
+            });
+        } catch (SQLException e) {
+            throw new ConnectException("Error reading MySQL variables: " + e.getMessage(), e);
+        }
+        return variables;
+    }
+
+    /**
+     * Read the MySQL system variables.
+     * 
+     * @param sql the reference that should be set to the SQL statement; may be null if not needed
+     * @return the system variables that are related to server character sets; never null
+     */
+    protected Map<String, String> readMySqlSystemVariables(AtomicReference<String> sql) {
+        // Read the system variables from the MySQL instance and get the current database name ...
+        Map<String, String> variables = new HashMap<>();
+        try (JdbcConnection mysql = jdbc.connect()) {
+            logger.debug("Reading MySQL system variables");
+            String statement = "SHOW VARIABLES";
             if (sql != null) sql.set(statement);
             mysql.query(statement, rs -> {
                 while (rs.next()) {

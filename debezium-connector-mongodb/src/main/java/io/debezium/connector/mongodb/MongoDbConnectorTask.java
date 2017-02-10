@@ -107,6 +107,10 @@ public final class MongoDbConnectorTask extends SourceTask {
             // Read from the configuration the information about the replica sets we are to watch ...
             final String hosts = config.getString(MongoDbConnectorConfig.HOSTS);
             final ReplicaSets replicaSets = ReplicaSets.parse(hosts);
+            if ( replicaSets.validReplicaSetCount() == 0) {
+                logger.info("Unable to start MongoDB connector task since no replica sets were found at {}", hosts);
+                return;
+            }
 
             // Set up the task record queue ...
             this.queue = new TaskRecordQueue(config, replicaSets.replicaSetCount(), running::get, recordSummarizer);
@@ -115,8 +119,10 @@ public final class MongoDbConnectorTask extends SourceTask {
             SourceInfo source = replicationContext.source();
             Collection<Map<String, String>> partitions = new ArrayList<>();
             replicaSets.onEachReplicaSet(replicaSet -> {
-                String replicaSetName = replicaSet.replicaSetName();
-                partitions.add(source.partition(replicaSetName));
+                String replicaSetName = replicaSet.replicaSetName(); // may be null for standalone servers
+                if (replicaSetName != null) {
+                    partitions.add(source.partition(replicaSetName));
+                }
             });
             context.offsetStorageReader().offsets(partitions).forEach(source::setOffsetFor);
 
@@ -124,8 +130,9 @@ public final class MongoDbConnectorTask extends SourceTask {
             final int numThreads = replicaSets.replicaSetCount();
             final ExecutorService executor = Executors.newFixedThreadPool(numThreads);
             AtomicInteger stillRunning = new AtomicInteger(numThreads);
+            logger.info("Ignoring unnamed replica sets: {}", replicaSets.unnamedReplicaSets());
             logger.info("Starting {} thread(s) to replicate replica sets: {}", numThreads, replicaSets);
-            replicaSets.all().forEach(replicaSet -> {
+            replicaSets.validReplicaSets().forEach(replicaSet -> {
                 // Create a replicator for this replica set ...
                 Replicator replicator = new Replicator(replicationContext, replicaSet, queue::enqueue, config.getString(MongoDbConnectorConfig.DP_TASK_ID));
                 replicators.add(replicator);
@@ -196,7 +203,7 @@ public final class MongoDbConnectorTask extends SourceTask {
         private final Consumer<List<SourceRecord>> batchConsumer;
 
         protected TaskRecordQueue(Configuration config, int numThreads, BooleanSupplier isRunning,
-                Consumer<List<SourceRecord>> batchConsumer) {
+                                  Consumer<List<SourceRecord>> batchConsumer) {
             final int maxQueueSize = config.getInteger(MongoDbConnectorConfig.MAX_QUEUE_SIZE);
             final long pollIntervalMs = config.getLong(MongoDbConnectorConfig.POLL_INTERVAL_MS);
             maxBatchSize = config.getInteger(MongoDbConnectorConfig.MAX_BATCH_SIZE);

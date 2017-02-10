@@ -19,6 +19,7 @@ import java.io.Reader;
 import java.net.MalformedURLException;
 import java.net.ServerSocket;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitOption;
 import java.nio.file.FileVisitResult;
@@ -108,6 +109,23 @@ public class IoUtil {
      */
     public static void readLines(InputStream stream, Consumer<String> lineProcessor) throws IOException {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream))) {
+            String line = null;
+            while ((line = reader.readLine()) != null) {
+                lineProcessor.accept(line);
+            }
+        }
+    }
+    
+    /**
+     * Read the lines from the supplied stream. This function completely reads the stream and therefore closes the stream.
+     * 
+     * @param stream the stream with the contents to be read; may not be null
+     * @param lineProcessor the function that this method calls for each line read from the supplied stream; may not be null
+     * @param charset the character set used to interpret the stream content
+     * @throws IOException if an I/O error occurs
+     */
+    public static void readLines(InputStream stream, Consumer<String> lineProcessor, Charset charset) throws IOException {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, charset))) {
             String line = null;
             while ((line = reader.readLine()) != null) {
                 lineProcessor.accept(line);

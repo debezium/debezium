@@ -213,6 +213,7 @@ public final class SourceInfo {
      * @return the source partition information; never null
      */
     public Map<String, String> partition(String replicaSetName) {
+        if (replicaSetName == null) throw new IllegalArgumentException("Replica set name may not be null");
         return sourcePartitionsByReplicaSetName.computeIfAbsent(replicaSetName, rsName -> {
             return Collect.hashMapOf(SERVER_ID_KEY, serverName, REPLICA_SET_NAME, rsName);
         });
@@ -261,7 +262,7 @@ public final class SourceInfo {
     public Map<String, ?> lastOffset(String replicaSetName) {
         Position existing = positionsByReplicaSetName.get(replicaSetName);
         if (existing == null) existing = INITIAL_POSITION;
-        if (initialSyncReplicaSets.contains(replicaSetName)) {
+        if (isInitialSyncOngoing(replicaSetName)) {
             return Collect.hashMapOf(TIMESTAMP, new Integer(existing.getTime()),
                                      ORDER, new Integer(existing.getInc()),
                                      OPERATION_ID, existing.getOperationId(),
@@ -289,22 +290,23 @@ public final class SourceInfo {
         Position position = positionsByReplicaSetName.get(replicaSetName);
         String ongoingCollection = getOngoingCollection(collectionId, objectId);
         if(position != null){
-            position = new Position(position.getTimestamp(),position.getOperationId(),initialSyncReplicaSets.contains(replicaSetName),
+            position = new Position(position.getTimestamp(),position.getOperationId(),isInitialSyncOngoing(replicaSetName),
                     position.getFinishedCollections(),ongoingCollection, expectedNumDocs);
         } else {
             position = new Position(INITIAL_TIMESTAMP, null,
-                    initialSyncReplicaSets.contains(replicaSetName),new HashSet<>(),ongoingCollection, expectedNumDocs);
+                isInitialSyncOngoing(replicaSetName),new HashSet<>(),ongoingCollection, expectedNumDocs);
         }
         positionsByReplicaSetName.put(replicaSetName, position);
         return offsetStructFor(replicaSetName, collectionId.namespace(), position);
     }
 
-    public Struct updatePosition(String replicaSetName, CollectionId collectionId){
+    public Struct updatePosition(String replicaSetName, CollectionId collectionId) {
         Position position = positionsByReplicaSetName.get(replicaSetName);
         Set<String> finishedCollections = position.getFinishedCollections();
         finishedCollections.add(collectionId.namespace());
-        position = new Position(position.getTimestamp(),position.getOperationId(),position.getInitialSync(), finishedCollections,
-                position.getOngoingCollection(),position.getExpectedNumDocs());
+        position = new Position(position.getTimestamp(), position.getOperationId(),
+            position.getInitialSync(), finishedCollections,
+            position.getOngoingCollection(), position.getExpectedNumDocs());
         positionsByReplicaSetName.put(replicaSetName, position);
         return offsetStructFor(replicaSetName, collectionId.namespace(), position);
     }
@@ -325,7 +327,7 @@ public final class SourceInfo {
         if (oplogEvent != null) {
             BsonTimestamp ts = extractEventTimestamp(oplogEvent);
             Long opId = oplogEvent.getLong("h");
-            position = new Position(ts, opId, initialSyncReplicaSets.contains(replicaSetName));
+            position = new Position(ts, opId, isInitialSyncOngoing(replicaSetName));
             namespace = oplogEvent.getString("ns");
         }
         positionsByReplicaSetName.put(replicaSetName, position);
@@ -432,8 +434,19 @@ public final class SourceInfo {
     }
 
 
-    private String getOngoingCollection(CollectionId id, String objectId){
+    private String getOngoingCollection(CollectionId id, String objectId) {
         return id.namespace() + ":" + objectId;
+    }
+
+    /**
+     * Determine if the initial sync for the given replica set is still ongoing.
+     * 
+     * @param replicaSetName the name of the replica set; never null
+     * @return {@code true} if the initial sync for this replica is still ongoing or was not completed before restarting, or
+     *         {@code false} if there is currently no initial sync operation for this replica set
+     */
+    public boolean isInitialSyncOngoing(String replicaSetName) {
+        return initialSyncReplicaSets.contains(replicaSetName);
     }
 
     private static int intOffsetValue(Map<String, ?> values, String key) {

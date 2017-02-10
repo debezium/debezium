@@ -310,8 +310,8 @@ public class DdlTokenizer implements Tokenizer {
                 default:
                     startIndex = input.index();
                     Position startPosition = input.position(startIndex);
-                    // Read until another whitespace/symbol/decimal/slash is found
-                    while (input.hasNext() && !(input.isNextWhitespace() || input.isNextAnyOf("/.-(){}*,;+%?[]!<>|=:'\"\u2019"))) {
+                    // Read until another whitespace/symbol/decimal/slash/quote is found
+                    while (input.hasNext() && !(input.isNextWhitespace() || input.isNextAnyOf("/.-(){}*,;+%?[]!<>|=:'`\u2018\u2019\"\u2019"))) {
                         c = input.next();
                     }
                     endIndex = input.index() + 1; // beyond last character that was included

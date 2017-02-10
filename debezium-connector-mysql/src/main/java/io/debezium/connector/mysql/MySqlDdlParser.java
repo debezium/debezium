@@ -98,7 +98,14 @@ public class MySqlDdlParser extends DdlParser {
         dataTypes.register(Types.BLOB, "VARCHAR(L) BINARY");
         dataTypes.register(Types.BLOB, "BINARY[(L)]");
         dataTypes.register(Types.VARCHAR, "VARCHAR(L)");
+        dataTypes.register(Types.NVARCHAR, "NVARCHAR(L)");
+        dataTypes.register(Types.NVARCHAR, "NATIONAL VARCHAR(L)");
+        dataTypes.register(Types.NVARCHAR, "NCHAR VARCHAR(L)");
+        dataTypes.register(Types.NVARCHAR, "NATIONAL CHARACTER VARYING(L)");
+        dataTypes.register(Types.NVARCHAR, "NATIONAL CHAR VARYING(L)");
         dataTypes.register(Types.CHAR, "CHAR[(L)]");
+        dataTypes.register(Types.NCHAR, "NCHAR[(L)]");
+        dataTypes.register(Types.NCHAR, "NATIONAL CHARACTER(L)");
         dataTypes.register(Types.VARBINARY, "VARBINARY(L)");
         dataTypes.register(Types.BLOB, "TINYBLOB");
         dataTypes.register(Types.BLOB, "BLOB");
@@ -217,9 +224,9 @@ public class MySqlDdlParser extends DdlParser {
                         charsetNameForDatabase.put(currentDatabaseName, value);
                     }
                 }
-                
+
                 // Signal that the variable was set ...
-                signalEvent(new SetVariableEvent(variableName,value,statement(start)));
+                signalEvent(new SetVariableEvent(variableName, value, statement(start)));
             }
         }
     }
@@ -233,19 +240,19 @@ public class MySqlDdlParser extends DdlParser {
     }
 
     protected String parseVariableValue() {
-        if ( tokens.canConsumeAnyOf(",",";")) {
+        if (tokens.canConsumeAnyOf(",", ";")) {
             // The variable is blank ...
             return "";
         }
         Marker start = tokens.mark();
         tokens.consumeUntilEndOrOneOf(",", ";");
         String value = tokens.getContentFrom(start);
-        if ( value.startsWith("'") && value.endsWith("'")) {
+        if (value.startsWith("'") && value.endsWith("'")) {
             // Remove the single quotes around the value ...
-            if ( value.length() <= 2 ) {
+            if (value.length() <= 2) {
                 value = "";
             } else {
-                value = value.substring(1, value.length()-2);
+                value = value.substring(1, value.length() - 2);
             }
         }
         return value;
@@ -262,9 +269,9 @@ public class MySqlDdlParser extends DdlParser {
         } else if (tokens.matchesAnyOf("DATABASE", "SCHEMA")) {
             parseCreateDatabase(marker);
         } else if (tokens.matchesAnyOf("EVENT")) {
-            parseCreateUnknown(marker);
+            parseCreateEvent(marker);
         } else if (tokens.matchesAnyOf("FUNCTION", "PROCEDURE")) {
-            parseCreateUnknown(marker);
+            parseCreateProcedure(marker);
         } else if (tokens.matchesAnyOf("UNIQUE", "FULLTEXT", "SPATIAL", "INDEX")) {
             parseCreateIndex(marker);
         } else if (tokens.matchesAnyOf("SERVER")) {
@@ -272,10 +279,13 @@ public class MySqlDdlParser extends DdlParser {
         } else if (tokens.matchesAnyOf("TABLESPACE")) {
             parseCreateUnknown(marker);
         } else if (tokens.matchesAnyOf("TRIGGER")) {
-            parseCreateUnknown(marker);
+            parseCreateTrigger(marker);
         } else {
             // It could be several possible things (including more elaborate forms of those matches tried above),
             sequentially(this::parseCreateView,
+                         this::parseCreateProcedure,
+                         this::parseCreateTrigger,
+                         this::parseCreateEvent,
                          this::parseCreateUnknown);
         }
     }
@@ -697,11 +707,16 @@ public class MySqlDdlParser extends DdlParser {
             column.length(1);
         } else if ("SET".equals(dataType.name())) {
             List<String> options = parseSetAndEnumOptions(dataType.expression());
-            //After DBZ-132, it will always be comma seperated
+            // After DBZ-132, it will always be comma seperated
             column.length(Math.max(0, options.size() * 2 - 1)); // number of options + number of commas
         } else {
             if (dataType.length() > -1) column.length((int) dataType.length());
             if (dataType.scale() > -1) column.scale(dataType.scale());
+        }
+
+        if (Types.NCHAR == dataType.jdbcType() || Types.NVARCHAR == dataType.jdbcType()) {
+            // NCHAR and NVARCHAR columns always uses utf8 as charset
+            column.charsetName("utf8");
         }
 
         if (tokens.canConsume("CHARSET") || tokens.canConsume("CHARACTER", "SET")) {
@@ -741,10 +756,8 @@ public class MySqlDdlParser extends DdlParser {
                 if (tokens.matches("DEFAULT")) {
                     parseDefaultClause(start);
                 }
-                if (tokens.canConsume("ON")) {
-                    if (tokens.canConsumeAnyOf("UPDATE", "DELETE")) {
-                        tokens.consume(); // e.g., "ON UPATE CURRENT_TIMESTAMP"
-                    }
+                if (tokens.matches("ON", "UPDATE") || tokens.matches("ON", "DELETE")) {
+                    parseOnUpdateOrDelete(tokens.mark());
                     column.autoIncremented(true);
                 }
                 // Other options ...
@@ -857,10 +870,7 @@ public class MySqlDdlParser extends DdlParser {
             tokens.consume('=');
             tokens.consumeAnyOf("UNDEFINED", "MERGE", "TEMPTABLE");
         }
-        if (tokens.canConsume("DEFINER")) {
-            tokens.consume('=');
-            tokens.consume(); // user or CURRENT_USER
-        }
+        parseDefiner(tokens.mark());
         if (tokens.canConsume("SQL", "SECURITY")) {
             tokens.consumeAnyOf("DEFINER", "INVOKER");
         }
@@ -970,6 +980,42 @@ public class MySqlDdlParser extends DdlParser {
         consumeRemainingStatement(start);
         signalCreateIndex(indexName, tableId, start);
         debugParsed(start);
+    }
+
+    protected void parseDefiner(Marker start) {
+        if (tokens.canConsume("DEFINER")) {
+            tokens.consume('=');
+            tokens.consume(); // user or CURRENT_USER
+            if (tokens.canConsume("@")) {
+                tokens.consume(); // host
+            } else {
+                String next = tokens.peek();
+                if (next.startsWith("@")) { // e.g., @`localhost`
+                    tokens.consume();
+                }
+            }
+        }
+    }
+
+    protected void parseCreateProcedure(Marker start) {
+        parseDefiner(tokens.mark());
+        tokens.consume("FUNCTION");
+        tokens.consume(); // name
+        consumeRemainingStatement(start);
+    }
+
+    protected void parseCreateTrigger(Marker start) {
+        parseDefiner(tokens.mark());
+        tokens.consume("TRIGGER");
+        tokens.consume(); // name
+        consumeRemainingStatement(start);
+    }
+
+    protected void parseCreateEvent(Marker start) {
+        parseDefiner(tokens.mark());
+        tokens.consume("EVENT");
+        tokens.consume(); // name
+        consumeRemainingStatement(start);
     }
 
     protected void parseCreateUnknown(Marker start) {
@@ -1324,14 +1370,14 @@ public class MySqlDdlParser extends DdlParser {
                 tokens.rewind(marker);
             }
         }
-        parsingFailed(marker.position(), errors, "Unable to parse statement");
+        parsingFailed(marker.position(), errors, "One or more errors trying to parse statement");
     }
 
     /**
      * Parse and consume the {@code DEFAULT} clause. Currently, this method does not capture the default in any way,
      * since that will likely require parsing the default clause into a useful value (e.g., dealing with hexadecimals,
      * bit-set literals, date-time literals, etc.).
-
+     * 
      * @param start the marker at the beginning of the clause
      */
     protected void parseDefaultClause(Marker start) {
@@ -1340,20 +1386,29 @@ public class MySqlDdlParser extends DdlParser {
             // We know that it is a quoted literal ...
             parseLiteral(start);
         } else {
-            if (tokens.canConsume("CURRENT_TIMESTAMP")) {
-                if (tokens.canConsume('(')) {
-                    tokens.consumeInteger();
-                    tokens.consume(')');
-                }
-                tokens.canConsume("ON", "UPDATE", "CURRENT_TIMESTAMP");
-                if (tokens.canConsume('(')) {
-                    tokens.consumeInteger();
-                    tokens.consume(')');
-                }
+            if (tokens.matchesAnyOf("CURRENT_TIMESTAMP", "NOW")) {
+                parseCurrentTimestampOrNow();
+                parseOnUpdateOrDelete(tokens.mark());
             } else if (tokens.canConsume("NULL")) {
                 // do nothing ...
             } else {
                 parseLiteral(start);
+            }
+        }
+    }
+
+    protected void parseOnUpdateOrDelete(Marker start) {
+        if (tokens.canConsume("ON") && tokens.canConsumeAnyOf("UPDATE", "DELETE")) {
+            parseCurrentTimestampOrNow();
+        }
+    }
+
+    private void parseCurrentTimestampOrNow() {
+        tokens.consumeAnyOf("CURRENT_TIMESTAMP", "NOW");
+        if (tokens.canConsume('(')) {
+            if (!tokens.canConsume(')')) {
+                tokens.consumeInteger();
+                tokens.consume(')');
             }
         }
     }

@@ -22,9 +22,22 @@ public final class TableId implements Comparable<TableId> {
      * @return the table ID, or null if it could not be parsed
      */
     public static TableId parse(String str) {
+        return parse(str, true);
+    }   
+    
+    /**
+     * Parse the supplied string, extracting up to the first 3 parts into a TableID.
+     * 
+     * @param str the string representation of the table identifier; may not be null
+     * @param useCatalogBeforeSchema {@code true} if the parsed string contains only 2 items and the first should be used as
+     *            the catalog and the second as the table name, or {@code false} if the first should be used as the schema and the
+     *            second as the table name
+     * @return the table ID, or null if it could not be parsed
+     */
+    public static TableId parse(String str, boolean useCatalogBeforeSchema) {
         String[] parts = str.split("[\\" + '.' + "]");
         if ( parts.length < 0 ) return null;
-        return TableId.parse(parts, parts.length, true);
+        return TableId.parse(parts, parts.length, useCatalogBeforeSchema);
     }
 
     /**
@@ -42,7 +55,7 @@ public final class TableId implements Comparable<TableId> {
         if (numParts == 1) return new TableId(null, null, parts[0]); // table only
         if (numParts == 2) {
             if (useCatalogBeforeSchema) return new TableId(parts[0], null, parts[1]); // catalog & table only
-            return new TableId(null, parts[0], parts[1]); // catalog & table only
+            return new TableId(null, parts[0], parts[1]); // schema & table only
         }
         return new TableId(parts[0], parts[1], parts[2]); // catalog & table only
     }

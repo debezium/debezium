@@ -77,6 +77,9 @@ public class ZonedTimestamp {
         if (value instanceof OffsetDateTime) {
             return toIsoString((OffsetDateTime) value);
         }
+        if (value instanceof ZonedDateTime) {
+            return toIsoString((ZonedDateTime) value); 
+        }
         if (value instanceof OffsetTime) {
             return toIsoString((OffsetTime) value);
         }
@@ -94,6 +97,16 @@ public class ZonedTimestamp {
      * @return the ISO 8601 formatted string
      */
     public static String toIsoString(OffsetDateTime timestamp) {
+        return timestamp.format(FORMATTER);
+    }
+   
+    /**
+     * Get the ISO 8601 formatted representation of the given {@link ZonedDateTime}.
+     * 
+     * @param timestamp the timestamp value
+     * @return the ISO 8601 formatted string
+     */
+    public static String toIsoString(ZonedDateTime timestamp) {
         return timestamp.format(FORMATTER);
     }
 

@@ -5,6 +5,8 @@
  */
 package io.debezium.util;
 
+import java.util.concurrent.TimeUnit;
+
 /**
  * An abstraction for a clock.
  * 
@@ -41,6 +43,14 @@ public interface Clock {
      */
     default long currentTimeInNanos() {
         return currentTimeInMillis() * 1000000L;
+    }
+    
+    /**
+     * Get the current time in microseconds.
+     * @return the current time in microseconds.
+     */
+    default long currentTimeInMicros() {
+        return TimeUnit.MICROSECONDS.convert(currentTimeInMillis(), TimeUnit.MILLISECONDS);        
     }
 
     /**
