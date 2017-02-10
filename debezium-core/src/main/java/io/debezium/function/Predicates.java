@@ -5,6 +5,8 @@
  */
 package io.debezium.function;
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -79,6 +81,62 @@ public class Predicates {
      */
     public static <T> Predicate<T> excludes(String regexPatterns, Function<T, String> conversion) {
         return includes(regexPatterns, conversion).negate();
+    }
+
+    /**
+     * Generate a predicate function that for any supplied parameter returns {@code true} if <i>any</i> of the strings
+     * in the supplied comma-separated list matches the predicate parameter in a case-insensitive manner.
+     *
+     * @param nonRegexPatterns the comma-separated regular expression pattern (or literal) strings; may not be null
+     * @return the predicate function that performs the matching
+     */
+    public static Predicate<String> includesNonRegex(String nonRegexPatterns) {
+        return includesNonRegex(nonRegexPatterns, (str) -> str);
+    }
+
+    /**
+     * Generate a predicate function that for any supplied string returns {@code true} if <i>none</i> of the string
+     * in the supplied comma-separated list matches the predicate parameter in a case-insensitive manner.
+     *
+     * @param nonRegexPatterns the comma-separated regular expression pattern (or literal) strings; may not be null
+     * @return the predicate function that performs the matching
+     */
+    public static Predicate<String> excludesNonRegex(String nonRegexPatterns) {
+        return includesNonRegex(nonRegexPatterns).negate();
+    }
+
+    /**
+     * Generate a predicate function that for any supplied parameter returns {@code true} if <i>any</i> of the strings
+     * in the supplied comma-separated list matches the predicate parameter in a case-insensitive manner.
+     *
+     * @param nonRegexPatterns the comma-separated  literal strings; may not be null
+     * @param conversion the function that converts each predicate-supplied value to a string that can be matched against the
+     *            literal strings; may not be null
+     * @return the predicate function that performs the matching
+     */
+    public static <T> Predicate<T> includesNonRegex(String nonRegexPatterns, Function<T, String> conversion) {
+        String[] patterns = nonRegexPatterns.toLowerCase().split(",");
+        Set<String> patternSet = new HashSet<>(Arrays.asList(patterns));
+        return (t) -> {
+            String str = conversion.apply(t).toLowerCase();
+            if (patternSet.contains(str)) {
+                return true;
+            }
+            return false;
+        };
+    }
+
+    /**
+     * Generate a predicate function that for any supplied parameter returns {@code true} if <i>none</i> of the strings
+     * in the supplied comma-separated list matches the predicate parameter in a case-insensitive manner.
+     *
+     * @param nonRegexPatterns the comma-separated literal strings; may not be null
+     * @param conversion the function that converts each predicate-supplied value to a string that can be matched against the
+     *            strings; may not be null
+     * @return the predicate function that performs the matching
+     */
+    public static <T> Predicate<T> excludesNonRegex(String nonRegexPatterns, Function<T, String> conversion) {
+        return includesNonRegex(nonRegexPatterns, conversion).negate();
     }
 
     /**

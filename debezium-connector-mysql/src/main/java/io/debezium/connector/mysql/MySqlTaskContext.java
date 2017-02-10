@@ -6,6 +6,7 @@
 package io.debezium.connector.mysql;
 
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Predicate;
 
 import javax.management.MalformedObjectNameException;
@@ -47,8 +48,39 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         // Set up the GTID filter ...
         String gtidSetIncludes = config.getString(MySqlConnectorConfig.GTID_SOURCE_INCLUDES);
         String gtidSetExcludes = config.getString(MySqlConnectorConfig.GTID_SOURCE_EXCLUDES);
-        this.gtidSourceFilter = gtidSetIncludes != null ? Predicates.includes(gtidSetIncludes)
-                : (gtidSetExcludes != null ? Predicates.excludes(gtidSetExcludes) : null);
+        Boolean filterIncludesRegex = false;
+        String uuids[] = null;
+        if (gtidSetIncludes != null) {
+            uuids = gtidSetIncludes.split(",");
+        } else if (gtidSetExcludes != null) {
+            uuids = gtidSetExcludes.split(",");
+        }
+
+        if (uuids == null) {
+            gtidSourceFilter = null;
+        } else {
+            for (String uuid : uuids) {
+                try {
+                    UUID.fromString(uuid);
+                } catch (IllegalArgumentException e) {
+                    // A non-standard UUID was passed to the includes/excludes list. It must be a regex.
+                    filterIncludesRegex = true;
+                    break;
+                }
+            }
+
+            // Optimize the filter to avoid an expensive regex if possible.
+            if (gtidSetIncludes != null) {
+                gtidSourceFilter = filterIncludesRegex ? Predicates.includes(gtidSetIncludes) :
+                        Predicates.includesNonRegex(gtidSetIncludes);
+
+            } else if (gtidSetExcludes != null) {
+                gtidSourceFilter = filterIncludesRegex ? Predicates.excludes(gtidSetExcludes) :
+                        Predicates.excludesNonRegex(gtidSetExcludes);
+            } else {
+                gtidSourceFilter = null;
+            }
+        }
 
         // Set up the MySQL schema ...
         this.dbSchema = new MySqlSchema(config, serverName(), this.gtidSourceFilter);
