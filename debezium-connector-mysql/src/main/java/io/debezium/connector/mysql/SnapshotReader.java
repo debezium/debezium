@@ -213,7 +213,7 @@ public class SnapshotReader extends AbstractReader {
                     lockAcquired = clock.currentTimeInMillis();
                     metrics.globalLockAcquired();
                     isLocked = true;
-                } catch (SQLException e) {
+                } catch (Exception e) {
                     logger.info("Step 2: unable to flush and acquire global read lock, will use table read locks after reading table names");
                     // Continue anyway, since RDS (among others) don't allow setting a global lock
                     assert !isLocked;
@@ -262,9 +262,13 @@ public class SnapshotReader extends AbstractReader {
                             while (rs.next() && isRunning()) {
                                 TableId id = new TableId(dbName, null, rs.getString(1));
                                 if (filters.tableFilter().test(id)) {
-                                    tableIds.add(id);
-                                    tableIdsByDbName.computeIfAbsent(dbName, k -> new ArrayList<>()).add(id);
-                                    logger.info("\t including '{}'", id);
+                                    if (source.isSnapshotted(id.table())) {
+                                        logger.info("\t snapshotted '{}'", id);
+                                    } else {
+                                        tableIds.add(id);
+                                        tableIdsByDbName.computeIfAbsent(dbName, k -> new ArrayList<>()).add(id);
+                                        logger.info("\t including '{}'", id);
+                                    }
                                 } else {
                                     logger.info("\t '{}' is filtered out, discarding", id);
                                 }

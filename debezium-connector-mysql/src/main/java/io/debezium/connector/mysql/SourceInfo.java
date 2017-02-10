@@ -89,7 +89,9 @@ import io.debezium.util.Collect;
  *     "snapshot": true,
  *     "thread" : 1,
  *     "db" : "inventory",
- *     "table" : "products"
+ *     "table" : "products",
+ *     "entity" : "products",
+ *     "size" : "1000"
  * }
  * </pre>
  * 
