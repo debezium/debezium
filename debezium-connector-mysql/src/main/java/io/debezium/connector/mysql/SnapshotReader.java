@@ -19,6 +19,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -259,7 +260,8 @@ public class SnapshotReader extends AbstractReader {
                         logger.warn("\t skipping database '{}' due to error reading tables: {}", dbName, e.getMessage());
                     }
                 }
-                logger.info("\t snapshot continuing with databases: {}", readableDatabaseNames);
+                final Set<String> includedDatabaseNames = readableDatabaseNames.stream().filter(filters.databaseFilter()).collect(Collectors.toSet());
+                logger.info("\tsnapshot continuing with database(s): {}", includedDatabaseNames);
 
                 if (!isLocked) {
                     // ------------------------------------

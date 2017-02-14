@@ -278,18 +278,14 @@ public class FiltersTest {
     }
 
     protected void assertSystemTablesExcluded() {
-        Filters.BUILT_IN_TABLE_NAMES.forEach(tableName->{
-            Filters.BUILT_IN_DB_NAMES.forEach(dbName->{
-                assertTableExcluded(dbName + "." + tableName);
-            });
+        Filters.BUILT_IN_DB_NAMES.forEach(dbName -> {
+            assertTableExcluded(dbName + ".foo");
         });
     }
 
     protected void assertSystemTablesIncluded() {
-        Filters.BUILT_IN_TABLE_NAMES.forEach(tableName->{
-            Filters.BUILT_IN_DB_NAMES.forEach(dbName->{
-                assertTableIncluded(dbName + "." + tableName);
-            });
+        Filters.BUILT_IN_DB_NAMES.forEach(dbName -> {
+            assertTableIncluded(dbName + ".foo");
         });
     }
 
