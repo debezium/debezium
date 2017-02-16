@@ -277,8 +277,12 @@ public class SnapshotReader extends AbstractReader {
                     }
                     // We have the required privileges, so try to lock all of the tables we're interested in ...
                     logger.info("Step {}: flush and obtain read lock for {} tables (preventing writes)", step++, tableIds.size());
-                    for (TableId tableId : tableIds) {
-                        sql.set("FLUSH TABLES " + quote(tableId) + " WITH READ LOCK");
+                    String tableList = tableIds.stream()
+                            .map(tid -> quote(tid))
+                            .reduce((r, element) -> r+ "," + element)
+                            .orElse(null);
+                    if (tableList != null) {
+                        sql.set("FLUSH TABLES " + tableList + " WITH READ LOCK");
                         mysql.execute(sql.get());
                     }
                     lockAcquired = clock.currentTimeInMillis();
