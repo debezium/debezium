@@ -6,15 +6,9 @@
 package io.debezium.embedded;
 
 import java.nio.file.Path;
-import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 import org.junit.After;
 import org.junit.Before;
@@ -22,16 +16,14 @@ import org.junit.Test;
 
 import static org.fest.assertions.Assertions.assertThat;
 
-import io.debezium.annotation.Immutable;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.connector.simple.FailOnTaskStartupSourceConnector;
 import io.debezium.connector.simple.FailTaskExecutionSourceConnector;
 import io.debezium.connector.simple.SimpleSourceConnector;
 import io.debezium.consumer.ChangeEvent;
-import io.debezium.embedded.ConnectorEngine.ConnectorCallback;
+import io.debezium.embedded.ConnectorCallbacks.ConnectorResult;
 import io.debezium.util.Testing;
-import io.debezium.util.VariableLatch;
 
 /**
  * @author Randall Hauch
@@ -49,7 +41,7 @@ public class ConnectorEngineTest {
     protected static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath("offsets.txt").toAbsolutePath();
 
     private ConnectorEngine engine;
-    private ConnectorCallbacks callback;
+    private ConnectorCallbackResults callback;
 
     @Before
     public void beforeEach() {
@@ -61,7 +53,7 @@ public class ConnectorEngineTest {
                                             .with(ConnectorEngine.OFFSET_STORAGE_FILE_FILENAME, OFFSET_STORE_PATH)
                                             .build();
         engine = new ConnectorEngine(config);
-        callback = new ConnectorCallbacks();
+        callback = new ConnectorCallbackResults();
         Testing.Print.enable();
     }
 
@@ -304,135 +296,29 @@ public class ConnectorEngineTest {
 
     }
 
-    @Immutable
-    protected static class Failure {
-        private final String message;
-        private final Throwable error;
 
-        public Failure(String message, Throwable error) {
-            this.message = message;
-            this.error = error;
-        }
-
-        public Throwable error() {
-            return error;
-        }
-
-        public String message() {
-            return message;
-        }
-
+    @ThreadSafe
+    public static class ConnectorCallbackResults extends ConnectorCallbacks.ConnectorResults {
         @Override
-        public String toString() {
-            return message + ": " + error.getMessage();
+        protected ConnectorResult createResultsFor(String connectorName) {
+            return super.createResultsFor(connectorName);
+        }
+        
+        @Override
+        public ConnectorLifecycleStats forConnector(String connectorName) {
+            return (ConnectorLifecycleStats)super.forConnector(connectorName);
+        }
+
+        public void assertNoCallbacks() {
+            assertThat(count()).isEqualTo(0);
         }
     }
 
     @ThreadSafe
-    public static class ConnectorLifecycleStats implements ConnectorCallback {
-        private final String name;
-        private final AtomicInteger taskStarts = new AtomicInteger();
-        private final AtomicInteger taskStops = new AtomicInteger();
-        private final AtomicInteger tasksRunning = new AtomicInteger();
-        private final AtomicInteger connectorStarts = new AtomicInteger();
-        private final AtomicInteger connectorStops = new AtomicInteger();
-        private final List<Failure> connectorFailures = new CopyOnWriteArrayList<>();
-        private final AtomicBoolean connectorRunning = new AtomicBoolean();
-        private final VariableLatch startLatch = new VariableLatch(1);
-        private final VariableLatch stopOrFailLatch = new VariableLatch(0);
-        private final VariableLatch allTasksStartedLatch = new VariableLatch(1);
-        private final VariableLatch connectorAndTasksStoppedLatch = new VariableLatch(0);
+    public static class ConnectorLifecycleStats extends ConnectorCallbacks.ConnectorResult {
 
         public ConnectorLifecycleStats(String connectorName) {
-            this.name = connectorName;
-        }
-
-        public String name() {
-            return name;
-        }
-
-        @Override
-        public void connectorStarted(String name) {
-            if (this.name.equals(name)) {
-                this.connectorStarts.incrementAndGet();
-                this.connectorRunning.set(true);
-                this.stopOrFailLatch.countUp();
-                this.startLatch.countDown();
-                this.connectorAndTasksStoppedLatch.countUp();
-            }
-        }
-
-        @Override
-        public void connectorFailed(String name, String message, Throwable error) {
-            if (this.name.equals(name)) {
-                this.connectorFailures.add(new Failure(message, error));
-                this.connectorRunning.set(false);
-                this.stopOrFailLatch.countDown();
-                this.startLatch.countUp();
-                this.allTasksStartedLatch.countUp();
-                this.connectorAndTasksStoppedLatch.countDown();
-            }
-        }
-
-        @Override
-        public void connectorStopped(String name) {
-            if (this.name.equals(name)) {
-                this.connectorStops.incrementAndGet();
-                this.connectorRunning.set(false);
-                this.stopOrFailLatch.countDown();
-                this.startLatch.countUp();
-                this.allTasksStartedLatch.countUp();
-                this.connectorAndTasksStoppedLatch.countDown();
-            }
-        }
-
-        @Override
-        public void taskStarted(String name, int taskNumber, int totalTaskCount) {
-            if (this.name.equals(name)) {
-                this.taskStarts.incrementAndGet();
-                this.tasksRunning.incrementAndGet();
-                if (taskNumber == totalTaskCount) {
-                    allTasksStartedLatch.countDown();
-                }
-                this.connectorAndTasksStoppedLatch.countUp();
-            }
-        }
-
-        @Override
-        public void taskStopped(String name, int taskNumber, int totalTaskCount) {
-            if (this.name.equals(name)) {
-                this.taskStops.incrementAndGet();
-                this.tasksRunning.decrementAndGet();
-                this.connectorAndTasksStoppedLatch.countDown();
-            }
-        }
-
-        public int runningTaskCount() {
-            return this.tasksRunning.get();
-        }
-
-        public int taskStarts() {
-            return this.taskStarts.get();
-        }
-
-        public int taskStops() {
-            return this.taskStops.get();
-        }
-
-        public boolean isRunning() {
-            return this.connectorRunning.get();
-        }
-
-        public int connectorStarts() {
-            return this.connectorStarts.get();
-        }
-
-        public int connectorStops() {
-            return this.connectorStops.get();
-        }
-
-        public List<Failure> connectorFailures() {
-            return Collections.unmodifiableList(this.connectorFailures);
+            super(connectorName);
         }
 
         public void assertConnectorStarts(int connectorStarts) {
@@ -444,8 +330,8 @@ public class ConnectorEngineTest {
         }
 
         public void assertConnectorFailures(int failureCount) {
-            if (connectorFailures().size() != failureCount) {
-                Testing.print("Connector '" + name + "' failures: " + connectorFailures());
+            if (connectorFailureCount() != failureCount) {
+                Testing.print("Connector '" + name() + "' failures: " + connectorFailures());
                 assertThat(connectorFailures().size()).isEqualTo(failureCount);
             }
         }
@@ -496,73 +382,5 @@ public class ConnectorEngineTest {
             assertTaskStops(startedTasks);
             assertThat(stopOrFailLatch.getCount()).isEqualTo(0);
         }
-
-        public void waitForStopOrFail(long timeout, TimeUnit unit) throws InterruptedException {
-            stopOrFailLatch.await(timeout, unit);
-            connectorAndTasksStoppedLatch.await(timeout, unit);
-        }
-
-        public void waitForStart(long timeout, TimeUnit unit) throws InterruptedException {
-            startLatch.await(timeout, unit);
-            allTasksStartedLatch.await(timeout, unit);
-        }
-
-        @Override
-        public String toString() {
-            return "Connector '" + name + "' (running=" + isRunning() + "; tasks=" + runningTaskCount() + "; starts=" + connectorStarts()
-                    + "; stops=" + connectorStops() + "; failures=" + connectorFailures().size() + "; taskStarts=" + taskStarts()
-                    + "; taskStops=" + taskStops() + ")";
-        }
     }
-
-    @ThreadSafe
-    public static class ConnectorCallbacks implements ConnectorCallback {
-        private final ConcurrentMap<String, ConnectorLifecycleStats> stats = new ConcurrentHashMap<>();
-
-        @Override
-        public void connectorStarted(String name) {
-            statsFor(name).connectorStarted(name);
-        }
-
-        @Override
-        public void connectorFailed(String name, String message, Throwable error) {
-            statsFor(name).connectorFailed(name, message, error);
-        }
-
-        @Override
-        public void connectorStopped(String name) {
-            statsFor(name).connectorStopped(name);
-        }
-
-        @Override
-        public void taskStarted(String name, int taskNumber, int totalTaskCount) {
-            statsFor(name).taskStarted(name, taskNumber, totalTaskCount);
-        }
-
-        @Override
-        public void taskStopped(String name, int taskNumber, int totalTaskCount) {
-            statsFor(name).taskStopped(name, taskNumber, totalTaskCount);
-        }
-
-        public ConnectorLifecycleStats forConnector(String connectorName) {
-            return statsFor(connectorName);
-        }
-
-        public void assertNoCallbacks() {
-            assertThat(stats.isEmpty()).isTrue();
-        }
-
-        protected ConnectorLifecycleStats statsFor(String connectorName) {
-            return stats.computeIfAbsent(connectorName, ConnectorLifecycleStats::new);
-        }
-
-        @Override
-        public String toString() {
-            return stats.values()
-                        .stream()
-                        .map(ConnectorLifecycleStats::toString)
-                        .collect(Collectors.joining(System.lineSeparator()));
-        }
-    }
-
 }

@@ -62,8 +62,10 @@ import io.debezium.util.VariableLatch;
  * the running thread (e.g., as is the case with {@link ExecutorService#shutdownNow()}).
  * 
  * @author Randall Hauch
+ * @deprecated use {@link ConnectorEngine} instead
  */
 @ThreadSafe
+@Deprecated
 public final class EmbeddedEngine implements Runnable {
 
     /**

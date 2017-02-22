@@ -12,7 +12,6 @@ import static io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotM
 import static io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode.NEVER;
 import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
 import static io.debezium.connector.postgresql.TestHelper.topicName;
-import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -24,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
+
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.data.Struct;
@@ -36,17 +36,19 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.postgresql.util.PSQLState;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.embedded.EmbeddedEngine;
+import io.debezium.embedded.ConnectorEngine.ConnectorCallback;
 import io.debezium.util.Strings;
 
 /**
- * Integration test for {@link PostgresConnector} using an {@link io.debezium.embedded.EmbeddedEngine} 
+ * Integration test for {@link PostgresConnector} using an {@link io.debezium.embedded.EmbeddedEngine}
  * 
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
@@ -65,7 +67,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
    
     @BeforeClass
     public static void beforeClass() throws SQLException {
-        TestHelper.dropAllSchemas();        
+        TestHelper.dropAllSchemas();
     }
     
     @Before
@@ -75,7 +77,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     
     @Test
     public void shouldValidateConnectorConfigDef() {
-        connector = new PostgresConnector(); 
+        connector = new PostgresConnector();
         ConfigDef configDef = connector.config();
         assertThat(configDef).isNotNull();
         PostgresConnectorConfig.ALL_FIELDS.forEach(this::validateFieldDef);
@@ -88,18 +90,14 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     
         // we expect the engine will log at least one error, so preface it ...
         logger.info("Attempting to start the connector with an INVALID configuration, so MULTIPLE error messages & one exceptions will appear in the log");
-        start(PostgresConnector.class, config, (success, msg, error) -> {
-            assertThat(success).isFalse();
-            assertThat(error).isNotNull();
-        });
-        assertConnectorNotRunning();            
+        verifyInvalidConfiguration(PostgresConnector.class, config);
     }
     
     @Test
     public void shouldValidateMinimalConfiguration() throws Exception {
         Configuration config = TestHelper.defaultConfig().build();
         Config validateConfig = new PostgresConnector().validate(config.asMap());
-        validateConfig.configValues().forEach(configValue -> assertTrue("Unexpected error for: " + configValue.name(), 
+        validateConfig.configValues().forEach(configValue -> assertTrue("Unexpected error for: " + configValue.name(),
                                                                         configValue.errorMessages().isEmpty()));
     }
     
@@ -121,13 +119,13 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         validateField(validatedConfig, PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
         validateField(validatedConfig, PostgresConnectorConfig.PORT, PostgresConnectorConfig.DEFAULT_PORT);
         validateField(validatedConfig, PostgresConnectorConfig.SERVER_NAME, null);
-        validateField(validatedConfig, PostgresConnectorConfig.TOPIC_SELECTION_STRATEGY, 
+        validateField(validatedConfig, PostgresConnectorConfig.TOPIC_SELECTION_STRATEGY,
                       PostgresConnectorConfig.TopicSelectionStrategy.TOPIC_PER_TABLE.name().toLowerCase());
         validateField(validatedConfig, PostgresConnectorConfig.MAX_QUEUE_SIZE, PostgresConnectorConfig.DEFAULT_MAX_QUEUE_SIZE);
         validateField(validatedConfig, PostgresConnectorConfig.MAX_BATCH_SIZE, PostgresConnectorConfig.DEFAULT_MAX_BATCH_SIZE);
         validateField(validatedConfig, PostgresConnectorConfig.ROWS_FETCH_SIZE, PostgresConnectorConfig.DEFAULT_ROWS_FETCH_SIZE);
         validateField(validatedConfig, PostgresConnectorConfig.POLL_INTERVAL_MS, PostgresConnectorConfig.DEFAULT_POLL_INTERVAL_MILLIS);
-        validateField(validatedConfig, PostgresConnectorConfig.SSL_MODE, 
+        validateField(validatedConfig, PostgresConnectorConfig.SSL_MODE,
                       PostgresConnectorConfig.SecureConnectionMode.DISABLED.name().toLowerCase());
         validateField(validatedConfig, PostgresConnectorConfig.SSL_CLIENT_CERT, null);
         validateField(validatedConfig, PostgresConnectorConfig.SSL_CLIENT_KEY, null);
@@ -138,11 +136,11 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         validateField(validatedConfig, PostgresConnectorConfig.TABLE_WHITELIST, null);
         validateField(validatedConfig, PostgresConnectorConfig.TABLE_BLACKLIST, null);
         validateField(validatedConfig, PostgresConnectorConfig.COLUMN_BLACKLIST, null);
-        validateField(validatedConfig, PostgresConnectorConfig.SNAPSHOT_MODE, 
+        validateField(validatedConfig, PostgresConnectorConfig.SNAPSHOT_MODE,
                       INITIAL.name().toLowerCase());
-        validateField(validatedConfig, PostgresConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, 
+        validateField(validatedConfig, PostgresConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS,
                       PostgresConnectorConfig.DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS);
-        validateField(validatedConfig, PostgresConnectorConfig.TIME_PRECISION_MODE, 
+        validateField(validatedConfig, PostgresConnectorConfig.TIME_PRECISION_MODE,
                       PostgresConnectorConfig.TemporalPrecisionMode.ADAPTIVE.name().toLowerCase());
     }
     
@@ -150,11 +148,10 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     public void shouldSupportSSLParameters() throws Exception {
         // the default docker image we're testing against doesn't use SSL, so check that the connector fails to start when
         // SSL is enabled
-        Configuration config = TestHelper.defaultConfig().with(PostgresConnectorConfig.SSL_MODE,  
+        Configuration config = TestHelper.defaultConfig().with(PostgresConnectorConfig.SSL_MODE,
                                                                PostgresConnectorConfig.SecureConnectionMode.REQUIRED).build();
-        start(PostgresConnector.class, config, (success, msg, error) -> {
+        verifyInvalidConfiguration(PostgresConnector.class, config, (msg, error) -> {
             // we expect the task to fail at startup when we're printing the server info
-            assertThat(success).isFalse();
             assertThat(error).isInstanceOf(ConnectException.class);
             Throwable cause = error.getCause();
             assertThat(cause).isInstanceOf(SQLException.class);
@@ -175,7 +172,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         //check the records from the snapshot
         assertRecordsFromSnapshot(2, 1, 1);
     
-        // insert 2 new records        
+        // insert 2 new records
         TestHelper.execute(INSERT_STMT);
         assertRecordsAfterInsert(2, 2, 2);
         
@@ -210,7 +207,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         // insert and verify 2 new records
         TestHelper.execute(INSERT_STMT);
         assertRecordsAfterInsert(2, 2, 2);
-    } 
+    }
     
     @Test
     public void shouldNotProduceEventsWithInitialOnlySnapshot() throws InterruptedException {
@@ -252,11 +249,11 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         stopConnector();
         assertNoRecordsToConsume();
     
-        //start the connector back up and check that a new snapshot has been performed 
+        //start the connector back up and check that a new snapshot has been performed
         start(PostgresConnector.class, configBuilder.with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE).build());
         assertConnectorIsRunning();
     
-        assertRecordsFromSnapshot(4, 1, 2, 1, 2);   
+        assertRecordsFromSnapshot(4, 1, 2, 1, 2);
     }
     
     @Test
@@ -268,11 +265,14 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                                                         .with(PostgresConnectorConfig.SNAPSHOT_MODE, INITIAL.getValue())
                                                         .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
-        EmbeddedEngine.CompletionCallback completionCallback = (success, message, error) -> {
-            if (error != null) {
-                latch.countDown();
-            } else {
+        ConnectorCallback completionCallback = new ConnectorCallback() {
+            @Override
+            public void connectorStopped(String name) {
                 fail("A controlled exception was expected....");
+            }
+            @Override
+            public void connectorFailed(String name, String message, Throwable error) {
+                latch.countDown();
             }
         };
         start(PostgresConnector.class, configBuilder.build(), completionCallback, stopOnPKPredicate(2));
@@ -287,7 +287,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         // stop the engine altogether
         stopConnector();
         // make sure there are no records to consume
-        assertNoRecordsToConsume();    
+        assertNoRecordsToConsume();
         // start the connector back up and check that it took another full snapshot since previously it was stopped midstream
         start(PostgresConnector.class, configBuilder.with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE).build());
         assertConnectorIsRunning();
@@ -356,7 +356,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @Ignore
     public void testStreamingPerformance() throws Exception {
         TestHelper.dropAllSchemas();
-        TestHelper.executeDDL("postgres_create_tables.ddl");        
+        TestHelper.executeDDL("postgres_create_tables.ddl");
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                                                         .with(PostgresConnectorConfig.SNAPSHOT_MODE, NEVER.getValue())
                                                         .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE);
@@ -382,7 +382,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 System.out.println("consumed " + totalConsumedRecords + " records");
             }
         }
-        System.out.println("total duration to ingest '" + recordsCount + "' records: " + 
+        System.out.println("total duration to ingest '" + recordsCount + "' records: " +
                            Strings.duration(System.currentTimeMillis() - start));
     }
     

@@ -5,7 +5,6 @@
  */
 package io.debezium.embedded;
 
-import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
@@ -22,27 +21,25 @@ import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.json.JsonDeserializer;
-import org.apache.kafka.connect.runtime.WorkerConfig;
-import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.apache.kafka.connect.storage.Converter;
-import org.apache.kafka.connect.storage.FileOffsetBackingStore;
-import org.apache.kafka.connect.storage.OffsetStorageReaderImpl;
 import org.fest.assertions.Delta;
 import org.junit.After;
 import org.junit.Before;
@@ -51,12 +48,14 @@ import org.junit.rules.TestRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import io.debezium.config.Configuration;
+import io.debezium.consumer.ChangeEvent;
 import io.debezium.data.SchemaUtil;
 import io.debezium.data.VerifyRecord;
-import io.debezium.embedded.EmbeddedEngine.CompletionCallback;
-import io.debezium.embedded.EmbeddedEngine.ConnectorCallback;
-import io.debezium.embedded.EmbeddedEngine.EmbeddedConfig;
+import io.debezium.embedded.ConnectorEngine.ConnectorCallback;
+import io.debezium.embedded.ConnectorEngine.SourceChangeEvent;
 import io.debezium.function.BooleanConsumer;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.relational.history.HistoryRecord;
@@ -75,14 +74,14 @@ import io.debezium.util.Testing;
  * @author Randall Hauch
  */
 public abstract class AbstractConnectorTest implements Testing {
-    
+
     @Rule
     public TestRule skipTestRule = new SkipTestRule();
-    
+
     protected static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath("file-connector-offsets.txt").toAbsolutePath();
 
     private ExecutorService executor;
-    private EmbeddedEngine engine;
+    private ConnectorEngine engine;
     private BlockingQueue<SourceRecord> consumedLines;
     protected long pollTimeoutInMs = TimeUnit.SECONDS.toMillis(5);
     protected final Logger logger = LoggerFactory.getLogger(getClass());
@@ -128,36 +127,25 @@ public abstract class AbstractConnectorTest implements Testing {
     public void stopConnector(BooleanConsumer callback) {
         try {
             logger.info("Stopping the connector");
-            // Try to stop the connector ...
-            if (engine != null && engine.isRunning()) {
-                engine.stop();
-                try {
-                    engine.await(8, TimeUnit.SECONDS);
-                } catch (InterruptedException e) {
-                    Thread.interrupted();
-                }
-            }
-            if (executor != null) {
-                List<Runnable> neverRunTasks = executor.shutdownNow();
-                assertThat(neverRunTasks).isEmpty();
-                try {
-                    while (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
-                        // wait for completion ...
-                    }
-                } catch (InterruptedException e) {
-                    Thread.interrupted();
-                }
-            }
+            // Try to stop the engine and connector ...
             if (engine != null && engine.isRunning()) {
                 try {
-                    while (!engine.await(5, TimeUnit.SECONDS)) {
-                        // Wait for connector to stop completely ...
-                    }
+                    engine.close();
                 } catch (InterruptedException e) {
                     Thread.interrupted();
+                } catch (ExecutionException e) {
+                    logger.error("Unexpected error while stopping connector(s): {}", e.getMessage(), e);
                 }
+                if (executor != null) {
+                    executor.shutdownNow();
+                    try {
+                        executor.awaitTermination(10, TimeUnit.SECONDS);
+                    } catch (InterruptedException e) {
+                        Thread.interrupted();
+                    }
+                }
+                if (callback != null) callback.accept(!engine.isRunning());
             }
-            if (callback != null) callback.accept(engine != null ? engine.isRunning() : false);
         } finally {
             engine = null;
             executor = null;
@@ -179,19 +167,58 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     /**
-     * Create a {@link CompletionCallback} that logs when the engine fails to start the connector or when the connector
+     * Create a {@link ConnectorCallback} that logs when the engine fails to start the connector or when the connector
      * stops running after completing successfully or due to an error
      * 
-     * @return the logging {@link CompletionCallback}
+     * @return the callback that logs the calls; never null
      */
-    protected CompletionCallback loggingCompletion() {
-        return (success, msg, error) -> {
-            if (success) {
-                logger.info(msg);
-            } else {
-                logger.error(msg, error);
+    protected ConnectorCallback loggingCompletion() {
+        return ConnectorCallbacks.loggingCallback(logger);
+    }
+
+    public static interface CompletionCallback {
+        public void completed(boolean success, String message, Throwable error);
+    }
+
+    /**
+     * Attempt to start the connector using the supplied connector configuration that is expected to be invalid, and verify
+     * that the connector did not start.
+     * 
+     * @param connectorClass the connector class; may not be null
+     * @param connectorConfig the invalid configuration for the connector; may not be null
+     */
+    protected void verifyInvalidConfiguration(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig) {
+        verifyInvalidConfiguration(connectorClass, connectorConfig, null);
+    }
+
+    /**
+     * Attempt to start the connector using the supplied connector configuration that is expected to be invalid, and verify
+     * that the connector did not start.
+     * 
+     * @param connectorClass the connector class; may not be null
+     * @param connectorConfig the invalid configuration for the connector; may not be null
+     * @param errorHandler the function that should be called with the error; may be null if not needed
+     */
+    protected void verifyInvalidConfiguration(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig,
+                                              BiConsumer<String, Throwable> errorHandler) {
+        start(connectorClass, connectorConfig, new ConnectorCallback() {
+            @Override
+            public void connectorStarted(String name) {
+                fail("Connector configuration should not have been valid");
             }
-        };
+
+            @Override
+            public void connectorStopped(String name) {
+            }
+
+            @Override
+            public void connectorFailed(String name, String message, Throwable error) {
+                assertThat(message).isNotNull();
+                assertThat(error).isNotNull();
+                if (errorHandler != null) errorHandler.accept(message, error);
+            }
+        });
+        assertConnectorNotRunning();
     }
 
     /**
@@ -202,7 +229,7 @@ public abstract class AbstractConnectorTest implements Testing {
      * @param connectorConfig the configuration for the connector; may not be null
      */
     protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig) {
-        start(connectorClass, connectorConfig, loggingCompletion(), null);
+        start(connectorClass, connectorConfig, null, null);
     }
 
     /**
@@ -216,7 +243,7 @@ public abstract class AbstractConnectorTest implements Testing {
      */
     protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig,
                          Predicate<SourceRecord> isStopRecord) {
-        start(connectorClass, connectorConfig, loggingCompletion(), isStopRecord);
+        start(connectorClass, connectorConfig, null, isStopRecord);
     }
 
     /**
@@ -228,7 +255,7 @@ public abstract class AbstractConnectorTest implements Testing {
      *            stops running after completing successfully or due to an error; may be null
      */
     protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig,
-                         CompletionCallback callback) {
+                         ConnectorCallback callback) {
         start(connectorClass, connectorConfig, callback, null);
     }
 
@@ -243,63 +270,83 @@ public abstract class AbstractConnectorTest implements Testing {
      *            stops running after completing successfully or due to an error; may be null
      */
     protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig,
-                         CompletionCallback callback, Predicate<SourceRecord> isStopRecord) {
-        Configuration config = Configuration.copy(connectorConfig)
-                                            .with(EmbeddedEngine.ENGINE_NAME, "testing-connector")
-                                            .with(EmbeddedEngine.CONNECTOR_CLASS, connectorClass.getName())
-                                            .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
-                                            .with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 0)
+                         ConnectorCallback callback, Predicate<SourceRecord> isStopRecord) {
+        Configuration config = Configuration.create()
+                                            .with(ConnectorEngine.NAME, "testing-connector")
+                                            .with(ConnectorEngine.CONNECTOR_CLASS, connectorClass.getName())
+                                            .with(ConnectorEngine.OFFSET_STORAGE_FILE_FILENAME, OFFSET_STORE_PATH)
+                                            .with(ConnectorEngine.OFFSET_FLUSH_INTERVAL_MS, 0)
                                             .build();
+        // Create a latch that only unblocks if there was an error or after the first task has been started
         latch = new CountDownLatch(1);
-        CompletionCallback wrapperCallback = (success, msg, error) -> {
-            try {
-                if (callback != null) callback.handle(success, msg, error);
-            } finally {
-                if (!success) {
-                    // we only unblock if there was an error; in all other cases we're unblocking when a task has been started
-                    latch.countDown();
-                }
-            }
-            Testing.debug("Stopped connector");
-        };
-        
-        ConnectorCallback connectorCallback = new ConnectorCallback() {
+        AtomicBoolean isRunning = new AtomicBoolean(false);
+        ConnectorCallback wrapperCallback = loggingCompletion().andThen(callback).andThen(new ConnectorCallback() {
             @Override
-            public void taskStarted() {
-                // if this is called, it means a task has been started successfully so we can continue
-                latch.countDown();        
+            public void connectorStopped(String name) {
+                isRunning.set(false);
             }
-        }; 
-        
-        // Create the connector ...
-        engine = EmbeddedEngine.create()
-                               .using(config)
-                               .notifying((record) -> {
-                                   if (isStopRecord != null && isStopRecord.test(record)) {
-                                       logger.error("Stopping connector after record as requested");
-                                       throw new ConnectException("Stopping connector after record as requested");
-                                   }
-                                   try {
-                                       consumedLines.put(record);
-                                   } catch (InterruptedException e) {
-                                       Thread.interrupted();
-                                   }
-                               })
-                               .using(this.getClass().getClassLoader())
-                               .using(wrapperCallback)
-                               .using(connectorCallback)
-                               .build();
 
-        // Submit the connector for asynchronous execution ...
+            @Override
+            public void connectorFailed(String name, String message, Throwable error) {
+                isRunning.set(false);
+                latch.countDown();
+            }
+
+            @Override
+            public void taskStarted(String name, int taskNumber, int totalTaskCount) {
+                isRunning.set(true);
+                latch.countDown();
+            }
+        });
+
+        // Create the engine and add the connector ...
+        engine = new ConnectorEngine(config);
+        try {
+            engine.addConnector(connectorConfig, wrapperCallback);
+        } catch (Throwable t) {
+            logger.error("Unexpected exception: {}", t.getMessage(), t);
+        }
+
+        // Start the engine and connector ...
+        engine.start();
+
+        // Start a thread that will process the change events until the connector is stopped ...
         assertThat(executor).isNull();
         executor = Executors.newFixedThreadPool(1);
         executor.execute(() -> {
             LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
-            engine.run();
+            logger.debug("Starting to consume events from connector");
+            try {
+                while (isRunning.get()) {
+                    List<ChangeEvent> events = engine.poll(10, TimeUnit.MILLISECONDS);
+                    for (ChangeEvent event : events) {
+                        if (!isRunning.get()) break;
+                        SourceRecord record = ((SourceChangeEvent) event).asRecord();
+
+                        // First see if this event is the "stop" record ...
+                        if (isStopRecord != null && isStopRecord.test(record)) {
+                            logger.error("Stopping connector after record as requested");
+                            engine.stopAllConnectors();
+                            return;
+                        }
+                        // Otherwise consume the event ...
+                        try {
+                            consumedLines.put(record);
+                            event.commit();
+                        } catch (InterruptedException e) {
+                            Thread.interrupted();
+                        }
+                    }
+                }
+            } catch (InterruptedException e) {
+                Thread.interrupted();
+            }
+            logger.debug("Stopped consuming events from connector");
         });
+
+        // Before returning, wait until the connector starts at least one task or fails altogether ...
         try {
             if (!latch.await(10, TimeUnit.SECONDS)) {
-                // maybe it takes more time to start up, so just log a warning and continue
                 logger.warn("The connector did not finish starting its task(s) or complete in the expected amount of time");
             }
         } catch (InterruptedException e) {
@@ -549,50 +596,51 @@ public abstract class AbstractConnectorTest implements Testing {
     protected void assertTombstone(SourceRecord record) {
         VerifyRecord.isValidTombstone(record);
     }
-    
-    protected void assertOffset(SourceRecord record, Map<String,?> expectedOffset) {
-        Map<String,?> offset = record.sourceOffset();
+
+    protected void assertOffset(SourceRecord record, Map<String, ?> expectedOffset) {
+        Map<String, ?> offset = record.sourceOffset();
         assertThat(offset).isEqualTo(expectedOffset);
     }
-    
+
     protected void assertOffset(SourceRecord record, String offsetField, Object expectedValue) {
-        Map<String,?> offset = record.sourceOffset();
+        Map<String, ?> offset = record.sourceOffset();
         Object value = offset.get(offsetField);
-        assertSameValue(value,expectedValue);
+        assertSameValue(value, expectedValue);
     }
-    
+
     protected void assertValueField(SourceRecord record, String fieldPath, Object expectedValue) {
         Object value = record.value();
         String[] fieldNames = fieldPath.split("/");
         String pathSoFar = null;
-        for (int i=0; i!=fieldNames.length; ++i) {
+        for (int i = 0; i != fieldNames.length; ++i) {
             String fieldName = fieldNames[i];
             if (value instanceof Struct) {
-                value = ((Struct)value).get(fieldName);
+                value = ((Struct) value).get(fieldName);
             } else {
                 // We expected the value to be a struct ...
                 String path = pathSoFar == null ? "record value" : ("'" + pathSoFar + "'");
-                String msg = "Expected the " + path + " to be a Struct but was " + value.getClass().getSimpleName() + " in record: " + SchemaUtil.asString(record);
+                String msg = "Expected the " + path + " to be a Struct but was " + value.getClass().getSimpleName() + " in record: "
+                        + SchemaUtil.asString(record);
                 fail(msg);
             }
             pathSoFar = pathSoFar == null ? fieldName : pathSoFar + "/" + fieldName;
         }
-        assertSameValue(value,expectedValue);
+        assertSameValue(value, expectedValue);
     }
-    
+
     private void assertSameValue(Object actual, Object expected) {
-        if(expected instanceof Double || expected instanceof Float || expected instanceof BigDecimal) {
+        if (expected instanceof Double || expected instanceof Float || expected instanceof BigDecimal) {
             // Value should be within 1%
-            double expectedNumericValue = ((Number)expected).doubleValue();
-            double actualNumericValue = ((Number)actual).doubleValue();
-            assertThat(actualNumericValue).isEqualTo(expectedNumericValue, Delta.delta(0.01d*expectedNumericValue));
+            double expectedNumericValue = ((Number) expected).doubleValue();
+            double actualNumericValue = ((Number) actual).doubleValue();
+            assertThat(actualNumericValue).isEqualTo(expectedNumericValue, Delta.delta(0.01d * expectedNumericValue));
         } else if (expected instanceof Integer || expected instanceof Long || expected instanceof Short) {
-            long expectedNumericValue = ((Number)expected).longValue();
-            long actualNumericValue = ((Number)actual).longValue();
+            long expectedNumericValue = ((Number) expected).longValue();
+            long actualNumericValue = ((Number) actual).longValue();
             assertThat(actualNumericValue).isEqualTo(expectedNumericValue);
         } else if (expected instanceof Boolean) {
-            boolean expectedValue = ((Boolean)expected).booleanValue();
-            boolean actualValue = ((Boolean)actual).booleanValue();
+            boolean expectedValue = ((Boolean) expected).booleanValue();
+            boolean actualValue = ((Boolean) actual).booleanValue();
             assertThat(actualValue).isEqualTo(expectedValue);
         } else {
             assertThat(actual).isEqualTo(expected);
@@ -690,38 +738,20 @@ public abstract class AbstractConnectorTest implements Testing {
      */
     protected <T> Map<Map<String, T>, Map<String, Object>> readLastCommittedOffsets(Configuration config,
                                                                                     Collection<Map<String, T>> partitions) {
-        config = config.edit().with(EmbeddedEngine.ENGINE_NAME, "testing-connector")
-                       .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
-                       .with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 0)
+        config = config.edit().with(ConnectorEngine.NAME, "testing-connector")
+                       .with(ConnectorEngine.OFFSET_STORAGE_FILE_FILENAME, OFFSET_STORE_PATH)
+                       .with(ConnectorEngine.OFFSET_FLUSH_INTERVAL_MS, 0)
                        .build();
-
-        final String engineName = config.getString(EmbeddedEngine.ENGINE_NAME);
-        Converter keyConverter = config.getInstance(EmbeddedEngine.INTERNAL_KEY_CONVERTER_CLASS, Converter.class);
-        keyConverter.configure(config.subset(EmbeddedEngine.INTERNAL_KEY_CONVERTER_CLASS.name() + ".", true).asMap(), true);
-        Converter valueConverter = config.getInstance(EmbeddedEngine.INTERNAL_VALUE_CONVERTER_CLASS, Converter.class);
-        Configuration valueConverterConfig = config;
-        if (valueConverter instanceof JsonConverter) {
-            // Make sure that the JSON converter is configured to NOT enable schemas ...
-            valueConverterConfig = config.edit().with(EmbeddedEngine.INTERNAL_VALUE_CONVERTER_CLASS + ".schemas.enable", false).build();
-        }
-        valueConverter.configure(valueConverterConfig.subset(EmbeddedEngine.INTERNAL_VALUE_CONVERTER_CLASS.name() + ".", true).asMap(),
-                                 false);
-
-        // Create the worker config, adding extra fields that are required for validation of a worker config
-        // but that are not used within the embedded engine (since the source records are never serialized) ...
-        Map<String, String> embeddedConfig = config.asMap(EmbeddedEngine.ALL_FIELDS);
-        embeddedConfig.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
-        embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
-        WorkerConfig workerConfig = new EmbeddedConfig(embeddedConfig);
-
-        FileOffsetBackingStore offsetStore = new FileOffsetBackingStore();
-        offsetStore.configure(workerConfig);
-        offsetStore.start();
+        ConnectorEngine engine = new ConnectorEngine(config);
+        engine.start();
         try {
-            OffsetStorageReaderImpl offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName, keyConverter, valueConverter);
-            return offsetReader.offsets(partitions);
+            return engine.readLastCommittedOffsets(partitions);
         } finally {
-            offsetStore.stop();
+            try {
+                engine.close();
+            } catch (Throwable t) {
+                logger.error("Unexpected exception while reading committed offsets: {}", t.getMessage(), t);
+            }
         }
     }
 

@@ -30,7 +30,10 @@ import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.data.Envelope;
 import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.embedded.EmbeddedEngine.CompletionResult;
+import io.debezium.embedded.ConnectorCallbacks;
+import io.debezium.embedded.ConnectorCallbacks.ConnectorResult;
+import io.debezium.embedded.ConnectorCallbacks.ConnectorResults;
+import io.debezium.embedded.ConnectorEngine;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.relational.history.KafkaDatabaseHistory;
@@ -73,11 +76,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         // we expect the engine will log at least one error, so preface it ...
         logger.info("Attempting to start the connector with an INVALID configuration, so MULTIPLE error messages & one exceptions will appear in the log");
-        start(MySqlConnector.class, config, (success, msg, error) -> {
-            assertThat(success).isFalse();
-            assertThat(error).isNotNull();
-        });
-        assertConnectorNotRunning();
+        verifyInvalidConfiguration(MySqlConnector.class, config);
     }
 
     @Test
@@ -528,8 +527,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Restart the connector to read only part of a transaction ...
         // ---------------------------------------------------------------------------------------------------------------
         Testing.print("*** Restarting connector");
-        CompletionResult completion = new CompletionResult();
-        start(MySqlConnector.class, config, completion, (record) -> {
+        ConnectorResults callback = ConnectorCallbacks.results();
+        start(MySqlConnector.class, config, callback, (record) -> {
             // We want to stop before processing record 3003 ...
             Struct key = (Struct) record.key();
             Number id = (Number) key.get("id");
@@ -573,10 +572,10 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertInsert(inserts.get(1), "id", 3002);
 
         // Verify that the connector has stopped ...
-        completion.await(10, TimeUnit.SECONDS);
-        assertThat(completion.hasCompleted()).isTrue();
-        assertThat(completion.hasError()).isTrue();
-        assertThat(completion.success()).isFalse();
+        ConnectorResult completion = callback.forConnector(config.getString(ConnectorEngine.CONNECTOR_NAME));
+        completion.waitForStopOrFail(10, TimeUnit.SECONDS);
+        assertThat(completion.hasStartedAndStopped()).isTrue();
+        assertThat(completion.hasFailed()).isTrue();
         assertNoRecordsToConsume();
         assertConnectorNotRunning();
 

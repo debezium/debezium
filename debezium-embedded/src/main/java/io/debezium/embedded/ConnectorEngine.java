@@ -65,6 +65,7 @@ import io.debezium.config.InvalidConfigurationException;
 import io.debezium.consumer.ChangeEvent;
 import io.debezium.consumer.EventService;
 import io.debezium.consumer.EventStream;
+import io.debezium.data.SchemaUtil;
 import io.debezium.util.Clock;
 import io.debezium.util.Threads;
 
@@ -297,6 +298,46 @@ public class ConnectorEngine implements EventStream {
             // nothing by default
         }
 
+        /**
+         * Return a new callback that calls this callback and then the other callback.
+         * @param other the other callback to call in addition to this callback
+         * @return the new callback, or this callback if {@code other} is null or {@code this}
+         */
+        default ConnectorCallback andThen(ConnectorCallback other) {
+            if (other == null || other == this) return this;
+            ConnectorCallback first = this;
+            return new ConnectorCallback() {
+                @Override
+                public void connectorStarted(String name) {
+                    first.connectorStarted(name);
+                    other.connectorStarted(name);
+                }
+
+                @Override
+                public void connectorStopped(String name) {
+                    first.connectorStopped(name);
+                    other.connectorStopped(name);
+                }
+
+                @Override
+                public void connectorFailed(String name, String message, Throwable error) {
+                    first.connectorFailed(name, message, error);
+                    other.connectorFailed(name, message, error);
+                }
+
+                @Override
+                public void taskStarted(String name, int taskNumber, int totalTaskCount) {
+                    first.taskStarted(name, taskNumber, totalTaskCount);
+                    other.taskStarted(name, taskNumber, totalTaskCount);
+                }
+
+                @Override
+                public void taskStopped(String name, int taskNumber, int totalTaskCount) {
+                    first.taskStopped(name, taskNumber, totalTaskCount);
+                    other.taskStopped(name, taskNumber, totalTaskCount);
+                }
+            };
+        }
     }
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
@@ -930,6 +971,30 @@ public class ConnectorEngine implements EventStream {
         }
     }
 
+    /**
+     * Utility to read the last committed offset for the specified partition.
+     * 
+     * @param partition the partition to read
+     * @return the offsets; never null but possibly empty
+     */
+    public <T> Map<String, Object> readLastCommittedOffset(Map<String, T> partition) {
+        // Use a new offset storage reader each time ...
+        OffsetStorageReader offsetReader = new OffsetStorageReaderImpl(offsetStore, name, keyConverter, valueConverter);
+        return offsetReader.offset(partition);
+    }
+
+    /**
+     * Utility to read the last committed offsets for the specified partitions.
+     * 
+     * @param partitions the partitions
+     * @return the map of partitions to offsets; never null but possibly empty
+     */
+    public <T> Map<Map<String, T>, Map<String, Object>> readLastCommittedOffsets(Collection<Map<String, T>> partitions) {
+        // Use a new offset storage reader each time ...
+        OffsetStorageReader offsetReader = new OffsetStorageReaderImpl(offsetStore, name, keyConverter, valueConverter);
+        return offsetReader.offsets(partitions);
+    }
+
     private static CompletableFuture<Void> futureWithAllOf(List<CompletableFuture<Void>> futures) {
         return CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()]));
     }
@@ -1542,7 +1607,11 @@ public class ConnectorEngine implements EventStream {
 
         @Override
         public String toString() {
-            return record.toString();
+            return SchemaUtil.asString(record);
+        }
+
+        public SourceRecord asRecord() {
+            return record;
         }
     }
 }

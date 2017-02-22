@@ -76,11 +76,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
 
         // we expect the engine will log at least one error, so preface it ...
         logger.info("Attempting to start the connector with an INVALID configuration, so MULTIPLE error messages & one exceptions will appear in the log");
-        start(MongoDbConnector.class, config, (success, msg, error) -> {
-            assertThat(success).isFalse();
-            assertThat(error).isNotNull();
-        });
-        assertConnectorNotRunning();
+        verifyInvalidConfiguration(MongoDbConnector.class, config);
     }
 
     @Test
