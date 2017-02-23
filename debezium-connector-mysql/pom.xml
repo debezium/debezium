@@ -83,6 +83,7 @@
         <mysql.gtid.port>3306</mysql.gtid.port>
         <mysql.gtid.replica.port>3306</mysql.gtid.replica.port>
         <mysql.replica.port>3306</mysql.replica.port> <!-- by default use master as 'replica' -->
+        <mysql.init.timeout>60000</mysql.init.timeout> <!-- 60 seconds -->
         <!--
         By default, we should use the docker image maintained by the MySQL team. This property is changed with different profiles.
         However, we run one container with GTIDs and one without.
@@ -125,7 +126,7 @@
                       </log>
                       <wait>
                         <log>MySQL init process done. Ready for start up.</log>
-                        <time>30000</time> <!-- 30 seconds max -->
+                        <time>${mysql.init.timeout}</time>
                       </wait>
                     </run>
                     <build>
@@ -172,7 +173,7 @@
                       </log>
                       <wait>
                         <log>MySQL init process done. Ready for start up.</log>
-                        <time>30000</time>
+                        <time>${mysql.init.timeout}</time>
                       </wait>
                     </run>
                     <build>
@@ -223,7 +224,7 @@
                       </log>
                       <wait>
                         <log>MySQL init process done. Ready for start up.</log>
-                        <time>30000</time> <!-- 30 seconds max -->
+                        <time>${mysql.init.timeout}</time>
                       </wait>
                     </run>
                     <build>
