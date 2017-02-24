@@ -217,11 +217,11 @@
             </dependency>
 
             <!-- PostgreSQL connector -->
-             
+
             <dependency>
                 <groupId>org.postgresql</groupId>
                 <artifactId>postgresql</artifactId>
-                <version>42.0.0-SNAPSHOT</version>
+                <version>42.0.0</version>
             </dependency>
            
             <!--Make sure this version is compatible with the Protbuf-C version used on the server -->
