@@ -14,7 +14,9 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import com.datapipeline.base.error.DpError;
 import com.datapipeline.clients.DpAES;
+import com.dp.internal.bean.DpErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
@@ -44,6 +46,7 @@ public class ConnectionContext implements AutoCloseable {
     protected final DelayStrategy primaryBackoffStrategy;
     protected final boolean useHostsAsSeeds;
     protected ObjectMapper objectMapper = new ObjectMapper();
+    private final String dpTaskId;
 
 
     /**
@@ -56,6 +59,7 @@ public class ConnectionContext implements AutoCloseable {
         final String username = config.getString(MongoDbConnectorConfig.USER);
         final String password = DpAES.decrypt(config.getString(MongoDbConnectorConfig.PASSWORD));
         final String adminDbName = ReplicaSetDiscovery.ADMIN_DATABASE_NAME;
+        dpTaskId = config.getString(MongoDbConnectorConfig.DP_TASK_ID);
 
         // Set up the client pool so that it ...
         MongoClients.Builder clientBuilder = MongoClients.create();
@@ -195,8 +199,10 @@ public class ConnectionContext implements AutoCloseable {
                     handler.failed(attempts, maxAttempts - attempts, t);
                 }
                 if (attempts > maxAttempts) {
-                    throw new ConnectException("Unable to connect to primary node of '" + replicaSet + "' after " +
-                            attempts + " failed attempts");
+                    ConnectException e = new ConnectException("Unable to connect to primary node of '" + replicaSet + "' after " +
+                        attempts + " failed attempts");
+                    new DpError(e, e.getMessage(), String.valueOf(dpTaskId), null, DpErrorCode.CRITICAL_ERROR).report();
+                    throw e;
                 }
                 handler.failed(attempts, maxAttempts - attempts, null);
                 primaryBackoffStrategy.sleepWhen(true);
@@ -265,6 +271,7 @@ public class ConnectionContext implements AutoCloseable {
                     return;
                 } catch (Throwable t) {
                     errorHandler.accept(desc, t);
+                    throw t;
                 }
             }
         }
@@ -285,6 +292,7 @@ public class ConnectionContext implements AutoCloseable {
                     return;
                 } catch (Throwable t) {
                     errorHandler.accept(desc, t);
+                    throw t;
                 }
             }
         }
@@ -343,8 +351,11 @@ public class ConnectionContext implements AutoCloseable {
                 return replicaSetClient;
             }
             // This is not a replica set, so there will be no oplog to read ...
-            throw new ConnectException("The MongoDB server(s) at '" + replicaSet +
-                    "' is not a valid replica set and cannot be used");
+
+            ConnectException e = new ConnectException("The MongoDB server(s) at '" + replicaSet +
+                "' is not a valid replica set and cannot be used");
+            new DpError(e, e.getMessage(), String.valueOf(dpTaskId), null, DpErrorCode.CRITICAL_ERROR).report();
+            throw e;
         }
         // It is a replica set ...
         ServerAddress primaryAddress = rsStatus.getMaster();

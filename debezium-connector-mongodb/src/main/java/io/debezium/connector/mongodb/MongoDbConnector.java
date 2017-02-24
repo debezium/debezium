@@ -20,6 +20,8 @@ import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datapipeline.base.error.DpError;
+import com.dp.internal.bean.DpErrorCode;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoException;
 
@@ -28,48 +30,48 @@ import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext.PreviousContext;
 
 /**
- * A Kafka Connect source connector that creates {@link MongoDbConnectorTask tasks} that replicate the context of one or more
- * MongoDB replica sets.
- * 
- * <h2>Sharded Clusters</h2>
- * This connector is able to fully replicate the content of one <a href="https://docs.mongodb.com/manual/sharding/">sharded
- * MongoDB 3.2 cluster</a>. In this case, simply configure the connector with the host addresses of the configuration replica set.
- * When the connector starts, it will discover and replicate the replica set for each shard.
- * 
- * <h2>Replica Set</h2>
- * The connector is able to fully replicate the content of one <a href="https://docs.mongodb.com/manual/replication/">MongoDB
- * 3.2 replica set</a>. (Older MongoDB servers may be work but have not been tested.) In this case, simply configure the connector
- * with the host addresses of the replica set. When the connector starts, it will discover the primary node and use it to
- * replicate the contents of the replica set.
- * <p>
- * If necessary, a {@link MongoDbConnectorConfig#AUTO_DISCOVER_MEMBERS configuration property} can be used to disable the
- * logic used to discover the primary node, an in this case the connector will use the first host address specified in the
- * configuration as the primary node. Obviously this may cause problems when the replica set elects a different node as the
- * primary, since the connector will continue to read the oplog using the same node that may no longer be the primary.
- * 
- * <h2>Parallel Replication</h2>
- * The connector will concurrently and independently replicate each of the replica sets. When the connector is asked to
- * {@link #taskConfigs(int) allocate tasks}, it will attempt to allocate a separate task for each replica set. However, if the
- * maximum number of tasks exceeds the number of replica sets, then some tasks may replicate multiple replica sets. Note that
- * each task will use a separate thread to replicate each of its assigned replica sets.
- * 
- * <h2>Initial Sync and Reading the Oplog</h2>
- * When a connector begins to replicate a sharded cluster or replica set for the first time, it will perform an <em>initial
- * sync</em> of the collections in the replica set by generating source records for each document in each collection. Only when
- * this initial sync completes successfully will the replication then use the replica set's primary node to read the oplog and
- * produce source records for each oplog event. The replication process records the position of each oplog event as an
- * <em>offset</em>, so that upon restart the replication process can use the last recorded offset to determine where in the
- * oplog it is to begin reading and processing events.
- * 
- * <h2>Use of Topics</h2>
- * The connector will write to a separate topic all of the source records that correspond to a single collection. The topic will
- * be named "{@code <logicalName>.<databaseName>.<collectionName>}", where {@code <logicalName>} is set via the
+ * A Kafka Connect source connector that creates {@link MongoDbConnectorTask tasks} that replicate
+ * the context of one or more MongoDB replica sets.
+ *
+ * <h2>Sharded Clusters</h2> This connector is able to fully replicate the content of one <a
+ * href="https://docs.mongodb.com/manual/sharding/">sharded MongoDB 3.2 cluster</a>. In this case,
+ * simply configure the connector with the host addresses of the configuration replica set. When the
+ * connector starts, it will discover and replicate the replica set for each shard.
+ *
+ * <h2>Replica Set</h2> The connector is able to fully replicate the content of one <a
+ * href="https://docs.mongodb.com/manual/replication/">MongoDB 3.2 replica set</a>. (Older MongoDB
+ * servers may be work but have not been tested.) In this case, simply configure the connector with
+ * the host addresses of the replica set. When the connector starts, it will discover the primary
+ * node and use it to replicate the contents of the replica set. <p> If necessary, a {@link
+ * MongoDbConnectorConfig#AUTO_DISCOVER_MEMBERS configuration property} can be used to disable the
+ * logic used to discover the primary node, an in this case the connector will use the first host
+ * address specified in the configuration as the primary node. Obviously this may cause problems
+ * when the replica set elects a different node as the primary, since the connector will continue to
+ * read the oplog using the same node that may no longer be the primary.
+ *
+ * <h2>Parallel Replication</h2> The connector will concurrently and independently replicate each of
+ * the replica sets. When the connector is asked to {@link #taskConfigs(int) allocate tasks}, it
+ * will attempt to allocate a separate task for each replica set. However, if the maximum number of
+ * tasks exceeds the number of replica sets, then some tasks may replicate multiple replica sets.
+ * Note that each task will use a separate thread to replicate each of its assigned replica sets.
+ *
+ * <h2>Initial Sync and Reading the Oplog</h2> When a connector begins to replicate a sharded
+ * cluster or replica set for the first time, it will perform an <em>initial sync</em> of the
+ * collections in the replica set by generating source records for each document in each collection.
+ * Only when this initial sync completes successfully will the replication then use the replica
+ * set's primary node to read the oplog and produce source records for each oplog event. The
+ * replication process records the position of each oplog event as an <em>offset</em>, so that upon
+ * restart the replication process can use the last recorded offset to determine where in the oplog
+ * it is to begin reading and processing events.
+ *
+ * <h2>Use of Topics</h2> The connector will write to a separate topic all of the source records
+ * that correspond to a single collection. The topic will be named "{@code
+ * <logicalName>.<databaseName>.<collectionName>}", where {@code <logicalName>} is set via the
  * "{@link MongoDbConnectorConfig#LOGICAL_NAME mongodb.name}" configuration property.
- * 
- * <h2>Configuration</h2>
- * <p>
- * This connector is configured with the set of properties described in {@link MongoDbConnectorConfig}.
- * 
+ *
+ * <h2>Configuration</h2> <p> This connector is configured with the set of properties described in
+ * {@link MongoDbConnectorConfig}.
+ *
  * @author Randall Hauch
  */
 public class MongoDbConnector extends SourceConnector {
@@ -96,9 +98,12 @@ public class MongoDbConnector extends SourceConnector {
     public void start(Map<String, String> props) {
         // Validate the configuration ...
         final Configuration config = Configuration.from(props);
-        if (!config.validateAndRecord(MongoDbConnectorConfig.ALL_FIELDS, logger::error)) {
-            throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
-        }
+//        if (!config.validateAndRecord(MongoDbConnectorConfig.ALL_FIELDS, logger::error)) {
+//            ConnectException e = new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
+//            new DpError(e, e.getMessage(), config.getString(MongoDbConnectorConfig.DP_TASK_ID),
+//                null, DpErrorCode.CRITICAL_ERROR).report();
+//            throw e;
+//        }
 
         this.config = config;
 
@@ -111,7 +116,7 @@ public class MongoDbConnector extends SourceConnector {
             // Set up and start the thread that monitors the members of all of the replica sets ...
             ReplicaSetDiscovery monitor = new ReplicaSetDiscovery(replContext);
             monitorThread = new ReplicaSetMonitorThread(monitor::getReplicaSets, replContext.pollPeriodInSeconds(), TimeUnit.SECONDS,
-                    Clock.SYSTEM, () -> replContext.configureLoggingContext("disc"), this::replicaSetsChanged);
+                Clock.SYSTEM, () -> replContext.configureLoggingContext("disc"), this::replicaSetsChanged);
             monitorThread.start();
             logger.info("Successfully started MongoDB connector, and continuing to discover changes in replica sets", replContext.hosts());
         } finally {
@@ -142,16 +147,16 @@ public class MongoDbConnector extends SourceConnector {
             ReplicaSets replicaSets = monitorThread.getReplicaSets(10, TimeUnit.SECONDS);
             if (replicaSets != null) {
                 logger.info("Subdividing {} MongoDB replica set(s) into at most {} task(s)",
-                            replicaSets.replicaSetCount(), maxTasks);
+                    replicaSets.replicaSetCount(), maxTasks);
                 replicaSets.subdivide(maxTasks, replicaSetsForTask -> {
                     // Create the configuration for each task ...
                     int taskId = taskConfigs.size();
                     logger.info("Configuring MongoDB connector task {} to capture events for replica set(s) at {}", taskId, replicaSetsForTask.hosts());
                     taskConfigs.add(config.edit()
-                                          .with(MongoDbConnectorConfig.HOSTS, replicaSetsForTask.hosts())
-                                          .with(MongoDbConnectorConfig.TASK_ID, taskId)
-                                          .build()
-                                          .asMap());
+                        .with(MongoDbConnectorConfig.HOSTS, replicaSetsForTask.hosts())
+                        .with(MongoDbConnectorConfig.TASK_ID, taskId)
+                        .build()
+                        .asMap());
                 });
             }
             logger.debug("Configuring {} MongoDB connector task(s)", taskConfigs.size());
@@ -168,16 +173,22 @@ public class MongoDbConnector extends SourceConnector {
             logger.info("Stopping MongoDB connector");
             this.config = null;
             try {
-                if ( this.monitorThread != null ) this.monitorThread.shutdown();
+                if (this.monitorThread != null) {
+                    this.monitorThread.shutdown();
+                }
             } finally {
                 try {
-                    if ( this.replContext != null ) this.replContext.shutdown();
+                    if (this.replContext != null) {
+                        this.replContext.shutdown();
+                    }
                 } finally {
                     logger.info("Stopped MongoDB connector");
                 }
             }
         } finally {
-            if ( previousLogContext != null ) previousLogContext.restore();
+            if (previousLogContext != null) {
+                previousLogContext.restore();
+            }
         }
     }
 
@@ -200,11 +211,11 @@ public class MongoDbConnector extends SourceConnector {
 
         // If there are no errors on any of these ...
         if (hostsValue.errorMessages().isEmpty()
-                && userValue.errorMessages().isEmpty()
-                && passwordValue.errorMessages().isEmpty()) {
+            && userValue.errorMessages().isEmpty()
+            && passwordValue.errorMessages().isEmpty()) {
             // Try to connect to the database ...
             try (ConnectionContext connContext = new ConnectionContext(config)) {
-                try ( MongoClient client = connContext.clientFor(connContext.hosts()) ) {
+                try (MongoClient client = connContext.clientFor(connContext.hosts())) {
                     client.listDatabaseNames();
                 }
             } catch (MongoException e) {

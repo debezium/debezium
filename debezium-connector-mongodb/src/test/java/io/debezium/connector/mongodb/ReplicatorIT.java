@@ -19,6 +19,7 @@ import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.junit.Test;
 
+import com.datapipeline.base.error.DpErrorDetector;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
@@ -70,7 +71,7 @@ public class ReplicatorIT extends AbstractMongoIT {
 
         // Start the replicator ...
         List<SourceRecord> records = new LinkedList<>();
-        Replicator replicator = new Replicator(context, replicaSet, records::add, "1");
+        Replicator replicator = new Replicator(context, replicaSet, records::add, new DpErrorDetector());
         Thread thread = new Thread(replicator::run);
         thread.start();
 
@@ -138,7 +139,7 @@ public class ReplicatorIT extends AbstractMongoIT {
 
         // Start the replicator again ...
         records = new LinkedList<>();
-        replicator = new Replicator(context, replicaSet, records::add,"1");
+        replicator = new Replicator(context, replicaSet, records::add, new DpErrorDetector());
         thread = new Thread(replicator::run);
         thread.start();
 
@@ -164,7 +165,7 @@ public class ReplicatorIT extends AbstractMongoIT {
 
         // Start the replicator again ...
         records = new LinkedList<>();
-        replicator = new Replicator(context, replicaSet, records::add, "1");
+        replicator = new Replicator(context, replicaSet, records::add, new DpErrorDetector());
         thread = new Thread(replicator::run);
         thread.start();
 
@@ -226,7 +227,7 @@ public class ReplicatorIT extends AbstractMongoIT {
 
         // Start the replicator again ...
         records = new LinkedList<>();
-        replicator = new Replicator(context, replicaSet, records::add, "1");
+        replicator = new Replicator(context, replicaSet, records::add, new DpErrorDetector());
         thread = new Thread(replicator::run);
         thread.start();
 
