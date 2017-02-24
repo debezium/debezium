@@ -197,7 +197,7 @@ public class MongoDbConnectorConfig {
                                                           .withValidation(Field::isListOfRegex)
                                                           .withInvisibleRecommender();
 
-    protected static final Field TASK_ID = Field.create("mongodb.task.id")
+    protected static final Field TASK_ID = Field.create("task.id")
                                                 .withDescription("Internal use only")
                                                 .withValidation(Field::isInteger)
                                                 .withInvisibleRecommender();
@@ -214,6 +214,10 @@ public class MongoDbConnectorConfig {
     public static final Field COLLECTION_SCHEMA_NAME_CONFIGURATION = Field.create("collection.schema.name")
             .withDependents("The name configuration for collections")
             .withType(Type.STRING).withImportance(Importance.MEDIUM).withDefault("");
+
+    public static final Field SCHEMA_MAPPING_EXEMPTION = Field.create("mongodb.schema.exemption")
+        .withDependents("The schema mapping exemptions")
+        .withType(Type.STRING).withImportance(Importance.MEDIUM).withDefault("");
 
     public static Field.Set ALL_FIELDS = Field.setOf(USER, PASSWORD, HOSTS, LOGICAL_NAME,
                                                      MAX_COPY_THREADS, MAX_QUEUE_SIZE, MAX_BATCH_SIZE,
