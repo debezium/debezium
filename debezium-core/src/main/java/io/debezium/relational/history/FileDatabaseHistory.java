@@ -5,6 +5,7 @@
  */
 package io.debezium.relational.history;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -14,6 +15,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -46,48 +48,90 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
     private final FunctionalReadWriteLock lock = FunctionalReadWriteLock.reentrant();
     private final DocumentWriter writer = DocumentWriter.defaultWriter();
     private final DocumentReader reader = DocumentReader.defaultReader();
+    private final AtomicBoolean running = new AtomicBoolean();
     private Path path;
 
     @Override
     public void configure(Configuration config, HistoryRecordComparator comparator) {
+        if (!config.validateAndRecord(ALL_FIELDS, logger::error)) {
+            throw new ConnectException(
+                    "Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
+        }
+        config.validateAndRecord(ALL_FIELDS, logger::error);
+        if (running.get()) {
+            throw new IllegalStateException("Database history file already initialized to " + path);
+        }
+        super.configure(config, comparator);
+        path = Paths.get(config.getString(FILE_PATH));
+    }
+
+    @Override
+    public void start() {
         lock.write(() -> {
-            if (!config.validateAndRecord(ALL_FIELDS, logger::error)) {
-                throw new ConnectException(
-                        "Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
+            if (running.compareAndSet(false, true)) {
+                Path path = this.path;
+                if (path == null) {
+                    throw new IllegalStateException("FileDatabaseHistory must be configured before it is started");
+                }
+                try {
+                    // Make sure the file exists ...
+                    if (!Files.exists(path)) {
+                        Files.createDirectories(path.getParent());
+                        try {
+                            Files.createFile(path);
+                        } catch (FileAlreadyExistsException e) {
+                            // do nothing
+                        }
+                    }
+                } catch (IOException e) {
+                    throw new DatabaseHistoryException("Unable to create history file at " + path + ": " + e.getMessage(), e);
+                }
             }
-            config.validateAndRecord(ALL_FIELDS, logger::error);
-            super.configure(config,comparator);
-            path = Paths.get(config.getString(FILE_PATH));
         });
     }
 
     @Override
-    protected void storeRecord(HistoryRecord record) {
+    protected void storeRecord(HistoryRecord record) throws DatabaseHistoryException {
+        if (record == null) return;
         lock.write(() -> {
+            if (!running.get()) {
+                throw new IllegalStateException("The history has been stopped and will not accept more records");
+            }
             try {
                 String line = writer.write(record.document());
-                if (!Files.exists(path)) {
-                    Files.createDirectories(path.getParent());
+                // Create a buffered writer to write all of the records, closing the file when there is an error or when
+                // the thread is no longer supposed to run
+                try (BufferedWriter historyWriter = Files.newBufferedWriter(path, StandardOpenOption.APPEND)) {
                     try {
-                        Files.createFile(path);
-                    } catch (FileAlreadyExistsException e) {
-                        // do nothing
+                        historyWriter.append(line);
+                        historyWriter.newLine();
+                    } catch (IOException e) {
+                        logger.error("Failed to add record to history at {}: {}", path, record, e);
+                        return;
                     }
+                } catch (IOException e) {
+                    throw new DatabaseHistoryException("Unable to create writer for history file " + path + ": " + e.getMessage(), e);
                 }
-                Files.write(path, Collect.arrayListOf(line), UTF8, StandardOpenOption.APPEND);
             } catch (IOException e) {
-                logger.error("Failed to add record to history at {}: {}", path, record, e);
+                logger.error("Failed to convert record to string: {}", record, e);
             }
         });
     }
 
     @Override
-    protected void recoverRecords(Tables schema, DdlParser ddlParser, Consumer<HistoryRecord> records) {
+    public void stop() {
+        running.set(false);
+    }
+
+    @Override
+    protected synchronized void recoverRecords(Tables schema, DdlParser ddlParser, Consumer<HistoryRecord> records) {
         lock.write(() -> {
             try {
                 if (Files.exists(path)) {
-                    for (String line : Files.readAllLines(path)) {
-                        records.accept(new HistoryRecord(reader.read(line)));
+                    for (String line : Files.readAllLines(path, UTF8)) {
+                        if (line != null && !line.isEmpty()) {
+                            records.accept(new HistoryRecord(reader.read(line)));
+                        }
                     }
                 }
             } catch (IOException e) {

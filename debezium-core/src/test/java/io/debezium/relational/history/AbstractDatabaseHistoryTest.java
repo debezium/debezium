@@ -5,8 +5,11 @@
  */
 package io.debezium.relational.history;
 
+import static org.junit.Assert.fail;
+
 import java.util.Map;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -50,6 +53,13 @@ public abstract class AbstractDatabaseHistoryTest {
         source2 = server("xyz");
         history = createHistory();
     }
+    
+    @After
+    public void afterEach() {
+        if (history != null) {
+            history.stop();
+        }
+    }
 
     protected abstract DatabaseHistory createHistory();
 
@@ -62,7 +72,11 @@ public abstract class AbstractDatabaseHistoryTest {
     }
 
     protected void record(long pos, int entry, String ddl, Tables... update) {
-        history.record(source1, position("a.log", pos, entry), "db", tables, ddl);
+        try {
+            history.record(source1, position("a.log", pos, entry), "db", tables, ddl);
+        } catch (Throwable t) {
+            fail(t.getMessage());
+        }
         for (Tables tables : update) {
             if (tables != null) {
                 parser.setCurrentSchema("db");
@@ -80,8 +94,8 @@ public abstract class AbstractDatabaseHistoryTest {
     @Test
     public void shouldRecordChangesAndRecoverToVariousPoints() {
         record(01, 0, "CREATE TABLE foo ( first VARCHAR(22) NOT NULL );", all, t3, t2, t1, t0);
-        record(23, 1, "CREATE TABLE person ( name VARCHAR(22) NOT NULL );", all, t3, t2, t1);
-        record(30, 2, "CREATE TABLE address ( street VARCHAR(22) NOT NULL );", all, t3, t2);
+        record(23, 1, "CREATE TABLE\\nperson ( name VARCHAR(22) NOT NULL );", all, t3, t2, t1);
+        record(30, 2, "CREATE TABLE address\\n( street VARCHAR(22) NOT NULL );", all, t3, t2);
         record(32, 3, "ALTER TABLE address ADD city VARCHAR(22) NOT NULL;", all, t3);
 
         // Testing.Print.enable();

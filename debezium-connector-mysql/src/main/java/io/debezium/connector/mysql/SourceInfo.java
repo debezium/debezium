@@ -5,6 +5,10 @@
  */
 package io.debezium.connector.mysql;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Predicate;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -19,6 +23,7 @@ import java.util.Map;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.data.Envelope;
 import io.debezium.document.Document;
+import io.debezium.relational.TableId;
 import io.debezium.util.Collect;
 
 /**
@@ -41,7 +46,7 @@ import io.debezium.util.Collect;
  * {@link #eventsToSkipUponRestart() number of events to skip}, and the
  * {@link #rowsToSkipUponRestart() number of rows to also skip}.
  * <p>
- * Here's a JSON-like representation of an example:
+ * Here's a JSON-like representation of an example offset:
  * 
  * <pre>
  * {
@@ -69,7 +74,7 @@ import io.debezium.util.Collect;
  * since the connector may need to restart from either just after the most recently completed transaction or the beginning
  * of the most recently started transaction (whichever appears later in the binlog).
  * <p>
- * Here's a JSON-like representation of the source for an event that corresponds to the above partition and
+ * Here's a JSON-like representation of the source for the metadata for an event that corresponds to the above partition and
  * offset:
  * 
  * <pre>
@@ -81,7 +86,12 @@ import io.debezium.util.Collect;
  *     "file": "mysql-bin.000003",
  *     "pos" = 1081,
  *     "row": 0,
- *     "snapshot": true
+ *     "snapshot": true,
+ *     "thread" : 1,
+ *     "db" : "inventory",
+ *     "table" : "products",
+ *     "entity" : "products",
+ *     "size" : "1000"
  * }
  * </pre>
  * 
@@ -104,6 +114,10 @@ final class SourceInfo {
     public static final String BINLOG_ROW_IN_EVENT_OFFSET_KEY = "row";
     public static final String TIMESTAMP_KEY = "ts_sec";
     public static final String SNAPSHOT_KEY = "snapshot";
+    public static final String THREAD_KEY = "thread";
+    public static final String DB_NAME_KEY = "db";
+    public static final String TABLE_NAME_KEY = "table";
+
     public static final String SNAPSHOT_LAST_RECORD_KEY = "last";
     public static final String SNAPSHOTTED_KEY = "snapshotted";
     public static final String ENTITY_NAME_KEY = "entity";
@@ -123,6 +137,9 @@ final class SourceInfo {
                                                      .field(BINLOG_POSITION_OFFSET_KEY, Schema.INT64_SCHEMA)
                                                      .field(BINLOG_ROW_IN_EVENT_OFFSET_KEY, Schema.INT32_SCHEMA)
                                                      .field(SNAPSHOT_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
+                                                     .field(THREAD_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+                                                     .field(DB_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                                                     .field(TABLE_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(ENTITY_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(ENTITY_SIZE_KEY, Schema.OPTIONAL_INT32_SCHEMA)
                                                      .build();
@@ -142,6 +159,7 @@ final class SourceInfo {
     private String serverName;
     private long serverId = 0;
     private long binlogTimestampSeconds = 0;
+    private long threadId = -1L;
     private Map<String, String> sourcePartition;
     private boolean lastSnapshot = true;
     private boolean nextSnapshot = false;
@@ -329,6 +347,20 @@ final class SourceInfo {
      * @see #schema()
      */
     public Struct struct() {
+        return struct(null);
+    }
+
+    /**
+     * Get a {@link Struct} representation of the source {@link #partition()} and {@link #offset()} information. The Struct
+     * complies with the {@link #SCHEMA} for the MySQL connector.
+     * <p>
+     * This method should always be called after {@link #offsetForRow(int, int)}.
+     * 
+     * @param tableId the table that should be included in the struct; may be null
+     * @return the source partition and offset {@link Struct}; never null
+     * @see #schema()
+     */
+    public Struct struct(TableId tableId) {
         assert serverName != null;
         Struct result = new Struct(SCHEMA);
         result.put(SERVER_NAME_KEY, serverName);
@@ -345,6 +377,13 @@ final class SourceInfo {
         result.put(ENTITY_SIZE_KEY, entitySize);
         if (lastSnapshot) {
             result.put(SNAPSHOT_KEY, true);
+        }
+        if (threadId >= 0) {
+            result.put(THREAD_KEY, threadId);
+        }
+        if (tableId != null) {
+            result.put(DB_NAME_KEY, tableId.catalog());
+            result.put(TABLE_NAME_KEY, tableId.table());
         }
         return result;
     }
@@ -446,6 +485,15 @@ final class SourceInfo {
      */
     public void setBinlogTimestampSeconds(long timestampInSeconds) {
         this.binlogTimestampSeconds = timestampInSeconds;
+    }
+
+    /**
+     * Set the identifier of the MySQL thread that generated the most recent event.
+     * 
+     * @param threadId the thread identifier; may be negative if not known
+     */
+    public void setBinlogThread(long threadId) {
+        this.threadId = threadId;
     }
 
     /**
@@ -616,9 +664,11 @@ final class SourceInfo {
      * @param recorded the position obtained from recorded history; never null
      * @param desired the desired position that we want to obtain, which should be after some recorded positions,
      *            at some recorded positions, and before other recorded positions; never null
+     * @param gtidFilter the predicate function that will return {@code true} if a GTID source is to be included, or
+     *            {@code false} if a GTID source is to be excluded; may be null if no filtering is to be done
      * @return {@code true} if the recorded position is at or before the desired position; or {@code false} otherwise
      */
-    public static boolean isPositionAtOrBefore(Document recorded, Document desired) {
+    public static boolean isPositionAtOrBefore(Document recorded, Document desired, Predicate<String> gtidFilter) {
         String recordedGtidSetStr = recorded.getString(GTID_SET_KEY);
         String desiredGtidSetStr = desired.getString(GTID_SET_KEY);
         if (desiredGtidSetStr != null) {
@@ -627,6 +677,11 @@ final class SourceInfo {
                 // Both have GTIDs, so base the comparison entirely on the GTID sets.
                 GtidSet recordedGtidSet = new GtidSet(recordedGtidSetStr);
                 GtidSet desiredGtidSet = new GtidSet(desiredGtidSetStr);
+                if (gtidFilter != null) {
+                    // Apply the GTID source filter before we do any comparisons ...
+                    recordedGtidSet = recordedGtidSet.retainAll(gtidFilter);
+                    desiredGtidSet = desiredGtidSet.retainAll(gtidFilter);
+                }
                 if (recordedGtidSet.equals(desiredGtidSet)) {
                     // They are exactly the same, which means the recorded position exactly matches the desired ...
                     if (!recorded.has(SNAPSHOT_KEY) && desired.has(SNAPSHOT_KEY)) {

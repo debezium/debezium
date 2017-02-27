@@ -7,10 +7,8 @@ package io.debezium.connector.mysql;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -33,11 +31,8 @@ import io.debezium.util.LoggingContext.PreviousContext;
 public final class MySqlConnectorTask extends SourceTask {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
-    private final AtomicBoolean runningReader = new AtomicBoolean(false);
     private volatile MySqlTaskContext taskContext;
-    private volatile SnapshotReader snapshotReader;
-    private volatile BinlogReader binlogReader;
-    private volatile AbstractReader currentReader;
+    private volatile ChainedReader readers;
 
     /**
      * Create an instance of the log reader that uses Kafka to store database schema history and the
@@ -145,37 +140,39 @@ public final class MySqlConnectorTask extends SourceTask {
             // Check whether the row-level binlog is enabled ...
             final boolean rowBinlogEnabled = isRowBinlogEnabled();
 
-            // Set up the readers ...
-            this.binlogReader = new BinlogReader(taskContext);
+            // Set up the readers, with a callback to `completeReaders` so that we know when it is finished ...
+            readers = new ChainedReader();
+            readers.uponCompletion(this::completeReaders);
+            BinlogReader binlogReader = new BinlogReader("binlog", taskContext);
             if (startWithSnapshot) {
                 // We're supposed to start with a snapshot, so set that up ...
-                this.snapshotReader = new SnapshotReader(taskContext);
+                SnapshotReader snapshotReader = new SnapshotReader("snapshot", taskContext);
+                snapshotReader.useMinimalBlocking(taskContext.useMinimalSnapshotLocking());
+                if (snapshotEventsAreInserts) snapshotReader.generateInsertEvents();
+                readers.add(snapshotReader);
+
                 if (taskContext.isInitialSnapshotOnly()) {
                     logger.warn("This connector will only perform a snapshot, and will stop after that completes.");
-                    this.snapshotReader.onSuccessfulCompletion(this::skipReadBinlog);
+                    readers.uponCompletion("Connector configured to only perform snapshot, and snapshot completed successfully. Connector will terminate.");
                 } else {
-                    this.snapshotReader.onSuccessfulCompletion(this::transitionToReadBinlog);
                     if (!rowBinlogEnabled) {
                         throw new ConnectException("The MySQL server is not configured to use a row-level binlog, which is "
                                 + "required for this connector to work properly. Change the MySQL configuration to use a "
                                 + "row-level binlog and restart the connector.");
                     }
+                    readers.add(binlogReader);
                 }
-                this.snapshotReader.useMinimalBlocking(taskContext.useMinimalSnapshotLocking());
-                if (snapshotEventsAreInserts) this.snapshotReader.generateInsertEvents();
-                this.currentReader = this.snapshotReader;
             } else {
                 if (!rowBinlogEnabled) {
                     throw new ConnectException(
                             "The MySQL server does not appear to be using a row-level binlog, which is required for this connector to work properly. Enable this mode and restart the connector.");
                 }
-                // Just starting to read the binlog ...
-                this.currentReader = this.binlogReader;
+                // We're going to start by reading the binlog ...
+                readers.add(binlogReader);
             }
 
-            // And start our first reader ...
-            this.runningReader.set(true);
-            this.currentReader.start();
+            // And start the chain of readers ...
+            this.readers.start();
         } catch (Throwable e) {
             // If we don't complete startup, then Kafka Connect will not attempt to stop the connector. So if we
             // run into a problem, we have to stop ourselves ...
@@ -185,8 +182,12 @@ public final class MySqlConnectorTask extends SourceTask {
                 // Log, but don't propagate ...
                 logger.error("Failed to start the connector (see other exception), but got this error while cleaning up", s);
             }
+            if (e instanceof InterruptedException) {
+                Thread.interrupted();
+                throw new ConnectException("Interrupted while starting the connector", e);
+            }
             if (e instanceof ConnectException) {
-                throw e;
+                throw (ConnectException) e;
             }
             throw new ConnectException(e);
         } finally {
@@ -196,11 +197,14 @@ public final class MySqlConnectorTask extends SourceTask {
 
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
+        Reader currentReader = readers;
+        if (currentReader == null) {
+            return null;
+        }
         PreviousContext prevLoggingContext = this.taskContext.configureLoggingContext("task");
         try {
             logger.trace("Polling for events");
-            AbstractReader reader = currentReader;
-            return reader != null ? reader.poll() : Collections.emptyList();
+            return currentReader.poll();
         } finally {
             prevLoggingContext.restore();
         }
@@ -210,66 +214,34 @@ public final class MySqlConnectorTask extends SourceTask {
     public synchronized void stop() {
         if (context != null) {
             PreviousContext prevLoggingContext = this.taskContext.configureLoggingContext("task");
-            // We need to explicitly stop both readers, in this order. If we were to instead call 'currentReader.stop()', there
-            // is a chance without synchronization that we'd miss the transition and stop only the snapshot reader. And stopping
-            // both is far simpler and more efficient than synchronizing ...
             try {
                 logger.info("Stopping MySQL connector task");
-                if (this.snapshotReader != null) {
-                    try {
-                        this.snapshotReader.stop();
-                    } catch (Throwable e) {
-                        logger.error("Unexpected error stopping the snapshot reader", e);
-                    } finally {
-                        this.snapshotReader = null;
-                    }
-                }
+                // Stop the readers ...
+                if (readers != null)
+                readers.stop();
             } finally {
-                try {
-                    if (this.binlogReader != null) {
-                        try {
-                            this.binlogReader.stop();
-                        } catch (Throwable e) {
-                            logger.error("Unexpected error stopping the binary log reader", e);
-                        } finally {
-                            this.binlogReader = null;
-                        }
-                    }
-                } finally {
-                    this.currentReader = null;
-                    try {
-                        // Capture that our reader is no longer running; used in "transitionToReadBinlog()" ...
-                        this.runningReader.set(false);
-                        // Flush and stop database history, close all JDBC connections ...
-                        if (this.taskContext != null) taskContext.shutdown();
-                    } catch (Throwable e) {
-                        logger.error("Unexpected error shutting down the database history and/or closing JDBC connections", e);
-                    } finally {
-                        context = null;
-                        logger.info("Connector task successfully stopped");
-                        prevLoggingContext.restore();
-                    }
-                }
+                prevLoggingContext.restore();
             }
         }
     }
 
     /**
-     * Transition from the snapshot reader to the binlog reader. This method is synchronized (along with {@link #start(Map)}
-     * and {@link #stop()}) to ensure that we don't transition while we've already begun to stop.
+     * When the task is {@link #stop() stopped}, the readers may have additional work to perform before they actually
+     * stop and before all their records have been consumed via the {@link #poll()} method. This method signals that
+     * all of this has completed.
      */
-    protected synchronized void transitionToReadBinlog() {
-        if (this.binlogReader == null || !this.runningReader.get()) {
-            // We are no longer running, so don't start the binlog reader ...
-            return;
+    protected void completeReaders() {
+        PreviousContext prevLoggingContext = this.taskContext.configureLoggingContext("task");
+        try {
+            // Flush and stop database history, close all JDBC connections ...
+            if (this.taskContext != null) taskContext.shutdown();
+        } catch (Throwable e) {
+            logger.error("Unexpected error shutting down the database history and/or closing JDBC connections", e);
+        } finally {
+            context = null;
+            logger.info("Connector task finished all work and is now shutdown");
+            prevLoggingContext.restore();
         }
-        logger.debug("Transitioning from snapshot reader to binlog reader");
-        this.binlogReader.start();
-        this.currentReader = this.binlogReader;
-    }
-
-    protected void skipReadBinlog() {
-        logger.info("Connector configured to only perform snapshot, and snapshot completed successfully. Connector will terminate.");
     }
 
     /**

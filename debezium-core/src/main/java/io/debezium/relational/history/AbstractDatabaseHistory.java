@@ -27,29 +27,30 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
 
     protected AbstractDatabaseHistory() {
     }
-    
+
     @Override
     public void configure(Configuration config, HistoryRecordComparator comparator) {
         this.config = config;
         this.comparator = comparator != null ? comparator : HistoryRecordComparator.INSTANCE;
     }
-    
+
     @Override
     public void start() {
         // do nothing
     }
 
     @Override
-    public final void record(Map<String, ?> source, Map<String, ?> position, String databaseName, Tables schema, String ddl) {
-        storeRecord(new HistoryRecord(source, position, databaseName, ddl));
+    public final void record(Map<String, ?> source, Map<String, ?> position, String databaseName, Tables schema, String ddl)
+            throws DatabaseHistoryException {
+            storeRecord(new HistoryRecord(source, position, databaseName, ddl));
     }
 
     @Override
     public final void recover(Map<String, ?> source, Map<String, ?> position, Tables schema, DdlParser ddlParser) {
-        logger.debug("Recovering DDL history for source partition {} and offset {}",source,position);
+        logger.debug("Recovering DDL history for source partition {} and offset {}", source, position);
         HistoryRecord stopPoint = new HistoryRecord(source, position, null, null);
-        recoverRecords(schema,ddlParser,recovered->{
-            if (comparator.isAtOrBefore(recovered,stopPoint)) {
+        recoverRecords(schema, ddlParser, recovered -> {
+            if (comparator.isAtOrBefore(recovered, stopPoint)) {
                 String ddl = recovered.ddl();
                 if (ddl != null) {
                     ddlParser.setCurrentSchema(recovered.databaseName()); // may be null
@@ -62,10 +63,10 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
         });
     }
 
-    protected abstract void storeRecord(HistoryRecord record);
+    protected abstract void storeRecord(HistoryRecord record) throws DatabaseHistoryException;
 
     protected abstract void recoverRecords(Tables schema, DdlParser ddlParser, Consumer<HistoryRecord> records);
-    
+
     @Override
     public void stop() {
         // do nothing

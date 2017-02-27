@@ -582,10 +582,15 @@ public class DdlParser {
             }
             if (tokens.canConsume("BEGIN")) {
                 tokens.consumeThrough("END");
+                while (tokens.canConsume("IF")) {
+                    // We just read through an 'END IF', but need to read until the next 'END'
+                    tokens.consumeThrough("END");
+                }
             } else if (tokens.matches(DdlTokenizer.STATEMENT_TERMINATOR)) {
                 tokens.consume();
                 break;
             }
+            if (!tokens.hasNext()) return;
             tokens.consume();
         }
     }
@@ -673,11 +678,11 @@ public class DdlParser {
         if (tokens.canConsume("X")) {
             return parseCharacterLiteral(start);
         }
-        if (tokens.canConsume("B")) {
-            return parseBitFieldLiteral(start);
-        }
         if (tokens.matchesAnyOf(DdlTokenizer.DOUBLE_QUOTED_STRING, DdlTokenizer.SINGLE_QUOTED_STRING)) {
             return tokens.consume();
+        }
+        if (tokens.canConsume("B")) {
+            return parseBitFieldLiteral(start);
         }
         if (tokens.canConsume("DATE")) {
             return parseDateLiteral(start);

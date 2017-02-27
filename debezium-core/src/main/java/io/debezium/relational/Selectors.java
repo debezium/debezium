@@ -36,7 +36,11 @@ public class Selectors {
     public static DatabaseSelectionPredicateBuilder databaseSelector() {
         return new DatabaseSelectionPredicateBuilder();
     }
-
+    
+    private static boolean isEmpty(String value) {
+        return value == null || value.trim().isEmpty();
+    }
+    
     /**
      * A builder of a database predicate.
      */
@@ -105,6 +109,8 @@ public class Selectors {
     public static class TableSelectionPredicateBuilder {
         private Predicate<String> dbInclusions;
         private Predicate<String> dbExclusions;
+        private Predicate<String> schemaInclusions;
+        private Predicate<String> schemaExclusions;
         private Predicate<TableId> tableInclusions;
         private Predicate<TableId> tableExclusions;
 
@@ -116,7 +122,7 @@ public class Selectors {
          * @return this builder so that methods can be chained together; never null
          */
         public TableSelectionPredicateBuilder includeDatabases(String databaseNames) {
-            if (databaseNames == null || databaseNames.trim().isEmpty()) {
+            if (isEmpty(databaseNames)) {
                 dbInclusions = null;
             } else {
                 dbInclusions = Predicates.includes(databaseNames);
@@ -133,10 +139,43 @@ public class Selectors {
          * @return this builder so that methods can be chained together; never null
          */
         public TableSelectionPredicateBuilder excludeDatabases(String databaseNames) {
-            if (databaseNames == null || databaseNames.trim().isEmpty()) {
+            if (isEmpty(databaseNames)) {
                 dbExclusions = null;
             } else {
                 dbExclusions = Predicates.excludes(databaseNames);
+            }
+            return this;
+        }
+    
+        /**
+         * Specify the names of the schemas that should be included. This method will override previously included and
+         * {@link #excludeSchemas(String) excluded} schemas.
+         *
+         * @param schemaNames the comma-separated list of schema names to include; may be null or empty
+         * @return this builder so that methods can be chained together; never null
+         */
+        public TableSelectionPredicateBuilder includeSchemas(String schemaNames) {
+            if (isEmpty(schemaNames)) {
+                schemaInclusions = null;
+            } else {
+                schemaInclusions = Predicates.includes(schemaNames);
+            }
+            return this;
+        }
+    
+        /**
+         * Specify the names of the schemas that should be excluded. This method will override previously {@link
+         * #excludeSchemas(String) excluded} schemas, although {@link #includeSchemas(String)} including schemas} overrides
+         * exclusions.
+         *
+         * @param schemaNames the comma-separated list of schema names to exclude; may be null or empty
+         * @return this builder so that methods can be chained together; never null
+         */
+        public TableSelectionPredicateBuilder excludeSchemas(String schemaNames) {
+            if (isEmpty(schemaNames)) {
+                schemaExclusions = null;
+            } else {
+                schemaExclusions = Predicates.excludes(schemaNames);
             }
             return this;
         }
@@ -152,7 +191,7 @@ public class Selectors {
          * @return this builder so that methods can be chained together; never null
          */
         public TableSelectionPredicateBuilder includeTables(String fullyQualifiedTableNames) {
-            if (fullyQualifiedTableNames == null || fullyQualifiedTableNames.trim().isEmpty()) {
+            if (isEmpty(fullyQualifiedTableNames)) {
                 tableInclusions = null;
             } else {
                 tableInclusions = Predicates.includes(fullyQualifiedTableNames, TableId::toString);
@@ -172,7 +211,7 @@ public class Selectors {
          * @return this builder so that methods can be chained together; never null
          */
         public TableSelectionPredicateBuilder excludeTables(String fullyQualifiedTableNames) {
-            if (fullyQualifiedTableNames == null || fullyQualifiedTableNames.trim().isEmpty()) {
+            if (isEmpty(fullyQualifiedTableNames)) {
                 tableExclusions = null;
             } else {
                 tableExclusions = Predicates.excludes(fullyQualifiedTableNames, TableId::toString);
@@ -187,21 +226,54 @@ public class Selectors {
          * @see #includeDatabases(String)
          * @see #excludeDatabases(String)
          * @see #includeTables(String)
-         * @see #excludeTables(String)
+         * @see #excludeTables(String) 
+         * @see #includeSchemas(String) 
+         * @see #excludeSchemas(String) 
          */
         public Predicate<TableId> build() {
             Predicate<TableId> tableFilter = tableInclusions != null ? tableInclusions : tableExclusions;
             Predicate<String> dbFilter = dbInclusions != null ? dbInclusions : dbExclusions;
+            Predicate<String> schemaFilter = schemaInclusions != null ? schemaInclusions : schemaExclusions;
+            
             if (dbFilter != null) {
-                if (tableFilter != null) {
-                    return (id) -> dbFilter.test(id.catalog()) && tableFilter.test(id);
-                }
-                return (id) -> dbFilter.test(id.catalog());
+                return buildStartingFromDbFilter(dbFilter, schemaFilter, tableFilter);
             }
+
+            if (schemaFilter != null) {
+                return buildStartingFromSchemaFilter(schemaFilter, tableFilter);
+            }
+
             if (tableFilter != null) {
                 return tableFilter;
             }
+            
             return (id) -> true;
+        }
+    
+        private Predicate<TableId> buildStartingFromSchemaFilter(Predicate<String> schemaFilter, Predicate<TableId> tableFilter) {
+            assert schemaFilter != null;
+            if (tableFilter != null) {
+                return (id) -> schemaFilter.test(id.schema()) && tableFilter.test(id);
+            } else {
+                return (id) -> schemaFilter.test(id.schema());
+            }
+        }
+    
+        private Predicate<TableId> buildStartingFromDbFilter(Predicate<String> dbFilter, Predicate<String> schemaFilter,
+                                                             Predicate<TableId> tableFilter) {
+            assert dbFilter != null;
+            
+            if (schemaFilter != null) {
+                if (tableFilter != null) {
+                    return (id) -> dbFilter.test(id.catalog()) && schemaFilter.test(id.schema()) && tableFilter.test(id);
+                } else {
+                    return (id) -> schemaFilter.test(id.schema());                        
+                }
+            } else if (tableFilter != null) {
+                return (id) -> dbFilter.test(id.catalog()) && tableFilter.test(id);
+            } else {
+                return (id) -> dbFilter.test(id.catalog());    
+            }
         }
     }
 

@@ -306,6 +306,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                               .build();
+
         // Start the connector ...
         start(MySqlConnector.class, config);
 

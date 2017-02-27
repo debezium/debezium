@@ -5,12 +5,12 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.util.Collections;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import com.datapipeline.base.DpConstants;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -75,9 +75,11 @@ public final class SourceInfo {
     public static final String ORDER = "ord";
     public static final String OPERATION_ID = "h";
     public static final String INITIAL_SYNC = "initsync";
+    public static final String FINISHED_COLLECTIONS = "fc";
+    public static final String ONGOING_COLLECTION = "oc";
 
     private static final BsonTimestamp INITIAL_TIMESTAMP = new BsonTimestamp();
-    private static final Position INITIAL_POSITION = new Position(INITIAL_TIMESTAMP, null);
+    private static final Position INITIAL_POSITION = new Position(INITIAL_TIMESTAMP, null, false);
 
     /**
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition(String)} and {@link #lastOffset}
@@ -93,6 +95,10 @@ public final class SourceInfo {
                                                       .field(ORDER, Schema.INT32_SCHEMA)
                                                       .field(OPERATION_ID, Schema.OPTIONAL_INT64_SCHEMA)
                                                       .field(INITIAL_SYNC, Schema.OPTIONAL_BOOLEAN_SCHEMA)
+                                                      .field(FINISHED_COLLECTIONS, Schema.OPTIONAL_STRING_SCHEMA)
+                                                      .field(ONGOING_COLLECTION, Schema.OPTIONAL_STRING_SCHEMA)
+                                                      .field(DpConstants.RECORD_OFFSET_ENTITY_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                                                      .field(DpConstants.RECORD_OFFSET_TOTAL_SIZE_KEY, Schema.OPTIONAL_INT32_SCHEMA)
                                                       .build();
 
     private final ConcurrentMap<String, Map<String, String>> sourcePartitionsByReplicaSetName = new ConcurrentHashMap<>();
@@ -103,14 +109,30 @@ public final class SourceInfo {
     protected static final class Position {
         private final Long opId;
         private final BsonTimestamp ts;
+        private final Boolean initialSync;
+        private final Set<String> finishedCollections;
+        private final String ongoingCollection;
+        private final long expectedNumDocs;
 
-        public Position(int ts, int order, Long opId) {
-            this(new BsonTimestamp(ts, order), opId);
+        public Position(BsonTimestamp ts, Long opId, Boolean initialSync) {
+            this(ts, opId, initialSync, new HashSet<>(), null, 0);
         }
 
-        public Position(BsonTimestamp ts, Long opId) {
+        public Position(int ts, int order, Long opId, Boolean initialSync) {
+            this(new BsonTimestamp(ts, order), opId, initialSync, new HashSet<>(), null, 0);
+        }
+
+        public Position(int ts, int order, Long opId, Boolean initialSync,Set<String> finishedCollections, String ongoingCollection,long expectedNumDocs ) {
+            this(new BsonTimestamp(ts, order), opId, initialSync, finishedCollections, ongoingCollection, expectedNumDocs);
+        }
+
+        public Position(BsonTimestamp ts, Long opId, Boolean initialSync, Set<String> finishedCollections, String ongoingCollection, long expectedNumDocs) {
             this.ts = ts;
             this.opId = opId;
+            this.initialSync = initialSync;
+            this.finishedCollections = finishedCollections;
+            this.ongoingCollection = ongoingCollection;
+            this.expectedNumDocs = expectedNumDocs;
             assert this.ts != null;
         }
 
@@ -128,6 +150,22 @@ public final class SourceInfo {
 
         public Long getOperationId() {
             return this.opId;
+        }
+
+        public Boolean getInitialSync() {
+            return initialSync;
+        }
+
+        public Set<String> getFinishedCollections() {
+            return finishedCollections;
+        }
+
+        public String getOngoingCollection() {
+            return ongoingCollection;
+        }
+
+        public long getExpectedNumDocs() {
+            return expectedNumDocs;
         }
     }
 
@@ -175,6 +213,7 @@ public final class SourceInfo {
      * @return the source partition information; never null
      */
     public Map<String, String> partition(String replicaSetName) {
+        if (replicaSetName == null) throw new IllegalArgumentException("Replica set name may not be null");
         return sourcePartitionsByReplicaSetName.computeIfAbsent(replicaSetName, rsName -> {
             return Collect.hashMapOf(SERVER_ID_KEY, serverName, REPLICA_SET_NAME, rsName);
         });
@@ -191,6 +230,27 @@ public final class SourceInfo {
         return existing != null ? existing.ts : INITIAL_TIMESTAMP;
     }
 
+
+    public boolean lastOffsetInitialSync(String replicaSetName){
+        Position existing = positionsByReplicaSetName.get(replicaSetName);
+        if(existing == null ){
+            return false;
+        }else{
+            return existing.getInitialSync().booleanValue();
+        }
+    }
+
+    public Set<String> lastOffsetFinishedCollection(String replicaSetName){
+        Position existing = positionsByReplicaSetName.get(replicaSetName);
+        return existing == null ? null : existing.getFinishedCollections();
+    }
+
+
+    public String lastOffsetOngoingCollection(String replicaSetName){
+        Position existing = positionsByReplicaSetName.get(replicaSetName);
+        return existing == null ? null : existing.getOngoingCollection();
+    }
+
     /**
      * Get the Kafka Connect detail about the source "offset" for the named database, which describes the given position in the
      * database where we have last read. If the database has not yet been seen, this records the starting position
@@ -202,15 +262,19 @@ public final class SourceInfo {
     public Map<String, ?> lastOffset(String replicaSetName) {
         Position existing = positionsByReplicaSetName.get(replicaSetName);
         if (existing == null) existing = INITIAL_POSITION;
-        if (initialSyncReplicaSets.contains(replicaSetName)) {
+        if (isInitialSyncOngoing(replicaSetName)) {
             return Collect.hashMapOf(TIMESTAMP, new Integer(existing.getTime()),
                                      ORDER, new Integer(existing.getInc()),
                                      OPERATION_ID, existing.getOperationId(),
-                                     INITIAL_SYNC, true);
+                                     INITIAL_SYNC, true,
+                                     FINISHED_COLLECTIONS, StringUtils.join(existing.getFinishedCollections(), ','),
+                                     ONGOING_COLLECTION, existing.getOngoingCollection());
         }
         return Collect.hashMapOf(TIMESTAMP, new Integer(existing.getTime()),
                                  ORDER, new Integer(existing.getInc()),
-                                 OPERATION_ID, existing.getOperationId());
+                                 OPERATION_ID, existing.getOperationId(),
+                                 FINISHED_COLLECTIONS, StringUtils.join(existing.getFinishedCollections(), ','),
+                                 ONGOING_COLLECTION, existing.getOngoingCollection());
     }
 
     /**
@@ -222,9 +286,29 @@ public final class SourceInfo {
      * @return the source partition and offset {@link Struct}; never null
      * @see #schema()
      */
-    public Struct lastOffsetStruct(String replicaSetName, CollectionId collectionId) {
-        return offsetStructFor(replicaSetName, collectionId.namespace(), positionsByReplicaSetName.get(replicaSetName),
-                               initialSyncReplicaSets.contains(replicaSetName));
+    public Struct lastOffsetStruct(String replicaSetName, CollectionId collectionId, String objectId, long expectedNumDocs) {
+        Position position = positionsByReplicaSetName.get(replicaSetName);
+        String ongoingCollection = getOngoingCollection(collectionId, objectId);
+        if(position != null){
+            position = new Position(position.getTimestamp(),position.getOperationId(),isInitialSyncOngoing(replicaSetName),
+                    position.getFinishedCollections(),ongoingCollection, expectedNumDocs);
+        } else {
+            position = new Position(INITIAL_TIMESTAMP, null,
+                isInitialSyncOngoing(replicaSetName),new HashSet<>(),ongoingCollection, expectedNumDocs);
+        }
+        positionsByReplicaSetName.put(replicaSetName, position);
+        return offsetStructFor(replicaSetName, collectionId.namespace(), position);
+    }
+
+    public Struct updatePosition(String replicaSetName, CollectionId collectionId) {
+        Position position = positionsByReplicaSetName.get(replicaSetName);
+        Set<String> finishedCollections = position.getFinishedCollections();
+        finishedCollections.add(collectionId.namespace());
+        position = new Position(position.getTimestamp(), position.getOperationId(),
+            position.getInitialSync(), finishedCollections,
+            position.getOngoingCollection(), position.getExpectedNumDocs());
+        positionsByReplicaSetName.put(replicaSetName, position);
+        return offsetStructFor(replicaSetName, collectionId.namespace(), position);
     }
 
     /**
@@ -243,11 +327,11 @@ public final class SourceInfo {
         if (oplogEvent != null) {
             BsonTimestamp ts = extractEventTimestamp(oplogEvent);
             Long opId = oplogEvent.getLong("h");
-            position = new Position(ts, opId);
+            position = new Position(ts, opId, isInitialSyncOngoing(replicaSetName));
             namespace = oplogEvent.getString("ns");
         }
         positionsByReplicaSetName.put(replicaSetName, position);
-        return offsetStructFor(replicaSetName, namespace, position, initialSyncReplicaSets.contains(replicaSetName));
+        return offsetStructFor(replicaSetName, namespace, position);
     }
 
     /**
@@ -260,7 +344,7 @@ public final class SourceInfo {
         return oplogEvent != null ? oplogEvent.get("ts", BsonTimestamp.class) : null;
     }
 
-    private Struct offsetStructFor(String replicaSetName, String namespace, Position position, boolean isInitialSync) {
+    private Struct offsetStructFor(String replicaSetName, String namespace, Position position) {
         if (position == null) position = INITIAL_POSITION;
         Struct result = new Struct(SOURCE_SCHEMA);
         result.put(SERVER_NAME, serverName);
@@ -269,7 +353,15 @@ public final class SourceInfo {
         result.put(TIMESTAMP, position.getTime());
         result.put(ORDER, position.getInc());
         result.put(OPERATION_ID, position.getOperationId());
-        if (isInitialSync) {
+        int delimIndex = namespace.indexOf('.');
+        if (delimIndex > 0) {
+            String collectionName = namespace.substring(delimIndex + 1);
+            result.put(DpConstants.RECORD_OFFSET_ENTITY_KEY, collectionName);
+        }
+        if(position.getExpectedNumDocs() != 0){
+            result.put(DpConstants.RECORD_OFFSET_TOTAL_SIZE_KEY, (int)position.getExpectedNumDocs());
+        }
+        if (position.getInitialSync() == Boolean.TRUE) {
             result.put(INITIAL_SYNC, true);
         }
         return result;
@@ -302,7 +394,10 @@ public final class SourceInfo {
         int time = intOffsetValue(sourceOffset, TIMESTAMP);
         int order = intOffsetValue(sourceOffset, ORDER);
         Long operationId = longOffsetValue(sourceOffset, OPERATION_ID);
-        positionsByReplicaSetName.put(replicaSetName, new Position(time, order, operationId));
+        boolean initialSync = booleanOffsetValue(sourceOffset, INITIAL_SYNC);
+        Set<String> finishedCollections = setoffsetValue(sourceOffset, FINISHED_COLLECTIONS);
+        String ongoingCollections = String.valueOf(sourceOffset.get(ONGOING_COLLECTION));
+        positionsByReplicaSetName.put(replicaSetName, new Position(time, order, operationId, initialSync, finishedCollections, ongoingCollections, 0));
         return true;
     }
 
@@ -338,6 +433,22 @@ public final class SourceInfo {
         initialSyncReplicaSets.remove(replicaSetName);
     }
 
+
+    private String getOngoingCollection(CollectionId id, String objectId) {
+        return id.namespace() + ":" + objectId;
+    }
+
+    /**
+     * Determine if the initial sync for the given replica set is still ongoing.
+     * 
+     * @param replicaSetName the name of the replica set; never null
+     * @return {@code true} if the initial sync for this replica is still ongoing or was not completed before restarting, or
+     *         {@code false} if there is currently no initial sync operation for this replica set
+     */
+    public boolean isInitialSyncOngoing(String replicaSetName) {
+        return initialSyncReplicaSets.contains(replicaSetName);
+    }
+
     private static int intOffsetValue(Map<String, ?> values, String key) {
         Object obj = values.get(key);
         if (obj == null) return 0;
@@ -359,4 +470,22 @@ public final class SourceInfo {
             throw new ConnectException("Source offset '" + key + "' parameter value " + obj + " could not be converted to a long");
         }
     }
+
+    private static boolean booleanOffsetValue(Map<String, ?> values, String key) {
+        Object obj = values.get(key);
+        if (obj == null) return false;
+        return Boolean.parseBoolean(obj.toString());
+    }
+
+    private static Set<String> setoffsetValue(Map<String, ?> values, String key){
+        Set<String> result = new HashSet<>();
+        Object obj = values.get(key);
+        if (obj == null) return null;
+        String[] splits = String.valueOf(obj).split(",");
+        for(String split: splits){
+            result.add(split);
+        }
+        return result;
+    }
+
 }

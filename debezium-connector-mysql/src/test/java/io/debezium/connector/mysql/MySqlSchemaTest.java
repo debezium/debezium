@@ -56,7 +56,7 @@ public class MySqlSchemaTest {
     }
 
     @Test
-    public void shouldApplyDdlStatementsAndRecover() {
+    public void shouldApplyDdlStatementsAndRecover() throws InterruptedException {
         mysql = build.storeDatabaseHistoryInFile(TEST_FILE_PATH).serverName(SERVER_NAME).createSchemas();
         mysql.start();
 
@@ -76,7 +76,7 @@ public class MySqlSchemaTest {
     }
 
     @Test
-    public void shouldLoadSystemAndNonSystemTablesAndConsumeOnlyFilteredDatabases() {
+    public void shouldLoadSystemAndNonSystemTablesAndConsumeOnlyFilteredDatabases() throws InterruptedException {
         mysql = build.storeDatabaseHistoryInFile(TEST_FILE_PATH)
                 .serverName(SERVER_NAME)
                      .includeDatabases("connector_test")
@@ -102,7 +102,7 @@ public class MySqlSchemaTest {
     }
 
     @Test
-    public void shouldLoadSystemAndNonSystemTablesAndConsumeAllDatabases() {
+    public void shouldLoadSystemAndNonSystemTablesAndConsumeAllDatabases() throws InterruptedException {
         mysql = build.storeDatabaseHistoryInFile(TEST_FILE_PATH)
                      .serverName(SERVER_NAME)
                      .includeDatabases("connector_test")

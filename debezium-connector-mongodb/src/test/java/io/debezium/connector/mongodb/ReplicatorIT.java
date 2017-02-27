@@ -70,7 +70,7 @@ public class ReplicatorIT extends AbstractMongoIT {
 
         // Start the replicator ...
         List<SourceRecord> records = new LinkedList<>();
-        Replicator replicator = new Replicator(context, replicaSet, records::add);
+        Replicator replicator = new Replicator(context, replicaSet, records::add, "1");
         Thread thread = new Thread(replicator::run);
         thread.start();
 
@@ -138,7 +138,7 @@ public class ReplicatorIT extends AbstractMongoIT {
 
         // Start the replicator again ...
         records = new LinkedList<>();
-        replicator = new Replicator(context, replicaSet, records::add);
+        replicator = new Replicator(context, replicaSet, records::add,"1");
         thread = new Thread(replicator::run);
         thread.start();
 
@@ -164,7 +164,7 @@ public class ReplicatorIT extends AbstractMongoIT {
 
         // Start the replicator again ...
         records = new LinkedList<>();
-        replicator = new Replicator(context, replicaSet, records::add);
+        replicator = new Replicator(context, replicaSet, records::add, "1");
         thread = new Thread(replicator::run);
         thread.start();
 
@@ -226,7 +226,7 @@ public class ReplicatorIT extends AbstractMongoIT {
 
         // Start the replicator again ...
         records = new LinkedList<>();
-        replicator = new Replicator(context, replicaSet, records::add);
+        replicator = new Replicator(context, replicaSet, records::add, "1");
         thread = new Thread(replicator::run);
         thread.start();
 

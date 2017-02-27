@@ -5,10 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 
 import com.datapipeline.base.converter.DataConverter;
@@ -37,7 +34,7 @@ import io.debezium.util.AvroValidator;
 
 /**
  * A component that makes {@link SourceRecord}s for {@link CollectionId collections} and submits them to a consumer.
- * 
+ *
  * @author Randall Hauch
  */
 @ThreadSafe
@@ -61,7 +58,7 @@ public class RecordMakers {
 
     /**
      * Create the record makers using the supplied components.
-     * 
+     *
      * @param source the connector's source information; may not be null
      * @param topicSelector the selector for topic names; may not be null
      * @param recorder the potentially blocking consumer function to be called for each generated record; may not be null
@@ -77,7 +74,7 @@ public class RecordMakers {
 
     /**
      * Obtain the record maker for the given table, using the specified columns and sending records to the given consumer.
-     * 
+     *
      * @param collectionId the identifier of the collection for which records are to be produced; may not be null
      * @return the table-specific record maker; may be null if the table is not included in the connector
      */
@@ -110,18 +107,18 @@ public class RecordMakers {
         private final Schema keySchema;
         private final Schema valueSchema;
         private final Schema afterValueSchema;
-//        private final Schema valueSchema;
         private final AvroValidator validator;
         private final Function<Document, String> valueTransformer;
         private final BlockingConsumer<SourceRecord> recorder;
 
         private final ConnectorDataGenerator dataGenerator;
-        private final List<MongodbSchema> mongodbSchemaFields;
         private final DataConverter dataConverter;
+        private final Map<String, MongodbSchema> mongodbSchemaFields;
+        private final Set<String> missedSchemaFields = new HashSet<>();
 
         protected RecordsForCollection(CollectionId collectionId, SourceInfo source, String topicName, AvroValidator validator,
-                Function<Document, String> valueTransformer, BlockingConsumer<SourceRecord> recorder, List<MongodbSchema> mongodbSchemaFields,
-                DataConverter dataConverter) {
+                                       Function<Document, String> valueTransformer, BlockingConsumer<SourceRecord> recorder, List<MongodbSchema> mongodbSchemaFields,
+                                       DataConverter dataConverter) {
             this.sourcePartition = source.partition(collectionId.replicaSetName());
             this.collectionId = collectionId;
             this.replicaSetName = this.collectionId.replicaSetName();
@@ -132,24 +129,27 @@ public class RecordMakers {
             this.validator = validator;
             this.afterValueSchema = dataGenerator.buildValueSchema(null, mongodbSchemaFields);
             this.valueSchema = SchemaBuilder.struct()
-                                            .name(validator.validate(topicName + ".Envelope"))
-                                            .field(FieldName.AFTER, afterValueSchema)
-                                            .field("patch", Json.builder().optional().build())
-                                            .field(FieldName.SOURCE, source.schema())
-                                            .field(FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
-                                            .field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
-                                            .build();
-            this.mongodbSchemaFields = mongodbSchemaFields;
+                    .name(validator.validate(topicName + ".Envelope"))
+                    .field(FieldName.AFTER, afterValueSchema)
+                    .field("patch", Json.builder().optional().build())
+                    .field(FieldName.SOURCE, source.schema())
+                    .field(FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
+                    .field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
+                    .build();
 
             JsonWriterSettings writerSettings = new JsonWriterSettings(JsonMode.STRICT, "", ""); // most compact JSON
             this.valueTransformer = (doc) -> doc.toJson(writerSettings);
             this.recorder = recorder;
             this.dataConverter = dataConverter;
+            this.mongodbSchemaFields = new HashMap<>();
+            for(MongodbSchema schema: mongodbSchemaFields){
+                this.mongodbSchemaFields.put(schema.getName(), schema);
+            }
         }
 
         /**
          * Get the identifier of the collection to which this producer applies.
-         * 
+         *
          * @return the collection ID; never null
          */
         public CollectionId collectionId() {
@@ -158,7 +158,7 @@ public class RecordMakers {
 
         /**
          * Generate and record one or more source records to describe the given object.
-         * 
+         *
          * @param id the identifier of the collection in which the document exists; may not be null
          * @param object the document; may not be null
          * @param timestamp the timestamp at which this operation is occurring
@@ -166,8 +166,8 @@ public class RecordMakers {
          * @throws InterruptedException if the calling thread was interrupted while waiting to submit a record to
          *             the blocking consumer
          */
-        public int recordObject(CollectionId id, Document object, long timestamp) throws InterruptedException {
-            final Struct sourceValue = source.lastOffsetStruct(replicaSetName, id);
+        public int recordObject(CollectionId id, Document object, long timestamp, long expectedNumDocs) throws InterruptedException {
+            final Struct sourceValue = source.lastOffsetStruct(replicaSetName, id, object.get(ConnectorType.MONGODB.getPrimaryKeyName()).toString(), expectedNumDocs);
             final Map<String, ?> offset = source.lastOffset(replicaSetName);
             String objId = objectIdLiteralFrom(object);
             return createRecords(sourceValue, offset, Operation.READ, objId, object, timestamp);
@@ -175,7 +175,7 @@ public class RecordMakers {
 
         /**
          * Generate and record one or more source records to describe the given event.
-         * 
+         *
          * @param oplogEvent the event; may not be null
          * @param timestamp the timestamp at which this operation is occurring
          * @return the number of source records that were generated; will be 0 or more
@@ -201,20 +201,19 @@ public class RecordMakers {
             Struct key = dataGenerator.buildKeyStruct(keySchema,ConnectorType.MONGODB,objId);
 
             List<MongoDbColumnData> datas = new LinkedList<>();
-            for(MongodbSchema schema: mongodbSchemaFields){
-                if(objectValue.get(schema.getName())!=null){
-                    try {
-                        Object value = dataConverter.convert(schema.getDataType(), objectValue.get(schema.getName()).toString(),null);
-                        MongoDbColumnData data = new MongoDbColumnData(value, schema);
-                        datas.add(data);
-                    }catch(Throwable e){
-                        logger.error("Error converting data to defined schema. : " + schema.getName() + " type : " + schema.getDataType() + " . Data : " + objectValue );
+
+            for(String schemaFieldName : objectValue.keySet()) {
+                MongodbSchema schema = mongodbSchemaFields.get(schemaFieldName);
+                if (schema != null) {
+                    Object value = dataConverter.convert(schema.getDataType(), objectValue.get(schema.getName()).toString(), null);
+                    MongoDbColumnData data = new MongoDbColumnData(value, schema);
+                    datas.add(data);
+                } else {
+                    if (! missedSchemaFields.contains(schemaFieldName)) {
+                        missedSchemaFields.add(schemaFieldName);
+                        logger.error("Missing schema field : " + schemaFieldName + " for topic " + topicName);
                     }
                 }
-            }
-
-            if(objectValue.size() > mongodbSchemaFields.size()){
-                logger.error("Source data has more schema then defined. " + objectValue.toString());
             }
 
             Struct value = new Struct(valueSchema);
@@ -223,12 +222,10 @@ public class RecordMakers {
                 case READ:
                 case CREATE:
                     // The object is the new document ...
-                    String jsonStr = valueTransformer.apply(objectValue);
                     value.put(FieldName.AFTER, valueStruct);
                     break;
                 case UPDATE:
                     // The object is the idempotent patch document ...
-                    String patchStr = valueTransformer.apply(objectValue);
                     value.put("patch", valueStruct);
                     break;
                 case DELETE:

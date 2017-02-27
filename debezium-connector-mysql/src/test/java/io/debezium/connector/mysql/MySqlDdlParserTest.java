@@ -18,6 +18,7 @@ import org.junit.Test;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import io.debezium.doc.FixFor;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -466,6 +467,106 @@ public class MySqlDdlParserTest {
     }
 
     @Test
+    public void shouldParseDefiner() {
+        String function = "FUNCTION fnA( a int, b int ) RETURNS tinyint(1) begin anything end;";
+        String ddl = "CREATE DEFINER='mysqluser'@'%' " + function;
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(0); // no tables
+        assertThat(listener.total()).isEqualTo(0);
+
+        ddl = "CREATE DEFINER='mysqluser'@'something' " + function;
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(0); // no tables
+        assertThat(listener.total()).isEqualTo(0);
+
+        ddl = "CREATE DEFINER=`mysqluser`@`something` " + function;
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(0); // no tables
+        assertThat(listener.total()).isEqualTo(0);
+
+        ddl = "CREATE DEFINER=CURRENT_USER " + function;
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(0); // no tables
+        assertThat(listener.total()).isEqualTo(0);
+
+        ddl = "CREATE DEFINER=CURRENT_USER() " + function;
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(0); // no tables
+        assertThat(listener.total()).isEqualTo(0);
+    }
+    
+    @Test
+    @FixFor("DBZ-169")
+    public void shouldParseTimeWithNowDefault() {
+        String ddl = "CREATE TABLE t1 ( "
+                + "c1 int primary key auto_increment, "
+                + "c2 datetime, "
+                + "c3 datetime on update now(), "
+                + "c4 char(4));";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        assertThat(listener.total()).isEqualTo(1);
+        Table t = tables.forTable(new TableId(null, null, "t1"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("c1", "c2", "c3", "c4");
+        assertThat(t.primaryKeyColumnNames()).containsExactly("c1");
+        assertColumn(t, "c1", "INT", Types.INTEGER, -1, -1, false, true, true);
+        assertColumn(t, "c2", "DATETIME", Types.TIMESTAMP, -1, -1, true, false, false);
+        assertColumn(t, "c3", "DATETIME", Types.TIMESTAMP, -1, -1, true, false, true);
+        assertColumn(t, "c4", "CHAR", Types.CHAR, 4, -1, true, false, false);
+        assertThat(t.columnWithName("c1").position()).isEqualTo(1);
+        assertThat(t.columnWithName("c2").position()).isEqualTo(2);
+        assertThat(t.columnWithName("c3").position()).isEqualTo(3);
+        assertThat(t.columnWithName("c4").position()).isEqualTo(4);
+    }
+    
+    @Test
+    @FixFor("DBZ-169")
+    public void shouldParseCreateAndAlterWithOnUpdate() {
+        String ddl = "CREATE TABLE customers ( "
+                + "id INT PRIMARY KEY NOT NULL, "
+                + "name VARCHAR(30) NOT NULL, "
+                + "PRIMARY KEY (id) );"
+                + ""
+                + "CREATE TABLE `CUSTOMERS_HISTORY` LIKE `customers`; "
+                + ""
+                + "ALTER TABLE `CUSTOMERS_HISTORY` MODIFY COLUMN `id` varchar(36) NOT NULL,"
+                + "DROP PRIMARY KEY,"
+                + "ADD action tinyint(3) unsigned NOT NULL FIRST,"
+                + "ADD revision int(10) unsigned NOT NULL AFTER action,"
+                + "ADD changed_on DATETIME NOT NULL DEFAULT NOW() AFTER revision,"
+                + "ADD PRIMARY KEY (id, revision);";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(2);
+        assertThat(listener.total()).isEqualTo(3);
+        
+        Table t = tables.forTable(new TableId(null, null, "customers"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("id", "name");
+        assertThat(t.primaryKeyColumnNames()).containsExactly("id");
+        assertColumn(t, "id", "INT", Types.INTEGER, -1, -1, false, false, false);
+        assertColumn(t, "name", "VARCHAR", Types.VARCHAR, 30, -1, false, false, false);
+        assertThat(t.columnWithName("id").position()).isEqualTo(1);
+        assertThat(t.columnWithName("name").position()).isEqualTo(2);
+
+        t = tables.forTable(new TableId(null, null, "CUSTOMERS_HISTORY"));
+        assertThat(t).isNotNull();
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("action", "revision", "changed_on", "id", "name");
+        assertThat(t.primaryKeyColumnNames()).containsExactly("id", "revision");
+        assertColumn(t, "action", "TINYINT UNSIGNED", Types.SMALLINT, 3, -1, false, false, false);
+        assertColumn(t, "revision", "INT UNSIGNED", Types.INTEGER, 10, -1, false, false, false);
+        assertColumn(t, "changed_on", "DATETIME", Types.TIMESTAMP, -1, -1, false, false, false);
+        assertColumn(t, "id", "VARCHAR", Types.VARCHAR, 36, -1, false, false, false);
+        assertColumn(t, "name", "VARCHAR", Types.VARCHAR, 30, -1, false, false, false);
+        assertThat(t.columnWithName("action").position()).isEqualTo(1);
+        assertThat(t.columnWithName("revision").position()).isEqualTo(2);
+        assertThat(t.columnWithName("changed_on").position()).isEqualTo(3);
+        assertThat(t.columnWithName("id").position()).isEqualTo(4);
+        assertThat(t.columnWithName("name").position()).isEqualTo(5);
+    }
+
+    @Test
     public void shouldParseGrantStatement() {
         String ddl = "GRANT ALL PRIVILEGES ON `mysql`.* TO 'mysqluser'@'%'";
         parser.parse(ddl, tables);
@@ -630,6 +731,48 @@ public class MySqlDdlParserTest {
         listener.forEach(this::printEvent);
     }
 
+    @FixFor("DBZ-162")
+    @Test
+    public void shouldParseAndIgnoreCreateFunction() {
+        parser.parse(readFile("ddl/mysql-dbz-162.ddl"), tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(1); // 1 table
+        assertThat(listener.total()).isEqualTo(2); // 1 create, 1 alter
+        listener.forEach(this::printEvent);
+    }
+
+    @FixFor("DBZ-162")
+    @Test
+    public void shouldParseAlterTableWithNewlineFeeds() {
+        String ddl = "CREATE TABLE `test` (id INT(11) UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT);";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table t = tables.forTable(new TableId(null, null, "test"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("id");
+        assertThat(t.primaryKeyColumnNames()).containsExactly("id");
+        assertColumn(t, "id", "INT UNSIGNED", Types.INTEGER, 11, -1, false, true, true);
+
+        ddl = "ALTER TABLE `test` CHANGE `id` `collection_id` INT(11)\n UNSIGNED\n NOT NULL\n AUTO_INCREMENT;";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        t = tables.forTable(new TableId(null, null, "test"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("collection_id");
+        assertThat(t.primaryKeyColumnNames()).containsExactly("collection_id");
+        assertColumn(t, "collection_id", "INT UNSIGNED", Types.INTEGER, 11, -1, false, true, true);
+    }
+    
+    @FixFor("DBZ-176")
+    @Test
+    public void shouldParseButIgnoreCreateTriggerWithDefiner() {
+        parser.parse(readFile("ddl/mysql-dbz-176.ddl"), tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(0); // 0 table
+        assertThat(listener.total()).isEqualTo(0);
+        listener.forEach(this::printEvent);
+    }
+    
     @Test
     public void shouldParseTicketMonsterLiquibaseStatements() {
         parser.parse(readLines(1, "ddl/mysql-ticketmonster-liquibase.ddl"), tables);
@@ -640,7 +783,7 @@ public class MySqlDdlParserTest {
 
     @Test
     public void shouldParseEnumOptions() {
-        assertParseEnumAndSetOptions("ENUM('a','b','c')","a,b,c");
+        assertParseEnumAndSetOptions("ENUM('a','b','c')", "a,b,c");
         assertParseEnumAndSetOptions("ENUM('a','multi','multi with () paren', 'other')", "a,multi,multi with () paren,other");
         assertParseEnumAndSetOptions("ENUM('a')", "a");
         assertParseEnumAndSetOptions("ENUM()", "");
@@ -658,6 +801,53 @@ public class MySqlDdlParserTest {
         assertParseEnumAndSetOptions("SET ('a','b','c') CHARACTER SET", "a,b,c");
         assertParseEnumAndSetOptions("SET ('a') CHARACTER SET", "a");
         assertParseEnumAndSetOptions("SET () CHARACTER SET", "");
+    }
+
+    @FixFor("DBZ-160")
+    @Test
+    public void shouldParseCreateTableWithEnumDefault() {
+        String ddl = "CREATE TABLE t ( c1 ENUM('a','b','c') NOT NULL DEFAULT 'b', c2 ENUM('a', 'b', 'c') NOT NULL DEFAULT 'a');";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table t = tables.forTable(new TableId(null, null, "t"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("c1", "c2");
+        assertThat(t.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t, "c1", "ENUM", Types.CHAR, 1, -1, false, false, false);
+        assertColumn(t, "c2", "ENUM", Types.CHAR, 1, -1, false, false, false);
+    }
+
+    @FixFor("DBZ-160")
+    @Test
+    public void shouldParseCreateTableWithBitDefault() {
+        String ddl = "CREATE TABLE t ( c1 Bit(2) NOT NULL DEFAULT b'1', c2 Bit(2) NOT NULL);";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table t = tables.forTable(new TableId(null, null, "t"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("c1", "c2");
+        assertThat(t.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t, "c1", "BIT", Types.BIT, 2, -1, false, false, false);
+        assertColumn(t, "c2", "BIT", Types.BIT, 2, -1, false, false, false);
+    }
+
+    @Test
+    public void shouldParseStatementForDbz142() {
+        parser.parse(readFile("ddl/mysql-dbz-142.ddl"), tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(2);
+        assertThat(listener.total()).isEqualTo(2);
+
+        Table t = tables.forTable(new TableId(null, null, "nvarchars"));
+        assertColumn(t, "c1", "NVARCHAR", Types.NVARCHAR, 255, "utf8", true);
+        assertColumn(t, "c2", "NATIONAL VARCHAR", Types.NVARCHAR, 255, "utf8", true);
+        assertColumn(t, "c3", "NCHAR VARCHAR", Types.NVARCHAR, 255, "utf8", true);
+        assertColumn(t, "c4", "NATIONAL CHARACTER VARYING", Types.NVARCHAR, 255, "utf8", true);
+        assertColumn(t, "c5", "NATIONAL CHAR VARYING", Types.NVARCHAR, 255, "utf8", true);
+
+        Table t2 = tables.forTable(new TableId(null, null, "nchars"));
+        assertColumn(t2, "c1", "NATIONAL CHARACTER", Types.NCHAR, 10, "utf8", true);
+        assertColumn(t2, "c2", "NCHAR", Types.NCHAR, 10, "utf8", true);
     }
 
     protected void assertParseEnumAndSetOptions(String typeExpression, String optionString) {

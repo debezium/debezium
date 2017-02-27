@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.util.Properties;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,8 +17,10 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.util.IoUtil;
 import kafka.admin.AdminUtils;
 import kafka.admin.RackAwareMode;
+import kafka.log.Log;
 import kafka.server.KafkaConfig;
 import kafka.utils.ZkUtils;
+import scala.collection.JavaConverters;
 
 /**
  * A small embedded Kafka server.
@@ -154,6 +155,8 @@ public class KafkaServer {
         runningConfig.setProperty(KafkaConfig.BrokerIdProp(), Integer.toString(brokerId));
         runningConfig.setProperty(KafkaConfig.HostNameProp(), "localhost");
         runningConfig.setProperty(KafkaConfig.AutoCreateTopicsEnableProp(), String.valueOf(Boolean.TRUE));
+        // 1 partition for the __consumer_offsets_ topic should be enough
+        runningConfig.setProperty(KafkaConfig.OffsetsTopicPartitionsProp(), Integer.toString(1));
         return runningConfig;
     }
 
@@ -197,7 +200,8 @@ public class KafkaServer {
         // Start the server ...
         try {
             LOGGER.debug("Starting Kafka broker {} at {} with storage in {}", brokerId, getConnection(), logsDir.getAbsolutePath());
-            server = new kafka.server.KafkaServer(new KafkaConfig(config), new SystemTime(), scala.Option.apply(null));
+            server = new kafka.server.KafkaServer(new KafkaConfig(config), new SystemTime(), scala.Option.apply(null),
+                                                  new scala.collection.mutable.ArraySeq<>(0));
             server.startup();
             LOGGER.info("Started Kafka server {} at {} with storage in {}", brokerId, getConnection(), logsDir.getAbsolutePath());
             return this;
@@ -209,11 +213,18 @@ public class KafkaServer {
 
     /**
      * Shutdown the embedded Kafka server and delete all data.
+     * 
+     * @param deleteLogs whether or not to remove all the log files after shutting down
      */
-    public synchronized void shutdown() {
+    public synchronized void shutdown(boolean deleteLogs) {
         if (server != null) {
             try {
                 server.shutdown();
+                if (deleteLogs) {
+                    // as of 0.10.1.1 if logs are not deleted explicitly, there are open File Handles left on .timeindex files
+                    // at least on Windows courtesy of the TimeIndex.scala class
+                    JavaConverters.asJavaIterableConverter(server.logManager().allLogs()).asJava().forEach(Log::delete);
+                }
                 LOGGER.info("Stopped Kafka server {} at {}", brokerId, getConnection());
             } finally {
                 server = null;
@@ -328,7 +339,12 @@ public class KafkaServer {
         public long nanoseconds() {
             return System.nanoTime();
         }
-
+    
+        @Override
+        public long hiResClockMs() {
+            return nanoseconds();
+        }
+    
         @Override
         public void sleep(long ms) {
             try {

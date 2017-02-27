@@ -6,10 +6,14 @@
 package io.debezium.connector.mysql;
 
 import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
@@ -19,11 +23,14 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
+import io.debezium.data.Envelope;
 import io.debezium.data.KeyValueStore;
 import io.debezium.data.KeyValueStore.Collection;
 import io.debezium.data.SchemaChangeHistory;
 import io.debezium.data.VerifyRecord;
+import io.debezium.doc.FixFor;
 import io.debezium.relational.history.FileDatabaseHistory;
+import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Testing;
 
 /**
@@ -117,7 +124,7 @@ public class BinlogReaderIT {
         context.start();
         context.source().setBinlogStartPoint("",0L); // start from beginning
         context.initializeHistory();
-        reader = new BinlogReader(context);
+        reader = new BinlogReader("binlog", context);
 
         // Start reading the binlog ...
         reader.start();
@@ -177,7 +184,7 @@ public class BinlogReaderIT {
         context.start();
         context.source().setBinlogStartPoint("",0L); // start from beginning
         context.initializeHistory();
-        reader = new BinlogReader(context);
+        reader = new BinlogReader("binlog", context);
 
         // Start reading the binlog ...
         reader.start();
@@ -230,5 +237,40 @@ public class BinlogReaderIT {
         assertThat(orders.numberOfTombstones()).isEqualTo(0);
         assertThat(orders.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(orders.numberOfValueSchemaChanges()).isEqualTo(1);
+    }
+    
+    @Test
+    @FixFor( "DBZ-183" )
+    public void shouldHandleTimestampTimezones() throws Exception {
+        String dbName = "regression_test";
+        String tableName = "dbz_85_fractest";
+        config = simpleConfig().with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                               .with(MySqlConnectorConfig.DATABASE_WHITELIST, dbName)
+                               .with(MySqlConnectorConfig.TABLE_WHITELIST, dbName + "." + tableName)
+                               .build();
+        context = new MySqlTaskContext(config);
+        context.start();
+        context.source().setBinlogStartPoint("",0L); // start from beginning
+        context.initializeHistory();
+        reader = new BinlogReader("binlog", context);
+    
+        // Start reading the binlog ...
+        reader.start();
+    
+        int expectedChanges = 1; // only 1 insert
+        
+        consumeAtLeast(expectedChanges);
+        
+        // Check the records via the store ...
+        List<SourceRecord> sourceRecords = store.sourceRecords();
+        assertThat(sourceRecords.size()).isEqualTo(1);
+        ZonedDateTime expectedTimestamp = ZonedDateTime.of(LocalDateTime.parse("2014-09-08T17:51:04.780"), 
+                                                           ZoneId.systemDefault());
+        String expectedTimestampString = expectedTimestamp.format(ZonedTimestamp.FORMATTER);
+        SourceRecord sourceRecord = sourceRecords.get(0);
+        Struct value = (Struct) sourceRecord.value();
+        Struct after = value.getStruct(Envelope.FieldName.AFTER);
+        String actualTimestampString = after.getString("c4");
+        assertThat(actualTimestampString).isEqualTo(expectedTimestampString);
     }
 }

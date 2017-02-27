@@ -7,8 +7,11 @@ package io.debezium.connector.mysql;
 
 import static org.junit.Assert.assertTrue;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Predicate;
 
 import org.apache.avro.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -381,12 +384,12 @@ public class SourceInfoTest {
             }
             Long rowsToSkip = (Long) offset.get(SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY);
             if (rowsToSkip == null) rowsToSkip = 0L;
-            if( (row+1) == rowCount) {
+            if ((row + 1) == rowCount) {
                 // This is the last row, so the next binlog position should be the number of rows in the event ...
                 assertThat(rowsToSkip).isEqualTo(rowCount);
             } else {
                 // This is not the last row, so the next binlog position should be the row number ...
-                assertThat(rowsToSkip).isEqualTo(row+1);
+                assertThat(rowsToSkip).isEqualTo(row + 1);
             }
             // Get the source struct for this row (always second), which should always reflect this row in this event ...
             Struct recordSource = source.struct();
@@ -515,6 +518,25 @@ public class SourceInfoTest {
         assertPositionWithoutGtids("fn.01", 1, 1, 1).isAfter(positionWithoutGtids("fn.01", 1, 1, 0));
     }
 
+    @Test
+    public void shouldComparePositionsWithDifferentFields() {
+        Document history = positionWith("mysql-bin.000008", 380941551, "01261278-6ade-11e6-b36a-42010af00790:1-378422946,"
+                + "4d1a4918-44ba-11e6-bf12-42010af0040b:1-11002284,"
+                + "716ec46f-d522-11e5-bb56-0242ac110004:1-34673215,"
+                + "96c2072e-e428-11e6-9590-42010a28002d:1-3,"
+                + "c627b2bc-9647-11e6-a886-42010af0044a:1-9541144", 0, 0, true);
+        Document current = positionWith("mysql-bin.000016", 645115324, "01261278-6ade-11e6-b36a-42010af00790:1-400944168,"
+                + "30efb117-e42a-11e6-ba9e-42010a28002e:1-9,"
+                + "4d1a4918-44ba-11e6-bf12-42010af0040b:1-11604379,"
+                + "621dc2f6-803b-11e6-acc1-42010af000a4:1-7963838,"
+                + "716ec46f-d522-11e5-bb56-0242ac110004:1-35850702,"
+                + "c627b2bc-9647-11e6-a886-42010af0044a:1-10426868,"
+                + "d079cbb3-750f-11e6-954e-42010af00c28:1-11544291:11544293-11885648", 2, 1, false);
+        assertThatDocument(current).isAfter(history);
+        Set<String> excludes = Collections.singleton("96c2072e-e428-11e6-9590-42010a28002d");
+        assertThatDocument(history).isAtOrBefore(current, (uuid) -> !excludes.contains(uuid));
+    }
+
     @FixFor("DBZ-107")
     @Test
     public void shouldRemoveNewlinesFromGtidSet() {
@@ -558,17 +580,25 @@ public class SourceInfoTest {
     }
 
     protected Document positionWithoutGtids(String filename, int position, int event, int row, boolean snapshot) {
-        if (snapshot) {
-            return Document.create(SourceInfo.BINLOG_FILENAME_OFFSET_KEY, filename,
-                                   SourceInfo.BINLOG_POSITION_OFFSET_KEY, position,
-                                   SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY, row,
-                                   SourceInfo.EVENTS_TO_SKIP_OFFSET_KEY, event,
-                                   SourceInfo.SNAPSHOT_KEY, true);
+        return positionWith(filename, position, null, event, row, snapshot);
+    }
+
+    protected Document positionWith(String filename, int position, String gtids, int event, int row, boolean snapshot) {
+        Document pos = Document.create(SourceInfo.BINLOG_FILENAME_OFFSET_KEY, filename,
+                                       SourceInfo.BINLOG_POSITION_OFFSET_KEY, position);
+        if (row >= 0) {
+            pos = pos.set(SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY, row);
         }
-        return Document.create(SourceInfo.BINLOG_FILENAME_OFFSET_KEY, filename,
-                               SourceInfo.BINLOG_POSITION_OFFSET_KEY, position,
-                               SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY, row,
-                               SourceInfo.EVENTS_TO_SKIP_OFFSET_KEY, event);
+        if (event >= 0) {
+            pos = pos.set(SourceInfo.EVENTS_TO_SKIP_OFFSET_KEY, event);
+        }
+        if (gtids != null && gtids.trim().length() != 0) {
+            pos = pos.set(SourceInfo.GTID_SET_KEY, gtids);
+        }
+        if (snapshot) {
+            pos = pos.set(SourceInfo.SNAPSHOT_KEY, true);
+        }
+        return pos;
     }
 
     protected PositionAssert assertThatDocument(Document position) {
@@ -597,23 +627,39 @@ public class SourceInfoTest {
         }
 
         public PositionAssert isAt(Document otherPosition) {
-            if (SourceInfo.isPositionAtOrBefore(actual, otherPosition)) return this;
+            return isAt(otherPosition, null);
+        }
+
+        public PositionAssert isAt(Document otherPosition, Predicate<String> gtidFilter) {
+            if (SourceInfo.isPositionAtOrBefore(actual, otherPosition, gtidFilter)) return this;
             failIfCustomMessageIsSet();
             throw failure(actual + " should be consider same position as " + otherPosition);
         }
 
         public PositionAssert isBefore(Document otherPosition) {
-            return isAtOrBefore(otherPosition);
+            return isBefore(otherPosition, null);
+        }
+
+        public PositionAssert isBefore(Document otherPosition, Predicate<String> gtidFilter) {
+            return isAtOrBefore(otherPosition, gtidFilter);
         }
 
         public PositionAssert isAtOrBefore(Document otherPosition) {
-            if (SourceInfo.isPositionAtOrBefore(actual, otherPosition)) return this;
+            return isAtOrBefore(otherPosition, null);
+        }
+
+        public PositionAssert isAtOrBefore(Document otherPosition, Predicate<String> gtidFilter) {
+            if (SourceInfo.isPositionAtOrBefore(actual, otherPosition, gtidFilter)) return this;
             failIfCustomMessageIsSet();
             throw failure(actual + " should be consider same position as or before " + otherPosition);
         }
 
         public PositionAssert isAfter(Document otherPosition) {
-            if (!SourceInfo.isPositionAtOrBefore(actual, otherPosition)) return this;
+            return isAfter(otherPosition, null);
+        }
+
+        public PositionAssert isAfter(Document otherPosition, Predicate<String> gtidFilter) {
+            if (!SourceInfo.isPositionAtOrBefore(actual, otherPosition, gtidFilter)) return this;
             failIfCustomMessageIsSet();
             throw failure(actual + " should be consider after " + otherPosition);
         }

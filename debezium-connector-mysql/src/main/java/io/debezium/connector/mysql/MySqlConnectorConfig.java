@@ -454,6 +454,14 @@ public class MySqlConnectorConfig {
                                                            .withDependents(DATABASE_WHITELIST_NAME)
                                                            .withDescription("Flag specifying whether built-in tables should be ignored.");
 
+    public static final Field JDBC_DRIVER = Field.create("database.jdbc.driver")
+                                                .withDisplayName("Jdbc Driver Class Name")
+                                                .withType(Type.CLASS)
+                                                .withWidth(Width.MEDIUM)
+                                                .withDefault(com.mysql.jdbc.Driver.class.getName())
+                                                .withImportance(Importance.LOW)
+                                                .withValidation(Field::isClassName)
+                                                .withDescription("JDBC Driver class name used to connect to the MySQL database server.");
     /**
      * A comma-separated list of regular expressions that match database names to be monitored.
      * May not be used with {@link #DATABASE_BLACKLIST}.
@@ -606,13 +614,15 @@ public class MySqlConnectorConfig {
                                                       .withValidation(Field::isPositiveInteger);
 
     public static final Field ROW_COUNT_FOR_STREAMING_RESULT_SETS = Field.create("min.row.count.to.stream.results")
-                                                                         .withDisplayName("Stream result set larger than")
+                                                                         .withDisplayName("Stream result set of size")
                                                                          .withType(Type.LONG)
                                                                          .withWidth(Width.MEDIUM)
                                                                          .withImportance(Importance.LOW)
-                                                                         .withDescription("The number of rows a table must contain to stream results rather than pull all into memory during snapshots. Defaults to 1,000.")
+                                                                         .withDescription("The number of rows a table must contain to stream results rather than pull "
+                                                                                 + "all into memory during snapshots. Defaults to 1,000. Use 0 to stream all results "
+                                                                                 + "and completely avoid checking the size of each table.")
                                                                          .withDefault(1_000)
-                                                                         .withValidation(Field::isPositiveInteger);
+                                                                         .withValidation(Field::isNonNegativeLong);
 
     /**
      * The database history class is hidden in the {@link #configDef()} since that is designed to work with a user interface,
@@ -740,7 +750,7 @@ public class MySqlConnectorConfig {
                                                      GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
                                                      TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                                                      SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD,
-                                                     SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, TOPIC_GENERATION_MODE);
+                                                     SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER, TOPIC_GENERATION_MODE);
 
     /**
      * The set of {@link Field}s that are included in the {@link #configDef() configuration definition}. This includes
@@ -756,7 +766,7 @@ public class MySqlConnectorConfig {
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
         Field.group(config, "MySQL", HOSTNAME, PORT, USER, PASSWORD, SERVER_NAME, SERVER_ID,
-                    SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD, SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD);
+                    SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD, SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER);
         Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                     KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
                     KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, DATABASE_HISTORY);

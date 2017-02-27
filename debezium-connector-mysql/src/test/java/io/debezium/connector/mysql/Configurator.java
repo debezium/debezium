@@ -82,7 +82,7 @@ public class Configurator {
 
     public MySqlSchema createSchemas() {
         Configuration config = configBuilder.build();
-        return new MySqlSchema(config,config.getString(MySqlConnectorConfig.SERVER_NAME),null);
+        return new MySqlSchema(config,config.getString(MySqlConnectorConfig.SERVER_NAME), null, null);
     }
 
 }

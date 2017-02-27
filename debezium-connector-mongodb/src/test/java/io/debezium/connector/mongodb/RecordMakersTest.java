@@ -92,7 +92,7 @@ public class RecordMakersTest {
         assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.CREATE.code());
         assertThat(value.getInt64(FieldName.TIMESTAMP)).isEqualTo(1002L);
         Struct actualSource = value.getStruct(FieldName.SOURCE);
-        Struct expectedSource = source.lastOffsetStruct("rs0", collectionId);
+        Struct expectedSource = source.lastOffsetStruct("rs0", collectionId,"", 0);
         assertThat(actualSource).isEqualTo(expectedSource);
     }
 
@@ -123,7 +123,7 @@ public class RecordMakersTest {
         assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.UPDATE.code());
         assertThat(value.getInt64(FieldName.TIMESTAMP)).isEqualTo(1002L);
         Struct actualSource = value.getStruct(FieldName.SOURCE);
-        Struct expectedSource = source.lastOffsetStruct("rs0", collectionId);
+        Struct expectedSource = source.lastOffsetStruct("rs0", collectionId,"", 0);
         assertThat(actualSource).isEqualTo(expectedSource);
     }
 
@@ -153,7 +153,7 @@ public class RecordMakersTest {
         assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.DELETE.code());
         assertThat(value.getInt64(FieldName.TIMESTAMP)).isEqualTo(1002L);
         Struct actualSource = value.getStruct(FieldName.SOURCE);
-        Struct expectedSource = source.lastOffsetStruct("rs0", collectionId);
+        Struct expectedSource = source.lastOffsetStruct("rs0", collectionId,"", 0);
         assertThat(actualSource).isEqualTo(expectedSource);
 
         SourceRecord tombstone = produced.get(1);

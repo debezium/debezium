@@ -7,6 +7,7 @@ package io.debezium.jdbc;
 
 import com.datapipeline.clients.DpAES;
 
+import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
@@ -28,8 +29,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -121,7 +122,60 @@ public class JdbcConnection implements AutoCloseable {
             return conn;
         };
     }
-
+    
+    /**
+     * Create a {@link ConnectionFactory} that uses the specific JDBC driver class loaded with the given class loader, and obtains the connection URL by replacing the following variables in the URL pattern:
+     * <ul>
+     * <li><code>${hostname}</code></li>
+     * <li><code>${port}</code></li>
+     * <li><code>${dbname}</code></li>
+     * <li><code>${username}</code></li>
+     * <li><code>${password}</code></li>
+     * </ul>
+     * <p>
+     * This method attempts to instantiate the JDBC driver class and use that instance to connect to the database.
+     * @param urlPattern the URL pattern string; may not be null
+     * @param driverClassName the name of the JDBC driver class; may not be null
+     * @param classloader the ClassLoader that should be used to load the JDBC driver class given by `driverClassName`; may be null if this class' class loader should be used
+     * @param variables any custom or overridden configuration variables
+     * @return the connection factory
+     */
+    @SuppressWarnings("unchecked")
+    public static ConnectionFactory patternBasedFactory(String urlPattern, String driverClassName,
+            ClassLoader classloader, Field... variables) {
+        return (config) -> {
+            LOGGER.trace("Config: {}", config.asProperties());
+            Properties props = config.asProperties();
+            String password = props.getProperty(JdbcConfiguration.PASSWORD.name());
+            if (password != null) {
+                props.setProperty(JdbcConfiguration.PASSWORD.name(), DpAES.decrypt(password));
+            }
+            Field[] varsWithDefaults = combineVariables(variables,
+                                                        JdbcConfiguration.HOSTNAME,
+                                                        JdbcConfiguration.PORT,
+                                                        JdbcConfiguration.USER,
+                                                        JdbcConfiguration.PASSWORD,
+                                                        JdbcConfiguration.DATABASE);
+            String url = findAndReplace(urlPattern, props, varsWithDefaults);
+            LOGGER.trace("Props: {}", props);
+            LOGGER.trace("URL: {}", url);
+            Connection conn = null;
+            try {
+                ClassLoader driverClassLoader = classloader;
+                if (driverClassLoader == null) {
+                    driverClassLoader = JdbcConnection.class.getClassLoader();
+                }                
+                Class<java.sql.Driver> driverClazz = (Class<java.sql.Driver>) Class.forName(driverClassName, true, driverClassLoader);
+                java.sql.Driver driver = driverClazz.newInstance();
+                conn = driver.connect(url, props);
+            } catch (ClassNotFoundException|IllegalAccessException|InstantiationException e) {
+                throw new SQLException(e);
+            } 
+            LOGGER.debug("Connected to {} with {}", url, props);
+            return conn;
+        };
+    } 
+    
     private static Field[] combineVariables(Field[] overriddenVariables,
                                             Field... defaultVariables) {
         Map<String, Field> fields = new HashMap<>();
@@ -279,6 +333,11 @@ public class JdbcConnection implements AutoCloseable {
     public static interface StatementPreparer {
         void accept(PreparedStatement statement) throws SQLException;
     }
+    
+    @FunctionalInterface
+    public static interface CallPreparer {
+        void accept(CallableStatement statement) throws SQLException;
+    }
 
     /**
      * Execute a SQL query.
@@ -292,7 +351,31 @@ public class JdbcConnection implements AutoCloseable {
     public JdbcConnection query(String query, ResultSetConsumer resultConsumer) throws SQLException {
         return query(query,conn->conn.createStatement(),resultConsumer);
     }
-
+    
+    /**
+     * Execute a stored procedure.
+     * 
+     * @param sql the SQL query; may not be {@code null}
+     * @param callPreparer a {@link CallPreparer} instance which can be used to set additional parameters; may be null
+     * @param resultSetConsumer a {@link ResultSetConsumer} instance which can be used to process the results; may be null
+     * @return this object for chaining methods together
+     * @throws SQLException if anything unexpected fails
+     */
+    public JdbcConnection call(String sql, CallPreparer callPreparer, ResultSetConsumer resultSetConsumer) throws SQLException {
+        Connection conn = connection();
+        try (CallableStatement callableStatement = conn.prepareCall(sql)) {
+            if (callPreparer != null) {
+                callPreparer.accept(callableStatement);
+            }
+            try (ResultSet rs = callableStatement.executeQuery()) {
+                if (resultSetConsumer != null) {
+                    resultSetConsumer.accept(rs);
+                }
+            }
+        }
+        return this;
+    }
+    
     /**
      * Execute a SQL query.
      * 
@@ -351,6 +434,26 @@ public class JdbcConnection implements AutoCloseable {
             try (ResultSet resultSet = statement.executeQuery();) {
                 if (resultConsumer != null) resultConsumer.accept(resultSet);
             }
+        }
+        return this;
+    }
+    
+    /**
+     * Execute a SQL update via a prepared statement.
+     *
+     * @param stmt the statement string
+     * @param preparer the function that supplied arguments to the prepared stmt; may be null
+     * @return this object for chaining methods together
+     * @throws SQLException if there is an error connecting to the database or executing the statements
+     * @see #execute(Operations)
+     */
+    public JdbcConnection prepareUpdate(String stmt, StatementPreparer preparer) throws SQLException {
+        Connection conn = connection();
+        try (PreparedStatement statement = conn.prepareStatement(stmt);) {
+            if (preparer != null) {
+                preparer.accept(statement);
+            }
+            statement.execute();
         }
         return this;
     }
@@ -509,6 +612,28 @@ public class JdbcConnection implements AutoCloseable {
         return catalogs;
     }
     
+    /**
+     * Get the names of all of the schemas, optionally applying a filter.
+     *
+     * @param filter a {@link Predicate} to test each schema name; may be null in which case all schema names are returned
+     * @return the set of catalog names; never null but possibly empty
+     * @throws SQLException if an error occurs while accessing the database metadata
+     */
+    public Set<String> readAllSchemaNames(Predicate<String> filter)
+            throws SQLException {
+        Set<String> schemas = new HashSet<>();
+        DatabaseMetaData metadata = connection().getMetaData();
+        try (ResultSet rs = metadata.getSchemas()) {
+            while (rs.next()) {
+                String schema = rs.getString(1);
+                if (filter != null && filter.test(schema)) {
+                    schemas.add(schema);
+                }
+            }
+        }
+        return schemas;
+    }
+    
     public String[] tableTypes() throws SQLException {
         List<String> types = new ArrayList<>();
         DatabaseMetaData metadata = connection().getMetaData();
@@ -584,6 +709,14 @@ public class JdbcConnection implements AutoCloseable {
     public String username()  {
         return config.getString(JdbcConfiguration.USER);
     }
+  /**
+     * Returns the database name for this connection
+     * 
+     * @return a {@code String}, never {@code null}
+     */
+    public String database()  {
+        return config.getString(JdbcConfiguration.DATABASE);
+    }
 
     /**
      * Create definitions for each tables in the database, given the catalog name, schema pattern, table filter, and
@@ -629,7 +762,13 @@ public class JdbcConnection implements AutoCloseable {
                         column.optional(isNullable(rs.getInt(11)));
                         column.position(rs.getInt(17));
                         column.autoIncremented("YES".equalsIgnoreCase(rs.getString(23)));
-                        column.generated("YES".equalsIgnoreCase(rs.getString(24)));
+                        String autogenerated = null;
+                        try {
+                            autogenerated = rs.getString(24);
+                        } catch (SQLException e) {
+                            // ignore, some drivers don't have this index - e.g. Postgres
+                        }
+                        column.generated("YES".equalsIgnoreCase(autogenerated));
                         cols.add(column.create());
                     }
                 }
@@ -662,7 +801,24 @@ public class JdbcConnection implements AutoCloseable {
             tableIdsBefore.forEach(tables::removeTable);
         }
     }
-
+    
+    /**
+     * Returns a map which contains information about how a database maps it's data types to JDBC data types.
+     * 
+     * @return a {@link Map map of (localTypeName, jdbcType) pairs} 
+     * @throws SQLException if anything unexpected fails
+     */
+    public Map<String, Integer> readTypeInfo() throws SQLException {
+        DatabaseMetaData metadata = connection().getMetaData();
+        Map<String, Integer> jdbcTypeByLocalTypeName = new HashMap<>();
+        try (ResultSet rs = metadata.getTypeInfo()) {
+           while (rs.next()) {
+               jdbcTypeByLocalTypeName.put(rs.getString("TYPE_NAME"), rs.getInt("DATA_TYPE"));
+           }
+        }
+        return jdbcTypeByLocalTypeName;
+    }
+    
     /**
      * Use the supplied table editor to create columns for the supplied result set.
      * 

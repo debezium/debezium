@@ -89,7 +89,11 @@ public class KeyValueStore {
             getOrCreate(tableId).add(record);
         }
     }
-
+    
+    public List<SourceRecord> sourceRecords() {
+        return sourceRecords;
+    }
+    
     public Collection collection(String fullyQualifiedName) {
         return collection(TableId.parse(fullyQualifiedName));
     }
@@ -230,6 +234,10 @@ public class KeyValueStore {
         protected void add(SourceRecord record) {
             if (record != null) {
                 Struct key = keyFor(record);
+                if (key == null) {
+                    // no PK information
+                    return;
+                }
                 Struct value = valueFor(record);
                 if (value != null) {
                     Operation op = Envelope.operationFor(record);

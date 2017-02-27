@@ -6,6 +6,9 @@
 package io.debezium.relational.history;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -20,7 +23,6 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
-import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
@@ -73,7 +75,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                                                                .withImportance(Importance.LOW)
                                                                .withDescription("The number of milliseconds to wait while polling for persisted data during recovery.")
                                                                .withDefault(100)
-                                                               .withValidation(Field::isInteger);
+                                                               .withValidation(Field::isNonNegativeInteger);
 
     public static final Field RECOVERY_POLL_ATTEMPTS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.recovery.attempts")
                                                             .withDisplayName("Max attempts to recovery database history")
@@ -92,7 +94,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     private static final String PRODUCER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "producer.";
 
     private final DocumentReader reader = DocumentReader.defaultReader();
-    private final Integer partition = new Integer(0);
+    private final Integer partition = 0;
     private String topicName;
     private Configuration consumerConfig;
     private Configuration producerConfig;
@@ -119,7 +121,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                                     .withDefault(ConsumerConfig.GROUP_ID_CONFIG, dbHistoryName)
                                     .withDefault(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 1) // get even smallest message
                                     .withDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false)
-                                    .withDefault(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 30000)
+                                    .withDefault(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 10000) //readjusted since 0.10.1.0 
                                     .withDefault(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
                                                  OffsetResetStrategy.EARLIEST.toString().toLowerCase())
                                     .withDefault(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
@@ -142,7 +144,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     }
 
     @Override
-    public void start() {
+    public synchronized void start() {
         super.start();
         if (this.producer == null) {
             this.producer = new KafkaProducer<>(this.producerConfig.asProperties());
@@ -150,7 +152,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     }
 
     @Override
-    protected void storeRecord(HistoryRecord record) {
+    protected void storeRecord(HistoryRecord record) throws DatabaseHistoryException {
         if (this.producer == null) {
             throw new IllegalStateException("No producer is available. Ensure that 'start()' is called before storing database history records.");
         }
@@ -165,47 +167,60 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                 logger.debug("Stored record in topic '{}' partition {} at offset {} ",
                              metadata.topic(), metadata.partition(), metadata.offset());
             }
-        } catch (InterruptedException e) {
-            logger.error("Interrupted while waiting for response to storing record into database history: {}", record);
+        } catch( InterruptedException e) {
+            logger.trace("Interrupted before record was written into database history: {}", record);
+            Thread.interrupted();
+            throw new DatabaseHistoryException(e);
         } catch (ExecutionException e) {
-            logger.error("Error while storing database history record into Kafka: {}", record, e);
+            throw new DatabaseHistoryException(e);
         }
     }
 
     @Override
     protected void recoverRecords(Tables schema, DdlParser ddlParser, Consumer<HistoryRecord> records) {
-        try (KafkaConsumer<String, String> historyConsumer = new KafkaConsumer<String, String>(consumerConfig.asProperties());) {
+        try (KafkaConsumer<String, String> historyConsumer = new KafkaConsumer<>(consumerConfig.asProperties());) {
             // Subscribe to the only partition for this topic, and seek to the beginning of that partition ...
-            TopicPartition topicPartition = new TopicPartition(topicName, partition);
-            logger.debug("Subscribing to database history topic '{}' partition {} at offset 0", topicPartition.topic(),
-                         topicPartition.partition());
+            logger.debug("Subscribing to database history topic '{}'", topicName);
             historyConsumer.subscribe(Collect.arrayListOf(topicName));
+
+            // Explicitly seek to the beginning of all assigned topic partitions ...
+            logger.debug("Seeking Kafka consumer to beginning of all assigned topic partitions");
+            historyConsumer.seekToBeginning(Collections.emptyList());
 
             // Read all messages in the topic ...
             int remainingEmptyPollResults = this.recoveryAttempts;
+            Map<Long, Long> offsetsByPartition = new HashMap<>();
             while (remainingEmptyPollResults > 0) {
                 ConsumerRecords<String, String> recoveredRecords = historyConsumer.poll(this.pollIntervalMs);
-                logger.debug("Read {} records from database history", recoveredRecords.count());
-                if (recoveredRecords.isEmpty()) {
-                    --remainingEmptyPollResults;
-                } else {
-                    remainingEmptyPollResults = this.recoveryAttempts;
-                    for (ConsumerRecord<String, String> record : recoveredRecords) {
-                        try {
+                int numRecordsProcessed = 0;
+                for (ConsumerRecord<String, String> record : recoveredRecords) {
+                    try {
+                        Long partition = new Long(record.partition());
+                        Long lastOffset = offsetsByPartition.get(partition);
+                        if (lastOffset == null || lastOffset.longValue() < record.offset()) {
                             HistoryRecord recordObj = new HistoryRecord(reader.read(record.value()));
                             records.accept(recordObj);
                             logger.trace("Recovered database history: {}" + recordObj);
-                        } catch (IOException e) {
-                            logger.error("Error while deserializing history record", e);
+                            offsetsByPartition.put(partition, new Long(record.offset()));
+                            ++numRecordsProcessed;
                         }
+                    } catch (IOException e) {
+                        logger.error("Error while deserializing history record", e);
                     }
+                }
+                if (numRecordsProcessed == 0) {
+                    --remainingEmptyPollResults;
+                    logger.debug("No new records found in the database history; will retry {} more times", remainingEmptyPollResults);
+                } else {
+                    remainingEmptyPollResults = this.recoveryAttempts;
+                    logger.debug("Processed {} records from database history", numRecordsProcessed);
                 }
             }
         }
     }
 
     @Override
-    public void stop() {
+    public synchronized void stop() {
         try {
             if (this.producer != null) {
                 try {
@@ -227,5 +242,9 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                     + " using brokers at " + producerConfig.getString(BOOTSTRAP_SERVERS);
         }
         return "Kafka topic";
+    }
+    
+    protected static String consumerConfigPropertyName(String kafkaConsumerPropertyName) {
+        return CONSUMER_PREFIX + kafkaConsumerPropertyName;
     }
 }

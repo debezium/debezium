@@ -79,10 +79,11 @@ public class BinlogReader extends AbstractReader {
     /**
      * Create a binlog reader.
      * 
+     * @param name the name of this reader; may not be null
      * @param context the task context in which this reader is running; may not be null
      */
-    public BinlogReader(MySqlTaskContext context) {
-        super(context);
+    public BinlogReader(String name, MySqlTaskContext context) {
+        super(name, context);
         source = context.source();
         recordMakers = context.makeRecord();
         recordSchemaChangesInSourceRecords = context.includeSchemaChangeRecords();
@@ -155,20 +156,33 @@ public class BinlogReader extends AbstractReader {
         eventHandlers.put(EventType.EXT_WRITE_ROWS, this::handleInsert);
         eventHandlers.put(EventType.EXT_UPDATE_ROWS, this::handleUpdate);
         eventHandlers.put(EventType.EXT_DELETE_ROWS, this::handleDelete);
+        eventHandlers.put(EventType.VIEW_CHANGE, this::viewChange);
+        eventHandlers.put(EventType.XA_PREPARE, this::prepareTransaction);
 
         // Get the current GtidSet from MySQL so we can get a filtered/merged GtidSet based off of the last Debezium checkpoint.
         String availableServerGtidStr = context.knownGtidSet();
-        GtidSet availableServerGtidSet = new GtidSet(availableServerGtidStr);
-        GtidSet filteredGtidSet = context.filterGtidSet(availableServerGtidSet);
-        if (filteredGtidSet != null) {
-            // Register the event handler ...
+        if (availableServerGtidStr != null && !availableServerGtidStr.trim().isEmpty()) {
+            // The server is using GTIDs, so enable the handler ...
             eventHandlers.put(EventType.GTID, this::handleGtidEvent);
-            logger.info("Registering binlog reader with GTID set: {}", filteredGtidSet);
-            String filteredGtidSetStr = filteredGtidSet.toString();
-            client.setGtidSet(filteredGtidSetStr);
-            source.setCompletedGtidSet(filteredGtidSetStr);
-            gtidSet = new com.github.shyiko.mysql.binlog.GtidSet(filteredGtidSetStr);
+            
+            // Now look at the GTID set from the server and what we've previously seen ...
+            GtidSet availableServerGtidSet = new GtidSet(availableServerGtidStr);
+            GtidSet filteredGtidSet = context.filterGtidSet(availableServerGtidSet);
+            if (filteredGtidSet != null) {
+                // We've seen at least some GTIDs, so start reading from the filtered GTID set ...
+                logger.info("Registering binlog reader with GTID set: {}", filteredGtidSet);
+                String filteredGtidSetStr = filteredGtidSet.toString();
+                client.setGtidSet(filteredGtidSetStr);
+                source.setCompletedGtidSet(filteredGtidSetStr);
+                gtidSet = new com.github.shyiko.mysql.binlog.GtidSet(filteredGtidSetStr);
+            } else {
+                // We've not yet seen any GTIDs, so that means we have to start reading the binlog from the beginning ...
+                client.setBinlogFilename(source.binlogFilename());
+                client.setBinlogPosition(source.binlogPosition());
+                gtidSet = new com.github.shyiko.mysql.binlog.GtidSet("");
+            }
         } else {
+            // The server is not using GTIDs, so start reading the binlog based upon where we last left off ...
             client.setBinlogFilename(source.binlogFilename());
             client.setBinlogPosition(source.binlogPosition());
         }
@@ -217,20 +231,23 @@ public class BinlogReader extends AbstractReader {
     @Override
     protected void doStop() {
         try {
-            logger.debug("Stopping binlog reader, last recorded offset: {}", lastOffset);
-            client.disconnect();
+            if (isRunning()) {
+                logger.debug("Stopping binlog reader, last recorded offset: {}", lastOffset);
+                client.disconnect();
+            }
+            cleanupResources();
         } catch (IOException e) {
             logger.error("Unexpected error when disconnecting from the MySQL binary log reader", e);
+        } finally {
+            // We unregister our JMX metrics now, which means we won't record metrics for records that
+            // may be processed between now and complete shutdown. That's okay.
+            metrics.unregister(logger);
         }
     }
 
     @Override
-    protected void doShutdown() {
-        metrics.unregister(logger);
-    }
-
-    @Override
     protected void doCleanup() {
+        logger.debug("Completed writing all records that were read from the binlog before being stopped");
     }
 
     @Override
@@ -398,14 +415,16 @@ public class BinlogReader extends AbstractReader {
      * MySQL schemas.
      * 
      * @param event the database change data event to be processed; may not be null
+     * @throws InterruptedException if this thread is interrupted while recording the DDL statements
      */
-    protected void handleQueryEvent(Event event) {
+    protected void handleQueryEvent(Event event) throws InterruptedException {
         QueryEventData command = unwrapData(event);
         logger.debug("Received query command: {}", event);
         String sql = command.getSql().trim();
         if (sql.equalsIgnoreCase("BEGIN")) {
             // We are starting a new transaction ...
             source.startNextTransaction();
+            source.setBinlogThread(command.getThreadId());
             if (initialEventsToSkip != 0) {
                 logger.debug("Restarting partially-processed transaction; change events will not be created for the first {} events plus {} more rows in the next event",
                              initialEventsToSkip, startingRowNumber);
@@ -417,7 +436,12 @@ public class BinlogReader extends AbstractReader {
         if (sql.equalsIgnoreCase("COMMIT")) {
             // We are completing the transaction ...
             source.commitTransaction();
+            source.setBinlogThread(-1L);
             skipEvent = false;
+            return;
+        }
+        if (sql.toUpperCase().startsWith("XA ")) {
+            // This is an XA transaction, and we currently ignore these and do nothing ...
             return;
         }
         context.dbSchema().applyDdl(context.source(), command.getDatabase(), command.getSql(), (dbName, statements) -> {
@@ -587,6 +611,28 @@ public class BinlogReader extends AbstractReader {
         startingRowNumber = 0;
     }
 
+    /**
+     * Handle a {@link EventType#VIEW_CHANGE} event.
+     * 
+     * @param event the database change data event to be processed; may not be null
+     * @throws InterruptedException if this thread is interrupted while blocking
+     */
+    protected void viewChange(Event event) throws InterruptedException {
+        logger.debug("View Change event: {}", event);
+        // do nothing
+    }
+    
+    /**
+     * Handle a {@link EventType#XA_PREPARE} event.
+     * 
+     * @param event the database change data event to be processed; may not be null
+     * @throws InterruptedException if this thread is interrupted while blocking
+     */
+    protected void prepareTransaction(Event event) throws InterruptedException {
+        logger.debug("XA Prepare event: {}", event);
+        // do nothing
+    }
+    
     protected SSLMode sslModeFor(SecureConnectionMode mode) {
         switch (mode) {
             case DISABLED:
