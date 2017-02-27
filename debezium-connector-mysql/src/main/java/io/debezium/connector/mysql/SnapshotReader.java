@@ -160,7 +160,6 @@ public class SnapshotReader extends AbstractReader {
         boolean tableLocks = false;
         try {
             metrics.startSnapshot();
-
             // ------
             // STEP 0
             // ------

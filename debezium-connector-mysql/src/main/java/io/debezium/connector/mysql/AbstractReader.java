@@ -146,7 +146,7 @@ public abstract class AbstractReader implements Reader {
 
     /**
      * Wraps the specified exception in a {@link ConnectException}, ensuring that all useful state is captured inside
-     * the new exception's message.
+     * the new exception's message.`
      * 
      * @param error the exception; may not be null
      * @return the wrapped Kafka Connect exception

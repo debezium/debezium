@@ -150,7 +150,7 @@ public class Replicator {
                     readOplog();
                 }
             } finally {
-                this.running.set(false);
+                this.running.set(false);    
             }
         }
     }

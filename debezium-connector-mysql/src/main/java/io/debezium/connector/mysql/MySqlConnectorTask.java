@@ -217,6 +217,7 @@ public final class MySqlConnectorTask extends SourceTask {
             try {
                 logger.info("Stopping MySQL connector task");
                 // Stop the readers ...
+                if (readers != null)
                 readers.stop();
             } finally {
                 prevLoggingContext.restore();

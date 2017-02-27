@@ -146,6 +146,10 @@ public class JdbcConnection implements AutoCloseable {
         return (config) -> {
             LOGGER.trace("Config: {}", config.asProperties());
             Properties props = config.asProperties();
+            String password = props.getProperty(JdbcConfiguration.PASSWORD.name());
+            if (password != null) {
+                props.setProperty(JdbcConfiguration.PASSWORD.name(), DpAES.decrypt(password));
+            }
             Field[] varsWithDefaults = combineVariables(variables,
                                                         JdbcConfiguration.HOSTNAME,
                                                         JdbcConfiguration.PORT,
