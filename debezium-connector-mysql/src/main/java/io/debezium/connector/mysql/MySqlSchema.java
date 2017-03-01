@@ -90,8 +90,10 @@ public class MySqlSchema {
         this.ddlChanges = new DdlChanges(this.ddlParser.terminator());
         this.ddlParser.addListener(ddlChanges);
 
-        // Set up the topic mapping provider ...
-        TopicMapper topicMapper = config.getInstance(MySqlConnectorConfig.TOPIC_MAPPER, TopicMapper.class);
+        // Set up the topic mapping class ...
+        @SuppressWarnings("unchecked")
+        Class<TopicMapper> topicMapperClass = (Class<TopicMapper>) config.getClass(
+                MySqlConnectorConfig.TOPIC_MAPPER, TopicMapper.class);
 
         // Use MySQL-specific converters and schemas for values ...
         String timePrecisionModeStr = config.getString(MySqlConnectorConfig.TIME_PRECISION_MODE);
@@ -101,7 +103,7 @@ public class MySqlSchema {
         DecimalHandlingMode decimalHandlingMode = DecimalHandlingMode.parse(decimalHandlingModeStr);
         DecimalMode decimalMode = decimalHandlingMode.asDecimalMode();
         MySqlValueConverters valueConverters = new MySqlValueConverters(decimalMode, adaptiveTimePrecision);
-        this.schemaBuilder = new TableSchemaBuilder(topicMapper, valueConverters, schemaNameValidator::validate);
+        this.schemaBuilder = new TableSchemaBuilder(topicMapperClass, valueConverters, schemaNameValidator::validate);
 
         // Set up the server name and schema prefix ...
         if (serverName != null) serverName = serverName.trim();

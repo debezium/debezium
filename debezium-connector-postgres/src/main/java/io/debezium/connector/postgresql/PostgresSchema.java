@@ -15,6 +15,7 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import io.debezium.relational.topic.ByTableTopicMapper;
+import io.debezium.relational.topic.TopicMapper;
 import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,7 +65,8 @@ public class PostgresSchema {
 
         PostgresValueConverter valueConverter = new PostgresValueConverter(config.adaptiveTimePrecision(), ZoneOffset.UTC);
         this.schemaNameValidator = AvroValidator.create(LOGGER)::validate;
-        this.schemaBuilder = new TableSchemaBuilder(new ByTableTopicMapper(), valueConverter, this.schemaNameValidator);
+        Class<TopicMapper> topicMapperClass = (Class<TopicMapper>) ((Class<? extends TopicMapper>) ByTableTopicMapper.class);
+        this.schemaBuilder = new TableSchemaBuilder(topicMapperClass, valueConverter, this.schemaNameValidator);
 
         // Set up the server name and schema prefix ...
         String serverName = config.serverName();

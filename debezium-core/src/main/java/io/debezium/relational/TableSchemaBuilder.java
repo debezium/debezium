@@ -50,21 +50,21 @@ public class TableSchemaBuilder {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TableSchemaBuilder.class);
 
-    private final TopicMapper topicMapper;
+    private final Class<TopicMapper> topicMapperClass;
     private final Function<String, String> schemaNameValidator;
     private final ValueConverterProvider valueConverterProvider;
 
     /**
      * Create a new instance of the builder.
      *
-     * @param topicMapper the provider for the {@link TopicMapper} for each table; may not be null
+     * @param topicMapperClass the provider for the {@link TopicMapper} for each table; may not be null
      * @param valueConverterProvider the provider for obtaining {@link ValueConverter}s and {@link SchemaBuilder}s; may not be
      *            null
      * @param schemaNameValidator the validation function for schema names; may not be null
      */
-    public TableSchemaBuilder(TopicMapper topicMapper, ValueConverterProvider valueConverterProvider,
+    public TableSchemaBuilder(Class<TopicMapper> topicMapperClass, ValueConverterProvider valueConverterProvider,
                               Function<String, String> schemaNameValidator) {
-        this.topicMapper = topicMapper;
+        this.topicMapperClass = topicMapperClass;
         this.schemaNameValidator = schemaNameValidator;
         this.valueConverterProvider = valueConverterProvider;
     }
@@ -135,6 +135,7 @@ public class TableSchemaBuilder {
         // Build the schemas ...
         final TableId tableId = table.id();
         final String schemaNamePrefix = schemaPrefix + tableId.toString();
+        final TopicMapper topicMapper = getTopicMapper();
         topicMapper.setTopicPrefix(schemaPrefix)
                 .setTable(table);
         final String keySchemaName = schemaNameValidator.apply(schemaNamePrefix + ".Key");
@@ -355,5 +356,17 @@ public class TableSchemaBuilder {
      */
     protected ValueConverter createValueConverterFor(Column column, Field fieldDefn) {
         return valueConverterProvider.converter(column, fieldDefn);
+    }
+
+    private TopicMapper getTopicMapper() {
+        TopicMapper topicMapper = null;
+        try {
+            topicMapper = topicMapperClass.newInstance();
+        } catch (InstantiationException e) {
+            LOGGER.error("Unable to instantiate class {}", topicMapperClass.getName(), e);
+        } catch (IllegalAccessException e) {
+            LOGGER.error("Unable to access class {}", topicMapperClass.getName(), e);
+        }
+        return topicMapper;
     }
 }
