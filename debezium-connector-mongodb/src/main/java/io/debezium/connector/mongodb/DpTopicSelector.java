@@ -1,13 +1,9 @@
 package io.debezium.connector.mongodb;
 
 import com.datapipeline.base.mongodb.MongodbSchemaNameConfig;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.debezium.config.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
@@ -23,23 +19,17 @@ public class DpTopicSelector implements TopicSelector {
 
     private final Map<String, String> collectionSchemaNameMap = new ConcurrentHashMap<>();
 
-    public DpTopicSelector(Configuration config, ObjectMapper objectMapper, String prefix){
+    public DpTopicSelector(List<MongodbSchemaNameConfig> schemaNameConfigs, String prefix){
         if(prefix != null && prefix.trim().length() > 0){
             this.prefix = prefix.trim();
         }
-        try{
-            List<MongodbSchemaNameConfig> schemaNameConfigs =  objectMapper.readValue(config.getString(MongoDbConnectorConfig.COLLECTION_SCHEMA_NAME_CONFIGURATION),
-                    new TypeReference<List<MongodbSchemaNameConfig>>() {});
-            if(schemaNameConfigs != null && !schemaNameConfigs.isEmpty()){
-                for(MongodbSchemaNameConfig schemaNameConfig : schemaNameConfigs){
-                    for(String collectionName : schemaNameConfig.getCollectionNames()) {
-                        collectionSchemaNameMap.put(collectionName, schemaNameConfig.getSchemaName());
-                    }
+        if(schemaNameConfigs != null && !schemaNameConfigs.isEmpty()){
+            for(MongodbSchemaNameConfig schemaNameConfig : schemaNameConfigs){
+                for(String collectionName : schemaNameConfig.getCollectionNames()) {
+                    collectionSchemaNameMap.put(collectionName, schemaNameConfig.getSchemaName());
                 }
-                return;
             }
-        } catch (IOException e) {
-            logger.error("Error deserialize collection schema name config.", e);
+            return;
         }
     }
 
