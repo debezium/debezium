@@ -28,8 +28,8 @@ import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.KafkaDatabaseHistory;
-import io.debezium.relational.topic.ByDatabaseTopicMapping;
-import io.debezium.relational.topic.ByTableTopicMapping;
+import io.debezium.relational.topic.ByDatabaseTopicMapper;
+import io.debezium.relational.topic.ByTableTopicMapper;
 
 /**
  * The configuration properties.
@@ -616,15 +616,15 @@ public class MySqlConnectorConfig {
                                                                     + "The default is 'true'. This is independent of how the connector internally records database history.")
                                                             .withDefault(true);
 
-    public static final Field TOPIC_MAPPING = Field.create("topic.mapping")
-                                                   .withDisplayName("Topic mapping")
+    public static final Field TOPIC_MAPPER = Field.create("topic.mapper")
+                                                   .withDisplayName("Topic mapper")
                                                    .withType(Type.CLASS)
                                                    .withWidth(Width.LONG)
                                                    .withImportance(Importance.LOW)
-                                                   .withDescription("The name of the TopicMappingProvider class that should be used to determine how change events for tables should be mapped into topics. "
-                                                           + "Built in options include '" + ByTableTopicMapping.class.getName()
-                                                           + "' (the default) and '" + ByDatabaseTopicMapping.class.getName() + "'.")
-                                                   .withDefault(ByTableTopicMapping.class.getName());
+                                                   .withDescription("The name of the TopicMapper class that should be used to determine how change events for tables should be mapped into topics. "
+                                                           + "Built in options include '" + ByTableTopicMapper.class.getName()
+                                                           + "' (the default) and '" + ByDatabaseTopicMapper.class.getName() + "'.")
+                                                   .withDefault(ByTableTopicMapper.class.getName());
 
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
                                                    .withDisplayName("Snapshot mode")
@@ -713,7 +713,7 @@ public class MySqlConnectorConfig {
                                                      TABLE_WHITELIST, TABLE_BLACKLIST, TABLES_IGNORE_BUILTIN,
                                                      DATABASE_WHITELIST, DATABASE_BLACKLIST,
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING,
-                                                     TOPIC_MAPPING, GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
+                                                     TOPIC_MAPPER, GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
                                                      GTID_SOURCE_FILTER_DML_EVENTS,
                                                      TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                                                      SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD,
@@ -738,7 +738,7 @@ public class MySqlConnectorConfig {
                     KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
                     KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, DATABASE_HISTORY);
         Field.group(config, "Events", INCLUDE_SCHEMA_CHANGES, TABLES_IGNORE_BUILTIN, DATABASE_WHITELIST, TABLE_WHITELIST,
-                    COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST, TOPIC_MAPPING,
+                    COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST, TOPIC_MAPPER,
                     GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
                     SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE);

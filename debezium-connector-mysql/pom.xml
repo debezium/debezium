@@ -125,7 +125,7 @@
                       </log>
                       <wait>
                         <log>MySQL init process done. Ready for start up.</log>
-                        <time>30000</time> <!-- 30 seconds max -->
+                        <time>60000</time> <!-- 30 seconds max -->
                       </wait>
                     </run>
                     <build>
