@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -192,6 +193,7 @@ public class TableSchemaBuilder {
             Field[] fields = fieldsForColumns(schema, columns);
             int numFields = recordIndexes.length;
             ValueConverter[] converters = convertersForColumns(schema, columnSetName, columns, null, null);
+            Map<String, Object> nonRowFieldsToAddToKey = topicMapper.getNonRowFieldsToAddToKey(schema);
             return (row) -> {
                 Struct result = new Struct(schema);
                 for (int i = 0; i != numFields; ++i) {
@@ -208,7 +210,13 @@ public class TableSchemaBuilder {
                         }
                     }
                 }
-                topicMapper.addNonRowFieldsToKey(schema, result);
+
+                if (nonRowFieldsToAddToKey != null) {
+                    for (Map.Entry<String, Object> nonRowField : nonRowFieldsToAddToKey.entrySet()) {
+                        result.put(nonRowField.getKey(), nonRowField.getValue());
+                    }
+                }
+
                 return result;
             };
         }

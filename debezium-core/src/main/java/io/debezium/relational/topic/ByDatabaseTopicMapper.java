@@ -7,7 +7,9 @@ package io.debezium.relational.topic;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.kafka.connect.data.Struct;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author David Leibovic
@@ -23,9 +25,11 @@ public class ByDatabaseTopicMapper extends TopicMapper {
         keySchemaBuilder.field("tableName", Schema.STRING_SCHEMA);
     }
 
-    public void addNonRowFieldsToKey(Schema schema, Struct rowBasedKey) {
+    public Map<String, Object> getNonRowFieldsToAddToKey(Schema schema) {
         // Just add the table name as a field ...
-        rowBasedKey.put("tableName", table.id().table());
+        Map<String, Object> nonRowFields = new HashMap<>();
+        nonRowFields.put("tableName", table.id().table());
+        return nonRowFields;
     }
 
 }

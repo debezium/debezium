@@ -7,7 +7,8 @@ package io.debezium.relational.topic;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.kafka.connect.data.Struct;
+
+import java.util.Map;
 
 /**
  * @author David Leibovic
@@ -22,8 +23,9 @@ public class ByTableTopicMapper extends TopicMapper {
         // do nothing ...
     }
 
-    public void addNonRowFieldsToKey(Schema schema, Struct rowBasedKey) {
+    public Map<String, Object> getNonRowFieldsToAddToKey(Schema schema) {
         // do nothing ...
+        return null;
     }
 
 }
