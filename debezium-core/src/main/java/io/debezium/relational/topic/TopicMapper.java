@@ -7,10 +7,9 @@ package io.debezium.relational.topic;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.relational.Table;
-
-import java.util.Map;
 
 /**
  * @author David Leibovic
@@ -45,10 +44,11 @@ public abstract class TopicMapper {
     abstract public void enhanceKeySchema(SchemaBuilder keySchemaBuilder);
 
     /**
-     * Get the extra key-value pairs necessary to add to the event's key.
+     * Get the key for the row defined by the specified
+     *
      * @param schema the schema for the key; never null
-     * @return the extra key-value pairs, or null if none are necessary.
+     * @param rowBasedKey the {@link Struct} for the key whose row-based fields have already been set; never null
      */
-    abstract public Map<String, Object> getNonRowFieldsToAddToKey(Schema schema);
+    abstract public void addNonRowFieldsToKey(Schema schema, Struct rowBasedKey);
 
 }
