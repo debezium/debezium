@@ -462,7 +462,6 @@ public class SnapshotReader extends AbstractReader {
                                             }
                                             String id = rs.getObject(primaryKey).toString();
                                             source.setLastRecordId(tableId.table(), id);
-                                            source.setEntityName(tableId.table());
                                             source.setEntitySize((int)numRows.get());
                                             recorder.recordRow(recordMaker, row, ts); // has no row number!
                                             ++rowNum;
@@ -607,15 +606,19 @@ public class SnapshotReader extends AbstractReader {
             if (rs.next()) {
                 String binlogFilename = rs.getString(1);
                 long binlogPosition = rs.getLong(2);
-                source.setBinlogStartPoint(binlogFilename, binlogPosition);
-                if (rs.getMetaData().getColumnCount() > 4) {
-                    // This column exists only in MySQL 5.6.5 or later ...
-                    String gtidSet = rs.getString(5);// GTID set, may be null, blank, or contain a GTID set
-                    source.setCompletedGtidSet(gtidSet);
-                    logger.info("\t using binlog '{}' at position '{}' and gtid '{}'", binlogFilename, binlogPosition,
-                                gtidSet);
+                if (!source.isSnapshotInEffect()) {
+                    source.setBinlogStartPoint(binlogFilename, binlogPosition);
+                    if (rs.getMetaData().getColumnCount() > 4) {
+                        // This column exists only in MySQL 5.6.5 or later ...
+                        String gtidSet = rs.getString(5);// GTID set, may be null, blank, or contain a GTID set
+                        source.setCompletedGtidSet(gtidSet);
+                        logger.info("\t using binlog '{}' at position '{}' and gtid '{}'", binlogFilename, binlogPosition,
+                            gtidSet);
+                    } else {
+                        logger.info("\t using binlog '{}' at position '{}'", binlogFilename, binlogPosition);
+                    }
                 } else {
-                    logger.info("\t using binlog '{}' at position '{}'", binlogFilename, binlogPosition);
+                    logger.info("\t using binlog '{}' at position '{}'", source.binlogFilename(), source.binlogPosition());
                 }
                 source.startSnapshot();
             } else {
