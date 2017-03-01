@@ -5,10 +5,6 @@
  */
 package io.debezium.connector.mysql;
 
-import com.datapipeline.base.error.DpError;
-import com.datapipeline.base.error.DpErrorDetector;
-import com.datapipeline.clients.kafka.DpErrorRecordsQueue;
-
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,7 +33,7 @@ public final class MySqlConnectorTask extends SourceTask {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private volatile MySqlTaskContext taskContext;
     private volatile ChainedReader readers;
-    private DpErrorDetector errorDetector = new DpErrorDetector();
+
     /**
      * Create an instance of the log reader that uses Kafka to store database schema history and the
      * {@link TopicSelector#defaultSelector(String) default topic selector} of "{@code <serverName>.<databaseName>.<tableName>}"
