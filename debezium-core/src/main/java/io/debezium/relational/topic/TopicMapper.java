@@ -17,25 +17,14 @@ import java.util.Map;
  */
 public abstract class TopicMapper {
 
-    protected String topicPrefix;
-    protected Table table;
-
-    public TopicMapper setTopicPrefix(String topicPrefix) {
-        this.topicPrefix = topicPrefix;
-        return this;
-    }
-
-    public TopicMapper setTable(Table table) {
-        this.table = table;
-        return this;
-    }
-
     /**
      * Get the name of the topic given for the table.
      *
+     * @param topicPrefix prefix for the topic
+     * @param table the table that we are getting the topic name for
      * @return the topic name; may be null if this strategy could not be applied
      */
-    abstract public String getTopicName();
+    abstract public String getTopicName(String topicPrefix, Table table);
 
     /**
      * Depending on your TopicMapper implementation and which rows in a database may occupy the same topic,
@@ -49,8 +38,9 @@ public abstract class TopicMapper {
     /**
      * Get the extra key-value pairs necessary to add to the event's key.
      * @param schema the schema for the key; never null
+     * @param table the table the event is for
      * @return the extra key-value pairs, or null if none are necessary.
      */
-    abstract public Map<String, Object> getNonRowFieldsToAddToKey(Schema schema);
+    abstract public Map<String, Object> getNonRowFieldsToAddToKey(Schema schema, Table table);
 
 }

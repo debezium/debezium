@@ -8,6 +8,8 @@ package io.debezium.relational.topic;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
+import io.debezium.relational.Table;
+
 import java.util.Map;
 
 /**
@@ -15,7 +17,7 @@ import java.util.Map;
  */
 public class ByTableTopicMapper extends TopicMapper {
 
-    public String getTopicName() {
+    public String getTopicName(String topicPrefix, Table table) {
         return topicPrefix + table.id().toString();
     }
 
@@ -23,7 +25,7 @@ public class ByTableTopicMapper extends TopicMapper {
         // do nothing ...
     }
 
-    public Map<String, Object> getNonRowFieldsToAddToKey(Schema schema) {
+    public Map<String, Object> getNonRowFieldsToAddToKey(Schema schema, Table table) {
         // do nothing ...
         return null;
     }

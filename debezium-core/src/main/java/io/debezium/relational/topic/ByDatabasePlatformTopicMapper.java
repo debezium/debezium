@@ -8,6 +8,8 @@ package io.debezium.relational.topic;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
+import io.debezium.relational.Table;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -19,7 +21,7 @@ import java.util.regex.Pattern;
  */
 public class ByDatabasePlatformTopicMapper extends TopicMapper {
 
-    public String getTopicName() {
+    public String getTopicName(String topicPrefix, Table table) {
         final String database = table.id().catalog();
         Pattern shardPattern = Pattern.compile("^(etsy_.*)_\\d+$");
         Matcher shardMatcher = shardPattern.matcher(database);
@@ -39,7 +41,7 @@ public class ByDatabasePlatformTopicMapper extends TopicMapper {
         keySchemaBuilder.field("__dbz__replicaSet", Schema.STRING_SCHEMA);
     }
 
-    public Map<String, Object> getNonRowFieldsToAddToKey(Schema schema) {
+    public Map<String, Object> getNonRowFieldsToAddToKey(Schema schema, Table table) {
         Map<String, Object> nonRowFields = new HashMap<>();
         nonRowFields.put("__dbz__tableName", table.id().table());
         nonRowFields.put("__dbz__replicaSet", table.id().catalog());

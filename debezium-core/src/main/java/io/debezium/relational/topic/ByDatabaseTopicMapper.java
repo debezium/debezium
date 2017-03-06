@@ -8,6 +8,8 @@ package io.debezium.relational.topic;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
+import io.debezium.relational.Table;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -16,7 +18,7 @@ import java.util.Map;
  */
 public class ByDatabaseTopicMapper extends TopicMapper {
 
-    public String getTopicName() {
+    public String getTopicName(String topicPrefix, Table table) {
         return topicPrefix + table.id().catalog();
     }
 
@@ -26,7 +28,7 @@ public class ByDatabaseTopicMapper extends TopicMapper {
         keySchemaBuilder.field("__dbz__tableName", Schema.STRING_SCHEMA);
     }
 
-    public Map<String, Object> getNonRowFieldsToAddToKey(Schema schema) {
+    public Map<String, Object> getNonRowFieldsToAddToKey(Schema schema, Table table) {
         // Just add the table name as a field ...
         Map<String, Object> nonRowFields = new HashMap<>();
         nonRowFields.put("__dbz__tableName", table.id().table());

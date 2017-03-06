@@ -136,11 +136,9 @@ public class TableSchemaBuilder {
         // Build the schemas ...
         final TableId tableId = table.id();
         final String schemaNamePrefix = schemaPrefix + tableId.toString();
-        topicMapper.setTopicPrefix(schemaPrefix)
-                .setTable(table);
         final String keySchemaName = schemaNameValidator.apply(schemaNamePrefix + ".Key");
         final String valueSchemaName = schemaNameValidator.apply(schemaNamePrefix + ".Value");
-        final String envelopeSchemaName = schemaNameValidator.apply(topicMapper.getTopicName());
+        final String envelopeSchemaName = schemaNameValidator.apply(topicMapper.getTopicName(schemaPrefix, table));
         LOGGER.debug("Mapping table '{}' to key schemas '{}' and value schema '{}'", tableId, keySchemaName, valueSchemaName);
         SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(valueSchemaName);
         SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(keySchemaName);
@@ -169,7 +167,7 @@ public class TableSchemaBuilder {
         }
 
         // Create the generators ...
-        Function<Object[], Object> keyGenerator = createKeyGenerator(keySchema, tableId, table.primaryKeyColumns(), topicMapper);
+        Function<Object[], Object> keyGenerator = createKeyGenerator(keySchema, tableId, table, topicMapper);
         Function<Object[], Struct> valueGenerator = createValueGenerator(valSchema, tableId, table.columns(), filter, mappers);
 
         // And the table schema ...
@@ -182,18 +180,19 @@ public class TableSchemaBuilder {
      * @param schema the Kafka Connect schema for the key; may be null if there is no known schema, in which case the generator
      *            will be null
      * @param columnSetName the name for the set of columns, used in error messages; may not be null
-     * @param columns the column definitions for the table that defines the row; may not be null
+     * @param table the table for the row of data
      * @param topicMapper the TopicMapper for the table whose key we are generating; may not be null
      * @return the key-generating function, or null if there is no key schema
      */
-    protected Function<Object[], Object> createKeyGenerator(Schema schema, TableId columnSetName, List<Column> columns,
+    protected Function<Object[], Object> createKeyGenerator(Schema schema, TableId columnSetName, Table table,
                                                             TopicMapper topicMapper) {
         if (schema != null) {
+            List<Column> columns = table.primaryKeyColumns();
             int[] recordIndexes = indexesForColumns(columns);
             Field[] fields = fieldsForColumns(schema, columns);
             int numFields = recordIndexes.length;
             ValueConverter[] converters = convertersForColumns(schema, columnSetName, columns, null, null);
-            Map<String, Object> nonRowFieldsToAddToKey = topicMapper.getNonRowFieldsToAddToKey(schema);
+            Map<String, Object> nonRowFieldsToAddToKey = topicMapper.getNonRowFieldsToAddToKey(schema, table);
             return (row) -> {
                 Struct result = new Struct(schema);
                 for (int i = 0; i != numFields; ++i) {
