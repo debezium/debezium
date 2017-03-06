@@ -173,7 +173,7 @@ public class RecordMakers {
         TableSchema tableSchema = schema.schemaFor(id);
         if (tableSchema == null) return false;
 
-        String topicName = tableSchema.getParentSchemaName();
+        String topicName = tableSchema.getEnvelopeSchemaName();
         Envelope envelope = Envelope.defineSchema()
                                     .withName(schemaNameValidator.validate(topicName + ".Envelope"))
                                     .withRecord(schema.schemaFor(id).valueSchema())

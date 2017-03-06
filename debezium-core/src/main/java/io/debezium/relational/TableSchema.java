@@ -47,7 +47,7 @@ import io.debezium.data.SchemaUtil;
 @Immutable
 public class TableSchema {
 
-    private final String parentSchemaName;
+    private final String envelopeSchemaName;
     private final Schema keySchema;
     private final Schema valueSchema;
     private final Function<Object[], Object> keyGenerator;
@@ -57,7 +57,7 @@ public class TableSchema {
      * Create an instance with the specified {@link Schema}s for the keys and values, and the functions that generate the
      * key and value for a given row of data.
      *
-     * @param parentSchemaName the name of the schema; may be null
+     * @param envelopeSchemaName the name of the schema; may be null
      * @param keySchema the schema for the primary key; may be null
      * @param keyGenerator the function that converts a row into a single key object for Kafka Connect; may not be null but may
      *            return nulls
@@ -65,9 +65,9 @@ public class TableSchema {
      * @param valueGenerator the function that converts a row into a single value object for Kafka Connect; may not be null but
      *            may return nulls
      */
-    public TableSchema(String parentSchemaName, Schema keySchema, Function<Object[], Object> keyGenerator,
+    public TableSchema(String envelopeSchemaName, Schema keySchema, Function<Object[], Object> keyGenerator,
             Schema valueSchema, Function<Object[], Struct> valueGenerator) {
-        this.parentSchemaName = parentSchemaName;
+        this.envelopeSchemaName = envelopeSchemaName;
         this.keySchema = keySchema;
         this.valueSchema = valueSchema;
         this.keyGenerator = keyGenerator != null ? keyGenerator : (row) -> null;
@@ -75,11 +75,11 @@ public class TableSchema {
     }
 
     /**
-     * Get the name of the parent schema for both the key and value.
-     * @return the parent schema name; may be null
+     * Get the name of the envelope schema for both the key and value.
+     * @return the envelope schema name; may be null
      */
-    public String getParentSchemaName() {
-        return parentSchemaName;
+    public String getEnvelopeSchemaName() {
+        return envelopeSchemaName;
     }
 
     /**
