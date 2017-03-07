@@ -28,7 +28,6 @@ import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.KafkaDatabaseHistory;
-import io.debezium.relational.topic.ByDatabaseTopicMapper;
 import io.debezium.relational.topic.ByTableTopicMapper;
 
 /**
@@ -623,7 +622,7 @@ public class MySqlConnectorConfig {
                                                    .withImportance(Importance.LOW)
                                                    .withDescription("The name of the TopicMapper class that should be used to determine how change events for tables should be mapped into topics. "
                                                            + "Built in options include '" + ByTableTopicMapper.class.getName()
-                                                           + "' (the default) and '" + ByDatabaseTopicMapper.class.getName() + "'.")
+                                                           + "' (the default).")
                                                    .withDefault(ByTableTopicMapper.class.getName());
 
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")

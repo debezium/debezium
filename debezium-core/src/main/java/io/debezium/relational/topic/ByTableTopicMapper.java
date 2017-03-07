@@ -25,7 +25,7 @@ public class ByTableTopicMapper extends TopicMapper {
         // do nothing ...
     }
 
-    public Map<String, Object> getNonRowFieldsToAddToKey(Schema schema, Table table) {
+    public Map<String, Object> getNonRowFieldsToAddToKey(Schema schema, String topicPrefix, Table table) {
         // do nothing ...
         return null;
     }

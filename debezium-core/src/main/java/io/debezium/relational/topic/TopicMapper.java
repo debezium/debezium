@@ -38,9 +38,10 @@ public abstract class TopicMapper {
     /**
      * Get the extra key-value pairs necessary to add to the event's key.
      * @param schema the schema for the key; never null
+     * @param topicPrefix prefix for the topic
      * @param table the table the event is for
      * @return the extra key-value pairs, or null if none are necessary.
      */
-    abstract public Map<String, Object> getNonRowFieldsToAddToKey(Schema schema, Table table);
+    abstract public Map<String, Object> getNonRowFieldsToAddToKey(Schema schema, String topicPrefix, Table table);
 
 }

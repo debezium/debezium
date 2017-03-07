@@ -167,7 +167,7 @@ public class TableSchemaBuilder {
         }
 
         // Create the generators ...
-        Function<Object[], Object> keyGenerator = createKeyGenerator(keySchema, tableId, table, topicMapper);
+        Function<Object[], Object> keyGenerator = createKeyGenerator(keySchema, tableId, table, topicMapper, schemaPrefix);
         Function<Object[], Struct> valueGenerator = createValueGenerator(valSchema, tableId, table.columns(), filter, mappers);
 
         // And the table schema ...
@@ -182,17 +182,19 @@ public class TableSchemaBuilder {
      * @param columnSetName the name for the set of columns, used in error messages; may not be null
      * @param table the table for the row of data
      * @param topicMapper the TopicMapper for the table whose key we are generating; may not be null
+     * @param schemaPrefix the prefix added to the table identifier to construct the schema names; may be null if there is no
+     *            prefix
      * @return the key-generating function, or null if there is no key schema
      */
     protected Function<Object[], Object> createKeyGenerator(Schema schema, TableId columnSetName, Table table,
-                                                            TopicMapper topicMapper) {
+                                                            TopicMapper topicMapper, String schemaPrefix) {
         if (schema != null) {
             List<Column> columns = table.primaryKeyColumns();
             int[] recordIndexes = indexesForColumns(columns);
             Field[] fields = fieldsForColumns(schema, columns);
             int numFields = recordIndexes.length;
             ValueConverter[] converters = convertersForColumns(schema, columnSetName, columns, null, null);
-            Map<String, Object> nonRowFieldsToAddToKey = topicMapper.getNonRowFieldsToAddToKey(schema, table);
+            Map<String, Object> nonRowFieldsToAddToKey = topicMapper.getNonRowFieldsToAddToKey(schema, schemaPrefix, table);
             return (row) -> {
                 Struct result = new Struct(schema);
                 for (int i = 0; i != numFields; ++i) {
