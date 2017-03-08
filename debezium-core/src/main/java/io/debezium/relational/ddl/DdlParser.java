@@ -7,6 +7,7 @@ package io.debezium.relational.ddl;
 
 import java.math.BigDecimal;
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -633,7 +634,7 @@ public class DdlParser {
      * @param msg the leading portion of the message; may not be null
      */
     protected void parsingFailed(Position position, String msg) {
-        parsingFailed(position, msg);
+        parsingFailed(position, msg, null);
     }
 
     /**
@@ -661,6 +662,32 @@ public class DdlParser {
             throw new ParsingException(position, msg + " at line " + position.line() + ", column " + position.column());
         }
         throw new MultipleParsingExceptions(msg + " at line " + position.line() + ", column " + position.column(), errors);
+    }
+    
+    /**
+     * Utility method to accumulate a parsing exception.
+     * @param e the parsing exception
+     * @param list the list of previous parsing exceptions; may be null
+     * @return the list of previous and current parsing exceptions; if {@code e} is null then always {@code list}, but otherwise non-null list
+     */
+    protected Collection<ParsingException> accumulateParsingFailure(ParsingException e, Collection<ParsingException> list) {
+       if (e == null) return list;
+       if (list == null) list = new ArrayList<ParsingException>();
+       list.add(e);
+       return list;
+    }
+    
+    /**
+     * Utility method to accumulate a parsing exception.
+     * @param e the multiple parsing exceptions
+     * @param list the list of previous parsing exceptions; may be null
+     * @return the list of previous and current parsing exceptions; if {@code e} is null then always {@code list}, but otherwise non-null list
+     */
+    protected Collection<ParsingException> accumulateParsingFailure(MultipleParsingExceptions e, Collection<ParsingException> list) {
+       if (e == null) return list;
+       if (list == null) list = new ArrayList<ParsingException>();
+       list.addAll(e.getErrors());
+       return list;
     }
 
     protected Object parseLiteral(Marker start) {
