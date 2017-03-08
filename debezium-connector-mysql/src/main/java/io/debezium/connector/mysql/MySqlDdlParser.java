@@ -27,6 +27,7 @@ import io.debezium.relational.ddl.DataTypeParser;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.ddl.DdlParserListener.SetVariableEvent;
 import io.debezium.relational.ddl.DdlTokenizer;
+import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
 import io.debezium.text.TokenStream;
 import io.debezium.text.TokenStream.Marker;
@@ -548,88 +549,157 @@ public class MySqlDdlParser extends DdlParser {
 
     protected void parseCreateDefinition(Marker start, TableEditor table) {
         // If the first token is a quoted identifier, then we know it is a column name ...
+        Collection<ParsingException> errors = null;
         boolean quoted = isNextTokenQuotedIdentifier();
+        Marker defnStart = tokens.mark();
+        if (!quoted) {
+            // The first token is not quoted so let's check for other expressions ...
+            if (tokens.canConsume("CHECK")) {
+                // Try to parse the constraints first ...
+                consumeExpression(start);
+                return;
+            }
+            if (tokens.canConsume("CONSTRAINT", TokenStream.ANY_VALUE, "PRIMARY", "KEY") || tokens.canConsume("PRIMARY", "KEY")) {
+                try {
+                    if (tokens.canConsume("USING")) {
+                        parseIndexType(start);
+                    }
+                    if (!tokens.matches('(')) {
+                        tokens.consume(); // index name
+                    }
+                    List<String> pkColumnNames = parseIndexColumnNames(start);
+                    table.setPrimaryKeyNames(pkColumnNames);
+                    parseIndexOptions(start);
+                    // MySQL does not allow a primary key to have nullable columns, so let's make sure we model that correctly ...
+                    pkColumnNames.forEach(name -> {
+                        Column c = table.columnWithName(name);
+                        if (c.isOptional()) {
+                            table.addColumn(c.edit().optional(false).create());
+                        }
+                    });
+                    return;
+                } catch (ParsingException e) {
+                    // Invalid names, so rewind and continue
+                    errors = accumulateParsingFailure(e, errors);
+                    tokens.rewind(defnStart);
+                } catch (MultipleParsingExceptions e) {
+                    // Invalid names, so rewind and continue
+                    errors = accumulateParsingFailure(e, errors);
+                    tokens.rewind(defnStart);
+                }
+            }
+            if (tokens.canConsume("CONSTRAINT", TokenStream.ANY_VALUE, "UNIQUE") || tokens.canConsume("UNIQUE")) {
+                tokens.canConsumeAnyOf("KEY", "INDEX");
+                try {
+                    if (!tokens.matches('(')) {
+                        if (!tokens.matches("USING")) {
+                            tokens.consume(); // name of unique index ...
+                        }
+                        if (tokens.matches("USING")) {
+                            parseIndexType(start);
+                        }
+                    }
+                    List<String> uniqueKeyColumnNames = parseIndexColumnNames(start);
+                    if (table.primaryKeyColumnNames().isEmpty()) {
+                        table.setPrimaryKeyNames(uniqueKeyColumnNames); // this may eventually get overwritten by a real PK
+                    }
+                    parseIndexOptions(start);
+                    return;
+                } catch (ParsingException e) {
+                    // Invalid names, so rewind and continue
+                    errors = accumulateParsingFailure(e, errors);
+                    tokens.rewind(defnStart);
+                } catch (MultipleParsingExceptions e) {
+                    // Invalid names, so rewind and continue
+                    errors = accumulateParsingFailure(e, errors);
+                    tokens.rewind(defnStart);
+                }
+            }
+            if (tokens.canConsume("CONSTRAINT", TokenStream.ANY_VALUE, "FOREIGN", "KEY") || tokens.canConsume("FOREIGN", "KEY")) {
+                try {
+                    if (!tokens.matches('(')) {
+                        tokens.consume(); // name of foreign key
+                    }
+                    parseIndexColumnNames(start);
+                    if (tokens.matches("REFERENCES")) {
+                        parseReferenceDefinition(start);
+                    }
+                    return;
+                } catch (ParsingException e) {
+                    // Invalid names, so rewind and continue
+                    errors = accumulateParsingFailure(e, errors);
+                    tokens.rewind(defnStart);
+                } catch (MultipleParsingExceptions e) {
+                    // Invalid names, so rewind and continue
+                    errors = accumulateParsingFailure(e, errors);
+                    tokens.rewind(defnStart);
+                }
+            }
+            if (tokens.canConsumeAnyOf("INDEX", "KEY")) {
+                try {
+                    if (!tokens.matches('(')) {
+                        if (!tokens.matches("USING")) {
+                            tokens.consume(); // name of unique index ...
+                        }
+                        if (tokens.matches("USING")) {
+                            parseIndexType(start);
+                        }
+                    }
+                    parseIndexColumnNames(start);
+                    parseIndexOptions(start);
+                    return;
+                } catch (ParsingException e) {
+                    // Invalid names, so rewind and continue
+                    errors = accumulateParsingFailure(e, errors);
+                    tokens.rewind(defnStart);
+                } catch (MultipleParsingExceptions e) {
+                    // Invalid names, so rewind and continue
+                    errors = accumulateParsingFailure(e, errors);
+                    tokens.rewind(defnStart);
+                }
+            }
+            if (tokens.canConsumeAnyOf("FULLTEXT", "SPATIAL")) {
+                try {
+                    tokens.canConsumeAnyOf("INDEX", "KEY");
+                    if (!tokens.matches('(')) {
+                        tokens.consume(); // name of unique index ...
+                    }
+                    parseIndexColumnNames(start);
+                    parseIndexOptions(start);
+                    return;
+                } catch (ParsingException e) {
+                    // Invalid names, so rewind and continue
+                    errors = accumulateParsingFailure(e, errors);
+                    tokens.rewind(defnStart);
+                } catch (MultipleParsingExceptions e) {
+                    // Invalid names, so rewind and continue
+                    errors = accumulateParsingFailure(e, errors);
+                    tokens.rewind(defnStart);
+                }
+            }
+        }
 
-        // Try to parse the constraints first ...
-        if (!quoted && tokens.canConsume("CHECK")) {
-            consumeExpression(start);
-        } else if (!quoted && tokens.canConsume("CONSTRAINT", TokenStream.ANY_VALUE, "PRIMARY", "KEY")
-                || tokens.canConsume("PRIMARY", "KEY")) {
-            if (tokens.canConsume("USING")) {
-                parseIndexType(start);
-            }
-            if (!tokens.matches('(')) {
-                tokens.consume(); // index name
-            }
-            List<String> pkColumnNames = parseIndexColumnNames(start);
-            table.setPrimaryKeyNames(pkColumnNames);
-            parseIndexOptions(start);
-            // MySQL does not allow a primary key to have nullable columns, so let's make sure we model that correctly ...
-            pkColumnNames.forEach(name -> {
-                Column c = table.columnWithName(name);
-                if (c.isOptional()) {
-                    table.addColumn(c.edit().optional(false).create());
-                }
-            });
-        } else if (!quoted && tokens.canConsume("CONSTRAINT", TokenStream.ANY_VALUE, "UNIQUE") || tokens.canConsume("UNIQUE")) {
-            tokens.canConsumeAnyOf("KEY", "INDEX");
-            if (!tokens.matches('(')) {
-                if (!tokens.matches("USING")) {
-                    tokens.consume(); // name of unique index ...
-                }
-                if (tokens.matches("USING")) {
-                    parseIndexType(start);
-                }
-            }
-            List<String> uniqueKeyColumnNames = parseIndexColumnNames(start);
-            if (table.primaryKeyColumnNames().isEmpty()) {
-                table.setPrimaryKeyNames(uniqueKeyColumnNames); // this may eventually get overwritten by a real PK
-            }
-            parseIndexOptions(start);
-        } else if (!quoted && tokens.canConsume("CONSTRAINT", TokenStream.ANY_VALUE, "FOREIGN", "KEY")
-                || tokens.canConsume("FOREIGN", "KEY")) {
-            if (!tokens.matches('(')) {
-                tokens.consume(); // name of foreign key
-            }
-            parseIndexColumnNames(start);
-            if (tokens.matches("REFERENCES")) {
-                parseReferenceDefinition(start);
-            }
-        } else if (!quoted && tokens.canConsumeAnyOf("INDEX", "KEY")) {
-            if (!tokens.matches('(')) {
-                if (!tokens.matches("USING")) {
-                    tokens.consume(); // name of unique index ...
-                }
-                if (tokens.matches("USING")) {
-                    parseIndexType(start);
-                }
-            }
-            parseIndexColumnNames(start);
-            parseIndexOptions(start);
-        } else if (!quoted && tokens.canConsumeAnyOf("FULLTEXT", "SPATIAL")) {
-            tokens.canConsumeAnyOf("INDEX", "KEY");
-            if (!tokens.matches('(')) {
-                tokens.consume(); // name of unique index ...
-            }
-            parseIndexColumnNames(start);
-            parseIndexOptions(start);
-        } else {
+        try {
+            // It's either quoted (meaning it's a column definition)
             tokens.canConsume("COLUMN"); // optional
-
-            // Obtain the column editor ...
-            String columnName = tokens.consume();
-            parseCreateColumn(start, table, columnName);
-
-            // ALTER TABLE allows reordering the columns after the definition ...
-            if (tokens.canConsume("FIRST")) {
-                table.reorderColumn(columnName, null);
-            } else if (tokens.canConsume("AFTER")) {
-                table.reorderColumn(columnName, tokens.consume());
+            String columnName = parseColumnName();
+            parseCreateColumn(start, table, columnName, null);
+        } catch (ParsingException e) {
+            if (errors != null) {
+                errors = accumulateParsingFailure(e, errors);
+                throw new MultipleParsingExceptions(errors);
             }
+            throw e;
+        } catch (MultipleParsingExceptions e) {
+            if (errors != null) {
+                errors = accumulateParsingFailure(e, errors);
+                throw new MultipleParsingExceptions(errors);
+            }
+            throw e;
         }
     }
 
-    protected Column parseCreateColumn(Marker start, TableEditor table, String columnName) {
+    protected Column parseCreateColumn(Marker start, TableEditor table, String columnName, String newColumnName) {
         // Obtain the column editor ...
         Column existingColumn = table.columnWithName(columnName);
         ColumnEditor column = existingColumn != null ? existingColumn.edit() : Column.editor().name(columnName);
@@ -642,6 +712,18 @@ public class MySqlDdlParser extends DdlParser {
         table.addColumns(newColumnDefn);
         if (isPrimaryKey.get()) {
             table.setPrimaryKeyNames(newColumnDefn.name());
+        }
+
+        if (newColumnName != null && !newColumnName.equalsIgnoreCase(columnName)) {
+            table.renameColumn(columnName, newColumnName);
+            columnName = newColumnName;
+        }
+
+        // ALTER TABLE allows reordering the columns after the definition ...
+        if (tokens.canConsume("FIRST")) {
+            table.reorderColumn(columnName, null);
+        } else if (tokens.canConsume("AFTER")) {
+            table.reorderColumn(columnName, tokens.consume());
         }
         return table.columnWithName(newColumnDefn.name());
     }
@@ -808,7 +890,7 @@ public class MySqlDdlParser extends DdlParser {
     }
 
     private void parseIndexColumnName(Consumer<String> name) {
-        name.accept(tokens.consume());
+        name.accept(parseColumnName());
         if (tokens.canConsume('(')) {
             tokens.consume(); // length
             tokens.consume(')');
@@ -1095,7 +1177,7 @@ public class MySqlDdlParser extends DdlParser {
                 parsePartitionNames(start);
             } else {
                 tokens.canConsume("COLUMN");
-                String columnName = tokens.consume();
+                String columnName = parseColumnName();
                 table.removeColumn(columnName);
             }
         } else if (tokens.canConsume("ALTER")) {
@@ -1107,24 +1189,13 @@ public class MySqlDdlParser extends DdlParser {
             }
         } else if (tokens.canConsume("CHANGE")) {
             tokens.canConsume("COLUMN");
-            String oldName = tokens.consume();
-            String newName = tokens.consume();
-            parseCreateColumn(start, table, oldName); // replaces the old definition but keeps old name
-            table.renameColumn(oldName, newName);
-            if (tokens.canConsume("FIRST")) {
-                table.reorderColumn(newName, null);
-            } else if (tokens.canConsume("AFTER")) {
-                table.reorderColumn(newName, tokens.consume());
-            }
+            String oldName = parseColumnName();
+            String newName = parseColumnName();
+            parseCreateColumn(start, table, oldName, newName);
         } else if (tokens.canConsume("MODIFY")) {
             tokens.canConsume("COLUMN");
-            String columnName = tokens.consume();
-            parseCreateColumn(start, table, columnName);
-            if (tokens.canConsume("FIRST")) {
-                table.reorderColumn(columnName, null);
-            } else if (tokens.canConsume("AFTER")) {
-                table.reorderColumn(columnName, tokens.consume());
-            }
+            String columnName = parseColumnName();
+            parseCreateColumn(start, table, columnName, null);
         } else if (tokens.canConsumeAnyOf("ALGORITHM", "LOCK")) {
             tokens.canConsume('=');
             tokens.consume();
@@ -1316,12 +1387,25 @@ public class MySqlDdlParser extends DdlParser {
     protected List<String> parseColumnNameList(Marker start) {
         List<String> names = new ArrayList<>();
         tokens.consume('(');
-        names.add(tokens.consume());
+        names.add(parseColumnName());
         while (tokens.canConsume(',')) {
-            names.add(tokens.consume());
+            names.add(parseColumnName());
         }
         tokens.consume(')');
         return names;
+    }
+
+    protected String parseColumnName() {
+        boolean quoted = isNextTokenQuotedIdentifier();
+        String name = tokens.consume();
+        if (!quoted) {
+            // Unquoted names may not consist entirely of digits
+            if (name.matches("[0-9]+")) {
+                parsingFailed(tokens.previousPosition(), "Unquoted column names may not contain only digits");
+                return null;
+            }
+        }
+        return name;
     }
 
     protected void parsePartitionNames(Marker start) {
