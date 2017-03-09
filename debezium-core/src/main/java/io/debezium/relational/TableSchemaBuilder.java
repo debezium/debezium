@@ -135,10 +135,10 @@ public class TableSchemaBuilder {
         if (schemaPrefix == null) schemaPrefix = "";
         // Build the schemas ...
         final TableId tableId = table.id();
-        final String schemaNamePrefix = schemaPrefix + tableId.toString();
-        final String keySchemaName = schemaNameValidator.apply(schemaNamePrefix + ".Key");
-        final String valueSchemaName = schemaNameValidator.apply(schemaNamePrefix + ".Value");
-        final String envelopeSchemaName = schemaNameValidator.apply(topicMapper.getTopicName(schemaPrefix, table));
+        final String topicName = topicMapper.getTopicName(schemaPrefix, table);
+        final String keySchemaName = schemaNameValidator.apply(topicName + ".Key");
+        final String valueSchemaName = schemaNameValidator.apply(topicName + ".Value");
+        final String envelopeSchemaName = schemaNameValidator.apply(topicName);
         LOGGER.debug("Mapping table '{}' to key schemas '{}' and value schema '{}'", tableId, keySchemaName, valueSchemaName);
         SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(valueSchemaName);
         SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(keySchemaName);
