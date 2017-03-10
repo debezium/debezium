@@ -369,8 +369,6 @@ final class SourceInfo {
         result.put(BINLOG_POSITION_OFFSET_KEY, currentBinlogPosition);
         result.put(BINLOG_ROW_IN_EVENT_OFFSET_KEY, currentRowNumber);
         result.put(TIMESTAMP_KEY, binlogTimestampSeconds);
-        result.put(ENTITY_NAME_KEY, tableId.table());
-        result.put(ENTITY_SIZE_KEY, entitySize);
         if (lastSnapshot) {
             result.put(SNAPSHOT_KEY, true);
         }
@@ -380,6 +378,8 @@ final class SourceInfo {
         if (tableId != null) {
             result.put(DB_NAME_KEY, tableId.catalog());
             result.put(TABLE_NAME_KEY, tableId.table());
+            result.put(ENTITY_NAME_KEY, tableId.table());
+            result.put(ENTITY_SIZE_KEY, entitySize);
         }
         return result;
     }

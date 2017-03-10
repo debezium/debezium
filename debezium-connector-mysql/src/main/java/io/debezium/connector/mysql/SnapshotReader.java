@@ -206,12 +206,14 @@ public class SnapshotReader extends AbstractReader {
                 // It also ensures that everything we do while we have this lock will be consistent.
                 if (!isRunning()) return;
                 try {
-                    logger.info("Step 2: flush and obtain global read lock to prevent writes to database");
-                    sql.set("FLUSH TABLES WITH READ LOCK");
-                    mysql.execute(sql.get());
-                    lockAcquired = clock.currentTimeInMillis();
-                    metrics.globalLockAcquired();
-                    isLocked = true;
+                    if (false) {
+                        logger.info("Step 2: flush and obtain global read lock to prevent writes to database");
+                        sql.set("FLUSH TABLES WITH READ LOCK");
+                        mysql.execute(sql.get());
+                        lockAcquired = clock.currentTimeInMillis();
+                        metrics.globalLockAcquired();
+                        isLocked = true;
+                    }
                 } catch (Exception e) {
                     logger.info("Step 2: unable to flush and acquire global read lock, will use table read locks after reading table names");
                     // Continue anyway, since RDS (among others) don't allow setting a global lock
@@ -290,14 +292,15 @@ public class SnapshotReader extends AbstractReader {
                     // implicitly committing our transaction ...
                     if (!context.userHasPrivileges("LOCK TABLES")) {
                         // We don't have the right privileges
-                        throw new ConnectException("User does not have the 'LOCK TABLES' privilege required to obtain a "
-                                + "consistent snapshot by preventing concurrent writes to tables.");
+                        // throw new ConnectException("User does not have the 'LOCK TABLES' privilege required to obtain a "
+                        //        + "consistent snapshot by preventing concurrent writes to tables.");
+                        // shao@datapipeline.com we not lock table anymore 3/10/2017
                     }
                     // We have the required privileges, so try to lock all of the tables we're interested in ...
                     logger.info("Step {}: flush and obtain read lock for {} tables (preventing writes)", step++, tableIds.size());
                     for (TableId tableId : tableIds) {
                         sql.set("FLUSH TABLES " + quote(tableId) + " WITH READ LOCK");
-                        mysql.execute(sql.get());
+                        //mysql.execute(sql.get());
                     }
                     lockAcquired = clock.currentTimeInMillis();
                     metrics.globalLockAcquired();
