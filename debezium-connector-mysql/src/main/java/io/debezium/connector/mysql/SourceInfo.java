@@ -539,7 +539,7 @@ final class SourceInfo {
             lastRecordMeta = (String) sourceOffset.get(SNAPSHOT_LAST_RECORD_KEY);
             String snapshotted = (String) sourceOffset.get(SNAPSHOTTED_KEY);
             if (snapshotted != null && !snapshotted.isEmpty()) {
-                snapshottedEntities = Arrays.asList(snapshotted.split(","));
+                snapshottedEntities = new ArrayList<>(Arrays.asList(snapshotted.split(",")));
             }
         }
     }
