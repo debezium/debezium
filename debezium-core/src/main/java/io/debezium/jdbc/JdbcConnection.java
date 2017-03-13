@@ -151,6 +151,7 @@ public class JdbcConnection implements AutoCloseable {
             if (password != null) {
                 props.setProperty(JdbcConfiguration.PASSWORD.name(), DpAES.decrypt(password));
             }
+            props.setProperty("autoReconnect", "true");
             Field[] varsWithDefaults = combineVariables(variables,
                                                         JdbcConfiguration.HOSTNAME,
                                                         JdbcConfiguration.PORT,
