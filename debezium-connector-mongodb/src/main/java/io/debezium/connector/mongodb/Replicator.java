@@ -30,6 +30,9 @@ import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datapipeline.base.error.DpError;
+import com.datapipeline.base.error.DpErrorDetector;
+import com.dp.internal.bean.DpErrorCode;
 import com.mongodb.CursorType;
 import com.mongodb.MongoClient;
 import com.mongodb.ServerAddress;
@@ -102,13 +105,14 @@ public class Replicator {
     private final Predicate<CollectionId> collectionFilter;
     private final Clock clock;
     private ReplicationContext.MongoPrimary primaryClient;
+    private DpErrorDetector errorDetector;
 
     /**
      * @param context the replication context; may not be null
      * @param replicaSet the replica set to be replicated; may not be null
      * @param recorder the recorder for source record produced by this replicator; may not be null
      */
-    public Replicator(ReplicationContext context, ReplicaSet replicaSet, BlockingConsumer<SourceRecord> recorder, String dpTaskId) {
+    public Replicator(ReplicationContext context, ReplicaSet replicaSet, BlockingConsumer<SourceRecord> recorder, DpErrorDetector errorDetector) {
         assert context != null;
         assert replicaSet != null;
         assert recorder != null;
@@ -121,6 +125,7 @@ public class Replicator {
         this.recordMakers = new RecordMakers(this.source, context.topicSelector(), this.bufferedRecorder);
         this.collectionFilter = this.context.collectionFilter();
         this.clock = this.context.clock();
+        this.errorDetector = errorDetector;
     }
 
     /**
@@ -164,6 +169,8 @@ public class Replicator {
         logger.info("Connecting to '{}'", replicaSet);
         primaryClient = context.primaryFor(replicaSet, (desc, error) -> {
             logger.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
+            DpError dpError = new DpError(error, error.getMessage(), context.source().getDpTaskId(), null, DpErrorCode.CRITICAL_ERROR).report();
+            errorDetector.addError(dpError);
         });
         return primaryClient != null;
     }
@@ -273,6 +280,7 @@ public class Replicator {
         // And start threads to pull collection IDs from the queue and perform the copies ...
         logger.info("Preparing to use {} thread(s) to sync {} collection(s): {}",
                     numThreads, collections.size(), Strings.join(", ", collections));
+        final AtomicReference<Throwable> error = new AtomicReference<>();
         for (int i = 0; i != numThreads; ++i) {
             copyThreads.submit(() -> {
                 context.configureLoggingContext(replicaSet.replicaSetName() + "-sync" + replicatorThreadCounter.incrementAndGet());
@@ -301,7 +309,10 @@ public class Replicator {
                 } catch (InterruptedException e) {
                     // Do nothing so that this thread is terminated ...
                     aborted.set(true);
-                } finally {
+                } catch (Throwable e){
+                    aborted.set(true);
+                }
+                finally {
                     latch.countDown();
                 }
             });

@@ -117,6 +117,7 @@ public class JdbcConnection implements AutoCloseable {
             if (password != null) {
                 props.setProperty(JdbcConfiguration.PASSWORD.name(), DpAES.decrypt(password));
             }
+            props.setProperty("autoReconnect", "true");
             Connection conn = DriverManager.getConnection(url, props);
             LOGGER.debug("Connected to {} with {}", url, props);
             return conn;
@@ -150,6 +151,7 @@ public class JdbcConnection implements AutoCloseable {
             if (password != null) {
                 props.setProperty(JdbcConfiguration.PASSWORD.name(), DpAES.decrypt(password));
             }
+            props.setProperty("autoReconnect", "true");
             Field[] varsWithDefaults = combineVariables(variables,
                                                         JdbcConfiguration.HOSTNAME,
                                                         JdbcConfiguration.PORT,

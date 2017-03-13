@@ -214,7 +214,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     protected Map<String, String> getTableSchemaMap() {
         Map<String, String> map = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         logger.info("TableSchemaMap = {}", config.getString(TABLE_SCHEMA.name()));
-        for (String value : config.getString(TABLE_SCHEMA.name()).toLowerCase().split("],")) {
+        for (String value : config.getString(TABLE_SCHEMA.name()).split("],")) {
             logger.info("TableSchemaChild = {}", value);
             Pattern pattern = Pattern.compile("(.+):\\[(([^,]+,)+[^.]+)]");
             Matcher matcher = pattern.matcher(value);

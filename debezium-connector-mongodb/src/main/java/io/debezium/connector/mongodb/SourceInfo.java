@@ -11,6 +11,15 @@ import java.util.concurrent.ConcurrentMap;
 
 import com.datapipeline.base.DpConstants;
 import org.apache.commons.lang3.StringUtils;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
+import com.dp.internal.bean.DataSourceSchemaMappingExemption;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -182,16 +191,31 @@ public final class SourceInfo {
 
     private final String serverName;
     private final MongoDBSchemaCache schemaCache;
+    private final List<DataSourceSchemaMappingExemption> schemaMappingExemptions;
+    private final String dpTaskId;
 
-    public SourceInfo(String serverName, MongoDBSchemaCache schemaCache) {
+
+    public SourceInfo(String dpTaskId, String serverName, MongoDBSchemaCache schemaCache,
+                      List<DataSourceSchemaMappingExemption> schemaMappingExemptions) {
+        this.dpTaskId = dpTaskId;
         this.serverName = serverName;
         assert this.serverName != null;
         this.schemaCache = schemaCache;
         assert this.schemaCache != null;
+        this.schemaMappingExemptions = schemaMappingExemptions;
+        assert this.schemaMappingExemptions != null;
     }
 
     public MongoDBSchemaCache getMongoDBSchemaCache(){
         return schemaCache;
+    }
+
+    public List<DataSourceSchemaMappingExemption> getSchemaMappingExemptions (){
+        return schemaMappingExemptions;
+    }
+
+    public String getDpTaskId() {
+        return dpTaskId;
     }
 
     /**

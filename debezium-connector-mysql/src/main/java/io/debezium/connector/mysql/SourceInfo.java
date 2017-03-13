@@ -165,7 +165,6 @@ final class SourceInfo {
     private boolean nextSnapshot = false;
     private String lastRecordMeta;
     private List<String> snapshottedEntities = new ArrayList<>();
-    private String entityName;
     private int entitySize;
 
     public SourceInfo() {
@@ -194,10 +193,6 @@ final class SourceInfo {
         snapshottedEntities.add(entityName);
     }
 
-    public void setEntityName(String entityName) {
-        this.entityName = entityName;
-    }
-
     public void setEntitySize(int size) {
         this.entitySize = size;
     }
@@ -220,6 +215,7 @@ final class SourceInfo {
     public boolean isSnapshotted(String tableName) {
         return snapshottedEntities.contains(tableName);
     }
+
 
     /**
      * Get the Kafka Connect detail about the source "partition", which describes the portion of the source that we are
@@ -373,8 +369,6 @@ final class SourceInfo {
         result.put(BINLOG_POSITION_OFFSET_KEY, currentBinlogPosition);
         result.put(BINLOG_ROW_IN_EVENT_OFFSET_KEY, currentRowNumber);
         result.put(TIMESTAMP_KEY, binlogTimestampSeconds);
-        result.put(ENTITY_NAME_KEY, entityName);
-        result.put(ENTITY_SIZE_KEY, entitySize);
         if (lastSnapshot) {
             result.put(SNAPSHOT_KEY, true);
         }
@@ -384,6 +378,8 @@ final class SourceInfo {
         if (tableId != null) {
             result.put(DB_NAME_KEY, tableId.catalog());
             result.put(TABLE_NAME_KEY, tableId.table());
+            result.put(ENTITY_NAME_KEY, tableId.table());
+            result.put(ENTITY_SIZE_KEY, entitySize);
         }
         return result;
     }
@@ -543,7 +539,7 @@ final class SourceInfo {
             lastRecordMeta = (String) sourceOffset.get(SNAPSHOT_LAST_RECORD_KEY);
             String snapshotted = (String) sourceOffset.get(SNAPSHOTTED_KEY);
             if (snapshotted != null && !snapshotted.isEmpty()) {
-                snapshottedEntities = Arrays.asList(snapshotted.split(","));
+                snapshottedEntities = new ArrayList<>(Arrays.asList(snapshotted.split(",")));
             }
         }
     }

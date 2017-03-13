@@ -6,6 +6,7 @@
 package io.debezium.connector.mongodb;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 import com.datapipeline.base.mongodb.MongodbSchemaConfig;
@@ -51,7 +52,7 @@ public class RecordMakersTest {
             config.setDbName("dbA");
             configs.add(config);
         }
-        source = new SourceInfo(SERVER_NAME, new MongoDBSchemaCache(configs));
+        source = new SourceInfo("101", SERVER_NAME, new MongoDBSchemaCache(configs), new LinkedList<>());
         topicSelector = TopicSelector.defaultSelector(PREFIX);
         produced = new ArrayList<>();
         recordMakers = new RecordMakers(source, topicSelector, produced::add);
