@@ -225,7 +225,8 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c4DateTime.getYear()).isEqualTo(1970);
                 assertThat(c4DateTime.getMonth()).isEqualTo(Month.JANUARY);
                 assertThat(c4DateTime.getDayOfMonth()).isEqualTo(1);
-                assertThat(c4DateTime.getHour()).isEqualTo(0);
+                // Difference depends upon whether the zone we're in is also using DST as it is on the date in question ...
+                assertThat(c4DateTime.getHour()).isIn(0, 1);
                 assertThat(c4DateTime.getMinute()).isEqualTo(0);
                 assertThat(c4DateTime.getSecond()).isEqualTo(0);
                 assertThat(c4DateTime.getNano()).isEqualTo(0);
@@ -433,7 +434,8 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c4DateTime.getYear()).isEqualTo(1970);
                 assertThat(c4DateTime.getMonth()).isEqualTo(Month.JANUARY);
                 assertThat(c4DateTime.getDayOfMonth()).isEqualTo(1);
-                assertThat(c4DateTime.getHour()).isEqualTo(0);
+                // Difference depends upon whether the zone we're in is also using DST as it is on the date in question ...
+                assertThat(c4DateTime.getHour()).isIn(0, 1);
                 assertThat(c4DateTime.getMinute()).isEqualTo(0);
                 assertThat(c4DateTime.getSecond()).isEqualTo(0);
                 assertThat(c4DateTime.getNano()).isEqualTo(0);
