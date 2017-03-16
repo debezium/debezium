@@ -581,12 +581,8 @@ public class DdlParser {
             if (tokens.matches(DdlTokenizer.STATEMENT_KEY)) {
                 break;
             }
-            if (tokens.canConsume("BEGIN")) {
-                tokens.consumeThrough("END");
-                while (tokens.canConsume("IF")) {
-                    // We just read through an 'END IF', but need to read until the next 'END'
-                    tokens.consumeThrough("END");
-                }
+            if (tokens.matches("BEGIN")) {
+                consumeBeginStatement(tokens.mark());
             } else if (tokens.matches(DdlTokenizer.STATEMENT_TERMINATOR)) {
                 tokens.consume();
                 break;
@@ -596,6 +592,21 @@ public class DdlParser {
         }
     }
 
+    /**
+     * Consume the entire {@code BEGIN...END} block that appears next in the token stream. This method may need to be
+     * specialized for a specific DDL grammar.
+     * 
+     * @param start the marker at which the statement was begun
+     */
+    protected void consumeBeginStatement(Marker start) {
+        tokens.consume("BEGIN");
+        tokens.consumeThrough("END");
+        while (tokens.canConsume("IF")) {
+            // We just read through an 'END IF', but need to read until the next 'END'
+            tokens.consumeThrough("END");
+        }
+    }
+    
     /**
      * Consume the next token that is a single-quoted string.
      * 

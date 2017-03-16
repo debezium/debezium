@@ -8,8 +8,10 @@ package io.debezium.connector.mysql;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -1433,6 +1435,71 @@ public class MySqlDdlParser extends DdlParser {
     protected void consumeExpression(Marker start) {
         tokens.consume("(");
         tokens.consumeThrough(')', '(');
+    }
+
+    /**
+     * Consume the entire {@code BEGIN...END} block that appears next in the token stream. This handles nested
+     * <a href="https://dev.mysql.com/doc/refman/5.7/en/begin-end.html"><code>BEGIN...END</code> blocks</a>,
+     * <a href="https://dev.mysql.com/doc/refman/5.7/en/statement-labels.html">labeled statements</a>,
+     * and control blocks.
+     * 
+     * @param start the marker at which the statement was begun
+     */
+    @Override
+    protected void consumeBeginStatement(Marker start) {
+        tokens.consume("BEGIN");
+        // Look for a label that preceded the BEGIN ...
+        LinkedList<String> labels = new LinkedList<>();
+        labels.add(getPrecedingBlockLabel());
+
+        // Now look for the "END", ignoring intermediate control blocks that also use "END" ...
+        LinkedList<String> endSuffixes = new LinkedList<>();
+        while (tokens.hasNext()) {
+            if (tokens.matches("BEGIN")) {
+                consumeBeginStatement(tokens.mark());
+            }
+            if (tokens.canConsume("IF", "EXISTS")) {
+                // Ignore any IF EXISTS phrases ...
+            }
+            if (tokens.matchesAnyOf("IF", "REPEAT", "LOOP", "WHILE")) {
+                // This is the beginning of a control block ...
+                String keyword = tokens.consume();
+                endSuffixes.add(keyword);
+                String label = getPrecedingBlockLabel();
+                labels.add(label); // may be null
+            }
+            if (tokens.canConsume("END")) {
+                if (endSuffixes.isEmpty()) {
+                    break;
+                }
+                String suffix = endSuffixes.remove();
+                if (suffix != null) tokens.canConsume(suffix);
+                String label = labels.remove();
+                if (label != null) tokens.canConsume(label);
+            }
+            tokens.consume();
+        }
+
+        // We've consumed the corresponding END of the BEGIN, but consume the label if one was used ...
+        assert labels.size() == 1;
+        String label = labels.remove();
+        if (label != null) tokens.canConsume(label);
+    }
+
+    /**
+     * Get the label that appears with a colon character just prior to the current position. Some MySQL DDL statements can be
+     * <a href="https://dev.mysql.com/doc/refman/5.7/en/statement-labels.html">labeled</a>, and this label can then appear at the
+     * end of a block.
+     * 
+     * @return the label for the block starting at the current position; null if there is no such label
+     * @throws NoSuchElementException if there is no previous token
+     */
+    protected String getPrecedingBlockLabel() {
+        if (tokens.previousToken(1).matches(':')) {
+            // A label preceded the beginning of the control block ...
+            return tokens.previousToken(2).value();
+        }
+        return null;
     }
 
     /**
