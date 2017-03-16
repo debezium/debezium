@@ -800,6 +800,17 @@ public class MySqlDdlParserTest {
         assertThat(t.columnWithName("scope_action_ids").position()).isEqualTo(6);
     }
 
+    @FixFor("DBZ-198")
+    @Test
+    public void shouldParseButIgnoreCreateFunctionWithDefiner() {
+        parser.parse(readFile("ddl/mysql-dbz-198.ddl"), tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(0); // 0 table
+        assertThat(listener.total()).isEqualTo(0);
+        listener.forEach(this::printEvent);
+    }
+
+    @FixFor("DBZ-200")
     @Test
     public void shouldParseStatementForDbz200() {
         parser.parse(readFile("ddl/mysql-dbz-200.ddl"), tables);
