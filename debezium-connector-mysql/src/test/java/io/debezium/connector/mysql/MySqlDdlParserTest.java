@@ -853,6 +853,36 @@ public class MySqlDdlParserTest {
         assertThat(t.columnWithName("UNIQUE").position()).isEqualTo(21);
 
     }
+    
+    @FixFor("DBZ-204")
+    @Test
+    public void shouldParseAlterTableThatChangesMultipleColumns() {
+        String ddl = "CREATE TABLE `s`.`test` (a INT(11) NULL, b INT NULL, c INT NULL, INDEX i1(b));";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table t = tables.forTable(new TableId(null, "s", "test"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("a","b","c");
+        assertThat(t.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t, "a", "INT", Types.INTEGER, 11, -1, true, false, false);
+        assertColumn(t, "b", "INT", Types.INTEGER, -1, -1, true, false, false);
+        assertColumn(t, "c", "INT", Types.INTEGER, -1, -1, true, false, false);
+
+        ddl = "ALTER TABLE `s`.`test` CHANGE COLUMN `a` `d` BIGINT(20) NOT NULL AUTO_INCREMENT";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        t = tables.forTable(new TableId(null, "s", "test"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("d","b","c");
+        assertThat(t.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t, "d", "BIGINT", Types.BIGINT, 20, -1, false, true, true);
+        assertColumn(t, "b", "INT", Types.INTEGER, -1, -1, true, false, false);
+        assertColumn(t, "c", "INT", Types.INTEGER, -1, -1, true, false, false);
+        
+        ddl = "ALTER TABLE `s`.`test` DROP INDEX i1";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+    }
 
     @Test
     public void shouldParseTicketMonsterLiquibaseStatements() {
