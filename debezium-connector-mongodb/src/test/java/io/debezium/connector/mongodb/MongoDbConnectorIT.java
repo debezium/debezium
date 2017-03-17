@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
 import org.apache.kafka.common.config.Config;
@@ -259,6 +260,63 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             verifyCreateOperation(record);
         });
 
+        // ---------------------------------------------------------------------------------------------------------------
+        // Create and then update a document
+        // ---------------------------------------------------------------------------------------------------------------
+        //Testing.Debug.enable();
+        AtomicReference<String> id = new AtomicReference<>();
+        primary().execute("create", mongo->{
+            MongoDatabase db1 = mongo.getDatabase("dbit");
+            MongoCollection<Document> coll = db1.getCollection("arbitrary");
+            coll.drop();
+
+            // Insert the document with a generated ID ...
+            Document doc = Document.parse("{\"a\": 1, \"b\": 2}");
+            InsertOneOptions insertOptions = new InsertOneOptions().bypassDocumentValidation(true);
+            coll.insertOne(doc, insertOptions);
+
+            // Find the document to get the generated ID ...
+            doc = coll.find().first();
+            Testing.debug("Document: " + doc);
+            id.set(doc.getObjectId("_id").toString());
+            Testing.debug("Document ID: " + id.get());
+        });
+        
+        primary().execute("update", mongo->{
+            MongoDatabase db1 = mongo.getDatabase("dbit");
+            MongoCollection<Document> coll = db1.getCollection("arbitrary");
+
+            // Find the document ...
+            Document doc = coll.find().first();
+            Testing.debug("Document: " + doc);
+            Document filter = Document.parse("{\"a\": 1}");
+            Document operation = Document.parse("{ \"$set\": { \"b\": 10 } }");
+            coll.updateOne(filter, operation);
+
+            doc = coll.find().first();
+            Testing.debug("Document: " + doc);
+        });
+        
+        // Wait until we can consume the 1 insert and 1 update ...
+        SourceRecords insertAndUpdate = consumeRecordsByTopic(2);
+        assertThat(insertAndUpdate.recordsForTopic("mongo.dbit.arbitrary").size()).isEqualTo(2);
+        assertThat(insertAndUpdate.topics().size()).isEqualTo(1);
+        records4.forEach(record -> {
+            // Check that all records are valid, and can be serialized and deserialized ...
+            validate(record);
+            verifyNotFromInitialSync(record);
+            verifyCreateOperation(record);
+        });
+        SourceRecord insertRecord = insertAndUpdate.allRecordsInOrder().get(0);
+        SourceRecord updateRecord = insertAndUpdate.allRecordsInOrder().get(1);
+        Testing.debug("Insert event: " + insertRecord);
+        Testing.debug("Update event: " + updateRecord);
+        Struct insertKey = (Struct)insertRecord.key();
+        Struct updateKey = (Struct)updateRecord.key();
+        String insertId = insertKey.getString("_id");
+        String updatetId = updateKey.getString("_id");
+        assertThat(insertId).isEqualTo(id.get());
+        assertThat(updatetId).isEqualTo(id.get());
     }
 
     protected void verifyFromInitialSync(SourceRecord record, AtomicBoolean foundLast) {
