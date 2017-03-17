@@ -2,6 +2,31 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 0.4.1
+
+March 17, 2017 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12333486)
+
+### New features since 0.4.0
+
+* Improved support for [Amazon RDS](https://aws.amazon.com/rds/mysql/) and [Amazon Aurora (MySQL compatibility)](https://aws.amazon.com/rds/aurora/). [DBZ-140](https://issues.jboss.org/projects/DBZ/issues/DBZ-140)
+
+### Breaking changes since 0.4.0
+
+None
+
+### Fixes and changes since 0.4.0
+
+This release includes the following fixes, changes, or improvements since the link:040[0.4.0] release:
+
+* MySQL connector now allows filtering production of DML events by GTIDs. [DBZ-188](https://issues.jboss.org/projects/DBZ/issues/DBZ-188)
+* Support InnoDB savepoints. [DBZ-196](https://issues.jboss.org/projects/DBZ/issues/DBZ-196)
+* Corrected MySQL DDL parser. [DBZ-193](https://issues.jboss.org/projects/DBZ/issues/DBZ-193) [DBZ-198](https://issues.jboss.org/projects/DBZ/issues/DBZ-198)
+* Improved handling of MySQL connector's built-in tables. [DBZ-194](https://issues.jboss.org/projects/DBZ/issues/DBZ-194)
+* MySQL connector properly handles invalid/blank enum literal values. [DBZ-197](https://issues.jboss.org/projects/DBZ/issues/DBZ-197)
+* MySQL connector properly handles reserved names as column names. [DBZ-200](https://issues.jboss.org/projects/DBZ/issues/DBZ-200)
+* MongoDB connector properly generates event keys based upon ObjectID for updates. [DBZ-201](https://issues.jboss.org/projects/DBZ/issues/DBZ-201)
+
+
 ## 0.4.0
 
 February 7, 2017 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12330743)
@@ -17,7 +42,7 @@ None
 
 ### Fixes and changes since 0.3.6
 
-This release includes the following fixes, changes, or improvements since the link:release-0-3-6[0.3.6] release:
+This release includes the following fixes, changes, or improvements since the link:036[0.3.6] release:
 
 * Update Kafka dependencies to 0.10.1.1. [DBZ-173](https://issues.jboss.org/projects/DBZ/issues/DBZ-173)
 * Update MySQL binary log client library to 0.9.0. [DBZ-186](https://issues.jboss.org/projects/DBZ/issues/DBZ-186)
@@ -48,7 +73,7 @@ None
 
 ### Fixes since 0.3.5
 
-This release includes the following fixes since the link:release-0-3-5[0.3.5] release:
+This release includes the following fixes since the link:035[0.3.5] release:
 
 * Deleting a Debezium connector in Kafka Connect no longer causes NPEs. [DBZ-138](https://issues.jboss.org/projects/DBZ/issues/DBZ-138)
 * MongoDB connector properly connects to a sharded cluster and the primaries for each replica set. [DBZ-170](https://issues.jboss.org/projects/DBZ/issues/DBZ-170), [DBZ-167](https://issues.jboss.org/projects/DBZ/issues/DBZ-167)
@@ -86,7 +111,7 @@ This release includes the following significant fix, and all users are strongly 
 
 * Restarting MySQL connector may lose or miss events from the previous transaction that was incompletely processed prior to the easlier shutdown. This fix corrects this potential problem and slightly alters the offsets recorded by the connector. Production connectors should be stopped carefully to ensure transactions are processed atomically, if necessary by temporarily stopping updates on the MySQL server and letting the connector complete all transactions before stopping. [DBZ-144](https://issues.jboss.org/projects/DBZ/issues/DBZ-144)
 
-Additionally, this release includes the following fixes since the link:release-0-3-4[0.3.4] release:
+Additionally, this release includes the following fixes since the link:034[0.3.4] release:
 
 * Shutting down MySQL connector task database and quickly terminating the Kafka Connect process may cause connector to be restarted in a strange state when Kafka Connect is restarted, but this no longer results in a null pointer exception in the Kafka database history. [DBZ-146](https://issues.jboss.org/projects/DBZ/issues/DBZ-146)
 * MySQL connector now has option to treat `DECIMAL` and `NUMERIC` columns as double values rather than `java.math.BigDecimal` values that are encoded in the messages by Kafka Connect in binary form. [DBZ-147](https://issues.jboss.org/projects/DBZ/issues/DBZ-147)
@@ -112,7 +137,7 @@ None
 
 ### Fixes since 0.3.3
 
-This release includes all of the fixes from the link:release-0-3-3[0.3.3] release, and also includes the following fixes:
+This release includes all of the fixes from the link:033[0.3.3] release, and also includes the following fixes:
 
 * MySQL connector's `ts_sec` field now shows correct time from MySQL server events. [DBZ-139](https://issues.jboss.org/projects/DBZ/issues/DBZ-139)
 
@@ -131,7 +156,7 @@ None
 
 ### Fixes since 0.3.2
 
-This release includes all of the fixes from the link:release-0-3-2[0.3.2] release, and also includes the following fixes:
+This release includes all of the fixes from the link:032[0.3.2] release, and also includes the following fixes:
 
 * MySQL connector now works with MySQL 5.5. [DBZ-115](https://issues.jboss.org/projects/DBZ/issues/DBZ-115)
 * MySQL connector now handles `BIT(n)` column values. [DBZ-123](https://issues.jboss.org/projects/DBZ/issues/DBZ-123)
@@ -155,7 +180,7 @@ None
 
 ### Fixes since 0.3.1
 
-This release includes all of the fixes from the link:release-0-3-1[0.3.1] release, and also includes the following fixes:
+This release includes all of the fixes from the link:031[0.3.1] release, and also includes the following fixes:
 
 * MySQL connector now handles zero-value dates. [DBZ-114](https://issues.jboss.org/projects/DBZ/issues/DBZ-114)
 * MySQL connector no longer prints out password-related configuration properties, though [KAFKA-4171](https://issues.apache.org/jira/browse/KAFKA-4171) for a similar issue with Kafka Connect. [DBZ-122](https://issues.jboss.org/projects/DBZ/issues/DBZ-122)
@@ -180,7 +205,7 @@ None
 
 ### Fixes since 0.3.0
 
-This release includes all of the fixes from the link:release-0-2-4[0.2.4] release, and also includes the following fixes:
+This release includes all of the fixes from the link:024[0.2.4] release, and also includes the following fixes:
 
 * MySQL connector now properly decodes string values from the binlog based upon the column's character set encoding as read by the DDL statement. Upon upgrade and restart, the connector will re-read the recorded database history and now associate the columns with their the character sets, and any newly processed events will use properly encoded strings values. As expected, previously generated events are never altered. Force a snapshot to regenerate events for the servers. [DBZ-102](https://issues.jboss.org/projects/DBZ/issues/DBZ-102)
 * Corrected how the MySQL connector parses some DDL statements. [DBZ-106](https://issues.jboss.org/projects/DBZ/issues/DBZ-106)
