@@ -21,6 +21,7 @@ import org.bson.types.BSONTimestamp;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.data.OptionalSchema;
 import io.debezium.util.AvroValidator;
 import io.debezium.util.Collect;
 
@@ -91,8 +92,8 @@ public final class SourceInfo {
                                                       .field(NAMESPACE, Schema.STRING_SCHEMA)
                                                       .field(TIMESTAMP, Schema.INT32_SCHEMA)
                                                       .field(ORDER, Schema.INT32_SCHEMA)
-                                                      .field(OPERATION_ID, Schema.OPTIONAL_INT64_SCHEMA)
-                                                      .field(INITIAL_SYNC, Schema.OPTIONAL_BOOLEAN_SCHEMA)
+                                                      .field(OPERATION_ID, OptionalSchema.OPTIONAL_INT64_SCHEMA)
+                                                      .field(INITIAL_SYNC, OptionalSchema.OPTIONAL_BOOLEAN_SCHEMA)
                                                       .build();
 
     private final ConcurrentMap<String, Map<String, String>> sourcePartitionsByReplicaSetName = new ConcurrentHashMap<>();

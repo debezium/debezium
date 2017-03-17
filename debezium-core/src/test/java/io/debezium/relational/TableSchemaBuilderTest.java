@@ -103,13 +103,13 @@ public class TableSchemaBuilderTest {
         assertThat(values.field("C1").schema()).isEqualTo(SchemaBuilder.string().build());
         assertThat(values.field("C2").name()).isEqualTo("C2");
         assertThat(values.field("C2").index()).isEqualTo(1);
-        assertThat(values.field("C2").schema()).isEqualTo(Decimal.builder(3).optional().build()); // scale of 3
+        assertThat(values.field("C2").schema()).isEqualTo(Decimal.builder(3).optional().defaultValue(null).build()); // scale of 3
         assertThat(values.field("C3").name()).isEqualTo("C3");
         assertThat(values.field("C3").index()).isEqualTo(2);
-        assertThat(values.field("C3").schema()).isEqualTo(Date.builder().optional().build()); // optional date
+        assertThat(values.field("C3").schema()).isEqualTo(Date.builder().optional().defaultValue(null).build()); // optional date
         assertThat(values.field("C4").name()).isEqualTo("C4");
         assertThat(values.field("C4").index()).isEqualTo(3);
-        assertThat(values.field("C4").schema()).isEqualTo(SchemaBuilder.int32().optional().build()); // JDBC INTEGER = 32 bits
+        assertThat(values.field("C4").schema()).isEqualTo(SchemaBuilder.int32().optional().defaultValue(null).build()); // JDBC INTEGER = 32 bits
         Struct value = schema.valueFromColumnData(data);
         assertThat(value).isNotNull();
     }

@@ -147,7 +147,7 @@ public class TableSchemaBuilder {
                 addField(valSchemaBuilder, column, mapper);
             }
         });
-        Schema valSchema = valSchemaBuilder.optional().build();
+        Schema valSchema = valSchemaBuilder.optional().defaultValue(null).build();
         Schema keySchema = hasPrimaryKey.get() ? keySchemaBuilder.build() : null;
 
         if (LOGGER.isDebugEnabled()) {
@@ -317,7 +317,11 @@ public class TableSchemaBuilder {
                 // Let the mapper add properties to the schema ...
                 mapper.alterFieldSchema(column, fieldBuilder);
             }
-            if (column.isOptional()) fieldBuilder.optional();
+            if (column.isOptional()) {
+                // Need both optional and a null default value for Avro schema evolution rules
+                fieldBuilder.optional();
+                fieldBuilder.defaultValue(null);
+            }
             builder.field(column.name(), fieldBuilder.build());
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("- field '{}' ({}{}) from column {}", column.name(), builder.isOptional() ? "OPTIONAL " : "",

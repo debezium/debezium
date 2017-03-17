@@ -23,6 +23,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
 
 import io.debezium.config.Configuration;
+import io.debezium.data.OptionalSchema;
 import io.debezium.util.Collect;
 
 /**
@@ -132,7 +133,7 @@ public class SimpleSourceConnector extends SourceConnector {
                                                   .name("simple.value")
                                                   .field("batch", Schema.INT32_SCHEMA)
                                                   .field("record", Schema.INT32_SCHEMA)
-                                                  .field("timestamp", Schema.OPTIONAL_INT64_SCHEMA)
+                                                  .field("timestamp", OptionalSchema.OPTIONAL_INT64_SCHEMA)
                                                   .build();
 
                 // Read the offset ...

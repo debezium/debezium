@@ -16,6 +16,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.data.Envelope;
+import io.debezium.data.OptionalSchema;
 import io.debezium.document.Document;
 import io.debezium.relational.TableId;
 import io.debezium.util.Collect;
@@ -118,14 +119,14 @@ final class SourceInfo {
                                                      .field(SERVER_NAME_KEY, Schema.STRING_SCHEMA)
                                                      .field(SERVER_ID_KEY, Schema.INT64_SCHEMA)
                                                      .field(TIMESTAMP_KEY, Schema.INT64_SCHEMA)
-                                                     .field(GTID_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                                                     .field(GTID_KEY, OptionalSchema.OPTIONAL_STRING_SCHEMA)
                                                      .field(BINLOG_FILENAME_OFFSET_KEY, Schema.STRING_SCHEMA)
                                                      .field(BINLOG_POSITION_OFFSET_KEY, Schema.INT64_SCHEMA)
                                                      .field(BINLOG_ROW_IN_EVENT_OFFSET_KEY, Schema.INT32_SCHEMA)
-                                                     .field(SNAPSHOT_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
-                                                     .field(THREAD_KEY, Schema.OPTIONAL_INT64_SCHEMA)
-                                                     .field(DB_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                                                     .field(TABLE_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                                                     .field(SNAPSHOT_KEY, OptionalSchema.OPTIONAL_BOOLEAN_SCHEMA)
+                                                     .field(THREAD_KEY, OptionalSchema.OPTIONAL_INT64_SCHEMA)
+                                                     .field(DB_NAME_KEY, OptionalSchema.OPTIONAL_STRING_SCHEMA)
+                                                     .field(TABLE_NAME_KEY, OptionalSchema.OPTIONAL_STRING_SCHEMA)
                                                      .build();
 
     private String currentGtidSet;
