@@ -382,9 +382,7 @@ public final class SourceInfo {
             String collectionName = namespace.substring(delimIndex + 1);
             result.put(DpConstants.RECORD_OFFSET_ENTITY_KEY, collectionName);
         }
-        if(position.getExpectedNumDocs() != 0){
-            result.put(DpConstants.RECORD_OFFSET_TOTAL_SIZE_KEY, (int)position.getExpectedNumDocs());
-        }
+        result.put(DpConstants.RECORD_OFFSET_TOTAL_SIZE_KEY, (int)position.getExpectedNumDocs());
         if (position.getInitialSync() == Boolean.TRUE) {
             result.put(INITIAL_SYNC, true);
         }
