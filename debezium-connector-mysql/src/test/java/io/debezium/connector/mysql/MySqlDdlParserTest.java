@@ -494,7 +494,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(0); // no tables
         assertThat(listener.total()).isEqualTo(0);
     }
-    
+
     @Test
     @FixFor("DBZ-169")
     public void shouldParseTimeWithNowDefault() {
@@ -519,7 +519,7 @@ public class MySqlDdlParserTest {
         assertThat(t.columnWithName("c3").position()).isEqualTo(3);
         assertThat(t.columnWithName("c4").position()).isEqualTo(4);
     }
-    
+
     @Test
     @FixFor("DBZ-169")
     public void shouldParseCreateAndAlterWithOnUpdate() {
@@ -539,7 +539,7 @@ public class MySqlDdlParserTest {
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(2);
         assertThat(listener.total()).isEqualTo(3);
-        
+
         Table t = tables.forTable(new TableId(null, null, "customers"));
         assertThat(t).isNotNull();
         assertThat(t.columnNames()).containsExactly("id", "name");
@@ -762,7 +762,7 @@ public class MySqlDdlParserTest {
         assertThat(t.primaryKeyColumnNames()).containsExactly("collection_id");
         assertColumn(t, "collection_id", "INT UNSIGNED", Types.INTEGER, 11, -1, false, true, true);
     }
-    
+
     @FixFor("DBZ-176")
     @Test
     public void shouldParseButIgnoreCreateTriggerWithDefiner() {
@@ -772,7 +772,7 @@ public class MySqlDdlParserTest {
         assertThat(listener.total()).isEqualTo(0);
         listener.forEach(this::printEvent);
     }
-    
+
     @FixFor("DBZ-193")
     @Test
     public void shouldParseFulltextKeyInCreateTable() {
@@ -799,7 +799,91 @@ public class MySqlDdlParserTest {
         assertThat(t.columnWithName("client_id").position()).isEqualTo(5);
         assertThat(t.columnWithName("scope_action_ids").position()).isEqualTo(6);
     }
+
+    @FixFor("DBZ-198")
+    @Test
+    public void shouldParseButIgnoreCreateFunctionWithDefiner() {
+        parser.parse(readFile("ddl/mysql-dbz-198.ddl"), tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(0); // 0 table
+        assertThat(listener.total()).isEqualTo(0);
+        listener.forEach(this::printEvent);
+    }
+
+    @FixFor("DBZ-200")
+    @Test
+    public void shouldParseStatementForDbz200() {
+        parser.parse(readFile("ddl/mysql-dbz-200.ddl"), tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(1);
+        assertThat(listener.total()).isEqualTo(1);
+
+        Table t = tables.forTable(new TableId(null, null, "customfield"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("ENCODEDKEY", "ID", "CREATIONDATE", "LASTMODIFIEDDATE", "DATATYPE",
+                                                    "ISDEFAULT", "ISREQUIRED", "NAME", "VALUES", "AMOUNTS", "DESCRIPTION",
+                                                    "TYPE", "VALUELENGTH", "INDEXINLIST", "CUSTOMFIELDSET_ENCODEDKEY_OID",
+                                                    "STATE", "VALIDATIONPATTERN", "VIEWUSAGERIGHTSKEY", "EDITUSAGERIGHTSKEY",
+                                                    "BUILTINCUSTOMFIELDID", "UNIQUE");
+        assertColumn(t, "ENCODEDKEY", "VARCHAR", Types.VARCHAR, 32, -1, false, false, false);
+        assertColumn(t, "ID", "VARCHAR", Types.VARCHAR, 32, -1, true, false, false);
+        assertColumn(t, "CREATIONDATE", "DATETIME", Types.TIMESTAMP, -1, -1, true, false, false);
+        assertColumn(t, "LASTMODIFIEDDATE", "DATETIME", Types.TIMESTAMP, -1, -1, true, false, false);
+        assertColumn(t, "DATATYPE", "VARCHAR", Types.VARCHAR, 256, -1, true, false, false);
+        assertColumn(t, "ISDEFAULT", "BIT", Types.BIT, 1, -1, true, false, false);
+        assertColumn(t, "ISREQUIRED", "BIT", Types.BIT, 1, -1, true, false, false);
+        assertColumn(t, "NAME", "VARCHAR", Types.VARCHAR, 256, -1, true, false, false);
+        assertColumn(t, "VALUES", "MEDIUMBLOB", Types.BLOB, -1, -1, true, false, false);
+        assertColumn(t, "AMOUNTS", "MEDIUMBLOB", Types.BLOB, -1, -1, true, false, false);
+        assertColumn(t, "DESCRIPTION", "VARCHAR", Types.VARCHAR, 256, -1, true, false, false);
+        assertColumn(t, "TYPE", "VARCHAR", Types.VARCHAR, 256, -1, true, false, false);
+        assertColumn(t, "VALUELENGTH", "VARCHAR", Types.VARCHAR, 256, -1, false, false, false);
+        assertColumn(t, "INDEXINLIST", "INT", Types.INTEGER, 11, -1, true, false, false);
+        assertColumn(t, "CUSTOMFIELDSET_ENCODEDKEY_OID", "VARCHAR", Types.VARCHAR, 32, -1, false, false, false);
+        assertColumn(t, "STATE", "VARCHAR", Types.VARCHAR, 256, -1, false, false, false);
+        assertColumn(t, "VALIDATIONPATTERN", "VARCHAR", Types.VARCHAR, 256, -1, true, false, false);
+        assertColumn(t, "VIEWUSAGERIGHTSKEY", "VARCHAR", Types.VARCHAR, 32, -1, true, false, false);
+        assertColumn(t, "EDITUSAGERIGHTSKEY", "VARCHAR", Types.VARCHAR, 32, -1, true, false, false);
+        assertColumn(t, "BUILTINCUSTOMFIELDID", "VARCHAR", Types.VARCHAR, 255, -1, true, false, false);
+        assertColumn(t, "UNIQUE", "VARCHAR", Types.VARCHAR, 32, -1, false, false, false);
+        assertThat(t.columnWithName("ENCODEDKEY").position()).isEqualTo(1);
+        assertThat(t.columnWithName("id").position()).isEqualTo(2);
+        assertThat(t.columnWithName("CREATIONDATE").position()).isEqualTo(3);
+        assertThat(t.columnWithName("DATATYPE").position()).isEqualTo(5);
+        assertThat(t.columnWithName("UNIQUE").position()).isEqualTo(21);
+
+    }
     
+    @FixFor("DBZ-204")
+    @Test
+    public void shouldParseAlterTableThatChangesMultipleColumns() {
+        String ddl = "CREATE TABLE `s`.`test` (a INT(11) NULL, b INT NULL, c INT NULL, INDEX i1(b));";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table t = tables.forTable(new TableId(null, "s", "test"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("a","b","c");
+        assertThat(t.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t, "a", "INT", Types.INTEGER, 11, -1, true, false, false);
+        assertColumn(t, "b", "INT", Types.INTEGER, -1, -1, true, false, false);
+        assertColumn(t, "c", "INT", Types.INTEGER, -1, -1, true, false, false);
+
+        ddl = "ALTER TABLE `s`.`test` CHANGE COLUMN `a` `d` BIGINT(20) NOT NULL AUTO_INCREMENT";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        t = tables.forTable(new TableId(null, "s", "test"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("d","b","c");
+        assertThat(t.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t, "d", "BIGINT", Types.BIGINT, 20, -1, false, true, true);
+        assertColumn(t, "b", "INT", Types.INTEGER, -1, -1, true, false, false);
+        assertColumn(t, "c", "INT", Types.INTEGER, -1, -1, true, false, false);
+        
+        ddl = "ALTER TABLE `s`.`test` DROP INDEX i1";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+    }
+
     @Test
     public void shouldParseTicketMonsterLiquibaseStatements() {
         parser.parse(readLines(1, "ddl/mysql-ticketmonster-liquibase.ddl"), tables);

@@ -249,6 +249,11 @@ public abstract class AbstractReader implements Reader {
      * @throws InterruptedException if interrupted while waiting for the queue to have room for this record
      */
     protected void enqueueRecord(SourceRecord record) throws InterruptedException {
-        if (record != null) this.records.put(record);
+        if (record != null) {
+            if (logger.isTraceEnabled()) {
+                logger.trace("Enqueuing source record: {}", record);
+            }
+            this.records.put(record);
+        }
     }
 }

@@ -301,6 +301,17 @@ END;
 $$
 DELIMITER ;
 
+-- DBZ-195 handle numeric values
+CREATE TABLE dbz_195_numvalues (
+  id int auto_increment NOT NULL,
+  `search_version_read` int(11) NOT NULL DEFAULT '0', -- (11) is the display width 
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4972 DEFAULT CHARSET=utf8;
+
+INSERT INTO dbz_195_numvalues VALUES (default,0);
+INSERT INTO dbz_195_numvalues VALUES (default,-2147483648);
+INSERT INTO dbz_195_numvalues VALUES (default,2147483647);
+
 -- ----------------------------------------------------------------------------------------------------------------
 -- DATABASE:  json_test
 -- ----------------------------------------------------------------------------------------------------------------

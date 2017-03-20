@@ -206,8 +206,8 @@ public class TableSchemaBuilder {
                             result.put(fields[i], value);
                         } catch (DataException e) {
                             Column col = columns.get(i);
-                            LOGGER.error("Failed to properly convert key value for '" + columnSetName + "." + col.name() + "' of type "
-                                    + col.typeName() + ":", e);
+                            LOGGER.error("Failed to properly convert key value for '{}.{}' of type {} for row {}:",
+                                         columnSetName, col.name(), col.typeName(), row, e);
                         }
                     }
                 }
@@ -255,12 +255,12 @@ public class TableSchemaBuilder {
                             result.put(fields[i], value);
                         } catch (DataException|IllegalArgumentException e) {
                             Column col = columns.get(i);
-                            LOGGER.error("Failed to properly convert data value for '" + tableId + "." + col.name() + "' of type "
-                                    + col.typeName() + ":", e);
+                            LOGGER.error("Failed to properly convert data value for '{}.{}' of type {} for row {}:",
+                                         tableId, col.name(), col.typeName(), row, e);
                         }
                     } else if (traceMessage.getAndSet(false)) {
                         Column col = columns.get(i);
-                        LOGGER.trace("Excluding '" + tableId + "." + col.name() + "' of type " + col.typeName());
+                        LOGGER.trace("Excluding '{}.{}' of type {}", tableId, col.name(), col.typeName());
                     }
                 }
                 return result;

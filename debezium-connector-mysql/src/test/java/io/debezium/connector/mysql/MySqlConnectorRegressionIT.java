@@ -225,7 +225,8 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c4DateTime.getYear()).isEqualTo(1970);
                 assertThat(c4DateTime.getMonth()).isEqualTo(Month.JANUARY);
                 assertThat(c4DateTime.getDayOfMonth()).isEqualTo(1);
-                assertThat(c4DateTime.getHour()).isEqualTo(0);
+                // Difference depends upon whether the zone we're in is also using DST as it is on the date in question ...
+                assertThat(c4DateTime.getHour()).isIn(0, 1);
                 assertThat(c4DateTime.getMinute()).isEqualTo(0);
                 assertThat(c4DateTime.getSecond()).isEqualTo(0);
                 assertThat(c4DateTime.getNano()).isEqualTo(0);
@@ -433,7 +434,8 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c4DateTime.getYear()).isEqualTo(1970);
                 assertThat(c4DateTime.getMonth()).isEqualTo(Month.JANUARY);
                 assertThat(c4DateTime.getDayOfMonth()).isEqualTo(1);
-                assertThat(c4DateTime.getHour()).isEqualTo(0);
+                // Difference depends upon whether the zone we're in is also using DST as it is on the date in question ...
+                assertThat(c4DateTime.getHour()).isIn(0, 1);
                 assertThat(c4DateTime.getMinute()).isEqualTo(0);
                 assertThat(c4DateTime.getSecond()).isEqualTo(0);
                 assertThat(c4DateTime.getNano()).isEqualTo(0);
@@ -502,8 +504,8 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
         // Testing.Debug.enable();
-        int numTables = 9;
-        int numDataRecords = 16;
+        int numTables = 10;
+        int numDataRecords = 19;
         int numDdlRecords = numTables * 2 + 3; // for each table (1 drop + 1 create) + for each db (1 create + 1 drop + 1 use)
         int numSetVariables = 1;
         SourceRecords records = consumeRecordsByTopic(numDdlRecords + numSetVariables + numDataRecords);
@@ -519,6 +521,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         assertThat(records.recordsForTopic("regression.regression_test.dbz_123_bitvaluetest").size()).isEqualTo(2);
         assertThat(records.recordsForTopic("regression.regression_test.dbz_104_customers").size()).isEqualTo(4);
         assertThat(records.recordsForTopic("regression.regression_test.dbz_147_decimalvalues").size()).isEqualTo(1);
+        assertThat(records.recordsForTopic("regression.regression_test.dbz_195_numvalues").size()).isEqualTo(3);
         assertThat(records.topics().size()).isEqualTo(numTables + 1);
         assertThat(records.databaseNames().size()).isEqualTo(2);
         assertThat(records.databaseNames()).containsOnly("regression_test", "");
@@ -644,6 +647,18 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(decimalValue).isInstanceOf(BigDecimal.class);
                 BigDecimal bigValue = (BigDecimal) decimalValue;
                 assertThat(bigValue.doubleValue()).isEqualTo(12345.67, Delta.delta(0.01));
+            } else if (record.topic().endsWith("dbz_195_numvalues")) {
+                Struct after = value.getStruct(Envelope.FieldName.AFTER);
+                Object searchVersion = after.get("search_version_read");
+                assertThat(searchVersion).isInstanceOf(Integer.class);
+                Integer intValue = (Integer) searchVersion;
+                if (intValue.intValue() < 0) {
+                    assertThat(intValue.intValue()).isEqualTo(-2147483648);
+                } else if (intValue.intValue() > 0) {
+                    assertThat(intValue.intValue()).isEqualTo(2147483647);
+                } else {
+                    assertThat(intValue.intValue()).isEqualTo(0);
+                }
             }
         });
     }
@@ -675,7 +690,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        //Testing.Debug.enable();
+        // Testing.Debug.enable();
         int numCreateDatabase = 1;
         int numCreateTables = 9; // still read DDL for all tables
         int numDataRecords = 1;

@@ -261,6 +261,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                                             "regression_test.dbz_123_bitvaluetest",
                                             "regression_test.dbz_104_customers",
                                             "regression_test.dbz_147_decimalvalues",
+                                            "regression_test.dbz_195_numvalues",
                                             "json_test.dbz_126_jsontable");
 
         // Now set the whitelist to two databases ...

@@ -306,8 +306,13 @@ public class MySqlValueConverters extends JdbcValueConverters {
 
             if (options != null) {
                 // The binlog will contain an int with the 1-based index of the option in the enum value ...
-                int index = ((Integer) data).intValue() - 1; // 'options' is 0-based
-                if (index < options.size()) {
+                int value = ((Integer)data).intValue();
+                if (value == 0) {
+                    // an invalid value was specified, which corresponds to the empty string '' and an index of 0
+                    return "";
+                }
+                int index = value - 1; // 'options' is 0-based
+                if (index < options.size() && index >= 0) {
                     return options.get(index);
                 }
             }

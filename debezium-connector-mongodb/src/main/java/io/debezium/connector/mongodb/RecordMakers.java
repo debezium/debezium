@@ -220,6 +220,11 @@ public class RecordMakers {
                 return (String) id;
             }
             if (id instanceof Document) {
+                Document doc = (Document)id;
+                if (doc.containsKey("_id") && doc.size() == 1) {
+                    // This is an embedded ObjectId ...
+                    return objectIdLiteral(doc.get("_id"));
+                }
                 return valueTransformer.apply((Document) id);
             }
             return id.toString();

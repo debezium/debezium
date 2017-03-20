@@ -241,7 +241,7 @@ public class SnapshotReader extends AbstractReader {
                     try {
                         // MySQL sometimes considers some local files as databases (see DBZ-164),
                         // so we will simply try each one and ignore the problematic ones ...
-                        sql.set("SHOW TABLES IN " + quote(dbName));
+                        sql.set("SHOW FULL TABLES IN " + quote(dbName) + " where Table_Type = 'BASE TABLE'");
                         mysql.query(sql.get(), rs -> {
                             while (rs.next() && isRunning()) {
                                 TableId id = new TableId(dbName, null, rs.getString(1));
