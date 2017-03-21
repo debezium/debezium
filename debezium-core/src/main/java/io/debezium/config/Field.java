@@ -1020,9 +1020,23 @@ public final class Field {
         int errors = 0;
         if (value != null) {
             try {
-                Strings.listOfRegex(value.toString(), Pattern.CASE_INSENSITIVE);
+                Strings.listOfRegex(value, Pattern.CASE_INSENSITIVE);
             } catch (PatternSyntaxException e) {
                 problems.accept(field, value, "A comma-separated list of valid regular expressions is expected, but " + e.getMessage());
+                ++errors;
+            }
+        }
+        return errors;
+    }
+
+    public static int isRegex(Configuration config, Field field, ValidationOutput problems) {
+        String value = config.getString(field);
+        int errors = 0;
+        if (value != null) {
+            try {
+                Pattern.compile(value, Pattern.CASE_INSENSITIVE);
+            } catch (PatternSyntaxException e) {
+                problems.accept(field, value, "A valid regular expressions is expected, but " + e.getMessage());
                 ++errors;
             }
         }

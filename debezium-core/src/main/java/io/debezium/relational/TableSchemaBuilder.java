@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import io.debezium.relational.topic.TopicMappers;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -51,21 +52,21 @@ public class TableSchemaBuilder {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TableSchemaBuilder.class);
 
-    private final TopicMapper topicMapper;
+    private final TopicMappers topicMappers;
     private final Function<String, String> schemaNameValidator;
     private final ValueConverterProvider valueConverterProvider;
 
     /**
      * Create a new instance of the builder.
      *
-     * @param topicMapper the TopicMapper for each table; may not be null
+     * @param topicMappers the TopicMapper for each table; may not be null
      * @param valueConverterProvider the provider for obtaining {@link ValueConverter}s and {@link SchemaBuilder}s; may not be
      *            null
      * @param schemaNameValidator the validation function for schema names; may not be null
      */
-    public TableSchemaBuilder(TopicMapper topicMapper, ValueConverterProvider valueConverterProvider,
+    public TableSchemaBuilder(TopicMappers topicMappers, ValueConverterProvider valueConverterProvider,
                               Function<String, String> schemaNameValidator) {
-        this.topicMapper = topicMapper;
+        this.topicMappers = topicMappers;
         this.schemaNameValidator = schemaNameValidator;
         this.valueConverterProvider = valueConverterProvider;
     }
@@ -135,10 +136,11 @@ public class TableSchemaBuilder {
         if (schemaPrefix == null) schemaPrefix = "";
         // Build the schemas ...
         final TableId tableId = table.id();
+        final TopicMapper topicMapper = topicMappers.getTopicMapperToUse(schemaPrefix, table);
         final String topicName = topicMapper.getTopicName(schemaPrefix, table);
         final String keySchemaName = schemaNameValidator.apply(topicName + ".Key");
         final String valueSchemaName = schemaNameValidator.apply(topicName + ".Value");
-        final String envelopeSchemaName = schemaNameValidator.apply(topicName);
+        final String envelopeSchemaName = schemaNameValidator.apply(topicName); // TODO: better name
         LOGGER.debug("Mapping table '{}' to key schemas '{}' and value schema '{}'", tableId, keySchemaName, valueSchemaName);
         SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(valueSchemaName);
         SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(keySchemaName);

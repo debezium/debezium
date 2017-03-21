@@ -8,6 +8,8 @@ package io.debezium.relational.topic;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
+import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.relational.Table;
 
 import java.util.Map;
@@ -17,6 +19,13 @@ import java.util.Map;
  */
 public abstract class TopicMapper {
 
+    protected Configuration config;
+
+    public TopicMapper setConfig(Configuration config) {
+        this.config = config;
+        return this;
+    }
+
     /**
      * Get the name of the topic given for the table.
      *
@@ -25,6 +34,8 @@ public abstract class TopicMapper {
      * @return the topic name; may be null if this strategy could not be applied
      */
     abstract public String getTopicName(String topicPrefix, Table table);
+
+    abstract public Field.Set configFields();
 
     /**
      * Depending on your TopicMapper implementation and which rows in a database may occupy the same topic,

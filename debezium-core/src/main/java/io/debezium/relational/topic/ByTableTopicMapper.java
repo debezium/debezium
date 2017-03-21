@@ -5,6 +5,7 @@
  */
 package io.debezium.relational.topic;
 
+import io.debezium.config.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
@@ -16,6 +17,10 @@ import java.util.Map;
  * @author David Leibovic
  */
 public class ByTableTopicMapper extends TopicMapper {
+
+    public Field.Set configFields() {
+        return null;
+    }
 
     public String getTopicName(String topicPrefix, Table table) {
         return topicPrefix + table.id().toString();

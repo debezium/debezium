@@ -5,6 +5,8 @@
  */
 package io.debezium.relational.topic;
 
+import io.debezium.config.Field;
+import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
@@ -25,14 +27,36 @@ import java.util.regex.Pattern;
  */
 public class ByLogicalTableTopicMapper extends TopicMapper {
 
+    // "^.*?(?=\\..+\\..+)\\.(?<logicalDb>etsy_.+?(?=(_\\d+\\.)|\\.))(_\\d+)?\\.(?<table>.+)$"
+    private static final Field LOGICAL_TABLE_REGEX = Field.create("logical.table.regex")
+            .withDisplayName("Logical table regex")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withValidation(Field::isRegex)
+            .withDescription("The tables for which changes are to be captured");
+
+    // "^.*?(?=\\..+\\..+)\\.(?<logicalDb>etsy_.+?(?=\\.))\\.(?<table>.+)$"
+    private static final Field PHYSICAL_TABLE_REGEX = Field.create("physical.table.regex")
+            .withDisplayName("Physical table regex")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withValidation(Field::isRegex)
+            .withDescription("The tables for which changes are to be captured");
+
+    public Field.Set configFields() {
+        return Field.setOf(LOGICAL_TABLE_REGEX, PHYSICAL_TABLE_REGEX);
+    }
+
     public String getTopicName(String topicPrefix, Table table) {
         final String fullyQualifiedTableName = composeFullyQualifiedTableName(topicPrefix, table);
-        Pattern logicalTablePattern = Pattern.compile("^.*?(?=\\..+\\..+)\\.(?<logicalDb>etsy_.+?(?=(_\\d+\\.)|\\.))(_\\d+)?\\.(?<table>.+)$");
+        Pattern logicalTablePattern = Pattern.compile(config.getString(LOGICAL_TABLE_REGEX));
         Matcher logicalTableMatcher = logicalTablePattern.matcher(fullyQualifiedTableName);
         if (logicalTableMatcher.matches()) {
             return logicalTableMatcher.replaceAll("${logicalDb}.${table}");
         }
-        return fullyQualifiedTableName;
+        return null;
     }
 
     public void enhanceKeySchema(SchemaBuilder keySchemaBuilder) {
@@ -44,7 +68,7 @@ public class ByLogicalTableTopicMapper extends TopicMapper {
 
     public Map<String, Object> getNonRowFieldsToAddToKey(Schema schema, String topicPrefix, Table table) {
         final String fullyQualifiedTableName = composeFullyQualifiedTableName(topicPrefix, table);
-        Pattern physicalTableIdentifierPattern = Pattern.compile("^.*?(?=\\..+\\..+)\\.(?<logicalDb>etsy_.+?(?=\\.))\\.(?<table>.+)$");
+        Pattern physicalTableIdentifierPattern = Pattern.compile(config.getString(PHYSICAL_TABLE_REGEX));
         Matcher physicalTableIdentifierMatcher = physicalTableIdentifierPattern.matcher(fullyQualifiedTableName);
 
         final String physicalTableIdentifier;
