@@ -36,6 +36,14 @@ public class ByLogicalTableTopicMapper extends TopicMapper {
             .withValidation(Field::isRegex)
             .withDescription("The tables for which changes are to be captured");
 
+    // "${logicalDb}.${table}"
+    private static final Field LOGICAL_TABLE_REPLACEMENT = Field.create("logical.table.replacement")
+            .withDisplayName("Logical table replacement")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("The tables for which changes are to be captured");
+
     // "^.*?(?=\\..+\\..+)\\.(?<logicalDb>etsy_.+?(?=\\.))\\.(?<table>.+)$"
     private static final Field PHYSICAL_TABLE_REGEX = Field.create("physical.table.regex")
             .withDisplayName("Physical table regex")
@@ -43,6 +51,14 @@ public class ByLogicalTableTopicMapper extends TopicMapper {
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
             .withValidation(Field::isRegex)
+            .withDescription("The tables for which changes are to be captured");
+
+    // "${logicalDb}"
+    private static final Field PHYSICAL_TABLE_REPLACEMENT = Field.create("physical.table.replacement")
+            .withDisplayName("Physical table replacement")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
             .withDescription("The tables for which changes are to be captured");
 
     public Field.Set configFields() {
@@ -54,7 +70,7 @@ public class ByLogicalTableTopicMapper extends TopicMapper {
         Pattern logicalTablePattern = Pattern.compile(config.getString(LOGICAL_TABLE_REGEX));
         Matcher logicalTableMatcher = logicalTablePattern.matcher(fullyQualifiedTableName);
         if (logicalTableMatcher.matches()) {
-            return logicalTableMatcher.replaceAll("${logicalDb}.${table}");
+            return logicalTableMatcher.replaceAll(config.getString(LOGICAL_TABLE_REPLACEMENT));
         }
         return null;
     }
@@ -73,7 +89,7 @@ public class ByLogicalTableTopicMapper extends TopicMapper {
 
         final String physicalTableIdentifier;
         if (physicalTableIdentifierMatcher.matches()) {
-            physicalTableIdentifier = physicalTableIdentifierMatcher.replaceAll("${logicalDb}");
+            physicalTableIdentifier = physicalTableIdentifierMatcher.replaceAll(config.getString(PHYSICAL_TABLE_REPLACEMENT));
         } else {
             physicalTableIdentifier = fullyQualifiedTableName;
         }
