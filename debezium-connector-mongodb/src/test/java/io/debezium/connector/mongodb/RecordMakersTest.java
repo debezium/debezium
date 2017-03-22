@@ -8,6 +8,7 @@ package io.debezium.connector.mongodb;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.datapipeline.base.mongodb.MongodbSchemaConfig;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.BsonTimestamp;
@@ -42,7 +43,15 @@ public class RecordMakersTest {
 
     @Before
     public void beforeEach() {
-        source = new SourceInfo(SERVER_NAME);
+        List<MongodbSchemaConfig> configs = new ArrayList<>();
+        for (int i = 0; i != 100; ++i) {
+            MongodbSchemaConfig config = new MongodbSchemaConfig();
+            config.setMongodbSchemaList(new ArrayList<>());
+            config.setCollectionName("c" + i);
+            config.setDbName("dbA");
+            configs.add(config);
+        }
+        source = new SourceInfo(SERVER_NAME, new MongoDBSchemaCache(configs));
         topicSelector = TopicSelector.defaultSelector(PREFIX);
         produced = new ArrayList<>();
         recordMakers = new RecordMakers(source, topicSelector, produced::add);
@@ -83,7 +92,7 @@ public class RecordMakersTest {
         assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.CREATE.code());
         assertThat(value.getInt64(FieldName.TIMESTAMP)).isEqualTo(1002L);
         Struct actualSource = value.getStruct(FieldName.SOURCE);
-        Struct expectedSource = source.lastOffsetStruct("rs0", collectionId);
+        Struct expectedSource = source.lastOffsetStruct("rs0", collectionId,"", 0);
         assertThat(actualSource).isEqualTo(expectedSource);
     }
 
@@ -114,7 +123,7 @@ public class RecordMakersTest {
         assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.UPDATE.code());
         assertThat(value.getInt64(FieldName.TIMESTAMP)).isEqualTo(1002L);
         Struct actualSource = value.getStruct(FieldName.SOURCE);
-        Struct expectedSource = source.lastOffsetStruct("rs0", collectionId);
+        Struct expectedSource = source.lastOffsetStruct("rs0", collectionId,"", 0);
         assertThat(actualSource).isEqualTo(expectedSource);
     }
 
@@ -144,7 +153,7 @@ public class RecordMakersTest {
         assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.DELETE.code());
         assertThat(value.getInt64(FieldName.TIMESTAMP)).isEqualTo(1002L);
         Struct actualSource = value.getStruct(FieldName.SOURCE);
-        Struct expectedSource = source.lastOffsetStruct("rs0", collectionId);
+        Struct expectedSource = source.lastOffsetStruct("rs0", collectionId,"", 0);
         assertThat(actualSource).isEqualTo(expectedSource);
 
         SourceRecord tombstone = produced.get(1);

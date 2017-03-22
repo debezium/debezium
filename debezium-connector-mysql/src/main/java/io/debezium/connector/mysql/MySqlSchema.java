@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Schema;
@@ -82,7 +83,7 @@ public class MySqlSchema {
      *          returns {@code true} if a GTID source is to be included, or {@code false} if a GTID source is to be excluded;
      *          may be null if not needed
      */
-    public MySqlSchema(Configuration config, String serverName, Predicate<String> gtidFilter) {
+    public MySqlSchema(Configuration config, String serverName, Predicate<String> gtidFilter, Function<TableId, String> schemaNameConverter) {
         this.filters = new Filters(config);
         this.ddlParser = new MySqlDdlParser(false);
         this.tables = new Tables();
@@ -97,7 +98,8 @@ public class MySqlSchema {
         DecimalHandlingMode decimalHandlingMode = DecimalHandlingMode.parse(decimalHandlingModeStr);
         DecimalMode decimalMode = decimalHandlingMode.asDecimalMode();
         MySqlValueConverters valueConverters = new MySqlValueConverters(decimalMode, adaptiveTimePrecision);
-        this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameValidator::validate);
+
+        this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameValidator::validate, schemaNameConverter);
 
         // Set up the server name and schema prefix ...
         if (serverName != null) serverName = serverName.trim();

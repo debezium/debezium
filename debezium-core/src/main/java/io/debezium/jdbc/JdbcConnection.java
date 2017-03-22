@@ -5,6 +5,8 @@
  */
 package io.debezium.jdbc;
 
+import com.datapipeline.clients.DpAES;
+
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -111,6 +113,10 @@ public class JdbcConnection implements AutoCloseable {
             String url = findAndReplace(urlPattern, props, varsWithDefaults);
             LOGGER.trace("Props: {}", props);
             LOGGER.trace("URL: {}", url);
+            String password = props.getProperty(JdbcConfiguration.PASSWORD.name());
+            if (password != null) {
+                props.setProperty(JdbcConfiguration.PASSWORD.name(), DpAES.decrypt(password));
+            }
             Connection conn = DriverManager.getConnection(url, props);
             LOGGER.debug("Connected to {} with {}", url, props);
             return conn;
@@ -140,6 +146,10 @@ public class JdbcConnection implements AutoCloseable {
         return (config) -> {
             LOGGER.trace("Config: {}", config.asProperties());
             Properties props = config.asProperties();
+            String password = props.getProperty(JdbcConfiguration.PASSWORD.name());
+            if (password != null) {
+                props.setProperty(JdbcConfiguration.PASSWORD.name(), DpAES.decrypt(password));
+            }
             Field[] varsWithDefaults = combineVariables(variables,
                                                         JdbcConfiguration.HOSTNAME,
                                                         JdbcConfiguration.PORT,

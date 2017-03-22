@@ -14,6 +14,8 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import com.datapipeline.clients.DpAES;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +43,8 @@ public class ConnectionContext implements AutoCloseable {
     protected final ReplicaSets replicaSets;
     protected final DelayStrategy primaryBackoffStrategy;
     protected final boolean useHostsAsSeeds;
+    protected ObjectMapper objectMapper = new ObjectMapper();
+
 
     /**
      * @param config the configuration
@@ -50,7 +54,7 @@ public class ConnectionContext implements AutoCloseable {
 
         this.useHostsAsSeeds = config.getBoolean(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS);
         final String username = config.getString(MongoDbConnectorConfig.USER);
-        final String password = config.getString(MongoDbConnectorConfig.PASSWORD);
+        final String password = DpAES.decrypt(config.getString(MongoDbConnectorConfig.PASSWORD));
         final String adminDbName = ReplicaSetDiscovery.ADMIN_DATABASE_NAME;
 
         // Set up the client pool so that it ...
@@ -174,7 +178,9 @@ public class ConnectionContext implements AutoCloseable {
      * @return the client, or {@code null} if no primary could be found for the replica set
      */
     protected Supplier<MongoClient> primaryClientFor(ReplicaSet replicaSet, PrimaryConnectFailed handler) {
-        Supplier<MongoClient> factory = () -> clientForPrimary(replicaSet);
+        Supplier<MongoClient> factory = () -> {
+            return clientForPrimary(replicaSet);
+        };
         int maxAttempts = maxConnectionAttemptsForPrimary();
         return () -> {
             int attempts = 0;

@@ -134,7 +134,7 @@ public final class MongoDbConnectorTask extends SourceTask {
             logger.info("Starting {} thread(s) to replicate replica sets: {}", numThreads, replicaSets);
             replicaSets.validReplicaSets().forEach(replicaSet -> {
                 // Create a replicator for this replica set ...
-                Replicator replicator = new Replicator(replicationContext, replicaSet, queue::enqueue);
+                Replicator replicator = new Replicator(replicationContext, replicaSet, queue::enqueue, config.getString(MongoDbConnectorConfig.DP_TASK_ID));
                 replicators.add(replicator);
                 // and submit it for execution ...
                 executor.submit(() -> {

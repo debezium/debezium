@@ -69,6 +69,9 @@
         <!-- Connectors -->
         <version.com.google.protobuf>2.6.1</version.com.google.protobuf>
 
+        <!-- nexus -->
+        <nexus.ip>52.41.253.123</nexus.ip>
+
         <!-- Testing -->
         <version.junit>4.12</version.junit>
         <version.fest>1.4</version.fest>
@@ -84,6 +87,8 @@
         <version.staging.plugin>1.6.3</version.staging.plugin>
         <version.protoc.maven.plugin>3.0.0.1</version.protoc.maven.plugin>
 
+        <!-- Data pipeline internal dependency-->
+        <version.datapipeline>0.2.9-SNAPSHOT</version.datapipeline>
         <!-- Dockerfiles -->
         <docker.maintainer>Debezium community</docker.maintainer>
 
@@ -110,25 +115,35 @@
         <module>debezium-connector-postgres</module>
         <module>debezium-connector-mongodb</module>
     </modules>
-
     <distributionManagement>
-      <repository>
-        <id>ossrh</id>
-        <name>Sonatype Staging Repository</name>
-        <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
-      </repository>
-      <snapshotRepository>
-        <id>ossrh</id>
-        <name>OSS Sonatype Nexus Snapshots</name>
-        <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-      </snapshotRepository>
+      <!--<repository>-->
+        <!--<id>ossrh</id>-->
+        <!--<name>Sonatype Staging Repository</name>-->
+        <!--<url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>-->
+      <!--</repository>-->
+      <!--<snapshotRepository>-->
+        <!--<id>ossrh</id>-->
+        <!--<name>OSS Sonatype Nexus Snapshots</name>-->
+        <!--<url>https://oss.sonatype.org/content/repositories/snapshots</url>-->
+      <!--</snapshotRepository>-->
+        <snapshotRepository>
+            <id>datapipeline</id>
+            <url>http://${nexus.ip}:8081/nexus/content/repositories/snapshots</url>
+        </snapshotRepository>
     </distributionManagement>
-
     <repositories>
         <repository>
             <id>confluent</id>
             <name>Confluent</name>
             <url>http://packages.confluent.io/maven/</url>
+            <!--<snapshots>-->
+                <!--<enabled>true</enabled>-->
+                <!--<updatePolicy>never</updatePolicy>-->
+            <!--</snapshots>-->
+        </repository>
+        <repository>
+            <id>datapipeline</id>
+            <url>http://${nexus.ip}:8081/nexus/content/repositories/snapshots</url>
             <snapshots>
                 <enabled>true</enabled>
                 <updatePolicy>never</updatePolicy>
@@ -213,7 +228,6 @@
                 <groupId>io.confluent</groupId>
                 <artifactId>kafka-connect-avro-converter</artifactId>
                 <version>${version.confluent.platform}</version>
-                <scope>test</scope>
             </dependency>
 
             <!-- PostgreSQL connector -->
@@ -336,6 +350,16 @@
                 <version>${project.version}</version>
                 <scope>test</scope>
                 <type>test-jar</type>
+            </dependency>
+            <dependency>
+                <groupId>com.datapipeline</groupId>
+                <artifactId>dp-core</artifactId>
+                <version>${version.datapipeline}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.datapipeline</groupId>
+                <artifactId>dp-clients</artifactId>
+                <version>${version.datapipeline}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

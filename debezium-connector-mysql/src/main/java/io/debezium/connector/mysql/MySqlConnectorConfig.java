@@ -295,9 +295,53 @@ public class MySqlConnectorConfig {
         }
     }
 
+    public static enum TopicGenerationMode {
+        MERGE("merge"),
+        DEFAULT("default");
+
+        private final String value;
+
+        private TopicGenerationMode(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static TopicGenerationMode parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+            for (TopicGenerationMode option : TopicGenerationMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static TopicGenerationMode parse(String value, String defaultValue) {
+            TopicGenerationMode mode = parse(value);
+            if (mode == null && defaultValue != null) mode = parse(defaultValue);
+            return mode;
+        }
+    }
+
     private static final String DATABASE_WHITELIST_NAME = "database.whitelist";
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
     private static final String TABLE_IGNORE_BUILTIN_NAME = "table.ignore.builtin";
+    private static final String TABLE_SCHEMA_NAME = "table.schema.map";
     private static final TableRecommender TABLE_LIST_RECOMMENDER = new TableRecommender();
     private static final DatabaseRecommender DATABASE_LIST_RECOMMENDER = new DatabaseRecommender();
 
@@ -458,6 +502,15 @@ public class MySqlConnectorConfig {
                                                      .withValidation(Field::isListOfRegex)
                                                      .withRecommender(TABLE_LIST_RECOMMENDER)
                                                      .withDescription("The tables for which changes are to be captured");
+
+    public static final Field TABLE_SCHEMA = Field.create(TABLE_SCHEMA_NAME)
+                                                    .withDisplayName("Tables with same schema")
+                                                    .withType(Type.LIST)
+                                                    .withWidth(Width.LONG)
+                                                    .withImportance(Importance.LOW)
+                                                    .withValidation(Field::isListOfTableSchema)
+                                                    .withInvisibleRecommender()
+                                                    .withDescription("The tables with same schema");
 
     /**
      * A comma-separated list of regular expressions that match the fully-qualified names of tables to be excluded from
@@ -659,6 +712,16 @@ public class MySqlConnectorConfig {
                                                                    + "'precise' (the default) uses java.math.BigDecimal to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; "
                                                                    + "'double' represents values using Java's 'double', which may not offer the precision but will be far easier to use in consumers.");
 
+    public static final Field TOPIC_GENERATION_MODE = Field.create("topic.generation.mode")
+        .withDisplayName("Topic Generation")
+        .withEnum(TopicGenerationMode.class, TopicGenerationMode.DEFAULT)
+        .withWidth(Width.SHORT)
+        .withImportance(Importance.LOW)
+        .withDescription("The rule for generating topic. "
+            + "Options include: "
+            + "'default' create topic per tableName "
+            + "'merge' create topic per config.schema");
+
     /**
      * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
      * have their values truncated to be no longer than the specified number of characters.
@@ -705,7 +768,7 @@ public class MySqlConnectorConfig {
                                                      GTID_SOURCE_FILTER_DML_EVENTS,
                                                      TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                                                      SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD,
-                                                     SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER);
+                                                     SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER, TOPIC_GENERATION_MODE);
 
     /**
      * The set of {@link Field}s that are included in the {@link #configDef() configuration definition}. This includes
@@ -729,7 +792,7 @@ public class MySqlConnectorConfig {
                     COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST,
                     GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
-                    SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE);
+                    SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, TOPIC_GENERATION_MODE);
         return config;
     }
 
