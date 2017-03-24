@@ -1083,7 +1083,7 @@ public class MySqlDdlParser extends DdlParser {
 
     protected void parseCreateProcedure(Marker start) {
         parseDefiner(tokens.mark());
-        tokens.consume("FUNCTION");
+        tokens.consumeAnyOf("FUNCTION", "PROCEDURE");
         tokens.consume(); // name
         consumeRemainingStatement(start);
     }
@@ -1450,7 +1450,7 @@ public class MySqlDdlParser extends DdlParser {
         tokens.consume("BEGIN");
         // Look for a label that preceded the BEGIN ...
         LinkedList<String> labels = new LinkedList<>();
-        labels.add(getPrecedingBlockLabel());
+        labels.addFirst(getPrecedingBlockLabel());
 
         // Now look for the "END", ignoring intermediate control blocks that also use "END" ...
         LinkedList<String> endSuffixes = new LinkedList<>();
@@ -1461,12 +1461,37 @@ public class MySqlDdlParser extends DdlParser {
             if (tokens.canConsume("IF", "EXISTS")) {
                 // Ignore any IF EXISTS phrases ...
             }
-            if (tokens.matchesAnyOf("IF", "REPEAT", "LOOP", "WHILE")) {
+            if (tokens.canConsume("IF")) {
+                boolean isControlBlock = true;
+                if (tokens.canConsume("(")) {
+                    // This may be an IF() function or a control block
+                    tokens.consumeThrough(")","(");
+                    if (!tokens.canConsume("THEN")) {
+                        // This was an IF function ...
+                        isControlBlock = false;
+                    }
+                }
+                if (isControlBlock) {
+                    endSuffixes.addFirst("IF"); // block ends with "END IF"
+                    labels.addFirst(null); // labels are not allowed
+                }
+            }
+            if (tokens.canConsume("CASE", "WHEN")) {
                 // This is the beginning of a control block ...
-                String keyword = tokens.consume();
-                endSuffixes.add(keyword);
+                endSuffixes.addFirst(null);
+                labels.addFirst(null); // no label for case blocks
+            }
+            if (tokens.canConsume("CASE")) {
+                // This is the beginning of a control block ...
+                endSuffixes.addFirst("CASE");
+                labels.addFirst(null); // no label for case blocks
+            }
+            if (tokens.matchesAnyOf("REPEAT", "LOOP", "WHILE", "CASE")) {
+                // This is the beginning of a control block ...
                 String label = getPrecedingBlockLabel();
-                labels.add(label); // may be null
+                String keyword = tokens.consume();
+                endSuffixes.addFirst(keyword);
+                labels.addFirst(label); // may be null
             }
             if (tokens.canConsume("END")) {
                 if (endSuffixes.isEmpty()) {

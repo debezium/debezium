@@ -802,8 +802,76 @@ public class MySqlDdlParserTest {
 
     @FixFor("DBZ-198")
     @Test
+    public void shouldParseProcedureWithCase() {
+        parser.parse(readFile("ddl/mysql-dbz-198b.ddl"), tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(0);
+    }
+
+    @FixFor("DBZ-198")
+    @Test
     public void shouldParseButIgnoreCreateFunctionWithDefiner() {
-        parser.parse(readFile("ddl/mysql-dbz-198.ddl"), tables);
+        parser.parse(readFile("ddl/mysql-dbz-198a.ddl"), tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(0); // 0 table
+        assertThat(listener.total()).isEqualTo(0);
+        listener.forEach(this::printEvent);
+    }
+
+    @FixFor("DBZ-198")
+    @Test
+    public void shouldParseButIgnoreCreateFunctionC() {
+        parser.parse(readFile("ddl/mysql-dbz-198c.ddl"), tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(0); // 0 table
+        assertThat(listener.total()).isEqualTo(0);
+        listener.forEach(this::printEvent);
+    }
+
+    @FixFor("DBZ-198")
+    @Test
+    public void shouldParseButIgnoreCreateFunctionD() {
+        parser.parse(readFile("ddl/mysql-dbz-198d.ddl"), tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(0); // 0 table
+        assertThat(listener.total()).isEqualTo(0);
+        listener.forEach(this::printEvent);
+    }
+
+    @FixFor("DBZ-198")
+    @Test
+    public void shouldParseButIgnoreCreateFunctionE() {
+        parser.parse(readFile("ddl/mysql-dbz-198e.ddl"), tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(0); // 0 table
+        assertThat(listener.total()).isEqualTo(0);
+        listener.forEach(this::printEvent);
+    }
+
+    @FixFor("DBZ-198")
+    @Test
+    public void shouldParseButIgnoreCreateFunctionF() {
+        parser.parse(readFile("ddl/mysql-dbz-198f.ddl"), tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(0); // 0 table
+        assertThat(listener.total()).isEqualTo(0);
+        listener.forEach(this::printEvent);
+    }
+
+    @FixFor("DBZ-198")
+    @Test
+    public void shouldParseButIgnoreCreateFunctionG() {
+        parser.parse(readFile("ddl/mysql-dbz-198g.ddl"), tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(0); // 0 table
+        assertThat(listener.total()).isEqualTo(0);
+        listener.forEach(this::printEvent);
+    }
+
+    @FixFor("DBZ-198")
+    @Test
+    public void shouldParseButIgnoreCreateFunctionH() {
+        parser.parse(readFile("ddl/mysql-dbz-198h.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(0); // 0 table
         assertThat(listener.total()).isEqualTo(0);
@@ -853,7 +921,7 @@ public class MySqlDdlParserTest {
         assertThat(t.columnWithName("UNIQUE").position()).isEqualTo(21);
 
     }
-    
+
     @FixFor("DBZ-204")
     @Test
     public void shouldParseAlterTableThatChangesMultipleColumns() {
@@ -862,7 +930,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         Table t = tables.forTable(new TableId(null, "s", "test"));
         assertThat(t).isNotNull();
-        assertThat(t.columnNames()).containsExactly("a","b","c");
+        assertThat(t.columnNames()).containsExactly("a", "b", "c");
         assertThat(t.primaryKeyColumnNames()).isEmpty();
         assertColumn(t, "a", "INT", Types.INTEGER, 11, -1, true, false, false);
         assertColumn(t, "b", "INT", Types.INTEGER, -1, -1, true, false, false);
@@ -873,12 +941,12 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         t = tables.forTable(new TableId(null, "s", "test"));
         assertThat(t).isNotNull();
-        assertThat(t.columnNames()).containsExactly("d","b","c");
+        assertThat(t.columnNames()).containsExactly("d", "b", "c");
         assertThat(t.primaryKeyColumnNames()).isEmpty();
         assertColumn(t, "d", "BIGINT", Types.BIGINT, 20, -1, false, true, true);
         assertColumn(t, "b", "INT", Types.INTEGER, -1, -1, true, false, false);
         assertColumn(t, "c", "INT", Types.INTEGER, -1, -1, true, false, false);
-        
+
         ddl = "ALTER TABLE `s`.`test` DROP INDEX i1";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
