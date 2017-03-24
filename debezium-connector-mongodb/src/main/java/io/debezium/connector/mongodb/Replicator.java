@@ -420,10 +420,25 @@ public class Replicator {
             // These are replica set events ...
             String msg = object.getString("msg");
             if ("new primary".equals(msg)) {
-                logger.info("Found new primary event in oplog, so stopping use of {} to continue with new primary",
+                AtomicReference<ServerAddress> address = new AtomicReference<>();
+                try {
+                    primaryClient.executeBlocking("conn", mongoClient -> {
+                        ServerAddress currentPrimary = mongoClient.getAddress();
+                        address.set(currentPrimary);
+                    });
+                } catch (InterruptedException e) {
+                    logger.error("Get current primary executeBlocking", e);
+                }
+                ServerAddress serverAddress = address.get();
+                if (serverAddress != null && !serverAddress.equals(primaryAddress)) {
+                    logger.info("Found new primary event in oplog, so stopping use of {} to continue with new primary",
                             primaryAddress);
-                // There is a new primary, so stop using this server and instead use the new primary ...
-                return false;
+                    // There is a new primary, so stop using this server and instead use the new primary ...
+                    return false;
+                } else {
+                    logger.info("Found new primary event in oplog, current {} is new primary. " +
+                                "Continue to process oplog event.", primaryAddress);
+                }
             }
             // Otherwise, ignore this event ...
             logger.debug("Skipping event with no namespace: {}", event.toJson());
