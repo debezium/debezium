@@ -938,7 +938,7 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public TokenStream consumeUntil(char expected) throws ParsingException, IllegalStateException {
-        return consumeUntil(String.valueOf(expected), null);
+        return consumeUntil(String.valueOf(expected), (String[])null);
     }
 
     /**
@@ -972,7 +972,7 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public TokenStream consumeUntil(String expected) throws ParsingException, IllegalStateException {
-        return consumeUntil(expected, null);
+        return consumeUntil(expected, (String[])null);
     }
 
     /**

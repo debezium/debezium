@@ -18,6 +18,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.time.temporal.TemporalAdjuster;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
@@ -46,6 +47,7 @@ import io.debezium.util.Testing;
 public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-regression.txt").toAbsolutePath();
+    private static final TemporalAdjuster ADJUSTER = MySqlValueConverters::adjustTemporal;
 
     private Configuration config;
 
@@ -151,7 +153,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c1Date.getYear()).isEqualTo(2014);
                 assertThat(c1Date.getMonth()).isEqualTo(Month.SEPTEMBER);
                 assertThat(c1Date.getDayOfMonth()).isEqualTo(8);
-                assertThat(io.debezium.time.Date.toEpochDay(c1Date)).isEqualTo(c1);
+                assertThat(io.debezium.time.Date.toEpochDay(c1Date, ADJUSTER)).isEqualTo(c1);
 
                 // '17:51:04.777'
                 Integer c2 = after.getInt32("c2"); // milliseconds past midnight
@@ -160,7 +162,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c2Time.getMinute()).isEqualTo(51);
                 assertThat(c2Time.getSecond()).isEqualTo(4);
                 assertThat(c2Time.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
-                assertThat(io.debezium.time.Time.toMilliOfDay(c2Time)).isEqualTo(c2);
+                assertThat(io.debezium.time.Time.toMilliOfDay(c2Time, ADJUSTER)).isEqualTo(c2);
 
                 // '2014-09-08 17:51:04.777'
                 Long c3 = after.getInt64("c3"); // epoch millis
@@ -176,7 +178,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c3DateTime.getMinute()).isEqualTo(51);
                 assertThat(c3DateTime.getSecond()).isEqualTo(4);
                 assertThat(c3DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
-                assertThat(io.debezium.time.Timestamp.toEpochMillis(c3DateTime)).isEqualTo(c3);
+                assertThat(io.debezium.time.Timestamp.toEpochMillis(c3DateTime, ADJUSTER)).isEqualTo(c3);
 
                 // '2014-09-08 17:51:04.777'
                 String c4 = after.getString("c4"); // timestamp
@@ -213,7 +215,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c2Time.getMinute() == 0 || c2Time.getMinute() == 1).isTrue();
                 assertThat(c2Time.getSecond()).isEqualTo(0);
                 assertThat(c2Time.getNano()).isEqualTo(0);
-                assertThat(io.debezium.time.Time.toMilliOfDay(c2Time)).isEqualTo(c2);
+                assertThat(io.debezium.time.Time.toMilliOfDay(c2Time, ADJUSTER)).isEqualTo(c2);
 
                 assertThat(after.getInt64("c3")).isNull(); // epoch millis
 
@@ -367,7 +369,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c2Time.getMinute()).isEqualTo(51);
                 assertThat(c2Time.getSecond()).isEqualTo(4);
                 assertThat(c2Time.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
-                assertThat(io.debezium.time.Time.toMilliOfDay(c2Time)).isEqualTo((int) c2.getTime());
+                assertThat(io.debezium.time.Time.toMilliOfDay(c2Time, ADJUSTER)).isEqualTo((int) c2.getTime());
 
                 // '2014-09-08 17:51:04.777'
                 java.util.Date c3 = (java.util.Date) after.get("c3"); // epoch millis
@@ -383,7 +385,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c3DateTime.getMinute()).isEqualTo(51);
                 assertThat(c3DateTime.getSecond()).isEqualTo(4);
                 assertThat(c3DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
-                assertThat(io.debezium.time.Timestamp.toEpochMillis(c3DateTime)).isEqualTo(c3.getTime());
+                assertThat(io.debezium.time.Timestamp.toEpochMillis(c3DateTime, ADJUSTER)).isEqualTo(c3.getTime());
 
                 // '2014-09-08 17:51:04.777'
                 String c4 = after.getString("c4"); // MySQL timestamp, so always ZonedTimestamp
@@ -421,7 +423,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c2Time.getMinute() == 0 || c2Time.getMinute() == 1).isTrue();
                 assertThat(c2Time.getSecond()).isEqualTo(0);
                 assertThat(c2Time.getNano()).isEqualTo(0);
-                assertThat(io.debezium.time.Time.toMilliOfDay(c2Time)).isEqualTo((int) c2.getTime());
+                assertThat(io.debezium.time.Time.toMilliOfDay(c2Time, ADJUSTER)).isEqualTo((int) c2.getTime());
 
                 java.util.Date c3 = (java.util.Date) after.get("c3"); // epoch millis
                 assertThat(c3).isNull();
@@ -568,7 +570,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c1Date.getYear()).isEqualTo(2014);
                 assertThat(c1Date.getMonth()).isEqualTo(Month.SEPTEMBER);
                 assertThat(c1Date.getDayOfMonth()).isEqualTo(8);
-                assertThat(io.debezium.time.Date.toEpochDay(c1Date)).isEqualTo(c1);
+                assertThat(io.debezium.time.Date.toEpochDay(c1Date, ADJUSTER)).isEqualTo(c1);
 
                 // '17:51:04.777'
                 Integer c2 = after.getInt32("c2"); // milliseconds past midnight
@@ -578,7 +580,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c2Time.getSecond()).isEqualTo(4);
                 assertThat(c2Time.getNano()).isEqualTo(0); // What!?!? The MySQL Connect/J driver indeed returns 0 for fractional
                                                            // part
-                assertThat(io.debezium.time.Time.toMilliOfDay(c2Time)).isEqualTo(c2);
+                assertThat(io.debezium.time.Time.toMilliOfDay(c2Time, ADJUSTER)).isEqualTo(c2);
 
                 // '2014-09-08 17:51:04.777'
                 Long c3 = after.getInt64("c3"); // epoch millis
@@ -594,7 +596,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c3DateTime.getMinute()).isEqualTo(51);
                 assertThat(c3DateTime.getSecond()).isEqualTo(4);
                 assertThat(c3DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
-                assertThat(io.debezium.time.Timestamp.toEpochMillis(c3DateTime)).isEqualTo(c3);
+                assertThat(io.debezium.time.Timestamp.toEpochMillis(c3DateTime, ADJUSTER)).isEqualTo(c3);
 
                 // '2014-09-08 17:51:04.777'
                 String c4 = after.getString("c4"); // timestamp

@@ -13,6 +13,9 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Types;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoField;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.Temporal;
 import java.util.List;
 
 import org.apache.kafka.connect.data.Field;
@@ -51,6 +54,52 @@ import io.debezium.util.Strings;
 public class MySqlValueConverters extends JdbcValueConverters {
 
     /**
+     * A utility method that adjusts <a href="https://dev.mysql.com/doc/refman/5.7/en/two-digit-years.html">ambiguous</a> 2-digit
+     * year values of DATETIME, DATE, and TIMESTAMP types using these MySQL-specific rules:
+     * <ul>
+     * <li>Year values in the range 00-69 are converted to 2000-2069.</li>
+     * <li>Year values in the range 70-99 are converted to 1970-1999.</li>
+     * </ul>
+     * 
+     * @param temporal the temporal instance to adjust; may not be null
+     * @return the possibly adjusted temporal instance; never null
+     */
+    protected static Temporal adjustTemporal(Temporal temporal) {
+        if (temporal.isSupported(ChronoField.YEAR)) {
+            int year = temporal.get(ChronoField.YEAR);
+            if (0 <= year && year <= 69) {
+                temporal = temporal.plus(2000, ChronoUnit.YEARS);
+            } else if (70 <= year && year <= 99) {
+                temporal = temporal.plus(1900, ChronoUnit.YEARS);
+            }
+        }
+        return temporal;
+    }
+
+    /**
+     * A utility method that adjusts <a href="https://dev.mysql.com/doc/refman/5.7/en/two-digit-years.html">ambiguous</a> 2-digit
+     * year values of YEAR type using these MySQL-specific rules:
+     * <ul>
+     * <li>Year values in the range 01-69 are converted to 2001-2069.</li>
+     * <li>Year values in the range 70-99 are converted to 1970-1999.</li>
+     * </ul>
+     * MySQL treats YEAR(4) the same, except that a numeric 00 inserted into YEAR(4) results in 0000 rather than 2000; to
+     * specify zero for YEAR(4) and have it be interpreted as 2000, specify it as a string '0' or '00'. This should be handled
+     * by MySQL before Debezium sees the value.
+     * 
+     * @param year the year value to adjust; may not be null
+     * @return the possibly adjusted year number; never null
+     */
+    protected static int adjustYear(int year) {
+        if (0 < year && year <= 69) {
+            year += 2000;
+        } else if (70 <= year && year <= 99) {
+            year += 1900;
+        }
+        return year;
+    }
+
+    /**
      * Create a new instance that always uses UTC for the default time zone when converting values without timezone information
      * to values that require timezones.
      * <p>
@@ -79,7 +128,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      *            have timezones; may be null if UTC is to be used
      */
     public MySqlValueConverters(DecimalMode decimalMode, boolean adaptiveTimePrecision, ZoneOffset defaultOffset) {
-        super(decimalMode, adaptiveTimePrecision, defaultOffset);
+        super(decimalMode, adaptiveTimePrecision, defaultOffset, MySqlValueConverters::adjustTemporal);
     }
 
     @Override
@@ -265,15 +314,15 @@ public class MySqlValueConverters extends JdbcValueConverters {
         }
         if (data instanceof java.time.Year) {
             // The MySQL binlog always returns a Year object ...
-            return ((java.time.Year) data).getValue();
+            return adjustYear(((java.time.Year) data).getValue());
         }
         if (data instanceof java.sql.Date) {
             // MySQL JDBC driver sometimes returns a Java SQL Date object ...
-            return ((java.sql.Date) data).getYear();
+            return adjustYear(((java.sql.Date) data).getYear());
         }
         if (data instanceof Number) {
             // MySQL JDBC driver sometimes returns a short ...
-            return ((Number) data).intValue();
+            return adjustYear(((Number) data).intValue());
         }
         return handleUnknownData(column, fieldDefn, data);
     }
@@ -306,7 +355,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
 
             if (options != null) {
                 // The binlog will contain an int with the 1-based index of the option in the enum value ...
-                int value = ((Integer)data).intValue();
+                int value = ((Integer) data).intValue();
                 if (value == 0) {
                     // an invalid value was specified, which corresponds to the empty string '' and an index of 0
                     return "";

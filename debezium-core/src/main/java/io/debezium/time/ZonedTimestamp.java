@@ -5,6 +5,7 @@
  */
 package io.debezium.time;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
@@ -12,6 +13,7 @@ import java.time.OffsetTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAdjuster;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -70,21 +72,23 @@ public class ZonedTimestamp {
      * @param value the local or SQL date, time, or timestamp value; may not be null
      * @param defaultZone the time zone that should be used by default if the value does not have timezone information; may not be
      *            null
+     * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
+     * adjustment is necessary
      * @return the microseconds past midnight
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types
      */
-    public static String toIsoString(Object value, ZoneId defaultZone) {
+    public static String toIsoString(Object value, ZoneId defaultZone, TemporalAdjuster adjuster) {
         if (value instanceof OffsetDateTime) {
-            return toIsoString((OffsetDateTime) value);
+            return toIsoString((OffsetDateTime) value, adjuster);
         }
         if (value instanceof ZonedDateTime) {
-            return toIsoString((ZonedDateTime) value); 
+            return toIsoString((ZonedDateTime) value, adjuster);
         }
         if (value instanceof OffsetTime) {
-            return toIsoString((OffsetTime) value);
+            return toIsoString((OffsetTime) value, adjuster);
         }
         if (value instanceof java.util.Date) { // or JDBC subtypes
-            return toIsoString((java.util.Date) value, defaultZone);
+            return toIsoString((java.util.Date) value, defaultZone, adjuster);
         }
         throw new IllegalArgumentException(
                 "Unable to convert to OffsetDateTime from unexpected value '" + value + "' of type " + value.getClass().getName());
@@ -94,9 +98,14 @@ public class ZonedTimestamp {
      * Get the ISO 8601 formatted representation of the given {@link OffsetDateTime}.
      * 
      * @param timestamp the timestamp value
+     * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
+     * adjustment is necessary
      * @return the ISO 8601 formatted string
      */
-    public static String toIsoString(OffsetDateTime timestamp) {
+    public static String toIsoString(OffsetDateTime timestamp, TemporalAdjuster adjuster) {
+        if (adjuster != null) {
+            timestamp = timestamp.with(adjuster);
+        }
         return timestamp.format(FORMATTER);
     }
    
@@ -104,9 +113,14 @@ public class ZonedTimestamp {
      * Get the ISO 8601 formatted representation of the given {@link ZonedDateTime}.
      * 
      * @param timestamp the timestamp value
+     * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
+     * adjustment is necessary
      * @return the ISO 8601 formatted string
      */
-    public static String toIsoString(ZonedDateTime timestamp) {
+    public static String toIsoString(ZonedDateTime timestamp, TemporalAdjuster adjuster) {
+        if (adjuster != null) {
+            timestamp = timestamp.with(adjuster);
+        }
         return timestamp.format(FORMATTER);
     }
 
@@ -114,9 +128,14 @@ public class ZonedTimestamp {
      * Get the ISO 8601 formatted representation of the given {@link OffsetTime}.
      * 
      * @param timestamp the timestamp value
+     * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
+     * adjustment is necessary
      * @return the ISO 8601 formatted string
      */
-    public static String toIsoString(OffsetTime timestamp) {
+    public static String toIsoString(OffsetTime timestamp, TemporalAdjuster adjuster) {
+        if (adjuster != null) {
+            timestamp = timestamp.with(adjuster);
+        }
         return timestamp.format(FORMATTER);
     }
 
@@ -126,17 +145,19 @@ public class ZonedTimestamp {
      * 
      * @param timestamp the timestamp value
      * @param zoneId the timezone identifier or offset where the timestamp is defined
+     * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
+     * adjustment is necessary
      * @return the ISO 8601 formatted string
      */
-    public static String toIsoString(java.util.Date timestamp, ZoneId zoneId) {
+    public static String toIsoString(java.util.Date timestamp, ZoneId zoneId, TemporalAdjuster adjuster) {
         if (timestamp instanceof java.sql.Timestamp) {
-            return toIsoString((java.sql.Timestamp) timestamp, zoneId);
+            return toIsoString((java.sql.Timestamp) timestamp, zoneId, adjuster);
         }
         if (timestamp instanceof java.sql.Date) {
-            return toIsoString((java.sql.Date) timestamp, zoneId);
+            return toIsoString((java.sql.Date) timestamp, zoneId, adjuster);
         }
         if (timestamp instanceof java.sql.Time) {
-            return toIsoString((java.sql.Time) timestamp, zoneId);
+            return toIsoString((java.sql.Time) timestamp, zoneId, adjuster);
         }
         return timestamp.toInstant().atZone(zoneId).format(FORMATTER);
     }
@@ -147,10 +168,16 @@ public class ZonedTimestamp {
      * 
      * @param timestamp the JDBC timestamp value
      * @param zoneId the timezone identifier or offset where the timestamp is defined
+     * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
+     * adjustment is necessary
      * @return the ISO 8601 formatted string
      */
-    public static String toIsoString(java.sql.Timestamp timestamp, ZoneId zoneId) {
-        ZonedDateTime zdt = timestamp.toInstant().atZone(zoneId);
+    public static String toIsoString(java.sql.Timestamp timestamp, ZoneId zoneId, TemporalAdjuster adjuster) {
+        Instant instant = timestamp.toInstant();
+        if (adjuster != null) {
+            instant = instant.with(adjuster);
+        }
+        ZonedDateTime zdt = instant.atZone(zoneId);
         return zdt.format(FORMATTER);
     }
 
@@ -160,10 +187,15 @@ public class ZonedTimestamp {
      * 
      * @param date the date value
      * @param zoneId the timezone identifier or offset where the date is defined
+     * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
+     * adjustment is necessary
      * @return the ISO 8601 formatted string
      */
-    public static String toIsoString(java.sql.Date date, ZoneId zoneId) {
+    public static String toIsoString(java.sql.Date date, ZoneId zoneId, TemporalAdjuster adjuster) {
         LocalDate localDate = date.toLocalDate();
+        if (adjuster != null) {
+            localDate = localDate.with(adjuster);
+        }
         ZonedDateTime zdt = ZonedDateTime.of(localDate, LocalTime.MIDNIGHT, zoneId);
         return zdt.format(FORMATTER);
     }
@@ -174,10 +206,15 @@ public class ZonedTimestamp {
      * 
      * @param time the JDBC time value
      * @param zoneId the timezone identifier or offset where the time is defined
+     * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
+     * adjustment is necessary
      * @return the ISO 8601 formatted string
      */
-    public static String toIsoString(java.sql.Time time, ZoneId zoneId) {
+    public static String toIsoString(java.sql.Time time, ZoneId zoneId, TemporalAdjuster adjuster) {
         LocalTime localTime = time.toLocalTime();
+        if (adjuster != null) {
+            localTime = localTime.with(adjuster);
+        }
         ZonedDateTime zdt = ZonedDateTime.of(Conversions.EPOCH, localTime, zoneId);
         return zdt.format(FORMATTER);
     }
