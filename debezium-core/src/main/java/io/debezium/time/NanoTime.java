@@ -5,6 +5,9 @@
  */
 package io.debezium.time;
 
+import java.time.LocalTime;
+import java.time.temporal.TemporalAdjuster;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
@@ -61,11 +64,17 @@ public class NanoTime {
      * {@link java.sql.Timestamp}, ignoring any date portions of the supplied value.
      * 
      * @param value the local or SQL date, time, or timestamp value; may not be null
+     * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
+     * adjustment is necessary
      * @return the nanoseconds past midnight
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types
      */
-    public static long toNanoOfDay(Object value) {
-        return Conversions.toLocalTime(value).toNanoOfDay();
+    public static long toNanoOfDay(Object value, TemporalAdjuster adjuster) {
+        LocalTime time = Conversions.toLocalTime(value);
+        if (adjuster !=null) {
+            time = time.with(adjuster);
+        }
+        return time.toNanoOfDay();
     }
 
     private NanoTime() {

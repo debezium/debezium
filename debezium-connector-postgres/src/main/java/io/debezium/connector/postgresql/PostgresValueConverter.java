@@ -17,6 +17,7 @@ import java.time.OffsetTime;
 import java.time.ZoneOffset;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
+
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -38,7 +39,7 @@ import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
 
 /**
- * A provider of {@link ValueConverter}s and {@link SchemaBuilder}s for various Postgres specific column types. 
+ * A provider of {@link ValueConverter}s and {@link SchemaBuilder}s for various Postgres specific column types.
  * 
  * In addition to handling data type conversion from values coming from JDBC, this is also expected to handle data type
  * conversion for data types coming from the logical decoding plugin.
@@ -53,7 +54,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     protected static final double DAYS_PER_MONTH_AVG = 365.25 / 12.0d;
     
     protected PostgresValueConverter(boolean adaptiveTimePrecision, ZoneOffset defaultOffset) {
-        super(DecimalMode.PRECISE, adaptiveTimePrecision, defaultOffset);
+        super(DecimalMode.PRECISE, adaptiveTimePrecision, defaultOffset, null);
     }
     
     @Override
@@ -62,11 +63,11 @@ public class PostgresValueConverter extends JdbcValueConverters {
         switch (oidValue) {
             case PgOid.BIT:
             case PgOid.BIT_ARRAY:
-            case PgOid.VARBIT: 
-                return column.length() > 1 ? Bits.builder(column.length()) : SchemaBuilder.bool(); 
-            case PgOid.INTERVAL: 
+            case PgOid.VARBIT:
+                return column.length() > 1 ? Bits.builder(column.length()) : SchemaBuilder.bool();
+            case PgOid.INTERVAL:
                 return MicroDuration.builder();
-            case PgOid.TIMESTAMPTZ: 
+            case PgOid.TIMESTAMPTZ:
                 // JDBC reports this as "timestamp" even though it's with tz, so we can't use the base class...
                 return ZonedTimestamp.builder();
             case PgOid.TIMETZ:
@@ -77,9 +78,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.JSONB_JDBC_OID:
             case PgOid.JSON:
                 return Json.builder();
-            case PgOid.UUID: 
+            case PgOid.UUID:
                 return Uuid.builder();
-            case PgOid.POINT: 
+            case PgOid.POINT:
                 return Point.builder();
             case PgOid.MONEY:
                 return Decimal.builder(column.scale());
@@ -93,21 +94,21 @@ public class PostgresValueConverter extends JdbcValueConverters {
         int oidValue = PgOid.jdbcColumnToOid(column);
         switch (oidValue) {
             case PgOid.BIT:
-            case PgOid.VARBIT: 
+            case PgOid.VARBIT:
                 return convertBits(column, fieldDefn);
             case PgOid.INTERVAL:
                 return data -> convertInterval(column, fieldDefn, data);
-            case PgOid.TIMESTAMPTZ: 
+            case PgOid.TIMESTAMPTZ:
                 return data -> convertTimestampWithZone(column, fieldDefn, data);
-            case PgOid.TIMETZ: 
+            case PgOid.TIMETZ:
                 return data -> convertTimeWithZone(column, fieldDefn, data);
-            case PgOid.OID: 
+            case PgOid.OID:
                 return data -> convertBigInt(column, fieldDefn, data);
             case PgOid.JSONB_JDBC_OID:
             case PgOid.UUID:
-            case PgOid.JSON: 
+            case PgOid.JSON:
                 return data -> super.convertString(column, fieldDefn, data);
-            case PgOid.POINT: 
+            case PgOid.POINT:
                 return data -> convertPoint(column, fieldDefn, data);
             case PgOid.MONEY:
                 return data -> convertMoney(column, fieldDefn, data);
@@ -173,7 +174,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         if (data instanceof Number) {
             // we expect to get back from the plugin a double value
             return ((Number) data).doubleValue();
-        } 
+        }
         if (data instanceof PGInterval) {
             PGInterval interval = (PGInterval) data;
             return MicroDuration.durationMicros(interval.getYears(), interval.getMonths(), interval.getDays(), interval.getHours(),
@@ -244,7 +245,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         // the pg plugin stores date/time info as microseconds since epoch
         BigInteger epochMicrosBigInt = BigInteger.valueOf(epocNanos);
         BigInteger[] secondsAndNanos = epochMicrosBigInt.divideAndRemainder(BigInteger.valueOf(TimeUnit.SECONDS.toNanos(1)));
-        return LocalDateTime.ofInstant(Instant.ofEpochSecond(secondsAndNanos[0].longValue(), secondsAndNanos[1].longValue()), 
+        return LocalDateTime.ofInstant(Instant.ofEpochSecond(secondsAndNanos[0].longValue(), secondsAndNanos[1].longValue()),
                                        ZoneOffset.UTC);
     }
  
@@ -265,7 +266,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             if (column.isOptional()) return null;
             //TODO author=Horia Chiorean date=28/10/2016 description=is this ok ?
             return Point.createValue(schema, 0, 0);
-        }    
+        }
         if (data instanceof PGpoint) {
             PGpoint pgPoint = (PGpoint) data;
             return Point.createValue(schema, pgPoint.x, pgPoint.y);

@@ -5,6 +5,9 @@
  */
 package io.debezium.time;
 
+import java.time.LocalDate;
+import java.time.temporal.TemporalAdjuster;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
@@ -55,11 +58,17 @@ public class Date {
      * {@link java.sql.Timestamp}, ignoring any time portions of the supplied value.
      * 
      * @param value the local or SQL date, time, or timestamp value; may not be null
+     * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
+     * adjustment is necessary
      * @return the number of days past epoch
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types
      */
-    public static int toEpochDay(Object value) {
-        return (int)Conversions.toLocalDate(value).toEpochDay();
+    public static int toEpochDay(Object value, TemporalAdjuster adjuster) {
+        LocalDate date = Conversions.toLocalDate(value);
+        if (adjuster != null) {
+            date = date.with(adjuster);
+        }
+        return (int)date.toEpochDay();
     }
 
     private Date() {
