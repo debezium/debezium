@@ -40,7 +40,7 @@ import io.debezium.relational.mapping.ColumnMappers;
  * <p>
  * See the <a href="http://docs.oracle.com/javase/6/docs/technotes/guides/jdbc/getstart/mapping.html#table1">Java SE Mapping SQL
  * and Java Types</a> for details about how JDBC {@link Types types} map to Java value types.
- * 
+ *
  * @author Randall Hauch
  */
 @ThreadSafe
@@ -54,7 +54,7 @@ public class TableSchemaBuilder {
 
     /**
      * Create a new instance of the builder.
-     * 
+     *
      * @param valueConverterProvider the provider for obtaining {@link ValueConverter}s and {@link SchemaBuilder}s; may not be
      *            null
      * @param schemaNameValidator the validation function for schema names; may not be null
@@ -67,7 +67,7 @@ public class TableSchemaBuilder {
     /**
      * Create a {@link TableSchema} from the given JDBC {@link ResultSet}. The resulting TableSchema will have no primary key,
      * and its {@link TableSchema#valueSchema()} will contain fields for each column in the result set.
-     * 
+     *
      * @param resultSet the result set for a query; may not be null
      * @param name the name of the value schema; may not be null
      * @return the table schema that can be used for sending rows of data for this table to Kafka Connect; never null
@@ -99,7 +99,7 @@ public class TableSchemaBuilder {
      * key.
      * <p>
      * This is equivalent to calling {@code create(table,false)}.
-     * 
+     *
      * @param schemaPrefix the prefix added to the table identifier to construct the schema names; may be null if there is no
      *            prefix
      * @param table the table definition; may not be null
@@ -116,7 +116,7 @@ public class TableSchemaBuilder {
      * key.
      * <p>
      * This is equivalent to calling {@code create(table,false)}.
-     * 
+     *
      * @param schemaPrefix the prefix added to the table identifier to construct the schema names; may be null if there is no
      *            prefix
      * @param table the table definition; may not be null
@@ -165,7 +165,7 @@ public class TableSchemaBuilder {
 
     /**
      * Creates the function that produces a Kafka Connect key object for a row of data.
-     * 
+     *
      * @param schema the Kafka Connect schema for the key; may be null if there is no known schema, in which case the generator
      *            will be null
      * @param columnSetName the name for the set of columns, used in error messages; may not be null
@@ -202,7 +202,7 @@ public class TableSchemaBuilder {
 
     /**
      * Creates the function that produces a Kafka Connect value object for a row of data.
-     * 
+     *
      * @param schema the Kafka Connect schema for the value; may be null if there is no known schema, in which case the generator
      *            will be null
      * @param tableId the table identifier; may not be null
@@ -267,7 +267,7 @@ public class TableSchemaBuilder {
     /**
      * Obtain the array of converters for each column in a row. A converter might be null if the column is not be included in
      * the records.
-     * 
+     *
      * @param schema the schema; may not be null
      * @param tableId the identifier of the table that contains the columns
      * @param columns the columns in the row; may not be null
@@ -305,7 +305,7 @@ public class TableSchemaBuilder {
 
     /**
      * Add to the supplied {@link SchemaBuilder} a field for the column with the given information.
-     * 
+     *
      * @param builder the schema builder; never null
      * @param column the column definition
      * @param mapper the mapping function for the column; may be null if the columns is not to be mapped to different values
@@ -332,7 +332,7 @@ public class TableSchemaBuilder {
     /**
      * Create a {@link ValueConverter} that can be used to convert row values for the given column into the Kafka Connect value
      * object described by the {@link Field field definition}. This uses the supplied {@link ValueConverterProvider} object.
-     * 
+     *
      * @param column the column describing the input values; never null
      * @param fieldDefn the definition for the field in a Kafka Connect {@link Schema} describing the output of the function;
      *            never null
