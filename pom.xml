@@ -337,6 +337,8 @@
                 <scope>test</scope>
                 <type>test-jar</type>
             </dependency>
+
+
         </dependencies>
     </dependencyManagement>
     <dependencies>
@@ -381,13 +383,13 @@
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-surefire-report-plugin</artifactId>
-                    <version>${version.surefire.plugin}</version>
+                    <artifactId>maven-checkstyle-plugin</artifactId>
+                    <version>${version.checkstyle.plugin}</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-checkstyle-plugin</artifactId>
-                    <version>${version.checkstyle.plugin}</version>
+                    <artifactId>maven-surefire-report-plugin</artifactId>
+                    <version>${version.surefire.plugin}</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -591,13 +593,13 @@
                     <includeTestSourceDirectory>true</includeTestSourceDirectory>
                 </configuration>
                 <executions>
-                   <execution>
-                      <id>check-style</id>
-                      <phase>verify</phase>
-                      <goals>
-                         <goal>checkstyle</goal>
-                      </goals>
-                   </execution>
+                    <execution>
+                        <id>check-style</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>checkstyle</goal>
+                        </goals>
+                    </execution>
                 </executions>
             </plugin>
         </plugins>
