@@ -39,11 +39,12 @@ import static org.apache.kafka.connect.transforms.util.Requirements.requireStruc
  *
  * Now that multiple physical tables can share a topic, the Key Schema can no longer consist of solely the
  * record's primary / unique key fields, since they are not guaranteed to be unique across tables. We need
- * some identifier added to the key that distinguishes the different physical tables. The field
- * {@link #PHYSICAL_TABLE_IDENTIFIER_FIELD_NAME} is added to the key schema for this purpose. By default, its
- * value will be the old topic name, but if a custom value is desired, the config options {@link #PHYSICAL_TABLE_REGEX}
- * and {@link #PHYSICAL_TABLE_REPLACEMENT} are used to change the it. For instance, in our above example, we might
- * choose to make the identifier `db_shard1` and `db_shard2` respectively.
+ * some identifier added to the key that distinguishes the different physical tables. The field name specified by
+ * the config option {@link #PHYSICAL_TABLE_IDENTIFIER_FIELD_NAME} (or {@link #DEFAULT_PHYSICAL_TABLE_IDENTIFIER_FIELD_NAME}
+ * if not specified) is added to the key schema for this purpose. By default, its value will be the old topic name, but
+ * if a custom value is desired, the config options {@link #PHYSICAL_TABLE_REGEX} and {@link #PHYSICAL_TABLE_REPLACEMENT}
+ * are used to change it. For instance, in our above example, we might choose to make the identifier `db_shard1` and
+ * `db_shard2` respectively.
  *
  * @author David Leibovic
  */
@@ -54,6 +55,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
     private String logicalTableReplacement;
     private Pattern physicalTableRegex;
     private String physicalTableReplacement;
+    private String physicalTableIdentifierFieldName;
     private Cache<Schema, Schema> keySchemaUpdateCache;
     private Cache<Schema, Schema> envelopeSchemaUpdateCache;
     private final AvroValidator schemaNameValidator = AvroValidator.create(logger);
@@ -73,8 +75,8 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
             .withValidation(Field::isRequired)
-            .withDescription("The replacement string used in conjunction with `logical.table.regex`. This will be " +
-                "used to create the new topic name.");
+            .withDescription("The replacement string used in conjunction with " + LOGICAL_TABLE_REGEX.name() +
+                    ". This will be used to create the new topic name.");
 
     private static final Field PHYSICAL_TABLE_REGEX = Field.create("physical.table.regex")
             .withDisplayName("Physical table regex")
@@ -94,11 +96,22 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
             .withValidation(ByLogicalTableRouter::validatePhysicalTableReplacement)
-            .withDescription("The replacement string used in conjunction with `physical.table.regex`. This will be " +
-                "used to create the physical table identifier in the record's key.");
+            .withDescription("The replacement string used in conjunction with " + PHYSICAL_TABLE_REGEX.name() +
+                    ". This will be used to create the physical table identifier in the record's key.");
 
     // Prefixed with "__dbz__" to minimize the likelihood of a conflict with an existing key field name.
-    private static final String PHYSICAL_TABLE_IDENTIFIER_FIELD_NAME= "__dbz__physicalTableIdentifier";
+    private static final String DEFAULT_PHYSICAL_TABLE_IDENTIFIER_FIELD_NAME = "__dbz__physicalTableIdentifier";
+
+    private static final Field PHYSICAL_TABLE_IDENTIFIER_FIELD_NAME = Field.create("physical.table.identifier.field.name")
+            .withDisplayName("Physical table identifier field name")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Each record's key schema will be augmented with this field name. If not specified, the " +
+                    "key schema will be augmented with the field name " + DEFAULT_PHYSICAL_TABLE_IDENTIFIER_FIELD_NAME +
+                    ". The purpose of this field is to distinguish the different physical tables that can now share " +
+                    "a single topic. Make sure not to configure a field name that is at risk of conflict with " +
+                    "existing key schema field names.");
 
     @Override
     public void configure(Map<String, ?> props) {
@@ -118,7 +131,12 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
         }
         if (physicalTableRegexString != null && physicalTableRegexString != "") {
             physicalTableRegex = Pattern.compile(config.getString(PHYSICAL_TABLE_REGEX));
-            physicalTableReplacement= config.getString(PHYSICAL_TABLE_REPLACEMENT);
+            physicalTableReplacement = config.getString(PHYSICAL_TABLE_REPLACEMENT);
+        }
+
+        physicalTableIdentifierFieldName = config.getString(PHYSICAL_TABLE_IDENTIFIER_FIELD_NAME);
+        if (physicalTableIdentifierFieldName == null || physicalTableIdentifierFieldName.trim() == "") {
+            physicalTableIdentifierFieldName = DEFAULT_PHYSICAL_TABLE_IDENTIFIER_FIELD_NAME;
         }
 
         keySchemaUpdateCache = new SynchronizedCache<>(new LRUCache<Schema, Schema>(16));
@@ -189,7 +207,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
         // Now that multiple physical tables can share a topic, the Key Schema can no longer consist of solely the
         // record's primary / unique key fields, since they are not guaranteed to be unique across tables. We need
         // some identifier added to the key that distinguishes the different physical tables.
-        builder.field(PHYSICAL_TABLE_IDENTIFIER_FIELD_NAME, Schema.STRING_SCHEMA);
+        builder.field(physicalTableIdentifierFieldName, Schema.STRING_SCHEMA);
 
         newKeySchema = builder.build();
         keySchemaUpdateCache.put(oldKeySchema, newKeySchema);
@@ -210,7 +228,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
             }
         }
 
-        newKey.put(PHYSICAL_TABLE_IDENTIFIER_FIELD_NAME, physicalTableIdentifier);
+        newKey.put(physicalTableIdentifierFieldName, physicalTableIdentifier);
         return newKey;
     }
 
