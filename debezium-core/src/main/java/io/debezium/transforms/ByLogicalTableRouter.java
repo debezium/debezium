@@ -32,112 +32,104 @@ import static org.apache.kafka.connect.transforms.util.Requirements.requireStruc
  * A logical table consists of one or more physical tables with the same schema. A common use case is sharding -- the
  * two physical tables `db_shard1.my_table` and `db_shard2.my_table` together form one logical table.
  *
- * This Transformation allows us to change a record's topic name and send change events from both physical tables to
+ * This Transformation allows us to change a record's topic name and send change events from multiple physical tables to
  * one topic. For instance, we might choose to send the two tables from the above example to the topic
- * `db_shard.my_table`. The config options {@link #LOGICAL_TABLE_REGEX} and {@link #LOGICAL_TABLE_REPLACEMENT} are used
+ * `db_shard.my_table`. The config options {@link #TOPIC_REGEX} and {@link #TOPIC_REPLACEMENT} are used
  * to change the record's topic.
  *
- * Now that multiple physical tables can share a topic, the Key Schema can no longer consist of solely the
- * record's primary / unique key fields, since they are not guaranteed to be unique across tables. We need
- * some identifier added to the key that distinguishes the different physical tables. The field name specified by
- * the config option {@link #PHYSICAL_TABLE_IDENTIFIER_FIELD_NAME} (or {@link #DEFAULT_PHYSICAL_TABLE_IDENTIFIER_FIELD_NAME}
- * if not specified) is added to the key schema for this purpose. By default, its value will be the old topic name, but
- * if a custom value is desired, the config options {@link #PHYSICAL_TABLE_REGEX} and {@link #PHYSICAL_TABLE_REPLACEMENT}
- * are used to change it. For instance, in our above example, we might choose to make the identifier `db_shard1` and
- * `db_shard2` respectively.
+ * Now that multiple physical tables can share a topic, the event's key may need to be augmented to include fields other
+ * than just those for the record's primary/unique key, since these are not guaranteed to be unique across tables. We
+ * need some identifier added to the key that distinguishes the different physical tables. The field name specified by
+ * the config option {@link #KEY_FIELD_NAME} is added to the key schema for this purpose. By default, its value will
+ * be the old topic name, but if a custom value is desired, the config options {@link #KEY_FIELD_REGEX} and
+ * {@link #KEY_FIELD_REPLACEMENT} may be used to change it. For instance, in our above example, we might choose to
+ * make the identifier `db_shard1` and `db_shard2` respectively.
  *
  * @author David Leibovic
  */
 public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transformation<R> {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
-    private Pattern logicalTableRegex;
-    private String logicalTableReplacement;
-    private Pattern physicalTableRegex;
-    private String physicalTableReplacement;
-    private String physicalTableIdentifierFieldName;
+    private Pattern topicRegex;
+    private String topicReplacement;
+    private Pattern keyFieldRegex;
+    private String keyFieldReplacement;
+    private String keyFieldName;
     private Cache<Schema, Schema> keySchemaUpdateCache;
     private Cache<Schema, Schema> envelopeSchemaUpdateCache;
     private final AvroValidator schemaNameValidator = AvroValidator.create(logger);
 
-    private static final Field LOGICAL_TABLE_REGEX = Field.create("logical.table.regex")
-            .withDisplayName("Logical table regex")
+    private static final Field TOPIC_REGEX = Field.create("topic.regex")
+            .withDisplayName("Topic regex")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
             .withValidation(Field::isRequired, Field::isRegex)
-            .withDescription("The regex used for matching the name of the logical table. This regex will be matched " +
-                "against the original topic name.");
+            .withDescription("The regex used for extracting the name of the logical table from the original topic name.");
 
-    private static final Field LOGICAL_TABLE_REPLACEMENT = Field.create("logical.table.replacement")
-            .withDisplayName("Logical table replacement")
+    private static final Field TOPIC_REPLACEMENT = Field.create("topic.replacement")
+            .withDisplayName("Topic replacement")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
             .withValidation(Field::isRequired)
-            .withDescription("The replacement string used in conjunction with " + LOGICAL_TABLE_REGEX.name() +
+            .withDescription("The replacement string used in conjunction with " + TOPIC_REGEX.name() +
                     ". This will be used to create the new topic name.");
 
-    private static final Field PHYSICAL_TABLE_REGEX = Field.create("physical.table.regex")
-            .withDisplayName("Physical table regex")
+    private static final Field KEY_FIELD_REGEX = Field.create("key.field.regex")
+            .withDisplayName("Key field regex")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
             .withValidation(Field::isRegex)
-            .withDescription("Now that multiple physical tables can share a topic, the Key Schema can no longer " +
-                "consist of solely the record's primary / unique key fields, since they are not guaranteed to be " +
-                "unique across tables. We need some identifier added to the key that distinguishes the different " +
-                "physical tables. This regex is used for matching the physical table identifier. It will be matched " +
-                "against the original topic name.");
+            .withDescription("The regex used for extracting the physical table identifier from the original topic " +
+                "name. Now that multiple physical tables can share a topic, the event's key may need to be augmented " +
+                "to include fields other than just those for the record's primary/unique key, since these are not " +
+                "guaranteed to be unique across tables. We need some identifier added to the key that distinguishes " +
+                "the different physical tables.");
 
-    private static final Field PHYSICAL_TABLE_REPLACEMENT = Field.create("physical.table.replacement")
-            .withDisplayName("Physical table replacement")
+    private static final Field KEY_FIELD_REPLACEMENT = Field.create("key.field.replacement")
+            .withDisplayName("Key field replacement")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
-            .withValidation(ByLogicalTableRouter::validatePhysicalTableReplacement)
-            .withDescription("The replacement string used in conjunction with " + PHYSICAL_TABLE_REGEX.name() +
+            .withValidation(ByLogicalTableRouter::validateKeyFieldReplacement)
+            .withDescription("The replacement string used in conjunction with " + KEY_FIELD_REGEX.name() +
                     ". This will be used to create the physical table identifier in the record's key.");
 
-    // Prefixed with "__dbz__" to minimize the likelihood of a conflict with an existing key field name.
-    private static final String DEFAULT_PHYSICAL_TABLE_IDENTIFIER_FIELD_NAME = "__dbz__physicalTableIdentifier";
-
-    private static final Field PHYSICAL_TABLE_IDENTIFIER_FIELD_NAME = Field.create("physical.table.identifier.field.name")
-            .withDisplayName("Physical table identifier field name")
+    private static final Field KEY_FIELD_NAME = Field.create("key.field.name")
+            .withDisplayName("Key field name")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
-            .withDescription("Each record's key schema will be augmented with this field name. If not specified, the " +
-                    "key schema will be augmented with the field name " + DEFAULT_PHYSICAL_TABLE_IDENTIFIER_FIELD_NAME +
-                    ". The purpose of this field is to distinguish the different physical tables that can now share " +
-                    "a single topic. Make sure not to configure a field name that is at risk of conflict with " +
-                    "existing key schema field names.");
+            // Default is prefixed with "__dbz__" to minimize the likelihood of a conflict with an existing key field name.
+            .withDefault("__dbz__physicalTableIdentifier")
+            .withDescription("Each record's key schema will be augmented with this field name. The purpose of this " +
+                    "field is to distinguish the different physical tables that can now share a single topic. Make " +
+                    "sure not to configure a field name that is at risk of conflict with existing key schema field " +
+                    "names.");
 
     @Override
     public void configure(Map<String, ?> props) {
         Configuration config = Configuration.from(props);
-        final Field.Set configFields = Field.setOf(LOGICAL_TABLE_REGEX, LOGICAL_TABLE_REPLACEMENT, PHYSICAL_TABLE_REGEX,
-                PHYSICAL_TABLE_REPLACEMENT);
+        final Field.Set configFields = Field.setOf(TOPIC_REGEX, TOPIC_REPLACEMENT, KEY_FIELD_REGEX,
+                KEY_FIELD_REPLACEMENT);
         if (!config.validateAndRecord(configFields, logger::error)) {
             throw new ConnectException("Unable to validate config.");
         }
 
-        logicalTableRegex = Pattern.compile(config.getString(LOGICAL_TABLE_REGEX));
-        logicalTableReplacement = config.getString(LOGICAL_TABLE_REPLACEMENT);
+        topicRegex = Pattern.compile(config.getString(TOPIC_REGEX));
+        topicReplacement = config.getString(TOPIC_REPLACEMENT);
 
-        String physicalTableRegexString = config.getString(PHYSICAL_TABLE_REGEX);
-        if (physicalTableRegexString != null) {
-            physicalTableRegexString = physicalTableRegexString.trim();
+        String keyFieldRegexString = config.getString(KEY_FIELD_REGEX);
+        if (keyFieldRegexString != null) {
+            keyFieldRegexString = keyFieldRegexString.trim();
         }
-        if (physicalTableRegexString != null && physicalTableRegexString != "") {
-            physicalTableRegex = Pattern.compile(config.getString(PHYSICAL_TABLE_REGEX));
-            physicalTableReplacement = config.getString(PHYSICAL_TABLE_REPLACEMENT);
+        if (keyFieldRegexString != null && keyFieldRegexString != "") {
+            keyFieldRegex = Pattern.compile(config.getString(KEY_FIELD_REGEX));
+            keyFieldReplacement = config.getString(KEY_FIELD_REPLACEMENT);
         }
-
-        physicalTableIdentifierFieldName = config.getString(PHYSICAL_TABLE_IDENTIFIER_FIELD_NAME);
-        if (physicalTableIdentifierFieldName == null || physicalTableIdentifierFieldName.trim() == "") {
-            physicalTableIdentifierFieldName = DEFAULT_PHYSICAL_TABLE_IDENTIFIER_FIELD_NAME;
-        }
+        keyFieldName = config.getString(KEY_FIELD_NAME);
 
         keySchemaUpdateCache = new SynchronizedCache<>(new LRUCache<Schema, Schema>(16));
         envelopeSchemaUpdateCache = new SynchronizedCache<>(new LRUCache<Schema, Schema>(16));
@@ -178,8 +170,8 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
     @Override
     public ConfigDef config() {
         ConfigDef config = new ConfigDef();
-        Field.group(config, null, LOGICAL_TABLE_REGEX, LOGICAL_TABLE_REPLACEMENT, PHYSICAL_TABLE_REGEX,
-                PHYSICAL_TABLE_REPLACEMENT);
+        Field.group(config, null, TOPIC_REGEX, TOPIC_REPLACEMENT, KEY_FIELD_REGEX,
+                KEY_FIELD_REPLACEMENT);
         return config;
     }
 
@@ -188,9 +180,9 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
      * @return return the new topic name, if the regex applies. Otherwise, return null.
      */
     private String determineNewTopic(String oldTopic) {
-        final Matcher matcher = logicalTableRegex.matcher(oldTopic);
+        final Matcher matcher = topicRegex.matcher(oldTopic);
         if (matcher.matches()) {
-            return matcher.replaceFirst(logicalTableReplacement);
+            return matcher.replaceFirst(topicReplacement);
         }
         return null;
     }
@@ -204,10 +196,10 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
         final SchemaBuilder builder = copySchemaExcludingName(oldKeySchema, SchemaBuilder.struct());
         builder.name(schemaNameValidator.validate(newTopicName + ".Key"));
 
-        // Now that multiple physical tables can share a topic, the Key Schema can no longer consist of solely the
-        // record's primary / unique key fields, since they are not guaranteed to be unique across tables. We need
-        // some identifier added to the key that distinguishes the different physical tables.
-        builder.field(physicalTableIdentifierFieldName, Schema.STRING_SCHEMA);
+        // Now that multiple physical tables can share a topic, the event's key may need to be augmented to include
+        // fields other than just those for the record's primary/unique key, since these are not guaranteed to be unique
+        // across tables. We need some identifier added to the key that distinguishes the different physical tables.
+        builder.field(keyFieldName, Schema.STRING_SCHEMA);
 
         newKeySchema = builder.build();
         keySchemaUpdateCache.put(oldKeySchema, newKeySchema);
@@ -221,14 +213,14 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
         }
 
         String physicalTableIdentifier = oldTopic;
-        if (physicalTableRegex != null) {
-            final Matcher matcher = physicalTableRegex.matcher(oldTopic);
+        if (keyFieldRegex != null) {
+            final Matcher matcher = keyFieldRegex.matcher(oldTopic);
             if (matcher.matches()) {
-                physicalTableIdentifier = matcher.replaceFirst(physicalTableReplacement);
+                physicalTableIdentifier = matcher.replaceFirst(keyFieldReplacement);
             }
         }
 
-        newKey.put(physicalTableIdentifierFieldName, physicalTableIdentifier);
+        newKey.put(keyFieldName, physicalTableIdentifier);
         return newKey;
     }
 
@@ -309,21 +301,21 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
         return builder;
     }
 
-    private static int validatePhysicalTableReplacement(Configuration config, Field field, Field.ValidationOutput problems) {
-        String physicalTableRegex = config.getString(PHYSICAL_TABLE_REGEX);
-        if (physicalTableRegex != null) {
-            physicalTableRegex = physicalTableRegex.trim();
+    private static int validateKeyFieldReplacement(Configuration config, Field field, Field.ValidationOutput problems) {
+        String keyFieldRegex = config.getString(KEY_FIELD_REGEX);
+        if (keyFieldRegex != null) {
+            keyFieldRegex = keyFieldRegex.trim();
         }
-        String physicalTableReplacement = config.getString(PHYSICAL_TABLE_REPLACEMENT);
-        if (physicalTableReplacement != null) {
-            physicalTableReplacement = physicalTableReplacement.trim();
+        String keyFieldReplacement = config.getString(KEY_FIELD_REPLACEMENT);
+        if (keyFieldReplacement != null) {
+            keyFieldReplacement = keyFieldReplacement.trim();
         }
 
-        if (physicalTableRegex != null && physicalTableRegex != "") {
-            if (physicalTableReplacement == null || physicalTableReplacement == "") {
-                problems.accept(PHYSICAL_TABLE_REPLACEMENT, physicalTableReplacement,
-                        PHYSICAL_TABLE_REPLACEMENT.name() + " must be specified if " +
-                                PHYSICAL_TABLE_REGEX.name() + " is specified");
+        if (keyFieldRegex != null && keyFieldRegex != "") {
+            if (keyFieldReplacement == null || keyFieldReplacement == "") {
+                problems.accept(KEY_FIELD_REPLACEMENT, keyFieldReplacement,
+                        KEY_FIELD_REPLACEMENT.name() + " must be specified if " +
+                                KEY_FIELD_REGEX.name() + " is specified");
                 return 1;
             }
         }
