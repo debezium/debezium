@@ -5,10 +5,12 @@
  */
 package io.debezium.transforms;
 
-import io.debezium.config.Configuration;
-import io.debezium.config.Field;
-import io.debezium.data.Envelope;
-import io.debezium.util.AvroValidator;
+import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
+
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.apache.kafka.common.cache.Cache;
 import org.apache.kafka.common.cache.LRUCache;
 import org.apache.kafka.common.cache.SynchronizedCache;
@@ -22,11 +24,10 @@ import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
+import io.debezium.config.Configuration;
+import io.debezium.config.Field;
+import io.debezium.data.Envelope;
+import io.debezium.util.AvroValidator;
 
 /**
  * A logical table consists of one or more physical tables with the same schema. A common use case is sharding -- the
@@ -46,6 +47,7 @@ import static org.apache.kafka.connect.transforms.util.Requirements.requireStruc
  * make the identifier `db_shard1` and `db_shard2` respectively.
  *
  * @author David Leibovic
+ * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  */
 public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transformation<R> {
 
@@ -176,7 +178,8 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
     }
 
     /**
-     * @param oldTopic
+     * Determine the new topic name.
+     * @param oldTopic the name of the old topic
      * @return return the new topic name, if the regex applies. Otherwise, return null.
      */
     private String determineNewTopic(String oldTopic) {
@@ -282,7 +285,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
     private SchemaBuilder copySchemaExcludingName(Schema source, SchemaBuilder builder, boolean copyFields) {
         builder.version(source.version());
         builder.doc(source.doc());
-        Map params = source.parameters();
+        Map<String, String> params = source.parameters();
         if (params != null) {
             builder.parameters(params);
         }
