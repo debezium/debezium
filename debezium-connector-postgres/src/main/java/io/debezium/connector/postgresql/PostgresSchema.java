@@ -27,6 +27,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
+import io.debezium.relational.topic.TopicMappers;
 import io.debezium.util.AvroValidator;
 
 /**
@@ -63,7 +64,7 @@ public class PostgresSchema {
 
         PostgresValueConverter valueConverter = new PostgresValueConverter(config.adaptiveTimePrecision(), ZoneOffset.UTC);
         this.schemaNameValidator = AvroValidator.create(LOGGER)::validate;
-        this.schemaBuilder = new TableSchemaBuilder(valueConverter, this.schemaNameValidator);
+        this.schemaBuilder = new TableSchemaBuilder(new TopicMappers(null, null), valueConverter, this.schemaNameValidator);
 
         // Set up the server name and schema prefix ...
         String serverName = config.serverName();

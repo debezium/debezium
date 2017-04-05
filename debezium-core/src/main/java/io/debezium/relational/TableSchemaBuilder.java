@@ -10,11 +10,13 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import io.debezium.relational.topic.TopicMappers;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -29,6 +31,7 @@ import io.debezium.data.SchemaUtil;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.mapping.ColumnMapper;
 import io.debezium.relational.mapping.ColumnMappers;
+import io.debezium.relational.topic.TopicMapper;
 
 /**
  * Builder that constructs {@link TableSchema} instances for {@link Table} definitions.
@@ -49,17 +52,21 @@ public class TableSchemaBuilder {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TableSchemaBuilder.class);
 
+    private final TopicMappers topicMappers;
     private final Function<String, String> schemaNameValidator;
     private final ValueConverterProvider valueConverterProvider;
 
     /**
      * Create a new instance of the builder.
-     * 
+     *
+     * @param topicMappers the TopicMapper for each table; may not be null
      * @param valueConverterProvider the provider for obtaining {@link ValueConverter}s and {@link SchemaBuilder}s; may not be
      *            null
      * @param schemaNameValidator the validation function for schema names; may not be null
      */
-    public TableSchemaBuilder(ValueConverterProvider valueConverterProvider, Function<String, String> schemaNameValidator) {
+    public TableSchemaBuilder(TopicMappers topicMappers, ValueConverterProvider valueConverterProvider,
+                              Function<String, String> schemaNameValidator) {
+        this.topicMappers = topicMappers;
         this.schemaNameValidator = schemaNameValidator;
         this.valueConverterProvider = valueConverterProvider;
     }
@@ -89,7 +96,7 @@ public class TableSchemaBuilder {
         Function<Object[], Struct> valueGenerator = createValueGenerator(valueSchema, id, columns, null, null);
 
         // Finally create our result object with no primary key or key generator ...
-        return new TableSchema(null, null, valueSchema, valueGenerator);
+        return new TableSchema(schemaName, null, null, valueSchema, valueGenerator);
     }
 
     /**
@@ -129,11 +136,14 @@ public class TableSchemaBuilder {
         if (schemaPrefix == null) schemaPrefix = "";
         // Build the schemas ...
         final TableId tableId = table.id();
-        final String tableIdStr = tableId.toString();
-        final String schemaNamePrefix = schemaPrefix + tableIdStr;
-        LOGGER.debug("Mapping table '{}' to schemas under '{}'", tableId, schemaNamePrefix);
-        SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(schemaNameValidator.apply(schemaNamePrefix + ".Value"));
-        SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(schemaNameValidator.apply(schemaNamePrefix + ".Key"));
+        final TopicMapper topicMapper = topicMappers.getTopicMapperToUse(schemaPrefix, table);
+        final String topicName = topicMapper.getTopicName(schemaPrefix, table);
+        final String keySchemaName = schemaNameValidator.apply(topicName + ".Key");
+        final String valueSchemaName = schemaNameValidator.apply(topicName + ".Value");
+        final String envelopeSchemaName = schemaNameValidator.apply(topicName); // TODO: better name
+        LOGGER.debug("Mapping table '{}' to key schemas '{}' and value schema '{}'", tableId, keySchemaName, valueSchemaName);
+        SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(valueSchemaName);
+        SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(keySchemaName);
         AtomicBoolean hasPrimaryKey = new AtomicBoolean(false);
         table.columns().forEach(column -> {
             if (table.isPrimaryKeyColumn(column.name())) {
@@ -147,6 +157,9 @@ public class TableSchemaBuilder {
                 addField(valSchemaBuilder, column, mapper);
             }
         });
+        // Enhance the key schema if necessary ...
+        topicMapper.enhanceKeySchema(keySchemaBuilder);
+        // Create the schemas ...
         Schema valSchema = valSchemaBuilder.optional().build();
         Schema keySchema = hasPrimaryKey.get() ? keySchemaBuilder.build() : null;
 
@@ -156,11 +169,11 @@ public class TableSchemaBuilder {
         }
 
         // Create the generators ...
-        Function<Object[], Object> keyGenerator = createKeyGenerator(keySchema, tableId, table.primaryKeyColumns());
+        Function<Object[], Object> keyGenerator = createKeyGenerator(keySchema, tableId, table, topicMapper, schemaPrefix);
         Function<Object[], Struct> valueGenerator = createValueGenerator(valSchema, tableId, table.columns(), filter, mappers);
 
         // And the table schema ...
-        return new TableSchema(keySchema, keyGenerator, valSchema, valueGenerator);
+        return new TableSchema(envelopeSchemaName, keySchema, keyGenerator, valSchema, valueGenerator);
     }
 
     /**
@@ -169,15 +182,21 @@ public class TableSchemaBuilder {
      * @param schema the Kafka Connect schema for the key; may be null if there is no known schema, in which case the generator
      *            will be null
      * @param columnSetName the name for the set of columns, used in error messages; may not be null
-     * @param columns the column definitions for the table that defines the row; may not be null
+     * @param table the table for the row of data
+     * @param topicMapper the TopicMapper for the table whose key we are generating; may not be null
+     * @param schemaPrefix the prefix added to the table identifier to construct the schema names; may be null if there is no
+     *            prefix
      * @return the key-generating function, or null if there is no key schema
      */
-    protected Function<Object[], Object> createKeyGenerator(Schema schema, TableId columnSetName, List<Column> columns) {
+    protected Function<Object[], Object> createKeyGenerator(Schema schema, TableId columnSetName, Table table,
+                                                            TopicMapper topicMapper, String schemaPrefix) {
         if (schema != null) {
+            List<Column> columns = table.primaryKeyColumns();
             int[] recordIndexes = indexesForColumns(columns);
             Field[] fields = fieldsForColumns(schema, columns);
             int numFields = recordIndexes.length;
             ValueConverter[] converters = convertersForColumns(schema, columnSetName, columns, null, null);
+            Map<String, Object> nonRowFieldsToAddToKey = topicMapper.getNonRowFieldsToAddToKey(schema, schemaPrefix, table);
             return (row) -> {
                 Struct result = new Struct(schema);
                 for (int i = 0; i != numFields; ++i) {
@@ -194,6 +213,13 @@ public class TableSchemaBuilder {
                         }
                     }
                 }
+
+                if (nonRowFieldsToAddToKey != null) {
+                    for (Map.Entry<String, Object> nonRowField : nonRowFieldsToAddToKey.entrySet()) {
+                        result.put(nonRowField.getKey(), nonRowField.getValue());
+                    }
+                }
+
                 return result;
             };
         }

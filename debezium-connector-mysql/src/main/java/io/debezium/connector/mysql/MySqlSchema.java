@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.function.Predicate;
 
+import io.debezium.relational.topic.TopicMappers;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
@@ -89,6 +90,16 @@ public class MySqlSchema {
         this.ddlChanges = new DdlChanges(this.ddlParser.terminator());
         this.ddlParser.addListener(ddlChanges);
 
+        // Set up the topic mapper ...
+        final String topicMapperAliasesString = config.getString(MySqlConnectorConfig.TOPIC_MAPPERS);
+        final String[] topicMapperAliases;
+        if (topicMapperAliasesString == null || topicMapperAliasesString.trim().isEmpty()) {
+            topicMapperAliases = null;
+        } else {
+            topicMapperAliases = topicMapperAliasesString.trim().split(",");
+        }
+        TopicMappers topicMappers = new TopicMappers(config, topicMapperAliases);
+
         // Use MySQL-specific converters and schemas for values ...
         String timePrecisionModeStr = config.getString(MySqlConnectorConfig.TIME_PRECISION_MODE);
         TemporalPrecisionMode timePrecisionMode = TemporalPrecisionMode.parse(timePrecisionModeStr);
@@ -97,7 +108,7 @@ public class MySqlSchema {
         DecimalHandlingMode decimalHandlingMode = DecimalHandlingMode.parse(decimalHandlingModeStr);
         DecimalMode decimalMode = decimalHandlingMode.asDecimalMode();
         MySqlValueConverters valueConverters = new MySqlValueConverters(decimalMode, adaptiveTimePrecision);
-        this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameValidator::validate);
+        this.schemaBuilder = new TableSchemaBuilder(topicMappers, valueConverters, schemaNameValidator::validate);
 
         // Set up the server name and schema prefix ...
         if (serverName != null) serverName = serverName.trim();
