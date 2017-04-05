@@ -1412,6 +1412,18 @@ public interface Configuration {
         return null;
     }
 
+    @SuppressWarnings("unchecked")
+    default <T> Class<? extends T> getClass(Field field, Class<T> type) {
+        String className = getString(field);
+        try {
+            Class<? extends T> clazz = (Class<? extends T>) getClass().getClassLoader().loadClass(className);
+            return clazz;
+        } catch (ClassNotFoundException e) {
+            LoggerFactory.getLogger(getClass()).error("Unable to find class {}", className, e);
+        }
+        return null;
+    }
+
     /**
      * Return a new {@link Configuration} that contains only the subset of keys that match the given prefix.
      * If desired, the keys in the resulting Configuration will have the prefix (plus any terminating "{@code .}" character if

@@ -31,7 +31,6 @@ public class MySqlTaskContextIT extends MySqlTaskContextTest {
         assertThat(context.logger()).isNotNull();
         assertThat(context.makeRecord()).isNotNull();
         assertThat(context.source()).isNotNull();
-        assertThat(context.topicSelector()).isNotNull();
 
         assertThat(context.hostname()).isEqualTo(hostname);
         assertThat(context.port()).isEqualTo(port);

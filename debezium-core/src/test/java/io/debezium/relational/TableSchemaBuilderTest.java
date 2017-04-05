@@ -9,6 +9,7 @@ import static org.junit.Assert.fail;
 
 import java.sql.Types;
 
+import io.debezium.relational.topic.TopicMapper;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -19,6 +20,7 @@ import org.junit.Test;
 import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.relational.topic.ByTableTopicMapper;
 import io.debezium.time.Date;
 import io.debezium.util.AvroValidator;
 
@@ -34,9 +36,11 @@ public class TableSchemaBuilderTest {
     private Column c4;
     private TableSchema schema;
     private AvroValidator validator;
+    private Class<TopicMapper> topicMapperClass;
 
     @Before
     public void beforeEach() {
+        topicMapperClass = (Class <TopicMapper>) ((Class<? extends TopicMapper>) ByTableTopicMapper.class);
         validator = AvroValidator.create((original,replacement, conflict)->{
             fail("Should not have come across an invalid schema name");
         });
@@ -78,19 +82,19 @@ public class TableSchemaBuilderTest {
 
     @Test(expected = NullPointerException.class)
     public void shouldFailToBuildTableSchemaFromNullTable() {
-        new TableSchemaBuilder(new JdbcValueConverters(),validator::validate).create(prefix,null);
+        new TableSchemaBuilder(topicMapperClass, new JdbcValueConverters(),validator::validate).create(prefix,null);
     }
 
     @Test
     public void shouldBuildTableSchemaFromTable() {
-        schema = new TableSchemaBuilder(new JdbcValueConverters(),validator::validate).create(prefix,table);
+        schema = new TableSchemaBuilder(topicMapperClass, new JdbcValueConverters(),validator::validate).create(prefix,table);
         assertThat(schema).isNotNull();
     }
 
     @Test
     public void shouldBuildTableSchemaFromTableWithoutPrimaryKey() {
         table = table.edit().setPrimaryKeyNames().create();
-        schema = new TableSchemaBuilder(new JdbcValueConverters(),validator::validate).create(prefix,table);
+        schema = new TableSchemaBuilder(topicMapperClass, new JdbcValueConverters(),validator::validate).create(prefix,table);
         assertThat(schema).isNotNull();
         // Check the keys ...
         assertThat(schema.keySchema()).isNull();

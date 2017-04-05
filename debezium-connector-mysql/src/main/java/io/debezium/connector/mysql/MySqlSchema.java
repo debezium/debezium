@@ -30,6 +30,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
+import io.debezium.relational.topic.TopicMapper;
 import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.ddl.DdlChanges.DatabaseStatementStringConsumer;
 import io.debezium.relational.history.DatabaseHistory;
@@ -89,6 +90,11 @@ public class MySqlSchema {
         this.ddlChanges = new DdlChanges(this.ddlParser.terminator());
         this.ddlParser.addListener(ddlChanges);
 
+        // Set up the topic mapping class ...
+        @SuppressWarnings("unchecked")
+        Class<TopicMapper> topicMapperClass = (Class<TopicMapper>) config.getClass(
+                MySqlConnectorConfig.TOPIC_MAPPER, TopicMapper.class);
+
         // Use MySQL-specific converters and schemas for values ...
         String timePrecisionModeStr = config.getString(MySqlConnectorConfig.TIME_PRECISION_MODE);
         TemporalPrecisionMode timePrecisionMode = TemporalPrecisionMode.parse(timePrecisionModeStr);
@@ -97,7 +103,7 @@ public class MySqlSchema {
         DecimalHandlingMode decimalHandlingMode = DecimalHandlingMode.parse(decimalHandlingModeStr);
         DecimalMode decimalMode = decimalHandlingMode.asDecimalMode();
         MySqlValueConverters valueConverters = new MySqlValueConverters(decimalMode, adaptiveTimePrecision);
-        this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameValidator::validate);
+        this.schemaBuilder = new TableSchemaBuilder(topicMapperClass, valueConverters, schemaNameValidator::validate);
 
         // Set up the server name and schema prefix ...
         if (serverName != null) serverName = serverName.trim();
