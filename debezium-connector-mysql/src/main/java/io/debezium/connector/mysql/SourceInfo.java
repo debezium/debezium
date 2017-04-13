@@ -122,6 +122,7 @@ final class SourceInfo {
     public static final String SNAPSHOTTED_KEY = "snapshotted";
     public static final String ENTITY_NAME_KEY = "entity";
     public static final String ENTITY_SIZE_KEY = "size";
+    public static final String ENTITY_INDEX_KEY = "idx";
     private static final String DELIMITER = ":";
 
     /**
@@ -141,7 +142,8 @@ final class SourceInfo {
                                                      .field(DB_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(TABLE_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(ENTITY_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                                                     .field(ENTITY_SIZE_KEY, Schema.OPTIONAL_INT32_SCHEMA)
+                                                     .field(ENTITY_SIZE_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+                                                     .field(ENTITY_INDEX_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                      .build();
 
     private String currentGtidSet;
@@ -165,7 +167,8 @@ final class SourceInfo {
     private boolean nextSnapshot = false;
     private String lastRecordMeta;
     private List<String> snapshottedEntities = new ArrayList<>();
-    private int entitySize;
+    private long entitySize;
+    private long lastIndex = 0L;
 
     public SourceInfo() {
     }
@@ -181,36 +184,47 @@ final class SourceInfo {
     }
 
     /**
-     * Meta String formatted as [TABLE NAME]:[PRIMARY KEY]
+     * Meta String formatted as [TABLE NAME]:[PRIMARY KEY]:[No.INDEX in Snapshot]
      * @param tableName last recorded table name
      * @param lastId last recorded primary key
      */
-    public void setLastRecordId(String tableName, String lastId) {
-        this.lastRecordMeta = tableName + DELIMITER + lastId;
+    public void setLastRecordMeta(String tableName, String lastId, long lastIndex) {
+        this.lastRecordMeta = tableName + DELIMITER + lastId + DELIMITER + lastIndex;
     }
 
     public void markSnapshotted(String entityName) {
         snapshottedEntities.add(entityName);
     }
 
-    public void setEntitySize(int size) {
+    public void setEntitySize(long size) {
         this.entitySize = size;
     }
 
     /**
-     * Meta String formatted as [TABLE NAME]:[PRIMARY KEY] return the primary key if the table name matches.
+     * Meta String formatted as [TABLE NAME]:[PRIMARY KEY]:[No.INDEX IN Snapshot] return the primary key if the table name matches.
      * @param tableName last recorded table name
      * @return last recorded primary key
      */
     public String getLastRecordId(String tableName) {
         if (lastRecordMeta != null) {
             String[] meta = lastRecordMeta.split(DELIMITER);
-            if (meta.length == 2 && meta[0].equals(tableName)) {
+            if (meta.length >= 2 && meta[0].equals(tableName)) {
                 return meta[1];
             }
         }
         return null;
     }
+
+    public long getLastRecordIndex(String tableName) {
+        if (lastRecordMeta != null) {
+            String[] meta = lastRecordMeta.split(DELIMITER);
+            if (meta.length == 3 && meta[0].equals(tableName)) {
+                return Long.parseLong(meta[2]);
+            }
+        }
+        return 0L;
+    }
+
 
     public boolean isSnapshotted(String tableName) {
         return snapshottedEntities.contains(tableName);
@@ -380,6 +394,7 @@ final class SourceInfo {
             result.put(TABLE_NAME_KEY, tableId.table());
             result.put(ENTITY_NAME_KEY, tableId.table());
             result.put(ENTITY_SIZE_KEY, entitySize);
+            result.put(ENTITY_INDEX_KEY, lastIndex);
         }
         return result;
     }

@@ -20,7 +20,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
@@ -445,6 +444,7 @@ public class SnapshotReader extends AbstractReader {
                             logger.info("Step {}: - scanning table '{}' ({} of {} tables)", step, tableId, ++counter, tableIds.size());
                             String primaryKey = schema.tableFor(tableId).primaryKeyColumnNames().get(0);
                             String lastId = source.getLastRecordId(tableId.table());
+                            long lastIndex = source.getLastRecordIndex(tableId.table());
                             sql.set("SELECT * FROM " + quote(tableId)
                                 + (lastId != null ? " WHERE " + primaryKey + " > " + lastId :"")
                                 + (primaryKey != null ? " ORDER BY " + primaryKey : "")
@@ -453,21 +453,27 @@ public class SnapshotReader extends AbstractReader {
                                 int stepNum = step;
                                 mysql.query(sql.get(), statementFactory, rs -> {
                                     long rowNum = 0;
+                                    long estimateNum = numRows.get();
                                     try {
                                         // The table is included in the connector's filters, so process all of the table records
                                         // ...
                                         final Table table = schema.tableFor(tableId);
                                         final int numColumns = table.columns().size();
                                         final Object[] row = new Object[numColumns];
+                                        source.setEntitySize(numRows.get());
                                         while (rs.next()) {
                                             for (int i = 0, j = 1; i != numColumns; ++i, ++j) {
                                                 row[i] = rs.getObject(j);
                                             }
                                             String id = rs.getObject(primaryKey).toString();
-                                            source.setLastRecordId(tableId.table(), id);
-                                            source.setEntitySize((int)numRows.get());
-                                            recorder.recordRow(recordMaker, row, ts); // has no row number!
                                             ++rowNum;
+                                            source.setLastRecordMeta(tableId.table(), id, lastIndex + rowNum);
+                                            recorder.recordRow(recordMaker, row, ts); // has no row number!
+                                            // increase estimate count by 1%
+                                            if ((lastIndex + rowNum) > estimateNum) {
+                                                estimateNum = (long) ((lastIndex + rowNum) * 1.01);
+                                                source.setEntitySize(estimateNum);
+                                            }
                                             if (rowNum % 100 == 0 && !isRunning()) {
                                                 // We've stopped running ...
                                                 break;
@@ -483,7 +489,8 @@ public class SnapshotReader extends AbstractReader {
                                         if (isRunning()) {
                                             long stop = clock.currentTimeInMillis();
                                             logger.info("Step {}: - Completed scanning a total of {} rows from table '{}' after {}",
-                                                        stepNum, rowNum, tableId, Strings.duration(stop - start));
+                                                        stepNum, rowNum + lastIndex , tableId, Strings.duration(stop - start));
+                                            source.setEntitySize(rowNum);
                                         }
                                     } catch (InterruptedException e) {
                                         Thread.interrupted();
