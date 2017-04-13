@@ -7,6 +7,7 @@ package io.debezium.connector.mysql;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.sql.SQLException;
 import java.util.BitSet;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -234,6 +235,12 @@ public class BinlogReader extends AbstractReader {
             if (isRunning()) {
                 logger.debug("Stopping binlog reader, last recorded offset: {}", lastOffset);
                 client.disconnect();
+                try {
+                    logger.info("Kill binlog dump thread {}. ", client.getConnectionId());
+                    context.jdbc().execute("kill " + client.getConnectionId());
+                } catch (SQLException e) {
+                    logger.error("kill binlog dump thread {} failed. ", client.getConnectionId());
+                }
             }
             cleanupResources();
         } catch (IOException e) {

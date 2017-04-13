@@ -453,21 +453,28 @@ public class SnapshotReader extends AbstractReader {
                                 int stepNum = step;
                                 mysql.query(sql.get(), statementFactory, rs -> {
                                     long rowNum = 0;
+                                    long estimateNum = numRows.get();
                                     try {
                                         // The table is included in the connector's filters, so process all of the table records
                                         // ...
                                         final Table table = schema.tableFor(tableId);
                                         final int numColumns = table.columns().size();
                                         final Object[] row = new Object[numColumns];
+                                        source.setEntitySize(numRows.get());
                                         while (rs.next()) {
                                             for (int i = 0, j = 1; i != numColumns; ++i, ++j) {
                                                 row[i] = rs.getObject(j);
                                             }
                                             String id = rs.getObject(primaryKey).toString();
                                             source.setLastRecordId(tableId.table(), id);
-                                            source.setEntitySize((int)numRows.get());
                                             recorder.recordRow(recordMaker, row, ts); // has no row number!
                                             ++rowNum;
+                                            source.setLastIndex(rowNum);
+                                            // increase estimate count by 1%
+                                            if (rowNum > estimateNum) {
+                                                estimateNum += rowNum * 0.01;
+                                                source.setEntitySize(estimateNum);
+                                            }
                                             if (rowNum % 100 == 0 && !isRunning()) {
                                                 // We've stopped running ...
                                                 break;
@@ -484,6 +491,7 @@ public class SnapshotReader extends AbstractReader {
                                             long stop = clock.currentTimeInMillis();
                                             logger.info("Step {}: - Completed scanning a total of {} rows from table '{}' after {}",
                                                         stepNum, rowNum, tableId, Strings.duration(stop - start));
+                                            source.setEntitySize(rowNum);
                                         }
                                     } catch (InterruptedException e) {
                                         Thread.interrupted();

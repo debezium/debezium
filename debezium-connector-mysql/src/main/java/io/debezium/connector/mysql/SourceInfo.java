@@ -122,6 +122,7 @@ final class SourceInfo {
     public static final String SNAPSHOTTED_KEY = "snapshotted";
     public static final String ENTITY_NAME_KEY = "entity";
     public static final String ENTITY_SIZE_KEY = "size";
+    public static final String ENTITY_INDEX_KEY = "idx";
     private static final String DELIMITER = ":";
 
     /**
@@ -141,7 +142,8 @@ final class SourceInfo {
                                                      .field(DB_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(TABLE_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(ENTITY_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                                                     .field(ENTITY_SIZE_KEY, Schema.OPTIONAL_INT32_SCHEMA)
+                                                     .field(ENTITY_SIZE_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+                                                     .field(ENTITY_INDEX_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                      .build();
 
     private String currentGtidSet;
@@ -165,7 +167,8 @@ final class SourceInfo {
     private boolean nextSnapshot = false;
     private String lastRecordMeta;
     private List<String> snapshottedEntities = new ArrayList<>();
-    private int entitySize;
+    private long entitySize;
+    private long lastIndex = 0L;
 
     public SourceInfo() {
     }
@@ -189,11 +192,15 @@ final class SourceInfo {
         this.lastRecordMeta = tableName + DELIMITER + lastId;
     }
 
+    public void setLastIndex(long index) {
+        this.lastIndex = index;
+    }
+
     public void markSnapshotted(String entityName) {
         snapshottedEntities.add(entityName);
     }
 
-    public void setEntitySize(int size) {
+    public void setEntitySize(long size) {
         this.entitySize = size;
     }
 
@@ -380,6 +387,7 @@ final class SourceInfo {
             result.put(TABLE_NAME_KEY, tableId.table());
             result.put(ENTITY_NAME_KEY, tableId.table());
             result.put(ENTITY_SIZE_KEY, entitySize);
+            result.put(ENTITY_INDEX_KEY, lastIndex);
         }
         return result;
     }
