@@ -857,6 +857,7 @@ public class JdbcConnection implements AutoCloseable {
                 return request.execute();
             } catch (SQLException e){
                 LOGGER.error("Failed mysql connection, retry remaining : " + retryCount, e);
+                close();
                 retryCount--;
             }
         }
