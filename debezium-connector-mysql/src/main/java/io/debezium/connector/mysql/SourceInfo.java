@@ -184,16 +184,12 @@ final class SourceInfo {
     }
 
     /**
-     * Meta String formatted as [TABLE NAME]:[PRIMARY KEY]
+     * Meta String formatted as [TABLE NAME]:[PRIMARY KEY]:[No.INDEX in Snapshot]
      * @param tableName last recorded table name
      * @param lastId last recorded primary key
      */
-    public void setLastRecordId(String tableName, String lastId) {
-        this.lastRecordMeta = tableName + DELIMITER + lastId;
-    }
-
-    public void setLastIndex(long index) {
-        this.lastIndex = index;
+    public void setLastRecordMeta(String tableName, String lastId, long lastIndex) {
+        this.lastRecordMeta = tableName + DELIMITER + lastId + DELIMITER + lastIndex;
     }
 
     public void markSnapshotted(String entityName) {
@@ -205,19 +201,30 @@ final class SourceInfo {
     }
 
     /**
-     * Meta String formatted as [TABLE NAME]:[PRIMARY KEY] return the primary key if the table name matches.
+     * Meta String formatted as [TABLE NAME]:[PRIMARY KEY]:[No.INDEX IN Snapshot] return the primary key if the table name matches.
      * @param tableName last recorded table name
      * @return last recorded primary key
      */
     public String getLastRecordId(String tableName) {
         if (lastRecordMeta != null) {
             String[] meta = lastRecordMeta.split(DELIMITER);
-            if (meta.length == 2 && meta[0].equals(tableName)) {
+            if (meta.length >= 2 && meta[0].equals(tableName)) {
                 return meta[1];
             }
         }
         return null;
     }
+
+    public long getLastRecordIndex(String tableName) {
+        if (lastRecordMeta != null) {
+            String[] meta = lastRecordMeta.split(DELIMITER);
+            if (meta.length == 3 && meta[0].equals(tableName)) {
+                return Long.parseLong(meta[2]);
+            }
+        }
+        return 0L;
+    }
+
 
     public boolean isSnapshotted(String tableName) {
         return snapshottedEntities.contains(tableName);

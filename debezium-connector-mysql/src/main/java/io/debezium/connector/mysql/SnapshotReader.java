@@ -20,7 +20,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
@@ -445,6 +444,7 @@ public class SnapshotReader extends AbstractReader {
                             logger.info("Step {}: - scanning table '{}' ({} of {} tables)", step, tableId, ++counter, tableIds.size());
                             String primaryKey = schema.tableFor(tableId).primaryKeyColumnNames().get(0);
                             String lastId = source.getLastRecordId(tableId.table());
+                            long lastIndex = source.getLastRecordIndex(tableId.table());
                             sql.set("SELECT * FROM " + quote(tableId)
                                 + (lastId != null ? " WHERE " + primaryKey + " > " + lastId :"")
                                 + (primaryKey != null ? " ORDER BY " + primaryKey : "")
@@ -466,10 +466,9 @@ public class SnapshotReader extends AbstractReader {
                                                 row[i] = rs.getObject(j);
                                             }
                                             String id = rs.getObject(primaryKey).toString();
-                                            source.setLastRecordId(tableId.table(), id);
-                                            recorder.recordRow(recordMaker, row, ts); // has no row number!
                                             ++rowNum;
-                                            source.setLastIndex(rowNum);
+                                            source.setLastRecordMeta(tableId.table(), id, lastIndex + rowNum);
+                                            recorder.recordRow(recordMaker, row, ts); // has no row number!
                                             // increase estimate count by 1%
                                             if (rowNum > estimateNum) {
                                                 estimateNum += rowNum * 0.01;
