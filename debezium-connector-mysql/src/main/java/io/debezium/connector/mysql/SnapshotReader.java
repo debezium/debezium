@@ -471,7 +471,7 @@ public class SnapshotReader extends AbstractReader {
                                             recorder.recordRow(recordMaker, row, ts); // has no row number!
                                             // increase estimate count by 1%
                                             if ((lastIndex + rowNum) > estimateNum) {
-                                                estimateNum += rowNum * 0.01;
+                                                estimateNum = (long) ((lastIndex + rowNum) * 1.01);
                                                 source.setEntitySize(estimateNum);
                                             }
                                             if (rowNum % 100 == 0 && !isRunning()) {
