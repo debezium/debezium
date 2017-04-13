@@ -470,7 +470,7 @@ public class SnapshotReader extends AbstractReader {
                                             source.setLastRecordMeta(tableId.table(), id, lastIndex + rowNum);
                                             recorder.recordRow(recordMaker, row, ts); // has no row number!
                                             // increase estimate count by 1%
-                                            if (rowNum > estimateNum) {
+                                            if ((lastIndex + rowNum) > estimateNum) {
                                                 estimateNum += rowNum * 0.01;
                                                 source.setEntitySize(estimateNum);
                                             }
@@ -489,7 +489,7 @@ public class SnapshotReader extends AbstractReader {
                                         if (isRunning()) {
                                             long stop = clock.currentTimeInMillis();
                                             logger.info("Step {}: - Completed scanning a total of {} rows from table '{}' after {}",
-                                                        stepNum, rowNum, tableId, Strings.duration(stop - start));
+                                                        stepNum, rowNum + lastIndex , tableId, Strings.duration(stop - start));
                                             source.setEntitySize(rowNum);
                                         }
                                     } catch (InterruptedException e) {
