@@ -396,7 +396,7 @@ public class SnapshotReader extends AbstractReader {
                     BufferedBlockingConsumer<SourceRecord> bufferedRecordQueue = BufferedBlockingConsumer.bufferLast(super::enqueueRecord);
 
                     // Dump all of the tables and generate source records ...
-                    logger.info("Step {}: scanning contents of {} tables while still in transaction", step, tableIds    .size());
+                    logger.info("Step {}: scanning contents of {} tables while still in transaction", step, tableIds.size());
                     metrics.setTableCount(tableIds.size());
 
                     long startScan = clock.currentTimeInMillis();
