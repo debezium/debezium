@@ -190,6 +190,7 @@ final class SourceInfo {
      */
     public void setLastRecordMeta(String tableName, String lastId, long lastIndex) {
         this.lastRecordMeta = tableName + DELIMITER + lastId + DELIMITER + lastIndex;
+        this.lastIndex = lastIndex;
     }
 
     public void markSnapshotted(String entityName) {
