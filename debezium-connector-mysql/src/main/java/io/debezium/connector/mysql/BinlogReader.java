@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -229,18 +230,13 @@ public class BinlogReader extends AbstractReader {
         }
     }
 
+    private AtomicBoolean threadKilled = new AtomicBoolean(false);
     @Override
     protected void doStop() {
         try {
             if (isRunning()) {
                 logger.debug("Stopping binlog reader, last recorded offset: {}", lastOffset);
                 client.disconnect();
-                try {
-                    logger.info("Kill binlog dump thread {}. ", client.getConnectionId());
-                    context.jdbc().execute("kill " + client.getConnectionId());
-                } catch (SQLException e) {
-                    logger.error("kill binlog dump thread {} failed. ", client.getConnectionId());
-                }
             }
             cleanupResources();
         } catch (IOException e) {
@@ -254,6 +250,15 @@ public class BinlogReader extends AbstractReader {
 
     @Override
     protected void doCleanup() {
+        try {
+            if (!threadKilled.get()) {
+                logger.info("Kill binlog dump thread {}. ", client.getConnectionId());
+                context.jdbc().execute("kill " + client.getConnectionId());
+                threadKilled.compareAndSet(false, true);
+            }
+        } catch (SQLException e) {
+            logger.error("kill binlog dump thread {} failed. ", client.getConnectionId());
+        }
         logger.debug("Completed writing all records that were read from the binlog before being stopped");
     }
 

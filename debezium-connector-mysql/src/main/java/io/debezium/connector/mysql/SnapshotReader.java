@@ -396,7 +396,7 @@ public class SnapshotReader extends AbstractReader {
                     BufferedBlockingConsumer<SourceRecord> bufferedRecordQueue = BufferedBlockingConsumer.bufferLast(super::enqueueRecord);
 
                     // Dump all of the tables and generate source records ...
-                    logger.info("Step {}: scanning contents of {} tables while still in transaction", step, tableIds.size());
+                    logger.info("Step {}: scanning contents of {} tables while still in transaction", step, tableIds    .size());
                     metrics.setTableCount(tableIds.size());
 
                     long startScan = clock.currentTimeInMillis();
@@ -449,31 +449,36 @@ public class SnapshotReader extends AbstractReader {
                                 + (lastId != null ? " WHERE " + primaryKey + " > " + lastId :"")
                                 + (primaryKey != null ? " ORDER BY " + primaryKey : "")
                             );
+                            logger.info("Start select from {} starting from index {}.", tableId, lastIndex);
                             try {
                                 int stepNum = step;
                                 mysql.query(sql.get(), statementFactory, rs -> {
                                     long rowNum = 0;
                                     long estimateNum = numRows.get();
+                                    long currentIndex = 0L;
                                     try {
                                         // The table is included in the connector's filters, so process all of the table records
                                         // ...
                                         final Table table = schema.tableFor(tableId);
                                         final int numColumns = table.columns().size();
                                         final Object[] row = new Object[numColumns];
-                                        source.setEntitySize(numRows.get());
+                                        source.setEntitySize(estimateNum);
                                         while (rs.next()) {
                                             for (int i = 0, j = 1; i != numColumns; ++i, ++j) {
                                                 row[i] = rs.getObject(j);
                                             }
-                                            String id = rs.getObject(primaryKey).toString();
+                                            String currentId = rs.getObject(primaryKey).toString();
                                             ++rowNum;
-                                            source.setLastRecordMeta(tableId.table(), id, lastIndex + rowNum);
-                                            recorder.recordRow(recordMaker, row, ts); // has no row number!
+                                            currentIndex = lastIndex + rowNum;
+                                            source.setLastRecordMeta(tableId.table(), currentId, currentIndex);
                                             // increase estimate count by 1%
                                             if ((lastIndex + rowNum) > estimateNum) {
                                                 estimateNum = (long) ((lastIndex + rowNum) * 1.01);
                                                 source.setEntitySize(estimateNum);
                                             }
+
+                                            recorder.recordRow(recordMaker, row, ts); // has no row number!
+
                                             if (rowNum % 100 == 0 && !isRunning()) {
                                                 // We've stopped running ...
                                                 break;
@@ -481,7 +486,7 @@ public class SnapshotReader extends AbstractReader {
                                             if (rowNum % 10_000 == 0) {
                                                 long stop = clock.currentTimeInMillis();
                                                 logger.info("Step {}: - {} of {} rows scanned from table '{}' after {}",
-                                                            stepNum, rowNum, rowCountStr, tableId, Strings.duration(stop - start));
+                                                            stepNum, currentIndex, estimateNum, tableId, Strings.duration(stop - start));
                                             }
                                         }
 
