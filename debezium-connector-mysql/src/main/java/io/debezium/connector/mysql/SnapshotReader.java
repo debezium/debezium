@@ -473,7 +473,7 @@ public class SnapshotReader extends AbstractReader {
                                             source.setLastRecordMeta(tableId.table(), currentId, currentIndex);
                                             // increase estimate count by 1%
                                             if ((lastIndex + rowNum) > estimateNum) {
-                                                estimateNum = (long) ((lastIndex + rowNum) * 1.01);
+                                                estimateNum = (long) (currentIndex * 1.01);
                                                 source.setEntitySize(estimateNum);
                                             }
 
