@@ -472,10 +472,10 @@ public class SnapshotReader extends AbstractReader {
                                             currentIndex = lastIndex + rowNum;
                                             source.setLastRecordMeta(tableId.table(), currentId, currentIndex);
                                             // increase estimate count by 1%
-                                            if ((lastIndex + rowNum) > estimateNum) {
-                                                estimateNum = (long) (currentIndex * 1.01);
-                                                source.setEntitySize(estimateNum);
-                                            }
+//                                            if (currentIndex > estimateNum) {
+//                                                estimateNum = (long) (currentIndex * 1.01);
+//                                                source.setEntitySize(estimateNum);
+//                                            }
 
                                             recorder.recordRow(recordMaker, row, ts); // has no row number!
 
