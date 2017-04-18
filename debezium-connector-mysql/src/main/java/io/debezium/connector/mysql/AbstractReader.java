@@ -26,7 +26,7 @@ import io.debezium.util.Metronome;
 
 /**
  * A component that performs a snapshot of a MySQL server, and records the schema changes in {@link MySqlSchema}.
- * 
+ *
  * @author Randall Hauch
  */
 public abstract class AbstractReader implements Reader {
@@ -45,7 +45,7 @@ public abstract class AbstractReader implements Reader {
 
     /**
      * Create a snapshot reader.
-     * 
+     *
      * @param name the name of the reader
      * @param context the task context in which this reader is running; may not be null
      */
@@ -124,7 +124,7 @@ public abstract class AbstractReader implements Reader {
     /**
      * Call this method only when the reader has failed, that a subsequent call to {@link #poll()} should throw
      * this error, and that {@link #doCleanup()} can be called at any time.
-     * 
+     *
      * @param error the error that resulted in the failure; should not be {@code null}
      */
     protected void failed(Throwable error) {
@@ -134,7 +134,7 @@ public abstract class AbstractReader implements Reader {
     /**
      * Call this method only when the reader has failed, that a subsequent call to {@link #poll()} should throw
      * this error, and that {@link #doCleanup()} can be called at any time.
-     * 
+     *
      * @param error the error that resulted in the failure; should not be {@code null}
      * @param msg the error message; may not be null
      */
@@ -147,7 +147,7 @@ public abstract class AbstractReader implements Reader {
     /**
      * Wraps the specified exception in a {@link ConnectException}, ensuring that all useful state is captured inside
      * the new exception's message.`
-     * 
+     *
      * @param error the exception; may not be null
      * @return the wrapped Kafka Connect exception
      */
@@ -214,7 +214,7 @@ public abstract class AbstractReader implements Reader {
         logger.trace("Completed batch of {} records", batch.size());
         return batch;
     }
-    
+
     /**
      * This method is normally called by {@link #poll()} when there this reader finishes normally and all generated
      * records are consumed prior to being {@link #stop() stopped}. However, if this reader is explicitly
@@ -234,7 +234,7 @@ public abstract class AbstractReader implements Reader {
 
     /**
      * Method called when {@link #poll()} completes sending a non-zero-sized batch of records.
-     * 
+     *
      * @param batch the batch of records being recorded
      */
     protected void pollComplete(List<SourceRecord> batch) {
@@ -244,13 +244,17 @@ public abstract class AbstractReader implements Reader {
     /**
      * Enqueue a record so that it can be obtained when this reader is {@link #poll() polled}. This method will block if the
      * queue is full.
-     * 
+     *
      * @param record the record to be enqueued
      * @throws InterruptedException if interrupted while waiting for the queue to have room for this record
      */
     protected void enqueueRecord(SourceRecord record) throws InterruptedException {
         while(running.get()) {
-            if (record != null) this.records.offer(record, 10, TimeUnit.SECONDS);
+            if (record != null) {
+                if (this.records.offer(record, 10, TimeUnit.SECONDS)) {
+                    break;
+                }
+            }
         }
     }
 }
