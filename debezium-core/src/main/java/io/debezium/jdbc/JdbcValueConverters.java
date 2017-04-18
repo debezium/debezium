@@ -129,7 +129,6 @@ public class JdbcValueConverters implements ValueConverterProvider {
             case Types.VARBINARY:
             case Types.LONGVARBINARY:
                 return SchemaBuilder.bytes();
-
             // Numeric integers
             case Types.TINYINT:
                 // values are an 8-bit unsigned integer value between 0 and 255
