@@ -241,7 +241,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         Recommender tableNameRecommender = MySqlConnectorConfig.TABLE_WHITELIST.recommender();
         List<Object> tableNames = tableNameRecommender.validValues(MySqlConnectorConfig.TABLE_WHITELIST, config);
         Testing.debug("List of tableNames: " + tableNames);
-        assertThat(tableNames).containsOnly("readbinlog_test.person",
+        assertThat(tableNames).containsOnly("readbinlog_test.product",
+                                            "readbinlog_test.purchased",
+                                            "readbinlog_test.person",
                                             "connector_test.customers",
                                             "connector_test.orders",
                                             "connector_test.products",
