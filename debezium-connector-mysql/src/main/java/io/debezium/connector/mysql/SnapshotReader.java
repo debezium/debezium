@@ -139,14 +139,6 @@ public class SnapshotReader extends AbstractReader {
         }
     }
 
-
-    /**
-     * The last recorded binlog position is not available, thus redoing all the snapshot with resetting the snapshotted properties in offset.
-     */
-    protected void resetSnapshottedProps() {
-        context.source().resetSnapshottedProps();
-    }
-
     /**
      * Perform the snapshot using the same logic as the "mysqldump" utility.
      */
