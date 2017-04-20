@@ -16,9 +16,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.data.Envelope;
@@ -118,11 +116,12 @@ final class SourceInfo {
     public static final String DB_NAME_KEY = "db";
     public static final String TABLE_NAME_KEY = "table";
 
-    public static final String SNAPSHOT_LAST_RECORD_KEY = "last";
-    public static final String SNAPSHOTTED_KEY = "snapshotted";
+    public static final String LAST_SNAPSHOTTED_RECORD_KEY = "last";
+    public static final String SNAPSHOTTED_ENTITIES_KEY = "snapshotted";
     public static final String ENTITY_NAME_KEY = "entity";
     public static final String ENTITY_SIZE_KEY = "size";
     public static final String ENTITY_INDEX_KEY = "idx";
+    public static final String SNAPSHOT_LASTONE_KEY = "islastone";
     private static final String DELIMITER = ":";
 
     /**
@@ -144,6 +143,7 @@ final class SourceInfo {
                                                      .field(ENTITY_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(ENTITY_SIZE_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                      .field(ENTITY_INDEX_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+                                                     .field(SNAPSHOT_LASTONE_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
                                                      .build();
 
     private String currentGtidSet;
@@ -165,10 +165,11 @@ final class SourceInfo {
     private Map<String, String> sourcePartition;
     private boolean lastSnapshot = true;
     private boolean nextSnapshot = false;
-    private String lastRecordMeta;
+    private String lastSnapshottedRecord;
     private List<String> snapshottedEntities = new ArrayList<>();
     private long entitySize;
     private long lastIndex = 0L;
+    private boolean isSnapshotLastOne = false;
 
     public SourceInfo() {
     }
@@ -189,12 +190,17 @@ final class SourceInfo {
      * @param lastId last recorded primary key
      */
     public void setLastRecordMeta(String tableName, String lastId, long lastIndex) {
-        this.lastRecordMeta = tableName + DELIMITER + lastId + DELIMITER + lastIndex;
+        this.lastSnapshottedRecord = tableName + DELIMITER + lastId + DELIMITER + lastIndex;
         this.lastIndex = lastIndex;
     }
 
     public void markSnapshotted(String entityName) {
         snapshottedEntities.add(entityName);
+    }
+
+    public void resetSnapshottedProps() {
+        lastSnapshottedRecord = null;
+        snapshottedEntities = new ArrayList<>();
     }
 
     public void setEntitySize(long size) {
@@ -207,8 +213,8 @@ final class SourceInfo {
      * @return last recorded primary key
      */
     public String getLastRecordId(String tableName) {
-        if (lastRecordMeta != null) {
-            String[] meta = lastRecordMeta.split(DELIMITER);
+        if (lastSnapshottedRecord != null) {
+            String[] meta = lastSnapshottedRecord.split(DELIMITER);
             if (meta.length >= 2 && meta[0].equals(tableName)) {
                 return meta[1];
             }
@@ -217,8 +223,8 @@ final class SourceInfo {
     }
 
     public long getLastRecordIndex(String tableName) {
-        if (lastRecordMeta != null) {
-            String[] meta = lastRecordMeta.split(DELIMITER);
+        if (lastSnapshottedRecord != null) {
+            String[] meta = lastSnapshottedRecord.split(DELIMITER);
             if (meta.length == 3 && meta[0].equals(tableName)) {
                 return Long.parseLong(meta[2]);
             }
@@ -231,6 +237,13 @@ final class SourceInfo {
         return snapshottedEntities.contains(tableName);
     }
 
+    public void setSnapshotLastOne() {
+        isSnapshotLastOne = true;
+    }
+
+    public void unsetSnapshotLastOne() {
+        isSnapshotLastOne = false;
+    }
 
     /**
      * Get the Kafka Connect detail about the source "partition", which describes the portion of the source that we are
@@ -332,8 +345,8 @@ final class SourceInfo {
         if (binlogTimestampSeconds != 0) map.put(TIMESTAMP_KEY, binlogTimestampSeconds);
         if (isSnapshotInEffect()) {
             map.put(SNAPSHOT_KEY, true);
-            map.put(SNAPSHOT_LAST_RECORD_KEY, lastRecordMeta);
-            map.put(SNAPSHOTTED_KEY, String.join(",", snapshottedEntities));
+            map.put(LAST_SNAPSHOTTED_RECORD_KEY, lastSnapshottedRecord);
+            map.put(SNAPSHOTTED_ENTITIES_KEY, String.join(",", snapshottedEntities));
         }
         return map;
     }
@@ -387,6 +400,7 @@ final class SourceInfo {
         if (lastSnapshot) {
             result.put(SNAPSHOT_KEY, true);
         }
+        result.put(SNAPSHOT_LASTONE_KEY, isSnapshotLastOne);
         if (threadId >= 0) {
             result.put(THREAD_KEY, threadId);
         }
@@ -552,10 +566,10 @@ final class SourceInfo {
             this.restartRowsToSkip = (int) longOffsetValue(sourceOffset, BINLOG_ROW_IN_EVENT_OFFSET_KEY);
             nextSnapshot = booleanOffsetValue(sourceOffset, SNAPSHOT_KEY);
             lastSnapshot = nextSnapshot;
-            lastRecordMeta = (String) sourceOffset.get(SNAPSHOT_LAST_RECORD_KEY);
-            String snapshotted = (String) sourceOffset.get(SNAPSHOTTED_KEY);
-            if (snapshotted != null && !snapshotted.isEmpty()) {
-                snapshottedEntities = new ArrayList<>(Arrays.asList(snapshotted.split(",")));
+            lastSnapshottedRecord = (String) sourceOffset.get(LAST_SNAPSHOTTED_RECORD_KEY);
+            String snapshottedEntitiesStr = (String) sourceOffset.get(SNAPSHOTTED_ENTITIES_KEY);
+            if (snapshottedEntitiesStr != null && !snapshottedEntitiesStr.isEmpty()) {
+                snapshottedEntities = new ArrayList<>(Arrays.asList(snapshottedEntitiesStr.split(",")));
             }
         }
     }
