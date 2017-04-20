@@ -102,6 +102,7 @@ public final class MySqlConnectorTask extends SourceTask {
                             throw new ConnectException(msg);
                         }
                         startWithSnapshot = true;
+                        source.resetSnapshottedProps();
                     }
                 }
 

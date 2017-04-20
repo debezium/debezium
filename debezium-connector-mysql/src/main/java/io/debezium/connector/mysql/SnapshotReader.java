@@ -463,6 +463,7 @@ public class SnapshotReader extends AbstractReader {
                                         final int numColumns = table.columns().size();
                                         final Object[] row = new Object[numColumns];
                                         source.setEntitySize(estimateNum);
+
                                         while (rs.next()) {
                                             for (int i = 0, j = 1; i != numColumns; ++i, ++j) {
                                                 row[i] = rs.getObject(j);
@@ -472,10 +473,10 @@ public class SnapshotReader extends AbstractReader {
                                             currentIndex = lastIndex + rowNum;
                                             source.setLastRecordMeta(tableId.table(), currentId, currentIndex);
                                             // increase estimate count by 1%
-//                                            if (currentIndex > estimateNum) {
-//                                                estimateNum = (long) (currentIndex * 1.01);
-//                                                source.setEntitySize(estimateNum);
-//                                            }
+                                            if (currentIndex > estimateNum) {
+                                                estimateNum = (long) (currentIndex * 1.01);
+                                                source.setEntitySize(estimateNum);
+                                            }
 
                                             recorder.recordRow(recordMaker, row, ts); // has no row number!
 
@@ -496,6 +497,10 @@ public class SnapshotReader extends AbstractReader {
                                             logger.info("Step {}: - Completed scanning a total of {} rows from table '{}' after {}",
                                                         stepNum, rowNum + lastIndex , tableId, Strings.duration(stop - start));
                                             source.setEntitySize(rowNum);
+                                            source.setSnapshotLastOne();
+                                            // insert last record again with special flag "islastone = true"
+                                            recorder.recordRow(recordMaker, row, ts);
+                                            source.unsetSnapshotLastOne();
                                         }
                                     } catch (InterruptedException e) {
                                         Thread.interrupted();

@@ -36,6 +36,7 @@ public abstract class AbstractReader implements Reader {
     protected final MySqlTaskContext context;
     private final BlockingQueue<SourceRecord> records;
     private final AtomicBoolean running = new AtomicBoolean(false);
+    private final AtomicBoolean stopping = new AtomicBoolean(false);
     private final AtomicBoolean success = new AtomicBoolean(false);
     private final AtomicReference<ConnectException> failure = new AtomicReference<>();
     private ConnectException failureException;
@@ -80,7 +81,9 @@ public abstract class AbstractReader implements Reader {
     @Override
     public void stop() {
         try {
+            stopping.set(true);
             doStop();
+            stopping.set(false);
             running.set(false);
         } finally {
             if (failure.get() != null) {
@@ -249,7 +252,7 @@ public abstract class AbstractReader implements Reader {
      * @throws InterruptedException if interrupted while waiting for the queue to have room for this record
      */
     protected void enqueueRecord(SourceRecord record) throws InterruptedException {
-        while(running.get()) {
+        while(running.get() && !stopping.get()) {
             if (record != null) {
                 if (this.records.offer(record, 10, TimeUnit.SECONDS)) {
                     break;
