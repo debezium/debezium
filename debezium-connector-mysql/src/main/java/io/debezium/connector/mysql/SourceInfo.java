@@ -143,7 +143,7 @@ final class SourceInfo {
                                                      .field(ENTITY_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(ENTITY_SIZE_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                      .field(ENTITY_INDEX_KEY, Schema.OPTIONAL_INT64_SCHEMA)
-                                                     .field(SNAPSHOT_LASTONE_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
+                                                     .field(SNAPSHOT_LASTONE_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA).optional().defaultValue(null)
                                                      .build();
 
     private String currentGtidSet;

@@ -168,14 +168,14 @@ public class JdbcValueConverters implements ValueConverterProvider {
             case Types.NVARCHAR:
             case Types.LONGNVARCHAR:
             case Types.NCLOB:
-                return SchemaBuilder.string();
+                return SchemaBuilder.string().parameter("length", String.valueOf(column.length()));
 
             // Variable-length string values
             case Types.VARCHAR:
             case Types.LONGVARCHAR:
             case Types.CLOB:
             case Types.DATALINK:
-                return SchemaBuilder.string();
+                return SchemaBuilder.string().parameter("length", String.valueOf(column.length()));
             case Types.SQLXML:
                 return Xml.builder();
             // Date and time values
