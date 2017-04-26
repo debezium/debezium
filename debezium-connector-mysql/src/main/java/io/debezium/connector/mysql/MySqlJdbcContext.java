@@ -158,7 +158,7 @@ public class MySqlJdbcContext implements AutoCloseable {
         AtomicBoolean result = new AtomicBoolean(false);
         try {
             jdbc.query("SHOW GRANTS FOR CURRENT_USER", rs -> {
-                if (rs.next()) {
+                while (rs.next()) {
                     String grants = rs.getString(1);
                     logger.debug(grants);
                     if (grants == null) return;
