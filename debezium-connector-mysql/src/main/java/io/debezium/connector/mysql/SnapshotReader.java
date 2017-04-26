@@ -495,8 +495,8 @@ public class SnapshotReader extends AbstractReader {
                                         if (isRunning()) {
                                             long stop = clock.currentTimeInMillis();
                                             logger.info("Step {}: - Completed scanning a total of {} rows from table '{}' after {}",
-                                                        stepNum, rowNum + lastIndex , tableId, Strings.duration(stop - start));
-                                            source.setEntitySize(rowNum);
+                                                        stepNum, currentIndex , tableId, Strings.duration(stop - start));
+                                            source.setEntitySize(currentIndex);
                                             source.setSnapshotLastOne();
                                             // insert last record again with special flag "islastone = true"
                                             recorder.recordRow(recordMaker, row, ts);
