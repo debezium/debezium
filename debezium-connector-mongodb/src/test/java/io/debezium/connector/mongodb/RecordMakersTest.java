@@ -10,6 +10,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import com.datapipeline.base.mongodb.MongodbSchemaConfig;
+
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.BsonTimestamp;
@@ -28,14 +29,13 @@ import io.debezium.data.Envelope.Operation;
 
 /**
  * @author Randall Hauch
- *
  */
 public class RecordMakersTest {
 
     private static final String SERVER_NAME = "serverX.";
     private static final String PREFIX = SERVER_NAME + ".";
     private static final JsonWriterSettings WRITER_SETTINGS = new JsonWriterSettings(JsonMode.STRICT, "", ""); // most compact
-                                                                                                               // JSON
+    // JSON
 
     private SourceInfo source;
     private RecordMakers recordMakers;
@@ -75,10 +75,10 @@ public class RecordMakersTest {
         ObjectId objId = new ObjectId();
         Document obj = new Document().append("_id", objId).append("name", "Sally");
         Document event = new Document().append("o", obj)
-                                       .append("ns", "dbA.c1")
-                                       .append("ts", ts)
-                                       .append("h", new Long(12345678))
-                                       .append("op", "i");
+            .append("ns", "dbA.c1")
+            .append("ts", ts)
+            .append("h", new Long(12345678))
+            .append("op", "i");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
         records.recordEvent(event, 1002);
         assertThat(produced.size()).isEqualTo(1);
@@ -93,7 +93,7 @@ public class RecordMakersTest {
         assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.CREATE.code());
         assertThat(value.getInt64(FieldName.TIMESTAMP)).isEqualTo(1002L);
         Struct actualSource = value.getStruct(FieldName.SOURCE);
-        Struct expectedSource = source.lastOffsetStruct("rs0", collectionId,"", 0);
+        Struct expectedSource = source.lastOffsetStruct("rs0", collectionId, "", 0, 1, false);
         assertThat(actualSource).isEqualTo(expectedSource);
     }
 
@@ -104,11 +104,11 @@ public class RecordMakersTest {
         ObjectId objId = new ObjectId();
         Document obj = new Document().append("$set", new Document("name", "Sally"));
         Document event = new Document().append("o", obj)
-                                       .append("o2", objId)
-                                       .append("ns", "dbA.c1")
-                                       .append("ts", ts)
-                                       .append("h", new Long(12345678))
-                                       .append("op", "u");
+            .append("o2", objId)
+            .append("ns", "dbA.c1")
+            .append("ts", ts)
+            .append("h", new Long(12345678))
+            .append("op", "u");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
         records.recordEvent(event, 1002);
         assertThat(produced.size()).isEqualTo(1);
@@ -124,7 +124,7 @@ public class RecordMakersTest {
         assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.UPDATE.code());
         assertThat(value.getInt64(FieldName.TIMESTAMP)).isEqualTo(1002L);
         Struct actualSource = value.getStruct(FieldName.SOURCE);
-        Struct expectedSource = source.lastOffsetStruct("rs0", collectionId,"", 0);
+        Struct expectedSource = source.lastOffsetStruct("rs0", collectionId, "", 0, 1, false);
         assertThat(actualSource).isEqualTo(expectedSource);
     }
 
@@ -135,10 +135,10 @@ public class RecordMakersTest {
         ObjectId objId = new ObjectId();
         Document obj = new Document("_id", objId);
         Document event = new Document().append("o", obj)
-                                       .append("ns", "dbA.c1")
-                                       .append("ts", ts)
-                                       .append("h", new Long(12345678))
-                                       .append("op", "d");
+            .append("ns", "dbA.c1")
+            .append("ts", ts)
+            .append("h", new Long(12345678))
+            .append("op", "d");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
         records.recordEvent(event, 1002);
         assertThat(produced.size()).isEqualTo(2);
@@ -154,7 +154,7 @@ public class RecordMakersTest {
         assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.DELETE.code());
         assertThat(value.getInt64(FieldName.TIMESTAMP)).isEqualTo(1002L);
         Struct actualSource = value.getStruct(FieldName.SOURCE);
-        Struct expectedSource = source.lastOffsetStruct("rs0", collectionId,"", 0);
+        Struct expectedSource = source.lastOffsetStruct("rs0", collectionId, "", 0, 1, false);
         assertThat(actualSource).isEqualTo(expectedSource);
 
         SourceRecord tombstone = produced.get(1);

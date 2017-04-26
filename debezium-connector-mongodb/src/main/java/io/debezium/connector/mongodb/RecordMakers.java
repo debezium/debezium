@@ -177,8 +177,10 @@ public class RecordMakers {
          * @throws InterruptedException if the calling thread was interrupted while waiting to
          * submit a record to the blocking consumer
          */
-        public int recordObject(CollectionId id, Document object, long timestamp, long expectedNumDocs) throws InterruptedException {
-            final Struct sourceValue = source.lastOffsetStruct(replicaSetName, id, object.get(ConnectorType.MONGODB.getPrimaryKeyName()).toString(), expectedNumDocs);
+        public int recordObject(CollectionId id, Document object, long timestamp, long expectedNumDocs, long index, boolean isLastRecord) throws InterruptedException {
+            final Struct sourceValue = source.lastOffsetStruct(
+                replicaSetName, id, object.get(ConnectorType.MONGODB.getPrimaryKeyName()).toString(),
+                expectedNumDocs, index, isLastRecord);
             final Map<String, ?> offset = source.lastOffset(replicaSetName);
             String objId = objectIdLiteralFrom(object);
             return createRecords(sourceValue, offset, Operation.READ, objId, object, timestamp);
