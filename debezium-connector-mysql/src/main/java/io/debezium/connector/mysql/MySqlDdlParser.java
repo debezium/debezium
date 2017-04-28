@@ -1254,11 +1254,12 @@ public class MySqlDdlParser extends DdlParser {
     protected void parseDropIndex(Marker start) {
         tokens.consume("INDEX");
         String indexName = tokens.consume(); // index name
-        tokens.consume("ON");
-        TableId tableId = parseQualifiedTableName(start);
-        consumeRemainingStatement(start);
-        signalDropIndex(indexName, tableId, start);
-        debugParsed(start);
+        if(tokens.canConsume("ON")) {
+            TableId tableId = parseQualifiedTableName(start);
+            consumeRemainingStatement(start);
+            signalDropIndex(indexName, tableId, start);
+            debugParsed(start);
+        }
     }
 
     protected void parseDropUnknown(Marker start) {
