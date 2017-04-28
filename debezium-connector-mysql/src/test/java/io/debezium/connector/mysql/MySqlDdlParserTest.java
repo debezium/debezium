@@ -91,6 +91,21 @@ public class MySqlDdlParserTest {
     }
 
     @Test
+    public void shouldParseCreateTableStatementWithDoublePrecisionType() {
+        String ddl = "CREATE TABLE foo ( " + System.lineSeparator()
+            + " c1 DOUBLE PRECISION" + System.lineSeparator()
+            + "); " + System.lineSeparator();
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table foo = tables.forTable(new TableId(null, null, "foo"));
+        assertThat(foo).isNotNull();
+        assertThat(foo.columnNames()).containsExactly("c1");
+        assertThat(foo.primaryKeyColumnNames()).isEmpty();
+        assertColumn(foo, "c1", "DOUBLE PRECISION", Types.DOUBLE, -1, -1, true, false, false);
+    }
+
+
+    @Test
     public void shouldParseCreateTableStatementWithSingleGeneratedColumnAsPrimaryKey() {
         String ddl = "CREATE TABLE my.foo ( " + System.lineSeparator()
                 + " c1 INTEGER NOT NULL AUTO_INCREMENT, " + System.lineSeparator()
