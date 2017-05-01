@@ -104,6 +104,55 @@ public class MySqlDdlParserTest {
         assertColumn(foo, "c1", "DOUBLE PRECISION", Types.DOUBLE, -1, -1, true, false, false);
     }
 
+    @Test
+    public void testAddDropIndex() {
+        String ddl = "CREATE TABLE foo ( " + System.lineSeparator()
+            + " c1 INTEGER NOT NULL AUTO_INCREMENT, " + System.lineSeparator()
+            + " c2 VARCHAR(22) " + System.lineSeparator()
+            + "); " + System.lineSeparator();
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table foo = tables.forTable(new TableId(null, null, "foo"));
+        assertThat(foo).isNotNull();
+        assertThat(foo.columnNames()).containsExactly("c1", "c2");
+        assertThat(foo.primaryKeyColumnNames()).isEmpty();
+        assertColumn(foo, "c1", "INTEGER", Types.INTEGER, -1, -1, false, true, true);
+        assertColumn(foo, "c2", "VARCHAR", Types.VARCHAR, 22, -1, true, false, false);
+
+        String addIndexddl = "ALTER TABLE foo " + System.lineSeparator()
+            + " ADD INDEX endtime (c1) " + System.lineSeparator()
+            + "; " + System.lineSeparator();
+        parser.parse(addIndexddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        foo = tables.forTable(new TableId(null, null, "foo"));
+        assertThat(foo).isNotNull();
+        assertThat(foo.columnNames()).containsExactly("c1", "c2");
+        assertThat(foo.primaryKeyColumnNames()).isEmpty();
+        assertColumn(foo, "c1", "INTEGER", Types.INTEGER, -1, -1, false, true, true);
+        assertColumn(foo, "c2", "VARCHAR", Types.VARCHAR, 22, -1, true, false, false);
+
+        String dropIndexddl = "ALTER TABLE foo " + System.lineSeparator()
+            + " DROP INDEX `endtime`" + System.lineSeparator()
+            + "; " + System.lineSeparator();
+        parser.parse(dropIndexddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        foo = tables.forTable(new TableId(null, null, "foo"));
+        assertThat(foo).isNotNull();
+        assertThat(foo.columnNames()).containsExactly("c1","c2");
+        assertThat(foo.primaryKeyColumnNames()).isEmpty();
+        assertColumn(foo, "c1", "INTEGER", Types.INTEGER, -1, -1, false, true, true);
+        assertColumn(foo, "c2", "VARCHAR", Types.VARCHAR, 22, -1, true, false, false);
+    }
+
+    @Test
+    public void testDropIndex() {
+        String dropIndexddl = "ALTER TABLE foo " + System.lineSeparator()
+            + " DROP INDEX `endtime`" + System.lineSeparator()
+            + "; " + System.lineSeparator();
+        parser.parse(dropIndexddl, tables);
+        assertThat(tables.size()).isEqualTo(0);
+    }
+
 
     @Test
     public void shouldParseCreateTableStatementWithSingleGeneratedColumnAsPrimaryKey() {
