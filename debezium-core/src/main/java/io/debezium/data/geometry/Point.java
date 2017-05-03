@@ -22,8 +22,7 @@ public class Point {
     public static final String X_FIELD = "x";
     public static final String Y_FIELD = "y";
     public static final String WKB_FIELD = "wkb"; //Please see DBZ-208
-    
-    
+
     /**
      * Returns a {@link SchemaBuilder} for a Uuid field. You can use the resulting SchemaBuilder
      * to set additional schema settings such as required/optional, default value, and documentation.

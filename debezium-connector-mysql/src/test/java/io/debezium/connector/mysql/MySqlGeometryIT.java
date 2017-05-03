@@ -12,7 +12,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.nio.file.Path;
-import java.sql.SQLException;;
+import java.sql.SQLException;
 
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
