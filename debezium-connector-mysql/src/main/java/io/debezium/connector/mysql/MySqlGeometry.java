@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
-import org.apache.commons.lang3.ArrayUtils;
+import java.util.Arrays;
 
 import mil.nga.wkb.geom.Point;
 import mil.nga.wkb.io.ByteReader;
@@ -38,7 +38,7 @@ public class MySqlGeometry {
      * @return a {@link MySqlGeometry} which represents a MySqlGeometry API
      */
     public static MySqlGeometry fromBytes(final byte[] mysqlBytes) {
-        return new MySqlGeometry(convertToWkb(mysqlBytes, 4));
+        return new MySqlGeometry(convertToWkb(mysqlBytes));
     }
 
     /**
@@ -60,20 +60,14 @@ public class MySqlGeometry {
     }
 
     /**
-     * Since MySQL appends 4 bytes as type prefix, we shrink the byte array 4 times in order to have a valid WKB
+     * Since MySQL prepends 4 bytes as type prefix, we remove those bytes in order to have a valid WKB
      * representation
      *
      * @param source      the original byte array from MySQL binglog event
-     * @param numOfShifts the number of times we shall shrink the array
      *
      * @return a {@link byte[]} which represents the standard well-known binary
      */
-    private static byte[] convertToWkb(byte[] source, int numOfShifts) {
-        if (numOfShifts > 0) {
-            int shiftedIndex = numOfShifts - 1;
-            return convertToWkb(ArrayUtils.remove(source, shiftedIndex), shiftedIndex);
-        } else {
-            return source;
-        }
+    private static byte[] convertToWkb(byte[] source) {
+        return Arrays.copyOfRange(source, 4, source.length);
     }
 }

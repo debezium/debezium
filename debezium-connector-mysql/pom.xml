@@ -21,6 +21,10 @@
             <artifactId>mysql-binlog-connector-java</artifactId>
         </dependency>
         <dependency>
+            <groupId>mil.nga</groupId>
+            <artifactId>wkb</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>connect-api</artifactId>
         </dependency>
