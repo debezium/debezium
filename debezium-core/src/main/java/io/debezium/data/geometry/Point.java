@@ -55,7 +55,7 @@ public class Point {
      * @param pointSchema a {@link Schema} instance which represents a point; may not be null
      * @param x the X coordinate of the point; may not be null
      * @param y the Y coordinate of the point; may not be null
-     * @return a {@link Struct} which represents a Connect value for this schema; never 
+     * @return a {@link Struct} which represents a Connect value for this schema; never null
      */
     public static Struct createValue(Schema pointSchema, double x, double y) {
         Struct result = new Struct(pointSchema);
@@ -68,7 +68,7 @@ public class Point {
      * @param x the X coordinate of the point; may not be null
      * @param y the Y coordinate of the point; may not be null
      * @param wkb the original Well-Known binary representation of the coordinate
-     * @return a {@link Struct} which represents a Connect value for this schema; never
+     * @return a {@link Struct} which represents a Connect value for this schema; never null
      */
     public static Struct createValue(Schema pointSchema, double x, double y, byte[] wkb){
         Struct results = createValue(pointSchema, x, y);
