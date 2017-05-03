@@ -27,7 +27,6 @@ import static org.fest.assertions.Assertions.assertThat;
 
 /**
  * @author oalsafi
- * @since 18.04.17.
  */
 public class MySqlGeometryIT extends AbstractConnectorTest {
 
@@ -147,7 +146,6 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
         assertThat(records.recordsForTopic("geometryit").size()).isEqualTo(numDdlRecords + numSetVariables);
         assertThat(records.recordsForTopic("geometryit.geometry_test.dbz_222_point").size()).isEqualTo(3);
         assertThat(records.topics().size()).isEqualTo(numTables + 1);
-        assertThat(records.databaseNames().size()).isEqualTo(2);
         assertThat(records.databaseNames()).containsOnly("geometry_test", "");
         assertThat(records.ddlRecordsForDatabase("geometry_test").size()).isEqualTo(numDdlRecords);
         assertThat(records.ddlRecordsForDatabase("regression_test")).isNull();

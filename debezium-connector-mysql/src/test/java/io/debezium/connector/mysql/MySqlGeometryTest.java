@@ -13,7 +13,6 @@ import static org.junit.Assert.assertEquals;
 
 /**
  * @author oalsafi
- * @since 13.04.17.
  */
 public class MySqlGeometryTest {
 
