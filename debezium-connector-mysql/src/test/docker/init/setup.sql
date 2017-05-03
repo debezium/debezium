@@ -177,7 +177,7 @@ VALUES (default, '2016-01-16', 1001, 1, 102),
 -- ----------------------------------------------------------------------------------------------------------------
 -- DATABASE:  regression_test
 -- ----------------------------------------------------------------------------------------------------------------
--- The integration test for this database expects to scans all of the binlog events associated with this database
+-- The integration test for this database expects to scan all of the binlog events associated with this database
 -- without error or problems. The integration test does not modify any records in this database, so this script
 -- must contain all operations to these tables.
 CREATE DATABASE regression_test;
@@ -315,7 +315,7 @@ INSERT INTO dbz_195_numvalues VALUES (default,2147483647);
 -- ----------------------------------------------------------------------------------------------------------------
 -- DATABASE:  json_test
 -- ----------------------------------------------------------------------------------------------------------------
--- The integration test for this database expects to scans all of the binlog events associated with this database
+-- The integration test for this database expects to scan all of the binlog events associated with this database
 -- without error or problems. The integration test does not modify any records in this database, so this script
 -- must contain all operations to these tables.
 --
@@ -459,7 +459,7 @@ INSERT INTO dbz_126_jsontable VALUES (default,CAST(x'cafebabe' AS JSON), -- BLOB
 -- ----------------------------------------------------------------------------------------------------------------
 -- DATABASE:  geometry_test
 -- ----------------------------------------------------------------------------------------------------------------
--- The integration test for this database expects to scans all of the binlog events associated with this database
+-- The integration test for this database expects to scan all of the binlog events associated with this database
 -- without error or problems. The integration test does not modify any records in this database, so this script
 -- must contain all operations to these tables.
 --
