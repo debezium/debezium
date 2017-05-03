@@ -125,6 +125,7 @@ public class MySqlDdlParser extends DdlParser {
         dataTypes.register(Types.CHAR, "ENUM(...)");
         dataTypes.register(Types.CHAR, "SET(...)");
         dataTypes.register(Types.OTHER, "JSON");
+        dataTypes.register(Types.OTHER, "POINT");
     }
 
     @Override

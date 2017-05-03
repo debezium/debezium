@@ -231,7 +231,7 @@
                 <version>${version.com.google.protobuf}</version>
             </dependency> 
 
-            <!-- MySQL JDBC Driver and Binlog reader -->
+            <!-- MySQL JDBC Driver, Binlog reader, Geometry support -->
             <dependency>
                 <groupId>mysql</groupId>
                 <artifactId>mysql-connector-java</artifactId>
@@ -241,6 +241,11 @@
                 <groupId>com.github.shyiko</groupId>
                 <artifactId>mysql-binlog-connector-java</artifactId>
                 <version>${version.mysql.binlog}</version>
+            </dependency>
+            <dependency>
+                <groupId>mil.nga</groupId>
+                <artifactId>wkb</artifactId>
+                <version>1.0.2</version>
             </dependency>
 
             <!-- MongoDB Java driver -->
@@ -269,7 +274,7 @@
                 <scope>test</scope>
             </dependency>
 
-            <!-- Test depedencies -->
+            <!-- Test dependencies -->
             <dependency>
                 <groupId>junit</groupId>
                 <artifactId>junit</artifactId>
@@ -337,6 +342,7 @@
                 <scope>test</scope>
                 <type>test-jar</type>
             </dependency>
+
         </dependencies>
     </dependencyManagement>
     <dependencies>
@@ -381,13 +387,13 @@
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-surefire-report-plugin</artifactId>
-                    <version>${version.surefire.plugin}</version>
+                    <artifactId>maven-checkstyle-plugin</artifactId>
+                    <version>${version.checkstyle.plugin}</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-checkstyle-plugin</artifactId>
-                    <version>${version.checkstyle.plugin}</version>
+                    <artifactId>maven-surefire-report-plugin</artifactId>
+                    <version>${version.surefire.plugin}</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -591,13 +597,13 @@
                     <includeTestSourceDirectory>true</includeTestSourceDirectory>
                 </configuration>
                 <executions>
-                   <execution>
-                      <id>check-style</id>
-                      <phase>verify</phase>
-                      <goals>
-                         <goal>checkstyle</goal>
-                      </goals>
-                   </execution>
+                    <execution>
+                        <id>check-style</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>checkstyle</goal>
+                        </goals>
+                    </execution>
                 </executions>
             </plugin>
         </plugins>

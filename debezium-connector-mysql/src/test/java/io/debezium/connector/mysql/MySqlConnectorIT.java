@@ -236,7 +236,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         List<Object> dbNames = dbNameRecommender.validValues(MySqlConnectorConfig.DATABASE_WHITELIST, config);
         Testing.debug("List of dbNames: " + dbNames);
         assertThat(dbNames).containsOnly("connector_test", "readbinlog_test", "regression_test", "json_test",
-                                         "connector_test_ro", "emptydb");
+                                         "connector_test_ro", "emptydb", "geometry_test");
 
         Recommender tableNameRecommender = MySqlConnectorConfig.TABLE_WHITELIST.recommender();
         List<Object> tableNames = tableNameRecommender.validValues(MySqlConnectorConfig.TABLE_WHITELIST, config);
@@ -262,7 +262,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                                             "regression_test.dbz_104_customers",
                                             "regression_test.dbz_147_decimalvalues",
                                             "regression_test.dbz_195_numvalues",
-                                            "json_test.dbz_126_jsontable");
+                                            "json_test.dbz_126_jsontable",
+                                            "geometry_test.dbz_222_point");
 
         // Now set the whitelist to two databases ...
         Configuration config2 = config.edit()
