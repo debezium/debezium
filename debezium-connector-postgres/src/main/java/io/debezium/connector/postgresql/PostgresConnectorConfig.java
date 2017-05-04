@@ -20,6 +20,7 @@ import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.common.config.ConfigValue;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.Configuration.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.Recommender;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
@@ -156,14 +157,15 @@ public class PostgresConnectorConfig {
     /**
      * The set of predefined SecureConnectionMode options or aliases.
      */
-    public enum SecureConnectionMode {
+    public enum SecureConnectionMode implements EnumeratedValue {
+
         /**
          * Establish an unencrypted connection
          *
          * see the {@code sslmode} Postgres JDBC driver option
          */
         DISABLED("disable"),
-        
+
         /**
          * Establish a secure connection if the server supports secure connections. 
          * The connection attempt fails if a secure connection cannot be established 
@@ -171,7 +173,7 @@ public class PostgresConnectorConfig {
          * see the {@code sslmode} Postgres JDBC driver option
          */
         REQUIRED("require"),
-        
+
         /**
          * Like REQUIRED, but additionally verify the server TLS certificate against the configured Certificate Authority
          * (CA) certificates. The connection attempt fails if no valid matching CA certificates are found.
@@ -179,7 +181,7 @@ public class PostgresConnectorConfig {
          * see the {@code sslmode} Postgres JDBC driver option
          */
         VERIFY_CA("verify_ca"),
-        
+
         /**
          * Like VERIFY_CA, but additionally verify that the server certificate matches the host to which the connection is
          * attempted.
@@ -187,7 +189,7 @@ public class PostgresConnectorConfig {
          * see the {@code sslmode} Postgres JDBC driver option
          */
         VERIFY_FULL("verify_full");
-        
+
         private final String value;
 
         SecureConnectionMode(String value) {
