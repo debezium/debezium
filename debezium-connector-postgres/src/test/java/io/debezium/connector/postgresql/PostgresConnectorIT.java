@@ -151,7 +151,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         // the default docker image we're testing against doesn't use SSL, so check that the connector fails to start when
         // SSL is enabled
         Configuration config = TestHelper.defaultConfig().with(PostgresConnectorConfig.SSL_MODE,  
-                                                               PostgresConnectorConfig.SecureConnectionMode.REQUIRED).build();
+                                                               PostgresConnectorConfig.SecureConnectionMode.REQUIRE).build();
         start(PostgresConnector.class, config, (success, msg, error) -> {
             // we expect the task to fail at startup when we're printing the server info
             assertThat(success).isFalse();

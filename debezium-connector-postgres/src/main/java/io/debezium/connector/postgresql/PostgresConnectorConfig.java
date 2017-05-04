@@ -20,6 +20,7 @@ import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.common.config.ConfigValue;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.Configuration.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.Recommender;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
@@ -156,7 +157,7 @@ public class PostgresConnectorConfig {
     /**
      * The set of predefined SecureConnectionMode options or aliases.
      */
-    public enum SecureConnectionMode {
+    public enum SecureConnectionMode implements EnumeratedValue {
         /**
          * Establish an unencrypted connection
          *
@@ -170,7 +171,7 @@ public class PostgresConnectorConfig {
          * 
          * see the {@code sslmode} Postgres JDBC driver option
          */
-        REQUIRED("require"),
+        REQUIRE("require"),
         
         /**
          * Like REQUIRED, but additionally verify the server TLS certificate against the configured Certificate Authority
