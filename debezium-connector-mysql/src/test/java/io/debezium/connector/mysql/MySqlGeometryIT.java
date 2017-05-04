@@ -26,7 +26,7 @@ import mil.nga.wkb.io.WkbGeometryReader;
 import static org.fest.assertions.Assertions.assertThat;
 
 /**
- * @author oalsafi
+ * @author Omar Al-Safi
  */
 public class MySqlGeometryIT extends AbstractConnectorTest {
 

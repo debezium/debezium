@@ -14,7 +14,7 @@ import org.apache.kafka.connect.data.Struct;
  * A semantic type for a geometric Point, defined as a set of (x,y) coordinates.
  * 
  * @author Horia Chiorean
- * @author oalsafi
+ * @author Omar Al-Safi
  */
 public class Point {
 
@@ -48,7 +48,7 @@ public class Point {
     public static Schema schema() {
         return builder().build();
     }
-    
+
     /**
      * Creates a value for this schema using 2 given coordinates.
      * 

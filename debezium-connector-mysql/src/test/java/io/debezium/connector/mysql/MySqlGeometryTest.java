@@ -12,7 +12,7 @@ import mil.nga.wkb.geom.Point;
 import static org.junit.Assert.assertEquals;
 
 /**
- * @author oalsafi
+ * @author Omar Al-Safi
  */
 public class MySqlGeometryTest {
 

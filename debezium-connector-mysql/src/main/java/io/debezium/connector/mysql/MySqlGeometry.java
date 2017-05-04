@@ -14,8 +14,7 @@ import mil.nga.wkb.io.WkbGeometryReader;
 /**
  * A parser API for MySQL Geometry types, it uses geopackage-wkb-java as a base for parsing Well-Known Binary
  *
- * @author oalsafi
- * @since 05.04.17.
+ * @author Omar Al-Safi
  */
 public class MySqlGeometry {
 
