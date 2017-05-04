@@ -94,6 +94,17 @@ public interface Configuration {
          * @param value the value
          * @return this builder object so methods can be chained together; never null
          */
+        default B with(String key, EnumeratedValue value) {
+            return with(key, value != null ? value.getValue() : null);
+        }
+
+        /**
+         * Associate the given value with the specified key.
+         * 
+         * @param key the key
+         * @param value the value
+         * @return this builder object so methods can be chained together; never null
+         */
         default B with(String key, int value) {
             return with(key, Integer.toString(value));
         }
@@ -171,6 +182,17 @@ public interface Configuration {
          */
         default B withDefault(String key, Object value) {
             return withDefault(key, value != null ? value.toString() : null);
+        }
+
+        /**
+         * If there is no field with the specified key, then associate the given value with the specified key.
+         * 
+         * @param key the key
+         * @param value the value
+         * @return this builder object so methods can be chained together; never null
+         */
+        default B withDefault(String key, EnumeratedValue value) {
+            return withDefault(key, value != null ? value.getValue() : null);
         }
 
         /**
@@ -2007,4 +2029,7 @@ public interface Configuration {
         this.asMap().forEach(function);
     }
 
+    public interface EnumeratedValue {
+        abstract String getValue();
+    }
 }
