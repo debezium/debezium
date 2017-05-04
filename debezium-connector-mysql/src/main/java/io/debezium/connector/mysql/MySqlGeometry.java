@@ -31,9 +31,9 @@ public class MySqlGeometry {
     }
 
     /**
-     * Create a MySqlGeometry from the original byte array from MySQL binglog event
+     * Create a MySqlGeometry from the original byte array from MySQL binlog event
      *
-     * @param mysqlBytes he original byte array from MySQL binglog event
+     * @param mysqlBytes he original byte array from MySQL binlog event
      *
      * @return a {@link MySqlGeometry} which represents a MySqlGeometry API
      */
@@ -63,7 +63,7 @@ public class MySqlGeometry {
      * Since MySQL prepends 4 bytes as type prefix, we remove those bytes in order to have a valid WKB
      * representation
      *
-     * @param source      the original byte array from MySQL binglog event
+     * @param source      the original byte array from MySQL binlog event
      *
      * @return a {@link byte[]} which represents the standard well-known binary
      */

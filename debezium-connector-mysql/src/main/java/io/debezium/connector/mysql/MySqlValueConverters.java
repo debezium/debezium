@@ -474,7 +474,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
         Schema schema = fieldDefn.schema();
 
         if (data instanceof byte[]) {
-            // The binglog utility sends a byte array for any Geometry type, we will use our own binaryParse to parse the byte to WKB, hence
+            // The binlog utility sends a byte array for any Geometry type, we will use our own binaryParse to parse the byte to WKB, hence
             // to the suitable class
             try {
                 MySqlGeometry mySqlGeometry = MySqlGeometry.fromBytes((byte[]) data);
