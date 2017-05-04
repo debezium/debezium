@@ -49,7 +49,7 @@ will start the default PostgreSQL container and run the database server. Now you
 
 * `database.dbname` - the name of the database that your integration test will use; default is `postgres`
 * `database.hostname` - the IP address or name of the host where the Docker container is running; defaults to `localhost` which is likely for Linux, but on OS X and Windows Docker it will have to be set to the IP address of the VM that runs Docker (which you can find by looking at the `DOCKER_HOST` environment variable).
-* `database.port` - the port on which PostgreSQL is listening; defaults to `4532` and is what this module's Docker container uses
+* `database.port` - the port on which PostgreSQL is listening; defaults to `5432` and is what this module's Docker container uses
 * `database.user` - the name of the database user; defaults to `postgres` and is correct unless your database script uses something different
 * `database.password` - the password of the database user; defaults to `postgres` and is correct unless your database script uses something different
 
