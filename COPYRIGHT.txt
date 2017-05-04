@@ -1,9 +1,9 @@
-Stanley Shyiko
-Barry LaFond
 Akshath Patkar
+Barry LaFond
 Chris Riccomini
 Christian Posta
 David Chen
+David Leibovic
 Dennis Persson
 Gunnar Morling
 Horia Chiorean
@@ -14,5 +14,5 @@ Ramesh Reddy
 Randall Hauch
 Sanne Grinovero
 Sherafudheen PM
+Stanley Shyiko
 Willie Cheong
-David Leibovic
