@@ -162,7 +162,7 @@ public class PostgresConnectorConfig {
          *
          * see the {@code sslmode} Postgres JDBC driver option
          */
-        DISABLED("disable"),
+        DISABLE("disable"),
         
         /**
          * Establish a secure connection if the server supports secure connections. 
@@ -170,7 +170,7 @@ public class PostgresConnectorConfig {
          * 
          * see the {@code sslmode} Postgres JDBC driver option
          */
-        REQUIRED("require"),
+        REQUIRE("require"),
         
         /**
          * Like REQUIRED, but additionally verify the server TLS certificate against the configured Certificate Authority
@@ -400,7 +400,7 @@ public class PostgresConnectorConfig {
     
     public static final Field SSL_MODE = Field.create(DATABASE_CONFIG_PREFIX + "sslmode")
                                               .withDisplayName("SSL mode")
-                                              .withEnum(SecureConnectionMode.class, SecureConnectionMode.DISABLED)
+                                              .withEnum(SecureConnectionMode.class, SecureConnectionMode.DISABLE)
                                               .withWidth(Width.MEDIUM)
                                               .withImportance(Importance.MEDIUM)
                                               .withDescription("Whether to use an encrypted connection to Postgres. Options include"
