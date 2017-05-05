@@ -2028,8 +2028,4 @@ public interface Configuration {
     default <T> void forEach(BiConsumer<String, String> function) {
         this.asMap().forEach(function);
     }
-
-    public interface EnumeratedValue {
-        abstract String getValue();
-    }
 }
