@@ -162,7 +162,7 @@ public class PostgresConnectorConfig {
          *
          * see the {@code sslmode} Postgres JDBC driver option
          */
-        DISABLED("disable"),
+        DISABLE("disable"),
         
         /**
          * Establish a secure connection if the server supports secure connections. 
@@ -170,7 +170,7 @@ public class PostgresConnectorConfig {
          * 
          * see the {@code sslmode} Postgres JDBC driver option
          */
-        REQUIRED("require"),
+        REQUIRE("require"),
         
         /**
          * Like REQUIRED, but additionally verify the server TLS certificate against the configured Certificate Authority
@@ -400,7 +400,7 @@ public class PostgresConnectorConfig {
     
     public static final Field SSL_MODE = Field.create(DATABASE_CONFIG_PREFIX + "sslmode")
                                               .withDisplayName("SSL mode")
-                                              .withEnum(SecureConnectionMode.class, SecureConnectionMode.DISABLED)
+                                              .withEnum(SecureConnectionMode.class, SecureConnectionMode.DISABLE)
                                               .withWidth(Width.MEDIUM)
                                               .withImportance(Importance.MEDIUM)
                                               .withDescription("Whether to use an encrypted connection to Postgres. Options include"
@@ -438,6 +438,12 @@ public class PostgresConnectorConfig {
                                                    .withImportance(Importance.MEDIUM)
                                                    .withDescription("File containing the root certificate(s) against which the server is validated. See the Postgres JDBC SSL docs for further information");
     
+    public static final Field SSL_SOCKET_FACTORY = Field.create(DATABASE_CONFIG_PREFIX + "sslfactory")
+                                                        .withDisplayName("SSL Root Certificate")
+                                                        .withType(Type.STRING)
+                                                        .withWidth(Width.LONG)
+                                                        .withImportance(Importance.MEDIUM)
+                                                        .withDescription("A name of class to that creates SSL Sockets. Use org.postgresql.ssl.NonValidatingFactory to disable SSL validation in development environments");
     
     /**
      * A comma-separated list of regular expressions that match schema names to be monitored.
@@ -558,7 +564,7 @@ public class PostgresConnectorConfig {
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE, 
                                                      TIME_PRECISION_MODE,
                                                      SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD,
-                                                     SSL_ROOT_CERT, SSL_CLIENT_KEY, SNAPSHOT_LOCK_TIMEOUT_MS, ROWS_FETCH_SIZE);
+                                                     SSL_ROOT_CERT, SSL_CLIENT_KEY, SNAPSHOT_LOCK_TIMEOUT_MS, ROWS_FETCH_SIZE, SSL_SOCKET_FACTORY);
     
     private final Configuration config;
     private final String serverName;
@@ -683,7 +689,7 @@ public class PostgresConnectorConfig {
         ConfigDef config = new ConfigDef();
         Field.group(config, "Postgres", SLOT_NAME, PLUGIN_NAME, SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
                     USER, PASSWORD, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD, SSL_ROOT_CERT, SSL_CLIENT_KEY,
-                    DROP_SLOT_ON_STOP);
+                    DROP_SLOT_ON_STOP, SSL_SOCKET_FACTORY);
         Field.group(config, "Events", SCHEMA_WHITELIST, SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST, 
                     COLUMN_BLACKLIST);
         Field.group(config, "Connector", TOPIC_SELECTION_STRATEGY, POLL_INTERVAL_MS, MAX_BATCH_SIZE, MAX_QUEUE_SIZE, 

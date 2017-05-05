@@ -128,7 +128,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         validateField(validatedConfig, PostgresConnectorConfig.ROWS_FETCH_SIZE, PostgresConnectorConfig.DEFAULT_ROWS_FETCH_SIZE);
         validateField(validatedConfig, PostgresConnectorConfig.POLL_INTERVAL_MS, PostgresConnectorConfig.DEFAULT_POLL_INTERVAL_MILLIS);
         validateField(validatedConfig, PostgresConnectorConfig.SSL_MODE, 
-                      PostgresConnectorConfig.SecureConnectionMode.DISABLED.name().toLowerCase());
+                      PostgresConnectorConfig.SecureConnectionMode.DISABLE.name().toLowerCase());
         validateField(validatedConfig, PostgresConnectorConfig.SSL_CLIENT_CERT, null);
         validateField(validatedConfig, PostgresConnectorConfig.SSL_CLIENT_KEY, null);
         validateField(validatedConfig, PostgresConnectorConfig.SSL_CLIENT_KEY_PASSWORD, null);
@@ -144,21 +144,22 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                       PostgresConnectorConfig.DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS);
         validateField(validatedConfig, PostgresConnectorConfig.TIME_PRECISION_MODE, 
                       PostgresConnectorConfig.TemporalPrecisionMode.ADAPTIVE.name().toLowerCase());
-    }
+        validateField(validatedConfig, PostgresConnectorConfig.SSL_SOCKET_FACTORY, null);
+   }
     
     @Test
     public void shouldSupportSSLParameters() throws Exception {
         // the default docker image we're testing against doesn't use SSL, so check that the connector fails to start when
         // SSL is enabled
         Configuration config = TestHelper.defaultConfig().with(PostgresConnectorConfig.SSL_MODE,  
-                                                               PostgresConnectorConfig.SecureConnectionMode.REQUIRED).build();
+                                                               PostgresConnectorConfig.SecureConnectionMode.REQUIRE.getValue()).build();
         start(PostgresConnector.class, config, (success, msg, error) -> {
             // we expect the task to fail at startup when we're printing the server info
             assertThat(success).isFalse();
             assertThat(error).isInstanceOf(ConnectException.class);
             Throwable cause = error.getCause();
             assertThat(cause).isInstanceOf(SQLException.class);
-            assertThat(PSQLState.CONNECTION_UNABLE_TO_CONNECT).isEqualTo(new PSQLState(((SQLException)cause).getSQLState()));
+            assertThat(PSQLState.CONNECTION_REJECTED).isEqualTo(new PSQLState(((SQLException)cause).getSQLState()));
         });
         assertConnectorNotRunning();
     }
