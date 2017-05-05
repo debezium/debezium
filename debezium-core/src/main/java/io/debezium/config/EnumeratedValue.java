@@ -8,7 +8,7 @@ package io.debezium.config;
 /**
  * A configuration option with a fixed set of possible values, i.e. an enum. To be implemented by any enum
  * types used with {@link ConfigBuilder}.
- * 
+ *
  * @author Brendan Maguire
  */
 public interface EnumeratedValue {

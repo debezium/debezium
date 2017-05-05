@@ -52,7 +52,7 @@ import io.debezium.util.Strings;
  * individual property values to numeric, boolean and String types, optionally using a default value if the given property value
  * does not exist. However, it is {@link Immutable immutable}, so it does not have any methods to set property values, allowing
  * it to be passed around and reused without concern that other components might change the underlying property values.
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable
@@ -62,14 +62,14 @@ public interface Configuration {
 
     /**
      * The basic interface for configuration builders.
-     * 
+     *
      * @param <C> the type of configuration
      * @param <B> the type of builder
      */
     public static interface ConfigBuilder<C extends Configuration, B extends ConfigBuilder<C, B>> {
         /**
          * Associate the given value with the specified key.
-         * 
+         *
          * @param key the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -78,7 +78,7 @@ public interface Configuration {
 
         /**
          * Associate the given value with the specified key.
-         * 
+         *
          * @param key the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -89,7 +89,7 @@ public interface Configuration {
 
         /**
          * Associate the given value with the specified key.
-         * 
+         *
          * @param key the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -100,7 +100,7 @@ public interface Configuration {
 
         /**
          * Associate the given value with the specified key.
-         * 
+         *
          * @param key the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -111,7 +111,7 @@ public interface Configuration {
 
         /**
          * Associate the given value with the specified key.
-         * 
+         *
          * @param key the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -122,7 +122,7 @@ public interface Configuration {
 
         /**
          * Associate the given value with the specified key.
-         * 
+         *
          * @param key the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -133,7 +133,7 @@ public interface Configuration {
 
         /**
          * Associate the given value with the specified key.
-         * 
+         *
          * @param key the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -144,7 +144,7 @@ public interface Configuration {
 
         /**
          * Associate the given value with the specified key.
-         * 
+         *
          * @param key the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -155,7 +155,7 @@ public interface Configuration {
 
         /**
          * Associate the given class name value with the specified key.
-         * 
+         *
          * @param key the key
          * @param value the Class value
          * @return this builder object so methods can be chained together; never null
@@ -166,7 +166,7 @@ public interface Configuration {
 
         /**
          * If there is no field with the specified key, then associate the given value with the specified key.
-         * 
+         *
          * @param key the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -175,7 +175,7 @@ public interface Configuration {
 
         /**
          * If there is no field with the specified key, then associate the given value with the specified key.
-         * 
+         *
          * @param key the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -186,7 +186,7 @@ public interface Configuration {
 
         /**
          * If there is no field with the specified key, then associate the given value with the specified key.
-         * 
+         *
          * @param key the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -197,7 +197,7 @@ public interface Configuration {
 
         /**
          * If there is no field with the specified key, then associate the given value with the specified key.
-         * 
+         *
          * @param key the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -208,7 +208,7 @@ public interface Configuration {
 
         /**
          * If there is no field with the specified key, then associate the given value with the specified key.
-         * 
+         *
          * @param key the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -219,7 +219,7 @@ public interface Configuration {
 
         /**
          * If there is no field with the specified key, then associate the given value with the specified key.
-         * 
+         *
          * @param key the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -230,7 +230,7 @@ public interface Configuration {
 
         /**
          * If there is no field with the specified key, then associate the given value with the specified key.
-         * 
+         *
          * @param key the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -241,7 +241,7 @@ public interface Configuration {
 
         /**
          * If there is no field with the specified key, then associate the given value with the specified key.
-         * 
+         *
          * @param key the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -252,7 +252,7 @@ public interface Configuration {
 
         /**
          * If there is no field with the specified key, then associate the given class name value with the specified key.
-         * 
+         *
          * @param key the key
          * @param value the Class value
          * @return this builder object so methods can be chained together; never null
@@ -263,7 +263,7 @@ public interface Configuration {
 
         /**
          * If any of the fields in the supplied Configuration object do not exist, then add them.
-         * 
+         *
          * @param other the configuration whose fields should be added; may not be null
          * @return this builder object so methods can be chained together; never null
          */
@@ -273,7 +273,7 @@ public interface Configuration {
 
         /**
          * Add all of the fields in the supplied Configuration object.
-         * 
+         *
          * @param other the configuration whose fields should be added; may not be null
          * @return this builder object so methods can be chained together; never null
          */
@@ -283,7 +283,7 @@ public interface Configuration {
 
         /**
          * Associate the given value with the key of the specified field.
-         * 
+         *
          * @param field the predefined field for the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -294,7 +294,7 @@ public interface Configuration {
 
         /**
          * Associate the given value with the key of the specified field.
-         * 
+         *
          * @param field the predefined field for the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -305,7 +305,7 @@ public interface Configuration {
 
         /**
          * Associate the given value with the key of the specified field.
-         * 
+         *
          * @param field the predefined field for the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -316,7 +316,7 @@ public interface Configuration {
 
         /**
          * Associate the given value with the key of the specified field.
-         * 
+         *
          * @param field the predefined field for the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -327,7 +327,7 @@ public interface Configuration {
 
         /**
          * Associate the given value with the key of the specified field.
-         * 
+         *
          * @param field the predefined field for the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -338,7 +338,7 @@ public interface Configuration {
 
         /**
          * Associate the given value with the key of the specified field.
-         * 
+         *
          * @param field the predefined field for the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -349,7 +349,7 @@ public interface Configuration {
 
         /**
          * Associate the given value with the key of the specified field.
-         * 
+         *
          * @param field the predefined field for the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -360,7 +360,7 @@ public interface Configuration {
 
         /**
          * Associate the given class name value with the specified field.
-         * 
+         *
          * @param field the predefined field for the key
          * @param value the Class value
          * @return this builder object so methods can be chained together; never null
@@ -371,7 +371,7 @@ public interface Configuration {
 
         /**
          * If the field does not have a value, then associate the given value with the key of the specified field.
-         * 
+         *
          * @param field the predefined field for the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -382,7 +382,7 @@ public interface Configuration {
 
         /**
          * If the field does not have a value, then associate the given value with the key of the specified field.
-         * 
+         *
          * @param field the predefined field for the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -393,7 +393,7 @@ public interface Configuration {
 
         /**
          * If the field does not have a value, then associate the given value with the key of the specified field.
-         * 
+         *
          * @param field the predefined field for the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -404,7 +404,7 @@ public interface Configuration {
 
         /**
          * If the field does not have a value, then associate the given value with the key of the specified field.
-         * 
+         *
          * @param field the predefined field for the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -415,7 +415,7 @@ public interface Configuration {
 
         /**
          * If the field does not have a value, then associate the given value with the key of the specified field.
-         * 
+         *
          * @param field the predefined field for the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -426,7 +426,7 @@ public interface Configuration {
 
         /**
          * If the field does not have a value, then associate the given value with the key of the specified field.
-         * 
+         *
          * @param field the predefined field for the key
          * @param value the value
          * @return this builder object so methods can be chained together; never null
@@ -437,7 +437,7 @@ public interface Configuration {
 
         /**
          * If the field does not have a value, then associate the given value with the key of the specified field.
-         * 
+         *
          * @param field the predefined field for the key
          * @param value the default value
          * @return this builder object so methods can be chained together; never null
@@ -448,7 +448,7 @@ public interface Configuration {
 
         /**
          * If the field does not have a value, then associate the given value with the key of the specified field.
-         * 
+         *
          * @param field the predefined field for the key
          * @param value the default value
          * @return this builder object so methods can be chained together; never null
@@ -459,7 +459,7 @@ public interface Configuration {
 
         /**
          * Apply the function to this builder.
-         * 
+         *
          * @param function the predefined field for the key
          * @return this builder object so methods can be chained together; never null
          */
@@ -467,7 +467,7 @@ public interface Configuration {
 
         /**
          * Apply the function to this builder to change a potentially existing boolean field.
-         * 
+         *
          * @param key the key
          * @param function the function that computes the new value given a possibly-existing value; may not be null
          * @return this builder object so methods can be chained together; never null
@@ -483,7 +483,7 @@ public interface Configuration {
 
         /**
          * Apply the function to this builder to change a potentially existing string field.
-         * 
+         *
          * @param key the key
          * @param function the function that computes the new value given a possibly-existing value; may not be null
          * @return this builder object so methods can be chained together; never null
@@ -492,7 +492,7 @@ public interface Configuration {
 
         /**
          * Apply the function to this builder to change a potentially existing double field.
-         * 
+         *
          * @param key the key
          * @param function the function that computes the new value given a possibly-existing value; may not be null
          * @return this builder object so methods can be chained together; never null
@@ -508,7 +508,7 @@ public interface Configuration {
 
         /**
          * Apply the function to this builder to change a potentially existing float field.
-         * 
+         *
          * @param key the key
          * @param function the function that computes the new value given a possibly-existing value; may not be null
          * @return this builder object so methods can be chained together; never null
@@ -524,7 +524,7 @@ public interface Configuration {
 
         /**
          * Apply the function to this builder to change a potentially existing long field.
-         * 
+         *
          * @param key the key
          * @param function the function that computes the new value given a possibly-existing value; may not be null
          * @return this builder object so methods can be chained together; never null
@@ -540,7 +540,7 @@ public interface Configuration {
 
         /**
          * Apply the function to this builder to change a potentially existing integer field.
-         * 
+         *
          * @param key the key
          * @param function the function that computes the new value given a possibly-existing value; may not be null
          * @return this builder object so methods can be chained together; never null
@@ -556,7 +556,7 @@ public interface Configuration {
 
         /**
          * Apply the function to this builder to change a potentially existing boolean field.
-         * 
+         *
          * @param field the predefined field for the key
          * @param function the function that computes the new value given a possibly-existing value; may not be null
          * @return this builder object so methods can be chained together; never null
@@ -571,7 +571,7 @@ public interface Configuration {
 
         /**
          * Apply the function to this builder to change a potentially existing string field.
-         * 
+         *
          * @param field the predefined field for the key
          * @param function the function that computes the new value given a possibly-existing value; may not be null
          * @return this builder object so methods can be chained together; never null
@@ -580,7 +580,7 @@ public interface Configuration {
 
         /**
          * Apply the function to this builder to change a potentially existing double field.
-         * 
+         *
          * @param field the predefined field for the key
          * @param function the function that computes the new value given a possibly-existing value; may not be null
          * @return this builder object so methods can be chained together; never null
@@ -595,7 +595,7 @@ public interface Configuration {
 
         /**
          * Apply the function to this builder to change a potentially existing float field.
-         * 
+         *
          * @param field the predefined field for the key
          * @param function the function that computes the new value given a possibly-existing value; may not be null
          * @return this builder object so methods can be chained together; never null
@@ -610,7 +610,7 @@ public interface Configuration {
 
         /**
          * Apply the function to this builder to change a potentially existing long field.
-         * 
+         *
          * @param field the predefined field for the key
          * @param function the function that computes the new value given a possibly-existing value; may not be null
          * @return this builder object so methods can be chained together; never null
@@ -625,7 +625,7 @@ public interface Configuration {
 
         /**
          * Apply the function to this builder to change a potentially existing integer field.
-         * 
+         *
          * @param field the predefined field for the key
          * @param function the function that computes the new value given a possibly-existing value; may not be null
          * @return this builder object so methods can be chained together; never null
@@ -640,7 +640,7 @@ public interface Configuration {
 
         /**
          * Build and return the immutable configuration.
-         * 
+         *
          * @return the immutable configuration; never null
          */
         C build();
@@ -704,7 +704,7 @@ public interface Configuration {
 
     /**
      * Create a new {@link Builder configuration builder}.
-     * 
+     *
      * @return the configuration builder
      */
     public static Builder create() {
@@ -713,7 +713,7 @@ public interface Configuration {
 
     /**
      * Create a new {@link Builder configuration builder} that starts with a copy of the supplied configuration.
-     * 
+     *
      * @param config the configuration to copy; may be null
      * @return the configuration builder
      */
@@ -723,7 +723,7 @@ public interface Configuration {
 
     /**
      * Create a Configuration object that is populated by system properties, per {@link #withSystemProperties(String)}.
-     * 
+     *
      * @param prefix the required prefix for the system properties; may not be null but may be empty
      * @return the configuration
      */
@@ -733,7 +733,7 @@ public interface Configuration {
 
     /**
      * Obtain an empty configuration.
-     * 
+     *
      * @return an empty configuration; never null
      */
     public static Configuration empty() {
@@ -758,7 +758,7 @@ public interface Configuration {
     /**
      * Obtain a configuration instance by copying the supplied Properties object. The supplied {@link Properties} object is
      * copied so that the resulting Configuration cannot be modified.
-     * 
+     *
      * @param properties the properties; may be null or empty
      * @return the configuration; never null
      */
@@ -786,7 +786,7 @@ public interface Configuration {
     /**
      * Obtain a configuration instance by copying the supplied map of string keys and object values. The entries within the map
      * are copied so that the resulting Configuration cannot be modified.
-     * 
+     *
      * @param properties the properties; may be null or empty
      * @return the configuration; never null
      */
@@ -803,7 +803,7 @@ public interface Configuration {
     /**
      * Obtain a configuration instance by copying the supplied map of string keys and object values. The entries within the map
      * are copied so that the resulting Configuration cannot be modified.
-     * 
+     *
      * @param properties the properties; may be null or empty
      * @param conversion the function that converts the supplied values into strings, or returns {@code null} if the value
      *            is to be excluded
@@ -832,7 +832,7 @@ public interface Configuration {
 
     /**
      * Obtain a configuration instance by loading the Properties from the supplied URL.
-     * 
+     *
      * @param url the URL to the stream containing the configuration properties; may not be null
      * @return the configuration; never null
      * @throws IOException if there is an error reading the stream
@@ -845,7 +845,7 @@ public interface Configuration {
 
     /**
      * Obtain a configuration instance by loading the Properties from the supplied file.
-     * 
+     *
      * @param file the file containing the configuration properties; may not be null
      * @return the configuration; never null
      * @throws IOException if there is an error reading the stream
@@ -858,7 +858,7 @@ public interface Configuration {
 
     /**
      * Obtain a configuration instance by loading the Properties from the supplied stream.
-     * 
+     *
      * @param stream the stream containing the properties; may not be null
      * @return the configuration; never null
      * @throws IOException if there is an error reading the stream
@@ -875,7 +875,7 @@ public interface Configuration {
 
     /**
      * Obtain a configuration instance by loading the Properties from the supplied reader.
-     * 
+     *
      * @param reader the reader containing the properties; may not be null
      * @return the configuration; never null
      * @throws IOException if there is an error reading the stream
@@ -893,7 +893,7 @@ public interface Configuration {
     /**
      * Obtain a configuration instance by loading the Properties from a file on the file system or classpath given by the supplied
      * path.
-     * 
+     *
      * @param path the path to the file containing the configuration properties; may not be null
      * @param clazz the class whose classpath is to be used to find the file; may be null
      * @return the configuration; never null but possibly empty
@@ -906,7 +906,7 @@ public interface Configuration {
     /**
      * Obtain a configuration instance by loading the Properties from a file on the file system or classpath given by the supplied
      * path.
-     * 
+     *
      * @param path the path to the file containing the configuration properties; may not be null
      * @param classLoader the class loader to use; may be null
      * @return the configuration; never null but possibly empty
@@ -920,7 +920,7 @@ public interface Configuration {
     /**
      * Obtain a configuration instance by loading the Properties from a file on the file system or classpath given by the supplied
      * path.
-     * 
+     *
      * @param path the path to the file containing the configuration properties; may not be null
      * @param classLoader the class loader to use; may be null
      * @param logger the function that will be called with status updates; may be null
@@ -939,7 +939,7 @@ public interface Configuration {
 
     /**
      * Obtain an editor for a copy of this configuration.
-     * 
+     *
      * @return a builder that is populated with this configuration's key-value pairs; never null
      */
     default Builder edit() {
@@ -948,7 +948,7 @@ public interface Configuration {
 
     /**
      * Determine whether this configuration contains a key-value pair with the given key and the value is non-null
-     * 
+     *
      * @param key the key
      * @return true if the configuration contains the key, or false otherwise
      */
@@ -958,14 +958,14 @@ public interface Configuration {
 
     /**
      * Get the set of keys in this configuration.
-     * 
+     *
      * @return the set of keys; never null but possibly empty
      */
     public Set<String> keys();
 
     /**
      * Get the string value associated with the given key.
-     * 
+     *
      * @param key the key for the configuration property
      * @return the value, or null if the key is null or there is no such key-value pair in the configuration
      */
@@ -973,7 +973,7 @@ public interface Configuration {
 
     /**
      * Get the string value associated with the given key, returning the default value if there is no such key-value pair.
-     * 
+     *
      * @param key the key for the configuration property
      * @param defaultValue the value that should be returned by default if there is no such key-value pair in the configuration;
      *            may be null
@@ -985,7 +985,7 @@ public interface Configuration {
 
     /**
      * Get the string value associated with the given key, returning the default value if there is no such key-value pair.
-     * 
+     *
      * @param key the key for the configuration property
      * @param defaultValueSupplier the supplier of value that should be returned by default if there is no such key-value pair in
      *            the configuration; may be null and may return null
@@ -999,7 +999,7 @@ public interface Configuration {
     /**
      * Get the string value associated with the given field, returning the field's default value if there is no such key-value
      * pair in this configuration.
-     * 
+     *
      * @param field the field; may not be null
      * @return the configuration's value for the field, or the field's {@link Field#defaultValue() default value} if there is no
      *         such key-value pair in the configuration
@@ -1011,7 +1011,7 @@ public interface Configuration {
     /**
      * Get the string value associated with the given field, returning the field's default value if there is no such key-value
      * pair in this configuration.
-     * 
+     *
      * @param field the field; may not be null
      * @param defaultValue the default value
      * @return the configuration's value for the field, or the field's {@link Field#defaultValue() default value} if there is no
@@ -1027,7 +1027,7 @@ public interface Configuration {
     /**
      * Get the string value(s) associated with the given key, where the supplied regular expression is used to parse the single
      * string value into multiple values.
-     * 
+     *
      * @param field the field; may not be null
      * @param regex the delimiting regular expression
      * @return the list of string values; null only if there is no such key-value pair in the configuration
@@ -1040,7 +1040,7 @@ public interface Configuration {
     /**
      * Get the string value(s) associated with the given key, where the supplied regular expression is used to parse the single
      * string value into multiple values.
-     * 
+     *
      * @param key the key for the configuration property
      * @param regex the delimiting regular expression
      * @return the list of string values; null only if there is no such key-value pair in the configuration
@@ -1054,7 +1054,7 @@ public interface Configuration {
 
     /**
      * Get the integer value associated with the given key.
-     * 
+     *
      * @param key the key for the configuration property
      * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration, or the value
      *         could not be parsed as an integer
@@ -1065,7 +1065,7 @@ public interface Configuration {
 
     /**
      * Get the long value associated with the given key.
-     * 
+     *
      * @param key the key for the configuration property
      * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration, or the value
      *         could not be parsed as an integer
@@ -1076,7 +1076,7 @@ public interface Configuration {
 
     /**
      * Get the boolean value associated with the given key.
-     * 
+     *
      * @param key the key for the configuration property
      * @return the boolean value, or null if the key is null, there is no such key-value pair in the configuration, or the value
      *         could not be parsed as a boolean value
@@ -1088,7 +1088,7 @@ public interface Configuration {
     /**
      * Get the integer value associated with the given key, returning the default value if there is no such key-value pair or
      * if the value could not be {@link Integer#parseInt(String) parsed} as an integer.
-     * 
+     *
      * @param key the key for the configuration property
      * @param defaultValue the default value
      * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration, or the value
@@ -1101,7 +1101,7 @@ public interface Configuration {
     /**
      * Get the long value associated with the given key, returning the default value if there is no such key-value pair or
      * if the value could not be {@link Long#parseLong(String) parsed} as a long.
-     * 
+     *
      * @param key the key for the configuration property
      * @param defaultValue the default value
      * @return the long value, or null if the key is null, there is no such key-value pair in the configuration, or the value
@@ -1114,7 +1114,7 @@ public interface Configuration {
     /**
      * Get the boolean value associated with the given key, returning the default value if there is no such key-value pair or
      * if the value could not be {@link Boolean#parseBoolean(String) parsed} as a boolean value.
-     * 
+     *
      * @param key the key for the configuration property
      * @param defaultValue the default value
      * @return the boolean value, or null if the key is null, there is no such key-value pair in the configuration, or the value
@@ -1127,7 +1127,7 @@ public interface Configuration {
     /**
      * Get the integer value associated with the given key, using the given supplier to obtain a default value if there is no such
      * key-value pair.
-     * 
+     *
      * @param key the key for the configuration property
      * @param defaultValueSupplier the supplier for the default value; may be null
      * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration, the
@@ -1142,7 +1142,7 @@ public interface Configuration {
     /**
      * Get the integer value associated with the given key, using the given supplier to obtain a default value if there is no such
      * key-value pair.
-     * 
+     *
      * @param key the key for the configuration property
      * @param defaultValueSupplier the supplier for the default value; may be null
      * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration, the
@@ -1162,7 +1162,7 @@ public interface Configuration {
     /**
      * Get the long value associated with the given key, using the given supplier to obtain a default value if there is no such
      * key-value pair.
-     * 
+     *
      * @param key the key for the configuration property
      * @param defaultValueSupplier the supplier for the default value; may be null
      * @return the long value, or null if the key is null, there is no such key-value pair in the configuration, the
@@ -1182,7 +1182,7 @@ public interface Configuration {
     /**
      * Get the boolean value associated with the given key, using the given supplier to obtain a default value if there is no such
      * key-value pair.
-     * 
+     *
      * @param key the key for the configuration property
      * @param defaultValueSupplier the supplier for the default value; may be null
      * @return the boolean value, or null if the key is null, there is no such key-value pair in the configuration, the
@@ -1202,7 +1202,7 @@ public interface Configuration {
     /**
      * Get the numeric value associated with the given field, returning the field's default value if there is no such
      * key-value pair.
-     * 
+     *
      * @param field the field
      * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration and there is
      *         no default value in the field or the default value could not be parsed as a long, or there is a key-value pair in
@@ -1216,7 +1216,7 @@ public interface Configuration {
     /**
      * Get the integer value associated with the given field, returning the field's default value if there is no such
      * key-value pair.
-     * 
+     *
      * @param field the field
      * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration and there is
      *         no default value in the field or the default value could not be parsed as a long, or there is a key-value pair in
@@ -1230,7 +1230,7 @@ public interface Configuration {
     /**
      * Get the long value associated with the given field, returning the field's default value if there is no such
      * key-value pair.
-     * 
+     *
      * @param field the field
      * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration and there is
      *         no default value in the field or the default value could not be parsed as a long, or there is a key-value pair in
@@ -1244,7 +1244,7 @@ public interface Configuration {
     /**
      * Get the boolean value associated with the given field when that field has a default value. If the configuration does
      * not have a name-value pair with the same name as the field, then the field's default value.
-     * 
+     *
      * @param field the field
      * @return the boolean value, or null if the key is null, there is no such key-value pair in the configuration and there is
      *         no default value in the field or the default value could not be parsed as a long, or there is a key-value pair in
@@ -1258,7 +1258,7 @@ public interface Configuration {
     /**
      * Get the integer value associated with the given field, returning the field's default value if there is no such
      * key-value pair.
-     * 
+     *
      * @param field the field
      * @param defaultValue the default value
      * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration and there is
@@ -1272,7 +1272,7 @@ public interface Configuration {
     /**
      * Get the long value associated with the given field, returning the field's default value if there is no such
      * key-value pair.
-     * 
+     *
      * @param field the field
      * @param defaultValue the default value
      * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration and there is
@@ -1286,7 +1286,7 @@ public interface Configuration {
     /**
      * Get the boolean value associated with the given field, returning the field's default value if there is no such
      * key-value pair.
-     * 
+     *
      * @param field the field
      * @param defaultValue the default value
      * @return the boolean value, or null if the key is null, there is no such key-value pair in the configuration and there is
@@ -1300,7 +1300,7 @@ public interface Configuration {
     /**
      * Get the integer value associated with the given key, using the given supplier to obtain a default value if there is no such
      * key-value pair.
-     * 
+     *
      * @param field the field
      * @param defaultValueSupplier the supplier for the default value; may be null
      * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration, the
@@ -1314,7 +1314,7 @@ public interface Configuration {
     /**
      * Get the long value associated with the given key, using the given supplier to obtain a default value if there is no such
      * key-value pair.
-     * 
+     *
      * @param field the field
      * @param defaultValueSupplier the supplier for the default value; may be null
      * @return the long value, or null if the key is null, there is no such key-value pair in the configuration, the
@@ -1328,7 +1328,7 @@ public interface Configuration {
     /**
      * Get the boolean value associated with the given key, using the given supplier to obtain a default value if there is no such
      * key-value pair.
-     * 
+     *
      * @param field the field
      * @param defaultValueSupplier the supplier for the default value; may be null
      * @return the boolean value, or null if the key is null, there is no such key-value pair in the configuration, the
@@ -1342,7 +1342,7 @@ public interface Configuration {
     /**
      * Get the boolean value associated with the given key, using the given supplier to obtain a default value if there is no such
      * key-value pair.
-     * 
+     *
      * @param field the field
      * @param defaultValueSupplier the supplier of value that should be returned by default if there is no such key-value pair in
      *            the configuration; may be null and may return null
@@ -1354,7 +1354,7 @@ public interface Configuration {
 
     /**
      * Get an instance of the class given by the value in the configuration associated with the given key.
-     * 
+     *
      * @param key the key for the configuration property
      * @param type the Class of which the resulting object is expected to be an instance of; may not be null
      * @return the new instance, or null if there is no such key-value pair in the configuration or if there is a key-value
@@ -1366,7 +1366,7 @@ public interface Configuration {
 
     /**
      * Get an instance of the class given by the value in the configuration associated with the given key.
-     * 
+     *
      * @param key the key for the configuration property
      * @param type the Class of which the resulting object is expected to be an instance of; may not be null
      * @param classloaderSupplier the supplier of the ClassLoader to be used to load the resulting class; may be null if this
@@ -1395,7 +1395,7 @@ public interface Configuration {
 
     /**
      * Get an instance of the class given by the value in the configuration associated with the given field.
-     * 
+     *
      * @param field the field for the configuration property
      * @param clazz the Class of which the resulting object is expected to be an instance of; may not be null
      * @return the new instance, or null if there is no such key-value pair in the configuration or if there is a key-value
@@ -1407,7 +1407,7 @@ public interface Configuration {
 
     /**
      * Get an instance of the class given by the value in the configuration associated with the given field.
-     * 
+     *
      * @param field the field for the configuration property
      * @param type the Class of which the resulting object is expected to be an instance of; may not be null
      * @param classloaderSupplier the supplier of the ClassLoader to be used to load the resulting class; may be null if this
@@ -1440,7 +1440,7 @@ public interface Configuration {
      * needed) removed.
      * <p>
      * This method returns this Configuration instance if the supplied {@code prefix} is null or empty.
-     * 
+     *
      * @param prefix the prefix
      * @param removePrefix true if the prefix (and any subsequent "{@code .}" character) should be removed from the keys in the
      *            resulting Configuration, or false if the keys in this Configuration should be used as-is in the resulting
@@ -1459,7 +1459,7 @@ public interface Configuration {
 
     /**
      * Return a new {@link Configuration} that contains only the subset of keys that satisfy the given predicate.
-     * 
+     *
      * @param mapper that function that transforms keys
      * @return the subset Configuration; never null
      */
@@ -1493,7 +1493,7 @@ public interface Configuration {
 
     /**
      * Return a new {@link Configuration} that contains only the subset of keys that satisfy the given predicate.
-     * 
+     *
      * @param matcher the function that determines whether a key should be included in the subset
      * @return the subset Configuration; never null
      */
@@ -1522,7 +1522,7 @@ public interface Configuration {
 
     /**
      * Return a new {@link Configuration} that contains the mapped values.
-     * 
+     *
      * @param mapper the function that takes a key and value and returns the new mapped value
      * @return the Configuration with mapped values; never null
      */
@@ -1553,14 +1553,14 @@ public interface Configuration {
      * <p>
      * Variables may appear anywhere within a field value, and multiple variables can be used within the same field. Variables
      * take the form:
-     * 
+     *
      * <pre>
      *    variable := '${' variableNames [ ':' defaultValue ] '}'
      *    variableNames := variableName [ ',' variableNames ]
      *    variableName := // any characters except ',' and ':' and '}'
      *    defaultValue := // any characters except '}'
      * </pre>
-     * 
+     *
      * and examples of variables include:
      * <ul>
      * <li><code>${var1}</code></li>
@@ -1568,15 +1568,15 @@ public interface Configuration {
      * <li><code>${var1,var2}</code></li>
      * <li><code>${var1,var2:defaultValue}</code></li>
      * </ul>
-     * 
+     *
      * The <i>variableName</i> literal is the name used to look up a the property.
      * </p>
      * This syntax supports multiple <i>variables</i>. The logic will process the <i>variables</i> from let to right,
      * until an existing property is found. And at that point, it will stop and will not attempt to find values for the other
      * <i>variables</i>.
      * <p>
-     * 
-     * 
+     *
+     *
      * @param valuesByVariableName the function that returns a variable value for a variable name; may not be null but may
      *            return null if the variable name is not known
      * @return the Configuration with masked values for matching keys; never null
@@ -1590,7 +1590,7 @@ public interface Configuration {
     /**
      * Return a new {@link Configuration} that contains all of the same fields as this configuration, except with masked values
      * for all keys that end in "password".
-     * 
+     *
      * @return the Configuration with masked values for matching keys; never null
      */
     default Configuration withMaskedPasswords() {
@@ -1600,7 +1600,7 @@ public interface Configuration {
     /**
      * Return a new {@link Configuration} that contains all of the same fields as this configuration, except with masked values
      * for all keys that match the specified pattern.
-     * 
+     *
      * @param keyRegex the regular expression to match against the keys
      * @return the Configuration with masked values for matching keys; never null
      */
@@ -1612,7 +1612,7 @@ public interface Configuration {
     /**
      * Return a new {@link Configuration} that contains all of the same fields as this configuration, except with masked values
      * for all keys that match the specified pattern.
-     * 
+     *
      * @param keyRegex the regular expression to match against the keys
      * @return the Configuration with masked values for matching keys; never null
      */
@@ -1639,7 +1639,7 @@ public interface Configuration {
 
     /**
      * Determine if this configuration is empty and has no properties.
-     * 
+     *
      * @return {@code true} if empty, or {@code false} otherwise
      */
     default boolean isEmpty() {
@@ -1648,7 +1648,7 @@ public interface Configuration {
 
     /**
      * Get a copy of these configuration properties as a Properties object.
-     * 
+     *
      * @return the properties object; never null
      */
     default Properties asProperties() {
@@ -1657,7 +1657,7 @@ public interface Configuration {
 
     /**
      * Get a copy of these configuration properties as a Properties object.
-     * 
+     *
      * @param fields the fields defining the defaults; may be null
      * @return the properties object; never null
      */
@@ -1679,7 +1679,7 @@ public interface Configuration {
 
     /**
      * Get a copy of these configuration properties as a Properties object.
-     * 
+     *
      * @return the properties object; never null
      */
     default Map<String, String> asMap() {
@@ -1688,7 +1688,7 @@ public interface Configuration {
 
     /**
      * Get a copy of these configuration properties with defaults as a Map.
-     * 
+     *
      * @param fields the fields defining the defaults; may be null
      * @return the properties object; never null
      */
@@ -1713,7 +1713,7 @@ public interface Configuration {
      * this configuration. All system properties whose name has the given prefix are added, where the prefix is removed from the
      * system property name, it is converted to lower case, and each underscore character ('{@code _}') are replaced with a
      * period ('{@code .}').
-     * 
+     *
      * @param prefix the required prefix for the system properties
      * @return the resulting properties converted from the system properties; never null, but possibly empty
      */
@@ -1736,7 +1736,7 @@ public interface Configuration {
      * this configuration. Each of the system properties is examined and passed to the supplied function; if the result of the
      * function is a non-null string, then a property with that string as the name and the system property value are added to the
      * returned configuration.
-     * 
+     *
      * @param propertyNameConverter the function that will convert the name of each system property to an applicable property name
      *            (or null if the system property name does not apply); may not be null
      * @return the resulting properties filtered from the input properties; never null, but possibly empty
@@ -1757,7 +1757,7 @@ public interface Configuration {
     /**
      * Validate the supplied fields in this configuration. Extra fields not described by the supplied {@code fields} parameter
      * are not validated.
-     * 
+     *
      * @param fields the fields
      * @param problems the consumer to be called with each problem; never null
      * @return {@code true} if the value is considered valid, or {@code false} if it is not valid
@@ -1773,7 +1773,7 @@ public interface Configuration {
     /**
      * Validate the supplied fields in this configuration. Extra fields not described by the supplied {@code fields} parameter
      * are not validated.
-     * 
+     *
      * @param fields the fields
      * @param problems the consumer to be called with each problem; never null
      * @return {@code true} if the value is considered valid, or {@code false} if it is not valid
@@ -1799,7 +1799,7 @@ public interface Configuration {
     /**
      * Validate the supplied fields in this configuration. Extra fields not described by the supplied {@code fields} parameter
      * are not validated.
-     * 
+     *
      * @param fields the fields
      * @return the {@link ConfigValue} for each of the fields; never null
      */
@@ -1828,7 +1828,7 @@ public interface Configuration {
 
     /**
      * Apply the given function to all fields whose names match the given regular expression.
-     * 
+     *
      * @param regex the regular expression string; may not be null
      * @param function the consumer that takes the name and value of matching fields; may not be null
      */
@@ -1838,7 +1838,7 @@ public interface Configuration {
 
     /**
      * Apply the given function to all fields whose names match the given regular expression.
-     * 
+     *
      * @param regex the regular expression string; may not be null
      * @param function the consumer that takes the name and value of matching fields; may not be null
      */
@@ -1853,7 +1853,7 @@ public interface Configuration {
     /**
      * For all fields whose names match the given regular expression, extract an integer from the first group in the regular
      * expression and call the supplied function.
-     * 
+     *
      * @param regex the regular expression string; may not be null
      * @param function the consumer that takes the value of matching field and the integer extracted from the field name; may not
      *            be null
@@ -1865,7 +1865,7 @@ public interface Configuration {
     /**
      * For all fields whose names match the given regular expression, extract an integer from the first group in the regular
      * expression and call the supplied function.
-     * 
+     *
      * @param regex the regular expression string; may not be null
      * @param groupNumber the number of the regular expression group containing the integer to be extracted; must be positive
      * @param function the consumer that takes the value of matching field and the integer extracted from the field name; may not
@@ -1878,7 +1878,7 @@ public interface Configuration {
     /**
      * For all fields whose names match the given regular expression, extract an integer from the first group in the regular
      * expression and call the supplied function.
-     * 
+     *
      * @param regex the regular expression string; may not be null
      * @param groupNumber the number of the regular expression group containing the integer to be extracted; must be positive
      * @param function the consumer that takes the value of matching field and the integer extracted from the field name; may not
@@ -1900,7 +1900,7 @@ public interface Configuration {
     /**
      * For all fields whose names match the given regular expression, extract a boolean value from the first group in the regular
      * expression and call the supplied function.
-     * 
+     *
      * @param regex the regular expression string; may not be null
      * @param function the consumer that takes the value of matching field and the boolean extracted from the field name; may not
      *            be null
@@ -1912,7 +1912,7 @@ public interface Configuration {
     /**
      * For all fields whose names match the given regular expression, extract a boolean value from the first group in the regular
      * expression and call the supplied function.
-     * 
+     *
      * @param regex the regular expression string; may not be null
      * @param groupNumber the number of the regular expression group containing the boolean to be extracted; must be positive
      * @param function the consumer that takes the value of matching field and the boolean extracted from the field name; may not
@@ -1925,7 +1925,7 @@ public interface Configuration {
     /**
      * For all fields whose names match the given regular expression, extract a boolean value from the first group in the regular
      * expression and call the supplied function.
-     * 
+     *
      * @param regex the regular expression string; may not be null
      * @param groupNumber the number of the regular expression group containing the boolean to be extracted; must be positive
      * @param function the consumer that takes the value of matching field and the boolean extracted from the field name; may not
@@ -1947,7 +1947,7 @@ public interface Configuration {
     /**
      * For all fields whose names match the given regular expression, extract a string value from the first group in the regular
      * expression and call the supplied function.
-     * 
+     *
      * @param regex the regular expression string; may not be null
      * @param function the consumer that takes the value of matching field and the string value extracted from the field name; may
      *            not be null
@@ -1959,7 +1959,7 @@ public interface Configuration {
     /**
      * For all fields whose names match the given regular expression, extract a string value from the first group in the regular
      * expression and call the supplied function.
-     * 
+     *
      * @param regex the regular expression string; may not be null
      * @param groupNumber the number of the regular expression group containing the string value to be extracted; must be positive
      * @param function the consumer that takes the value of matching field and the string value extracted from the field name; may
@@ -1972,7 +1972,7 @@ public interface Configuration {
     /**
      * For all fields whose names match the given regular expression, extract a string value from the first group in the regular
      * expression and call the supplied function.
-     * 
+     *
      * @param regex the regular expression string; may not be null
      * @param groupNumber the number of the regular expression group containing the string value to be extracted; must be positive
      * @param function the consumer that takes the value of matching field and the string value extracted from the field name; may
@@ -1985,7 +1985,7 @@ public interface Configuration {
     /**
      * For all fields whose names match the given regular expression, extract a value from the specified group in the regular
      * expression and call the supplied function.
-     * 
+     *
      * @param regex the regular expression string; may not be null
      * @param groupNumber the number of the regular expression group containing the string value to be extracted; must be positive
      * @param groupExtractor the function that extracts the value from the group
@@ -2000,7 +2000,7 @@ public interface Configuration {
     /**
      * For all fields whose names match the given regular expression, extract a value from the specified group in the regular
      * expression and call the supplied function.
-     * 
+     *
      * @param regex the regular expression string; may not be null
      * @param groupNumber the number of the regular expression group containing the string value to be extracted; must be positive
      * @param groupExtractor the function that extracts the value from the group
@@ -2021,7 +2021,7 @@ public interface Configuration {
 
     /**
      * Call the supplied function for each of the fields.
-     * 
+     *
      * @param function the consumer that takes the field name and the string value extracted from the field; may
      *            not be null
      */
