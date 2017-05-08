@@ -1,6 +1,6 @@
 package io.debezium.connector.mongodb;
 
-import com.datapipeline.base.mongodb.MongodbSchemaNameConfig;
+import com.datapipeline.clients.mongodb.MongodbSchemaNameConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

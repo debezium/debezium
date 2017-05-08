@@ -5,8 +5,8 @@
  */
 package io.debezium.connector.mongodb;
 
-import com.datapipeline.base.error.DpError;
-import com.datapipeline.base.error.DpErrorDetector;
+import com.datapipeline.clients.error.DpError;
+import com.datapipeline.clients.error.DpErrorDetector;
 import com.dp.internal.bean.DpErrorCode;
 
 import java.util.ArrayList;

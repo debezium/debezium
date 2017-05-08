@@ -9,9 +9,9 @@ import java.io.IOException;
 import java.util.List;
 import java.util.function.Predicate;
 
-import com.datapipeline.base.error.DpError;
-import com.datapipeline.base.mongodb.MongodbSchemaConfig;
-import com.datapipeline.base.mongodb.MongodbSchemaNameConfig;
+import com.datapipeline.clients.error.DpError;
+import com.datapipeline.clients.mongodb.MongodbSchemaConfig;
+import com.datapipeline.clients.mongodb.MongodbSchemaNameConfig;
 import com.dp.internal.bean.DataSourceSchemaMappingExemption;
 import com.dp.internal.bean.DpErrorCode;
 import com.fasterxml.jackson.core.type.TypeReference;

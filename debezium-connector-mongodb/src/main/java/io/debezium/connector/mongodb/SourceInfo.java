@@ -9,7 +9,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.datapipeline.base.DpConstants;
+import com.datapipeline.clients.DpConstants;
 
 import org.apache.commons.lang3.StringUtils;
 

@@ -5,7 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
-import com.datapipeline.base.DpConstants;
+
+import com.datapipeline.clients.DpConstants;
 
 import java.util.HashMap;
 import java.util.Map;

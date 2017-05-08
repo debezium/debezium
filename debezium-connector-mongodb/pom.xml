@@ -70,10 +70,6 @@
             <groupId>io.confluent</groupId>
             <artifactId>kafka-connect-avro-converter</artifactId>
         </dependency>
-        <dependency>
-            <groupId>com.datapipeline</groupId>
-            <artifactId>dp-core</artifactId>
-        </dependency>
     </dependencies>
     <properties>
         <!-- By default we need to run these 5 containers, although the two init containers exit quickly -->

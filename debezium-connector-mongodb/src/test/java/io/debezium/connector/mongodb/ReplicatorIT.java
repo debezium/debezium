@@ -19,7 +19,7 @@ import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.junit.Test;
 
-import com.datapipeline.base.error.DpErrorDetector;
+import com.datapipeline.clients.error.DpErrorDetector;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;

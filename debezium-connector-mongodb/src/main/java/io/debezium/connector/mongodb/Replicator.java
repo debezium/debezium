@@ -30,8 +30,8 @@ import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datapipeline.base.error.DpError;
-import com.datapipeline.base.error.DpErrorDetector;
+import com.datapipeline.clients.error.DpError;
+import com.datapipeline.clients.error.DpErrorDetector;
 import com.dp.internal.bean.DpErrorCode;
 import com.mongodb.CursorType;
 import com.mongodb.MongoClient;

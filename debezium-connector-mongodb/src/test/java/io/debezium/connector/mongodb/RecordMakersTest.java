@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
-import com.datapipeline.base.mongodb.MongodbSchemaConfig;
+import com.datapipeline.clients.mongodb.MongodbSchemaConfig;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;

@@ -358,11 +358,6 @@
             </dependency>
             <dependency>
                 <groupId>com.datapipeline</groupId>
-                <artifactId>dp-core</artifactId>
-                <version>${version.datapipeline}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.datapipeline</groupId>
                 <artifactId>dp-clients</artifactId>
                 <version>${version.datapipeline}</version>
             </dependency>
