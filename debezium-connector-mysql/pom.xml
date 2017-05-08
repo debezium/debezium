@@ -13,6 +13,10 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.datapipeline</groupId>
+            <artifactId>dp-core</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-core</artifactId>
         </dependency>

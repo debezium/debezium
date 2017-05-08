@@ -9,8 +9,8 @@ import java.util.*;
 import java.util.function.Function;
 
 import com.datapipeline.base.converter.DataConverter;
-import com.datapipeline.base.converter.ConnectorDataGenerator;
-import com.datapipeline.base.converter.ConnectorType;
+import com.datapipeline.base.mongodb.ConnectorDataGenerator;
+import com.datapipeline.base.mongodb.ConnectorType;
 import com.datapipeline.base.converter.DpDataConvertException;
 import com.datapipeline.base.error.DpError;
 import com.datapipeline.base.mongodb.MongodbSchema;

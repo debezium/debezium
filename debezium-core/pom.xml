@@ -13,10 +13,6 @@
     <dependencies>
         <dependency>
             <groupId>com.datapipeline</groupId>
-            <artifactId>dp-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.datapipeline</groupId>
             <artifactId>dp-clients</artifactId>
         </dependency>
         <dependency>
