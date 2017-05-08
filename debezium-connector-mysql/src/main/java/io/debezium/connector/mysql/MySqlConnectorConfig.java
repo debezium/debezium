@@ -6,6 +6,7 @@
 package io.debezium.connector.mysql;
 
 import java.math.BigDecimal;
+import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
@@ -329,7 +330,7 @@ public class MySqlConnectorConfig {
                                                  .withType(Type.STRING)
                                                  .withWidth(Width.MEDIUM)
                                                  .withImportance(Importance.HIGH)
-                                                 .withValidation(Field::isRequired)
+                                                 .withValidation(Field::isRequired, MySqlConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName)
                                                  .withDescription("Unique name that identifies the database server and all recorded offsets, and"
                                                          + "that is used as a prefix for all schemas and topics. "
                                                          + "Each distinct MySQL installation should have a separate namespace and monitored by "
@@ -764,6 +765,18 @@ public class MySqlConnectorConfig {
             problems.accept(GTID_SOURCE_EXCLUDES, excludes, "Included GTID source UUIDs are already specified");
             return 1;
         }
+        return 0;
+    }
+
+    private static int validateServerNameIsDifferentFromHistoryTopicName(Configuration config, Field field, ValidationOutput problems) {
+        String serverName = config.getString(MySqlConnectorConfig.SERVER_NAME);
+        String historyTopicName = config.getString(KafkaDatabaseHistory.TOPIC);
+
+        if (Objects.equals(serverName, historyTopicName)) {
+            problems.accept(SERVER_NAME, serverName, "Must not have the same value as " + KafkaDatabaseHistory.TOPIC.name());
+            return 1;
+        }
+
         return 0;
     }
 
