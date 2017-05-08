@@ -482,4 +482,49 @@ public class TokenStreamTest {
         assertThat(tokens.nextPosition().column()).isEqualTo(7);
 
     }
+    
+    @Test
+    public void shouldConsumeUntilWithoutRepeats() {
+        makeCaseInsensitive();
+        String content = "FOO BEGIN A1 A2 A3 END BAR";
+        tokens = new TokenStream(content, tokenizer, true);
+        tokens.start();
+
+        tokens.consume(); // FOO
+        tokens.consume("BEGIN");
+        tokens.consumeUntil("END");
+        tokens.consume("END");
+        tokens.consume("BAR");
+        assertThat(tokens.hasNext()).isFalse();
+    }
+    
+    @Test
+    public void shouldConsumeUntilWithRepeats() {
+        makeCaseInsensitive();
+        String content = "FOO BEGIN A1 A2 A3 BEGIN B1 B2 END A4 BEGIN C1 C2 END A5 END BAR";
+        tokens = new TokenStream(content, tokenizer, true);
+        tokens.start();
+
+        tokens.consume(); // FOO
+        tokens.consume("BEGIN");
+        tokens.consumeUntil("END", "BEGIN");
+        tokens.consume("END");
+        tokens.consume("BAR");
+        assertThat(tokens.hasNext()).isFalse();
+    }
+    
+    @Test
+    public void shouldConsumeUntilWithRepeatsAndMultipleSkipTokens() {
+        makeCaseInsensitive();
+        String content = "FOO BEGIN A1 A2 A3 IF B1 B2 END A4 REPEAT C1 C2 END A5 END BAR";
+        tokens = new TokenStream(content, tokenizer, true);
+        tokens.start();
+
+        tokens.consume(); // FOO
+        tokens.consume("BEGIN");
+        tokens.consumeUntil("END", "BEGIN", "IF", "REPEAT");
+        tokens.consume("END");
+        tokens.consume("BAR");
+        assertThat(tokens.hasNext()).isFalse();
+    }
 }

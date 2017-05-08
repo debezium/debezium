@@ -13,6 +13,9 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Types;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoField;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.Temporal;
 import java.util.List;
 
 import org.apache.kafka.connect.data.Field;
@@ -33,6 +36,9 @@ import io.debezium.relational.ValueConverter;
 import io.debezium.time.Year;
 import io.debezium.util.Strings;
 
+import mil.nga.wkb.geom.Point;
+import mil.nga.wkb.util.WkbException;
+
 /**
  * MySQL-specific customization of the conversions from JDBC values obtained from the MySQL binlog client library.
  * <p>
@@ -49,6 +55,52 @@ import io.debezium.util.Strings;
  */
 @Immutable
 public class MySqlValueConverters extends JdbcValueConverters {
+
+    /**
+     * A utility method that adjusts <a href="https://dev.mysql.com/doc/refman/5.7/en/two-digit-years.html">ambiguous</a> 2-digit
+     * year values of DATETIME, DATE, and TIMESTAMP types using these MySQL-specific rules:
+     * <ul>
+     * <li>Year values in the range 00-69 are converted to 2000-2069.</li>
+     * <li>Year values in the range 70-99 are converted to 1970-1999.</li>
+     * </ul>
+     * 
+     * @param temporal the temporal instance to adjust; may not be null
+     * @return the possibly adjusted temporal instance; never null
+     */
+    protected static Temporal adjustTemporal(Temporal temporal) {
+        if (temporal.isSupported(ChronoField.YEAR)) {
+            int year = temporal.get(ChronoField.YEAR);
+            if (0 <= year && year <= 69) {
+                temporal = temporal.plus(2000, ChronoUnit.YEARS);
+            } else if (70 <= year && year <= 99) {
+                temporal = temporal.plus(1900, ChronoUnit.YEARS);
+            }
+        }
+        return temporal;
+    }
+
+    /**
+     * A utility method that adjusts <a href="https://dev.mysql.com/doc/refman/5.7/en/two-digit-years.html">ambiguous</a> 2-digit
+     * year values of YEAR type using these MySQL-specific rules:
+     * <ul>
+     * <li>Year values in the range 01-69 are converted to 2001-2069.</li>
+     * <li>Year values in the range 70-99 are converted to 1970-1999.</li>
+     * </ul>
+     * MySQL treats YEAR(4) the same, except that a numeric 00 inserted into YEAR(4) results in 0000 rather than 2000; to
+     * specify zero for YEAR(4) and have it be interpreted as 2000, specify it as a string '0' or '00'. This should be handled
+     * by MySQL before Debezium sees the value.
+     * 
+     * @param year the year value to adjust; may not be null
+     * @return the possibly adjusted year number; never null
+     */
+    protected static int adjustYear(int year) {
+        if (0 < year && year <= 69) {
+            year += 2000;
+        } else if (70 <= year && year <= 99) {
+            year += 1900;
+        }
+        return year;
+    }
 
     /**
      * Create a new instance that always uses UTC for the default time zone when converting values without timezone information
@@ -79,7 +131,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      *            have timezones; may be null if UTC is to be used
      */
     public MySqlValueConverters(DecimalMode decimalMode, boolean adaptiveTimePrecision, ZoneOffset defaultOffset) {
-        super(decimalMode, adaptiveTimePrecision, defaultOffset);
+        super(decimalMode, adaptiveTimePrecision, defaultOffset, MySqlValueConverters::adjustTemporal);
     }
 
     @Override
@@ -93,6 +145,9 @@ public class MySqlValueConverters extends JdbcValueConverters {
         String typeName = column.typeName().toUpperCase();
         if (matches(typeName, "JSON")) {
             return Json.builder();
+        }
+        if (matches(typeName, "POINT")) {
+            return io.debezium.data.geometry.Point.builder();
         }
         if (matches(typeName, "YEAR")) {
             return Year.builder();
@@ -115,6 +170,9 @@ public class MySqlValueConverters extends JdbcValueConverters {
         String typeName = column.typeName().toUpperCase();
         if (matches(typeName, "JSON")) {
             return (data) -> convertJson(column, fieldDefn, data);
+        }
+        if (matches(typeName, "POINT")){
+            return (data -> convertPoint(column, fieldDefn, data));
         }
         if (matches(typeName, "YEAR")) {
             return (data) -> convertYearToInt(column, fieldDefn, data);
@@ -265,15 +323,15 @@ public class MySqlValueConverters extends JdbcValueConverters {
         }
         if (data instanceof java.time.Year) {
             // The MySQL binlog always returns a Year object ...
-            return ((java.time.Year) data).getValue();
+            return adjustYear(((java.time.Year) data).getValue());
         }
         if (data instanceof java.sql.Date) {
             // MySQL JDBC driver sometimes returns a Java SQL Date object ...
-            return ((java.sql.Date) data).getYear();
+            return adjustYear(((java.sql.Date) data).getYear());
         }
         if (data instanceof Number) {
             // MySQL JDBC driver sometimes returns a short ...
-            return ((Number) data).intValue();
+            return adjustYear(((Number) data).intValue());
         }
         return handleUnknownData(column, fieldDefn, data);
     }
@@ -306,8 +364,13 @@ public class MySqlValueConverters extends JdbcValueConverters {
 
             if (options != null) {
                 // The binlog will contain an int with the 1-based index of the option in the enum value ...
-                int index = ((Integer) data).intValue() - 1; // 'options' is 0-based
-                if (index < options.size()) {
+                int value = ((Integer) data).intValue();
+                if (value == 0) {
+                    // an invalid value was specified, which corresponds to the empty string '' and an index of 0
+                    return "";
+                }
+                int index = value - 1; // 'options' is 0-based
+                if (index < options.size() && index >= 0) {
                     return options.get(index);
                 }
             }
@@ -394,4 +457,33 @@ public class MySqlValueConverters extends JdbcValueConverters {
 
     }
 
+    /**
+     * Convert the a value representing a POINT {@code byte[]} value to a Point value used in a {@link SourceRecord}.
+     *
+     * @param column the column in which the value appears
+     * @param fieldDefn the field definition for the {@link SourceRecord}'s {@link Schema}; never null
+     * @param data the data; may be null
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
+     */
+    protected Object convertPoint(Column column, Field fieldDefn, Object data){
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+
+        Schema schema = fieldDefn.schema();
+
+        if (data instanceof byte[]) {
+            // The binlog utility sends a byte array for any Geometry type, we will use our own binaryParse to parse the byte to WKB, hence
+            // to the suitable class
+            try {
+                MySqlGeometry mySqlGeometry = MySqlGeometry.fromBytes((byte[]) data);
+                Point point = mySqlGeometry.getPoint();
+                return io.debezium.data.geometry.Point.createValue(schema, point.getX(), point.getY(), mySqlGeometry.getWkb());
+            } catch (WkbException e) {
+                throw new ConnectException("Failed to parse and read a value of type POINT on " + column + ": " + e.getMessage(), e);
+            }
+        }
+        return handleUnknownData(column, fieldDefn, data);
+    }
 }

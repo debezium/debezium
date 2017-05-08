@@ -329,7 +329,7 @@ public class KafkaServer {
         return "KafkaServer{" + getConnection() + "}";
     }
 
-    protected static class SystemTime implements kafka.utils.Time {
+    protected static class SystemTime implements org.apache.kafka.common.utils.Time {
         @Override
         public long milliseconds() {
             return System.currentTimeMillis();

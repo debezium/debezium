@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>0.4.1-SNAPSHOT</version>
+        <version>0.5.1-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -19,6 +19,10 @@
         <dependency>
             <groupId>com.github.shyiko</groupId>
             <artifactId>mysql-binlog-connector-java</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>mil.nga</groupId>
+            <artifactId>wkb</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.kafka</groupId>
@@ -83,6 +87,7 @@
         <mysql.gtid.port>3306</mysql.gtid.port>
         <mysql.gtid.replica.port>3306</mysql.gtid.replica.port>
         <mysql.replica.port>3306</mysql.replica.port> <!-- by default use master as 'replica' -->
+        <mysql.init.timeout>60000</mysql.init.timeout> <!-- 60 seconds -->
         <!--
         By default, we should use the docker image maintained by the MySQL team. This property is changed with different profiles.
         However, we run one container with GTIDs and one without.
@@ -125,7 +130,7 @@
                       </log>
                       <wait>
                         <log>MySQL init process done. Ready for start up.</log>
-                        <time>30000</time> <!-- 30 seconds max -->
+                        <time>${mysql.init.timeout}</time>
                       </wait>
                     </run>
                     <build>
@@ -172,7 +177,7 @@
                       </log>
                       <wait>
                         <log>MySQL init process done. Ready for start up.</log>
-                        <time>30000</time>
+                        <time>${mysql.init.timeout}</time>
                       </wait>
                     </run>
                     <build>
@@ -223,7 +228,7 @@
                       </log>
                       <wait>
                         <log>MySQL init process done. Ready for start up.</log>
-                        <time>30000</time> <!-- 30 seconds max -->
+                        <time>${mysql.init.timeout}</time>
                       </wait>
                     </run>
                     <build>

@@ -20,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Predicate;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -78,6 +79,8 @@ public class BinlogReader extends AbstractReader {
     private long previousOutputMillis = 0L;
     private long initialEventsToSkip = 0L;
     private boolean skipEvent = false;
+    private boolean ignoreDmlEventByGtidSource = false;
+    private final Predicate<String> gtidDmlSourceFilter;
     private final AtomicLong totalRecordCounter = new AtomicLong();
     private volatile Map<String, ?> lastOffset = null;
     private com.github.shyiko.mysql.binlog.GtidSet gtidSet;
@@ -106,6 +109,9 @@ public class BinlogReader extends AbstractReader {
         client.registerEventListener(this::handleEvent);
         client.registerLifecycleListener(new ReaderThreadLifecycleListener());
         if (logger.isDebugEnabled()) client.registerEventListener(this::logEvent);
+
+        boolean filterDmlEventsByGtidSource = context.config().getBoolean(MySqlConnectorConfig.GTID_SOURCE_FILTER_DML_EVENTS);
+        gtidDmlSourceFilter = filterDmlEventsByGtidSource ? context.gtidSourceFilter() : null;
 
         // Set up the event deserializer with additional type(s) ...
         final Map<Long, TableMapEventData> tableMapEventByTableId = new HashMap<Long, TableMapEventData>();
@@ -434,6 +440,13 @@ public class BinlogReader extends AbstractReader {
         String gtid = gtidEvent.getGtid();
         gtidSet.add(gtid);
         source.startGtid(gtid, gtidSet.toString()); // rather than use the client's GTID set
+        ignoreDmlEventByGtidSource = false;
+        if (gtidDmlSourceFilter != null && gtid != null) {
+            String uuid = gtid.trim().substring(0, gtid.indexOf(":"));
+            if (!gtidDmlSourceFilter.test(uuid)) {
+                ignoreDmlEventByGtidSource = true;
+            }
+        }
     }
 
     /**
@@ -464,6 +477,7 @@ public class BinlogReader extends AbstractReader {
             source.commitTransaction();
             source.setBinlogThread(-1L);
             skipEvent = false;
+            ignoreDmlEventByGtidSource = false;
             return;
         }
         if (sql.toUpperCase().startsWith("XA ")) {
@@ -516,6 +530,10 @@ public class BinlogReader extends AbstractReader {
             logger.debug("Skipping previously processed row event: {}", event);
             return;
         }
+        if (ignoreDmlEventByGtidSource) {
+            logger.debug("Skipping DML event because this GTID source is filtered: {}", event);
+            return;
+        }
         WriteRowsEventData write = unwrapData(event);
         long tableNumber = write.getTableId();
         BitSet includedColumns = write.getIncludedColumns();
@@ -557,6 +575,10 @@ public class BinlogReader extends AbstractReader {
         if (skipEvent) {
             // We can skip this because we should already be at least this far ...
             logger.debug("Skipping previously processed row event: {}", event);
+            return;
+        }
+        if (ignoreDmlEventByGtidSource) {
+            logger.debug("Skipping DML event because this GTID source is filtered: {}", event);
             return;
         }
         UpdateRowsEventData update = unwrapData(event);
@@ -604,6 +626,10 @@ public class BinlogReader extends AbstractReader {
         if (skipEvent) {
             // We can skip this because we should already be at least this far ...
             logger.debug("Skipping previously processed row event: {}", event);
+            return;
+        }
+        if (ignoreDmlEventByGtidSource) {
+            logger.debug("Skipping DML event because this GTID source is filtered: {}", event);
             return;
         }
         DeleteRowsEventData deleted = unwrapData(event);

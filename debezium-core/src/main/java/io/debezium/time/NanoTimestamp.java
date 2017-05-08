@@ -6,6 +6,7 @@
 package io.debezium.time;
 
 import java.time.LocalDateTime;
+import java.time.temporal.TemporalAdjuster;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -58,11 +59,16 @@ public class NanoTimestamp {
      * {@link java.sql.Timestamp}.
      * 
      * @param value the local or SQL date, time, or timestamp value; may not be null
+     * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
+     * adjustment is necessary
      * @return the epoch nanoseconds
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types
      */
-    public static long toEpochNanos(Object value) {
+    public static long toEpochNanos(Object value, TemporalAdjuster adjuster) {
         LocalDateTime dateTime = Conversions.toLocalDateTime(value);
+        if ( adjuster != null) {
+            dateTime = dateTime.with(adjuster);
+        }
         return Conversions.toEpochNanos(dateTime);
     }
 

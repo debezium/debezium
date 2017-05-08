@@ -9,6 +9,7 @@ activemq-data/
 .project
 .cache
 .settings/
+.checkstyle
 .gradle/
 build/
 deploy/

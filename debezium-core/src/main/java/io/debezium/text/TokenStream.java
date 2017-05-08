@@ -536,7 +536,19 @@ public class TokenStream {
      * @throws NoSuchElementException if there is no previous token
      */
     public Position previousPosition() {
-        return previousToken().position();
+        return previousPosition(1);
+    }
+    
+    /**
+     * Get the position of a token earlier in the stream from the current position.
+     * 
+     * @param count the number of tokens before the current position (e.g., 1 for the previous position)
+     * @return the previous token's position; never null
+     * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
+     * @throws NoSuchElementException if there is no previous token
+     */
+    public Position previousPosition(int count) {
+        return previousToken(1).position();
     }
 
     /**
@@ -926,7 +938,7 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public TokenStream consumeUntil(char expected) throws ParsingException, IllegalStateException {
-        return consumeUntil(String.valueOf(expected), null);
+        return consumeUntil(String.valueOf(expected), (String[])null);
     }
 
     /**
@@ -960,7 +972,7 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public TokenStream consumeUntil(String expected) throws ParsingException, IllegalStateException {
-        return consumeUntil(expected, null);
+        return consumeUntil(expected, (String[])null);
     }
 
     /**
@@ -977,7 +989,7 @@ public class TokenStream {
      * @throws ParsingException if the specified token cannot be found
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
-    public TokenStream consumeUntil(String expected, String skipMatchingTokens) throws ParsingException, IllegalStateException {
+    public TokenStream consumeUntil(String expected, String... skipMatchingTokens) throws ParsingException, IllegalStateException {
         if (ANY_VALUE == expected) {
             consume();
             return this;
@@ -985,7 +997,7 @@ public class TokenStream {
         Marker start = mark();
         int remaining = 0;
         while (hasNext()) {
-            if (skipMatchingTokens != null && matches(skipMatchingTokens)) ++remaining;
+            if (skipMatchingTokens != null && matchesAnyOf(skipMatchingTokens)) ++remaining;
             if (matches(expected)) {
                 if (remaining == 0) {
                     break;
@@ -1723,11 +1735,15 @@ public class TokenStream {
     /**
      * Get the previous token. This does not modify the state.
      * 
+     * @param count the number of tokens back from the current position that this method should return
      * @return the previous token; never null
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      * @throws NoSuchElementException if there is no previous token
      */
-    final Token previousToken() throws IllegalStateException, NoSuchElementException {
+    public final Token previousToken(int count) throws IllegalStateException, NoSuchElementException {
+        if (count < 1) {
+            throw new IllegalArgumentException("The count must be positive");
+        }
         if (currentToken == null) {
             if (completed) {
                 if (tokens.isEmpty()) {
@@ -1737,10 +1753,11 @@ public class TokenStream {
             }
             throw new IllegalStateException("start() method must be called before consuming or matching");
         }
-        if (tokenIterator.previousIndex() == 0) {
+        int index = tokenIterator.previousIndex() - count;
+        if (index < 0) {
             throw new NoSuchElementException("No more content");
         }
-        return tokens.get(tokenIterator.previousIndex() - 1);
+        return tokens.get(tokenIterator.previousIndex() - count);
     }
 
     String generateFragment() {

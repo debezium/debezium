@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>0.4.1-SNAPSHOT</version>
+        <version>0.5.1-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -119,7 +119,7 @@
                         <color>yellow</color>
                       </log>
                       <wait>
-                        <log>waiting for connections on port 27017</log> <!-- internal port -->
+                        <log>(?s)waiting for connections on port 27017.*waiting for connections on port 27017</log> <!-- internal port, multiline matching -->
                         <time>30000</time> <!-- 30 seconds max -->
                       </wait>
                     </run>
