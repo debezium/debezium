@@ -2,9 +2,56 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 0.5.0
+
+March 27, 2017 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12334135)
+
+### New features since 0.4.1
+
+None
+
+### Breaking changes since 0.4.1
+
+This release includes the following changes that are likely to affect existing installations:
+
+* Upgraded from Kafka 0.10.1.1 to 0.10.2.0. [DBZ-203](https://issues.jboss.org/projects/DBZ/issues/DBZ-203)
+
+### Fixes and changes since 0.4.1
+
+This release includes the following fixes, changes, or improvements since the [0.4.1](#041) release:
+
+* MySQL connector now better handles DDL statements with `BEGIN...END` blocks, especially those that use `IF()` functions as well as `CASE...WHEN` statements. [DBZ-198](https://issues.jboss.org/projects/DBZ/issues/DBZ-198)
+* MySQL connector handles 2-digit years in `DATETIME`, `DATE`, `TIMESTAMP`, and `YEAR` columns in the [same way as MySQL](https://dev.mysql.com/doc/refman/5.7/en/two-digit-years.html). [DBZ-205](https://issues.jboss.org/projects/DBZ/issues/DBZ-205)
+
+
+## 0.4.1
+
+March 17, 2017 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12333486)
+
+### New features since 0.4.0
+
+* Improved support for [Amazon RDS](https://aws.amazon.com/rds/mysql/) and [Amazon Aurora (MySQL compatibility)](https://aws.amazon.com/rds/aurora/). [DBZ-140](https://issues.jboss.org/projects/DBZ/issues/DBZ-140)
+
+### Breaking changes since 0.4.0
+
+None
+
+### Fixes and changes since 0.4.0
+
+This release includes the following fixes, changes, or improvements since the [0.4.0](#040) release:
+
+* MySQL connector now allows filtering production of DML events by GTIDs. [DBZ-188](https://issues.jboss.org/projects/DBZ/issues/DBZ-188)
+* Support InnoDB savepoints. [DBZ-196](https://issues.jboss.org/projects/DBZ/issues/DBZ-196)
+* Corrected MySQL DDL parser. [DBZ-193](https://issues.jboss.org/projects/DBZ/issues/DBZ-193) [DBZ-198](https://issues.jboss.org/projects/DBZ/issues/DBZ-198)
+* Improved handling of MySQL connector's built-in tables. [DBZ-194](https://issues.jboss.org/projects/DBZ/issues/DBZ-194)
+* MySQL connector properly handles invalid/blank enum literal values. [DBZ-197](https://issues.jboss.org/projects/DBZ/issues/DBZ-197)
+* MySQL connector properly handles reserved names as column names. [DBZ-200](https://issues.jboss.org/projects/DBZ/issues/DBZ-200)
+* MongoDB connector properly generates event keys based upon ObjectID for updates. [DBZ-201](https://issues.jboss.org/projects/DBZ/issues/DBZ-201)
+
+
 ## 0.4.0
 
-February 7, 2017 - [Detailed release notes](https://issues.jboss.org/projects/DBZ/versions/12330743)
+February 7, 2017 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12330743)
 
 ### New features since 0.3.6
 
@@ -17,7 +64,7 @@ None
 
 ### Fixes and changes since 0.3.6
 
-This release includes the following fixes, changes, or improvements since the link:release-0-3-6[0.3.6] release:
+This release includes the following fixes, changes, or improvements since the [0.3.6](#036) release:
 
 * Update Kafka dependencies to 0.10.1.1. [DBZ-173](https://issues.jboss.org/projects/DBZ/issues/DBZ-173)
 * Update MySQL binary log client library to 0.9.0. [DBZ-186](https://issues.jboss.org/projects/DBZ/issues/DBZ-186)
@@ -36,7 +83,7 @@ This release includes the following fixes, changes, or improvements since the li
 
 ## 0.3.6
 
-December 21, 2016 - [Detailed release notes](https://issues.jboss.org/projects/DBZ/versions/12332775)
+December 21, 2016 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12332775)
 
 ### New features since 0.3.5
 
@@ -48,7 +95,7 @@ None
 
 ### Fixes since 0.3.5
 
-This release includes the following fixes since the link:release-0-3-5[0.3.5] release:
+This release includes the following fixes since the [0.3.5](#035) release:
 
 * Deleting a Debezium connector in Kafka Connect no longer causes NPEs. [DBZ-138](https://issues.jboss.org/projects/DBZ/issues/DBZ-138)
 * MongoDB connector properly connects to a sharded cluster and the primaries for each replica set. [DBZ-170](https://issues.jboss.org/projects/DBZ/issues/DBZ-170), [DBZ-167](https://issues.jboss.org/projects/DBZ/issues/DBZ-167)
@@ -67,7 +114,7 @@ This release includes the following fixes since the link:release-0-3-5[0.3.5] re
 
 ## 0.3.5
 
-November 9, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12332052)
+November 9, 2016 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12332052)
 
 ### New features since 0.3.4
 
@@ -86,7 +133,7 @@ This release includes the following significant fix, and all users are strongly 
 
 * Restarting MySQL connector may lose or miss events from the previous transaction that was incompletely processed prior to the easlier shutdown. This fix corrects this potential problem and slightly alters the offsets recorded by the connector. Production connectors should be stopped carefully to ensure transactions are processed atomically, if necessary by temporarily stopping updates on the MySQL server and letting the connector complete all transactions before stopping. [DBZ-144](https://issues.jboss.org/projects/DBZ/issues/DBZ-144)
 
-Additionally, this release includes the following fixes since the link:release-0-3-4[0.3.4] release:
+Additionally, this release includes the following fixes since the [0.3.4](#034) release:
 
 * Shutting down MySQL connector task database and quickly terminating the Kafka Connect process may cause connector to be restarted in a strange state when Kafka Connect is restarted, but this no longer results in a null pointer exception in the Kafka database history. [DBZ-146](https://issues.jboss.org/projects/DBZ/issues/DBZ-146)
 * MySQL connector now has option to treat `DECIMAL` and `NUMERIC` columns as double values rather than `java.math.BigDecimal` values that are encoded in the messages by Kafka Connect in binary form. [DBZ-147](https://issues.jboss.org/projects/DBZ/issues/DBZ-147)
@@ -98,7 +145,7 @@ Additionally, this release includes the following fixes since the link:release-0
 
 ## 0.3.4
 
-October 25, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12331759)
+October 25, 2016 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12331759)
 
 ### New features since 0.3.3
 
@@ -112,14 +159,14 @@ None
 
 ### Fixes since 0.3.3
 
-This release includes all of the fixes from the link:release-0-3-3[0.3.3] release, and also includes the following fixes:
+This release includes all of the fixes from the [0.3.3](#033) release, and also includes the following fixes:
 
 * MySQL connector's `ts_sec` field now shows correct time from MySQL server events. [DBZ-139](https://issues.jboss.org/projects/DBZ/issues/DBZ-139)
 
 
 ## 0.3.3
 
-October 18, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12331604)
+October 18, 2016 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12331604)
 
 ### New features since 0.3.2
 
@@ -131,7 +178,7 @@ None
 
 ### Fixes since 0.3.2
 
-This release includes all of the fixes from the link:release-0-3-2[0.3.2] release, and also includes the following fixes:
+This release includes all of the fixes from the [0.3.2](#032) release, and also includes the following fixes:
 
 * MySQL connector now works with MySQL 5.5. [DBZ-115](https://issues.jboss.org/projects/DBZ/issues/DBZ-115)
 * MySQL connector now handles `BIT(n)` column values. [DBZ-123](https://issues.jboss.org/projects/DBZ/issues/DBZ-123)
@@ -143,7 +190,7 @@ This release includes all of the fixes from the link:release-0-3-2[0.3.2] releas
 
 ## 0.3.2
 
-September 26, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12331401)
+September 26, 2016 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12331401)
 
 ### New features since 0.3.1
 
@@ -155,7 +202,7 @@ None
 
 ### Fixes since 0.3.1
 
-This release includes all of the fixes from the link:release-0-3-1[0.3.1] release, and also includes the following fixes:
+This release includes all of the fixes from the [0.3.1](#031) release, and also includes the following fixes:
 
 * MySQL connector now handles zero-value dates. [DBZ-114](https://issues.jboss.org/projects/DBZ/issues/DBZ-114)
 * MySQL connector no longer prints out password-related configuration properties, though [KAFKA-4171](https://issues.apache.org/jira/browse/KAFKA-4171) for a similar issue with Kafka Connect. [DBZ-122](https://issues.jboss.org/projects/DBZ/issues/DBZ-122)
@@ -168,7 +215,7 @@ This release includes all of the fixes from the link:release-0-3-1[0.3.1] releas
 
 ## 0.3.1
 
-August 30, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12331359)
+August 30, 2016 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12331359)
 
 ### New features
 
@@ -180,7 +227,7 @@ None
 
 ### Fixes since 0.3.0
 
-This release includes all of the fixes from the link:release-0-2-4[0.2.4] release, and also includes the following fixes:
+This release includes all of the fixes from the [0.2.4](#024) release, and also includes the following fixes:
 
 * MySQL connector now properly decodes string values from the binlog based upon the column's character set encoding as read by the DDL statement. Upon upgrade and restart, the connector will re-read the recorded database history and now associate the columns with their the character sets, and any newly processed events will use properly encoded strings values. As expected, previously generated events are never altered. Force a snapshot to regenerate events for the servers. [DBZ-102](https://issues.jboss.org/projects/DBZ/issues/DBZ-102)
 * Corrected how the MySQL connector parses some DDL statements. [DBZ-106](https://issues.jboss.org/projects/DBZ/issues/DBZ-106)
@@ -192,7 +239,7 @@ This release includes all of the fixes from the link:release-0-2-4[0.2.4] releas
 
 ## 0.3.0
 
-August 16, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12329661)
+August 16, 2016 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12329661)
 
 ### New features
 
@@ -226,7 +273,7 @@ August 16, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/f
 
 ## 0.2.4
 
-August 16, 2016 - [Detailed release notes](https://issues.jboss.org/projects/DBZ/versions/12331221)
+August 16, 2016 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12331221)
 
 ### Fixes since 0.2.3
 
@@ -237,7 +284,7 @@ August 16, 2016 - [Detailed release notes](https://issues.jboss.org/projects/DBZ
 
 ## 0.2.3
 
-July 26, 2016 - [Detailed release notes](https://issues.jboss.org/projects/DBZ/versions/12330932)
+July 26, 2016 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12330932)
 
 ### Backwards-incompatible changes since 0.2.2
 
@@ -269,7 +316,7 @@ June 22, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/ver
 
 ## 0.2.1
 
-June 10, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12330752)
+June 10, 2016 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12330752)
 
 ### Backwards-incompatible changes since 0.2.0
 
@@ -281,7 +328,7 @@ June 10, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fix
 
 ## 0.2.0
 
-June 8, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12329465)
+June 8, 2016 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12329465)
 
 ### New features
 
@@ -308,7 +355,7 @@ June 8, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixf
 
 ## 0.1
 
-March 17, 2016 - [Detailed release notes](https://issues.jboss.org/browse/DBZ/fixforversion/12329464)
+March 17, 2016 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12329464)
 
 ### New features
 

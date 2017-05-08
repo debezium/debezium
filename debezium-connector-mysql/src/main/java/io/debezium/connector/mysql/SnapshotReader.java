@@ -19,6 +19,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
 
@@ -257,7 +258,7 @@ public class SnapshotReader extends AbstractReader {
                     try {
                         // MySQL sometimes considers some local files as databases (see DBZ-164),
                         // so we will simply try each one and ignore the problematic ones ...
-                        sql.set("SHOW TABLES IN " + quote(dbName));
+                        sql.set("SHOW FULL TABLES IN " + quote(dbName) + " where Table_Type = 'BASE TABLE'");
                         mysql.query(sql.get(), rs -> {
                             while (rs.next() && isRunning()) {
                                 TableId id = new TableId(dbName, null, rs.getString(1));
@@ -280,7 +281,8 @@ public class SnapshotReader extends AbstractReader {
                         logger.warn("\t skipping database '{}' due to error reading tables: {}", dbName, e.getMessage());
                     }
                 }
-                logger.info("\t snapshot continuing with databases: {}", readableDatabaseNames);
+                final Set<String> includedDatabaseNames = readableDatabaseNames.stream().filter(filters.databaseFilter()).collect(Collectors.toSet());
+                logger.info("\tsnapshot continuing with database(s): {}", includedDatabaseNames);
 
                 if (!isLocked) {
                     // ------------------------------------
@@ -297,9 +299,13 @@ public class SnapshotReader extends AbstractReader {
                     }
                     // We have the required privileges, so try to lock all of the tables we're interested in ...
                     logger.info("Step {}: flush and obtain read lock for {} tables (preventing writes)", step++, tableIds.size());
-                    for (TableId tableId : tableIds) {
-                        sql.set("FLUSH TABLES " + quote(tableId) + " WITH READ LOCK");
-                        //mysql.execute(sql.get());
+                    String tableList = tableIds.stream()
+                            .map(tid -> quote(tid))
+                            .reduce((r, element) -> r+ "," + element)
+                            .orElse(null);
+                    if (tableList != null) {
+                        sql.set("FLUSH TABLES " + tableList + " WITH READ LOCK");
+                        mysql.execute(sql.get());
                     }
                     lockAcquired = clock.currentTimeInMillis();
                     metrics.globalLockAcquired();

@@ -8,8 +8,10 @@ package io.debezium.connector.mysql;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -27,6 +29,7 @@ import io.debezium.relational.ddl.DataTypeParser;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.ddl.DdlParserListener.SetVariableEvent;
 import io.debezium.relational.ddl.DdlTokenizer;
+import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
 import io.debezium.text.TokenStream;
 import io.debezium.text.TokenStream.Marker;
@@ -123,6 +126,7 @@ public class MySqlDdlParser extends DdlParser {
         dataTypes.register(Types.CHAR, "ENUM(...)");
         dataTypes.register(Types.CHAR, "SET(...)");
         dataTypes.register(Types.OTHER, "JSON");
+        dataTypes.register(Types.OTHER, "POINT");
     }
 
     @Override
@@ -131,7 +135,7 @@ public class MySqlDdlParser extends DdlParser {
 
     @Override
     protected void initializeStatementStarts(TokenSet statementStartTokens) {
-        statementStartTokens.add("CREATE", "ALTER", "DROP", "INSERT", "GRANT", "REVOKE", "FLUSH", "TRUNCATE", "COMMIT", "USE");
+        statementStartTokens.add("CREATE", "ALTER", "DROP", "INSERT", "GRANT", "REVOKE", "FLUSH", "TRUNCATE", "COMMIT", "USE", "SAVEPOINT");
     }
 
     @Override
@@ -549,88 +553,157 @@ public class MySqlDdlParser extends DdlParser {
 
     protected void parseCreateDefinition(Marker start, TableEditor table) {
         // If the first token is a quoted identifier, then we know it is a column name ...
+        Collection<ParsingException> errors = null;
         boolean quoted = isNextTokenQuotedIdentifier();
+        Marker defnStart = tokens.mark();
+        if (!quoted) {
+            // The first token is not quoted so let's check for other expressions ...
+            if (tokens.canConsume("CHECK")) {
+                // Try to parse the constraints first ...
+                consumeExpression(start);
+                return;
+            }
+            if (tokens.canConsume("CONSTRAINT", TokenStream.ANY_VALUE, "PRIMARY", "KEY") || tokens.canConsume("PRIMARY", "KEY")) {
+                try {
+                    if (tokens.canConsume("USING")) {
+                        parseIndexType(start);
+                    }
+                    if (!tokens.matches('(')) {
+                        tokens.consume(); // index name
+                    }
+                    List<String> pkColumnNames = parseIndexColumnNames(start);
+                    table.setPrimaryKeyNames(pkColumnNames);
+                    parseIndexOptions(start);
+                    // MySQL does not allow a primary key to have nullable columns, so let's make sure we model that correctly ...
+                    pkColumnNames.forEach(name -> {
+                        Column c = table.columnWithName(name);
+                        if (c.isOptional()) {
+                            table.addColumn(c.edit().optional(false).create());
+                        }
+                    });
+                    return;
+                } catch (ParsingException e) {
+                    // Invalid names, so rewind and continue
+                    errors = accumulateParsingFailure(e, errors);
+                    tokens.rewind(defnStart);
+                } catch (MultipleParsingExceptions e) {
+                    // Invalid names, so rewind and continue
+                    errors = accumulateParsingFailure(e, errors);
+                    tokens.rewind(defnStart);
+                }
+            }
+            if (tokens.canConsume("CONSTRAINT", TokenStream.ANY_VALUE, "UNIQUE") || tokens.canConsume("UNIQUE")) {
+                tokens.canConsumeAnyOf("KEY", "INDEX");
+                try {
+                    if (!tokens.matches('(')) {
+                        if (!tokens.matches("USING")) {
+                            tokens.consume(); // name of unique index ...
+                        }
+                        if (tokens.matches("USING")) {
+                            parseIndexType(start);
+                        }
+                    }
+                    List<String> uniqueKeyColumnNames = parseIndexColumnNames(start);
+                    if (table.primaryKeyColumnNames().isEmpty()) {
+                        table.setPrimaryKeyNames(uniqueKeyColumnNames); // this may eventually get overwritten by a real PK
+                    }
+                    parseIndexOptions(start);
+                    return;
+                } catch (ParsingException e) {
+                    // Invalid names, so rewind and continue
+                    errors = accumulateParsingFailure(e, errors);
+                    tokens.rewind(defnStart);
+                } catch (MultipleParsingExceptions e) {
+                    // Invalid names, so rewind and continue
+                    errors = accumulateParsingFailure(e, errors);
+                    tokens.rewind(defnStart);
+                }
+            }
+            if (tokens.canConsume("CONSTRAINT", TokenStream.ANY_VALUE, "FOREIGN", "KEY") || tokens.canConsume("FOREIGN", "KEY")) {
+                try {
+                    if (!tokens.matches('(')) {
+                        tokens.consume(); // name of foreign key
+                    }
+                    parseIndexColumnNames(start);
+                    if (tokens.matches("REFERENCES")) {
+                        parseReferenceDefinition(start);
+                    }
+                    return;
+                } catch (ParsingException e) {
+                    // Invalid names, so rewind and continue
+                    errors = accumulateParsingFailure(e, errors);
+                    tokens.rewind(defnStart);
+                } catch (MultipleParsingExceptions e) {
+                    // Invalid names, so rewind and continue
+                    errors = accumulateParsingFailure(e, errors);
+                    tokens.rewind(defnStart);
+                }
+            }
+            if (tokens.canConsumeAnyOf("INDEX", "KEY")) {
+                try {
+                    if (!tokens.matches('(')) {
+                        if (!tokens.matches("USING")) {
+                            tokens.consume(); // name of unique index ...
+                        }
+                        if (tokens.matches("USING")) {
+                            parseIndexType(start);
+                        }
+                    }
+                    parseIndexColumnNames(start);
+                    parseIndexOptions(start);
+                    return;
+                } catch (ParsingException e) {
+                    // Invalid names, so rewind and continue
+                    errors = accumulateParsingFailure(e, errors);
+                    tokens.rewind(defnStart);
+                } catch (MultipleParsingExceptions e) {
+                    // Invalid names, so rewind and continue
+                    errors = accumulateParsingFailure(e, errors);
+                    tokens.rewind(defnStart);
+                }
+            }
+            if (tokens.canConsumeAnyOf("FULLTEXT", "SPATIAL")) {
+                try {
+                    tokens.canConsumeAnyOf("INDEX", "KEY");
+                    if (!tokens.matches('(')) {
+                        tokens.consume(); // name of unique index ...
+                    }
+                    parseIndexColumnNames(start);
+                    parseIndexOptions(start);
+                    return;
+                } catch (ParsingException e) {
+                    // Invalid names, so rewind and continue
+                    errors = accumulateParsingFailure(e, errors);
+                    tokens.rewind(defnStart);
+                } catch (MultipleParsingExceptions e) {
+                    // Invalid names, so rewind and continue
+                    errors = accumulateParsingFailure(e, errors);
+                    tokens.rewind(defnStart);
+                }
+            }
+        }
 
-        // Try to parse the constraints first ...
-        if (!quoted && tokens.canConsume("CHECK")) {
-            consumeExpression(start);
-        } else if (!quoted && tokens.canConsume("CONSTRAINT", TokenStream.ANY_VALUE, "PRIMARY", "KEY")
-                || tokens.canConsume("PRIMARY", "KEY")) {
-            if (tokens.canConsume("USING")) {
-                parseIndexType(start);
-            }
-            if (!tokens.matches('(')) {
-                tokens.consume(); // index name
-            }
-            List<String> pkColumnNames = parseIndexColumnNames(start);
-            table.setPrimaryKeyNames(pkColumnNames);
-            parseIndexOptions(start);
-            // MySQL does not allow a primary key to have nullable columns, so let's make sure we model that correctly ...
-            pkColumnNames.forEach(name -> {
-                Column c = table.columnWithName(name);
-                if (c.isOptional()) {
-                    table.addColumn(c.edit().optional(false).create());
-                }
-            });
-        } else if (!quoted && tokens.canConsume("CONSTRAINT", TokenStream.ANY_VALUE, "UNIQUE") || tokens.canConsume("UNIQUE")) {
-            tokens.canConsumeAnyOf("KEY", "INDEX");
-            if (!tokens.matches('(')) {
-                if (!tokens.matches("USING")) {
-                    tokens.consume(); // name of unique index ...
-                }
-                if (tokens.matches("USING")) {
-                    parseIndexType(start);
-                }
-            }
-            List<String> uniqueKeyColumnNames = parseIndexColumnNames(start);
-            if (table.primaryKeyColumnNames().isEmpty()) {
-                table.setPrimaryKeyNames(uniqueKeyColumnNames); // this may eventually get overwritten by a real PK
-            }
-            parseIndexOptions(start);
-        } else if (!quoted && tokens.canConsume("CONSTRAINT", TokenStream.ANY_VALUE, "FOREIGN", "KEY")
-                || tokens.canConsume("FOREIGN", "KEY")) {
-            if (!tokens.matches('(')) {
-                tokens.consume(); // name of foreign key
-            }
-            parseIndexColumnNames(start);
-            if (tokens.matches("REFERENCES")) {
-                parseReferenceDefinition(start);
-            }
-        } else if (!quoted && tokens.canConsumeAnyOf("INDEX", "KEY")) {
-            if (!tokens.matches('(')) {
-                if (!tokens.matches("USING")) {
-                    tokens.consume(); // name of unique index ...
-                }
-                if (tokens.matches("USING")) {
-                    parseIndexType(start);
-                }
-            }
-            parseIndexColumnNames(start);
-            parseIndexOptions(start);
-        } else if (!quoted && tokens.canConsume("FULLTEXT", "SPATIAL")) {
-            tokens.canConsumeAnyOf("INDEX", "KEY");
-            if (!tokens.matches('(')) {
-                tokens.consume(); // name of unique index ...
-            }
-            parseIndexColumnNames(start);
-            parseIndexOptions(start);
-        } else {
+        try {
+            // It's either quoted (meaning it's a column definition)
             tokens.canConsume("COLUMN"); // optional
-
-            // Obtain the column editor ...
-            String columnName = tokens.consume();
-            parseCreateColumn(start, table, columnName);
-
-            // ALTER TABLE allows reordering the columns after the definition ...
-            if (tokens.canConsume("FIRST")) {
-                table.reorderColumn(columnName, null);
-            } else if (tokens.canConsume("AFTER")) {
-                table.reorderColumn(columnName, tokens.consume());
+            String columnName = parseColumnName();
+            parseCreateColumn(start, table, columnName, null);
+        } catch (ParsingException e) {
+            if (errors != null) {
+                errors = accumulateParsingFailure(e, errors);
+                throw new MultipleParsingExceptions(errors);
             }
+            throw e;
+        } catch (MultipleParsingExceptions e) {
+            if (errors != null) {
+                errors = accumulateParsingFailure(e, errors);
+                throw new MultipleParsingExceptions(errors);
+            }
+            throw e;
         }
     }
 
-    protected Column parseCreateColumn(Marker start, TableEditor table, String columnName) {
+    protected Column parseCreateColumn(Marker start, TableEditor table, String columnName, String newColumnName) {
         // Obtain the column editor ...
         Column existingColumn = table.columnWithName(columnName);
         ColumnEditor column = existingColumn != null ? existingColumn.edit() : Column.editor().name(columnName);
@@ -643,6 +716,18 @@ public class MySqlDdlParser extends DdlParser {
         table.addColumns(newColumnDefn);
         if (isPrimaryKey.get()) {
             table.setPrimaryKeyNames(newColumnDefn.name());
+        }
+
+        if (newColumnName != null && !newColumnName.equalsIgnoreCase(columnName)) {
+            table.renameColumn(columnName, newColumnName);
+            columnName = newColumnName;
+        }
+
+        // ALTER TABLE allows reordering the columns after the definition ...
+        if (tokens.canConsume("FIRST")) {
+            table.reorderColumn(columnName, null);
+        } else if (tokens.canConsume("AFTER")) {
+            table.reorderColumn(columnName, tokens.consume());
         }
         return table.columnWithName(newColumnDefn.name());
     }
@@ -809,7 +894,7 @@ public class MySqlDdlParser extends DdlParser {
     }
 
     private void parseIndexColumnName(Consumer<String> name) {
-        name.accept(tokens.consume());
+        name.accept(parseColumnName());
         if (tokens.canConsume('(')) {
             tokens.consume(); // length
             tokens.consume(')');
@@ -1000,7 +1085,7 @@ public class MySqlDdlParser extends DdlParser {
 
     protected void parseCreateProcedure(Marker start) {
         parseDefiner(tokens.mark());
-        tokens.consume("FUNCTION");
+        tokens.consumeAnyOf("FUNCTION", "PROCEDURE");
         tokens.consume(); // name
         consumeRemainingStatement(start);
     }
@@ -1096,7 +1181,7 @@ public class MySqlDdlParser extends DdlParser {
                 parsePartitionNames(start);
             } else {
                 tokens.canConsume("COLUMN");
-                String columnName = tokens.consume();
+                String columnName = parseColumnName();
                 table.removeColumn(columnName);
             }
         } else if (tokens.canConsume("ALTER")) {
@@ -1108,24 +1193,13 @@ public class MySqlDdlParser extends DdlParser {
             }
         } else if (tokens.canConsume("CHANGE")) {
             tokens.canConsume("COLUMN");
-            String oldName = tokens.consume();
-            String newName = tokens.consume();
-            parseCreateColumn(start, table, oldName); // replaces the old definition but keeps old name
-            table.renameColumn(oldName, newName);
-            if (tokens.canConsume("FIRST")) {
-                table.reorderColumn(newName, null);
-            } else if (tokens.canConsume("AFTER")) {
-                table.reorderColumn(newName, tokens.consume());
-            }
+            String oldName = parseColumnName();
+            String newName = parseColumnName();
+            parseCreateColumn(start, table, oldName, newName);
         } else if (tokens.canConsume("MODIFY")) {
             tokens.canConsume("COLUMN");
-            String columnName = tokens.consume();
-            parseCreateColumn(start, table, columnName);
-            if (tokens.canConsume("FIRST")) {
-                table.reorderColumn(columnName, null);
-            } else if (tokens.canConsume("AFTER")) {
-                table.reorderColumn(columnName, tokens.consume());
-            }
+            String columnName = parseColumnName();
+            parseCreateColumn(start, table, columnName, null);
         } else if (tokens.canConsumeAnyOf("ALGORITHM", "LOCK")) {
             tokens.canConsume('=');
             tokens.consume();
@@ -1318,12 +1392,25 @@ public class MySqlDdlParser extends DdlParser {
     protected List<String> parseColumnNameList(Marker start) {
         List<String> names = new ArrayList<>();
         tokens.consume('(');
-        names.add(tokens.consume());
+        names.add(parseColumnName());
         while (tokens.canConsume(',')) {
-            names.add(tokens.consume());
+            names.add(parseColumnName());
         }
         tokens.consume(')');
         return names;
+    }
+
+    protected String parseColumnName() {
+        boolean quoted = isNextTokenQuotedIdentifier();
+        String name = tokens.consume();
+        if (!quoted) {
+            // Unquoted names may not consist entirely of digits
+            if (name.matches("[0-9]+")) {
+                parsingFailed(tokens.previousPosition(), "Unquoted column names may not contain only digits");
+                return null;
+            }
+        }
+        return name;
     }
 
     protected void parsePartitionNames(Marker start) {
@@ -1351,6 +1438,96 @@ public class MySqlDdlParser extends DdlParser {
     protected void consumeExpression(Marker start) {
         tokens.consume("(");
         tokens.consumeThrough(')', '(');
+    }
+
+    /**
+     * Consume the entire {@code BEGIN...END} block that appears next in the token stream. This handles nested
+     * <a href="https://dev.mysql.com/doc/refman/5.7/en/begin-end.html"><code>BEGIN...END</code> blocks</a>,
+     * <a href="https://dev.mysql.com/doc/refman/5.7/en/statement-labels.html">labeled statements</a>,
+     * and control blocks.
+     * 
+     * @param start the marker at which the statement was begun
+     */
+    @Override
+    protected void consumeBeginStatement(Marker start) {
+        tokens.consume("BEGIN");
+        // Look for a label that preceded the BEGIN ...
+        LinkedList<String> labels = new LinkedList<>();
+        labels.addFirst(getPrecedingBlockLabel());
+
+        // Now look for the "END", ignoring intermediate control blocks that also use "END" ...
+        LinkedList<String> endSuffixes = new LinkedList<>();
+        while (tokens.hasNext()) {
+            if (tokens.matches("BEGIN")) {
+                consumeBeginStatement(tokens.mark());
+            }
+            if (tokens.canConsume("IF", "EXISTS")) {
+                // Ignore any IF EXISTS phrases ...
+            }
+            if (tokens.canConsume("IF")) {
+                boolean isControlBlock = true;
+                if (tokens.canConsume("(")) {
+                    // This may be an IF() function or a control block
+                    tokens.consumeThrough(")","(");
+                    if (!tokens.canConsume("THEN")) {
+                        // This was an IF function ...
+                        isControlBlock = false;
+                    }
+                }
+                if (isControlBlock) {
+                    endSuffixes.addFirst("IF"); // block ends with "END IF"
+                    labels.addFirst(null); // labels are not allowed
+                }
+            }
+            if (tokens.canConsume("CASE", "WHEN")) {
+                // This is the beginning of a control block ...
+                endSuffixes.addFirst(null);
+                labels.addFirst(null); // no label for case blocks
+            }
+            if (tokens.canConsume("CASE")) {
+                // This is the beginning of a control block ...
+                endSuffixes.addFirst("CASE");
+                labels.addFirst(null); // no label for case blocks
+            }
+            if (tokens.matchesAnyOf("REPEAT", "LOOP", "WHILE", "CASE")) {
+                // This is the beginning of a control block ...
+                String label = getPrecedingBlockLabel();
+                String keyword = tokens.consume();
+                endSuffixes.addFirst(keyword);
+                labels.addFirst(label); // may be null
+            }
+            if (tokens.canConsume("END")) {
+                if (endSuffixes.isEmpty()) {
+                    break;
+                }
+                String suffix = endSuffixes.remove();
+                if (suffix != null) tokens.canConsume(suffix);
+                String label = labels.remove();
+                if (label != null) tokens.canConsume(label);
+            }
+            tokens.consume();
+        }
+
+        // We've consumed the corresponding END of the BEGIN, but consume the label if one was used ...
+        assert labels.size() == 1;
+        String label = labels.remove();
+        if (label != null) tokens.canConsume(label);
+    }
+
+    /**
+     * Get the label that appears with a colon character just prior to the current position. Some MySQL DDL statements can be
+     * <a href="https://dev.mysql.com/doc/refman/5.7/en/statement-labels.html">labeled</a>, and this label can then appear at the
+     * end of a block.
+     * 
+     * @return the label for the block starting at the current position; null if there is no such label
+     * @throws NoSuchElementException if there is no previous token
+     */
+    protected String getPrecedingBlockLabel() {
+        if (tokens.previousToken(1).matches(':')) {
+            // A label preceded the beginning of the control block ...
+            return tokens.previousToken(2).value();
+        }
+        return null;
     }
 
     /**

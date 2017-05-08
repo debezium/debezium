@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>0.4.1-SNAPSHOT</version>
+        <version>0.5.1-SNAPSHOT</version>
         <relativePath>../</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -17,7 +17,7 @@
           work on all platforms. We'll set some of these as system properties during integration testing.
       -->
         <version.postgres.server>9.6</version.postgres.server>
-        <postgres.port>4532</postgres.port>
+        <postgres.port>5432</postgres.port>
         <postgres.user>postgres</postgres.user>
         <postgres.password>postgres</postgres.password>
         <postgres.db.name>postgres</postgres.db.name>

@@ -30,6 +30,7 @@ import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -52,7 +53,7 @@ import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.VariableLatch;
 
 /**
- * Base class for the integration tests for the different {@link RecordsProducer} instances 
+ * Base class for the integration tests for the different {@link RecordsProducer} instances
  * 
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
@@ -120,9 +121,9 @@ public abstract class AbstractRecordsProducerTest {
     }
     
     protected List<SchemaAndValueField> schemaAndValuesForDateTimeTypes() {
-        long expectedTs = NanoTimestamp.toEpochNanos(LocalDateTime.parse("2016-11-04T13:51:30"));
+        long expectedTs = NanoTimestamp.toEpochNanos(LocalDateTime.parse("2016-11-04T13:51:30"), null);
         String expectedTz = "2016-11-04T11:51:30Z"; //timestamp is stored with TZ, should be read back with UTC
-        int expectedDate = Date.toEpochDay(LocalDate.parse("2016-11-04"));
+        int expectedDate = Date.toEpochDay(LocalDate.parse("2016-11-04"), null);
         long expectedTi = LocalTime.parse("13:51:30").toNanoOfDay();
         String expectedTtz = "11:51:30Z";  //time is stored with TZ, should be read back at GMT
         double interval = MicroDuration.durationMicros(1, 2, 3, 4, 5, 0, PostgresValueConverter.DAYS_PER_MONTH_AVG);
@@ -136,18 +137,18 @@ public abstract class AbstractRecordsProducerTest {
     }
     
     protected List<SchemaAndValueField> schemaAndValuesForMoneyTypes() {
-        return Collections.singletonList(new SchemaAndValueField("csh", Decimal.builder(0).optional().build(), 
+        return Collections.singletonList(new SchemaAndValueField("csh", Decimal.builder(0).optional().build(),
                                                                  BigDecimal.valueOf(1234.11d)));
     }
     
     protected Map<String, List<SchemaAndValueField>> schemaAndValuesByTableName() {
         return ALL_STMTS.stream().collect(Collectors.toMap(AbstractRecordsProducerTest::tableNameFromInsertStmt,
-                                                           this::schemasAndValuesForTable));    
+                                                           this::schemasAndValuesForTable));
     }
     
     protected List<SchemaAndValueField> schemasAndValuesForTable(String insertTableStatement) {
         switch (insertTableStatement) {
-            case INSERT_NUMERIC_TYPES_STMT: 
+            case INSERT_NUMERIC_TYPES_STMT:
                 return schemasAndValuesForNumericType();
             case INSERT_BIN_TYPES_STMT:
                 return schemaAndValuesForBinTypes();
@@ -159,7 +160,7 @@ public abstract class AbstractRecordsProducerTest {
                 return schemaAndValuesForGeomTypes();
             case INSERT_STRING_TYPES_STMT:
                 return schemasAndValuesForStringTypes();
-            case INSERT_TEXT_TYPES_STMT: 
+            case INSERT_TEXT_TYPES_STMT:
                 return schemasAndValuesForTextTypes();
             default:
                 throw new IllegalArgumentException("unknown statement:" + insertTableStatement);
@@ -239,7 +240,7 @@ public abstract class AbstractRecordsProducerTest {
     }
     
     protected TestConsumer testConsumer(int expectedRecordsCount) {
-         return new TestConsumer(expectedRecordsCount);        
+         return new TestConsumer(expectedRecordsCount);
     }
     
     protected static class TestConsumer implements Consumer<SourceRecord> {
@@ -254,9 +255,9 @@ public abstract class AbstractRecordsProducerTest {
         @Override
         public void accept(SourceRecord record) {
             if (latch.getCount() == 0) {
-                fail("received more events than expected");                
+                fail("received more events than expected");
             }
-            records.add(record);  
+            records.add(record);
             latch.countDown();
         }
         
@@ -283,8 +284,8 @@ public abstract class AbstractRecordsProducerTest {
    
         protected void await(long timeout, TimeUnit unit) throws InterruptedException {
             if (!latch.await(timeout, unit)) {
-                fail("Consumer expected " + latch.getCount() + " records, but received " + records.size());                
-            } 
+                fail("Consumer expected " + latch.getCount() + " records, but received " + records.size());
+            }
         }
     }
 }

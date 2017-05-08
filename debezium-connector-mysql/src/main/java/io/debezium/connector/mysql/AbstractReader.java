@@ -254,6 +254,9 @@ public abstract class AbstractReader implements Reader {
     protected void enqueueRecord(SourceRecord record) throws InterruptedException {
         while(running.get() && !stopping.get()) {
             if (record != null) {
+                if (logger.isTraceEnabled()) {
+                    logger.trace("Enqueuing source record: {}", record);
+                }
                 if (this.records.offer(record, 10, TimeUnit.SECONDS)) {
                     break;
                 }

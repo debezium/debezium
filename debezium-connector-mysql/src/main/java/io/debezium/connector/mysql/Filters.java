@@ -29,17 +29,6 @@ import io.debezium.util.Collect;
 @Immutable
 public class Filters {
 
-    protected static final Set<String> BUILT_IN_TABLE_NAMES = Collect.unmodifiableSet("db", "user", "func", "plugin", "tables_priv",
-                                                                                      "columns_priv", "help_topic", "help_category",
-                                                                                      "help_relation", "help_keyword",
-                                                                                      "time_zone_name", "time_zone", "time_zone_transition",
-                                                                                      "time_zone_transition_type", "time_zone_leap_second",
-                                                                                      "proc", "procs_priv", "general_log", "event",
-                                                                                      "ndb_binlog_index",
-                                                                                      "innodb_table_stats", "innodb_index_stats",
-                                                                                      "slave_relay_log_info", "slave_master_info",
-                                                                                      "slave_worker_info", "gtid_executed",
-                                                                                      "server_cost", "engine_cost");
     protected static final Set<String> BUILT_IN_DB_NAMES = Collect.unmodifiableSet("mysql", "performance_schema","sys", "information_schema");
 
     protected static boolean isBuiltInDatabase(String databaseName) {
@@ -47,7 +36,7 @@ public class Filters {
     }
 
     protected static boolean isBuiltInTable(TableId id ) {
-        return isBuiltInDatabase(id.catalog()) || BUILT_IN_TABLE_NAMES.contains(id.table().toLowerCase());
+        return isBuiltInDatabase(id.catalog());
     }
 
     protected static boolean isNotBuiltInDatabase(String databaseName) {

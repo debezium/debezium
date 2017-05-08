@@ -6,6 +6,7 @@
 package io.debezium.time;
 
 import java.time.LocalTime;
+import java.time.temporal.TemporalAdjuster;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -57,11 +58,16 @@ public class Time {
      * {@link java.sql.Timestamp}, ignoring any date portions of the supplied value.
      * 
      * @param value the local or SQL date, time, or timestamp value; may not be null
+     * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
+     * adjustment is necessary
      * @return the milliseconds past midnight
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types
      */
-    public static int toMilliOfDay(Object value) {
+    public static int toMilliOfDay(Object value, TemporalAdjuster adjuster) {
         LocalTime time = Conversions.toLocalTime(value);
+        if (adjuster != null) {
+            time = time.with(adjuster);
+        }
         long micros = Math.floorDiv(time.toNanoOfDay(), Conversions.NANOSECONDS_PER_MILLISECOND);
         assert Math.abs(micros) < Integer.MAX_VALUE;
         return (int) micros;

@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.StringTokenizer;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -780,6 +781,21 @@ public final class Strings {
             l.add(tokens.nextToken());
         }
         return l;
+    }
+
+    /**
+     * Determine if the supplied string is a valid {@link UUID}.
+     * @param str the string to evaluate
+     * @return {@code true} if the string is a valid representation of a UUID, or {@code false} otherwise
+     */
+    public static boolean isUuid(String str) {
+        if (str == null) return false;
+        try {
+            UUID.fromString(str);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     private Strings() {

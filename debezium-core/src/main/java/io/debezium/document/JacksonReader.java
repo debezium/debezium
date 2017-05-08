@@ -164,11 +164,11 @@ final class JacksonReader implements DocumentReader, ArrayReader {
                     // disregard this, since it's an extension ...
                     break;
                 case NOT_AVAILABLE:
-                    throw new JsonParseException("Non-blocking parsers are not supported", parser.getCurrentLocation());
+                    throw new JsonParseException(parser, "Non-blocking parsers are not supported", parser.getCurrentLocation());
                 case END_ARRAY:
-                    throw new JsonParseException("Not expecting an END_ARRAY token", parser.getCurrentLocation());
+                    throw new JsonParseException(parser, "Not expecting an END_ARRAY token", parser.getCurrentLocation());
                 case END_OBJECT:
-                    throw new JsonParseException("Not expecting an END_OBJECT token", parser.getCurrentLocation());
+                    throw new JsonParseException(parser, "Not expecting an END_OBJECT token", parser.getCurrentLocation());
             }
             token = parser.nextToken();
         }
@@ -234,13 +234,13 @@ final class JacksonReader implements DocumentReader, ArrayReader {
                     // disregard this, since it's an extension ...
                     break;
                 case NOT_AVAILABLE:
-                    throw new JsonParseException("Non-blocking parsers are not supported", parser.getCurrentLocation());
+                    throw new JsonParseException(parser, "Non-blocking parsers are not supported", parser.getCurrentLocation());
                 case FIELD_NAME:
-                    throw new JsonParseException("Not expecting a FIELD_NAME token", parser.getCurrentLocation());
+                    throw new JsonParseException(parser, "Not expecting a FIELD_NAME token", parser.getCurrentLocation());
                 case END_ARRAY:
-                    throw new JsonParseException("Not expecting an END_ARRAY token", parser.getCurrentLocation());
+                    throw new JsonParseException(parser, "Not expecting an END_ARRAY token", parser.getCurrentLocation());
                 case END_OBJECT:
-                    throw new JsonParseException("Not expecting an END_OBJECT token", parser.getCurrentLocation());
+                    throw new JsonParseException(parser, "Not expecting an END_OBJECT token", parser.getCurrentLocation());
             }
             token = parser.nextToken();
         }

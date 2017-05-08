@@ -7,6 +7,7 @@ package io.debezium.relational.ddl;
 
 import java.math.BigDecimal;
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -580,12 +581,8 @@ public class DdlParser {
             if (tokens.matches(DdlTokenizer.STATEMENT_KEY)) {
                 break;
             }
-            if (tokens.canConsume("BEGIN")) {
-                tokens.consumeThrough("END");
-                while (tokens.canConsume("IF")) {
-                    // We just read through an 'END IF', but need to read until the next 'END'
-                    tokens.consumeThrough("END");
-                }
+            if (tokens.matches("BEGIN")) {
+                consumeBeginStatement(tokens.mark());
             } else if (tokens.matches(DdlTokenizer.STATEMENT_TERMINATOR)) {
                 tokens.consume();
                 break;
@@ -595,6 +592,21 @@ public class DdlParser {
         }
     }
 
+    /**
+     * Consume the entire {@code BEGIN...END} block that appears next in the token stream. This method may need to be
+     * specialized for a specific DDL grammar.
+     * 
+     * @param start the marker at which the statement was begun
+     */
+    protected void consumeBeginStatement(Marker start) {
+        tokens.consume("BEGIN");
+        tokens.consumeThrough("END");
+        while (tokens.canConsume("IF")) {
+            // We just read through an 'END IF', but need to read until the next 'END'
+            tokens.consumeThrough("END");
+        }
+    }
+    
     /**
      * Consume the next token that is a single-quoted string.
      * 
@@ -633,7 +645,7 @@ public class DdlParser {
      * @param msg the leading portion of the message; may not be null
      */
     protected void parsingFailed(Position position, String msg) {
-        parsingFailed(position, msg);
+        parsingFailed(position, msg, null);
     }
 
     /**
@@ -661,6 +673,32 @@ public class DdlParser {
             throw new ParsingException(position, msg + " at line " + position.line() + ", column " + position.column());
         }
         throw new MultipleParsingExceptions(msg + " at line " + position.line() + ", column " + position.column(), errors);
+    }
+    
+    /**
+     * Utility method to accumulate a parsing exception.
+     * @param e the parsing exception
+     * @param list the list of previous parsing exceptions; may be null
+     * @return the list of previous and current parsing exceptions; if {@code e} is null then always {@code list}, but otherwise non-null list
+     */
+    protected Collection<ParsingException> accumulateParsingFailure(ParsingException e, Collection<ParsingException> list) {
+       if (e == null) return list;
+       if (list == null) list = new ArrayList<ParsingException>();
+       list.add(e);
+       return list;
+    }
+    
+    /**
+     * Utility method to accumulate a parsing exception.
+     * @param e the multiple parsing exceptions
+     * @param list the list of previous parsing exceptions; may be null
+     * @return the list of previous and current parsing exceptions; if {@code e} is null then always {@code list}, but otherwise non-null list
+     */
+    protected Collection<ParsingException> accumulateParsingFailure(MultipleParsingExceptions e, Collection<ParsingException> list) {
+       if (e == null) return list;
+       if (list == null) list = new ArrayList<ParsingException>();
+       list.addAll(e.getErrors());
+       return list;
     }
 
     protected Object parseLiteral(Marker start) {
