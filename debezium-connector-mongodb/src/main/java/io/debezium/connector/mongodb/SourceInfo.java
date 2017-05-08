@@ -92,7 +92,7 @@ public final class SourceInfo {
     public static final String DP_TASK_ID = "dp_id";
 
     private static final BsonTimestamp INITIAL_TIMESTAMP = new BsonTimestamp();
-    private static final Position INITIAL_POSITION = new Position(INITIAL_TIMESTAMP, null, false);
+    private final Position INITIAL_POSITION = new Position(INITIAL_TIMESTAMP, null, false);
 
     /**
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition(String)}
@@ -121,7 +121,7 @@ public final class SourceInfo {
     private final Set<String> initialSyncReplicaSets = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     @Immutable
-    protected static final class Position {
+    protected final class Position {
         private final Long opId;
         private final BsonTimestamp ts;
         private final Boolean initialSync;
