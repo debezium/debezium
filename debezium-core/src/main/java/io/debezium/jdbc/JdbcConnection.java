@@ -5,7 +5,7 @@
  */
 package io.debezium.jdbc;
 
-import com.datapipeline.clients.DpAES;
+import com.datapipeline.base.utils.DpAES;
 
 import java.sql.CallableStatement;
 import java.sql.Connection;

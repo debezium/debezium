@@ -88,7 +88,7 @@
         <version.protoc.maven.plugin>3.0.0.1</version.protoc.maven.plugin>
 
         <!-- Data pipeline internal dependency-->
-        <version.datapipeline>0.3.2-SNAPSHOT</version.datapipeline>
+        <version.datapipeline>0.4.0-SNAPSHOT</version.datapipeline>
         <!-- Dockerfiles -->
         <docker.maintainer>Debezium community</docker.maintainer>
 
@@ -359,11 +359,6 @@
             <dependency>
                 <groupId>com.datapipeline</groupId>
                 <artifactId>dp-core</artifactId>
-                <version>${version.datapipeline}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.datapipeline</groupId>
-                <artifactId>dp-clients</artifactId>
                 <version>${version.datapipeline}</version>
             </dependency>
         </dependencies>

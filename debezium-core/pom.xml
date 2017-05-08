@@ -13,7 +13,7 @@
     <dependencies>
         <dependency>
             <groupId>com.datapipeline</groupId>
-            <artifactId>dp-clients</artifactId>
+            <artifactId>dp-core</artifactId>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>

@@ -17,8 +17,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import com.dp.internal.bean.DataSourceSchemaMappingExemption;
 
@@ -83,7 +81,7 @@ public final class SourceInfo {
     public static final String SERVER_NAME = "name";
     public static final String REPLICA_SET_NAME = "rs";
     public static final String NAMESPACE = "ns";
-    public static final String TIMESTAMP = DpConstants.DATA_KEY_BINLOG_TS;
+    public static final String TIMESTAMP = DpConstants.SOURCE_ENTITY_RECORD_TIMESTAMP_KEY;
     public static final String ORDER = "ord";
     public static final String OPERATION_ID = "h";
     public static final String INITIAL_SYNC = "initsync";
@@ -110,10 +108,10 @@ public final class SourceInfo {
         .field(INITIAL_SYNC, Schema.OPTIONAL_BOOLEAN_SCHEMA)
         .field(FINISHED_COLLECTIONS, Schema.OPTIONAL_STRING_SCHEMA)
         .field(ONGOING_COLLECTION, Schema.OPTIONAL_STRING_SCHEMA)
-        .field(DpConstants.RECORD_OFFSET_ENTITY_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-        .field(DpConstants.RECORD_OFFSET_TOTAL_SIZE_KEY, Schema.OPTIONAL_INT32_SCHEMA)
-        .field(DpConstants.SNAPSHOT_LASTONE_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
-        .field(DpConstants.RECORD_OFFSET_INDEX_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+        .field(DpConstants.SOURCE_ENTITY_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+        .field(DpConstants.SOURCE_ENTITY_SNAPSHOT_SIZE_KEY, Schema.OPTIONAL_INT32_SCHEMA)
+        .field(DpConstants.SOURCE_ENTITY_SNAPSHOT_LASTRECORD_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
+        .field(DpConstants.SOURCE_ENTITY_SNAPSHOT_RECORD_INDEX_KEY, Schema.OPTIONAL_INT64_SCHEMA)
         .build();
 
     private final ConcurrentMap<String, Map<String, String>> sourcePartitionsByReplicaSetName = new ConcurrentHashMap<>();
@@ -328,8 +326,8 @@ public final class SourceInfo {
         offset.put(OPERATION_ID, existing.getOperationId());
         offset.put(FINISHED_COLLECTIONS, StringUtils.join(existing.getFinishedCollections(), ','));
         offset.put(ONGOING_COLLECTION, existing.getOngoingCollection());
-        offset.put(DpConstants.RECORD_OFFSET_INDEX_KEY, existing.getIndex());
-        offset.put(DpConstants.SNAPSHOT_LASTONE_KEY, existing.isLastRecord());
+        offset.put(DpConstants.SOURCE_ENTITY_SNAPSHOT_RECORD_INDEX_KEY, existing.getIndex());
+        offset.put(DpConstants.SOURCE_ENTITY_SNAPSHOT_LASTRECORD_KEY, existing.isLastRecord());
         if (isInitialSyncOngoing(replicaSetName)) {
             offset.put(INITIAL_SYNC, true);
         }
@@ -428,14 +426,14 @@ public final class SourceInfo {
         int delimIndex = namespace.indexOf('.');
         if (delimIndex > 0) {
             String collectionName = namespace.substring(delimIndex + 1);
-            result.put(DpConstants.RECORD_OFFSET_ENTITY_KEY, collectionName);
+            result.put(DpConstants.SOURCE_ENTITY_SNAPSHOT_RECORD_INDEX_KEY, collectionName);
         }
-        result.put(DpConstants.RECORD_OFFSET_TOTAL_SIZE_KEY, (int) position.getExpectedNumDocs());
+        result.put(DpConstants.SOURCE_ENTITY_SNAPSHOT_SIZE_KEY, (int) position.getExpectedNumDocs());
         if (position.getInitialSync() == Boolean.TRUE) {
             result.put(INITIAL_SYNC, true);
         }
-        result.put(DpConstants.RECORD_OFFSET_INDEX_KEY, position.getIndex());
-        result.put(DpConstants.SNAPSHOT_LASTONE_KEY, position.isLastRecord());
+        result.put(DpConstants.SOURCE_ENTITY_SNAPSHOT_RECORD_INDEX_KEY, position.getIndex());
+        result.put(DpConstants.SOURCE_ENTITY_SNAPSHOT_LASTRECORD_KEY, position.isLastRecord());
         return result;
     }
 
@@ -476,7 +474,7 @@ public final class SourceInfo {
         boolean initialSync = booleanOffsetValue(sourceOffset, INITIAL_SYNC);
         Set<String> finishedCollections = setoffsetValue(sourceOffset, FINISHED_COLLECTIONS);
         String ongoingCollections = String.valueOf(sourceOffset.get(ONGOING_COLLECTION));
-        long index = longOffsetValue(sourceOffset, DpConstants.RECORD_OFFSET_INDEX_KEY);
+        long index = longOffsetValue(sourceOffset, DpConstants.SOURCE_ENTITY_SNAPSHOT_RECORD_INDEX_KEY);
         positionsByReplicaSetName.put(replicaSetName, new Position(time, order, operationId,
             initialSync, finishedCollections, ongoingCollections, 0, index, false));
         return true;

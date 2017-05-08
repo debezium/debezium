@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import com.datapipeline.base.DpConstants;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Predicate;
@@ -118,10 +120,6 @@ final class SourceInfo {
 
     public static final String LAST_SNAPSHOTTED_RECORD_KEY = "last";
     public static final String SNAPSHOTTED_ENTITIES_KEY = "snapshotted";
-    public static final String ENTITY_NAME_KEY = "entity";
-    public static final String ENTITY_SIZE_KEY = "size";
-    public static final String ENTITY_INDEX_KEY = "idx";
-    public static final String SNAPSHOT_LASTONE_KEY = "islastone";
     private static final String DELIMITER = ":";
 
     /**
@@ -140,10 +138,10 @@ final class SourceInfo {
                                                      .field(THREAD_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                      .field(DB_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(TABLE_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                                                     .field(ENTITY_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                                                     .field(ENTITY_SIZE_KEY, Schema.OPTIONAL_INT64_SCHEMA)
-                                                     .field(ENTITY_INDEX_KEY, Schema.OPTIONAL_INT64_SCHEMA)
-                                                     .field(SNAPSHOT_LASTONE_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA).optional().defaultValue(null)
+                                                     .field(DpConstants.SOURCE_ENTITY_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                                                     .field(DpConstants.SOURCE_ENTITY_SNAPSHOT_SIZE_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+                                                     .field(DpConstants.SOURCE_ENTITY_SNAPSHOT_RECORD_INDEX_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+                                                     .field(DpConstants.SOURCE_ENTITY_SNAPSHOT_LASTRECORD_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA).optional().defaultValue(null)
                                                      .build();
 
     private String currentGtidSet;
@@ -400,16 +398,16 @@ final class SourceInfo {
         if (lastSnapshot) {
             result.put(SNAPSHOT_KEY, true);
         }
-        result.put(SNAPSHOT_LASTONE_KEY, isSnapshotLastOne);
+        result.put(DpConstants.SOURCE_ENTITY_SNAPSHOT_LASTRECORD_KEY, isSnapshotLastOne);
         if (threadId >= 0) {
             result.put(THREAD_KEY, threadId);
         }
         if (tableId != null) {
             result.put(DB_NAME_KEY, tableId.catalog());
             result.put(TABLE_NAME_KEY, tableId.table());
-            result.put(ENTITY_NAME_KEY, tableId.table());
-            result.put(ENTITY_SIZE_KEY, entitySize);
-            result.put(ENTITY_INDEX_KEY, lastIndex);
+            result.put(DpConstants.SOURCE_ENTITY_NAME_KEY, tableId.table());
+            result.put(DpConstants.SOURCE_ENTITY_SNAPSHOT_SIZE_KEY, entitySize);
+            result.put(DpConstants.SOURCE_ENTITY_SNAPSHOT_RECORD_INDEX_KEY, lastIndex);
         }
         return result;
     }
