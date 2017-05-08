@@ -16,6 +16,10 @@
             <artifactId>dp-core</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.datapipeline</groupId>
+            <artifactId>dp-clients</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>

@@ -5,7 +5,7 @@
  */
 package io.debezium.jdbc;
 
-import com.datapipeline.base.utils.DpAES;
+import com.datapipeline.clients.DpAES;
 
 import java.sql.CallableStatement;
 import java.sql.Connection;
@@ -32,7 +32,6 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

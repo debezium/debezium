@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
-import com.datapipeline.base.utils.DpAES;
+import com.datapipeline.clients.DpAES;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
