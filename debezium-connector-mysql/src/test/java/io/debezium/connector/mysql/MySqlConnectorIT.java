@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.nio.file.Path;
@@ -21,8 +22,6 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
@@ -66,12 +65,14 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     @Test
     public void shouldNotStartWithInvalidConfiguration() {
         config = Configuration.create()
+                              .with(MySqlConnectorConfig.SERVER_NAME, "myserver")
+                              .with(KafkaDatabaseHistory.TOPIC, "myserver")
                               .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                               .build();
 
         // we expect the engine will log at least one error, so preface it ...
-        logger.info("Attempting to start the connector with an INVALID configuration, so MULTIPLE error messages & one exceptions will appear in the log");
+        logger.info("Attempting to start the connector with an INVALID configuration, so MULTIPLE error messages and exceptions will appear in the log");
         start(MySqlConnector.class, config, (success, msg, error) -> {
             assertThat(success).isFalse();
             assertThat(error).isNotNull();
@@ -92,7 +93,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.PORT);
         assertConfigurationErrors(result, MySqlConnectorConfig.USER, 1);
         assertConfigurationErrors(result, MySqlConnectorConfig.PASSWORD, 1);
-        assertConfigurationErrors(result, MySqlConnectorConfig.SERVER_NAME, 1);
+        assertConfigurationErrors(result, MySqlConnectorConfig.SERVER_NAME, 2);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SERVER_ID);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLES_IGNORE_BUILTIN);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_WHITELIST);
@@ -574,7 +575,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Read the first record produced since we've restarted
         SourceRecord prod3003 = inserts.get(0);
         assertInsert(prod3003, "id", 3003);
-        
+
         // Check that the offset has the correct/expected values ...
         assertOffset(prod3003,"file",lastCommittedOffset.get("file"));
         assertOffset(prod3003,"pos",lastCommittedOffset.get("pos"));
@@ -588,7 +589,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertValueField(prod3003,"after/weight",987.65d);
         assertValueField(prod3003,"after/volume",0.0d);
         assertValueField(prod3003,"after/alias","oak");
-        
+
 
         // And make sure we consume that one extra update ...
         records = consumeRecordsByTopic(1);
