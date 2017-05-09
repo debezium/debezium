@@ -305,7 +305,7 @@ public class SnapshotReader extends AbstractReader {
                             .orElse(null);
                     if (tableList != null) {
                         sql.set("FLUSH TABLES " + tableList + " WITH READ LOCK");
-                        mysql.execute(sql.get());
+//                        mysql.execute(sql.get());
                     }
                     lockAcquired = clock.currentTimeInMillis();
                     metrics.globalLockAcquired();
