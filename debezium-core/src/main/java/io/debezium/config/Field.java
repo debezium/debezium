@@ -655,8 +655,14 @@ public final class Field {
     public <T extends Enum<T>> Field withEnum(Class<T> enumType, T defaultOption) {
         EnumRecommender<T> recommendator = new EnumRecommender<>(enumType);
         Field result = withType(Type.STRING).withRecommender(recommendator).withValidation(recommendator);
+        // Not all enums support EnumeratedValue yet
         if ( defaultOption != null ) {
-            result = result.withDefault(defaultOption.name().toLowerCase());
+            if (defaultOption instanceof EnumeratedValue) {
+                result = result.withDefault(((EnumeratedValue)defaultOption).getValue());
+            }
+            else {
+                result = result.withDefault(defaultOption.name().toLowerCase());
+            }
         }
         return result;
     }
@@ -938,10 +944,19 @@ public final class Field {
         private final String literalsStr;
 
         public EnumRecommender(Class<T> enumType) {
-            this.literals = Arrays.stream(enumType.getEnumConstants())
-                                  .map(Enum::name)
-                                  .map(String::toLowerCase)
-                                  .collect(Collectors.toSet());
+            // Not all enums support EnumeratedValue yet
+            if (Arrays.asList(enumType.getInterfaces()).contains(EnumeratedValue.class)) {
+                this.literals = Arrays.stream(enumType.getEnumConstants())
+                                       .map(x -> ((EnumeratedValue)x).getValue())
+                                       .map(String::toLowerCase)
+                                       .collect(Collectors.toSet());
+            }
+            else {
+                this.literals = Arrays.stream(enumType.getEnumConstants())
+                                       .map(Enum::name)
+                                       .map(String::toLowerCase)
+                                       .collect(Collectors.toSet());
+            }
             this.validValues = Collections.unmodifiableList(new ArrayList<>(this.literals));
             this.literalsStr = Strings.join(", ", validValues);
         }
