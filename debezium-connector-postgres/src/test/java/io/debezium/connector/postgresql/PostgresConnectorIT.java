@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
+
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.data.Struct;
@@ -37,7 +38,6 @@ import org.junit.Test;
 import org.postgresql.util.PSQLState;
 
 import io.debezium.config.Configuration;
-import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.data.Envelope;
