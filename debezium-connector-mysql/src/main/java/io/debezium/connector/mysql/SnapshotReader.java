@@ -305,7 +305,7 @@ public class SnapshotReader extends AbstractReader {
                             .orElse(null);
                     if (tableList != null) {
                         sql.set("FLUSH TABLES " + tableList + " WITH READ LOCK");
-                        mysql.execute(sql.get());
+//                        mysql.execute(sql.get());
                     }
                     lockAcquired = clock.currentTimeInMillis();
                     metrics.globalLockAcquired();
@@ -452,8 +452,8 @@ public class SnapshotReader extends AbstractReader {
                             String lastId = source.getLastRecordId(tableId.table());
                             long lastIndex = source.getLastRecordIndex(tableId.table());
                             sql.set("SELECT * FROM " + quote(tableId)
-                                + (lastId != null ? " WHERE " + primaryKey + " > " + lastId :"")
-                                + (primaryKey != null ? " ORDER BY " + primaryKey : "")
+                                + (lastId != null ? " WHERE " + quote(primaryKey) + " > " + singleQuote(lastId) :"")
+                                + (primaryKey != null ? " ORDER BY " + quote(primaryKey) : "")
                             );
                             logger.info("Start select from {} starting from index {}.", tableId, lastIndex);
                             try {
@@ -652,6 +652,10 @@ public class SnapshotReader extends AbstractReader {
                         + "'. Make sure your server is correctly configured");
             }
         });
+    }
+
+    protected String singleQuote(String primaryKeyValue){
+        return "'"+ primaryKeyValue + "'";
     }
 
     protected String quote(String dbOrTableName) {
