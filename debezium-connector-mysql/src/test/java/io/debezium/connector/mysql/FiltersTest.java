@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import io.debezium.doc.FixFor;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -211,9 +212,10 @@ public class FiltersTest {
         assertSystemTablesExcluded();
         assertSystemDatabasesExcluded();
     }
-    
+
+    @FixFor("DBZ-242")
     @Test
-    public void shouldAllowTableListedWithLiteralInWhitelistAndNoTableBlacklistWhenDatabaseIncludedButSystemTablesIncluded() {
+    public void shouldAllowTableListedWithLiteralInWhitelistAndNoTableBlacklistWhenDatabaseIncludedButSystemTablesExcluded() {
         filters = build.includeTables("connector_test.table1,connector_test.table2").includeBuiltInTables().createFilters();
         assertTableIncluded("connector_test.table1");
         assertTableIncluded("connector_test.table2");
@@ -221,10 +223,38 @@ public class FiltersTest {
         assertTableExcluded("other.table1");
         assertDatabaseIncluded("connector_test");
         assertDatabaseIncluded("other_test");
-        assertSystemTablesIncluded();
+        assertSystemTablesExcluded(); // not specifically included
         assertSystemDatabasesIncluded();
     }
-    
+
+    @FixFor("DBZ-242")
+    @Test
+    public void shouldAllowTableListedWithLiteralInWhitelistAndTableWhitelistWhenDatabaseIncludedButSystemTablesIncluded() {
+        filters = build.includeTables("connector_test.table1,connector_test.table2").includeDatabases("connector_test,mysql").includeBuiltInTables().createFilters();
+        assertTableIncluded("connector_test.table1");
+        assertTableIncluded("connector_test.table2");
+        assertTableExcluded("connector_test.table3");
+        assertTableExcluded("other.table1");
+        assertDatabaseIncluded("connector_test");
+        assertDatabaseExcluded("other_test");
+        assertDatabaseIncluded("mysql");
+        assertSystemTablesExcluded(); // not specifically included
+    }
+
+    @FixFor("DBZ-242")
+    @Test
+    public void shouldAllowTableListedWithLiteralInWhitelistAndNoTableBlacklistWhenDatabaseIncludedButSystemTablesIncluded() {
+        filters = build.includeTables("connector_test.table1,connector_test.table2,mysql[.].*,performance_schema[.].*,sys[.].*,information_schema[.].*").includeBuiltInTables().createFilters();
+        assertTableIncluded("connector_test.table1");
+        assertTableIncluded("connector_test.table2");
+        assertTableExcluded("connector_test.table3");
+        assertTableExcluded("other.table1");
+        assertDatabaseIncluded("connector_test");
+        assertDatabaseIncluded("other_test");
+        assertSystemTablesIncluded(); // specifically included
+        assertSystemDatabasesIncluded();
+    }
+
     @Test
     public void shouldNotAllowTableWhenNotIncludedInDatabaseWhitelist() {
         filters = build.includeTables("db1.table1,db2.table1,db3.*").includeDatabases("db1,db3").createFilters();

@@ -105,7 +105,7 @@ public class MySqlSchemaTest {
     public void shouldLoadSystemAndNonSystemTablesAndConsumeAllDatabases() throws InterruptedException {
         mysql = build.storeDatabaseHistoryInFile(TEST_FILE_PATH)
                      .serverName(SERVER_NAME)
-                     .includeDatabases("connector_test")
+                     .includeDatabases("connector_test,mysql")
                      .includeBuiltInTables()
                      .createSchemas();
         mysql.start();
