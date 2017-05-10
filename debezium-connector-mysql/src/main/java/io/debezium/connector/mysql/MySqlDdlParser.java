@@ -576,7 +576,7 @@ public class MySqlDdlParser extends DdlParser {
                     // MySQL does not allow a primary key to have nullable columns, so let's make sure we model that correctly ...
                     pkColumnNames.forEach(name -> {
                         Column c = table.columnWithName(name);
-                        if (c.isOptional()) {
+                        if (c != null && c.isOptional()) {
                             table.addColumn(c.edit().optional(false).create());
                         }
                     });
@@ -1144,8 +1144,23 @@ public class MySqlDdlParser extends DdlParser {
                 }
             }
         } else {
-            // We don't know about this table ...
-            consumeRemainingStatement(start);
+            Marker marker = tokens.mark();
+            try {
+                // We don't know about this table but we still have to parse the statement ...
+                table = TableEditor.noOp(tableId);
+                if (!tokens.matches(terminator()) && !tokens.matches("PARTITION")) {
+                    parseAlterSpecificationList(start, table, str -> {
+                    });
+                }
+                if (tokens.matches("PARTITION")) {
+                    parsePartitionOptions(start, table);
+                }
+                parseTableOptions(start, table);
+                // do nothing with this
+            } catch (ParsingException e) {
+                tokens.rewind(marker);
+                consumeRemainingStatement(start);
+            }
         }
         signalAlterTable(tableId, oldTableId, start);
     }

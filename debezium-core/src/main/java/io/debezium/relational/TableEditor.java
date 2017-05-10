@@ -11,12 +11,22 @@ import java.util.stream.Collectors;
 import io.debezium.annotation.NotThreadSafe;
 
 /**
- * An editor for {@link Table} instances.
+ * An editor for {@link Table} instances, normally obtained from a {@link Tables} instance.
  * 
  * @author Randall Hauch
  */
 @NotThreadSafe
 public interface TableEditor {
+
+    /**
+     * Create a new editor that does nothing.
+     *
+     * @param id the table's identifier; may not be null
+     * @return the editor; never null
+     */
+    static TableEditor noOp(TableId id) {
+        return new NoOpTableEditorImpl().tableId(id);
+    }
 
     /**
      * Get the identifier for this table.

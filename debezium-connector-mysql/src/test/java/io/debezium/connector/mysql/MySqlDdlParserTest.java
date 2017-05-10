@@ -704,7 +704,7 @@ public class MySqlDdlParserTest {
         parser.parse(readFile("ddl/mysql-test-statements.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(6);
-        assertThat(listener.total()).isEqualTo(62);
+        assertThat(listener.total()).isEqualTo(61);
         listener.forEach(this::printEvent);
     }
 
@@ -876,6 +876,27 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(0); // 0 table
         assertThat(listener.total()).isEqualTo(0);
         listener.forEach(this::printEvent);
+    }
+
+    @FixFor("DBZ-198")
+    @Test
+    public void shouldParseAlterTableWithDropIndex() {
+        parser.parse(readFile("ddl/mysql-dbz-198i.ddl"), tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(3);
+        assertThat(listener.total()).isEqualTo(4);
+        listener.forEach(this::printEvent);
+    }
+
+    @FixFor("DBZ-198")
+    @Test
+    public void shouldParseButSkipAlterTableWhenTableIsNotKnown() {
+        parser.parse(readFile("ddl/mysql-dbz-198j.ddl"), tables);
+//        Testing.Print.enable();
+        Testing.print(tables);
+        listener.forEach(this::printEvent);
+        assertThat(tables.size()).isEqualTo(1);
+        assertThat(listener.total()).isEqualTo(2);
     }
 
     @FixFor("DBZ-200")
