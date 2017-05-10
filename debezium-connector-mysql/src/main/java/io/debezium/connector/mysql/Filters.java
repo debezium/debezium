@@ -88,8 +88,8 @@ public class Filters {
             this.tableFilter = tableFilter.and(isBuiltInTable.negate());
             this.dbFilter = dbFilter.and(isBuiltInDb.negate());
         } else {
-            this.tableFilter = tableFilter.or(isBuiltInTable);
-            this.dbFilter = dbFilter.or(isBuiltInDb);
+            this.tableFilter = tableFilter;
+            this.dbFilter = dbFilter;
         }
 
         // Define the filter that excludes blacklisted columns, truncated columns, and masked columns ...
