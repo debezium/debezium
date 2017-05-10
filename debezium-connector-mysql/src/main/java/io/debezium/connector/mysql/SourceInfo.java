@@ -6,7 +6,7 @@
 package io.debezium.connector.mysql;
 
 
-import com.datapipeline.clients.DpConstants;
+import com.datapipeline.clients.DpRecordConstants;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -139,10 +139,10 @@ final class SourceInfo {
                                                      .field(THREAD_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                      .field(DB_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(TABLE_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                                                     .field(DpConstants.SOURCE_ENTITY_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                                                     .field(DpConstants.SOURCE_ENTITY_SNAPSHOT_SIZE_KEY, Schema.OPTIONAL_INT64_SCHEMA)
-                                                     .field(DpConstants.SOURCE_ENTITY_SNAPSHOT_RECORD_INDEX_KEY, Schema.OPTIONAL_INT64_SCHEMA)
-                                                     .field(DpConstants.SOURCE_ENTITY_SNAPSHOT_LASTRECORD_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA).optional().defaultValue(null)
+                                                     .field(DpRecordConstants.SOURCE_ENTITY_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                                                     .field(DpRecordConstants.SOURCE_ENTITY_SNAPSHOT_SIZE_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+                                                     .field(DpRecordConstants.SOURCE_ENTITY_SNAPSHOT_RECORD_INDEX_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+                                                     .field(DpRecordConstants.SOURCE_ENTITY_SNAPSHOT_LASTRECORD_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA).optional().defaultValue(null)
                                                      .build();
 
     private String currentGtidSet;
@@ -399,16 +399,16 @@ final class SourceInfo {
         if (lastSnapshot) {
             result.put(SNAPSHOT_KEY, true);
         }
-        result.put(DpConstants.SOURCE_ENTITY_SNAPSHOT_LASTRECORD_KEY, isSnapshotLastOne);
+        result.put(DpRecordConstants.SOURCE_ENTITY_SNAPSHOT_LASTRECORD_KEY, isSnapshotLastOne);
         if (threadId >= 0) {
             result.put(THREAD_KEY, threadId);
         }
         if (tableId != null) {
             result.put(DB_NAME_KEY, tableId.catalog());
             result.put(TABLE_NAME_KEY, tableId.table());
-            result.put(DpConstants.SOURCE_ENTITY_NAME_KEY, tableId.table());
-            result.put(DpConstants.SOURCE_ENTITY_SNAPSHOT_SIZE_KEY, entitySize);
-            result.put(DpConstants.SOURCE_ENTITY_SNAPSHOT_RECORD_INDEX_KEY, lastIndex);
+            result.put(DpRecordConstants.SOURCE_ENTITY_NAME_KEY, tableId.table());
+            result.put(DpRecordConstants.SOURCE_ENTITY_SNAPSHOT_SIZE_KEY, entitySize);
+            result.put(DpRecordConstants.SOURCE_ENTITY_SNAPSHOT_RECORD_INDEX_KEY, lastIndex);
         }
         return result;
     }
