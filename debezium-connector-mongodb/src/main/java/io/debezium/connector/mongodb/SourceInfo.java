@@ -426,7 +426,7 @@ public final class SourceInfo {
         int delimIndex = namespace.indexOf('.');
         if (delimIndex > 0) {
             String collectionName = namespace.substring(delimIndex + 1);
-            result.put(DpRecordConstants.SOURCE_ENTITY_SNAPSHOT_RECORD_INDEX_KEY, collectionName);
+            result.put(DpRecordConstants.SOURCE_ENTITY_NAME_KEY, collectionName);
         }
         result.put(DpRecordConstants.SOURCE_ENTITY_SNAPSHOT_SIZE_KEY, (int) position.getExpectedNumDocs());
         if (position.getInitialSync() == Boolean.TRUE) {
