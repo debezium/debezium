@@ -145,7 +145,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                       PostgresConnectorConfig.DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS);
         validateField(validatedConfig, PostgresConnectorConfig.TIME_PRECISION_MODE, 
                       PostgresConnectorConfig.TemporalPrecisionMode.ADAPTIVE.name().toLowerCase());
-    }
+        validateField(validatedConfig, PostgresConnectorConfig.SSL_SOCKET_FACTORY, null);
+   }
     
     @Test
     public void shouldSupportSSLParameters() throws Exception {
