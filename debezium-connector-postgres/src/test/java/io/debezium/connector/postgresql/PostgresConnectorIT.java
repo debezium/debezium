@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
+
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.data.Struct;
@@ -128,7 +129,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         validateField(validatedConfig, PostgresConnectorConfig.ROWS_FETCH_SIZE, PostgresConnectorConfig.DEFAULT_ROWS_FETCH_SIZE);
         validateField(validatedConfig, PostgresConnectorConfig.POLL_INTERVAL_MS, PostgresConnectorConfig.DEFAULT_POLL_INTERVAL_MILLIS);
         validateField(validatedConfig, PostgresConnectorConfig.SSL_MODE, 
-                      PostgresConnectorConfig.SecureConnectionMode.DISABLED.name().toLowerCase());
+                      PostgresConnectorConfig.SecureConnectionMode.DISABLED.getValue());
         validateField(validatedConfig, PostgresConnectorConfig.SSL_CLIENT_CERT, null);
         validateField(validatedConfig, PostgresConnectorConfig.SSL_CLIENT_KEY, null);
         validateField(validatedConfig, PostgresConnectorConfig.SSL_CLIENT_KEY_PASSWORD, null);
@@ -158,7 +159,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
             assertThat(error).isInstanceOf(ConnectException.class);
             Throwable cause = error.getCause();
             assertThat(cause).isInstanceOf(SQLException.class);
-            assertThat(PSQLState.CONNECTION_UNABLE_TO_CONNECT).isEqualTo(new PSQLState(((SQLException)cause).getSQLState()));
+            assertThat(PSQLState.CONNECTION_REJECTED).isEqualTo(new PSQLState(((SQLException)cause).getSQLState()));
         });
         assertConnectorNotRunning();
     }
