@@ -8,10 +8,8 @@ package io.debezium.connector.mysql;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -295,6 +293,7 @@ public class MySqlConnectorConfig {
         }
     }
 
+    private static final int RECOMMENDER_LIMIT = 100;
     private static final String DATABASE_WHITELIST_NAME = "database.whitelist";
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
     private static final String TABLE_IGNORE_BUILTIN_NAME = "table.ignore.builtin";
@@ -738,14 +737,19 @@ public class MySqlConnectorConfig {
         @Override
         public List<Object> validValues(Field field, Configuration config) {
             List<Object> databaseNames = new ArrayList<>();
+            String sql = "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA";
+            if (config.getBoolean(TABLES_IGNORE_BUILTIN)) {
+                sql = sql + " WHERE SCHEMA_NAME NOT IN ('information_schema','mysql','sys','performance_schema')";
+            }
+            sql = sql + " limit " + RECOMMENDER_LIMIT;
             try (MySqlJdbcContext jdbcContext = new MySqlJdbcContext(config)) {
                 JdbcConnection mysql = jdbcContext.jdbc();
-                Set<String> dbNames = mysql.readAllCatalogNames();
-                if (config.getBoolean(TABLES_IGNORE_BUILTIN)) {
-                    Filters.withoutBuiltInDatabases(dbNames).forEach(databaseNames::add);
-                } else {
-                    dbNames.forEach(databaseNames::add);
-                }
+                mysql.query(sql, rs -> {
+                    while (rs.next()) {
+                        String dbName = rs.getString(1);
+                        databaseNames.add(dbName);
+                    }
+                });
             } catch (SQLException e) {
                 // don't do anything ...
             }
@@ -764,18 +768,25 @@ public class MySqlConnectorConfig {
         public List<Object> validValues(Field field, Configuration config) {
             // Get the list of allowed databases ...
             Filters dbFilter = new Filters(config);
+            String sql = "SELECT DISTINCT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE='base table'";
+            if (config.getBoolean(TABLES_IGNORE_BUILTIN)) {
+                sql = sql + " AND TABLE_SCHEMA NOT IN ('information_schema','mysql','sys','performance_schema')";
+            }
+            sql = sql + " limit " + RECOMMENDER_LIMIT;
 
             List<Object> results = new ArrayList<>();
             try (MySqlJdbcContext jdbcContext = new MySqlJdbcContext(config)) {
                 JdbcConnection mysql = jdbcContext.jdbc();
-                String[] tableTypes = new String[] { "TABLE" }; // only show MySQL physical tables
-                Collection<TableId> tableIds = mysql.readAllTableNames(tableTypes);
-                if (config.getBoolean(TABLES_IGNORE_BUILTIN)) {
-                    tableIds = Filters.withoutBuiltIns(tableIds);
-                }
-                tableIds.stream()
-                        .filter(dbFilter.tableInDatabaseFilter())
-                        .map(TableId::toString).forEach(results::add);
+                mysql.query(sql, rs -> {
+                    while (rs.next()) {
+                        String dbName = rs.getString(1);
+                        String tableName = rs.getString(2);
+                        TableId tableId = new TableId(dbName, null, tableName);
+                        if (dbFilter.databaseFilter().test(dbName)) {
+                            results.add(tableId.toString());
+                        }
+                    }
+                });
             } catch (SQLException e) {
                 // don't do anything ...
             }
