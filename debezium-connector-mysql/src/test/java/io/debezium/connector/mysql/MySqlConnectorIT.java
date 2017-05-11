@@ -25,7 +25,6 @@ import org.junit.Test;
 import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
-import io.debezium.config.Field.Recommender;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.data.Envelope;
@@ -229,57 +228,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, KafkaDatabaseHistory.TOPIC);
         assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS);
         assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS);
-
-        // Testing.Debug.enable();
-
-        Recommender dbNameRecommender = MySqlConnectorConfig.DATABASE_WHITELIST.recommender();
-        List<Object> dbNames = dbNameRecommender.validValues(MySqlConnectorConfig.DATABASE_WHITELIST, config);
-        Testing.debug("List of dbNames: " + dbNames);
-        assertThat(dbNames).containsOnly("connector_test", "readbinlog_test", "regression_test", "json_test",
-                                         "connector_test_ro", "emptydb", "geometry_test");
-
-        Recommender tableNameRecommender = MySqlConnectorConfig.TABLE_WHITELIST.recommender();
-        List<Object> tableNames = tableNameRecommender.validValues(MySqlConnectorConfig.TABLE_WHITELIST, config);
-        Testing.debug("List of tableNames: " + tableNames);
-        assertThat(tableNames).containsOnly("readbinlog_test.product",
-                                            "readbinlog_test.purchased",
-                                            "readbinlog_test.person",
-                                            "connector_test.customers",
-                                            "connector_test.orders",
-                                            "connector_test.products",
-                                            "connector_test.products_on_hand",
-                                            "connector_test_ro.customers",
-                                            "connector_test_ro.orders",
-                                            "connector_test_ro.products",
-                                            "connector_test_ro.products_on_hand",
-                                            "regression_test.t1464075356413_testtable6",
-                                            "regression_test.dbz_85_fractest",
-                                            "regression_test.dbz84_integer_types_table",
-                                            "regression_test.dbz_100_enumsettest",
-                                            "regression_test.dbz_102_charsettest",
-                                            "regression_test.dbz_114_zerovaluetest",
-                                            "regression_test.dbz_123_bitvaluetest",
-                                            "regression_test.dbz_104_customers",
-                                            "regression_test.dbz_147_decimalvalues",
-                                            "regression_test.dbz_195_numvalues",
-                                            "json_test.dbz_126_jsontable",
-                                            "geometry_test.dbz_222_point");
-
-        // Now set the whitelist to two databases ...
-        Configuration config2 = config.edit()
-                                      .with(MySqlConnectorConfig.DATABASE_WHITELIST, "connector_test,connector_test_ro")
-                                      .build();
-
-        List<Object> tableNames2 = tableNameRecommender.validValues(MySqlConnectorConfig.TABLE_WHITELIST, config2);
-        assertThat(tableNames2).containsOnly("connector_test.customers",
-                                             "connector_test.orders",
-                                             "connector_test.products",
-                                             "connector_test.products_on_hand",
-                                             "connector_test_ro.customers",
-                                             "connector_test_ro.orders",
-                                             "connector_test_ro.products",
-                                             "connector_test_ro.products_on_hand");
-        Testing.debug("List of tableNames: " + tableNames2);
     }
 
     @Test

@@ -6,10 +6,6 @@
 
 package io.debezium.connector.postgresql;
 
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -22,11 +18,8 @@ import org.apache.kafka.common.config.ConfigValue;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
-import io.debezium.config.Field.Recommender;
-import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.relational.TableId;
 
 /**
  * The configuration properties for the {@link PostgresConnector}
@@ -450,7 +443,6 @@ public class PostgresConnectorConfig {
                                                       .withType(Type.LIST)
                                                       .withWidth(Width.LONG)
                                                       .withImportance(Importance.HIGH)
-                                                      .withRecommender(SchemaRecommender.INSTANCE)
                                                       .withDependents(TABLE_WHITELIST_NAME)
                                                       .withDescription("The schemas for which events should be captured");
     
@@ -480,7 +472,6 @@ public class PostgresConnectorConfig {
                                                      .withWidth(Width.LONG)
                                                      .withImportance(Importance.HIGH)
                                                      .withValidation(Field::isListOfRegex)
-                                                     .withRecommender(TableRecommender.INSTANCE)
                                                      .withDescription("The tables for which changes are to be captured");
     
     /**
@@ -728,52 +719,5 @@ public class PostgresConnectorConfig {
             return 1;
         }
         return 0;
-    }
-    
-    
-    protected static class SchemaRecommender implements Recommender {
-        private static final SchemaRecommender INSTANCE = new SchemaRecommender();
-        
-        @Override
-        public List<Object> validValues(Field field, Configuration config) {
-            List<Object> schemaNames = new ArrayList<>();
-            try (PostgresConnection connection = new PostgresConnection(config)) {
-                schemaNames.addAll(connection.readAllSchemaNames(Filters.IS_SYSTEM_SCHEMA.negate()));
-            } catch (SQLException e) {
-                // don't do anything ...
-            }
-            return schemaNames;
-        }
-        
-        @Override
-        public boolean visible(Field field, Configuration config) {
-            return true;
-        }
-    }
-    
-    protected static class TableRecommender implements Recommender {
-        
-        private static final TableRecommender INSTANCE = new TableRecommender();
-    
-        private TableRecommender() {
-        }
-    
-        @Override
-        public List<Object> validValues(Field field, Configuration config) {
-            List<Object> results = new ArrayList<>();
-            try (PostgresConnection connection = new PostgresConnection(config)) {
-                String[] tableTypes = new String[] { "TABLE" };
-                Collection<TableId> tableIds = connection.readAllTableNames(tableTypes);
-                tableIds.forEach(tableId -> results.add(tableId.toString()));
-            } catch (SQLException e) {
-                // don't do anything ...
-            }
-            return results;
-        }
-
-        @Override
-        public boolean visible(Field field, Configuration config) {
-            return true;
-        }
     }
 }

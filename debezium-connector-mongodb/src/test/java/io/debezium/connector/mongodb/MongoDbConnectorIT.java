@@ -31,7 +31,6 @@ import com.mongodb.client.model.InsertOneOptions;
 import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
-import io.debezium.config.Field.Recommender;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
@@ -137,27 +136,6 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.CONNECT_BACKOFF_INITIAL_DELAY_MS);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.CONNECT_BACKOFF_MAX_DELAY_MS);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS);
-
-        // Testing.Debug.enable();
-
-        Recommender dbNameRecommender = MongoDbConnectorConfig.DATABASE_LIST.recommender();
-        List<Object> dbNames = dbNameRecommender.validValues(MongoDbConnectorConfig.DATABASE_LIST, config);
-        Testing.debug("List of dbNames: " + dbNames);
-        assertThat(dbNames).contains("dbval", "dbval2");    // may have more depending upon order
-
-        Recommender collectionNameRecommender = MongoDbConnectorConfig.COLLECTION_WHITELIST.recommender();
-        List<Object> collectionNames = collectionNameRecommender.validValues(MongoDbConnectorConfig.COLLECTION_WHITELIST, config);
-        Testing.debug("List of collection names: " + collectionNames);
-        assertThat(collectionNames).isEmpty();
-
-        // Now set the whitelist to two databases ...
-        Configuration config2 = config.edit()
-                                      .with(MongoDbConnectorConfig.DATABASE_LIST, "dbval")
-                                      .build();
-
-        List<Object> collectionNames2 = collectionNameRecommender.validValues(MongoDbConnectorConfig.COLLECTION_WHITELIST, config2);
-        assertThat(collectionNames2).containsOnly("dbval.validationColl1");
-        Testing.debug("List of collection names: " + collectionNames2);
     }
 
     @Test
