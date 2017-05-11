@@ -6,9 +6,6 @@
 package io.debezium.connector.mysql;
 
 import java.math.BigDecimal;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
@@ -19,11 +16,8 @@ import org.apache.kafka.common.config.ConfigDef.Width;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.config.Field.Recommender;
 import io.debezium.config.Field.ValidationOutput;
-import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
-import io.debezium.relational.TableId;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.KafkaDatabaseHistory;
 
@@ -297,8 +291,6 @@ public class MySqlConnectorConfig {
     private static final String DATABASE_WHITELIST_NAME = "database.whitelist";
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
     private static final String TABLE_IGNORE_BUILTIN_NAME = "table.ignore.builtin";
-    private static final TableRecommender TABLE_LIST_RECOMMENDER = new TableRecommender();
-    private static final DatabaseRecommender DATABASE_LIST_RECOMMENDER = new DatabaseRecommender();
 
     public static final Field HOSTNAME = Field.create("database.hostname")
                                               .withDisplayName("Hostname")
@@ -426,7 +418,6 @@ public class MySqlConnectorConfig {
                                                         .withType(Type.LIST)
                                                         .withWidth(Width.LONG)
                                                         .withImportance(Importance.HIGH)
-                                                        .withRecommender(DATABASE_LIST_RECOMMENDER)
                                                         .withDependents(TABLE_WHITELIST_NAME)
                                                         .withDescription("The databases for which changes are to be captured");
 
@@ -455,7 +446,6 @@ public class MySqlConnectorConfig {
                                                      .withWidth(Width.LONG)
                                                      .withImportance(Importance.HIGH)
                                                      .withValidation(Field::isListOfRegex)
-                                                     .withRecommender(TABLE_LIST_RECOMMENDER)
                                                      .withDescription("The tables for which changes are to be captured");
 
     /**
@@ -495,7 +485,6 @@ public class MySqlConnectorConfig {
                                                           .withType(Type.LIST)
                                                           .withWidth(Width.LONG)
                                                           .withImportance(Importance.HIGH)
-                                                          .withRecommender(DATABASE_LIST_RECOMMENDER)
                                                           .withDependents(TABLE_WHITELIST_NAME)
                                                           .withDescription("The source UUIDs used to include GTID ranges when determine the starting position in the MySQL server's binlog.");
 
@@ -730,73 +719,6 @@ public class MySqlConnectorConfig {
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
                     SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE);
         return config;
-    }
-
-    protected static class DatabaseRecommender implements Recommender {
-
-        @Override
-        public List<Object> validValues(Field field, Configuration config) {
-            List<Object> databaseNames = new ArrayList<>();
-            String sql = "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA";
-            if (config.getBoolean(TABLES_IGNORE_BUILTIN)) {
-                sql = sql + " WHERE SCHEMA_NAME NOT IN ('information_schema','mysql','sys','performance_schema')";
-            }
-            sql = sql + " limit " + RECOMMENDER_LIMIT;
-            try (MySqlJdbcContext jdbcContext = new MySqlJdbcContext(config)) {
-                JdbcConnection mysql = jdbcContext.jdbc();
-                mysql.query(sql, rs -> {
-                    while (rs.next()) {
-                        String dbName = rs.getString(1);
-                        databaseNames.add(dbName);
-                    }
-                });
-            } catch (SQLException e) {
-                // don't do anything ...
-            }
-            return databaseNames;
-        }
-
-        @Override
-        public boolean visible(Field field, Configuration config) {
-            return true;
-        }
-    }
-
-    protected static class TableRecommender implements Recommender {
-
-        @Override
-        public List<Object> validValues(Field field, Configuration config) {
-            // Get the list of allowed databases ...
-            Filters dbFilter = new Filters(config);
-            String sql = "SELECT DISTINCT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE='base table'";
-            if (config.getBoolean(TABLES_IGNORE_BUILTIN)) {
-                sql = sql + " AND TABLE_SCHEMA NOT IN ('information_schema','mysql','sys','performance_schema')";
-            }
-            sql = sql + " limit " + RECOMMENDER_LIMIT;
-
-            List<Object> results = new ArrayList<>();
-            try (MySqlJdbcContext jdbcContext = new MySqlJdbcContext(config)) {
-                JdbcConnection mysql = jdbcContext.jdbc();
-                mysql.query(sql, rs -> {
-                    while (rs.next()) {
-                        String dbName = rs.getString(1);
-                        String tableName = rs.getString(2);
-                        TableId tableId = new TableId(dbName, null, tableName);
-                        if (dbFilter.databaseFilter().test(dbName)) {
-                            results.add(tableId.toString());
-                        }
-                    }
-                });
-            } catch (SQLException e) {
-                // don't do anything ...
-            }
-            return results;
-        }
-
-        @Override
-        public boolean visible(Field field, Configuration config) {
-            return true;
-        }
     }
 
     private static int validateMaxQueueSize(Configuration config, Field field, ValidationOutput problems) {

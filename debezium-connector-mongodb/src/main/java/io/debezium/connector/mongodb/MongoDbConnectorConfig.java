@@ -5,10 +5,6 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -16,13 +12,9 @@ import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 
-import com.mongodb.MongoException;
-
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.config.Field.Recommender;
 import io.debezium.config.Field.ValidationOutput;
-import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 
 /**
  * The configuration properties.
@@ -31,8 +23,6 @@ public class MongoDbConnectorConfig {
 
     private static final String DATABASE_LIST_NAME = "database.list";
     private static final String COLLECTION_LIST_NAME = "collection.list";
-    private static final CollectionRecommender COLLECTION_LIST_RECOMMENDER = new CollectionRecommender();
-    private static final DatabaseRecommender DATABASE_LIST_RECOMMENDER = new DatabaseRecommender();
 
     /**
      * The comma-separated list of hostname and port pairs (in the form 'host' or 'host:port') of the MongoDB servers in the
@@ -169,7 +159,6 @@ public class MongoDbConnectorConfig {
                                                    .withType(Type.LIST)
                                                    .withWidth(Width.LONG)
                                                    .withImportance(Importance.HIGH)
-                                                   .withRecommender(DATABASE_LIST_RECOMMENDER)
                                                    .withDependents(COLLECTION_LIST_NAME)
                                                    .withDescription("The databases for which changes are to be captured");
 
@@ -183,7 +172,6 @@ public class MongoDbConnectorConfig {
                                                           .withType(Type.LIST)
                                                           .withWidth(Width.LONG)
                                                           .withImportance(Importance.HIGH)
-                                                          .withRecommender(COLLECTION_LIST_RECOMMENDER)
                                                           .withValidation(Field::isListOfRegex,
                                                                           MongoDbConnectorConfig::validateCollectionBlacklist)
                                                           .withDescription("The collections for which changes are to be captured");
@@ -222,63 +210,6 @@ public class MongoDbConnectorConfig {
         Field.group(config, "Events", DATABASE_LIST, COLLECTION_WHITELIST, COLLECTION_BLACKLIST);
         Field.group(config, "Connector", MAX_COPY_THREADS, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS);
         return config;
-    }
-
-    protected static class DatabaseRecommender implements Recommender {
-
-        @Override
-        public List<Object> validValues(Field field, Configuration config) {
-            // Make sure we connect just once
-            config = config.edit().with(MAX_FAILED_CONNECTIONS, 1).build();
-            Set<String> databaseNames = new HashSet<>();
-            try (ConnectionContext connContext = new ConnectionContext(config)) {
-                // Connect to each replica set ...
-                connContext.replicaSets().onEachReplicaSet(replicaSet -> {
-                    // And get the databases that are in this replica set ...
-                    MongoPrimary primary = connContext.primaryFor(replicaSet, (msg, e) -> {});
-                    primary.databaseNames().forEach(databaseNames::add);
-                });
-            } catch (MongoException e) {
-                // don't do anything ...
-            }
-            databaseNames.removeAll(Filters.BUILT_IN_DB_NAMES);
-            return new ArrayList<>(databaseNames);
-        }
-
-        @Override
-        public boolean visible(Field field, Configuration config) {
-            return true;
-        }
-    }
-
-    protected static class CollectionRecommender implements Recommender {
-
-        @Override
-        public List<Object> validValues(Field field, Configuration config) {
-            List<String> dbNames = config.getStrings(DATABASE_LIST, ",");
-            if ( dbNames == null ) return new ArrayList<>();
-            
-            Set<String> namespaces = new HashSet<>();
-            try (ConnectionContext connContext = new ConnectionContext(config)) {
-                // Connect to each replica set ...
-                connContext.replicaSets().onEachReplicaSet(replicaSet -> {
-                    // And get the collections that are in this replica set and in the selected databases...
-                    MongoPrimary primary = connContext.primaryFor(replicaSet, (msg, e) -> {});
-                    primary.collections().stream()
-                           .filter(id -> dbNames.contains(id.dbName()))
-                           .map(CollectionId::namespace)
-                           .forEach(namespaces::add);
-                });
-            } catch (MongoException e) {
-                // don't do anything ...
-            }
-            return new ArrayList<>(namespaces);
-        }
-
-        @Override
-        public boolean visible(Field field, Configuration config) {
-            return true;
-        }
     }
 
     private static int validateHosts(Configuration config, Field field, ValidationOutput problems) {
