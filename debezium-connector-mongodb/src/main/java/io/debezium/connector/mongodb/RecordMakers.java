@@ -8,12 +8,12 @@ package io.debezium.connector.mongodb;
 import java.util.*;
 import java.util.function.Function;
 
-import com.datapipeline.base.converter.DataConverter;
-import com.datapipeline.base.converter.ConnectorDataGenerator;
-import com.datapipeline.base.converter.ConnectorType;
-import com.datapipeline.base.converter.DpDataConvertException;
-import com.datapipeline.base.error.DpError;
-import com.datapipeline.base.mongodb.MongodbSchema;
+import com.datapipeline.clients.converter.DataConverter;
+import com.datapipeline.clients.mongodb.ConnectorDataGenerator;
+import com.datapipeline.clients.mongodb.ConnectorType;
+import com.datapipeline.clients.converter.DpDataConvertException;
+import com.datapipeline.clients.error.DpError;
+import com.datapipeline.clients.mongodb.MongodbSchema;
 import com.dp.internal.bean.DataSourceSchemaMappingExemption;
 import com.dp.internal.bean.DpErrorCode;
 

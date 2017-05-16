@@ -1,8 +1,8 @@
 package io.debezium.connector.mongodb;
 
 
-import com.datapipeline.base.mongodb.MongodbSchema;
-import com.datapipeline.base.mongodb.MongodbSchemaConfig;
+import com.datapipeline.clients.mongodb.MongodbSchema;
+import com.datapipeline.clients.mongodb.MongodbSchemaConfig;
 
 import java.util.List;
 import java.util.Map;

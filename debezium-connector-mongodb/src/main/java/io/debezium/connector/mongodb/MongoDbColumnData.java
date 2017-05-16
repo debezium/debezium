@@ -1,7 +1,7 @@
 package io.debezium.connector.mongodb;
 
-import com.datapipeline.base.converter.ColumnData;
-import com.datapipeline.base.converter.ColumnSchema;
+import com.datapipeline.clients.mongodb.ColumnData;
+import com.datapipeline.clients.mongodb.ColumnSchema;
 
 public class MongoDbColumnData implements ColumnData {
 
