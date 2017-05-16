@@ -242,7 +242,7 @@ public class RecordMakers {
                     break;
                 case UPDATE:
                     // The object is the idempotent patch document ...
-                    value.put("patch", valueStruct);
+                    value.put(FieldName.AFTER, valueStruct);
                     break;
                 case DELETE:
                     // The delete event has nothing of any use, other than the _id which we already have in our key.
