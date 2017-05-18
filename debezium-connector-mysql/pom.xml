@@ -344,7 +344,7 @@
         <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
               This assembly profile is used during official builds. In addition to 
               compiling, and running the unit and integration tests like the non-assembly
-              profiles, this provfile creates additional (like the connector plugin archives),
+              profiles, this profile creates additional (like the connector plugin archives),
               starts up all three Docker containers (normal MySQL, MySQL+GTIDs, and alt-MySQL)
               and runs the integration tests against each of them.
 
