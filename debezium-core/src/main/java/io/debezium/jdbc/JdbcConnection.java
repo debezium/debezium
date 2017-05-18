@@ -59,7 +59,7 @@ public class JdbcConnection implements AutoCloseable {
     private final static Logger LOGGER = LoggerFactory.getLogger(JdbcConnection.class);
 
     /** Mysql connection retry count.**/
-    private final static int MYSQL_RETRY_TIMES = 3;
+    private final static int MYSQL_RETRY_TIMES = 1;
 
     /**
      * Establishes JDBC connections.
