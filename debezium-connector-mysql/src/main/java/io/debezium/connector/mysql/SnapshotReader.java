@@ -128,6 +128,14 @@ public class SnapshotReader extends AbstractReader {
     protected void doStop() {
         logger.debug("Stopping snapshot reader");
         // The parent class will change the isRunning() state, and this class' execute() uses that and will stop automatically
+        if (connectionID != null) {
+            try {
+                logger.info("Stop Task: Kill Snapshot process {}.", connectionID);
+                new MySqlJdbcContext(context.config).jdbc().execute("KILL " + connectionID).close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     @Override
@@ -444,7 +452,12 @@ public class SnapshotReader extends AbstractReader {
                                     logger.debug("Error while getting number of rows in table {}: {}", tableId, e.getMessage(), e);
                                 }
                             }
-
+                            mysql.query("SELECT CONNECTION_ID();", rs -> {
+                                while(rs.next()) {
+                                    connectionID = rs.getString(1);
+                                    logger.info("Snapshot reader connection ID {}", connectionID);
+                                }
+                            });
                             // Scan the rows in the table ...
                             long start = clock.currentTimeInMillis();
                             logger.info("Step {}: - scanning table '{}' ({} of {} tables)", step, tableId, ++counter, tableIds.size());
