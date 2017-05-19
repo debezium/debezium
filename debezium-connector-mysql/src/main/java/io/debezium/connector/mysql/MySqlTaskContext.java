@@ -21,7 +21,7 @@ import io.debezium.util.Strings;
 
 /**
  * A Kafka Connect source task reads the MySQL binary log and generate the corresponding data change events.
- * 
+ *
  * @see MySqlConnector
  * @author Randall Hauch
  */
@@ -80,7 +80,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     /**
      * Get the predicate function that will return {@code true} if a GTID source is to be included, or {@code false} if
      * a GTID source is to be excluded.
-     * 
+     *
      * @return the GTID source predicate function; never null
      */
     public Predicate<String> gtidSourceFilter() {
@@ -103,7 +103,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     /**
      * Load the database schema information using the previously-recorded history, and stop reading the history when the
      * the history reaches the supplied starting point.
-     * 
+     *
      * @param startingPoint the source information with the current {@link SourceInfo#partition()} and {@link SourceInfo#offset()
      *            offset} at which the database schemas are to reflect; may not be null
      */
@@ -137,11 +137,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     }
 
     public String serverName() {
-        String serverName = config.getString(MySqlConnectorConfig.SERVER_NAME);
-        if (serverName == null) {
-            serverName = hostname() + ":" + port();
-        }
-        return serverName;
+        return config.getString(MySqlConnectorConfig.SERVER_NAME);
     }
 
     public int maxQueueSize() {
@@ -215,7 +211,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
 
     /**
      * Configure the logger's Mapped Diagnostic Context (MDC) properties for the thread making this call.
-     * 
+     *
      * @param contextName the name of the context; may not be null
      * @return the previous MDC context; never null
      * @throws IllegalArgumentException if {@code contextName} is null
@@ -227,7 +223,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     /**
      * Run the supplied function in the temporary connector MDC context, and when complete always return the MDC context to its
      * state before this method was called.
-     * 
+     *
      * @param contextName the name of the context; may not be null
      * @param operation the function to run in the new MDC context; may not be null
      * @throws IllegalArgumentException if any of the parameters are null
@@ -235,7 +231,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     public void temporaryLoggingContext(String contextName, Runnable operation) {
         LoggingContext.temporarilyForConnector("MySQL", serverName(), contextName, operation);
     }
-    
+
     /**
      * Create a JMX metric name for the given metric.
      * @param contextName the name of the context
@@ -260,7 +256,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
      * connect. See <a href="https://issues.jboss.org/browse/DBZ-143">DBZ-143</a> for details.
      *
      * This method does not mutate any state in the context.
-     * 
+     *
      * @param availableServerGtidSet the GTID set currently available in the MySQL server
      * @return A GTID set meant for consuming from a MySQL binlog; may return null if the SourceInfo has no GTIDs and therefore
      *         none were filtered
