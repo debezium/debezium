@@ -145,7 +145,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
             return record;
         }
 
-        logger.info("Applying topic name transformation from " + oldTopic + " to " + newTopic + ".");
+        logger.debug("Applying topic name transformation from " + oldTopic + " to " + newTopic + ".");
         final Struct oldKey = requireStruct(record.key(), "Updating schema");
         final Schema newKeySchema = updateKeySchema(oldKey.schema(), newTopic);
         final Struct newKey = updateKey(newKeySchema, oldKey, oldTopic);
