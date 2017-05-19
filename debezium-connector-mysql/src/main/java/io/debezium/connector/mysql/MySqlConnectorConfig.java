@@ -23,6 +23,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.config.Field.Recommender;
 import io.debezium.config.Field.ValidationOutput;
+import io.debezium.extensions.restart.SelfRestartingConfig;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.relational.TableId;
@@ -693,7 +694,7 @@ public class MySqlConnectorConfig {
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
-    public static Field.Set ALL_FIELDS = Field.setOf(USER, PASSWORD, HOSTNAME, PORT, SERVER_ID,
+    private static Field.Set MYSQL_FIELDS = Field.setOf(USER, PASSWORD, HOSTNAME, PORT, SERVER_ID,
                                                      SERVER_NAME,
                                                      CONNECTION_TIMEOUT_MS, KEEP_ALIVE,
                                                      MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
@@ -706,6 +707,11 @@ public class MySqlConnectorConfig {
                                                      TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                                                      SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD,
                                                      SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER);
+
+    /**
+     * The set of {@link Field}s defined as part of this configuration including extension fields.
+     */
+    public static Field.Set ALL_FIELDS = MYSQL_FIELDS.with(SelfRestartingConfig.ALL_FIELDS);
 
     /**
      * The set of {@link Field}s that are included in the {@link #configDef() configuration definition}. This includes
@@ -730,6 +736,7 @@ public class MySqlConnectorConfig {
                     GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
                     SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE);
+        config = SelfRestartingConfig.configDef(config);
         return config;
     }
 
