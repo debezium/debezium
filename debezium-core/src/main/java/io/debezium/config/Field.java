@@ -1044,6 +1044,19 @@ public final class Field {
         return errors;
     }
 
+    public static int isListOfTableSchema(Configuration config, Field field, ValidationOutput problems) {
+        List<String> values = config.getStrings(field, ",");
+        int errors = 0;
+        if (!values.isEmpty()) {
+            for (String value : values) {
+                if (true) {
+                    problems.accept(field, value, "{A:[tableA1,tableA2,tableA3]},{B:[tableB1,tableB2,tableB3]},... expressions is expected, but " + values.toString());
+                    ++errors;
+                }
+            }
+        }
+        return errors;
+    }
     public static int isRegex(Configuration config, Field field, ValidationOutput problems) {
         String value = config.getString(field);
         int errors = 0;

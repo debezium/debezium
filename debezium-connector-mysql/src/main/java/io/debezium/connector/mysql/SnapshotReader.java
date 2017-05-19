@@ -21,7 +21,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
@@ -45,6 +44,8 @@ public class SnapshotReader extends AbstractReader {
     private final boolean includeData;
     private RecordRecorder recorder;
     private volatile Thread thread;
+    public String connectionID;
+    private volatile Runnable onSuccessfulCompletion;
     private final SnapshotReaderMetrics metrics;
 
     /**
@@ -108,6 +109,21 @@ public class SnapshotReader extends AbstractReader {
         thread.start();
     }
 
+//    if (connectionID != null) {
+//        try {
+//            logger.info("Stop Task: Kill Snapshot process {}.", connectionID);
+//            new MySqlJdbcContext(context.config).jdbc().execute("KILL " + connectionID).close();
+//        } catch (SQLException e) {
+//            e.printStackTrace();
+//        }
+//    }
+//    mysql.query("SELECT CONNECTION_ID();", rs -> {
+//        while(rs.next()) {
+//            connectionID = rs.getString(1);
+//            logger.info("Snapshot reader connection ID {}", connectionID);
+//        }
+//    });
+
     @Override
     protected void doStop() {
         logger.debug("Stopping snapshot reader");
@@ -144,7 +160,6 @@ public class SnapshotReader extends AbstractReader {
         boolean tableLocks = false;
         try {
             metrics.startSnapshot();
-
             // ------
             // STEP 0
             // ------
@@ -191,13 +206,15 @@ public class SnapshotReader extends AbstractReader {
                 // It also ensures that everything we do while we have this lock will be consistent.
                 if (!isRunning()) return;
                 try {
-                    logger.info("Step 2: flush and obtain global read lock to prevent writes to database");
-                    sql.set("FLUSH TABLES WITH READ LOCK");
-                    mysql.execute(sql.get());
-                    lockAcquired = clock.currentTimeInMillis();
-                    metrics.globalLockAcquired();
-                    isLocked = true;
-                } catch (SQLException e) {
+                    if (false) {
+                        logger.info("Step 2: flush and obtain global read lock to prevent writes to database");
+                        sql.set("FLUSH TABLES WITH READ LOCK");
+                        mysql.execute(sql.get());
+                        lockAcquired = clock.currentTimeInMillis();
+                        metrics.globalLockAcquired();
+                        isLocked = true;
+                    }
+                } catch (Exception e) {
                     logger.info("Step 2: unable to flush and acquire global read lock, will use table read locks after reading table names");
                     // Continue anyway, since RDS (among others) don't allow setting a global lock
                     assert !isLocked;
@@ -246,9 +263,13 @@ public class SnapshotReader extends AbstractReader {
                             while (rs.next() && isRunning()) {
                                 TableId id = new TableId(dbName, null, rs.getString(1));
                                 if (filters.tableFilter().test(id)) {
-                                    tableIds.add(id);
-                                    tableIdsByDbName.computeIfAbsent(dbName, k -> new ArrayList<>()).add(id);
-                                    logger.info("\t including '{}'", id);
+                                    if (source.isSnapshotted(id.table())) {
+                                        logger.info("\t snapshotted '{}'", id);
+                                    } else {
+                                        tableIds.add(id);
+                                        tableIdsByDbName.computeIfAbsent(dbName, k -> new ArrayList<>()).add(id);
+                                        logger.info("\t including '{}'", id);
+                                    }
                                 } else {
                                     logger.info("\t '{}' is filtered out, discarding", id);
                                 }
@@ -272,8 +293,9 @@ public class SnapshotReader extends AbstractReader {
                     // implicitly committing our transaction ...
                     if (!context.userHasPrivileges("LOCK TABLES")) {
                         // We don't have the right privileges
-                        throw new ConnectException("User does not have the 'LOCK TABLES' privilege required to obtain a "
-                                + "consistent snapshot by preventing concurrent writes to tables.");
+                        // throw new ConnectException("User does not have the 'LOCK TABLES' privilege required to obtain a "
+                        //        + "consistent snapshot by preventing concurrent writes to tables.");
+                        // shao@datapipeline.com we not lock table anymore 3/10/2017
                     }
                     // We have the required privileges, so try to lock all of the tables we're interested in ...
                     logger.info("Step {}: flush and obtain read lock for {} tables (preventing writes)", step++, tableIds.size());
@@ -426,23 +448,44 @@ public class SnapshotReader extends AbstractReader {
                             // Scan the rows in the table ...
                             long start = clock.currentTimeInMillis();
                             logger.info("Step {}: - scanning table '{}' ({} of {} tables)", step, tableId, ++counter, tableIds.size());
-                            sql.set("SELECT * FROM " + quote(tableId));
+                            String primaryKey = schema.tableFor(tableId).primaryKeyColumnNames().get(0);
+                            String lastId = source.getLastRecordId(tableId.table());
+                            long lastIndex = source.getLastRecordIndex(tableId.table());
+                            sql.set("SELECT * FROM " + quote(tableId)
+                                + (lastId != null ? " WHERE " + primaryKey + " > " + lastId :"")
+                                + (primaryKey != null ? " ORDER BY " + primaryKey : "")
+                            );
+                            logger.info("Start select from {} starting from index {}.", tableId, lastIndex);
                             try {
                                 int stepNum = step;
                                 mysql.query(sql.get(), statementFactory, rs -> {
                                     long rowNum = 0;
+                                    long estimateNum = numRows.get();
+                                    long currentIndex = 0L;
                                     try {
                                         // The table is included in the connector's filters, so process all of the table records
                                         // ...
                                         final Table table = schema.tableFor(tableId);
                                         final int numColumns = table.columns().size();
                                         final Object[] row = new Object[numColumns];
+                                        source.setEntitySize(estimateNum);
+
                                         while (rs.next()) {
                                             for (int i = 0, j = 1; i != numColumns; ++i, ++j) {
                                                 row[i] = rs.getObject(j);
                                             }
-                                            recorder.recordRow(recordMaker, row, ts); // has no row number!
+                                            String currentId = rs.getObject(primaryKey).toString();
                                             ++rowNum;
+                                            currentIndex = lastIndex + rowNum;
+                                            source.setLastRecordMeta(tableId.table(), currentId, currentIndex);
+                                            // increase estimate count by 1%
+                                            if (currentIndex > estimateNum) {
+                                                estimateNum = (long) (currentIndex * 1.01);
+                                                source.setEntitySize(estimateNum);
+                                            }
+
+                                            recorder.recordRow(recordMaker, row, ts); // has no row number!
+
                                             if (rowNum % 100 == 0 && !isRunning()) {
                                                 // We've stopped running ...
                                                 break;
@@ -450,7 +493,7 @@ public class SnapshotReader extends AbstractReader {
                                             if (rowNum % 10_000 == 0) {
                                                 long stop = clock.currentTimeInMillis();
                                                 logger.info("Step {}: - {} of {} rows scanned from table '{}' after {}",
-                                                            stepNum, rowNum, rowCountStr, tableId, Strings.duration(stop - start));
+                                                            stepNum, currentIndex, estimateNum, tableId, Strings.duration(stop - start));
                                             }
                                         }
 
@@ -458,7 +501,12 @@ public class SnapshotReader extends AbstractReader {
                                         if (isRunning()) {
                                             long stop = clock.currentTimeInMillis();
                                             logger.info("Step {}: - Completed scanning a total of {} rows from table '{}' after {}",
-                                                        stepNum, rowNum, tableId, Strings.duration(stop - start));
+                                                        stepNum, currentIndex , tableId, Strings.duration(stop - start));
+                                            source.setEntitySize(currentIndex);
+                                            source.setSnapshotLastOne();
+                                            // insert last record again with special flag "islastone = true"
+                                            recorder.recordRow(recordMaker, row, ts);
+                                            source.unsetSnapshotLastOne();
                                         }
                                     } catch (InterruptedException e) {
                                         Thread.interrupted();
@@ -469,6 +517,7 @@ public class SnapshotReader extends AbstractReader {
                                 });
                             } finally {
                                 metrics.completeTable();
+                                source.markSnapshotted(tableId.table());
                                 if (interrupted.get()) break;
                             }
                         }
@@ -583,15 +632,19 @@ public class SnapshotReader extends AbstractReader {
             if (rs.next()) {
                 String binlogFilename = rs.getString(1);
                 long binlogPosition = rs.getLong(2);
-                source.setBinlogStartPoint(binlogFilename, binlogPosition);
-                if (rs.getMetaData().getColumnCount() > 4) {
-                    // This column exists only in MySQL 5.6.5 or later ...
-                    String gtidSet = rs.getString(5);// GTID set, may be null, blank, or contain a GTID set
-                    source.setCompletedGtidSet(gtidSet);
-                    logger.info("\t using binlog '{}' at position '{}' and gtid '{}'", binlogFilename, binlogPosition,
-                                gtidSet);
+                if (!source.isSnapshotInEffect()) {
+                    source.setBinlogStartPoint(binlogFilename, binlogPosition);
+                    if (rs.getMetaData().getColumnCount() > 4) {
+                        // This column exists only in MySQL 5.6.5 or later ...
+                        String gtidSet = rs.getString(5);// GTID set, may be null, blank, or contain a GTID set
+                        source.setCompletedGtidSet(gtidSet);
+                        logger.info("\t using binlog '{}' at position '{}' and gtid '{}'", binlogFilename, binlogPosition,
+                            gtidSet);
+                    } else {
+                        logger.info("\t using binlog '{}' at position '{}'", binlogFilename, binlogPosition);
+                    }
                 } else {
-                    logger.info("\t using binlog '{}' at position '{}'", binlogFilename, binlogPosition);
+                    logger.info("\t using binlog '{}' at position '{}'", source.binlogFilename(), source.binlogPosition());
                 }
                 source.startSnapshot();
             } else {

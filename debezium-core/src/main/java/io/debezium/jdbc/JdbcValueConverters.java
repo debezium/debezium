@@ -136,7 +136,6 @@ public class JdbcValueConverters implements ValueConverterProvider {
             case Types.VARBINARY:
             case Types.LONGVARBINARY:
                 return SchemaBuilder.bytes();
-
             // Numeric integers
             case Types.TINYINT:
                 // values are an 8-bit unsigned integer value between 0 and 255
@@ -176,14 +175,14 @@ public class JdbcValueConverters implements ValueConverterProvider {
             case Types.NVARCHAR:
             case Types.LONGNVARCHAR:
             case Types.NCLOB:
-                return SchemaBuilder.string();
+                return SchemaBuilder.string().parameter("length", String.valueOf(column.length()));
 
             // Variable-length string values
             case Types.VARCHAR:
             case Types.LONGVARCHAR:
             case Types.CLOB:
             case Types.DATALINK:
-                return SchemaBuilder.string();
+                return SchemaBuilder.string().parameter("length", String.valueOf(column.length()));
             case Types.SQLXML:
                 return Xml.builder();
             // Date and time values

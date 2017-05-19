@@ -12,6 +12,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -174,9 +175,17 @@ public class RecordMakers {
         if (tableSchema == null) return false;
 
         String topicName = topicSelector.getTopic(id);
+
+        Schema valueSchema = schema.schemaFor(id).valueSchema();
+
+        SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(schemaNameValidator.validate(topicName + ".Value"));
+        for (Field field : valueSchema.fields()) {
+            valSchemaBuilder.field(field.name(), field.schema());
+        }
+
         Envelope envelope = Envelope.defineSchema()
                                     .withName(schemaNameValidator.validate(topicName + ".Envelope"))
-                                    .withRecord(schema.schemaFor(id).valueSchema())
+                                    .withRecord(valSchemaBuilder.optional().build())
                                     .withSource(SourceInfo.SCHEMA)
                                     .build();
 

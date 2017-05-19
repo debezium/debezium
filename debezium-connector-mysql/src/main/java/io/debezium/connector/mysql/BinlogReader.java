@@ -7,6 +7,9 @@ package io.debezium.connector.mysql;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -15,6 +18,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
 
@@ -43,7 +47,9 @@ import com.github.shyiko.mysql.binlog.network.SSLMode;
 
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
+import io.debezium.document.Array;
 import io.debezium.function.BlockingConsumer;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
@@ -234,6 +240,7 @@ public class BinlogReader extends AbstractReader {
         }
     }
 
+    private final AtomicBoolean threadKilled = new AtomicBoolean(false);
     @Override
     protected void doStop() {
         try {
@@ -253,6 +260,25 @@ public class BinlogReader extends AbstractReader {
 
     @Override
     protected void doCleanup() {
+        try {
+            if (!threadKilled.get()) {
+                List<Long> ids = new ArrayList<>();
+                context.jdbc.query("show processlist;", rs -> {
+                    while (rs.next()) {
+                        ids.add(Long.parseLong(rs.getString("Id")));
+                    }
+                });
+                if (ids.contains(client.getConnectionId())) {
+                    context.jdbc().execute("kill " + client.getConnectionId());
+                    logger.info("Binlog dump thread {} killed. ", client.getConnectionId());
+                    threadKilled.compareAndSet(false, true);
+                } else {
+                    logger.info("Binlog dump thread {} does not exist.", client.getConnectionId());
+                }
+            }
+        } catch (SQLException e) {
+            logger.error("kill binlog dump thread {} failed. ", client.getConnectionId());
+        }
         logger.debug("Completed writing all records that were read from the binlog before being stopped");
     }
 

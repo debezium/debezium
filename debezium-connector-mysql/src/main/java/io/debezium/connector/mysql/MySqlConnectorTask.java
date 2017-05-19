@@ -102,6 +102,7 @@ public final class MySqlConnectorTask extends SourceTask {
                             throw new ConnectException(msg);
                         }
                         startWithSnapshot = true;
+                        source.resetSnapshottedProps();
                     }
                 }
 
@@ -217,6 +218,7 @@ public final class MySqlConnectorTask extends SourceTask {
             try {
                 logger.info("Stopping MySQL connector task");
                 // Stop the readers ...
+                if (readers != null)
                 readers.stop();
             } finally {
                 prevLoggingContext.restore();
@@ -358,6 +360,6 @@ public final class MySqlConnectorTask extends SourceTask {
         }
 
         logger.debug("binlog_format={}", mode.get());
-        return "ROW".equalsIgnoreCase(mode.get());
+        return "ROW".equalsIgnoreCase(mode.get()) || "MIXED".equalsIgnoreCase(mode.get());
     }
 }

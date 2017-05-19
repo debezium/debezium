@@ -14,6 +14,10 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.data.Envelope;
 import io.debezium.document.Document;
@@ -83,7 +87,9 @@ import io.debezium.util.Collect;
  *     "snapshot": true,
  *     "thread" : 1,
  *     "db" : "inventory",
- *     "table" : "products"
+ *     "table" : "products",
+ *     "entity" : "products",
+ *     "size" : "1000"
  * }
  * </pre>
  * 
@@ -110,6 +116,14 @@ final class SourceInfo {
     public static final String DB_NAME_KEY = "db";
     public static final String TABLE_NAME_KEY = "table";
 
+    public static final String LAST_SNAPSHOTTED_RECORD_KEY = "last";
+    public static final String SNAPSHOTTED_ENTITIES_KEY = "snapshotted";
+    public static final String ENTITY_NAME_KEY = "entity";
+    public static final String ENTITY_SIZE_KEY = "size";
+    public static final String ENTITY_INDEX_KEY = "idx";
+    public static final String SNAPSHOT_LASTONE_KEY = "islastone";
+    private static final String DELIMITER = ":";
+
     /**
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition()} and {@link #offset()} information.
      */
@@ -126,6 +140,10 @@ final class SourceInfo {
                                                      .field(THREAD_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                      .field(DB_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(TABLE_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                                                     .field(ENTITY_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                                                     .field(ENTITY_SIZE_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+                                                     .field(ENTITY_INDEX_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+                                                     .field(SNAPSHOT_LASTONE_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA).optional().defaultValue(null)
                                                      .build();
 
     private String currentGtidSet;
@@ -147,6 +165,11 @@ final class SourceInfo {
     private Map<String, String> sourcePartition;
     private boolean lastSnapshot = true;
     private boolean nextSnapshot = false;
+    private String lastSnapshottedRecord;
+    private List<String> snapshottedEntities = new ArrayList<>();
+    private long entitySize;
+    private long lastIndex = 0L;
+    private boolean isSnapshotLastOne = false;
 
     public SourceInfo() {
     }
@@ -159,6 +182,67 @@ final class SourceInfo {
     public void setServerName(String logicalId) {
         this.serverName = logicalId;
         sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, serverName);
+    }
+
+    /**
+     * Meta String formatted as [TABLE NAME]:[PRIMARY KEY]:[No.INDEX in Snapshot]
+     * @param tableName last recorded table name
+     * @param lastId last recorded primary key
+     */
+    public void setLastRecordMeta(String tableName, String lastId, long lastIndex) {
+        this.lastSnapshottedRecord = tableName + DELIMITER + lastId + DELIMITER + lastIndex;
+        this.lastIndex = lastIndex;
+    }
+
+    public void markSnapshotted(String entityName) {
+        snapshottedEntities.add(entityName);
+    }
+
+    public void resetSnapshottedProps() {
+        lastSnapshottedRecord = null;
+        snapshottedEntities = new ArrayList<>();
+    }
+
+    public void setEntitySize(long size) {
+        this.entitySize = size;
+    }
+
+    /**
+     * Meta String formatted as [TABLE NAME]:[PRIMARY KEY]:[No.INDEX IN Snapshot] return the primary key if the table name matches.
+     * @param tableName last recorded table name
+     * @return last recorded primary key
+     */
+    public String getLastRecordId(String tableName) {
+        if (lastSnapshottedRecord != null) {
+            String[] meta = lastSnapshottedRecord.split(DELIMITER);
+            if (meta.length >= 2 && meta[0].equals(tableName)) {
+                return meta[1];
+            }
+        }
+        return null;
+    }
+
+    public long getLastRecordIndex(String tableName) {
+        if (lastSnapshottedRecord != null) {
+            String[] meta = lastSnapshottedRecord.split(DELIMITER);
+            if (meta.length == 3 && meta[0].equals(tableName)) {
+                return Long.parseLong(meta[2]);
+            }
+        }
+        return 0L;
+    }
+
+
+    public boolean isSnapshotted(String tableName) {
+        return snapshottedEntities.contains(tableName);
+    }
+
+    public void setSnapshotLastOne() {
+        isSnapshotLastOne = true;
+    }
+
+    public void unsetSnapshotLastOne() {
+        isSnapshotLastOne = false;
     }
 
     /**
@@ -261,6 +345,8 @@ final class SourceInfo {
         if (binlogTimestampSeconds != 0) map.put(TIMESTAMP_KEY, binlogTimestampSeconds);
         if (isSnapshotInEffect()) {
             map.put(SNAPSHOT_KEY, true);
+            map.put(LAST_SNAPSHOTTED_RECORD_KEY, lastSnapshottedRecord);
+            map.put(SNAPSHOTTED_ENTITIES_KEY, String.join(",", snapshottedEntities));
         }
         return map;
     }
@@ -314,12 +400,16 @@ final class SourceInfo {
         if (lastSnapshot) {
             result.put(SNAPSHOT_KEY, true);
         }
+        result.put(SNAPSHOT_LASTONE_KEY, isSnapshotLastOne);
         if (threadId >= 0) {
             result.put(THREAD_KEY, threadId);
         }
         if (tableId != null) {
             result.put(DB_NAME_KEY, tableId.catalog());
             result.put(TABLE_NAME_KEY, tableId.table());
+            result.put(ENTITY_NAME_KEY, tableId.table());
+            result.put(ENTITY_SIZE_KEY, entitySize);
+            result.put(ENTITY_INDEX_KEY, lastIndex);
         }
         return result;
     }
@@ -476,6 +566,11 @@ final class SourceInfo {
             this.restartRowsToSkip = (int) longOffsetValue(sourceOffset, BINLOG_ROW_IN_EVENT_OFFSET_KEY);
             nextSnapshot = booleanOffsetValue(sourceOffset, SNAPSHOT_KEY);
             lastSnapshot = nextSnapshot;
+            lastSnapshottedRecord = (String) sourceOffset.get(LAST_SNAPSHOTTED_RECORD_KEY);
+            String snapshottedEntitiesStr = (String) sourceOffset.get(SNAPSHOTTED_ENTITIES_KEY);
+            if (snapshottedEntitiesStr != null && !snapshottedEntitiesStr.isEmpty()) {
+                snapshottedEntities = new ArrayList<>(Arrays.asList(snapshottedEntitiesStr.split(",")));
+            }
         }
     }
 

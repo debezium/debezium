@@ -51,7 +51,8 @@ public class TableSchemaBuilder {
 
     private final Function<String, String> schemaNameValidator;
     private final ValueConverterProvider valueConverterProvider;
-
+    //shao@datapipeline.com add schema name converter
+    private final Function<TableId, String> schemaNameConverter;
     /**
      * Create a new instance of the builder.
      *
@@ -62,6 +63,13 @@ public class TableSchemaBuilder {
     public TableSchemaBuilder(ValueConverterProvider valueConverterProvider, Function<String, String> schemaNameValidator) {
         this.schemaNameValidator = schemaNameValidator;
         this.valueConverterProvider = valueConverterProvider;
+        this.schemaNameConverter = null;
+    }
+
+    public TableSchemaBuilder(ValueConverterProvider valueConverterProvider, Function<String, String> schemaNameValidator, Function<TableId, String> schemaNameConverter) {
+        this.schemaNameValidator = schemaNameValidator;
+        this.valueConverterProvider = valueConverterProvider;
+        this.schemaNameConverter = schemaNameConverter;
     }
 
     /**
@@ -130,7 +138,13 @@ public class TableSchemaBuilder {
         // Build the schemas ...
         final TableId tableId = table.id();
         final String tableIdStr = tableId.toString();
-        final String schemaNamePrefix = schemaPrefix + tableIdStr;
+        final String schemaNamePrefix;
+        // shao@datapipeline.com if schemaPrefix not ends with "." which indicates we are trying to use topic name as schema name.
+        if (schemaNameConverter != null) {
+            schemaNamePrefix = schemaNameConverter.apply(tableId);
+        } else {
+            schemaNamePrefix = schemaPrefix + tableIdStr;
+        }
         LOGGER.debug("Mapping table '{}' to schemas under '{}'", tableId, schemaNamePrefix);
         SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(schemaNameValidator.apply(schemaNamePrefix + ".Value"));
         SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(schemaNameValidator.apply(schemaNamePrefix + ".Key"));

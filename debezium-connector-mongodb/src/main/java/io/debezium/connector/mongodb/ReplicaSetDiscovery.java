@@ -8,9 +8,12 @@ package io.debezium.connector.mongodb;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datapipeline.base.error.DpError;
+import com.dp.internal.bean.DpErrorCode;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoException;
 import com.mongodb.ReplicaSetStatus;
@@ -19,8 +22,9 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.util.Strings;
 
 /**
- * A component that monitors a single replica set or the set of replica sets that make up the shards in a sharded cluster.
- * 
+ * A component that monitors a single replica set or the set of replica sets that make up the shards
+ * in a sharded cluster.
+ *
  * @author Randall Hauch
  */
 @ThreadSafe
@@ -42,7 +46,7 @@ public class ReplicaSetDiscovery {
 
     /**
      * Create a cluster component.
-     * 
+     *
      * @param context the replication context; may not be null
      */
     public ReplicaSetDiscovery(ReplicationContext context) {
@@ -51,9 +55,9 @@ public class ReplicaSetDiscovery {
     }
 
     /**
-     * Connect to the shard cluster or replica set defined by the seed addresses, and obtain the specifications for each of the
-     * replica sets.
-     * 
+     * Connect to the shard cluster or replica set defined by the seed addresses, and obtain the
+     * specifications for each of the replica sets.
+     *
      * @return the information about the replica sets; never null but possibly empty
      */
     public ReplicaSets getReplicaSets() {
@@ -71,8 +75,9 @@ public class ReplicaSetDiscovery {
                 replicaSetSpecs.add(new ReplicaSet(hostStr, replicaSetName, shardName));
             });
         } catch (MongoException e) {
+            new DpError(e, e.getMessage(), context.source().getDpTaskId(), null, DpErrorCode.TRIVIAL_ERROR).report();
             logger.error("Error while reading the '{}' collection in the '{}' database: {}",
-                         shardsCollection, CONFIG_DATABASE_NAME, e.getMessage(), e);
+                shardsCollection, CONFIG_DATABASE_NAME, e.getMessage(), e);
         }
         if (replicaSetSpecs.isEmpty()) {
             // The addresses may be a replica set ...
@@ -98,9 +103,12 @@ public class ReplicaSetDiscovery {
             }
         }
         if (replicaSetSpecs.isEmpty()) {
+            ConnectException e = new ConnectException("Found no replica sets at " + seedAddresses.toString() +
+                ", so there is nothing to monitor and no connector tasks will be started. Check seed addresses in connector configuration.");
+            new DpError(e, e.getMessage(), context.source().getDpTaskId(), null, DpErrorCode.TRIVIAL_ERROR).report();
             // Without a replica set name, we can't do anything ...
             logger.error("Found no replica sets at {}, so there is nothing to monitor and no connector tasks will be started. Check seed addresses in connector configuration.",
-                         seedAddresses);
+                seedAddresses);
         }
         return new ReplicaSets(replicaSetSpecs);
     }

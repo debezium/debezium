@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
@@ -18,7 +20,6 @@ import static org.fest.assertions.Assertions.assertThat;
 
 /**
  * @author Randall Hauch
- *
  */
 public class SourceInfoTest {
 
@@ -28,7 +29,7 @@ public class SourceInfoTest {
 
     @Before
     public void beforeEach() {
-        source = new SourceInfo("serverX");
+        source = new SourceInfo("101", "serverX", new MongoDBSchemaCache(new ArrayList<>()), new LinkedList<>());
     }
 
     @Test
@@ -62,8 +63,8 @@ public class SourceInfoTest {
     @Test
     public void shouldSetAndReturnRecordedOffset() {
         Document event = new Document().append("ts", new BsonTimestamp(100, 2))
-                                       .append("h", new Long(1987654321))
-                                       .append("ns", "dbA.collectA");
+            .append("h", new Long(1987654321))
+            .append("ns", "dbA.collectA");
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
         source.offsetStructForEvent(REPLICA_SET_NAME, event);
@@ -75,10 +76,10 @@ public class SourceInfoTest {
         assertThat(offset.get(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);
 
         // Create a new source info and set the offset ...
-        Map<String,String> partition = source.partition(REPLICA_SET_NAME);
-        source = new SourceInfo("serverX");
+        Map<String, String> partition = source.partition(REPLICA_SET_NAME);
+        source = new SourceInfo("101", "serverX", new MongoDBSchemaCache(new ArrayList<>()), new LinkedList<>());
         source.setOffsetFor(partition, offset);
-        
+
         offset = source.lastOffset(REPLICA_SET_NAME);
         assertThat(offset.get(SourceInfo.TIMESTAMP)).isEqualTo(100);
         assertThat(offset.get(SourceInfo.ORDER)).isEqualTo(2);
@@ -88,7 +89,8 @@ public class SourceInfoTest {
         assertThat(ts.getTime()).isEqualTo(100);
         assertThat(ts.getInc()).isEqualTo(2);
 
-        Struct struct = source.lastOffsetStruct(REPLICA_SET_NAME,new CollectionId(REPLICA_SET_NAME,"dbA","collectA"));
+        Struct struct = source.lastOffsetStruct(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"),
+            "", 0, 1, false);
         assertThat(struct.getInt32(SourceInfo.TIMESTAMP)).isEqualTo(100);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(2);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);
@@ -111,7 +113,8 @@ public class SourceInfoTest {
         assertThat(ts.getTime()).isEqualTo(0);
         assertThat(ts.getInc()).isEqualTo(0);
 
-        Struct struct = source.lastOffsetStruct(REPLICA_SET_NAME,new CollectionId(REPLICA_SET_NAME,"dbA","collectA"));
+        Struct struct = source.lastOffsetStruct(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"),
+            "", 0, 1, false);
         assertThat(struct.getInt32(SourceInfo.TIMESTAMP)).isEqualTo(0);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(0);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isNull();
@@ -126,8 +129,8 @@ public class SourceInfoTest {
     @Test
     public void shouldReturnRecordedOffsetForUsedReplicaName() {
         Document event = new Document().append("ts", new BsonTimestamp(100, 2))
-                                       .append("h", new Long(1987654321))
-                                       .append("ns", "dbA.collectA");
+            .append("h", new Long(1987654321))
+            .append("ns", "dbA.collectA");
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
         source.offsetStructForEvent(REPLICA_SET_NAME, event);
@@ -142,7 +145,8 @@ public class SourceInfoTest {
         assertThat(ts.getTime()).isEqualTo(100);
         assertThat(ts.getInc()).isEqualTo(2);
 
-        Struct struct = source.lastOffsetStruct(REPLICA_SET_NAME,new CollectionId(REPLICA_SET_NAME,"dbA","collectA"));
+        Struct struct = source.lastOffsetStruct(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"),
+            "", 0, 1, false);
         assertThat(struct.getInt32(SourceInfo.TIMESTAMP)).isEqualTo(100);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(2);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);
@@ -166,7 +170,8 @@ public class SourceInfoTest {
         assertThat(ts.getTime()).isEqualTo(0);
         assertThat(ts.getInc()).isEqualTo(0);
 
-        Struct struct = source.lastOffsetStruct(REPLICA_SET_NAME,new CollectionId(REPLICA_SET_NAME,"dbA","collectA"));
+        Struct struct = source.lastOffsetStruct(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"),
+            "", 0, 1, false);
         assertThat(struct.getInt32(SourceInfo.TIMESTAMP)).isEqualTo(0);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(0);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isNull();
@@ -183,8 +188,8 @@ public class SourceInfoTest {
         source.startInitialSync(REPLICA_SET_NAME);
 
         Document event = new Document().append("ts", new BsonTimestamp(100, 2))
-                                       .append("h", new Long(1987654321))
-                                       .append("ns", "dbA.collectA");
+            .append("h", new Long(1987654321))
+            .append("ns", "dbA.collectA");
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
         source.offsetStructForEvent(REPLICA_SET_NAME, event);
@@ -199,7 +204,8 @@ public class SourceInfoTest {
         assertThat(ts.getTime()).isEqualTo(100);
         assertThat(ts.getInc()).isEqualTo(2);
 
-        Struct struct = source.lastOffsetStruct(REPLICA_SET_NAME,new CollectionId(REPLICA_SET_NAME,"dbA","collectA"));
+        Struct struct = source.lastOffsetStruct(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"),
+            "", 0, 1, false);
         assertThat(struct.getInt32(SourceInfo.TIMESTAMP)).isEqualTo(100);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(2);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);

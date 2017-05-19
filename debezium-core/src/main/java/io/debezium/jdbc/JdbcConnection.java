@@ -5,6 +5,8 @@
  */
 package io.debezium.jdbc;
 
+import com.datapipeline.clients.DpAES;
+
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -29,12 +31,15 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
+
+import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.function.JDBCConnectionRequest;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.TableEditor;
@@ -53,6 +58,9 @@ import io.debezium.util.Strings;
 public class JdbcConnection implements AutoCloseable {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(JdbcConnection.class);
+
+    /** Mysql connection retry count.**/
+    private final static int MYSQL_RETRY_TIMES = 3;
 
     /**
      * Establishes JDBC connections.
@@ -111,6 +119,10 @@ public class JdbcConnection implements AutoCloseable {
             String url = findAndReplace(urlPattern, props, varsWithDefaults);
             LOGGER.trace("Props: {}", props);
             LOGGER.trace("URL: {}", url);
+            String password = props.getProperty(JdbcConfiguration.PASSWORD.name());
+            if (password != null) {
+                props.setProperty(JdbcConfiguration.PASSWORD.name(), DpAES.decrypt(password));
+            }
             Connection conn = DriverManager.getConnection(url, props);
             LOGGER.debug("Connected to {} with {}", url, props);
             return conn;
@@ -140,6 +152,10 @@ public class JdbcConnection implements AutoCloseable {
         return (config) -> {
             LOGGER.trace("Config: {}", config.asProperties());
             Properties props = config.asProperties();
+            String password = props.getProperty(JdbcConfiguration.PASSWORD.name());
+            if (password != null) {
+                props.setProperty(JdbcConfiguration.PASSWORD.name(), DpAES.decrypt(password));
+            }
             Field[] varsWithDefaults = combineVariables(variables,
                                                         JdbcConfiguration.HOSTNAME,
                                                         JdbcConfiguration.PORT,
@@ -259,8 +275,10 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     public JdbcConnection setAutoCommit(boolean autoCommit) throws SQLException {
-        connection().setAutoCommit(autoCommit);
-        return this;
+        return doRetryRequest(() -> {
+            connection().setAutoCommit(autoCommit);
+            return this;
+        });
     }
 
     /**
@@ -270,8 +288,10 @@ public class JdbcConnection implements AutoCloseable {
      * @throws SQLException if there is an error connecting to the database
      */
     public JdbcConnection connect() throws SQLException {
-        connection();
-        return this;
+        return doRetryRequest(() -> {
+            connection();
+            return this;
+        });
     }
 
     /**
@@ -304,12 +324,14 @@ public class JdbcConnection implements AutoCloseable {
      * @throws SQLException if there is an error connecting to the database or executing the statements
      */
     public JdbcConnection execute(Operations operations) throws SQLException {
-        Connection conn = connection();
-        try (Statement statement = conn.createStatement();) {
-            operations.apply(statement);
-            if (!conn.getAutoCommit()) conn.commit();
-        }
-        return this;
+        return doRetryRequest(() -> {
+            Connection conn = connection();
+            try (Statement statement = conn.createStatement();) {
+                operations.apply(statement);
+                if (!conn.getAutoCommit()) conn.commit();
+            }
+            return this;
+        });
     }
 
     public static interface ResultSetConsumer {
@@ -352,18 +374,20 @@ public class JdbcConnection implements AutoCloseable {
      * @throws SQLException if anything unexpected fails
      */
     public JdbcConnection call(String sql, CallPreparer callPreparer, ResultSetConsumer resultSetConsumer) throws SQLException {
-        Connection conn = connection();
-        try (CallableStatement callableStatement = conn.prepareCall(sql)) {
-            if (callPreparer != null) {
-                callPreparer.accept(callableStatement);
-            }
-            try (ResultSet rs = callableStatement.executeQuery()) {
-                if (resultSetConsumer != null) {
-                    resultSetConsumer.accept(rs);
+        return doRetryRequest(() -> {
+            Connection conn = connection();
+            try (CallableStatement callableStatement = conn.prepareCall(sql)) {
+                if (callPreparer != null) {
+                    callPreparer.accept(callableStatement);
+                }
+                try (ResultSet rs = callableStatement.executeQuery()) {
+                    if (resultSetConsumer != null) {
+                        resultSetConsumer.accept(rs);
+                    }
                 }
             }
-        }
-        return this;
+            return this;
+        });
     }
     
     /**
@@ -377,18 +401,20 @@ public class JdbcConnection implements AutoCloseable {
      * @see #execute(Operations)
      */
     public JdbcConnection query(String query, StatementFactory statementFactory, ResultSetConsumer resultConsumer) throws SQLException {
-        Connection conn = connection();
-        try (Statement statement = statementFactory.createStatement(conn);) {
-            if (LOGGER.isTraceEnabled()) {
-                LOGGER.trace("running '{}'", query);
-            }
-            try (ResultSet resultSet = statement.executeQuery(query);) {
-                if (resultConsumer != null) {
-                    resultConsumer.accept(resultSet);
+        return doRetryRequest(() -> {
+            Connection conn = connection();
+            try (Statement statement = statementFactory.createStatement(conn);) {
+                if (LOGGER.isTraceEnabled()) {
+                    LOGGER.trace("running '{}'", query);
+                }
+                try (ResultSet resultSet = statement.executeQuery(query);) {
+                    if (resultConsumer != null) {
+                        resultConsumer.accept(resultSet);
+                    }
                 }
             }
-        }
-        return this;
+            return this;
+        });
     }
     
     /**
@@ -418,14 +444,16 @@ public class JdbcConnection implements AutoCloseable {
      */
     public JdbcConnection prepareQuery(String preparedQueryString, StatementPreparer preparer, ResultSetConsumer resultConsumer)
             throws SQLException {
-        Connection conn = connection();
-        try (PreparedStatement statement = conn.prepareStatement(preparedQueryString);) {
-            preparer.accept(statement);
-            try (ResultSet resultSet = statement.executeQuery();) {
-                if (resultConsumer != null) resultConsumer.accept(resultSet);
+        return doRetryRequest(() -> {
+            Connection conn = connection();
+            try (PreparedStatement statement = conn.prepareStatement(preparedQueryString);) {
+                preparer.accept(statement);
+                try (ResultSet resultSet = statement.executeQuery();) {
+                    if (resultConsumer != null) resultConsumer.accept(resultSet);
+                }
             }
-        }
-        return this;
+            return this;
+        });
     }
     
     /**
@@ -438,14 +466,16 @@ public class JdbcConnection implements AutoCloseable {
      * @see #execute(Operations)
      */
     public JdbcConnection prepareUpdate(String stmt, StatementPreparer preparer) throws SQLException {
-        Connection conn = connection();
-        try (PreparedStatement statement = conn.prepareStatement(stmt);) {
-            if (preparer != null) {
-                preparer.accept(statement);
+        return doRetryRequest(() -> {
+            Connection conn = connection();
+            try (PreparedStatement statement = conn.prepareStatement(stmt);) {
+                if (preparer != null) {
+                    preparer.accept(statement);
+                }
+                statement.execute();
             }
-            statement.execute();
-        }
-        return this;
+            return this;
+        });
     }
 
     /**
@@ -477,21 +507,23 @@ public class JdbcConnection implements AutoCloseable {
     public JdbcConnection prepareQuery(String preparedQueryString, Stream<String> parameters,
                                        SingleParameterResultSetConsumer resultConsumer)
             throws SQLException {
-        Connection conn = connection();
-        try (PreparedStatement statement = conn.prepareStatement(preparedQueryString);) {
-            for (Iterator<String> iter = parameters.iterator(); iter.hasNext();) {
-                String value = iter.next();
-                statement.setString(1, value);
-                boolean success = false;
-                try (ResultSet resultSet = statement.executeQuery();) {
-                    if (resultConsumer != null) {
-                        success = resultConsumer.accept(value, resultSet);
-                        if (!success) break;
+        return doRetryRequest( () -> {
+            Connection conn = connection();
+            try (PreparedStatement statement = conn.prepareStatement(preparedQueryString);) {
+                for (Iterator<String> iter = parameters.iterator(); iter.hasNext(); ) {
+                    String value = iter.next();
+                    statement.setString(1, value);
+                    boolean success = false;
+                    try (ResultSet resultSet = statement.executeQuery();) {
+                        if (resultConsumer != null) {
+                            success = resultConsumer.accept(value, resultSet);
+                            if (!success) break;
+                        }
                     }
                 }
             }
-        }
-        return this;
+            return this;
+        });
     }
 
     public void print(ResultSet resultSet) {
@@ -592,7 +624,7 @@ public class JdbcConnection implements AutoCloseable {
     public Set<String> readAllCatalogNames()
             throws SQLException {
         Set<String> catalogs = new HashSet<>();
-        DatabaseMetaData metadata = connection().getMetaData();
+        DatabaseMetaData metadata = doRetryRequest(() -> { return connection().getMetaData();});
         try (ResultSet rs = metadata.getCatalogs()) {
             while (rs.next()) {
                 String catalogName = rs.getString(1);
@@ -612,7 +644,7 @@ public class JdbcConnection implements AutoCloseable {
     public Set<String> readAllSchemaNames(Predicate<String> filter)
             throws SQLException {
         Set<String> schemas = new HashSet<>();
-        DatabaseMetaData metadata = connection().getMetaData();
+        DatabaseMetaData metadata = doRetryRequest(() -> { return connection().getMetaData();});
         try (ResultSet rs = metadata.getSchemas()) {
             while (rs.next()) {
                 String schema = rs.getString(1);
@@ -626,7 +658,7 @@ public class JdbcConnection implements AutoCloseable {
     
     public String[] tableTypes() throws SQLException {
         List<String> types = new ArrayList<>();
-        DatabaseMetaData metadata = connection().getMetaData();
+        DatabaseMetaData metadata = doRetryRequest(() -> { return connection().getMetaData();});
         try (ResultSet rs = metadata.getTableTypes()) {
             while (rs.next()) {
                 String tableType = rs.getString(1);
@@ -666,7 +698,7 @@ public class JdbcConnection implements AutoCloseable {
             throws SQLException {
         if (tableNamePattern == null) tableNamePattern = "%";
         Set<TableId> tableIds = new HashSet<>();
-        DatabaseMetaData metadata = connection().getMetaData();
+        DatabaseMetaData metadata = doRetryRequest(() -> { return connection().getMetaData();});
         try (ResultSet rs = metadata.getTables(databaseCatalog, schemaNamePattern, tableNamePattern, tableTypes)) {
             while (rs.next()) {
                 String catalogName = rs.getString(1);
@@ -732,7 +764,7 @@ public class JdbcConnection implements AutoCloseable {
         Set<TableId> tableIdsBefore = new HashSet<>(tables.tableIds());
 
         // Read the metadata for the table columns ...
-        DatabaseMetaData metadata = connection().getMetaData();
+        DatabaseMetaData metadata = doRetryRequest(() -> {return connection().getMetaData();});
         ConcurrentMap<TableId, List<Column>> columnsByTable = new ConcurrentHashMap<>();
         try (ResultSet rs = metadata.getColumns(databaseCatalog, schemaNamePattern, null, null)) {
             while (rs.next()) {
@@ -799,16 +831,39 @@ public class JdbcConnection implements AutoCloseable {
      * @throws SQLException if anything unexpected fails
      */
     public Map<String, Integer> readTypeInfo() throws SQLException {
-        DatabaseMetaData metadata = connection().getMetaData();
+        DatabaseMetaData metadata = doRetryRequest(() -> { return connection().getMetaData();});
         Map<String, Integer> jdbcTypeByLocalTypeName = new HashMap<>();
         try (ResultSet rs = metadata.getTypeInfo()) {
-           while (rs.next()) {
-               jdbcTypeByLocalTypeName.put(rs.getString("TYPE_NAME"), rs.getInt("DATA_TYPE"));
-           }
+            while (rs.next()) {
+                jdbcTypeByLocalTypeName.put(rs.getString("TYPE_NAME"), rs.getInt("DATA_TYPE"));
+            }
         }
         return jdbcTypeByLocalTypeName;
     }
-    
+
+
+    /**
+     * Make jdbc connection request with retry policy.
+     *
+     * @param request jdbc connection request.
+     * @param <T> Result type
+     * @return request result
+     * @throws SQLException Failed to connect to mysql server and run out of retry times.
+     */
+    private <T> T doRetryRequest(JDBCConnectionRequest<T> request) throws SQLException {
+        int retryCount = MYSQL_RETRY_TIMES;
+        while(retryCount > 0){
+            try {
+                return request.execute();
+            } catch (SQLException e){
+                LOGGER.error("Failed mysql connection, retry remaining : " + retryCount, e);
+                close();
+                retryCount--;
+            }
+        }
+        throw new SQLException("Mysql request failed, no more retry.");
+    }
+
     /**
      * Use the supplied table editor to create columns for the supplied result set.
      * 

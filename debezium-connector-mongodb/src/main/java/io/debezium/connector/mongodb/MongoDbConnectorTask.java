@@ -5,6 +5,10 @@
  */
 package io.debezium.connector.mongodb;
 
+import com.datapipeline.base.error.DpError;
+import com.datapipeline.base.error.DpErrorDetector;
+import com.dp.internal.bean.DpErrorCode;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
@@ -36,17 +40,16 @@ import io.debezium.util.LoggingContext.PreviousContext;
 import io.debezium.util.Metronome;
 
 /**
- * A Kafka Connect source task that replicates the changes from one or more MongoDB replica sets, using one {@link Replicator}
- * for each replica set.
- * <p>
- * Generally, the {@link MongoDbConnector} assigns each replica set to a separate task, although multiple
- * replica sets will be assigned to each task when the maximum number of tasks is limited. Regardless, every task will use a
- * separate thread to replicate the contents of each replica set, and each replication thread may use multiple threads
- * to perform an initial sync of the replica set.
- * 
+ * A Kafka Connect source task that replicates the changes from one or more MongoDB replica sets,
+ * using one {@link Replicator} for each replica set. <p> Generally, the {@link MongoDbConnector}
+ * assigns each replica set to a separate task, although multiple replica sets will be assigned to
+ * each task when the maximum number of tasks is limited. Regardless, every task will use a separate
+ * thread to replicate the contents of each replica set, and each replication thread may use
+ * multiple threads to perform an initial sync of the replica set.
+ *
+ * @author Randall Hauch
  * @see MongoDbConnector
  * @see MongoDbConnectorConfig
- * @author Randall Hauch
  */
 @ThreadSafe
 public final class MongoDbConnectorTask extends SourceTask {
@@ -60,6 +63,9 @@ public final class MongoDbConnectorTask extends SourceTask {
     private volatile TaskRecordQueue queue;
     private volatile String taskName;
     private volatile ReplicationContext replContext;
+
+    private DpErrorDetector dpErrorDetector;
+    private String dpTaskId;
 
     /**
      * Create an instance of the MongoDB task.
@@ -79,19 +85,24 @@ public final class MongoDbConnectorTask extends SourceTask {
             return;
         }
 
-        if (context == null) {
-            throw new ConnectException("Unexpected null context");
-        }
-
         // Read the configuration and set up the replication context ...
         final Configuration config = Configuration.from(props);
-        this.taskName = "task" + config.getInteger(MongoDbConnectorConfig.TASK_ID);
+        dpTaskId = config.getString(MongoDbConnectorConfig.DP_TASK_ID);
+        this.taskName = "task" + dpTaskId;
+        dpErrorDetector = new DpErrorDetector();
+
+        if (context == null) {
+            ConnectException e = new ConnectException("Unexpected null context");
+            DpError dpError = new DpError(e, e.getMessage(), dpTaskId, null, DpErrorCode.CRITICAL_ERROR).report();
+            dpErrorDetector.addError(dpError);
+        }
+
         final ReplicationContext replicationContext = new ReplicationContext(config);
         this.replContext = replicationContext;
         PreviousContext previousLogContext = replicationContext.configureLoggingContext(taskName);
-
+        // Output the configuration ...
         try {
-            // Output the configuration ...
+
             logger.info("Starting MongoDB connector task with configuration:");
             config.forEach((propName, propValue) -> {
                 logger.info("   {} = {}", propName, propValue);
@@ -100,20 +111,24 @@ public final class MongoDbConnectorTask extends SourceTask {
             // The MongoDbConnector.taskConfigs created our configuration, but we still validate the configuration in case of bugs
             // ...
             if (!config.validateAndRecord(MongoDbConnectorConfig.ALL_FIELDS, logger::error)) {
-                throw new ConnectException(
-                        "Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
+                ConnectException e = new ConnectException(
+                    "Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
+                DpError dpError = new DpError(e, e.getMessage(), dpTaskId, null, DpErrorCode.CRITICAL_ERROR).report();
+                dpErrorDetector.addError(dpError);
             }
 
             // Read from the configuration the information about the replica sets we are to watch ...
             final String hosts = config.getString(MongoDbConnectorConfig.HOSTS);
             final ReplicaSets replicaSets = ReplicaSets.parse(hosts);
-            if ( replicaSets.validReplicaSetCount() == 0) {
-                logger.info("Unable to start MongoDB connector task since no replica sets were found at {}", hosts);
-                return;
+            if (replicaSets.validReplicaSetCount() == 0) {
+//                logger.info("Unable to start MongoDB connector task since no replica sets were found at {}", hosts);
+                ConnectException e = new ConnectException("Unable to start MongoDB connector task since no replica sets were found at " + hosts.toString());
+                DpError dpError = new DpError(e, e.getMessage(), dpTaskId, null, DpErrorCode.CRITICAL_ERROR).report();
+                dpErrorDetector.addError(dpError);
             }
 
             // Set up the task record queue ...
-            this.queue = new TaskRecordQueue(config, replicaSets.replicaSetCount(), running::get, recordSummarizer);
+            this.queue = new TaskRecordQueue(config, replicaSets.replicaSetCount(), running::get, recordSummarizer, dpErrorDetector);
 
             // Get the offsets for each of replica set partition ...
             SourceInfo source = replicationContext.source();
@@ -124,7 +139,12 @@ public final class MongoDbConnectorTask extends SourceTask {
                     partitions.add(source.partition(replicaSetName));
                 }
             });
-            context.offsetStorageReader().offsets(partitions).forEach(source::setOffsetFor);
+            try {
+                context.offsetStorageReader().offsets(partitions).forEach(source::setOffsetFor);
+            } catch (Throwable e){
+                DpError dpError = new DpError(e, e.getMessage(), dpTaskId, null, DpErrorCode.CRITICAL_ERROR).report();
+                dpErrorDetector.addError(dpError);
+            }
 
             // Set up a replicator for each replica set ...
             final int numThreads = replicaSets.replicaSetCount();
@@ -134,7 +154,7 @@ public final class MongoDbConnectorTask extends SourceTask {
             logger.info("Starting {} thread(s) to replicate replica sets: {}", numThreads, replicaSets);
             replicaSets.validReplicaSets().forEach(replicaSet -> {
                 // Create a replicator for this replica set ...
-                Replicator replicator = new Replicator(replicationContext, replicaSet, queue::enqueue);
+                Replicator replicator = new Replicator(replicationContext, replicaSet, queue::enqueue, dpErrorDetector);
                 replicators.add(replicator);
                 // and submit it for execution ...
                 executor.submit(() -> {
@@ -161,6 +181,7 @@ public final class MongoDbConnectorTask extends SourceTask {
             });
             logger.info("Successfully started MongoDB connector task with {} thread(s) for replica sets {}", numThreads, replicaSets);
         } finally {
+            dpErrorDetector.check();
             previousLogContext.restore();
         }
     }
@@ -187,7 +208,9 @@ public final class MongoDbConnectorTask extends SourceTask {
                 logger.info("Stopped MongoDB replication task by stopping {} replicator threads", counter);
             }
         } catch (Throwable e) {
+            new DpError(e, e.getMessage(), dpTaskId, null, DpErrorCode.CRITICAL_ERROR).report();
             logger.error("Unexpected error shutting down the MongoDB replication task", e);
+            throw e;
         } finally {
             previousLogContext.restore();
         }
@@ -201,21 +224,24 @@ public final class MongoDbConnectorTask extends SourceTask {
         private final BlockingQueue<SourceRecord> records;
         private final BooleanSupplier isRunning;
         private final Consumer<List<SourceRecord>> batchConsumer;
+        private final DpErrorDetector errorDetector;
 
         protected TaskRecordQueue(Configuration config, int numThreads, BooleanSupplier isRunning,
-                                  Consumer<List<SourceRecord>> batchConsumer) {
+                                  Consumer<List<SourceRecord>> batchConsumer, DpErrorDetector errorDetector) {
             final int maxQueueSize = config.getInteger(MongoDbConnectorConfig.MAX_QUEUE_SIZE);
             final long pollIntervalMs = config.getLong(MongoDbConnectorConfig.POLL_INTERVAL_MS);
             maxBatchSize = config.getInteger(MongoDbConnectorConfig.MAX_BATCH_SIZE);
             metronome = Metronome.parker(pollIntervalMs, TimeUnit.MILLISECONDS, Clock.SYSTEM);
             records = new LinkedBlockingDeque<>(maxQueueSize);
             this.isRunning = isRunning;
-            this.batchConsumer = batchConsumer != null ? batchConsumer : (records) -> {};
+            this.batchConsumer = batchConsumer != null ? batchConsumer : (records) -> {
+            };
+            this.errorDetector = errorDetector;
         }
 
         public List<SourceRecord> poll() throws InterruptedException {
             List<SourceRecord> batch = new ArrayList<>(maxBatchSize);
-            while (isRunning.getAsBoolean() && records.drainTo(batch, maxBatchSize) == 0) {
+            while (checkErrorDetector() && isRunning.getAsBoolean() && records.drainTo(batch, maxBatchSize) == 0 ) {
                 // No events to process, so sleep for a bit ...
                 metronome.pause();
             }
@@ -225,14 +251,20 @@ public final class MongoDbConnectorTask extends SourceTask {
 
         /**
          * Adds the event into the queue for subsequent batch processing.
-         * 
+         *
          * @param record a record from the MongoDB oplog
-         * @throws InterruptedException if the thread is interrupted while waiting to enqueue the record
+         * @throws InterruptedException if the thread is interrupted while waiting to enqueue the
+         * record
          */
         public void enqueue(SourceRecord record) throws InterruptedException {
             if (record != null) {
                 records.put(record);
             }
+        }
+
+        private boolean checkErrorDetector() {
+            errorDetector.check();
+            return true;
         }
     }
 
@@ -241,8 +273,12 @@ public final class MongoDbConnectorTask extends SourceTask {
 
         @Override
         public void accept(List<SourceRecord> records) {
-            if (records.isEmpty()) return;
-            if (!logger.isInfoEnabled()) return;
+            if (records.isEmpty()) {
+                return;
+            }
+            if (!logger.isInfoEnabled()) {
+                return;
+            }
             summaryByReplicaSet.clear();
             records.forEach(record -> {
                 String replicaSetName = SourceInfo.replicaSetNameForPartition(record.sourcePartition());
@@ -255,7 +291,7 @@ public final class MongoDbConnectorTask extends SourceTask {
                 try {
                     summaryByReplicaSet.forEach((rsName, summary) -> {
                         logger.info("{} records sent for replica set '{}', last offset: {}",
-                                    summary.recordCount(), rsName, summary.lastOffset());
+                            summary.recordCount(), rsName, summary.lastOffset());
                     });
                 } finally {
                     prevContext.restore();
