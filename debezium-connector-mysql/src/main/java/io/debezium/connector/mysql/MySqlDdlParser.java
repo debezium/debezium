@@ -39,7 +39,7 @@ import io.debezium.text.TokenStream.Marker;
  * <p>
  * See the <a href="http://dev.mysql.com/doc/refman/5.7/en/sql-syntax-data-definition.html">MySQL SQL Syntax documentation</a> for
  * the grammar supported by this parser.
- * 
+ *
  * @author Randall Hauch
  */
 @NotThreadSafe
@@ -63,7 +63,7 @@ public class MySqlDdlParser extends DdlParser {
 
     /**
      * Create a new DDL parser for MySQL.
-     * 
+     *
      * @param includeViews {@code true} if view definitions should be included, or {@code false} if they should be skipped
      */
     public MySqlDdlParser(boolean includeViews) {
@@ -134,7 +134,10 @@ public class MySqlDdlParser extends DdlParser {
 
     @Override
     protected void initializeStatementStarts(TokenSet statementStartTokens) {
-        statementStartTokens.add("CREATE", "ALTER", "DROP", "INSERT", "GRANT", "REVOKE", "FLUSH", "TRUNCATE", "COMMIT", "USE", "SAVEPOINT");
+        statementStartTokens.add("CREATE", "ALTER", "DROP", "INSERT", "GRANT", "REVOKE", "FLUSH", "TRUNCATE", "COMMIT", "USE", "SAVEPOINT",
+                // table maintenance statements: https://dev.mysql.com/doc/refman/5.7/en/table-maintenance-sql.html
+                "ANALYZE", "OPTIMIZE", "REPAIR"
+        );
     }
 
     @Override
@@ -734,7 +737,7 @@ public class MySqlDdlParser extends DdlParser {
     /**
      * Parse the {@code ENUM} or {@code SET} data type expression to extract the character options, where the index(es) appearing
      * in the {@code ENUM} or {@code SET} values can be used to identify the acceptable characters.
-     * 
+     *
      * @param typeExpression the data type expression
      * @return the string containing the character options allowed by the {@code ENUM} or {@code SET}; never null
      */
@@ -1391,7 +1394,7 @@ public class MySqlDdlParser extends DdlParser {
 
     /**
      * Get the name of the character set for the current database, via the "character_set_database" system property.
-     * 
+     *
      * @return the name of the character set for the current database, or null if not known ...
      */
     protected String currentDatabaseCharset() {
@@ -1445,7 +1448,7 @@ public class MySqlDdlParser extends DdlParser {
 
     /**
      * Consume an expression surrounded by parentheses.
-     * 
+     *
      * @param start the start of the statement
      */
     protected void consumeExpression(Marker start) {
@@ -1458,7 +1461,7 @@ public class MySqlDdlParser extends DdlParser {
      * <a href="https://dev.mysql.com/doc/refman/5.7/en/begin-end.html"><code>BEGIN...END</code> blocks</a>,
      * <a href="https://dev.mysql.com/doc/refman/5.7/en/statement-labels.html">labeled statements</a>,
      * and control blocks.
-     * 
+     *
      * @param start the marker at which the statement was begun
      */
     @Override
@@ -1531,7 +1534,7 @@ public class MySqlDdlParser extends DdlParser {
      * Get the label that appears with a colon character just prior to the current position. Some MySQL DDL statements can be
      * <a href="https://dev.mysql.com/doc/refman/5.7/en/statement-labels.html">labeled</a>, and this label can then appear at the
      * end of a block.
-     * 
+     *
      * @return the label for the block starting at the current position; null if there is no such label
      * @throws NoSuchElementException if there is no previous token
      */
@@ -1545,7 +1548,7 @@ public class MySqlDdlParser extends DdlParser {
 
     /**
      * Try calling the supplied functions in sequence, stopping as soon as one of them succeeds.
-     * 
+     *
      * @param functions the functions
      */
     @SuppressWarnings("unchecked")
@@ -1569,7 +1572,7 @@ public class MySqlDdlParser extends DdlParser {
      * Parse and consume the {@code DEFAULT} clause. Currently, this method does not capture the default in any way,
      * since that will likely require parsing the default clause into a useful value (e.g., dealing with hexadecimals,
      * bit-set literals, date-time literals, etc.).
-     * 
+     *
      * @param start the marker at the beginning of the clause
      */
     protected void parseDefaultClause(Marker start) {
