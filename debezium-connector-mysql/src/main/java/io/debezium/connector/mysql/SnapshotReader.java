@@ -128,6 +128,9 @@ public class SnapshotReader extends AbstractReader {
     protected void doStop() {
         logger.debug("Stopping snapshot reader");
         // The parent class will change the isRunning() state, and this class' execute() uses that and will stop automatically
+    }
+
+    private void killConnection() {
         if (connectionID != null) {
             try {
                 logger.info("Stop Task: Kill Snapshot process {}.", connectionID);
@@ -143,6 +146,7 @@ public class SnapshotReader extends AbstractReader {
         try {
             this.thread = null;
             logger.debug("Completed writing all snapshot records");
+            killConnection();
         } finally {
             metrics.unregister(logger);
         }
@@ -468,7 +472,8 @@ public class SnapshotReader extends AbstractReader {
                                 + (lastId != null ? " WHERE " + quote(primaryKey) + " > " + singleQuote(lastId) :"")
                                 + (primaryKey != null ? " ORDER BY " + quote(primaryKey) : "")
                             );
-                            logger.info("Start select from {} starting from index {}.", tableId, lastIndex);
+                            logger.info("Start select from {} starting from index {}. Query: {}", tableId, lastIndex, sql.get());
+
                             try {
                                 int stepNum = step;
                                 mysql.query(sql.get(), statementFactory, rs -> {
@@ -515,11 +520,35 @@ public class SnapshotReader extends AbstractReader {
                                             long stop = clock.currentTimeInMillis();
                                             logger.info("Step {}: - Completed scanning a total of {} rows from table '{}' after {}",
                                                         stepNum, currentIndex , tableId, Strings.duration(stop - start));
-                                            source.setEntitySize(currentIndex);
-                                            source.setSnapshotLastOne();
-                                            // insert last record again with special flag "islastone = true"
-                                            recorder.recordRow(recordMaker, row, ts);
-                                            source.unsetSnapshotLastOne();
+                                            source.markSnapshotted(tableId.table());
+                                            if (currentIndex == 0 && lastIndex == 0) {
+                                                logger.info("{} is an empty table", tableId);
+                                            } else {
+                                                AtomicBoolean hasRecordForLastOne = new AtomicBoolean();
+                                                if (currentIndex == 0) {
+                                                    // no result from this query which means the last index is already the end of this table, while not marked as snapshotted.
+                                                    String queryLastRecord = "SELECT * FROM " + quote(tableId) + " WHERE " + quote(primaryKey) + " = " + singleQuote(lastId);
+                                                    logger.info("Select last one from table {} as the dp-last-record. Query: {}", tableId, queryLastRecord);
+                                                    mysql.query(queryLastRecord, this::createStatement, rs1 -> {
+                                                        while (rs1.next()) {
+                                                            hasRecordForLastOne.set(true);
+                                                            for (int i = 0, j = 1; i != numColumns; ++i, ++j) {
+                                                                row[i] = rs.getObject(j);
+                                                            }
+                                                        }
+                                                    });
+                                                    currentIndex = lastIndex;
+                                                } else {
+                                                    hasRecordForLastOne.set(true);
+                                                }
+                                                source.setEntitySize(currentIndex);
+                                                if (hasRecordForLastOne.get()) {
+                                                    source.setSnapshotLastOne();
+                                                    // insert last record again with special flag "islastone = true"
+                                                    recorder.recordRow(recordMaker, row, ts);
+                                                    source.unsetSnapshotLastOne();
+                                                }
+                                            }
                                         }
                                     } catch (InterruptedException e) {
                                         Thread.interrupted();
@@ -530,7 +559,6 @@ public class SnapshotReader extends AbstractReader {
                                 });
                             } finally {
                                 metrics.completeTable();
-                                source.markSnapshotted(tableId.table());
                                 if (interrupted.get()) break;
                             }
                         }
