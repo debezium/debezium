@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -15,8 +16,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.doc.FixFor;
 import io.debezium.relational.Column;
@@ -1031,6 +1030,20 @@ public class MySqlDdlParserTest {
         assertColumn(t, "c2", "BIT", Types.BIT, 2, -1, false, false, false);
     }
 
+    @FixFor("DBZ-253")
+    @Test
+    public void shouldParseTableMaintenanceStatements() {
+        String ddl = "create table `db1`.`table1` ( `id` int not null, `other` int );";
+        ddl += "analyze table `db1`.`table1`;";
+        ddl += "optimize table `db1`.`table1`;";
+        ddl += "repair table `db1`.`table1`;";
+
+        parser.parse(ddl, tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(1);
+        assertThat(listener.total()).isEqualTo(1);
+    }
+
     @Test
     public void shouldParseStatementForDbz142() {
         parser.parse(readFile("ddl/mysql-dbz-142.ddl"), tables);
@@ -1104,7 +1117,7 @@ public class MySqlDdlParserTest {
     /**
      * Reads the lines starting with a given line number from the specified file on the classpath. Any lines preceding the
      * given line number will be included as empty lines, meaning the line numbers will match the input file.
-     * 
+     *
      * @param startingLineNumber the 1-based number designating the first line to be included
      * @param classpathResource the path to the file on the classpath
      * @return the string containing the subset of the file contents; never null but possibly empty
