@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -18,8 +20,6 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
@@ -107,7 +107,7 @@ public class BinlogReaderIT {
                             .with(MySqlConnectorConfig.PORT, port)
                             .with(MySqlConnectorConfig.USER, "replicator")
                             .with(MySqlConnectorConfig.PASSWORD, "replpass")
-                            .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED.name().toLowerCase())
+                            .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                             .with(MySqlConnectorConfig.SERVER_ID, 18911)
                             .with(MySqlConnectorConfig.SERVER_NAME, LOGICAL_NAME)
                             .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
@@ -238,7 +238,7 @@ public class BinlogReaderIT {
         assertThat(orders.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(orders.numberOfValueSchemaChanges()).isEqualTo(1);
     }
-    
+
     @Test
     @FixFor( "DBZ-183" )
     public void shouldHandleTimestampTimezones() throws Exception {
@@ -253,18 +253,18 @@ public class BinlogReaderIT {
         context.source().setBinlogStartPoint("",0L); // start from beginning
         context.initializeHistory();
         reader = new BinlogReader("binlog", context);
-    
+
         // Start reading the binlog ...
         reader.start();
-    
+
         int expectedChanges = 1; // only 1 insert
-        
+
         consumeAtLeast(expectedChanges);
-        
+
         // Check the records via the store ...
         List<SourceRecord> sourceRecords = store.sourceRecords();
         assertThat(sourceRecords.size()).isEqualTo(1);
-        ZonedDateTime expectedTimestamp = ZonedDateTime.of(LocalDateTime.parse("2014-09-08T17:51:04.780"), 
+        ZonedDateTime expectedTimestamp = ZonedDateTime.of(LocalDateTime.parse("2014-09-08T17:51:04.780"),
                                                            ZoneId.systemDefault());
         String expectedTimestampString = expectedTimestamp.format(ZonedTimestamp.FORMATTER);
         SourceRecord sourceRecord = sourceRecords.get(0);

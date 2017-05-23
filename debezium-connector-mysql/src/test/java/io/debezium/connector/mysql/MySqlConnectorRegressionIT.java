@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
@@ -26,8 +27,6 @@ import org.fest.assertions.Delta;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.DecimalHandlingMode;
@@ -76,7 +75,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED.name().toLowerCase())
+                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                               .with(MySqlConnectorConfig.SERVER_ID, 18765)
                               .with(MySqlConnectorConfig.SERVER_NAME, "regression")
                               .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
@@ -273,7 +272,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
             }
         });
     }
-    
+
     @Test
     @FixFor("DBZ-61")
     public void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshotAndConnectTimesTypes() throws SQLException, InterruptedException {
@@ -283,15 +282,15 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED.name().toLowerCase())
+                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                               .with(MySqlConnectorConfig.SERVER_ID, 18765)
                               .with(MySqlConnectorConfig.SERVER_NAME, "regression")
                               .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                               .with(MySqlConnectorConfig.DATABASE_WHITELIST, "regression_test")
                               .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                               .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                              .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.toString())
-                              .with(MySqlConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.CONNECT.toString())
+                              .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                              .with(MySqlConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.CONNECT)
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                               .build();
         // Start the connector ...
@@ -491,7 +490,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED.name().toLowerCase())
+                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                               .with(MySqlConnectorConfig.SERVER_ID, 18765)
                               .with(MySqlConnectorConfig.SERVER_NAME, "regression")
                               .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
@@ -674,7 +673,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED.name().toLowerCase())
+                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                               .with(MySqlConnectorConfig.SERVER_ID, 18765)
                               .with(MySqlConnectorConfig.SERVER_NAME, "regression")
                               .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
@@ -683,7 +682,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                               .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                               .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.toString())
-                              .with(MySqlConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE.name())
+                              .with(MySqlConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                               .build();
         // Start the connector ...
@@ -716,7 +715,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
             }
         });
     }
-    
+
     private void assertTimestamp(String c4) {
         // '2014-09-08 17:51:04.777'
         ZoneId defaultZoneId = ZoneId.systemDefault();

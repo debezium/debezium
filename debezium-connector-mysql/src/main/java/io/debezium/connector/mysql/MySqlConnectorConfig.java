@@ -16,6 +16,7 @@ import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
@@ -30,7 +31,7 @@ public class MySqlConnectorConfig {
     /**
      * The set of predefined TemporalPrecisionMode options or aliases.
      */
-    public static enum TemporalPrecisionMode {
+    public static enum TemporalPrecisionMode implements EnumeratedValue {
         /**
          * Represent time and date values based upon the resolution in the database, using {@link io.debezium.time} semantic
          * types.
@@ -49,6 +50,7 @@ public class MySqlConnectorConfig {
             this.value = value;
         }
 
+        @Override
         public String getValue() {
             return value;
         }
@@ -85,7 +87,7 @@ public class MySqlConnectorConfig {
     /**
      * The set of predefined DecimalHandlingMode options or aliases.
      */
-    public static enum DecimalHandlingMode {
+    public static enum DecimalHandlingMode implements EnumeratedValue {
         /**
          * Represent {@code DECIMAL} and {@code NUMERIC} values as precise {@link BigDecimal} values, which are
          * represented in change events in a binary form. This is precise but difficult to use.
@@ -104,6 +106,7 @@ public class MySqlConnectorConfig {
             this.value = value;
         }
 
+        @Override
         public String getValue() {
             return value;
         }
@@ -150,7 +153,7 @@ public class MySqlConnectorConfig {
     /**
      * The set of predefined SnapshotMode options or aliases.
      */
-    public static enum SnapshotMode {
+    public static enum SnapshotMode implements EnumeratedValue {
 
         /**
          * Perform a snapshot when it is needed.
@@ -186,6 +189,7 @@ public class MySqlConnectorConfig {
             this.value = value;
         }
 
+        @Override
         public String getValue() {
             return value;
         }
@@ -222,7 +226,7 @@ public class MySqlConnectorConfig {
     /**
      * The set of predefined SecureConnectionMode options or aliases.
      */
-    public static enum SecureConnectionMode {
+    public static enum SecureConnectionMode implements EnumeratedValue {
         /**
          * Establish an unencrypted connection.
          */
@@ -255,6 +259,7 @@ public class MySqlConnectorConfig {
             this.value = value;
         }
 
+        @Override
         public String getValue() {
             return value;
         }
