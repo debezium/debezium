@@ -498,3 +498,23 @@ CREATE TABLE dbz_222_point (
 INSERT INTO dbz_222_point VALUES (default,GeomFromText('POINT(1 1)'), 1.0, 1.0);
 INSERT INTO dbz_222_point VALUES (default,GeomFromText('POINT(8.25554554 3.22124447)'), 8.25554554, 3.22124447);
 INSERT INTO dbz_222_point VALUES (default,GeomFromText('POINT(0 0)'), 0.0, 0.0);
+
+-- ----------------------------------------------------------------------------------------------------------------
+-- DATABASE:  table_maintenance_test
+-- ----------------------------------------------------------------------------------------------------------------
+-- The integration test for this database expects to scan all of the binlog events associated with this database
+-- without error or problems. The integration test does not modify any records in this database, so this script
+-- must contain all operations to these tables.
+--
+CREATE DATABASE table_maintenance_test;
+USE table_maintenance_test;
+
+CREATE TABLE dbz_253_table_maintenance_test (
+      id INT AUTO_INCREMENT NOT NULL,
+      other int,
+      PRIMARY KEY (id)
+) DEFAULT CHARSET=utf8;
+
+ANALYZE TABLE dbz_253_table_maintenance_test;
+OPTIMIZE TABLE dbz_253_table_maintenance_test;
+REPAIR TABLE dbz_253_table_maintenance_test;
