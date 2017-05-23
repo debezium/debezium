@@ -5,14 +5,16 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.fest.assertions.Assertions.assertThat;
+
+import java.nio.file.Path;
+import java.sql.SQLException;
+
 import org.apache.kafka.connect.data.Struct;
 import org.fest.assertions.Delta;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.nio.file.Path;
-import java.sql.SQLException;
 
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
@@ -22,8 +24,6 @@ import io.debezium.util.Testing;
 import mil.nga.wkb.geom.Point;
 import mil.nga.wkb.io.ByteReader;
 import mil.nga.wkb.io.WkbGeometryReader;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 /**
  * @author Omar Al-Safi
@@ -59,19 +59,13 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                              .with(
-                                  MySqlConnectorConfig.SSL_MODE,
-                                  MySqlConnectorConfig.SecureConnectionMode.DISABLED.name().toLowerCase()
-                              )
+                              .with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.SecureConnectionMode.DISABLED)
                               .with(MySqlConnectorConfig.SERVER_ID, 18765)
                               .with(MySqlConnectorConfig.SERVER_NAME, "geometryit")
                               .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                               .with(MySqlConnectorConfig.DATABASE_WHITELIST, "geometry_test")
                               .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                              .with(
-                                  MySqlConnectorConfig.SNAPSHOT_MODE,
-                                  MySqlConnectorConfig.SnapshotMode.NEVER.toString()
-                              )
+                              .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                               .build();
         // Start the connector ...
@@ -117,10 +111,7 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                              .with(
-                                  MySqlConnectorConfig.SSL_MODE,
-                                  MySqlConnectorConfig.SecureConnectionMode.DISABLED.name().toLowerCase()
-                              )
+                              .with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.SecureConnectionMode.DISABLED)
                               .with(MySqlConnectorConfig.SERVER_ID, 18765)
                               .with(MySqlConnectorConfig.SERVER_NAME, "geometryit")
                               .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)

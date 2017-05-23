@@ -9,6 +9,7 @@ package io.debezium.connector.postgresql;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -31,7 +32,8 @@ public class PostgresConnectorConfig {
     /**
      * The set of predefined TemporalPrecisionMode options or aliases.
      */
-    public enum TemporalPrecisionMode {
+    public enum TemporalPrecisionMode implements EnumeratedValue {
+
         /**
          * Represent time and date values based upon the resolution in the database, using {@link io.debezium.time} semantic
          * types.
@@ -50,13 +52,14 @@ public class PostgresConnectorConfig {
             this.value = value;
         }
 
+        @Override
         public String getValue() {
             return value;
         }
 
         /**
          * Determine if the supplied value is one of the predefined options.
-         * 
+         *
          * @param value the configuration property value; may not be null
          * @return the matching option, or null if no match is found
          */
@@ -71,7 +74,7 @@ public class PostgresConnectorConfig {
 
         /**
          * Determine if the supplied value is one of the predefined options.
-         * 
+         *
          * @param value the configuration property value; may not be null
          * @param defaultValue the default value; may be null
          * @return the matching option, or null if no match is found and the non-null default is invalid
@@ -86,20 +89,20 @@ public class PostgresConnectorConfig {
     /**
      * The set of predefined SnapshotMode options or aliases.
      */
-    public enum SnapshotMode {
+    public enum SnapshotMode implements EnumeratedValue {
 
         /**
          * Always perform a snapshot when starting.
          */
         ALWAYS("always"),
-        
+
         /**
          * Perform a snapshot only upon initial startup of a connector.
          */
         INITIAL("initial"),
 
         /**
-         * Never perform a snapshot and only receive logical changes. 
+         * Never perform a snapshot and only receive logical changes.
          */
         NEVER("never"),
 
@@ -114,13 +117,14 @@ public class PostgresConnectorConfig {
             this.value = value;
         }
 
+        @Override
         public String getValue() {
             return value;
         }
 
         /**
          * Determine if the supplied value is one of the predefined options.
-         * 
+         *
          * @param value the configuration property value; may not be null
          * @return the matching option, or null if no match is found
          */
@@ -135,7 +139,7 @@ public class PostgresConnectorConfig {
 
         /**
          * Determine if the supplied value is one of the predefined options.
-         * 
+         *
          * @param value the configuration property value; may not be null
          * @param defaultValue the default value; may be null
          * @return the matching option, or null if no match is found and the non-null default is invalid
@@ -160,9 +164,9 @@ public class PostgresConnectorConfig {
         DISABLED("disable"),
 
         /**
-         * Establish a secure connection if the server supports secure connections. 
-         * The connection attempt fails if a secure connection cannot be established 
-         * 
+         * Establish a secure connection if the server supports secure connections.
+         * The connection attempt fails if a secure connection cannot be established
+         *
          * see the {@code sslmode} Postgres JDBC driver option
          */
         REQUIRED("require"),
@@ -170,7 +174,7 @@ public class PostgresConnectorConfig {
         /**
          * Like REQUIRED, but additionally verify the server TLS certificate against the configured Certificate Authority
          * (CA) certificates. The connection attempt fails if no valid matching CA certificates are found.
-         * 
+         *
          * see the {@code sslmode} Postgres JDBC driver option
          */
         VERIFY_CA("verify_ca"),
@@ -178,7 +182,7 @@ public class PostgresConnectorConfig {
         /**
          * Like VERIFY_CA, but additionally verify that the server certificate matches the host to which the connection is
          * attempted.
-         * 
+         *
          * see the {@code sslmode} Postgres JDBC driver option
          */
         VERIFY_FULL("verify_full");
@@ -189,13 +193,14 @@ public class PostgresConnectorConfig {
             this.value = value;
         }
 
+        @Override
         public String getValue() {
             return value;
         }
 
         /**
          * Determine if the supplied value is one of the predefined options.
-         * 
+         *
          * @param value the configuration property value; may not be null
          * @return the matching option, or null if no match is found
          */
@@ -210,7 +215,7 @@ public class PostgresConnectorConfig {
 
         /**
          * Determine if the supplied value is one of the predefined options.
-         * 
+         *
          * @param value the configuration property value; may not be null
          * @param defaultValue the default value; may be null
          * @return the matching option, or null if no match is found and the non-null default is invalid
@@ -221,27 +226,28 @@ public class PostgresConnectorConfig {
             return mode;
         }
     }
-    
+
     /**
      * The set of configuration options for how events are placed on Kafka topics
      */
-    public enum TopicSelectionStrategy {
+    public enum TopicSelectionStrategy implements EnumeratedValue {
         /**
          * Create a topic for each distinct DB table
          */
         TOPIC_PER_TABLE("topic_per_table"),
-    
+
         /**
          * Create a topic for an entire DB schema
          */
         TOPIC_PER_SCHEMA("topic_per_schema");
-        
+
         private String value;
-    
-        protected String getValue() {
+
+        @Override
+        public String getValue() {
             return value;
         }
-    
+
         TopicSelectionStrategy(String value) {
             this.value = value;
         }
@@ -268,9 +274,9 @@ public class PostgresConnectorConfig {
     protected static final int DEFAULT_ROWS_FETCH_SIZE = 10240;
     protected static final long DEFAULT_POLL_INTERVAL_MILLIS = 500;
     protected static final long DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(10);
-    
+
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
-    
+
     public static final Field PLUGIN_NAME = Field.create("plugin.name")
                                               .withDisplayName("Plugin")
                                               .withType(Type.STRING)
@@ -278,16 +284,16 @@ public class PostgresConnectorConfig {
                                               .withImportance(Importance.MEDIUM)
                                               .withDefault(ReplicationConnection.Builder.DEFAULT_PLUGIN_NAME)
                                               .withDescription("The name of the Postgres logical decoding plugin installed on the server. Defaults to 'decoderbufs'");
-    
+
     public static final Field SLOT_NAME = Field.create("slot.name")
                                               .withDisplayName("Slot")
                                               .withType(Type.STRING)
                                               .withWidth(Width.MEDIUM)
                                               .withImportance(Importance.MEDIUM)
-                                              .withDefault(ReplicationConnection.Builder.DEFAULT_SLOT_NAME) 
+                                              .withDefault(ReplicationConnection.Builder.DEFAULT_SLOT_NAME)
                                               .withDescription("The name of the Postgres logical decoding slot created for streaming changes from a plugin." +
                                                                "Defaults to 'debezium");
-    
+
     public static final Field DROP_SLOT_ON_STOP = Field.create("slot.drop_on_stop")
                                                         .withDisplayName("Drop slot on stop")
                                                         .withType(Type.BOOLEAN)
@@ -296,7 +302,7 @@ public class PostgresConnectorConfig {
                                                         .withDescription(
                                                                 "Whether or not to drop the logical replication slot when the connector finishes orderly" +
                                                                 "By default the replication is kept so that on restart progress can resume from the last recorded location");
-    
+
     public static final Field HOSTNAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME)
                                               .withDisplayName("Hostname")
                                               .withType(Type.STRING)
@@ -304,7 +310,7 @@ public class PostgresConnectorConfig {
                                               .withImportance(Importance.HIGH)
                                               .withValidation(Field::isRequired)
                                               .withDescription("Resolvable hostname or IP address of the Postgres database server.");
-    
+
     public static final Field PORT = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT)
                                           .withDisplayName("Port")
                                           .withType(Type.INT)
@@ -356,7 +362,7 @@ public class PostgresConnectorConfig {
                                                               .withDescription("How events received from the DB should be placed on topics. Options include"
                                                       + "'table' (the default) each DB table will have a separate Kafka topic; "
                                                       + "'schema' there will be one Kafka topic per DB schema; events from multiple topics belonging to the same schema will be placed on the same topic");
-    
+
     public static final Field MAX_QUEUE_SIZE = Field.create("max.queue.size")
                                                     .withDisplayName("Change event buffer size")
                                                     .withType(Type.INT)
@@ -365,7 +371,7 @@ public class PostgresConnectorConfig {
                                                     .withDescription("Maximum size of the queue for change events read from the database log but not yet recorded or forwarded. Defaults to 2048, and should always be larger than the maximum batch size.")
                                                     .withDefault(DEFAULT_MAX_QUEUE_SIZE)
                                                     .withValidation(PostgresConnectorConfig::validateMaxQueueSize);
-    
+
     public static final Field MAX_BATCH_SIZE = Field.create("max.batch.size")
                                                     .withDisplayName("Change event batch size")
                                                     .withType(Type.INT)
@@ -374,7 +380,7 @@ public class PostgresConnectorConfig {
                                                     .withDescription("Maximum size of each batch of source records. Defaults to 10024.")
                                                     .withDefault(DEFAULT_MAX_BATCH_SIZE)
                                                     .withValidation(Field::isPositiveInteger);
-    
+
     public static final Field ROWS_FETCH_SIZE = Field.create("rows.fetch.size")
                                                      .withDisplayName("Result set fetch size")
                                                      .withType(Type.INT)
@@ -383,7 +389,7 @@ public class PostgresConnectorConfig {
                                                      .withDescription("The maximum number of DB rows that should be loaded into memory while performing a snapshot")
                                                      .withDefault(DEFAULT_ROWS_FETCH_SIZE)
                                                      .withValidation(Field::isPositiveLong);
-    
+
     public static final Field POLL_INTERVAL_MS = Field.create("poll.interval.ms")
                                                       .withDisplayName("Poll interval (ms)")
                                                       .withType(Type.LONG)
@@ -392,7 +398,7 @@ public class PostgresConnectorConfig {
                                                       .withDescription("Frequency in milliseconds to wait for new change events to appear after receiving no events. Defaults to 1 second (1000 ms).")
                                                       .withDefault(DEFAULT_POLL_INTERVAL_MILLIS)
                                                       .withValidation(Field::isPositiveInteger);
-    
+
     public static final Field SSL_MODE = Field.create(DATABASE_CONFIG_PREFIX + "sslmode")
                                               .withDisplayName("SSL mode")
                                               .withEnum(SecureConnectionMode.class, SecureConnectionMode.DISABLED)
@@ -432,14 +438,14 @@ public class PostgresConnectorConfig {
                                                    .withWidth(Width.LONG)
                                                    .withImportance(Importance.MEDIUM)
                                                    .withDescription("File containing the root certificate(s) against which the server is validated. See the Postgres JDBC SSL docs for further information");
-    
+
     public static final Field SSL_SOCKET_FACTORY = Field.create(DATABASE_CONFIG_PREFIX + "sslfactory")
                                                         .withDisplayName("SSL Root Certificate")
                                                         .withType(Type.STRING)
                                                         .withWidth(Width.LONG)
                                                         .withImportance(Importance.MEDIUM)
                                                         .withDescription("A name of class to that creates SSL Sockets. Use org.postgresql.ssl.NonValidatingFactory to disable SSL validation in development environments");
-    
+
     /**
      * A comma-separated list of regular expressions that match schema names to be monitored.
      * May not be used with {@link #SCHEMA_BLACKLIST}.
@@ -451,7 +457,7 @@ public class PostgresConnectorConfig {
                                                       .withImportance(Importance.HIGH)
                                                       .withDependents(TABLE_WHITELIST_NAME)
                                                       .withDescription("The schemas for which events should be captured");
-    
+
     /**
      * A comma-separated list of regular expressions that match schema names to be excluded from monitoring.
      * May not be used with {@link #SCHEMA_WHITELIST}.
@@ -464,8 +470,8 @@ public class PostgresConnectorConfig {
                                                       .withValidation(PostgresConnectorConfig::validateSchemaBlacklist)
                                                       .withInvisibleRecommender()
                                                       .withDescription("");
-    
-    
+
+
     /**
      * A comma-separated list of regular expressions that match the fully-qualified names of tables to be monitored.
      * Fully-qualified names for tables are of the form {@code <schemaName>.<tableName>} or
@@ -479,7 +485,7 @@ public class PostgresConnectorConfig {
                                                      .withImportance(Importance.HIGH)
                                                      .withValidation(Field::isListOfRegex)
                                                      .withDescription("The tables for which changes are to be captured");
-    
+
     /**
      * A comma-separated list of regular expressions that match the fully-qualified names of tables to be excluded from
      * monitoring. Fully-qualified names for tables are of the form {@code <schemaName>.<tableName>} or
@@ -503,7 +509,7 @@ public class PostgresConnectorConfig {
                                                       .withWidth(Width.LONG)
                                                       .withImportance(Importance.MEDIUM)
                                                       .withDescription("");
-    
+
     //TODO author=Horia Chiorean date=25/10/2016 description=PG 9.x logical decoding does not support schema changes
     public static final Field INCLUDE_SCHEMA_CHANGES = Field.create("include.schema.changes")
                                                             .withDisplayName("Include database schema changes")
@@ -526,7 +532,7 @@ public class PostgresConnectorConfig {
                                                            + "'initial' (the default) to specify the connector can run a snapshot only when no offsets are available for the logical server name; "
                                                            + "'initial_only' same as 'initial' except the connector should stop after completing the snapshot and before it would normally start emitting changes; and"
                                                            + "'never' to specify the connector should never run a snapshot and that upon first startup the connector should read from the last position (LSN) recorded by the server");
-    
+
     public static final Field SNAPSHOT_LOCK_TIMEOUT_MS = Field.create("snapshot.lock.timeout.ms")
                                                               .withDisplayName("Snapshot lock timeout (ms)")
                                                               .withWidth(Width.LONG)
@@ -554,16 +560,16 @@ public class PostgresConnectorConfig {
                                                      TOPIC_SELECTION_STRATEGY, MAX_BATCH_SIZE,
                                                      MAX_QUEUE_SIZE, POLL_INTERVAL_MS, SCHEMA_WHITELIST,
                                                      SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
-                                                     COLUMN_BLACKLIST, SNAPSHOT_MODE, 
+                                                     COLUMN_BLACKLIST, SNAPSHOT_MODE,
                                                      TIME_PRECISION_MODE,
                                                      SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD,
                                                      SSL_ROOT_CERT, SSL_CLIENT_KEY, SNAPSHOT_LOCK_TIMEOUT_MS, ROWS_FETCH_SIZE, SSL_SOCKET_FACTORY);
-    
+
     private final Configuration config;
     private final String serverName;
     private final boolean adaptiveTimePrecision;
     private final SnapshotMode snapshotMode;
-    
+
     protected PostgresConnectorConfig(Configuration config) {
         this.config = config;
         String serverName = config.getString(PostgresConnectorConfig.SERVER_NAME);
@@ -572,77 +578,77 @@ public class PostgresConnectorConfig {
         }
         this.serverName = serverName;
         TemporalPrecisionMode timePrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
-        this.adaptiveTimePrecision = TemporalPrecisionMode.ADAPTIVE == timePrecisionMode; 
+        this.adaptiveTimePrecision = TemporalPrecisionMode.ADAPTIVE == timePrecisionMode;
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
     }
-   
+
     protected String hostname() {
         return config.getString(HOSTNAME);
     }
-    
+
     protected int port() {
         return config.getInteger(PORT);
     }
-    
+
     protected String databaseName() {
         return config.getString(DATABASE_NAME);
     }
-    
+
     protected String pluginName() {
         return config.getString(PLUGIN_NAME);
     }
-    
+
     protected String slotName() {
         return config.getString(SLOT_NAME);
     }
-    
+
     protected boolean dropSlotOnStop() {
         return config.getBoolean(DROP_SLOT_ON_STOP);
     }
-    
+
     protected int maxQueueSize() {
         return config.getInteger(MAX_QUEUE_SIZE);
     }
-    
+
     protected int maxBatchSize() {
         return config.getInteger(MAX_BATCH_SIZE);
     }
-    
+
     protected long pollIntervalMs() {
         return config.getLong(POLL_INTERVAL_MS);
     }
-    
+
     protected boolean adaptiveTimePrecision() {
         return adaptiveTimePrecision;
     }
-    
+
     protected Configuration jdbcConfig() {
         return config.subset(DATABASE_CONFIG_PREFIX, true);
     }
-    
+
     protected String serverName() {
         return serverName;
     }
-    
+
     protected TopicSelectionStrategy topicSelectionStrategy() {
         //TODO author=Horia Chiorean date=04/11/2016 description=implement this fully once the changes for MySQL are merged
         //String value = config.getString(PostgresConnectorConfig.TOPIC_SELECTION_STRATEGY);
         //return PostgresConnectorConfig.TopicSelectionStrategy.parse(value);
         return PostgresConnectorConfig.TopicSelectionStrategy.TOPIC_PER_TABLE;
     }
-    
+
     protected Map<String, ConfigValue> validate() {
         return config.validate(ALL_FIELDS);
-    }  
-    
+    }
+
     protected boolean validateAndRecord(Consumer<String> errorConsumer) {
         return config.validateAndRecord(ALL_FIELDS, errorConsumer);
     }
-    
+
     protected String schemaBlacklist() {
         return config.getString(SCHEMA_BLACKLIST);
     }
-       
+
     protected String schemaWhitelist() {
         return config.getString(SCHEMA_WHITELIST);
     }
@@ -654,43 +660,43 @@ public class PostgresConnectorConfig {
     protected String tableWhitelist() {
         return config.getString(TABLE_WHITELIST);
     }
-       
+
     protected String columnBlacklist() {
         return config.getString(COLUMN_BLACKLIST);
     }
-    
+
     protected int rowsFetchSize() {
         return config.getInteger(ROWS_FETCH_SIZE);
     }
-    
+
     protected long snapshotLockTimeoutMillis() {
         return config.getLong(PostgresConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS);
     }
-    
+
     protected boolean snapshotNeverAllowed() {
-        return SnapshotMode.NEVER == this.snapshotMode;    
+        return SnapshotMode.NEVER == this.snapshotMode;
     }
-    
+
     protected boolean alwaysTakeSnapshot() {
         return SnapshotMode.ALWAYS == this.snapshotMode;
     }
     protected boolean initialOnlySnapshot() {
         return SnapshotMode.INITIAL_ONLY == this.snapshotMode;
     }
-    
+
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
         Field.group(config, "Postgres", SLOT_NAME, PLUGIN_NAME, SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
                     USER, PASSWORD, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD, SSL_ROOT_CERT, SSL_CLIENT_KEY,
                     DROP_SLOT_ON_STOP, SSL_SOCKET_FACTORY);
-        Field.group(config, "Events", SCHEMA_WHITELIST, SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST, 
+        Field.group(config, "Events", SCHEMA_WHITELIST, SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
                     COLUMN_BLACKLIST);
-        Field.group(config, "Connector", TOPIC_SELECTION_STRATEGY, POLL_INTERVAL_MS, MAX_BATCH_SIZE, MAX_QUEUE_SIZE, 
+        Field.group(config, "Connector", TOPIC_SELECTION_STRATEGY, POLL_INTERVAL_MS, MAX_BATCH_SIZE, MAX_QUEUE_SIZE,
                     SNAPSHOT_MODE, SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, ROWS_FETCH_SIZE);
         return config;
     }
-    
-    
+
+
     private static int validateMaxQueueSize(Configuration config, Field field, Field.ValidationOutput problems) {
         int maxQueueSize = config.getInteger(field);
         int maxBatchSize = config.getInteger(MAX_BATCH_SIZE);
@@ -705,7 +711,7 @@ public class PostgresConnectorConfig {
         }
         return count;
     }
-    
+
     private static int validateSchemaBlacklist(Configuration config, Field field, Field.ValidationOutput problems) {
         String whitelist = config.getString(SCHEMA_WHITELIST);
         String blacklist = config.getString(SCHEMA_BLACKLIST);
@@ -715,8 +721,8 @@ public class PostgresConnectorConfig {
         }
         return 0;
     }
-    
-    
+
+
     private static int validateTableBlacklist(Configuration config, Field field, Field.ValidationOutput problems) {
         String whitelist = config.getString(TABLE_WHITELIST);
         String blacklist = config.getString(TABLE_BLACKLIST);

@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.function.Predicate;
@@ -12,8 +14,6 @@ import java.util.function.Predicate;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
@@ -79,7 +79,7 @@ public class MySqlTaskContextTest {
                             .with(MySqlConnectorConfig.PORT, port)
                             .with(MySqlConnectorConfig.USER, username)
                             .with(MySqlConnectorConfig.PASSWORD, password)
-                            .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED.name().toLowerCase())
+                            .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                             .with(MySqlConnectorConfig.SERVER_ID, serverId)
                             .with(MySqlConnectorConfig.SERVER_NAME, serverName)
                             .with(MySqlConnectorConfig.DATABASE_WHITELIST, databaseName)
@@ -89,7 +89,7 @@ public class MySqlTaskContextTest {
 
     @Test
     public void shouldCreateTaskFromConfigurationWithNeverSnapshotMode() throws Exception {
-        config = simpleConfig().with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+        config = simpleConfig().with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
                                .build();
         context = new MySqlTaskContext(config);
         context.start();
@@ -101,7 +101,7 @@ public class MySqlTaskContextTest {
 
     @Test
     public void shouldCreateTaskFromConfigurationWithWhenNeededSnapshotMode() throws Exception {
-        config = simpleConfig().with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.WHEN_NEEDED.getValue())
+        config = simpleConfig().with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.WHEN_NEEDED)
                                .build();
         context = new MySqlTaskContext(config);
         context.start();

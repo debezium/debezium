@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.nio.file.Path;
@@ -17,8 +18,6 @@ import org.apache.kafka.connect.data.Struct;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
@@ -63,13 +62,13 @@ public class MySqlConnectorJsonIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED.name().toLowerCase())
+                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                               .with(MySqlConnectorConfig.SERVER_ID, 18765)
                               .with(MySqlConnectorConfig.SERVER_NAME, "jsonit_binlog")
                               .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                               .with(MySqlConnectorConfig.DATABASE_WHITELIST, "json_test")
                               .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                              .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.toString())
+                              .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                               .build();
         // Start the connector ...
@@ -123,7 +122,7 @@ public class MySqlConnectorJsonIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED.name().toLowerCase())
+                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                               .with(MySqlConnectorConfig.SERVER_ID, 18765)
                               .with(MySqlConnectorConfig.SERVER_NAME, "jsonit_snap")
                               .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
@@ -176,7 +175,7 @@ public class MySqlConnectorJsonIT extends AbstractConnectorTest {
                  String.join(System.lineSeparator(), errors));
         }
     }
-    
+
     protected void check(String json, String expectedBinlog, Consumer<String> msg ) {
         if ((json == null && expectedBinlog != null) || (json != null && !json.equals(expectedBinlog))) {
             msg.accept("JSON was:     " + json + System.lineSeparator() + "but expected: " + expectedBinlog);

@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.nio.file.Path;
@@ -16,8 +17,6 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
@@ -78,7 +77,7 @@ public class SnapshotReaderIT {
                             .with(MySqlConnectorConfig.PORT, port)
                             .with(MySqlConnectorConfig.USER, "snapper")
                             .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                            .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED.toString().toLowerCase())
+                            .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                             .with(MySqlConnectorConfig.SERVER_ID, 18911)
                             .with(MySqlConnectorConfig.SERVER_NAME, LOGICAL_NAME)
                             .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
