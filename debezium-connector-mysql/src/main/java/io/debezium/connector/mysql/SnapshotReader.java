@@ -146,7 +146,6 @@ public class SnapshotReader extends AbstractReader {
         try {
             this.thread = null;
             logger.debug("Completed writing all snapshot records");
-            killConnection();
         } finally {
             metrics.unregister(logger);
         }
@@ -646,6 +645,7 @@ public class SnapshotReader extends AbstractReader {
                 } finally {
                     // and since there's no more work to do clean up all resources ...
                     cleanupResources();
+                    killConnection();
                 }
             } else {
                 // We completed the snapshot...
