@@ -81,7 +81,7 @@
         <mongo.data.runOptions>--replSet ${mongo.data.replicaset.name} --oplogSize=2 --enableMajorityReadConcern</mongo.data.runOptions>
         <mongo.cfg.runOptions>--configsvr --replSet ${mongo.cfg.replicaset.name} --oplogSize=2 --enableMajorityReadConcern</mongo.cfg.runOptions>
         <mongo.router.runOptions>mongos --configdb ${mongo.cfg.replicaset.name}/config:27019</mongo.router.runOptions>
-        <!-- 
+        <!--
         Set this property to 'true' in a profile to skip the integration tests and not even run the Docker containers.
         -->
         <docker.skip>false</docker.skip>
@@ -107,7 +107,7 @@
                       <cmd>${mongo.data.runOptions}</cmd>
                       <ports>
                         <!-- We won't use it thru this port, but we don't want to take 27017 on docker host -->
-                        <port>27017:27017</port> 
+                        <port>27017:27017</port>
                       </ports>
                       <log>
                         <prefix>mongo1</prefix>
@@ -115,7 +115,7 @@
                         <color>yellow</color>
                       </log>
                       <wait>
-                        <log>(?s)waiting for connections on port 27017.*waiting for connections on port 27017</log> <!-- internal port, multiline matching -->
+                        <log>waiting for connections on port 27017</log> <!-- internal port, multiline matching -->
                         <time>30000</time> <!-- 30 seconds max -->
                       </wait>
                     </run>
@@ -167,7 +167,7 @@
                 </execution>
               </executions>
             </plugin>
-            <!-- 
+            <!--
             Unlike surefire, the failsafe plugin ensures 'post-integration-test' phase always runs, even
             when there are failed integration tests. We rely upon this to always shut down the Docker container
             after the integration tests (defined as '*IT.java') are run.
