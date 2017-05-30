@@ -97,9 +97,9 @@ public class MySqlDdlParser extends DdlParser {
         dataTypes.register(Types.TIMESTAMP_WITH_TIMEZONE, "TIMESTAMP[(L)]"); // includes timezone information
         dataTypes.register(Types.TIMESTAMP, "DATETIME[(L)]");
         dataTypes.register(Types.INTEGER, "YEAR[(2|4)]");
-        dataTypes.register(Types.BLOB, "CHAR[(L)] BINARY");
-        dataTypes.register(Types.BLOB, "VARCHAR(L) BINARY");
-        dataTypes.register(Types.BLOB, "BINARY[(L)]");
+        dataTypes.register(Types.BINARY, "CHAR[(L)] BINARY");
+        dataTypes.register(Types.VARBINARY, "VARCHAR(L) BINARY");
+        dataTypes.register(Types.BINARY, "BINARY[(L)]");
         dataTypes.register(Types.VARCHAR, "VARCHAR(L)");
         dataTypes.register(Types.NVARCHAR, "NVARCHAR(L)");
         dataTypes.register(Types.NVARCHAR, "NATIONAL VARCHAR(L)");

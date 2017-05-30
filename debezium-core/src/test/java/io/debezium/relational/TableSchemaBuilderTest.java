@@ -5,8 +5,11 @@
  */
 package io.debezium.relational;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
+import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.sql.Types;
 
 import org.apache.kafka.connect.data.Decimal;
@@ -16,8 +19,6 @@ import org.apache.kafka.connect.data.Struct;
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.fest.assertions.Assertions.assertThat;
-
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.time.Date;
 import io.debezium.util.AvroValidator;
@@ -26,12 +27,13 @@ public class TableSchemaBuilderTest {
 
     private final String prefix = "";
     private final TableId id = new TableId("catalog", "schema", "table");
-    private final Object[] data = new Object[] { "c1value", 3.142d, java.sql.Date.valueOf("2001-10-31"), 4 };
+    private final Object[] data = new Object[] { "c1value", 3.142d, java.sql.Date.valueOf("2001-10-31"), 4, new byte[]{ 71, 117, 110, 110, 97, 114} };
     private Table table;
     private Column c1;
     private Column c2;
     private Column c3;
     private Column c4;
+    private Column c5;
     private TableSchema schema;
     private AvroValidator validator;
 
@@ -59,6 +61,11 @@ public class TableSchemaBuilderTest {
                                        .type("COUNTER").jdbcType(Types.INTEGER)
                                        .autoIncremented(true)
                                        .optional(true)
+                                       .create(),
+                                 Column.editor().name("C5")
+                                       .type("BINARY").jdbcType(Types.BINARY)
+                                       .optional(false)
+                                       .length(16)
                                        .create())
                      .setPrimaryKeyNames("C1", "C2")
                      .create();
@@ -66,6 +73,7 @@ public class TableSchemaBuilderTest {
         c2 = table.columnWithName("C2");
         c3 = table.columnWithName("C3");
         c4 = table.columnWithName("C4");
+        c5 = table.columnWithName("C5");
     }
 
     @Test
@@ -74,6 +82,7 @@ public class TableSchemaBuilderTest {
         assertThat(c2).isNotNull();
         assertThat(c3).isNotNull();
         assertThat(c4).isNotNull();
+        assertThat(c5).isNotNull();
     }
 
     @Test(expected = NullPointerException.class)
@@ -110,8 +119,16 @@ public class TableSchemaBuilderTest {
         assertThat(values.field("C4").name()).isEqualTo("C4");
         assertThat(values.field("C4").index()).isEqualTo(3);
         assertThat(values.field("C4").schema()).isEqualTo(SchemaBuilder.int32().optional().build()); // JDBC INTEGER = 32 bits
+        assertThat(values.field("C5").index()).isEqualTo(4);
+        assertThat(values.field("C5").schema()).isEqualTo(SchemaBuilder.bytes().build()); // JDBC BINARY = bytes
+
         Struct value = schema.valueFromColumnData(data);
         assertThat(value).isNotNull();
+        assertThat(value.get("C1")).isEqualTo("c1value");
+        assertThat(value.get("C2")).isEqualTo(BigDecimal.valueOf(3.142d));
+        assertThat(value.get("C3")).isEqualTo(11626);
+        assertThat(value.get("C4")).isEqualTo(4);
+        assertThat(value.get("C5")).isEqualTo(ByteBuffer.wrap(new byte[]{ 71, 117, 110, 110, 97, 114}));
     }
 
 }

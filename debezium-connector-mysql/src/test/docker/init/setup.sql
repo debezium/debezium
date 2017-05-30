@@ -98,7 +98,7 @@ VALUES (default,"Sally","Thomas","sally.thomas@acme.com"),
        (default,"Edward","Walker","ed@walker.com"),
        (default,"Anne","Kretchmar","annek@noanswer.org");
 
--- Create some veyr simple orders
+-- Create some very simple orders
 CREATE TABLE orders (
   order_number INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
   order_date DATE NOT NULL,
@@ -175,7 +175,7 @@ VALUES (default,"Sally","Thomas","sally.thomas@acme.com"),
        (default,"Edward","Walker","ed@walker.com"),
        (default,"Anne","Kretchmar","annek@noanswer.org");
 
--- Create some veyr simple orders
+-- Create some very simple orders
 CREATE TABLE orders (
   order_number INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
   order_date DATE NOT NULL,
@@ -518,3 +518,21 @@ CREATE TABLE dbz_253_table_maintenance_test (
 ANALYZE TABLE dbz_253_table_maintenance_test;
 OPTIMIZE TABLE dbz_253_table_maintenance_test;
 REPAIR TABLE dbz_253_table_maintenance_test;
+
+-- ----------------------------------------------------------------------------------------------------------------
+-- DATABASE:  binary_column_test
+-- ----------------------------------------------------------------------------------------------------------------
+
+CREATE DATABASE binary_column_test;
+USE binary_column_test;
+
+CREATE TABLE dbz_254_binary_column_test (
+      id INT AUTO_INCREMENT NOT NULL,
+      file_uuid BINARY(16),
+      PRIMARY KEY (id)
+) DEFAULT CHARSET=utf8;
+
+INSERT INTO dbz_254_binary_column_test VALUES (default, unhex(replace('651aed08-390f-4893-b2f1-36923e7b7400','-','')));
+INSERT INTO dbz_254_binary_column_test VALUES (default, unhex(replace('651aed08-390f-4893-b2f1-36923e7b74ab','-','')));
+INSERT INTO dbz_254_binary_column_test VALUES (default, unhex(replace('651aed08-390f-4893-b2f1-36923e7b74','-','')));
+INSERT INTO dbz_254_binary_column_test VALUES (default, unhex(00));

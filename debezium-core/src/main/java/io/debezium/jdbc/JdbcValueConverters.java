@@ -52,7 +52,7 @@ import io.debezium.time.ZonedTimestamp;
  * don't have timezones (e.g., {@link java.sql.Timestamp}) by assuming a default time zone offset for values that don't have
  * (but are expected to have) timezones. Again, when the values are highly-correlated with the expected SQL/JDBC types, this
  * default timezone offset will not be needed.
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable
@@ -92,7 +92,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * Create a new instance, and specify the time zone offset that should be used only when converting values without timezone
      * information to values that require timezones. This default offset should not be needed when values are highly-correlated
      * with the expected SQL/JDBC types.
-     * 
+     *
      * @param decimalMode how {@code DECIMAL} and {@code NUMERIC} values should be treated; may be null if
      *            {@link DecimalMode#PRECISE} is to be used
      * @param adaptiveTimePrecision {@code true} if the time, date, and timestamp values should be based upon the precision of the
@@ -352,7 +352,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * <p>
      * This method handles several types of objects, including {@link OffsetDateTime}, {@link java.sql.Timestamp},
      * {@link java.util.Date}, {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -383,7 +383,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * This method handles several types of objects, including {@link OffsetTime}, {@link java.sql.Time}, {@link java.util.Date},
      * {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}. If any of the types have date components, those date
      * components are ignored.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -412,7 +412,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * Per the JDBC specification, databases should return {@link java.sql.Timestamp} instances, which have date and time info
      * but no time zone info. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such
      * as {@link java.util.Date}, {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -441,7 +441,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * Per the JDBC specification, databases should return {@link java.sql.Timestamp} instances, which have date and time info
      * but no time zone info. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such
      * as {@link java.util.Date}, {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -470,7 +470,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * Per the JDBC specification, databases should return {@link java.sql.Timestamp} instances, which have date and time info
      * but no time zone info. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such
      * as {@link java.util.Date}, {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -499,7 +499,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * Per the JDBC specification, databases should return {@link java.sql.Timestamp} instances, which have date and time info
      * but no time zone info. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such
      * as {@link java.util.Date}, {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -529,7 +529,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * time zones. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such as
      * {@link java.util.Date}, {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}. If any of the types might
      * have date components, those date components are ignored.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -559,7 +559,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * time zones. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such as
      * {@link java.util.Date}, {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}. If any of the types might
      * have date components, those date components are ignored.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -589,7 +589,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * time zones. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such as
      * {@link java.util.Date}, {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}. If any of the types might
      * have date components, those date components are ignored.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -619,7 +619,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * time zones. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such as
      * {@link java.util.Date}, {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}. If any of the types might
      * have date components, those date components are ignored.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -648,7 +648,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * time zones. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such as
      * {@link java.util.Date}, {@link java.time.LocalDate}, and {@link java.time.LocalDateTime}. If any of the types might
      * have time components, those time components are ignored.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type
@@ -680,7 +680,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * time zones. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such as
      * {@link java.util.Date}, {@link java.time.LocalDate}, and {@link java.time.LocalDateTime}. If any of the types might
      * have time components, those time components are ignored.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type
@@ -709,12 +709,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
     /**
      * Converts a value object for an expected JDBC type of {@link Types#BLOB}, {@link Types#BINARY},
      * {@link Types#VARBINARY}, {@link Types#LONGVARBINARY}.
-     * <p>
-     * Per the JDBC specification, databases should return {@link java.sql.Date} instances that have no notion of time or
-     * time zones. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such as
-     * {@link java.util.Date}, {@link java.time.LocalDate}, and {@link java.time.LocalDateTime}. If any of the types might
-     * have time components, those time components are ignored.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -737,16 +732,27 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = ((String) data).getBytes();
         }
         if (data instanceof byte[]) {
-            return ByteBuffer.wrap((byte[]) data);
+            return convertByteArray(column, (byte[]) data);
         }
+
         // An unexpected value
         return unexpectedBinary(data, fieldDefn);
     }
 
     /**
+     * Converts the given byte array value into a byte buffer as preferred by Kafka Connect. Specific connectors
+     * can perform value adjustments based on the column definition, e.g. right-pad with 0x00 bytes in case of
+     * fixed length BINARY in MySQL.
+     */
+    protected ByteBuffer convertByteArray(Column column, byte[] data) {
+        // Kafka Connect would support raw byte arrays, too, but byte buffers are recommended
+        return ByteBuffer.wrap(data);
+    }
+
+    /**
      * Handle the unexpected value from a row with a column type of {@link Types#BLOB}, {@link Types#BINARY},
      * {@link Types#VARBINARY}, {@link Types#LONGVARBINARY}.
-     * 
+     *
      * @param value the binary value for which no conversion was found; never null
      * @param fieldDefn the field definition in the Kafka Connect schema; never null
      * @return the converted value, or null if the conversion could not be made and the column allows nulls
@@ -761,7 +767,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#TINYINT}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -774,7 +780,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#SMALLINT}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -802,7 +808,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#INTEGER}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -830,7 +836,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#INTEGER}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -858,7 +864,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#FLOAT}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -871,7 +877,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#DOUBLE}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -900,7 +906,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#REAL}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -929,7 +935,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#NUMERIC}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -967,7 +973,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#NUMERIC}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -1007,7 +1013,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * Converts a value object for an expected JDBC type of {@link Types#CHAR}, {@link Types#VARCHAR},
      * {@link Types#LONGVARCHAR}, {@link Types#CLOB}, {@link Types#NCHAR}, {@link Types#NVARCHAR}, {@link Types#LONGNVARCHAR},
      * {@link Types#NCLOB}, {@link Types#DATALINK}, and {@link Types#SQLXML}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -1035,7 +1041,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#ROWID}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -1059,7 +1065,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#BIT}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -1087,7 +1093,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#BIT} of length 2+.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -1173,7 +1179,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * {@link ByteOrder#LITTLE_ENDIAN little-endian}.
      * <p>
      * By default, this method returns {@link ByteOrder#LITTLE_ENDIAN}.
-     * 
+     *
      * @return little endian or big endian; never null
      */
     protected ByteOrder byteOrderOfBitType() {
@@ -1182,7 +1188,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#BOOLEAN}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -1206,7 +1212,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Convert an unknown data value.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null

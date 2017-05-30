@@ -143,7 +143,7 @@ public class MySqlDdlParserTest {
         Table foo = tables.forTable(new TableId(null, null, "user"));
         assertThat(foo).isNotNull();
         assertThat(foo.columnNames()).contains("Host", "User", "Select_priv");
-        assertColumn(foo, "Host", "CHAR BINARY", Types.BLOB, 60, -1, false, false, false);
+        assertColumn(foo, "Host", "CHAR BINARY", Types.BINARY, 60, -1, false, false, false);
 
         parser.parse("DROP TABLE user", tables);
         assertThat(tables.size()).isEqualTo(0);
