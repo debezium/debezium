@@ -394,10 +394,11 @@ public class Replicator {
         MongoDatabase db = primary.getDatabase(collectionId.dbName());
         MongoCollection<Document> docCollection = db.getCollection(collectionId.name());
         Bson query = new BsonDocument();
+        long counter = 0;
         if (collectionId.namespace().equals(ongoingCollectionName)) {
             query = gt("_id", new ObjectId(ongoingCollectionOffset));
+            counter = index;
         }
-        long counter = index;
         try (MongoCursor<Document> cursor = docCollection.find(query).sort(new Document("_id", 1)).iterator()) {
             Document doc = null;
             while (cursor.hasNext()) {
