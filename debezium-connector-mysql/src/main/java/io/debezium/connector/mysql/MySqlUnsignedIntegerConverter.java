@@ -95,8 +95,8 @@ public class MySqlUnsignedIntegerConverter {
      * Convert original value insertion of type 'BIGINT' into the correct BIGINT UNSIGNED representation
      * Note: Unsigned BIGINT (16-bit) is represented in 'BigDecimal' data type. Reference: https://kafka.apache.org/0102/javadoc/org/apache/kafka/connect/data/Schema.Type.html
      *
-     * @param originalNumber {@link BigInteger} the original insertion value
-     * @return {@link BigInteger} the correct representation of the original insertion value
+     * @param originalNumber {@link BigDecimal} the original insertion value
+     * @return {@link BigDecimal} the correct representation of the original insertion value
      */
     public static BigDecimal convertUnsignedBigint(BigDecimal originalNumber) {
         if (originalNumber.compareTo(new BigDecimal("0")) == -1) {
