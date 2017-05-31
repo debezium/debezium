@@ -122,7 +122,7 @@ public interface ReplicationConnection extends AutoCloseable {
         /**
          * The number of seconds the replication connection should periodically send updates to the server.
          * 
-         * @param statusUpdateIntervalSeconds a number of seconds; must be positive
+         * @param statusUpdateIntervalSeconds a number of seconds; zero or negative disables
          * @return this instance
          * @see #DEFAULT_STATUS_UPDATE_SECONDS
          */

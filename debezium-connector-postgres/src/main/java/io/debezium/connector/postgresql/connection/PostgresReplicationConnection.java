@@ -38,7 +38,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private final String pluginName;
     private final boolean dropSlotOnClose;
     private final Configuration originalConfig;
-    private final Integer statusUpdateIntervalSeconds;
+    private final int statusUpdateIntervalSeconds;
     
     private long defaultStartingPos;
     
@@ -56,7 +56,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                          String slotName,
                                          String pluginName,
                                          boolean dropSlotOnClose,
-                                         Integer statusUpdateIntervalSeconds) {
+                                         int statusUpdateIntervalSeconds) {
         super(config, PostgresConnection.FACTORY, null ,PostgresReplicationConnection::defaultSettings);
         
         this.originalConfig = config;
@@ -154,7 +154,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 .logical()
                 .withSlotName(slotName)
                 .withStartPosition(lsn);
-        if (statusUpdateIntervalSeconds != null) {
+        if (statusUpdateIntervalSeconds > 0) {
             streamBuilder.withStatusInterval(statusUpdateIntervalSeconds, TimeUnit.SECONDS);
         }
         PGReplicationStream stream = streamBuilder.start();
@@ -275,7 +275,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
     
         public ReplicationConnectionBuilder statusUpdateIntervalSeconds(final int statusUpdateIntervalSeconds) {
-            assert statusUpdateIntervalSeconds >= 0;
             this.statusUpdateIntervalSeconds = statusUpdateIntervalSeconds;
             return this;
         }
