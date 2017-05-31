@@ -7,6 +7,8 @@ package io.debezium.connector.mysql;
 
 import org.junit.Test;
 
+import java.math.BigDecimal;
+
 import static org.junit.Assert.assertEquals;
 
 /**
@@ -36,6 +38,12 @@ public class MySqlUnsignedIntegerConverterTest {
     public void shouldConvertSignedBinlogIntToUnsigned(){
         assertEquals(new Long(4294967295L), MySqlUnsignedIntegerConverter.convertUnsignedInteger(-1L));
         assertEquals(new Long(4294967295L), MySqlUnsignedIntegerConverter.convertUnsignedInteger(4294967295L));
+    }
+
+    @Test
+    public void shouldConvertSignedBinlogBigintToUnsigned(){
+        assertEquals(new BigDecimal("18446744073709551615"), MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal("-1")));
+        assertEquals(new BigDecimal("18446744073709551615"), MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal("18446744073709551615")));
     }
 
 }

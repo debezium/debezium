@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import java.math.BigDecimal;
+
 /**
  * A converter API for MySQL Unsigned Integer types. It intends to convert any integer type value from binlong into the correct representation of unsigned numeric
  * MySQL binlog stores unsigned numeric into this format: (insertion value - Maximum data type boundary - 1), therefore to calculate the correct unsigned numeric representation
@@ -21,6 +23,7 @@ public class MySqlUnsignedIntegerConverter {
     private static final Integer SMALLINT_MAX_VALUE = 65535;
     private static final Integer MEDIUMINT_MAX_VALUE = 16777215;
     private static final Long INT_MAX_VALUE = 4294967295L;
+    private static final BigDecimal BIGINT_MAX_VALUE = new BigDecimal("18446744073709551615");
 
     /**
      * Private constructor
@@ -74,7 +77,7 @@ public class MySqlUnsignedIntegerConverter {
 
     /**
      * Convert original value insertion of type 'INT' into the correct INT UNSIGNED representation
-     * Note: Unsigned INT (32-bit) is represented in 'Long' data type within Java. Reference: https://dev.mysql.com/doc/connector-j/5.1/en/connector-j-reference-type-conversions.html
+     * Note: Unsigned INT (32-bit) is represented in 'Long' 64-bit data type. Reference: https://kafka.apache.org/0102/javadoc/org/apache/kafka/connect/data/Schema.Type.html
      *
      * @param originalNumber {@link Long} the original insertion value
      * @return {@link Long} the correct representation of the original insertion value
@@ -82,6 +85,21 @@ public class MySqlUnsignedIntegerConverter {
     public static Long convertUnsignedInteger(Long originalNumber){
         if (originalNumber < 0) {
             return originalNumber + INT_MAX_VALUE + 1;
+        } else {
+            return originalNumber;
+        }
+    }
+
+    /**
+     * Convert original value insertion of type 'BIGINT' into the correct BIGINT UNSIGNED representation
+     * Note: Unsigned BIGINT (16-bit) is represented in 'BigDecimal' data type. Reference: https://kafka.apache.org/0102/javadoc/org/apache/kafka/connect/data/Schema.Type.html
+     *
+     * @param originalNumber {@link BigDecimal} the original insertion value
+     * @return {@link BigDecimal} the correct representation of the original insertion value
+     */
+    public static BigDecimal convertUnsignedBigint(BigDecimal originalNumber) {
+        if (originalNumber.compareTo(new BigDecimal("0")) == -1) {
+            return originalNumber.add(BIGINT_MAX_VALUE).add(new BigDecimal("1"));
         } else {
             return originalNumber;
         }
