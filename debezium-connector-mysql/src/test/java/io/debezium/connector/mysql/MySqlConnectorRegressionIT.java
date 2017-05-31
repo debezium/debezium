@@ -24,15 +24,19 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.fest.assertions.Delta;
+import org.jboss.arquillian.junit.Arquillian;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.cube.DatabaseCube;
 import io.debezium.connector.mysql.MySqlConnectorConfig.DecimalHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.TemporalPrecisionMode;
+import io.debezium.connector.mysql.cube.DefaultDatabase;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
@@ -43,10 +47,14 @@ import io.debezium.util.Testing;
 /**
  * @author Randall Hauch
  */
+@RunWith(Arquillian.class)
 public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-regression.txt").toAbsolutePath();
     private static final TemporalAdjuster ADJUSTER = MySqlValueConverters::adjustTemporal;
+
+    @DefaultDatabase
+    private DatabaseCube cube;
 
     private Configuration config;
 
@@ -70,9 +78,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
     @FixFor("DBZ-61")
     public void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
-        config = Configuration.create()
-                              .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
-                              .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
+        config = cube.configuration()
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                               .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
@@ -277,9 +283,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
     @FixFor("DBZ-61")
     public void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshotAndConnectTimesTypes() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
-        config = Configuration.create()
-                              .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
-                              .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
+        config = cube.configuration()
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                               .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
@@ -485,9 +489,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
     @Test
     public void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
-        config = Configuration.create()
-                              .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
-                              .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
+        config = cube.configuration()
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                               .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
@@ -668,9 +670,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
     @FixFor("DBZ-147")
     public void shouldConsumeAllEventsFromDecimalTableInDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
-        config = Configuration.create()
-                              .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
-                              .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
+        config = cube.configuration()
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                               .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)

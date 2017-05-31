@@ -30,6 +30,15 @@ public class MySQLConnection extends JdbcConnection {
                                                     .build());
     }
 
+    public static MySQLConnection forTestDatabase(final String databaseName, final String host, final int port) {
+        return new MySQLConnection(JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
+                                                    .withHostname(host)
+                                                    .withPort(port)
+                                                    .withDatabase(databaseName)
+                                                    .with("useSSL", false)
+                                                    .build());
+    }
+
     /**
      * Obtain a connection instance to the named test database.
      * 

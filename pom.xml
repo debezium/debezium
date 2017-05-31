@@ -72,6 +72,8 @@
         <!-- Testing -->
         <version.junit>4.12</version.junit>
         <version.fest>1.4</version.fest>
+        <version.arquillian>1.1.13.Final</version.arquillian>
+        <version.arquillian.cube>1.4.0</version.arquillian.cube>
 
        <!-- Maven Plugins -->
         <version.resources.plugin>2.7</version.resources.plugin>
@@ -285,6 +287,25 @@
                 <groupId>org.easytesting</groupId>
                 <artifactId>fest-assert</artifactId>
                 <version>${version.fest}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.arquillian.cube</groupId>
+                <artifactId>arquillian-cube-bom</artifactId>
+                <version>${version.arquillian.cube}</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>org.jboss.arquillian.core</groupId>
+                <artifactId>arquillian-core-api</artifactId>
+                <version>${version.arquillian}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.jboss.arquillian.junit</groupId>
+                <artifactId>arquillian-junit-standalone</artifactId>
+                <version>${version.arquillian}</version>
                 <scope>test</scope>
             </dependency>
 

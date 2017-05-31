@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -23,10 +24,12 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import org.jboss.arquillian.junit.Arquillian;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,11 +50,12 @@ import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer;
 import com.github.shyiko.mysql.binlog.network.SSLMode;
 import com.github.shyiko.mysql.binlog.network.ServerException;
 
-import static org.fest.assertions.Assertions.assertThat;
-
+import io.debezium.connector.cube.DatabaseCube;
+import io.debezium.connector.mysql.cube.DefaultDatabase;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.util.Testing;
 
+@RunWith(Arquillian.class)
 public class ReadBinLogIT implements Testing {
 
     protected static final Logger LOGGER = LoggerFactory.getLogger(ReadBinLogIT.class);
@@ -62,6 +66,9 @@ public class ReadBinLogIT implements Testing {
     }
 
     private static final Serializable ANY_OBJECT = new AnyValue();
+
+    @DefaultDatabase
+    private DatabaseCube cube;
 
     private EventQueue counters;
     private BinaryLogClient client;
@@ -74,7 +81,7 @@ public class ReadBinLogIT implements Testing {
         events.clear();
 
         // Connect the normal SQL client ...
-        conn = MySQLConnection.forTestDatabase("readbinlog_test");
+        conn = MySQLConnection.forTestDatabase("readbinlog_test", cube.getHost(), cube.getPort());
         conn.connect();
 
         // Get the configuration that we used ...

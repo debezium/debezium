@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<arquillian xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="http://jboss.org/schema/arquillian"
+    xsi:schemaLocation="http://jboss.org/schema/arquillian
+  http://jboss.org/schema/arquillian/arquillian_1_0.xsd">
+    <extension qualifier="cube">
+        <property name="connectionMode">STARTORCONNECTANDLEAVE</property>
+    </extension>
+    <extension qualifier="docker">
+        <property name="serverVersion">1.12</property>
+        <property name="serverUri">http://localhost:2375</property>
+        <property name="definitionFormat">CUBE</property>
+        <!-->property name="autoStartContainers">mysql-server</property-->
+        <property name="clean">true</property>
+        <property name="dockerContainers"> 
+              mysql-server:
+                image: debezium/mysql-server-test-database
+                exposedPorts: [3306/tcp]
+                await:
+                  strategy: io.debezium.connector.mysql.cube.MySQLAwaitStrategy
+                  timeout: 90
+                  ports: [3306]
+                  match: MySQL init process done. Ready for start up.
+                env: [MYSQL_ROOT_PASSWORD=debezium-rocks, MYSQL_DATABASE=mysql, MYSQL_USER=mysqluser, MYSQL_PASSWORD=mysqlpw]
+              database-gtids:
+                image: debezium/mysql-server-gtids-test-database
+                exposedPorts: [3306/tcp]
+                await:
+                  strategy: io.debezium.connector.mysql.cube.MySQLAwaitStrategy
+                  timeout: 90
+                  ports: [3306]
+                  match: MySQL init process done. Ready for start up.
+                env: [MYSQL_ROOT_PASSWORD=debezium-rocks, MYSQL_DATABASE=mysql, MYSQL_USER=mysqluser, MYSQL_PASSWORD=mysqlpw]
+                manual: true
+              replica-gtids:
+                image: debezium/mysql-server-gtids-test-database-replica
+                exposedPorts: [3306/tcp]
+                await:
+                  strategy: io.debezium.connector.mysql.cube.MySQLAwaitStrategy
+                  timeout: 90
+                  ports: [3306]
+                  match: MySQL init process done. Ready for start up.
+                env: [MYSQL_ROOT_PASSWORD=debezium-rocks, MYSQL_DATABASE=mysql, MYSQL_USER=mysqlreplica, MYSQL_PASSWORD=mysqlpw]
+                links:
+                  - database-gtids
+                manual: true
+      </property>
+    </extension>
+</arquillian>

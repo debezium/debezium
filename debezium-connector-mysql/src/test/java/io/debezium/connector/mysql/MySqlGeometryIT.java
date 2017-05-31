@@ -12,11 +12,15 @@ import java.sql.SQLException;
 
 import org.apache.kafka.connect.data.Struct;
 import org.fest.assertions.Delta;
+import org.jboss.arquillian.junit.Arquillian;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.cube.DatabaseCube;
+import io.debezium.connector.mysql.cube.DefaultDatabase;
 import io.debezium.data.Envelope;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.relational.history.FileDatabaseHistory;
@@ -28,10 +32,14 @@ import mil.nga.wkb.io.WkbGeometryReader;
 /**
  * @author Omar Al-Safi
  */
+@RunWith(Arquillian.class)
 public class MySqlGeometryIT extends AbstractConnectorTest {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-json.txt")
                                                              .toAbsolutePath();
+
+    @DefaultDatabase
+    private DatabaseCube cube;
 
     private Configuration config;
 
@@ -54,9 +62,7 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
     @Test
     public void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
-        config = Configuration.create()
-                              .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
-                              .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
+        config = cube.configuration()
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                               .with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.SecureConnectionMode.DISABLED)
@@ -106,9 +112,7 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
     @Test
     public void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
-        config = Configuration.create()
-                              .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
-                              .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
+        config = cube.configuration()
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                               .with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.SecureConnectionMode.DISABLED)
