@@ -274,13 +274,9 @@ public class SnapshotReader extends AbstractReader {
                             while (rs.next() && isRunning()) {
                                 TableId id = new TableId(dbName, null, rs.getString(1));
                                 if (filters.tableFilter().test(id)) {
-                                    if (source.isSnapshotted(id.table())) {
-                                        logger.info("\t snapshotted '{}'", id);
-                                    } else {
-                                        tableIds.add(id);
-                                        tableIdsByDbName.computeIfAbsent(dbName, k -> new ArrayList<>()).add(id);
-                                        logger.info("\t including '{}'", id);
-                                    }
+                                    tableIds.add(id);
+                                    tableIdsByDbName.computeIfAbsent(dbName, k -> new ArrayList<>()).add(id);
+                                    logger.info("\t including '{}'", id);
                                 } else {
                                     logger.info("\t '{}' is filtered out, discarding", id);
                                 }
@@ -425,6 +421,11 @@ public class SnapshotReader extends AbstractReader {
                     while (tableIdIter.hasNext()) {
                         TableId tableId = tableIdIter.next();
                         if (!isRunning()) break;
+
+                        if (source.isSnapshotted(tableId.table())) {
+                            logger.info("\t snapshotted '{}'", tableId);
+                            continue;
+                        }
 
                         // Obtain a record maker for this table, which knows about the schema ...
                         RecordsForTable recordMaker = context.makeRecord().forTable(tableId, null, bufferedRecordQueue);
