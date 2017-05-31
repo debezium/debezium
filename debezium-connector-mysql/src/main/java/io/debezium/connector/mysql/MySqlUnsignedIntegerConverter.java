@@ -6,7 +6,6 @@
 package io.debezium.connector.mysql;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
 
 /**
  * A converter API for MySQL Unsigned Integer types. It intends to convert any integer type value from binlong into the correct representation of unsigned numeric
