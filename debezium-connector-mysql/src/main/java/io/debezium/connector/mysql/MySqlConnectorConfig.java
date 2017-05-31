@@ -19,8 +19,8 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
-import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
+import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.KafkaDatabaseHistory;
 
@@ -356,6 +356,21 @@ public class MySqlConnectorConfig {
             SecureConnectionMode mode = parse(value);
             if (mode == null && defaultValue != null) mode = parse(defaultValue);
             return mode;
+        }
+
+        public static enum EventDeserializationFailureHandlingMode implements EnumeratedValue {
+
+            IGNORE,
+            WARN,
+            FAIL;
+
+            @Override
+            public String getValue() {
+                return null;
+            }
+
+
+
         }
     }
 
