@@ -1,4 +1,8 @@
 language: java
+cache:
+  directories:
+  - $HOME/.m2/repository
+
 sudo: required
 
 jdk:
