@@ -6,6 +6,7 @@
 package io.debezium.connector.mysql;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
@@ -20,6 +21,7 @@ import java.time.temporal.Temporal;
 import java.util.Arrays;
 import java.util.List;
 
+import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -180,6 +182,11 @@ public class MySqlValueConverters extends JdbcValueConverters {
             // Source: https://kafka.apache.org/0102/javadoc/org/apache/kafka/connect/data/Schema.Type.html
             return SchemaBuilder.int64();
         }
+        if (matches(typeName, "BIGINT UNSIGNED") || matches(typeName, "BIGINT UNSIGNED ZEROFILL")) {
+            // In order to capture unsigned INT 64-bit data source, org.apache.kafka.connect.data.Decimal:Byte will be required to safely capture all valid values with scale of 0
+            // Source: https://kafka.apache.org/0102/javadoc/org/apache/kafka/connect/data/Schema.Type.html
+            return Decimal.builder(0);
+        }
         // Otherwise, let the base class handle it ...
         return super.schemaBuilder(column);
     }
@@ -222,6 +229,10 @@ public class MySqlValueConverters extends JdbcValueConverters {
         if (matches(typeName, "INT UNSIGNED") || matches(typeName, "INT UNSIGNED ZEROFILL")) {
             // Convert INT UNSIGNED internally from SIGNED to UNSIGNED based on the boundary settings
             return (data) -> convertUnsignedInt(column, fieldDefn, data);
+        }
+        if (matches(typeName, "BIGINT UNSIGNED") || matches(typeName, "BIGINT UNSIGNED ZEROFILL")) {
+            // Convert BIGINT UNSIGNED internally from SIGNED to UNSIGNED based on the boundary settings
+            return (data) -> convertUnsignedBigint(column, fieldDefn, data);
         }
 
         // We have to convert bytes encoded in the column's character set ...
@@ -571,6 +582,31 @@ public class MySqlValueConverters extends JdbcValueConverters {
         }
         //We continue with the original converting method (bigint) since we have an unsigned Integer
         return convertBigInt(column, fieldDefn, data);
+    }
+
+    /**
+     * Convert the a value representing a Unsigned BIGINT value to the correct Unsigned INT representation.
+     *
+     * @param column the column in which the value appears
+     * @param fieldDefn the field definition for the {@link SourceRecord}'s {@link Schema}; never null
+     * @param data the data; may be null
+     *
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     *
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
+     */
+    protected Object convertUnsignedBigint(Column column, Field fieldDefn, Object data){
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+
+        if (data instanceof BigDecimal) data = MySqlUnsignedIntegerConverter.convertUnsignedBigint((BigDecimal) data);
+        if (data instanceof Number) {
+            Number value = (Number) data;
+            data = MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal(value.toString()));
+        }
+        //We continue with the original converting method (numeric) since we have an unsigned Integer
+        return convertNumeric(column, fieldDefn, data);
     }
 
 

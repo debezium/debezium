@@ -5,12 +5,14 @@
  */
 package io.debezium.connector.mysql;
 
+import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.sql.SQLException;
 
@@ -76,7 +78,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         Testing.Debug.enable();
         int numCreateDatabase = 1;
-        int numCreateTables = 4;
+        int numCreateTables = 5;
         int numDataRecords = numCreateTables * 3; //Total data records
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords);
         stopConnector();
@@ -89,6 +91,8 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         assertThat(records.recordsForTopic(SERVER_NAME + "." + DATABASE_NAME + ".dbz_228_mediumint_unsigned").size())
                 .isEqualTo(3);
         assertThat(records.recordsForTopic(SERVER_NAME + "." + DATABASE_NAME + ".dbz_228_int_unsigned").size())
+                .isEqualTo(3);
+        assertThat(records.recordsForTopic(SERVER_NAME + "." + DATABASE_NAME + ".dbz_228_bigint_unsigned").size())
                 .isEqualTo(3);
         assertThat(records.topics().size()).isEqualTo(1 + numCreateTables);
         assertThat(records.databaseNames().size()).isEqualTo(1);
@@ -113,6 +117,8 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
                 assertSmallUnsigned(value);
             } else if (record.topic().endsWith("dbz_228_mediumint_unsigned")) {
                 assertMediumUnsigned(value);
+            } else if (record.topic().endsWith("dbz_228_bigint_unsigned")) {
+                assertBigintUnsigned(value);
             }
         });
     }
@@ -140,7 +146,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
         //Testing.Debug.enable();
-        int numTables = 4;
+        int numTables = 5;
         int numDataRecords = numTables * 3;
         int numDdlRecords =
                 numTables * 2 + 3; // for each table (1 drop + 1 create) + for each db (1 create + 1 drop + 1 use)
@@ -156,6 +162,8 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         assertThat(records.recordsForTopic(SERVER_NAME + "." + DATABASE_NAME + ".dbz_228_mediumint_unsigned").size())
                 .isEqualTo(3);
         assertThat(records.recordsForTopic(SERVER_NAME + "." + DATABASE_NAME + ".dbz_228_int_unsigned").size())
+                .isEqualTo(3);
+        assertThat(records.recordsForTopic(SERVER_NAME + "." + DATABASE_NAME + ".dbz_228_bigint_unsigned").size())
                 .isEqualTo(3);
         assertThat(records.topics().size()).isEqualTo(numTables + 1);
         assertThat(records.databaseNames()).containsOnly(DATABASE_NAME, "");
@@ -180,6 +188,8 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
                 assertSmallUnsigned(value);
             } else if (record.topic().endsWith("dbz_228_mediumint_unsigned")) {
                 assertMediumUnsigned(value);
+            } else if (record.topic().endsWith("dbz_228_bigint_unsigned")) {
+                assertBigintUnsigned(value);
             }
         });
     }
@@ -324,6 +334,38 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
             assertThat(after.getInt64("c4")).isEqualTo(0L);
             assertThat(after.getInt64("c5")).isEqualTo(0L);
             assertThat(after.getInt32("c6")).isEqualTo(-2147483648);
+        }
+    }
+
+    private void assertBigintUnsigned(Struct value) {
+        Struct after = value.getStruct(Envelope.FieldName.AFTER);
+        Integer i = after.getInt32("id");
+        assertThat(i).isNotNull();
+        //Validate the schema first, we are expecting org.apache.kafka.connect.data.Decimal:Byte  since we are dealing with unsignd-bigint
+        //So Unsigned BIGINY would be an int32 type
+        assertThat(after.schema().field("c1").schema()).isEqualTo(Decimal.builder(0).schema());
+        assertThat(after.schema().field("c2").schema()).isEqualTo(Decimal.builder(0).schema());
+
+        //Validate the schema first, we are expecting int-64 since we are dealing with signed-bigint.
+        //So Signed BIGINT would be an INT64 type
+        assertThat(after.schema().field("c3").schema()).isEqualTo(Schema.INT64_SCHEMA);
+
+        //Validate candidates values
+        switch (i) {
+        case 1:
+            assertThat(after.get("c1")).isEqualTo(new BigDecimal("18446744073709551615"));
+            assertThat(after.get("c2")).isEqualTo(new BigDecimal("18446744073709551615"));
+            assertThat(after.getInt64("c3")).isEqualTo(9223372036854775807L);
+            break;
+        case 2:
+            assertThat(after.get("c1")).isEqualTo(new BigDecimal("14446744073709551615"));
+            assertThat(after.get("c2")).isEqualTo(new BigDecimal("14446744073709551615"));
+            assertThat(after.getInt64("c3")).isEqualTo(-1223372036854775807L);
+            break;
+        case 3:
+            assertThat(after.get("c1")).isEqualTo(new BigDecimal("0"));
+            assertThat(after.get("c2")).isEqualTo(new BigDecimal("0"));
+            assertThat(after.getInt64("c3")).isEqualTo(-9223372036854775808L);
         }
     }
 }
