@@ -6,6 +6,7 @@ Christian Posta
 David Chen
 David Leibovic
 Dennis Persson
+Duncan Sands
 Gunnar Morling
 Horia Chiorean
 Jure Kajzer
