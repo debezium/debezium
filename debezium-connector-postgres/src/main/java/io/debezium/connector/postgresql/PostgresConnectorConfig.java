@@ -552,6 +552,14 @@ public class PostgresConnectorConfig {
                                                                  + "'connect' always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
                                                                  + "which uses millisecond precision regardless of the database columns' precision .");
 
+    public static final Field STATUS_UPDATE_INTERVAL_MS = Field.create("status.update.interval.ms")
+            .withDisplayName("Status update interval (ms)")
+            .withType(Type.INT) // Postgres doesn't accept long for this value
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Frequency in milliseconds for sending replication connection status updates to the server. Defaults to 10 seconds (10000 ms).")
+            .withValidation(Field::isPositiveInteger);
+
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
@@ -563,7 +571,8 @@ public class PostgresConnectorConfig {
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE,
                                                      TIME_PRECISION_MODE,
                                                      SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD,
-                                                     SSL_ROOT_CERT, SSL_CLIENT_KEY, SNAPSHOT_LOCK_TIMEOUT_MS, ROWS_FETCH_SIZE, SSL_SOCKET_FACTORY);
+                                                     SSL_ROOT_CERT, SSL_CLIENT_KEY, SNAPSHOT_LOCK_TIMEOUT_MS, ROWS_FETCH_SIZE, SSL_SOCKET_FACTORY,
+                                                     STATUS_UPDATE_INTERVAL_MS);
 
     private final Configuration config;
     private final String serverName;
@@ -604,6 +613,10 @@ public class PostgresConnectorConfig {
 
     protected boolean dropSlotOnStop() {
         return config.getBoolean(DROP_SLOT_ON_STOP);
+    }
+
+    protected Integer statusUpdateIntervalMillis() {
+        return config.getInteger(STATUS_UPDATE_INTERVAL_MS, null);
     }
 
     protected int maxQueueSize() {
@@ -688,7 +701,7 @@ public class PostgresConnectorConfig {
         ConfigDef config = new ConfigDef();
         Field.group(config, "Postgres", SLOT_NAME, PLUGIN_NAME, SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
                     USER, PASSWORD, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD, SSL_ROOT_CERT, SSL_CLIENT_KEY,
-                    DROP_SLOT_ON_STOP, SSL_SOCKET_FACTORY);
+                    DROP_SLOT_ON_STOP, SSL_SOCKET_FACTORY, STATUS_UPDATE_INTERVAL_MS);
         Field.group(config, "Events", SCHEMA_WHITELIST, SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
                     COLUMN_BLACKLIST);
         Field.group(config, "Connector", TOPIC_SELECTION_STRATEGY, POLL_INTERVAL_MS, MAX_BATCH_SIZE, MAX_QUEUE_SIZE,

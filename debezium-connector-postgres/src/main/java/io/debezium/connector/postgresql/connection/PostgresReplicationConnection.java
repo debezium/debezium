@@ -12,12 +12,14 @@ import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+
 import org.postgresql.PGConnection;
 import org.postgresql.replication.LogSequenceNumber;
 import org.postgresql.replication.PGReplicationStream;
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import com.google.protobuf.InvalidProtocolBufferException;
 
 import io.debezium.config.Configuration;
@@ -26,58 +28,58 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcConnectionException;
 
 /**
- * Implementation of a {@link ReplicationConnection} for Postgresql. Note that replication connections in PG cannot execute 
+ * Implementation of a {@link ReplicationConnection} for Postgresql. Note that replication connections in PG cannot execute
  * regular statements but only a limited number of replication-related commands.
- * 
+ *
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 public class PostgresReplicationConnection extends JdbcConnection implements ReplicationConnection {
     private static Logger LOGGER = LoggerFactory.getLogger(PostgresReplicationConnection.class);
-    
+
     private final String slotName;
     private final String pluginName;
     private final boolean dropSlotOnClose;
     private final Configuration originalConfig;
-    private final int statusUpdateIntervalSeconds;
-    
+    private final Integer statusUpdateIntervalMillis;
+
     private long defaultStartingPos;
-    
+
     /**
      * Creates a new replication connection with the given params.
-     * 
+     *
      * @param config the JDBC configuration for the connection; may not be null
      * @param slotName the name of the DB slot for logical replication; may not be null
      * @param pluginName the name of the server side plugin used for streaming changes; may not be null;
      * @param dropSlotOnClose whether the replication slot should be dropped once the connection is closed
-     * @param statusUpdateIntervalSeconds the number of seconds at which the replication connection should periodically send status
+     * @param statusUpdateIntervalMillis the number of milli-seconds at which the replication connection should periodically send status
      * updates to the server
      */
     private PostgresReplicationConnection(Configuration config,
                                          String slotName,
                                          String pluginName,
                                          boolean dropSlotOnClose,
-                                         int statusUpdateIntervalSeconds) {
+                                         Integer statusUpdateIntervalMillis) {
         super(config, PostgresConnection.FACTORY, null ,PostgresReplicationConnection::defaultSettings);
-        
+
         this.originalConfig = config;
         this.slotName = slotName;
         this.pluginName = pluginName;
         this.dropSlotOnClose = dropSlotOnClose;
-        this.statusUpdateIntervalSeconds = statusUpdateIntervalSeconds;
-    
+        this.statusUpdateIntervalMillis = statusUpdateIntervalMillis;
+
         try {
             initReplicationSlot();
         } catch (SQLException e) {
             throw new JdbcConnectionException("Cannot create replication connection", e);
         }
     }
-    
+
     protected void initReplicationSlot() throws SQLException {
         ServerInfo.ReplicationSlot slotInfo;
         try (PostgresConnection connection = new PostgresConnection(originalConfig)) {
             slotInfo = connection.readReplicationSlotInfo(slotName, pluginName);
         }
-        
+
         boolean shouldCreateSlot = ServerInfo.ReplicationSlot.INVALID == slotInfo;
         try {
             if (shouldCreateSlot) {
@@ -96,7 +98,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                         slotName, pluginName, database());
                 throw new IllegalStateException();
             }
-            
+
             AtomicLong xlogStart = new AtomicLong();
             execute(statement -> {
                 String identifySystemStatement = "IDENTIFY_SYSTEM";
@@ -110,7 +112,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                     xlogStart.compareAndSet(0, LogSequenceNumber.valueOf(xlogpos).asLong());
                 }
             });
-    
+
             if (shouldCreateSlot || !slotInfo.hasValidFlushedLSN()) {
                 // this is a new slot or we weren't able to read a valid flush LSN pos, so we always start from the xlog pos that was reported
                 this.defaultStartingPos = xlogStart.get();
@@ -119,18 +121,18 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 this.defaultStartingPos = latestFlushedLSN < xlogStart.get() ? latestFlushedLSN : xlogStart.get();
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("found previous flushed LSN '{}'", ReplicationConnection.format(latestFlushedLSN));
-                }                 
+                }
             }
         } catch (SQLException e) {
             throw new JdbcConnectionException(e);
         }
     }
-    
+
     @Override
     public ReplicationStream startStreaming() throws SQLException {
         return startStreaming(defaultStartingPos);
     }
-    
+
     @Override
     public ReplicationStream startStreaming(Long offset) throws SQLException {
         connect();
@@ -141,11 +143,11 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         LOGGER.debug("starting streaming from LSN '{}'", lsn.asString());
         return createReplicationStream(lsn);
     }
-   
+
     protected PGConnection pgConnection() throws SQLException {
         return (PGConnection) connection();
     }
-    
+
     private ReplicationStream createReplicationStream(final LogSequenceNumber lsn) throws SQLException {
         assert lsn != null;
         ChainedLogicalStreamBuilder streamBuilder = pgConnection()
@@ -154,15 +156,16 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 .logical()
                 .withSlotName(slotName)
                 .withStartPosition(lsn);
-        if (statusUpdateIntervalSeconds > 0) {
-            streamBuilder.withStatusInterval(statusUpdateIntervalSeconds, TimeUnit.SECONDS);
+        if (statusUpdateIntervalMillis != null && statusUpdateIntervalMillis > 0) {
+            streamBuilder.withStatusInterval(statusUpdateIntervalMillis, TimeUnit.MILLISECONDS);
         }
+
         PGReplicationStream stream = streamBuilder.start();
-        final long lsnLong = lsn.asLong(); 
+        final long lsnLong = lsn.asLong();
         return new ReplicationStream() {
             // make sure this is volatile since multiple threads may be interested in this value
             private volatile LogSequenceNumber lastReceivedLSN;
-    
+
             @Override
             public PgProto.RowMessage read() throws SQLException {
                 ByteBuffer read = stream.read();
@@ -172,7 +175,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 }
                 return deserializeMessage(read);
             }
-    
+
             @Override
             public PgProto.RowMessage readPending() throws SQLException {
                 ByteBuffer read = stream.readPending();
@@ -182,7 +185,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 }
                 return deserializeMessage(read);
             }
-    
+
             private PgProto.RowMessage deserializeMessage(ByteBuffer buffer) {
                 try {
                     if (!buffer.hasArray()) {
@@ -197,12 +200,12 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                     throw new RuntimeException(e);
                 }
             }
-    
+
             @Override
             public void close() throws SQLException {
                 stream.close();
             }
-    
+
             @Override
             public void flushLSN() throws SQLException {
                 if (lastReceivedLSN == null) {
@@ -213,14 +216,14 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 stream.setAppliedLSN(lastReceivedLSN);
                 stream.forceUpdateStatus();
             }
-    
+
             @Override
             public Long lastReceivedLSN() {
                 return lastReceivedLSN != null ? lastReceivedLSN.asLong() : null;
             }
         };
     }
-    
+
     @Override
     public synchronized void close() {
         try {
@@ -235,7 +238,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             }
         }
     }
-    
+
     protected static void defaultSettings(Configuration.Builder builder) {
         // first copy the parent's default settings...
         PostgresConnection.defaultSettings(builder);
@@ -243,44 +246,49 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         builder.with("replication", "database")
                .with("preferQueryMode", "simple"); // replication protocol only supports simple query mode
     }
-    
+
     protected static class ReplicationConnectionBuilder implements Builder {
-    
+
         private Configuration config;
         private String slotName = DEFAULT_SLOT_NAME;
         private String pluginName = DEFAULT_PLUGIN_NAME;
         private boolean dropSlotOnClose = DEFAULT_DROP_SLOT_ON_CLOSE;
-        private int statusUpdateIntervalSeconds = DEFAULT_STATUS_UPDATE_SECONDS;
-    
+        private Integer statusUpdateIntervalMillis;
+
         protected ReplicationConnectionBuilder(Configuration config) {
             assert config != null;
             this.config = config;
         }
-    
+
+        @Override
         public ReplicationConnectionBuilder withSlot(final String slotName) {
             assert slotName != null;
             this.slotName = slotName;
             return this;
         }
-    
+
+        @Override
         public ReplicationConnectionBuilder withPlugin(final String pluginName) {
             assert pluginName != null;
             this.pluginName = pluginName;
             return this;
         }
-    
+
+        @Override
         public ReplicationConnectionBuilder dropSlotOnClose(final boolean dropSlotOnClose) {
             this.dropSlotOnClose = dropSlotOnClose;
             return this;
         }
-    
-        public ReplicationConnectionBuilder statusUpdateIntervalSeconds(final int statusUpdateIntervalSeconds) {
-            this.statusUpdateIntervalSeconds = statusUpdateIntervalSeconds;
+
+        @Override
+        public ReplicationConnectionBuilder statusUpdateIntervalMillis(final Integer statusUpdateIntervalMillis) {
+            this.statusUpdateIntervalMillis = statusUpdateIntervalMillis;
             return this;
         }
-        
+
+        @Override
         public ReplicationConnection build() {
-            return new PostgresReplicationConnection(config, slotName, pluginName, dropSlotOnClose, statusUpdateIntervalSeconds);
+            return new PostgresReplicationConnection(config, slotName, pluginName, dropSlotOnClose, statusUpdateIntervalMillis);
         }
     }
 }
