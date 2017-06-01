@@ -28,6 +28,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 
+import com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.event.deserialization.json.JsonBinary;
 import com.mysql.jdbc.CharsetMapping;
 
@@ -44,15 +45,14 @@ import mil.nga.wkb.util.WkbException;
 /**
  * MySQL-specific customization of the conversions from JDBC values obtained from the MySQL binlog client library.
  * <p>
- * This class always uses UTC for the default time zone when converting values without timezone information to values
- * that require
+ * This class always uses UTC for the default time zone when converting values without timezone information to values that require
  * timezones. This is because MySQL {@code TIMESTAMP} values are always
  * <a href="https://dev.mysql.com/doc/refman/5.7/en/datetime.html">stored in UTC</a> (unlike {@code DATETIME} values) and
  * are replicated in this form. Meanwhile, the MySQL Binlog Client library will {@link AbstractRowsEventDataDeserializer
  * deserialize} these as {@link java.sql.Timestamp} values that have no timezone and, therefore, are presumed to be in UTC.
  * When the column is properly marked with a {@link Types#TIMESTAMP_WITH_TIMEZONE} type, the converters will need to convert
  * that {@link java.sql.Timestamp} value into an {@link OffsetDateTime} using the default time zone, which always is UTC.
- * 
+ *
  * @author Randall Hauch
  * @see com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDataDeserializer
  */
@@ -60,8 +60,7 @@ import mil.nga.wkb.util.WkbException;
 public class MySqlValueConverters extends JdbcValueConverters {
 
     /**
-     * A utility method that adjusts <a href="https://dev.mysql.com/doc/refman/5.7/en/two-digit-years.html">ambiguous</a>
-     * 2-digit
+     * A utility method that adjusts <a href="https://dev.mysql.com/doc/refman/5.7/en/two-digit-years.html">ambiguous</a> 2-digit
      * year values of DATETIME, DATE, and TIMESTAMP types using these MySQL-specific rules:
      * <ul>
      * <li>Year values in the range 00-69 are converted to 2000-2069.</li>
@@ -69,7 +68,6 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * </ul>
      *
      * @param temporal the temporal instance to adjust; may not be null
-     *
      * @return the possibly adjusted temporal instance; never null
      */
     protected static Temporal adjustTemporal(Temporal temporal) {
@@ -85,21 +83,17 @@ public class MySqlValueConverters extends JdbcValueConverters {
     }
 
     /**
-     * A utility method that adjusts <a href="https://dev.mysql.com/doc/refman/5.7/en/two-digit-years.html">ambiguous</a>
-     * 2-digit
+     * A utility method that adjusts <a href="https://dev.mysql.com/doc/refman/5.7/en/two-digit-years.html">ambiguous</a> 2-digit
      * year values of YEAR type using these MySQL-specific rules:
      * <ul>
      * <li>Year values in the range 01-69 are converted to 2001-2069.</li>
      * <li>Year values in the range 70-99 are converted to 1970-1999.</li>
      * </ul>
-     * MySQL treats YEAR(4) the same, except that a numeric 00 inserted into YEAR(4) results in 0000 rather than 2000;
-     * to
-     * specify zero for YEAR(4) and have it be interpreted as 2000, specify it as a string '0' or '00'. This should be
-     * handled
+     * MySQL treats YEAR(4) the same, except that a numeric 00 inserted into YEAR(4) results in 0000 rather than 2000; to
+     * specify zero for YEAR(4) and have it be interpreted as 2000, specify it as a string '0' or '00'. This should be handled
      * by MySQL before Debezium sees the value.
      *
      * @param year the year value to adjust; may not be null
-     *
      * @return the possibly adjusted year number; never null
      */
     protected static int adjustYear(int year) {
@@ -112,11 +106,10 @@ public class MySqlValueConverters extends JdbcValueConverters {
     }
 
     /**
-     * Create a new instance that always uses UTC for the default time zone when converting values without timezone
-     * information
+     * Create a new instance that always uses UTC for the default time zone when converting values without timezone information
      * to values that require timezones.
      * <p>
-     * 
+     *
      * @param decimalMode how {@code DECIMAL} and {@code NUMERIC} values should be treated; may be null if
      *            {@link io.debezium.jdbc.JdbcValueConverters.DecimalMode#PRECISE} is to be used
      * @param adaptiveTimePrecision {@code true} if the time, date, and timestamp values should be based upon the precision of the
@@ -128,12 +121,10 @@ public class MySqlValueConverters extends JdbcValueConverters {
     }
 
     /**
-     * Create a new instance, and specify the time zone offset that should be used only when converting values without
-     * timezone
-     * information to values that require timezones. This default offset should not be needed when values are
-     * highly-correlated
+     * Create a new instance, and specify the time zone offset that should be used only when converting values without timezone
+     * information to values that require timezones. This default offset should not be needed when values are highly-correlated
      * with the expected SQL/JDBC types.
-     * 
+     *
      * @param decimalMode how {@code DECIMAL} and {@code NUMERIC} values should be treated; may be null if
      *            {@link io.debezium.jdbc.JdbcValueConverters.DecimalMode#PRECISE} is to be used
      * @param adaptiveTimePrecision {@code true} if the time, date, and timestamp values should be based upon the precision of the
@@ -237,25 +228,25 @@ public class MySqlValueConverters extends JdbcValueConverters {
 
         // We have to convert bytes encoded in the column's character set ...
         switch (column.jdbcType()) {
-        case Types.CHAR: // variable-length
-        case Types.VARCHAR: // variable-length
-        case Types.LONGVARCHAR: // variable-length
-        case Types.CLOB: // variable-length
-        case Types.NCHAR: // fixed-length
-        case Types.NVARCHAR: // fixed-length
-        case Types.LONGNVARCHAR: // fixed-length
-        case Types.NCLOB: // fixed-length
-        case Types.DATALINK:
-        case Types.SQLXML:
-            Charset charset = charsetFor(column);
-            if (charset != null) {
-                logger.debug("Using {} charset by default for column: {}", charset, column);
-                return (data) -> convertString(column, fieldDefn, charset, data);
-            }
-            logger.warn("Using UTF-8 charset by default for column without charset: {}", column);
-            return (data) -> convertString(column, fieldDefn, StandardCharsets.UTF_8, data);
-        default:
-            break;
+            case Types.CHAR: // variable-length
+            case Types.VARCHAR: // variable-length
+            case Types.LONGVARCHAR: // variable-length
+            case Types.CLOB: // variable-length
+            case Types.NCHAR: // fixed-length
+            case Types.NVARCHAR: // fixed-length
+            case Types.LONGNVARCHAR: // fixed-length
+            case Types.NCLOB: // fixed-length
+            case Types.DATALINK:
+            case Types.SQLXML:
+                Charset charset = charsetFor(column);
+                if (charset != null) {
+                    logger.debug("Using {} charset by default for column: {}", charset, column);
+                    return (data) -> convertString(column, fieldDefn, charset, data);
+                }
+                logger.warn("Using UTF-8 charset by default for column without charset: {}", column);
+                return (data) -> convertString(column, fieldDefn, StandardCharsets.UTF_8, data);
+            default:
+                break;
         }
 
         // Otherwise, let the base class handle it ...
@@ -266,7 +257,6 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * Return the {@link Charset} instance with the MySQL-specific character set name used by the given column.
      *
      * @param column the column in which the character set is used; never null
-     *
      * @return the Java {@link Charset}, or null if there is no mapping
      */
     protected Charset charsetFor(Column column) {
@@ -277,17 +267,12 @@ public class MySqlValueConverters extends JdbcValueConverters {
         }
         String encoding = CharsetMapping.getJavaEncodingForMysqlCharset(mySqlCharsetName);
         if (encoding == null) {
-            logger.warn("Column uses MySQL character set '{}', which has no mapping to a Java character set",
-                    mySqlCharsetName
-            );
+            logger.warn("Column uses MySQL character set '{}', which has no mapping to a Java character set", mySqlCharsetName);
         } else {
             try {
                 return Charset.forName(encoding);
             } catch (IllegalCharsetNameException e) {
-                logger.error("Unable to load Java charset '{}' for column with MySQL character set '{}'",
-                        encoding,
-                        mySqlCharsetName
-                );
+                logger.error("Unable to load Java charset '{}' for column with MySQL character set '{}'", encoding, mySqlCharsetName);
             }
         }
         return null;
@@ -295,13 +280,11 @@ public class MySqlValueConverters extends JdbcValueConverters {
 
     /**
      * Convert the {@link String} {@code byte[]} value to a string value used in a {@link SourceRecord}.
-     * 
+     *
      * @param column the column in which the value appears
      * @param fieldDefn the field definition for the {@link SourceRecord}'s {@link Schema}; never null
-     * @param data      the data; may be null
-     *
+     * @param data the data; may be null
      * @return the converted value, or null if the conversion could not be made and the column allows nulls
-     *
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertJson(Column column, Field fieldDefn, Object data) {
@@ -309,8 +292,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional())
-                return null;
+            if (column.isOptional()) return null;
             return "{}";
         }
         if (data instanceof byte[]) {
@@ -320,9 +302,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
                 String json = JsonBinary.parseAsString((byte[]) data);
                 return json;
             } catch (IOException e) {
-                throw new ConnectException("Failed to parse and read a JSON value on " + column + ": " + e.getMessage(),
-                        e
-                );
+                throw new ConnectException("Failed to parse and read a JSON value on " + column + ": " + e.getMessage(), e);
             }
         }
         if (data instanceof String) {
@@ -334,14 +314,12 @@ public class MySqlValueConverters extends JdbcValueConverters {
 
     /**
      * Convert the {@link String} or {@code byte[]} value to a string value used in a {@link SourceRecord}.
-     * 
+     *
      * @param column the column in which the value appears
      * @param fieldDefn the field definition for the {@link SourceRecord}'s {@link Schema}; never null
      * @param columnCharset the Java character set in which column byte[] values are encoded; may not be null
-     * @param data          the data; may be null
-     *
+     * @param data the data; may be null
      * @return the converted value, or null if the conversion could not be made and the column allows nulls
-     *
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertString(Column column, Field fieldDefn, Charset columnCharset, Object data) {
@@ -349,8 +327,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional())
-                return null;
+            if (column.isOptional()) return null;
             return "";
         }
         if (data instanceof byte[]) {
@@ -366,13 +343,11 @@ public class MySqlValueConverters extends JdbcValueConverters {
     /**
      * Converts a value object for a MySQL {@code YEAR}, which appear in the binlog as an integer though returns from
      * the MySQL JDBC driver as either a short or a {@link java.sql.Date}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
-     * @param data      the data object to be converted into a year literal integer value; never null
-     *
+     * @param data the data object to be converted into a year literal integer value; never null
      * @return the converted value, or null if the conversion could not be made and the column allows nulls
-     *
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     @SuppressWarnings("deprecation")
@@ -381,8 +356,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional())
-                return null;
+            if (column.isOptional()) return null;
             return 0;
         }
         if (data instanceof java.time.Year) {
@@ -401,18 +375,15 @@ public class MySqlValueConverters extends JdbcValueConverters {
     }
 
     /**
-     * Converts a value object for a MySQL {@code ENUM}, which is represented in the binlog events as an integer value
-     * containing
+     * Converts a value object for a MySQL {@code ENUM}, which is represented in the binlog events as an integer value containing
      * the index of the enum option. The MySQL JDBC driver returns a string containing the option,
      * so this method calculates the same.
-     * 
+     *
      * @param options the characters that appear in the same order as defined in the column; may not be null
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
-     * @param data      the data object to be converted into an {@code ENUM} literal String value
-     *
+     * @param data the data object to be converted into an {@code ENUM} literal String value
      * @return the converted value, or null if the conversion could not be made and the column allows nulls
-     *
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertEnumToString(List<String> options, Column column, Field fieldDefn, Object data) {
@@ -420,8 +391,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional())
-                return null;
+            if (column.isOptional()) return null;
             return "";
         }
         if (data instanceof String) {
@@ -448,19 +418,15 @@ public class MySqlValueConverters extends JdbcValueConverters {
     }
 
     /**
-     * Converts a value object for a MySQL {@code SET}, which is represented in the binlog events contain a long number
-     * in which
-     * every bit corresponds to a different option. The MySQL JDBC driver returns a string containing the
-     * comma-separated options,
+     * Converts a value object for a MySQL {@code SET}, which is represented in the binlog events contain a long number in which
+     * every bit corresponds to a different option. The MySQL JDBC driver returns a string containing the comma-separated options,
      * so this method calculates the same.
-     * 
+     *
      * @param options the characters that appear in the same order as defined in the column; may not be null
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
-     * @param data      the data object to be converted into an {@code SET} literal String value; never null
-     *
+     * @param data the data object to be converted into an {@code SET} literal String value; never null
      * @return the converted value, or null if the conversion could not be made and the column allows nulls
-     *
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertSetToString(List<String> options, Column column, Field fieldDefn, Object data) {
@@ -468,8 +434,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional())
-                return null;
+            if (column.isOptional()) return null;
             return "";
         }
         if (data instanceof String) {
@@ -482,6 +447,92 @@ public class MySqlValueConverters extends JdbcValueConverters {
             return convertSetValue(column, indexes, options);
         }
         return handleUnknownData(column, fieldDefn, data);
+    }
+
+    /**
+     * Determine if the uppercase form of a column's type exactly matches or begins with the specified prefix.
+     * Note that this logic works when the column's {@link Column#typeName() type} contains the type name followed by parentheses.
+     *
+     * @param upperCaseTypeName the upper case form of the column's {@link Column#typeName() type name}
+     * @param upperCaseMatch the upper case form of the expected type or prefix of the type; may not be null
+     * @return {@code true} if the type matches the specified type, or {@code false} otherwise
+     */
+    protected boolean matches(String upperCaseTypeName, String upperCaseMatch) {
+        if (upperCaseTypeName == null) return false;
+        return upperCaseMatch.equals(upperCaseTypeName) || upperCaseTypeName.startsWith(upperCaseMatch + "(");
+    }
+
+    protected List<String> extractEnumAndSetOptions(Column column) {
+        return MySqlDdlParser.parseSetAndEnumOptions(column.typeExpression());
+    }
+
+    protected String extractEnumAndSetOptionsAsString(Column column) {
+        return Strings.join(",", extractEnumAndSetOptions(column));
+    }
+
+    protected String convertSetValue(Column column, long indexes, List<String> options) {
+        StringBuilder sb = new StringBuilder();
+        int index = 0;
+        boolean first = true;
+        int optionLen = options.size();
+        while (indexes != 0L) {
+            if (indexes % 2L != 0) {
+                if (first) {
+                    first = false;
+                } else {
+                    sb.append(',');
+                }
+                if (index < optionLen) {
+                    sb.append(options.get(index));
+                } else {
+                    logger.warn("Found unexpected index '{}' on column {}", index, column);
+                }
+            }
+            ++index;
+            indexes = indexes >>> 1;
+        }
+        return sb.toString();
+
+    }
+
+    /**
+     * Convert the a value representing a POINT {@code byte[]} value to a Point value used in a {@link SourceRecord}.
+     *
+     * @param column the column in which the value appears
+     * @param fieldDefn the field definition for the {@link SourceRecord}'s {@link Schema}; never null
+     * @param data the data; may be null
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
+     */
+    protected Object convertPoint(Column column, Field fieldDefn, Object data){
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+
+        Schema schema = fieldDefn.schema();
+
+        if (data instanceof byte[]) {
+            // The binlog utility sends a byte array for any Geometry type, we will use our own binaryParse to parse the byte to WKB, hence
+            // to the suitable class
+            try {
+                MySqlGeometry mySqlGeometry = MySqlGeometry.fromBytes((byte[]) data);
+                Point point = mySqlGeometry.getPoint();
+                return io.debezium.data.geometry.Point.createValue(schema, point.getX(), point.getY(), mySqlGeometry.getWkb());
+            } catch (WkbException e) {
+                throw new ConnectException("Failed to parse and read a value of type POINT on " + column + ": " + e.getMessage(), e);
+            }
+        }
+        return handleUnknownData(column, fieldDefn, data);
+    }
+
+    @Override
+    protected ByteBuffer convertByteArray(Column column, byte[] data) {
+        // DBZ-254 right-pad fixed-length binary column values with 0x00 (zero byte)
+        if (column.jdbcType() == Types.BINARY && data.length < column.length()) {
+            data = Arrays.copyOf(data, column.length());
+        }
+
+        return super.convertByteArray(column, data);
     }
 
     /**
@@ -607,94 +658,5 @@ public class MySqlValueConverters extends JdbcValueConverters {
         }
         //We continue with the original converting method (numeric) since we have an unsigned Integer
         return convertNumeric(column, fieldDefn, data);
-    }
-
-
-    /**
-     * Determine if the uppercase form of a column's type exactly matches or begins with the specified prefix.
-     * Note that this logic works when the column's {@link Column#typeName() type} contains the type name followed by parentheses.
-     * 
-     * @param upperCaseTypeName the upper case form of the column's {@link Column#typeName() type name}
-     * @param upperCaseMatch    the upper case form of the expected type or prefix of the type; may not be null
-     *
-     * @return {@code true} if the type matches the specified type, or {@code false} otherwise
-     */
-    protected boolean matches(String upperCaseTypeName, String upperCaseMatch) {
-        if (upperCaseTypeName == null)
-            return false;
-        return upperCaseMatch.equals(upperCaseTypeName) || upperCaseTypeName.startsWith(upperCaseMatch + "(");
-    }
-
-    protected List<String> extractEnumAndSetOptions(Column column) {
-        return MySqlDdlParser.parseSetAndEnumOptions(column.typeExpression());
-    }
-
-    protected String extractEnumAndSetOptionsAsString(Column column) {
-        return Strings.join(",", extractEnumAndSetOptions(column));
-    }
-
-    protected String convertSetValue(Column column, long indexes, List<String> options) {
-        StringBuilder sb = new StringBuilder();
-        int index = 0;
-        boolean first = true;
-        int optionLen = options.size();
-        while (indexes != 0L) {
-            if (indexes % 2L != 0) {
-                if (first) {
-                    first = false;
-                } else {
-                    sb.append(',');
-                }
-                if (index < optionLen) {
-                    sb.append(options.get(index));
-                } else {
-                    logger.warn("Found unexpected index '{}' on column {}", index, column);
-                }
-            }
-            ++index;
-            indexes = indexes >>> 1;
-        }
-        return sb.toString();
-
-    }
-
-    /**
-     * Convert the a value representing a POINT {@code byte[]} value to a Point value used in a {@link SourceRecord}.
-     *
-     * @param column the column in which the value appears
-     * @param fieldDefn the field definition for the {@link SourceRecord}'s {@link Schema}; never null
-     * @param data the data; may be null
-     * @return the converted value, or null if the conversion could not be made and the column allows nulls
-     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
-     */
-    protected Object convertPoint(Column column, Field fieldDefn, Object data){
-        if (data == null) {
-            data = fieldDefn.schema().defaultValue();
-        }
-
-        Schema schema = fieldDefn.schema();
-
-        if (data instanceof byte[]) {
-            // The binlog utility sends a byte array for any Geometry type, we will use our own binaryParse to parse the byte to WKB, hence
-            // to the suitable class
-            try {
-                MySqlGeometry mySqlGeometry = MySqlGeometry.fromBytes((byte[]) data);
-                Point point = mySqlGeometry.getPoint();
-                return io.debezium.data.geometry.Point.createValue(schema, point.getX(), point.getY(), mySqlGeometry.getWkb());
-            } catch (WkbException e) {
-                throw new ConnectException("Failed to parse and read a value of type POINT on " + column + ": " + e.getMessage(), e);
-            }
-        }
-        return handleUnknownData(column, fieldDefn, data);
-    }
-
-    @Override
-    protected ByteBuffer convertByteArray(Column column, byte[] data) {
-        // DBZ-254 right-pad fixed-length binary column values with 0x00 (zero byte)
-        if (column.jdbcType() == Types.BINARY && data.length < column.length()) {
-            data = Arrays.copyOf(data, column.length());
-        }
-
-        return super.convertByteArray(column, data);
     }
 }
