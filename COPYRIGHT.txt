@@ -9,6 +9,7 @@ Dennis Persson
 Duncan Sands
 Gunnar Morling
 Horia Chiorean
+Jiri Pechanec
 Jure Kajzer
 Omar Al-Safi
 Prannoy Mittal
