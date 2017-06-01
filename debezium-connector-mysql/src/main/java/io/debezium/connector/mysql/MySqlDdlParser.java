@@ -134,10 +134,12 @@ public class MySqlDdlParser extends DdlParser {
 
     @Override
     protected void initializeStatementStarts(TokenSet statementStartTokens) {
-        statementStartTokens.add("CREATE", "ALTER", "DROP", "INSERT", "GRANT", "REVOKE", "FLUSH", "TRUNCATE", "COMMIT", "USE", "SAVEPOINT",
+        statementStartTokens.add("CREATE", "ALTER", "DROP", "GRANT", "REVOKE", "FLUSH", "TRUNCATE", "COMMIT", "USE", "SAVEPOINT",
                 // table maintenance statements: https://dev.mysql.com/doc/refman/5.7/en/table-maintenance-sql.html
-                "ANALYZE", "OPTIMIZE", "REPAIR"
-        );
+                "ANALYZE", "OPTIMIZE", "REPAIR",
+                // DML-related statements
+                "DELETE", "INSERT"
+                );
     }
 
     @Override
@@ -156,6 +158,10 @@ public class MySqlDdlParser extends DdlParser {
             parseUse(marker);
         } else if (tokens.matches("SET")) {
             parseSet(marker);
+        } else if (tokens.matches("INSERT")) {
+            consumeStatement();
+        } else if (tokens.matches("DELETE")) {
+            consumeStatement();
         } else {
             parseUnknownStatement(marker);
         }

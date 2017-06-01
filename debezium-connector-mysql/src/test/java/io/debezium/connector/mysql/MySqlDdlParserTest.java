@@ -655,6 +655,22 @@ public class MySqlDdlParserTest {
     }
 
     @Test
+    public void shouldParseAndIgnoreDeleteStatements() {
+        String ddl = "DELETE FROM blah blah";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(0);
+        assertThat(listener.total()).isEqualTo(0);
+    }
+
+    @Test
+    public void shouldParseAndIgnoreInsertStatements() {
+        String ddl = "INSERT INTO blah blah";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(0);
+        assertThat(listener.total()).isEqualTo(0);
+    }
+
+    @Test
     public void shouldParseStatementsWithQuotedIdentifiers() {
         parser.parse(readFile("ddl/mysql-quoted.ddl"), tables);
         Testing.print(tables);
