@@ -535,7 +535,7 @@ public class MySqlConnectorConfig {
                                                            .withValidation(Field::isPositiveInteger);
 
     public static final Field KEEP_ALIVE = Field.create("connect.keep.alive")
-                                                .withDisplayName("Connection Timeout (ms)")
+                                                .withDisplayName("Keep connection alive (true/false)")
                                                 .withType(Type.BOOLEAN)
                                                 .withWidth(Width.SHORT)
                                                 .withImportance(Importance.LOW)
