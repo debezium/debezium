@@ -73,7 +73,8 @@
     </dependencies>
     <properties>
         <!-- By default we need to run these 5 containers, although the two init containers exit quickly -->
-        <docker.image>mongo1,mongo-init</docker.image>
+        <docker.filter>mongo1,mongo-init</docker.filter>
+        <mongo.rs.port>29017</mongo.rs.port>
 
         <!-- The command line args passed to each mongod service -->
         <mongo.data.replicaset.name>rs0</mongo.data.replicaset.name>
@@ -107,7 +108,7 @@
                       <cmd>${mongo.data.runOptions}</cmd>
                       <ports>
                         <!-- We won't use it thru this port, but we don't want to take 27017 on docker host -->
-                        <port>27017:27017</port> 
+                        <port>${mongo.rs.port}:27017</port> 
                       </ports>
                       <log>
                         <prefix>mongo1</prefix>
@@ -194,7 +195,7 @@
                     <enableAssertions>true</enableAssertions>
                     <systemPropertyVariables>
                         <!-- Make these available to the tests via system properties -->
-                        <connector.mongodb.hosts>${mongo.data.replicaset.name}/${docker.host.address}:27017</connector.mongodb.hosts>
+                        <connector.mongodb.hosts>${mongo.data.replicaset.name}/${docker.host.address}:${mongo.rs.port}</connector.mongodb.hosts>
                         <connector.mongodb.members.auto.discover>false</connector.mongodb.members.auto.discover>
                         <connector.mongodb.name>mongo1</connector.mongodb.name>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
