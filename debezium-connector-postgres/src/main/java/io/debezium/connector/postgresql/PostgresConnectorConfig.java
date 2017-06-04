@@ -368,7 +368,7 @@ public class PostgresConnectorConfig {
                                                     .withType(Type.INT)
                                                     .withWidth(Width.SHORT)
                                                     .withImportance(Importance.MEDIUM)
-                                                    .withDescription("Maximum size of the queue for change events read from the database log but not yet recorded or forwarded. Defaults to 2048, and should always be larger than the maximum batch size.")
+                                                    .withDescription("Maximum size of the queue for change events read from the database log but not yet recorded or forwarded. Defaults to 20480, and should always be larger than the maximum batch size.")
                                                     .withDefault(DEFAULT_MAX_QUEUE_SIZE)
                                                     .withValidation(PostgresConnectorConfig::validateMaxQueueSize);
 
@@ -377,7 +377,7 @@ public class PostgresConnectorConfig {
                                                     .withType(Type.INT)
                                                     .withWidth(Width.SHORT)
                                                     .withImportance(Importance.MEDIUM)
-                                                    .withDescription("Maximum size of each batch of source records. Defaults to 10024.")
+                                                    .withDescription("Maximum size of each batch of source records. Defaults to 10240.")
                                                     .withDefault(DEFAULT_MAX_BATCH_SIZE)
                                                     .withValidation(Field::isPositiveInteger);
 
@@ -395,7 +395,7 @@ public class PostgresConnectorConfig {
                                                       .withType(Type.LONG)
                                                       .withWidth(Width.SHORT)
                                                       .withImportance(Importance.MEDIUM)
-                                                      .withDescription("Frequency in milliseconds to wait for new change events to appear after receiving no events. Defaults to 1 second (1000 ms).")
+                                                      .withDescription("Frequency in milliseconds to wait for new change events to appear after receiving no events. Defaults to 0.5 second (500 ms).")
                                                       .withDefault(DEFAULT_POLL_INTERVAL_MILLIS)
                                                       .withValidation(Field::isPositiveInteger);
 
