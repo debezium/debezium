@@ -78,6 +78,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.JSONB_JDBC_OID:
             case PgOid.JSON:
                 return Json.builder();
+            case PgOid.TSTZRANGE_OID:
+                return SchemaBuilder.string();
             case PgOid.UUID:
                 return Uuid.builder();
             case PgOid.POINT:
@@ -106,6 +108,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return data -> convertBigInt(column, fieldDefn, data);
             case PgOid.JSONB_JDBC_OID:
             case PgOid.UUID:
+            case PgOid.TSTZRANGE_OID:
             case PgOid.JSON:
                 return data -> super.convertString(column, fieldDefn, data);
             case PgOid.POINT:

@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
@@ -472,6 +473,8 @@ public class RecordsStreamProducer extends RecordsProducer {
                 PgProto.Point datumPoint = datumMessage.getDatumPoint();
                 return new PGpoint(datumPoint.getX(), datumPoint.getY());
             }
+            case PgOid.TSTZRANGE_OID:
+                return datumMessage.hasDatumBytes() ? new String(datumMessage.getDatumBytes().toByteArray(), Charset.forName("UTF-8")) : null;
             default: {
                 logger.warn("processing column '{}' with unknown data type '{}' as byte array", datumMessage.getColumnName(),
                             datumMessage.getColumnType());

@@ -28,12 +28,17 @@ public final class PgOid extends Oid {
      * Internal PG types as returned by the plugin
      */
     protected static final int JSONB_OID = 3802;
+
+    protected static final int TSTZRANGE_OID = 3910;
     
     private PgOid() {
     }
     
     protected static int jdbcColumnToOid(Column column) {
         String typeName = column.typeName();
+        if (typeName.toUpperCase().equals("TSTZRANGE")) {
+            return TSTZRANGE_OID;
+        }
         try {
             return valueOf(typeName);
         } catch (PSQLException e) {

@@ -88,6 +88,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // geom types
         consumer.expects(1);
         assertInsert(INSERT_GEOM_TYPES_STMT, schemaAndValuesForGeomTypes());
+
+        // timezone range types
+        consumer.expects(1);
+        assertInsert(INSERT_TSTZRANGE_TYPES_STMT, schemaAndValuesForTstzRangeTypes());
     }
     
     @Test

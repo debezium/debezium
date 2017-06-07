@@ -46,7 +46,7 @@ public class PostgresSchemaIT {
     
     private static final String[] TEST_TABLES = new String[] { "public.numeric_table", "public.string_table", "public.cash_table",
                                                                "public.bitbin_table",
-                                                               "public.time_table", "public.text_table", "public.geom_table" };
+                                                               "public.time_table", "public.text_table", "public.geom_table", "public.tstzrange_table" };
     
     private PostgresSchema schema;
     
@@ -82,6 +82,7 @@ public class PostgresSchemaIT {
                               Json.builder().optional().build(), Json.builder().optional().build(), Xml.builder().optional().build(),
                               Uuid.builder().optional().build());
             assertTableSchema("public.geom_table", "p", Point.builder().optional().build());
+            assertTableSchema("public.tstzrange_table", "t", Schema.OPTIONAL_STRING_SCHEMA);
         }
     }
     

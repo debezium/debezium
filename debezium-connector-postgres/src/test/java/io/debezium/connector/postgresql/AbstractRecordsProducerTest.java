@@ -15,9 +15,12 @@ import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -75,6 +78,9 @@ public abstract class AbstractRecordsProducerTest {
                                                              "VALUES ('aa', 'bb', 'cdef', 'abc', 'some text')";
     protected static final String INSERT_NUMERIC_TYPES_STMT = "INSERT INTO numeric_table (si, i, bi, d, n, r, db, ss, bs, b) " +
                                                               "VALUES (1, 123456, 1234567890123, 1.1, 22.22, 3.3, 4.44, 1, 123, true)";
+
+    protected static final String INSERT_TSTZRANGE_TYPES_STMT = "INSERT INTO tstzrange_table (t) " +
+            "VALUES ('[2017-06-05 11:29:12.549426+00,)')";
     
     protected static final Set<String> ALL_STMTS = new HashSet<>(Arrays.asList(INSERT_NUMERIC_TYPES_STMT, INSERT_DATE_TIME_TYPES_STMT,
                                                                  INSERT_BIN_TYPES_STMT, INSERT_GEOM_TYPES_STMT, INSERT_TEXT_TYPES_STMT,
@@ -112,6 +118,16 @@ public abstract class AbstractRecordsProducerTest {
         Schema pointSchema = Point.builder().optional().build();
         return Collections.singletonList(new SchemaAndValueField("p", pointSchema, Point.createValue(pointSchema, 1, 1)));
     }
+
+    protected List<SchemaAndValueField> schemaAndValuesForTstzRangeTypes() {
+        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSx");
+        Instant instant = dateTimeFormatter.parse("2017-06-05 11:29:12.549426+00", Instant::from);
+        // Acknowledge timezone expectation of the system running the test
+        String systemTime = dateTimeFormatter.withZone(ZoneId.systemDefault()).format(instant);
+        String expectedField = String.format("[\"%s\",)",systemTime);
+        return Collections.singletonList(new SchemaAndValueField("t", Schema.OPTIONAL_STRING_SCHEMA, expectedField));
+    }
+
     
     protected List<SchemaAndValueField> schemaAndValuesForBinTypes() {
        return Arrays.asList(new SchemaAndValueField("ba", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap(new byte[]{ 1, 2, 3})),
