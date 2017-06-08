@@ -15,6 +15,7 @@ import static org.junit.Assert.assertNull;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.stream.IntStream;
+
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -43,18 +44,18 @@ import io.debezium.util.AvroValidator;
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 public class PostgresSchemaIT {
-    
+
     private static final String[] TEST_TABLES = new String[] { "public.numeric_table", "public.string_table", "public.cash_table",
                                                                "public.bitbin_table",
                                                                "public.time_table", "public.text_table", "public.geom_table", "public.tstzrange_table" };
-    
+
     private PostgresSchema schema;
-    
+
     @Before
     public void before() throws SQLException {
-        TestHelper.dropAllSchemas();        
+        TestHelper.dropAllSchemas();
     }
-    
+
     @Test
     public void shouldLoadSchemaForBuiltinPostgresTypes() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -82,10 +83,11 @@ public class PostgresSchemaIT {
                               Json.builder().optional().build(), Json.builder().optional().build(), Xml.builder().optional().build(),
                               Uuid.builder().optional().build());
             assertTableSchema("public.geom_table", "p", Point.builder().optional().build());
-            assertTableSchema("public.tstzrange_table", "t", Schema.OPTIONAL_STRING_SCHEMA);
+            assertTableSchema("public.tstzrange_table", "unbounded_exclusive_range, bounded_inclusive_range",
+                              Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA);
         }
     }
-    
+
     @Test
     public void shouldApplyFilters() throws Exception {
         String statements = "CREATE SCHEMA s1; " +
@@ -106,14 +108,14 @@ public class PostgresSchemaIT {
             assertTablesIncluded("s2.a", "s2.b");
             assertTablesExcluded("s1.a", "s1.b");
         }
-        
+
         config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(SCHEMA_BLACKLIST, "s.*").build());
         schema = new PostgresSchema(config);
         try (PostgresConnection connection = TestHelper.create()) {
             schema.refresh(connection, false);
             assertTablesExcluded("s1.a", "s2.a", "s1.b", "s2.b");
         }
-        
+
         config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(PostgresConnectorConfig.TABLE_BLACKLIST, "s1.A,s2.A").build());
         schema = new PostgresSchema(config);
         try (PostgresConnection connection = TestHelper.create()) {
@@ -121,7 +123,7 @@ public class PostgresSchemaIT {
             assertTablesIncluded("s1.b", "s2.b");
             assertTablesExcluded("s1.a", "s2.a");
         }
-        
+
         config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                                                           .with(SCHEMA_BLACKLIST, "s2")
                                                           .with(PostgresConnectorConfig.TABLE_BLACKLIST, "s1.A")
@@ -140,7 +142,7 @@ public class PostgresSchemaIT {
             assertColumnsExcluded("s1.a.aa", "s2.a.aa");
         }
     }
-    
+
     @Test
     public void shouldDetectNewChangesAfterRefreshing() throws Exception {
         String statements = "CREATE SCHEMA public;" +
@@ -163,11 +165,11 @@ public class PostgresSchemaIT {
             assertTablesExcluded("public.table1");
             assertTableSchema(tableId, "strcol", Schema.OPTIONAL_STRING_SCHEMA);
         }
-        
+
         statements = "ALTER TABLE table2 ADD COLUMN vc VARCHAR(2);" +
                      "ALTER TABLE table2 ADD COLUMN si SMALLINT;" +
                      "ALTER TABLE table2 DROP COLUMN strcol;";
-                    
+
         TestHelper.execute(statements);
         try (PostgresConnection connection = TestHelper.create()) {
             schema.refresh(connection, TableId.parse(tableId, false));
@@ -178,7 +180,7 @@ public class PostgresSchemaIT {
             assertColumnsExcluded(tableId + ".strcol");
         }
     }
-    
+
     protected void assertKeySchema(String fullyQualifiedTableName, String fields, Schema... types) {
         TableSchema tableSchema = schema.schemaFor(fullyQualifiedTableName);
         Schema keySchema = tableSchema.keySchema();
@@ -190,7 +192,7 @@ public class PostgresSchemaIT {
         Schema keySchema = tableSchema.valueSchema();
         assertSchemaContent(fields.split(","), types, keySchema);
     }
-    
+
     private void assertSchemaContent(String[] fields, Schema[] types, Schema keySchema) {
         IntStream.range(0, fields.length).forEach(i -> {
             String fieldName = fields[i].trim();
@@ -199,7 +201,7 @@ public class PostgresSchemaIT {
             assertEquals("'" + fieldName + "' has incorrect schema.", types[i], field.schema());
         });
     }
-    
+
     protected void assertTablesIncluded(String... fullyQualifiedTableNames) {
         Arrays.stream(fullyQualifiedTableNames).forEach(fullyQualifiedTableName -> {
             TableSchema tableSchema = schema.schemaFor(fullyQualifiedTableName);
@@ -208,18 +210,18 @@ public class PostgresSchemaIT {
             assertThat(tableSchema.valueSchema().name()).isEqualTo(validFullName(fullyQualifiedTableName, ".Value"));
         });
     }
-    
+
     private String validFullName(String proposedName, String suffix) {
         return AvroValidator.validFullname(TestHelper.TEST_SERVER + "." + proposedName + suffix);
     }
-    
+
     protected void assertTablesExcluded(String... fullyQualifiedTableNames) {
         Arrays.stream(fullyQualifiedTableNames).forEach(fullyQualifiedTableName -> {
             assertThat(schema.tableFor(fullyQualifiedTableName)).isNull();
             assertThat(schema.schemaFor(fullyQualifiedTableName)).isNull();
         });
     }
-    
+
     protected void assertColumnsExcluded(String...columnNames) {
         Arrays.stream(columnNames).forEach(fqColumnName -> {
             int lastDotIdx = fqColumnName.lastIndexOf(".");
