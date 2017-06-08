@@ -112,7 +112,8 @@ public class RecordsStreamProducer extends RecordsProducer {
                 } else {
                     logger.error("unexpected exception while streaming logical changes", e);
                 }
-                return;
+                taskContext.failTask(e);
+                throw new ConnectException(e);
             }
         }
     }

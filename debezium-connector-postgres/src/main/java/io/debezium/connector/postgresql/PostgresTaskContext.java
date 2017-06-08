@@ -27,6 +27,7 @@ public class PostgresTaskContext {
     private final Clock clock;
     private final TopicSelector topicSelector;
     private final PostgresSchema schema;
+    private volatile Throwable taskFailure;
 
     protected PostgresTaskContext(PostgresConnectorConfig config, PostgresSchema schema) {
         this.config = config;
@@ -90,5 +91,13 @@ public class PostgresTaskContext {
      */
     protected LoggingContext.PreviousContext configureLoggingContext(String contextName) {
         return LoggingContext.forConnector("Postgres", config.serverName(), contextName);
+    }
+
+    Throwable getTaskFailure() {
+        return taskFailure;
+    }
+
+    void failTask(final Throwable taskFailure) {
+        this.taskFailure = taskFailure;
     }
 }

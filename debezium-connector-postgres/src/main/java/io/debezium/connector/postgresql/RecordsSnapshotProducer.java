@@ -83,6 +83,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         logger.error("unexpected exception", t.getCause() != null ? t.getCause() : t);
         // always stop to clean up data
         stop();
+        taskContext.failTask(t);
         return null;
     }
     

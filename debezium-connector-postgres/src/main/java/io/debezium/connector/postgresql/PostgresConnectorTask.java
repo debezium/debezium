@@ -161,6 +161,9 @@ public class PostgresConnectorTask extends SourceTask {
             logger.debug("polling records...");
             List<SourceRecord> records = new ArrayList<>();
             while (running.get() && queue.drainTo(records, maxBatchSize) == 0) {
+                if (taskContext.getTaskFailure() != null) {
+                    throw new ConnectException(taskContext.getTaskFailure());
+                }
                 try {
                     logger.debug("no records available yet, sleeping a bit...");
                     // no records yet, so wait a bit
