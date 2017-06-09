@@ -40,6 +40,13 @@
             <organizationUrl>http://redhat.com</organizationUrl>
             <timezone>-6</timezone>
         </developer>
+        <developer>
+            <id>gunnarmorling</id>
+            <name>Gunnar Morling</name>
+            <organization>Red Hat</organization>
+            <organizationUrl>http://redhat.com</organizationUrl>
+            <timezone>+2</timezone>
+        </developer>
     </developers>
     <properties>
         <!-- Instruct the build to use only UTF-8 encoding for source code -->
