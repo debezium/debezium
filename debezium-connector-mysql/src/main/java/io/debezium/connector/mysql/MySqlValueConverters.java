@@ -550,14 +550,21 @@ public class MySqlValueConverters extends JdbcValueConverters {
         if (data == null) {
             data = fieldDefn.schema().defaultValue();
         }
-
-        if (data instanceof Short) data = MySqlUnsignedIntegerConverter.convertUnsignedTinyint((short) data);
-        if (data instanceof Number) {
-            Number value = (Number) data;
-            data = MySqlUnsignedIntegerConverter.convertUnsignedTinyint(new Short(value.shortValue()));
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return 0;
         }
-        //We continue with the original converting method (smallint) since we have an unsigned Tinyint
-        return convertSmallInt(column, fieldDefn, data);
+
+        if (data instanceof Short) {
+            return MySqlUnsignedIntegerConverter.convertUnsignedTinyint((short) data);
+        }
+        else if (data instanceof Number) {
+            return MySqlUnsignedIntegerConverter.convertUnsignedTinyint(((Number) data).shortValue());
+        }
+        else {
+            //We continue with the original converting method (smallint) since we have an unsigned Tinyint
+            return convertSmallInt(column, fieldDefn, data);
+        }
     }
 
     /**
@@ -575,18 +582,25 @@ public class MySqlValueConverters extends JdbcValueConverters {
         if (data == null) {
             data = fieldDefn.schema().defaultValue();
         }
-
-        if (data instanceof Integer) data = MySqlUnsignedIntegerConverter.convertUnsignedSmallint((int)data);
-        if (data instanceof Number) {
-            Number value = (Number) data;
-            data = MySqlUnsignedIntegerConverter.convertUnsignedSmallint(new Integer(value.intValue()));
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return 0;
         }
-        //We continue with the original converting method (integer) since we have an unsigned Smallint
-        return convertInteger(column, fieldDefn, data);
+
+        if (data instanceof Integer) {
+            return MySqlUnsignedIntegerConverter.convertUnsignedSmallint((int)data);
+        }
+        else if (data instanceof Number) {
+            return MySqlUnsignedIntegerConverter.convertUnsignedSmallint(((Number) data).intValue());
+        }
+        else {
+            //We continue with the original converting method (integer) since we have an unsigned Smallint
+            return convertInteger(column, fieldDefn, data);
+        }
     }
 
     /**
-     * Convert the a value representing a Unsigned SMALLINT value to the correct Unsigned SMALLINT representation.
+     * Convert the a value representing a Unsigned MEDIUMINT value to the correct Unsigned SMALLINT representation.
      *
      * @param column the column in which the value appears
      * @param fieldDefn the field definition for the {@link SourceRecord}'s {@link Schema}; never null
@@ -600,14 +614,21 @@ public class MySqlValueConverters extends JdbcValueConverters {
         if (data == null) {
             data = fieldDefn.schema().defaultValue();
         }
-
-        if (data instanceof Integer) data = MySqlUnsignedIntegerConverter.convertUnsignedMediumint((int)data);
-        if (data instanceof Number) {
-            Number value = (Number) data;
-            data = MySqlUnsignedIntegerConverter.convertUnsignedMediumint(new Integer(value.intValue()));
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return 0;
         }
-        //We continue with the original converting method (integer) since we have an unsigned Medium
-        return convertInteger(column, fieldDefn, data);
+
+        if (data instanceof Integer) {
+            return MySqlUnsignedIntegerConverter.convertUnsignedMediumint((int)data);
+        }
+        else if (data instanceof Number) {
+            return MySqlUnsignedIntegerConverter.convertUnsignedMediumint(((Number) data).intValue());
+        }
+        else {
+            //We continue with the original converting method (integer) since we have an unsigned Medium
+            return convertInteger(column, fieldDefn, data);
+        }
     }
 
     /**
@@ -625,14 +646,21 @@ public class MySqlValueConverters extends JdbcValueConverters {
         if (data == null) {
             data = fieldDefn.schema().defaultValue();
         }
-
-        if (data instanceof Long) data = MySqlUnsignedIntegerConverter.convertUnsignedInteger((Long) data);
-        if (data instanceof Number) {
-            Number value = (Number) data;
-            data = MySqlUnsignedIntegerConverter.convertUnsignedInteger(new Long(value.longValue()));
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return 0;
         }
-        //We continue with the original converting method (bigint) since we have an unsigned Integer
-        return convertBigInt(column, fieldDefn, data);
+
+        if (data instanceof Long) {
+            return MySqlUnsignedIntegerConverter.convertUnsignedInteger((long) data);
+        }
+        else if (data instanceof Number) {
+            return MySqlUnsignedIntegerConverter.convertUnsignedInteger(((Number) data).longValue());
+        }
+        else {
+            //We continue with the original converting method (bigint) since we have an unsigned Integer
+            return convertBigInt(column, fieldDefn, data);
+        }
     }
 
     /**
@@ -650,13 +678,20 @@ public class MySqlValueConverters extends JdbcValueConverters {
         if (data == null) {
             data = fieldDefn.schema().defaultValue();
         }
-
-        if (data instanceof BigDecimal) data = MySqlUnsignedIntegerConverter.convertUnsignedBigint((BigDecimal) data);
-        if (data instanceof Number) {
-            Number value = (Number) data;
-            data = MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal(value.toString()));
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return 0;
         }
-        //We continue with the original converting method (numeric) since we have an unsigned Integer
-        return convertNumeric(column, fieldDefn, data);
+
+        if (data instanceof BigDecimal) {
+            return MySqlUnsignedIntegerConverter.convertUnsignedBigint((BigDecimal) data);
+        }
+        else if (data instanceof Number) {
+            return MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal(((Number) data).toString()));
+        }
+        else {
+            //We continue with the original converting method (numeric) since we have an unsigned Integer
+            return convertNumeric(column, fieldDefn, data);
+        }
     }
 }

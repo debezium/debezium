@@ -5,11 +5,11 @@
  */
 package io.debezium.connector.mysql;
 
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
 import java.math.BigDecimal;
 
-import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 /**
  * @author Omar Al-Safi
@@ -18,26 +18,26 @@ public class MySqlUnsignedIntegerConverterTest {
 
     @Test
     public void shouldConvertSignedBinlogTinyintToUnsigned(){
-        assertEquals((short) 255, (short) MySqlUnsignedIntegerConverter.convertUnsignedTinyint((short) -1));
-        assertEquals((short) 255, (short) MySqlUnsignedIntegerConverter.convertUnsignedTinyint((short)255));
+        assertEquals((short) 255, MySqlUnsignedIntegerConverter.convertUnsignedTinyint((short) -1));
+        assertEquals((short) 255, MySqlUnsignedIntegerConverter.convertUnsignedTinyint((short)255));
     }
 
     @Test
     public void shouldConvertSignedBinlogSmallintToUnsigned(){
-        assertEquals(new Integer(65535), MySqlUnsignedIntegerConverter.convertUnsignedSmallint(-1));
-        assertEquals(new Integer(65535), MySqlUnsignedIntegerConverter.convertUnsignedSmallint(65535));
+        assertEquals(65535, MySqlUnsignedIntegerConverter.convertUnsignedSmallint(-1));
+        assertEquals(65535, MySqlUnsignedIntegerConverter.convertUnsignedSmallint(65535));
     }
 
     @Test
     public void shouldConvertSignedBinlogMediumintToUnsigned(){
-        assertEquals(new Integer(16777215), MySqlUnsignedIntegerConverter.convertUnsignedMediumint(-1));
-        assertEquals(new Integer(16777215), MySqlUnsignedIntegerConverter.convertUnsignedMediumint(16777215));
+        assertEquals(16777215, MySqlUnsignedIntegerConverter.convertUnsignedMediumint(-1));
+        assertEquals(16777215, MySqlUnsignedIntegerConverter.convertUnsignedMediumint(16777215));
     }
 
     @Test
     public void shouldConvertSignedBinlogIntToUnsigned(){
-        assertEquals(new Long(4294967295L), MySqlUnsignedIntegerConverter.convertUnsignedInteger(-1L));
-        assertEquals(new Long(4294967295L), MySqlUnsignedIntegerConverter.convertUnsignedInteger(4294967295L));
+        assertEquals(4294967295L, MySqlUnsignedIntegerConverter.convertUnsignedInteger(-1L));
+        assertEquals(4294967295L, MySqlUnsignedIntegerConverter.convertUnsignedInteger(4294967295L));
     }
 
     @Test
