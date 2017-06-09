@@ -35,6 +35,7 @@ import com.datapipeline.clients.error.DpErrorDetector;
 import com.dp.internal.bean.DpErrorCode;
 import com.mongodb.CursorType;
 import com.mongodb.MongoClient;
+import com.mongodb.MongoInterruptedException;
 import com.mongodb.ServerAddress;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
@@ -166,8 +167,12 @@ public class Replicator {
         logger.info("Connecting to '{}'", replicaSet);
         primaryClient = context.primaryFor(replicaSet, (desc, error) -> {
             logger.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
-            DpError dpError = new DpError(error, error.getMessage(), context.source().getDpTaskId(), null, DpErrorCode.CRITICAL_ERROR).report();
-            errorDetector.addError(dpError);
+            if (error instanceof InterruptedException || error instanceof MongoInterruptedException) {
+                //do nothing
+            } else {
+                DpError dpError = new DpError(error, error.getMessage(), context.source().getDpTaskId(), null, DpErrorCode.CRITICAL_ERROR).report();
+                errorDetector.addError(dpError);
+            }
         });
         return primaryClient != null;
     }
@@ -487,12 +492,12 @@ public class Replicator {
                 ServerAddress serverAddress = address.get();
                 if (serverAddress != null && !serverAddress.equals(primaryAddress)) {
                     logger.info("Found new primary event in oplog, so stopping use of {} to continue with new primary",
-                            primaryAddress);
+                        primaryAddress);
                     // There is a new primary, so stop using this server and instead use the new primary ...
                     return false;
                 } else {
                     logger.info("Found new primary event in oplog, current {} is new primary. " +
-                                "Continue to process oplog event.", primaryAddress);
+                        "Continue to process oplog event.", primaryAddress);
                 }
             }
             // Otherwise, ignore this event ...
