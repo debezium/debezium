@@ -266,7 +266,7 @@ public class RecordMakers {
 
         private void handleSchemaMappingError(Exception e, String objId, String schemaFieldName) {
             DataSourceSchemaMappingExemption exemption = schemaMappingExemptions.get(schemaFieldName);
-            if (exemption != null && objId.equals(exemption.getPrimaryId())) {
+            if (exemption != null && (exemption.getPrimaryId() == null || objId.equals(exemption.getPrimaryId()))) {
                 return;
             } else {
                 new DpError(e, e.getMessage(), source.getDpTaskId(), collectionId.name(), objId, schemaFieldName, DpErrorCode.SCHEMA_MAPPING_ERROR).report();
