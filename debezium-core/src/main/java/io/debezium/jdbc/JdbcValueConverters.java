@@ -886,11 +886,6 @@ public class JdbcValueConverters implements ValueConverterProvider {
             return 0.0d;
         }
         if (data instanceof Double) return data;
-        if (data instanceof Float) return new Double(data.toString());
-        if (data instanceof BigDecimal) {
-            BigDecimal bigDecimal = new BigDecimal(data.toString());
-            return bigDecimal.doubleValue();
-        }
         if (data instanceof Number) {
             // Includes BigDecimal and other numeric values ...
             Number value = (Number) data;
