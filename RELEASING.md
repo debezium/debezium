@@ -2,6 +2,14 @@
 
 The Debezium project uses Maven for its build system, relying up on the _release_ plugin to most of the work. This document describes the steps required to perform a release.
 
+# Update the changelog
+
+The change log should be updated with all relevant info on new features, bug fixes and breaking changes.
+It currently exists in two versions, one in the main code repo and one on the website:
+
+* https://github.com/debezium/debezium/blob/master/CHANGELOG.md
+* https://github.com/debezium/debezium.github.io/blob/develop/docs/releases.asciidoc
+
 ## Start with the correct branch
 
 Make sure that you are on the correct branch that is to be released, and that your local Git repository has all of the most recent commits. For example, to release from the `master` branch on the remote repository named `upstream`:
@@ -40,7 +48,7 @@ The build then proceeds to:
 3. perform a build with the updated POMs using the `release`, `assembly`, and `docs` profiles;
 4. commit the changes to your local Git repository;
 5. tag that commit with the label you supplied;
-6. update the POMs to use the new development version you supplied; and 
+6. update the POMs to use the new development version you supplied; and
 7. commit the changes to your local Git repository.
 
 _Note: our child module POMs do not specify the version, but instead inherit the version from the parent POM. This results in Maven output that shows several of the steps are sometimes skipped. This is normal._
@@ -85,7 +93,7 @@ Before we _release_ the staging repository, we first need to review and verify t
 
 ### Reviewing the staged artifacts
 
-Go to Sonatype's Nexus Repository Manager at https://oss.sonatype.org/ and log in with an account that has privilege to release Debezium artifacts. In the left hand panel, click on the "Staging Repositories". Then type "debezium" in the search box to locate the staging repository, which should be _closed_ but not _released_. 
+Go to Sonatype's Nexus Repository Manager at https://oss.sonatype.org/ and log in with an account that has privilege to release Debezium artifacts. In the left hand panel, click on the "Staging Repositories". Then type "debezium" in the search box to locate the staging repository, which should be _closed_ but not _released_.
 
 Select the staging repository to see the details, including the staging repository's URL, in the lower portion of the window. Briefly navigate the staged repository contents to verify all modules exist and have the proper versions. You can even look at the POM files or view the details of a file (including its SHA1 and MD5 hash values) using this tool.
 
@@ -118,11 +126,11 @@ After all of the Docker files have been created or updated, go to the top of you
 
 or using the correct Debezium version. After this successfully builds the images, run through the tutorial, being sure to use the same Docker image label (e.g., `0.2`) that you just built.
 
-When the tutorial can be successfully run with the new version, edit the Dockerfile for the Connect service to again use the official Maven Central repository URL. You can commit the changes locally 
+When the tutorial can be successfully run with the new version, edit the Dockerfile for the Connect service to again use the official Maven Central repository URL. You can commit the changes locally
 
     $ git commit -m "Updated Docker images for release 0.2.1" .
     $ git push origin <branch-name>
-    
+
 and create a new pull request (or if rerunning the release process update your existing pull request), but do not merge the pull request yet.
 
 If you discover any problems, log issues for the problems and fix them in the code base. Then start this process over from the beginning (though you can force-update the changes to your still-unmerged pull request for the Docker images.
@@ -153,6 +161,14 @@ It may take some time for the artifacts to actually be [visible in Maven Central
 Only after the artifacts are available on Maven Central can you merge the pull request for the Debezium Docker images. As soon as your changes are merged, Docker Hub will automatically build and deploy the Docker images that were previously configured. If you've just released a patch release and only updated existing Docker images, then you can proceed to [updating the documentation and blog](#update-the-documentation-and-blog).
 
 Otherwise, for major and minor releases your pull request should have added new Docker images, and you need to log into [Debezium's Docker Hub organization](https://hub.docker.com/r/debezium/) and add/update the build settings for each of the affected images.
+
+If the logical decoding plug-in has undergone any changes as part of the release, the Docker image for PostgreSQL needs to be updated as well.
+First create a tag in the https://github.com/debezium/postgres-decoderbufs[postgres-decoderbufs] repository:
+
+    $ git tag v<%version%> && git push upstream v<%version%>
+
+Then update the Debezium version referenced in the https://github.com/debezium/docker-images/blob/master/postgres/9.6/Dockerfile#L22[postgres Docker file]
+and push that commit which will cause the image to be re-published on Docker Hub automatically.
 
 ## Update the documentation and blog
 
