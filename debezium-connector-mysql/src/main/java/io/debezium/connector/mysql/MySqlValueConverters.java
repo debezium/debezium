@@ -508,9 +508,9 @@ public class MySqlValueConverters extends JdbcValueConverters {
         if (data == null) {
             data = fieldDefn.schema().defaultValue();
         }
-        
+
         Schema schema = fieldDefn.schema();
-        
+
         if (data == null) {
             if (column.isOptional()) return null;
             return io.debezium.data.geometry.Point.createValue(schema, 0.0, 0.0);
