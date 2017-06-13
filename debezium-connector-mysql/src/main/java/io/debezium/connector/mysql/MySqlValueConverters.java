@@ -508,8 +508,13 @@ public class MySqlValueConverters extends JdbcValueConverters {
         if (data == null) {
             data = fieldDefn.schema().defaultValue();
         }
-
+        
         Schema schema = fieldDefn.schema();
+        
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return io.debezium.data.geometry.Point.createValue(schema, 0.0, 0.0);
+        }
 
         if (data instanceof byte[]) {
             // The binlog utility sends a byte array for any Geometry type, we will use our own binaryParse to parse the byte to WKB, hence

@@ -77,12 +77,12 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
         //Testing.Debug.enable();
         int numCreateDatabase = 1;
         int numCreateTables = 1;
-        int numDataRecords = 3;
+        int numDataRecords = 4;
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords);
         stopConnector();
         assertThat(records).isNotNull();
         assertThat(records.recordsForTopic("geometryit").size()).isEqualTo(numCreateDatabase + numCreateTables);
-        assertThat(records.recordsForTopic("geometryit.geometry_test.dbz_222_point").size()).isEqualTo(3);
+        assertThat(records.recordsForTopic("geometryit.geometry_test.dbz_222_point").size()).isEqualTo(4);
         assertThat(records.topics().size()).isEqualTo(1 + numCreateTables);
         assertThat(records.databaseNames().size()).isEqualTo(1);
         assertThat(records.ddlRecordsForDatabase("geometry_test").size()).isEqualTo(
@@ -127,7 +127,7 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         //Testing.Debug.enable();
         int numTables = 1;
-        int numDataRecords = 3;
+        int numDataRecords = 4;
         int numDdlRecords =
             numTables * 2 + 3; // for each table (1 drop + 1 create) + for each db (1 create + 1 drop + 1 use)
         int numSetVariables = 1;
@@ -135,7 +135,7 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
         stopConnector();
         assertThat(records).isNotNull();
         assertThat(records.recordsForTopic("geometryit").size()).isEqualTo(numDdlRecords + numSetVariables);
-        assertThat(records.recordsForTopic("geometryit.geometry_test.dbz_222_point").size()).isEqualTo(3);
+        assertThat(records.recordsForTopic("geometryit.geometry_test.dbz_222_point").size()).isEqualTo(4);
         assertThat(records.topics().size()).isEqualTo(numTables + 1);
         assertThat(records.databaseNames()).containsOnly("geometry_test", "");
         assertThat(records.ddlRecordsForDatabase("geometry_test").size()).isEqualTo(numDdlRecords);
@@ -163,15 +163,17 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
         assertThat(i).isNotNull();
         Double expectedX = after.getFloat64("expected_x");
         Double expectedY = after.getFloat64("expected_y");
-        Double actualX = after.getStruct("point").getFloat64("x");
-        Double actualY = after.getStruct("point").getFloat64("y");
-        //Validate the values
-        assertThat(actualX).isEqualTo(expectedX, Delta.delta(0.01));
-        assertThat(actualY).isEqualTo(expectedY, Delta.delta(0.01));
-        //Test WKB
-        Point point = (Point) WkbGeometryReader.readGeometry(new ByteReader((byte[]) after.getStruct("point")
-                                                                                          .get("wkb")));
-        assertThat(point.getX()).isEqualTo(expectedX, Delta.delta(0.01));
-        assertThat(point.getY()).isEqualTo(expectedY, Delta.delta(0.01));
+        if (after.getStruct("point") != null){
+            Double actualX = after.getStruct("point").getFloat64("x");
+            Double actualY = after.getStruct("point").getFloat64("y");
+            //Validate the values
+            assertThat(actualX).isEqualTo(expectedX, Delta.delta(0.01));
+            assertThat(actualY).isEqualTo(expectedY, Delta.delta(0.01));
+            //Test WKB
+            Point point = (Point) WkbGeometryReader.readGeometry(new ByteReader((byte[]) after.getStruct("point")
+                    .get("wkb")));
+            assertThat(point.getX()).isEqualTo(expectedX, Delta.delta(0.01));
+            assertThat(point.getY()).isEqualTo(expectedY, Delta.delta(0.01));
+        }
     }
 }

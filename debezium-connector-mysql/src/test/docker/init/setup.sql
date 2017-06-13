@@ -499,6 +499,7 @@ CREATE TABLE dbz_222_point (
 INSERT INTO dbz_222_point VALUES (default,GeomFromText('POINT(1 1)'), 1.0, 1.0);
 INSERT INTO dbz_222_point VALUES (default,GeomFromText('POINT(8.25554554 3.22124447)'), 8.25554554, 3.22124447);
 INSERT INTO dbz_222_point VALUES (default,GeomFromText('POINT(0 0)'), 0.0, 0.0);
+INSERT INTO dbz_222_point VALUES (default,NULL, 0.0, 0.0);
 
 -- ----------------------------------------------------------------------------------------------------------------
 -- DATABASE:  table_maintenance_test
