@@ -60,6 +60,8 @@ public final class MySqlConnectorTask extends SourceTask {
             throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }
 
+        // set the config in the source info...
+
         // Create and start the task context ...
         this.taskContext = new MySqlTaskContext(config);
         PreviousContext prevLoggingContext = this.taskContext.configureLoggingContext("task");

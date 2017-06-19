@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Predicate;
 
+import io.debezium.config.Configuration;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -110,6 +111,20 @@ final class SourceInfo {
     public static final String DB_NAME_KEY = "db";
     public static final String TABLE_NAME_KEY = "table";
 
+    public static final String FILTERS_KEY = "filters";
+    public static final String FILTERS_DATABASE_WHITELIST = "database_whitelist";
+    public static final String FILTERS_DATABASE_BLACKLIST = "database_blacklist";
+    public static final String FILTERS_TABLE_WHITELIST = "table_whitelist";
+    public static final String FILTERS_TABLE_BLACKLIST = "table_blacklist";
+
+    public static final Schema FILTERS_SCHEMA = SchemaBuilder.struct()
+                                                             .field(FILTERS_DATABASE_WHITELIST, Schema.OPTIONAL_STRING_SCHEMA)
+                                                             .field(FILTERS_DATABASE_BLACKLIST, Schema.OPTIONAL_STRING_SCHEMA)
+                                                             .field(FILTERS_TABLE_WHITELIST, Schema.OPTIONAL_STRING_SCHEMA)
+                                                             .field(FILTERS_TABLE_BLACKLIST, Schema.OPTIONAL_STRING_SCHEMA)
+                                                             .optional()
+                                                             .build();
+
     /**
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition()} and {@link #offset()} information.
      */
@@ -126,6 +141,7 @@ final class SourceInfo {
                                                      .field(THREAD_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                      .field(DB_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(TABLE_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                                                     .field(FILTERS_KEY, FILTERS_SCHEMA)
                                                      .build();
 
     private String currentGtidSet;
@@ -147,8 +163,10 @@ final class SourceInfo {
     private Map<String, String> sourcePartition;
     private boolean lastSnapshot = true;
     private boolean nextSnapshot = false;
+    private Configuration config;
 
-    public SourceInfo() {
+    public SourceInfo(Configuration config) {
+        this.config = config;
     }
 
     /**
@@ -243,7 +261,7 @@ final class SourceInfo {
         return offsetUsingPosition(totalNumberOfRows);
     }
 
-    private Map<String, ?> offsetUsingPosition(long rowsToSkip) {
+    private Map<String, ?> offsetUsingPosition(long rowsToSkip) { // base method!
         Map<String, Object> map = new HashMap<>();
         if (serverId != 0) map.put(SERVER_ID_KEY, serverId);
         if (restartGtidSet != null) {
@@ -261,6 +279,21 @@ final class SourceInfo {
         if (binlogTimestampSeconds != 0) map.put(TIMESTAMP_KEY, binlogTimestampSeconds);
         if (isSnapshotInEffect()) {
             map.put(SNAPSHOT_KEY, true);
+        }
+        if (config != null) {
+            map.put(FILTERS_KEY, new Struct(FILTERS_SCHEMA));
+            if (config.getString(MySqlConnectorConfig.DATABASE_WHITELIST) != null) {
+                map.put(FILTERS_KEY, config.getString(MySqlConnectorConfig.DATABASE_WHITELIST));
+            }
+            if (config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST) != null) {
+                map.put(FILTERS_KEY, config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST));
+            }
+            if (config.getString(MySqlConnectorConfig.TABLE_WHITELIST) != null) {
+                map.put(FILTERS_KEY, config.getString(MySqlConnectorConfig.TABLE_WHITELIST));
+            }
+            if (config.getString(MySqlConnectorConfig.TABLE_BLACKLIST) != null) {
+                map.put(FILTERS_KEY, config.getString(MySqlConnectorConfig.TABLE_BLACKLIST));
+            }
         }
         return map;
     }

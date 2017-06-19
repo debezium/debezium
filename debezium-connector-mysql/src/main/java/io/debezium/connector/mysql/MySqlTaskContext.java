@@ -41,7 +41,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         this.topicSelector = TopicSelector.defaultSelector(serverName());
 
         // Set up the source information ...
-        this.source = new SourceInfo();
+        this.source = new SourceInfo(config);
         this.source.setServerName(serverName());
 
         // Set up the GTID filter ...

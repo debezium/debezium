@@ -42,7 +42,7 @@ public class MySqlSchemaTest {
         Testing.Files.delete(TEST_FILE_PATH);
         build = new Configurator();
         mysql = null;
-        source = new SourceInfo();
+        source = new SourceInfo(null);
     }
 
     @After
