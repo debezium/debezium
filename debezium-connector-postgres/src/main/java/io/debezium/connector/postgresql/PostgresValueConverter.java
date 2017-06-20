@@ -54,8 +54,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
      */
     protected static final double DAYS_PER_MONTH_AVG = 365.25 / 12.0d;
 
-    protected PostgresValueConverter(boolean adaptiveTimePrecision, ZoneOffset defaultOffset) {
-        super(DecimalMode.PRECISE, adaptiveTimePrecision, defaultOffset, null);
+    protected PostgresValueConverter(DecimalMode decimalMode, boolean adaptiveTimePrecision, ZoneOffset defaultOffset) {
+        super(decimalMode, adaptiveTimePrecision, defaultOffset, null);
     }
 
     @Override
@@ -167,7 +167,12 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.MONEY:
                 return data -> convertMoney(column, fieldDefn, data);
             case PgOid.NUMERIC:
-                return data -> convertDecimal(column, fieldDefn, data);
+                switch (decimalMode) {
+                case DOUBLE:
+                    return (data) -> convertDouble(column, fieldDefn, data);
+                case PRECISE:
+                    return (data) -> convertDecimal(column, fieldDefn, data);
+                }
             case PgOid.INT2_ARRAY:
             case PgOid.INT4_ARRAY:
             case PgOid.INT8_ARRAY:
