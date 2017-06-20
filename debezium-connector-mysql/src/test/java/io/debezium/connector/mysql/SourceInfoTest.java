@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Collections;
@@ -13,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import io.debezium.config.Configuration;
 import org.apache.avro.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.fest.assertions.GenericAssert;
@@ -44,6 +46,42 @@ public class SourceInfoTest {
         inTxn = false;
         positionOfBeginEvent = 0L;
         eventNumberInTxn = 0;
+    }
+
+    @Test
+    public void offsetsShouldContainFilterInfo() {
+        // test whitelists
+        Configuration config = Configuration.create()
+                                            .with("database.whitelist", "foo,bar,baz")
+                                            .with("table.whitelist", "foo.bar.baz, qux.fred.alice")
+                                            .build();
+
+        source = new SourceInfo(config);
+
+        assertThat(source.offset().containsKey("filters.database.whitelist"));
+        assertEquals(source.offset().get("filters.database.whitelist"), "foo,bar,baz");
+
+        assertThat(source.offset().containsKey("filters.table.whitelist"));
+        assertEquals(source.offset().get("filters.table.whitelist"), "foo.bar.baz, qux.fred.alice");
+
+        // test blacklists
+        config = Configuration.create()
+          .with("database.blacklist", "foo,bar,baz")
+          .with("table.blacklist", "foo.bar.baz, qux.fred.alice")
+          .build();
+
+        source = new SourceInfo(config);
+
+        assertThat(source.offset().containsKey("filters.database.blacklist"));
+        assertEquals(source.offset().get("filters.database.blacklist"), "foo,bar,baz");
+
+        assertThat(source.offset().containsKey("filters.table.blacklist"));
+        assertEquals(source.offset().get("filters.table.blacklist"), "foo.bar.baz, qux.fred.alice");
+    }
+
+    @Test
+    public void offsetsShouldContainBlacklistFilterInfo() {
+
     }
 
     @Test
