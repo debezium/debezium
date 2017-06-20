@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.MathContext;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -115,11 +116,26 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return data -> convertPoint(column, fieldDefn, data);
             case PgOid.MONEY:
                 return data -> convertMoney(column, fieldDefn, data);
+            case PgOid.NUMERIC:
+                return data -> convertDecimal(column, fieldDefn, data);
             default:
                 return super.converter(column, fieldDefn);
         }
     }
     
+    @Override
+    protected Object convertDecimal(Column column, Field fieldDefn, Object data) {
+        BigDecimal newDecimal = (BigDecimal) super.convertDecimal(column, fieldDefn, data);
+        if (newDecimal == null) {
+            return newDecimal;
+        }
+        if (column.scale() > newDecimal.scale()) {
+          MathContext mc = new MathContext((newDecimal.precision() - newDecimal.scale()) + column.scale());
+          newDecimal = new BigDecimal(newDecimal.doubleValue(), mc);
+        }
+        return newDecimal;
+    }
+
     @Override
     protected Object convertBit(Column column, Field fieldDefn, Object data) {
         if (data instanceof String) {
