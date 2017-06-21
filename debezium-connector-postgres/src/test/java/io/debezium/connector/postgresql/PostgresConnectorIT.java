@@ -146,6 +146,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         validateField(validatedConfig, PostgresConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, PostgresConnectorConfig.DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS);
         validateField(validatedConfig, PostgresConnectorConfig.TIME_PRECISION_MODE, PostgresConnectorConfig.TemporalPrecisionMode.ADAPTIVE);
         validateField(validatedConfig, PostgresConnectorConfig.SSL_SOCKET_FACTORY, null);
+        validateField(validatedConfig, PostgresConnectorConfig.TCP_KEEPALIVE, null);
    }
 
     @Test
