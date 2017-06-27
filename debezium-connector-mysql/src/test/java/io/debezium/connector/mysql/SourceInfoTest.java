@@ -58,11 +58,13 @@ public class SourceInfoTest {
 
         source = new SourceInfo(config);
 
-        assertThat(source.offset().containsKey("filters.database.whitelist"));
-        assertEquals(source.offset().get("filters.database.whitelist"), "foo,bar,baz");
+        assertTrue((Boolean) source.offset().get("filter.info"));
 
-        assertThat(source.offset().containsKey("filters.table.whitelist"));
-        assertEquals(source.offset().get("filters.table.whitelist"), "foo.bar.baz, qux.fred.alice");
+        assertThat(source.offset().containsKey("database.whitelist"));
+        assertEquals(source.offset().get("database.whitelist"), "foo,bar,baz");
+
+        assertThat(source.offset().containsKey("table.whitelist"));
+        assertEquals(source.offset().get("table.whitelist"), "foo.bar.baz, qux.fred.alice");
 
         // test blacklists
         config = Configuration.create()
@@ -72,11 +74,13 @@ public class SourceInfoTest {
 
         source = new SourceInfo(config);
 
-        assertThat(source.offset().containsKey("filters.database.blacklist"));
-        assertEquals(source.offset().get("filters.database.blacklist"), "foo,bar,baz");
+        assertTrue((Boolean) source.offset().get("filter.info"));
 
-        assertThat(source.offset().containsKey("filters.table.blacklist"));
-        assertEquals(source.offset().get("filters.table.blacklist"), "foo.bar.baz, qux.fred.alice");
+        assertThat(source.offset().containsKey("database.blacklist"));
+        assertEquals(source.offset().get("database.blacklist"), "foo,bar,baz");
+
+        assertThat(source.offset().containsKey("table.blacklist"));
+        assertEquals(source.offset().get("table.blacklist"), "foo.bar.baz, qux.fred.alice");
     }
 
     @Test

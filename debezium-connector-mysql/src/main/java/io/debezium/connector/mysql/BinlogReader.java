@@ -8,11 +8,13 @@ package io.debezium.connector.mysql;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.BitSet;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
@@ -74,6 +76,7 @@ public class BinlogReader extends AbstractReader {
     private long initialEventsToSkip = 0L;
     private boolean skipEvent = false;
     private boolean ignoreDmlEventByGtidSource = false;
+    private Set<TableId> knownTablesToSnapshot = Collections.emptySet();
     private final Predicate<String> gtidDmlSourceFilter;
     private final AtomicLong totalRecordCounter = new AtomicLong();
     private volatile Map<String, ?> lastOffset = null;
@@ -145,6 +148,10 @@ public class BinlogReader extends AbstractReader {
         // Set up for JMX ...
         metrics = new BinlogReaderMetrics(client);
         metrics.register(context, logger);
+    }
+
+    public void addKnownTablesToSnapshot(Set<TableId> knownTablesToSnapshot) {
+        this.knownTablesToSnapshot = knownTablesToSnapshot;
     }
 
     @Override

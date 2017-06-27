@@ -111,10 +111,12 @@ final class SourceInfo {
     public static final String DB_NAME_KEY = "db";
     public static final String TABLE_NAME_KEY = "table";
 
-    public static final String FILTERS_DATABASE_WHITELIST = "filters.database.whitelist";
-    public static final String FILTERS_DATABASE_BLACKLIST = "filters.database.blacklist";
-    public static final String FILTERS_TABLE_WHITELIST = "filters.table.whitelist";
-    public static final String FILTERS_TABLE_BLACKLIST = "filters.table.blacklist";
+    public static final String HAS_FILTER_INFO = "filter.info";
+    // using the same names as the config names for ease of creating a filter
+    public static final String FILTERS_DATABASE_WHITELIST = MySqlConnectorConfig.DATABASE_WHITELIST.name();
+    public static final String FILTERS_DATABASE_BLACKLIST = MySqlConnectorConfig.DATABASE_BLACKLIST.name();
+    public static final String FILTERS_TABLE_WHITELIST = MySqlConnectorConfig.TABLE_WHITELIST.name();
+    public static final String FILTERS_TABLE_BLACKLIST = MySqlConnectorConfig.TABLE_BLACKLIST.name();
 
     /**
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition()} and {@link #offset()} information.
@@ -275,18 +277,11 @@ final class SourceInfo {
             map.put(SNAPSHOT_KEY, true);
         }
         if (config != null) {
-            if (config.getString(MySqlConnectorConfig.DATABASE_WHITELIST) != null) {
-                map.put(FILTERS_DATABASE_WHITELIST, config.getString(MySqlConnectorConfig.DATABASE_WHITELIST));
-            }
-            if (config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST) != null) {
-                map.put(FILTERS_DATABASE_BLACKLIST, config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST));
-            }
-            if (config.getString(MySqlConnectorConfig.TABLE_WHITELIST) != null) {
-                map.put(FILTERS_TABLE_WHITELIST, config.getString(MySqlConnectorConfig.TABLE_WHITELIST));
-            }
-            if (config.getString(MySqlConnectorConfig.TABLE_BLACKLIST) != null) {
-                map.put(FILTERS_TABLE_BLACKLIST, config.getString(MySqlConnectorConfig.TABLE_BLACKLIST));
-            }
+            map.put(HAS_FILTER_INFO, true);
+            map.put(FILTERS_DATABASE_WHITELIST, config.getString(MySqlConnectorConfig.DATABASE_WHITELIST));
+            map.put(FILTERS_DATABASE_BLACKLIST, config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST));
+            map.put(FILTERS_TABLE_WHITELIST, config.getString(MySqlConnectorConfig.TABLE_WHITELIST));
+            map.put(FILTERS_TABLE_BLACKLIST, config.getString(MySqlConnectorConfig.TABLE_BLACKLIST));
         }
         return map;
     }
