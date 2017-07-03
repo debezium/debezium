@@ -201,7 +201,7 @@ public class ConnectionContext implements AutoCloseable {
                 if (attempts > maxAttempts) {
                     ConnectException e = new ConnectException("Unable to connect to primary node of '" + replicaSet + "' after " +
                         attempts + " failed attempts");
-                    new DpError(e, e.getMessage(), String.valueOf(dpTaskId), null, DpErrorCode.CRITICAL_ERROR).report();
+                    new DpError(e, e.getMessage(), String.valueOf(dpTaskId), null, DpErrorCode.CRITICAL_ERROR);
                     throw e;
                 }
                 handler.failed(attempts, maxAttempts - attempts, null);
@@ -354,7 +354,7 @@ public class ConnectionContext implements AutoCloseable {
 
             ConnectException e = new ConnectException("The MongoDB server(s) at '" + replicaSet +
                 "' is not a valid replica set and cannot be used");
-            new DpError(e, e.getMessage(), String.valueOf(dpTaskId), null, DpErrorCode.CRITICAL_ERROR).report();
+            new DpError(e, e.getMessage(), String.valueOf(dpTaskId), null, DpErrorCode.CRITICAL_ERROR);
             throw e;
         }
         // It is a replica set ...

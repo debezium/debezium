@@ -93,7 +93,7 @@ public final class MongoDbConnectorTask extends SourceTask {
 
         if (context == null) {
             ConnectException e = new ConnectException("Unexpected null context");
-            DpError dpError = new DpError(e, e.getMessage(), dpTaskId, null, DpErrorCode.CRITICAL_ERROR).report();
+            DpError dpError = new DpError(e, e.getMessage(), dpTaskId, null, DpErrorCode.CRITICAL_ERROR);
             dpErrorDetector.addError(dpError);
         }
 
@@ -113,7 +113,7 @@ public final class MongoDbConnectorTask extends SourceTask {
             if (!config.validateAndRecord(MongoDbConnectorConfig.ALL_FIELDS, logger::error)) {
                 ConnectException e = new ConnectException(
                     "Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
-                DpError dpError = new DpError(e, e.getMessage(), dpTaskId, null, DpErrorCode.CRITICAL_ERROR).report();
+                DpError dpError = new DpError(e, e.getMessage(), dpTaskId, null, DpErrorCode.CRITICAL_ERROR);
                 dpErrorDetector.addError(dpError);
             }
 
@@ -123,7 +123,7 @@ public final class MongoDbConnectorTask extends SourceTask {
             if (replicaSets.validReplicaSetCount() == 0) {
 //                logger.info("Unable to start MongoDB connector task since no replica sets were found at {}", hosts);
                 ConnectException e = new ConnectException("Unable to start MongoDB connector task since no replica sets were found at " + hosts.toString());
-                DpError dpError = new DpError(e, e.getMessage(), dpTaskId, null, DpErrorCode.CRITICAL_ERROR).report();
+                DpError dpError = new DpError(e, e.getMessage(), dpTaskId, null, DpErrorCode.CRITICAL_ERROR);
                 dpErrorDetector.addError(dpError);
             }
 
@@ -142,7 +142,7 @@ public final class MongoDbConnectorTask extends SourceTask {
             try {
                 context.offsetStorageReader().offsets(partitions).forEach(source::setOffsetFor);
             } catch (Throwable e){
-                DpError dpError = new DpError(e, e.getMessage(), dpTaskId, null, DpErrorCode.CRITICAL_ERROR).report();
+                DpError dpError = new DpError(e, e.getMessage(), dpTaskId, null, DpErrorCode.CRITICAL_ERROR);
                 dpErrorDetector.addError(dpError);
             }
 
@@ -208,7 +208,7 @@ public final class MongoDbConnectorTask extends SourceTask {
                 logger.info("Stopped MongoDB replication task by stopping {} replicator threads", counter);
             }
         } catch (Throwable e) {
-            new DpError(e, e.getMessage(), dpTaskId, null, DpErrorCode.CRITICAL_ERROR).report();
+            new DpError(e, e.getMessage(), dpTaskId, null, DpErrorCode.CRITICAL_ERROR);
             logger.error("Unexpected error shutting down the MongoDB replication task", e);
             throw e;
         } finally {

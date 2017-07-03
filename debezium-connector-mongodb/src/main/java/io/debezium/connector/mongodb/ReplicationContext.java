@@ -56,7 +56,7 @@ public class ReplicationContext extends ConnectionContext {
             this.topicSelector = new DpTopicSelector(schemaNameConfigs, serverName);
         } catch (IOException e) {
             logger.error("Error deserialize collection schema config.", e);
-            new DpError(e, e.getMessage(), String.valueOf(config.getInteger(MongoDbConnectorConfig.DP_TASK_ID)), null, DpErrorCode.CRITICAL_ERROR).report();
+            new DpError(e, e.getMessage(), String.valueOf(config.getInteger(MongoDbConnectorConfig.DP_TASK_ID)), null, DpErrorCode.CRITICAL_ERROR);
             throw new ConnectException("Error deserialize mongodb config.", e);
         }
 

@@ -89,7 +89,7 @@ public class RecordMakers {
         if (mongodbSchemaFields == null) {
             String errorMessage = "Schema is null, can't build record for collection : " +collectionId.namespace() + " . Please check if collection schema is correctly set. ";
             ConnectException e = new ConnectException(errorMessage);
-            new DpError(e, e.getMessage(), source.getDpTaskId(), collectionId.name(), DpErrorCode.CRITICAL_ERROR).report();
+            new DpError(e, e.getMessage(), source.getDpTaskId(), collectionId.name(), DpErrorCode.CRITICAL_ERROR);
             throw e;
         }
         return recordMakerByCollectionId.computeIfAbsent(collectionId, id -> {

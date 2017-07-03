@@ -75,7 +75,7 @@ public class ReplicaSetDiscovery {
                 replicaSetSpecs.add(new ReplicaSet(hostStr, replicaSetName, shardName));
             });
         } catch (MongoException e) {
-            new DpError(e, e.getMessage(), context.source().getDpTaskId(), null, DpErrorCode.TRIVIAL_ERROR).report();
+            new DpError(e, e.getMessage(), context.source().getDpTaskId(), null, DpErrorCode.TRIVIAL_ERROR);
             logger.error("Error while reading the '{}' collection in the '{}' database: {}",
                 shardsCollection, CONFIG_DATABASE_NAME, e.getMessage(), e);
         }
@@ -105,7 +105,7 @@ public class ReplicaSetDiscovery {
         if (replicaSetSpecs.isEmpty()) {
             ConnectException e = new ConnectException("Found no replica sets at " + seedAddresses.toString() +
                 ", so there is nothing to monitor and no connector tasks will be started. Check seed addresses in connector configuration.");
-            new DpError(e, e.getMessage(), context.source().getDpTaskId(), null, DpErrorCode.TRIVIAL_ERROR).report();
+            new DpError(e, e.getMessage(), context.source().getDpTaskId(), null, DpErrorCode.TRIVIAL_ERROR);
             // Without a replica set name, we can't do anything ...
             logger.error("Found no replica sets at {}, so there is nothing to monitor and no connector tasks will be started. Check seed addresses in connector configuration.",
                 seedAddresses);
