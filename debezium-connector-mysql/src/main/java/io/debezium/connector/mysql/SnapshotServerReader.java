@@ -39,7 +39,7 @@ import io.debezium.util.Strings;
  * 
  * @author Randall Hauch
  */
-public class SnapshotReader extends AbstractReader {
+public class SnapshotServerReader extends AbstractReader {
 
     private boolean minimalBlocking = true;
     private final boolean includeData;
@@ -53,7 +53,7 @@ public class SnapshotReader extends AbstractReader {
      * @param name the name of this reader; may not be null
      * @param context the task context in which this reader is running; may not be null
      */
-    public SnapshotReader(String name, MySqlTaskContext context) {
+    public SnapshotServerReader(String name, MySqlTaskContext context) {
         super(name, context);
         this.includeData = !context.isSchemaOnlySnapshot();
         recorder = this::recordRowAsRead;
@@ -71,7 +71,7 @@ public class SnapshotReader extends AbstractReader {
      *            is to be held for the entire {@link #execute() execution}
      * @return this object for method chaining; never null
      */
-    public SnapshotReader useMinimalBlocking(boolean minimalBlocking) {
+    public SnapshotServerReader useMinimalBlocking(boolean minimalBlocking) {
         this.minimalBlocking = minimalBlocking;
         return this;
     }
@@ -82,7 +82,7 @@ public class SnapshotReader extends AbstractReader {
      * 
      * @return this object for method chaining; never null
      */
-    public SnapshotReader generateReadEvents() {
+    public SnapshotServerReader generateReadEvents() {
         recorder = this::recordRowAsRead;
         return this;
     }
@@ -93,7 +93,7 @@ public class SnapshotReader extends AbstractReader {
      * 
      * @return this object for method chaining; never null
      */
-    public SnapshotReader generateInsertEvents() {
+    public SnapshotServerReader generateInsertEvents() {
         recorder = this::recordRowAsInsert;
         return this;
     }

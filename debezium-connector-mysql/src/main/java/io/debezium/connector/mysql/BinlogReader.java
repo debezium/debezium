@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
@@ -61,6 +63,8 @@ public class BinlogReader extends AbstractReader {
 
     private static final long INITIAL_POLL_PERIOD_IN_MILLIS = TimeUnit.SECONDS.toMillis(5);
     private static final long MAX_POLL_PERIOD_IN_MILLIS = TimeUnit.HOURS.toMillis(1);
+
+    private final Set<TableId> tablesToSnapshot = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     private final boolean recordSchemaChangesInSourceRecords;
     private final RecordMakers recordMakers;
@@ -492,10 +496,17 @@ public class BinlogReader extends AbstractReader {
         String databaseName = metadata.getDatabase();
         String tableName = metadata.getTable();
         TableId tableId = new TableId(databaseName, null, tableName);
-        if (recordMakers.assign(tableNumber, tableId)) {
-            logger.debug("Received update table metadata event: {}", event);
-        } else {
+        recordMakers.assign(tableNumber, tableId);
+        // todo this may need to be in a synchronized block of some sort...
+        // or not/yes but more generally, since I need to block normal binlog processing
+        // when I'm catching up after snapshotting a table.
+        if (knownTablesToSnapshot.contains(tableId) || !recordMakers.hasTable(tableId)) {
             logger.debug("Skipping update table metadata event: {}", event);
+            knownTablesToSnapshot.remove(tableId);
+            tablesToSnapshot.add(tableId);
+        }
+        else {
+            logger.debug("Received update table metadata event: {}", event);
         }
     }
 

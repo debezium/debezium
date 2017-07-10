@@ -152,10 +152,10 @@ public final class MySqlConnectorTask extends SourceTask {
             binlogReader.addKnownTablesToSnapshot(calculateKnownNewTables(offsets, taskContext.makeRecord()));
             if (startWithSnapshot) {
                 // We're supposed to start with a snapshot, so set that up ...
-                SnapshotReader snapshotReader = new SnapshotReader("snapshot", taskContext);
-                snapshotReader.useMinimalBlocking(taskContext.useMinimalSnapshotLocking());
-                if (snapshotEventsAreInserts) snapshotReader.generateInsertEvents();
-                readers.add(snapshotReader);
+                SnapshotServerReader snapshotServerReader = new SnapshotServerReader("snapshot", taskContext);
+                snapshotServerReader.useMinimalBlocking(taskContext.useMinimalSnapshotLocking());
+                if (snapshotEventsAreInserts) snapshotServerReader.generateInsertEvents();
+                readers.add(snapshotServerReader);
 
                 if (taskContext.isInitialSnapshotOnly()) {
                     logger.warn("This connector will only perform a snapshot, and will stop after that completes.");
