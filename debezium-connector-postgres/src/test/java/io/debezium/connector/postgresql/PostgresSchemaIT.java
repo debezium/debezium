@@ -49,7 +49,7 @@ public class PostgresSchemaIT {
     private static final String[] TEST_TABLES = new String[] { "public.numeric_table", "public.string_table", "public.cash_table",
                                                                "public.bitbin_table",
                                                                "public.time_table", "public.text_table", "public.geom_table", "public.tstzrange_table",
-                                                               "public.array_table"
+                                                               "public.array_table", "public.Quoted_Table"
                                                              };
 
     private PostgresSchema schema;
@@ -91,6 +91,8 @@ public class PostgresSchemaIT {
             assertTableSchema("public.array_table", "int_array, bigint_array, text_array",
                               SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(), SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(),
                               SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
+            assertTableSchema("public.Quoted_Table", "Quoted_Text_Column",
+                              Schema.OPTIONAL_STRING_SCHEMA);
         }
     }
 
