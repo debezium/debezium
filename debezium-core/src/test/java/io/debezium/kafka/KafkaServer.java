@@ -192,6 +192,7 @@ public class KafkaServer {
             }
         }
         config.setProperty(KafkaConfig.LogDirProp(), logsDir.getAbsolutePath());
+        config.setProperty(KafkaConfig.OffsetsTopicReplicationFactorProp(), String.valueOf(1));
 
         // Determine the port and adjust the configuration ...
         port = desiredPort > 0 ? desiredPort : IoUtil.getAvailablePort();
