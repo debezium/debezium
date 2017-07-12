@@ -162,6 +162,18 @@ public class MongoDbConnectorConfig {
                                                    .withDependents(COLLECTION_LIST_NAME)
                                                    .withDescription("The databases for which changes are to be captured");
 
+        /**
+     * A comma-separated list of regular expressions that match the fully-qualified namespaces of collections to be monitored.
+     * Fully-qualified namespaces for collections are of the form {@code '<databaseName>.<collectionName>'}.
+     * May not be used with {@link #COLLECTION_BLACKLIST}.
+     */
+    public static final Field DATABASE_WHITELIST = Field.create("database.whitelist")
+                                                        .withDisplayName("DB Whitelist")
+                                                        .withType(Type.LIST)
+                                                        .withWidth(Width.LONG)
+                                                        .withImportance(Importance.HIGH)
+                                                        .withDescription("The databases for which changes are to be captured");
+
     /**
      * A comma-separated list of regular expressions that match the fully-qualified namespaces of collections to be monitored.
      * Fully-qualified namespaces for collections are of the form {@code '<databaseName>.<collectionName>'}.

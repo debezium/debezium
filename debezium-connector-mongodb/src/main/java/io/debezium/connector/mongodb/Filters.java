@@ -22,6 +22,7 @@ public final class Filters {
     protected static final Set<String> BUILT_IN_DB_NAMES = Collect.unmodifiableSet("local", "admin");
 
     private final Predicate<CollectionId> collectionFilter;
+    private final Predicate<String> databaseFilter;
 
     /**
      * Create an instance of the filters.
@@ -29,6 +30,13 @@ public final class Filters {
      * @param config the configuration; may not be null
      */
     public Filters(Configuration config) {
+        String dbWhitelist = config.getString(MongoDbConnectorConfig.DATABASE_WHITELIST);
+        if (dbWhitelist != null && !dbWhitelist.trim().isEmpty()){
+            databaseFilter = Predicates.includes(dbWhitelist);
+        } else {
+            databaseFilter = Predicates.includes(".*");
+        }
+
         String whitelist = config.getString(MongoDbConnectorConfig.COLLECTION_WHITELIST);
         String blacklist = config.getString(MongoDbConnectorConfig.COLLECTION_BLACKLIST);
         Predicate<CollectionId> collectionFilter = null;
@@ -43,6 +51,15 @@ public final class Filters {
         this.collectionFilter = isNotBuiltIn.and(collectionFilter);
     }
     
+    /**
+     * Get the predicate function that determines whether the given database is to be included.
+     *
+     * @return the database filter; never null
+     */
+    public Predicate<String> databaseFilter() {
+        return databaseFilter;
+    }
+
     /**
      * Get the predicate function that determines whether the given collection is to be included.
      * 
