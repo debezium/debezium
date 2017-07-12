@@ -6,27 +6,23 @@
 
 package io.debezium.connector.postgresql;
 
-import static junit.framework.TestCase.assertTrue;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.fail;
+import io.debezium.data.Bits;
+import io.debezium.data.Json;
+import io.debezium.data.Uuid;
+import io.debezium.data.Xml;
+import io.debezium.data.geometry.Point;
+import io.debezium.time.Date;
+import io.debezium.time.*;
+import io.debezium.util.VariableLatch;
+import org.apache.kafka.connect.data.*;
+import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.Assert;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneId;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -34,26 +30,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.apache.kafka.connect.data.Decimal;
-import org.apache.kafka.connect.data.Field;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.Assert;
-
-import io.debezium.data.Bits;
-import io.debezium.data.Json;
-import io.debezium.data.Uuid;
-import io.debezium.data.Xml;
-import io.debezium.data.geometry.Point;
-import io.debezium.time.Date;
-import io.debezium.time.MicroDuration;
-import io.debezium.time.NanoTime;
-import io.debezium.time.NanoTimestamp;
-import io.debezium.time.ZonedTime;
-import io.debezium.time.ZonedTimestamp;
-import io.debezium.util.VariableLatch;
+import static junit.framework.TestCase.assertTrue;
+import static org.junit.Assert.*;
 
 /**
  * Base class for the integration tests for the different {@link RecordsProducer} instances
@@ -62,7 +40,7 @@ import io.debezium.util.VariableLatch;
  */
 public abstract class AbstractRecordsProducerTest {
 
-    protected static final Pattern INSERT_TABLE_MATCHING_PATTERN = Pattern.compile("insert into (\\w+).+", Pattern.CASE_INSENSITIVE);
+    protected static final Pattern INSERT_TABLE_MATCHING_PATTERN = Pattern.compile("insert into \"?(\\w+)\"?.+", Pattern.CASE_INSENSITIVE);
 
     protected static final String INSERT_CASH_TYPES_STMT = "INSERT INTO cash_table (csh) VALUES ('$1234.11')";
     protected static final String INSERT_DATE_TIME_TYPES_STMT = "INSERT INTO time_table(ts, tz, date, ti, ttz, it) " +
@@ -82,9 +60,12 @@ public abstract class AbstractRecordsProducerTest {
     protected static final String INSERT_TSTZRANGE_TYPES_STMT = "INSERT INTO tstzrange_table (unbounded_exclusive_range, bounded_inclusive_range) " +
             "VALUES ('[2017-06-05 11:29:12.549426+00,)', '[2017-06-05 11:29:12.549426+00, 2017-06-05 12:34:56.789012+00]')";
 
+    protected static final String INSERT_QUOTED_TYPES_STMT = "INSERT INTO \"Quoted_Table\" (\"Quoted_Text_Column\") " +
+                                                             "VALUES ('some text')";
+
     protected static final Set<String> ALL_STMTS = new HashSet<>(Arrays.asList(INSERT_NUMERIC_TYPES_STMT, INSERT_DATE_TIME_TYPES_STMT,
                                                                  INSERT_BIN_TYPES_STMT, INSERT_GEOM_TYPES_STMT, INSERT_TEXT_TYPES_STMT,
-                                                                 INSERT_CASH_TYPES_STMT, INSERT_STRING_TYPES_STMT));
+                                                                 INSERT_CASH_TYPES_STMT, INSERT_STRING_TYPES_STMT, INSERT_QUOTED_TYPES_STMT));
 
     protected List<SchemaAndValueField> schemasAndValuesForNumericType() {
         return Arrays.asList(new SchemaAndValueField("si", SchemaBuilder.OPTIONAL_INT16_SCHEMA, (short) 1),
@@ -165,6 +146,10 @@ public abstract class AbstractRecordsProducerTest {
                                                                  BigDecimal.valueOf(1234.11d)));
     }
 
+    protected List<SchemaAndValueField> schemasAndValuesForQuotedTypes() {
+       return Arrays.asList(new SchemaAndValueField("Quoted_Text_Column", Schema.OPTIONAL_STRING_SCHEMA, "some text"));
+    }
+
     protected Map<String, List<SchemaAndValueField>> schemaAndValuesByTableName() {
         return ALL_STMTS.stream().collect(Collectors.toMap(AbstractRecordsProducerTest::tableNameFromInsertStmt,
                                                            this::schemasAndValuesForTable));
@@ -186,6 +171,8 @@ public abstract class AbstractRecordsProducerTest {
                 return schemasAndValuesForStringTypes();
             case INSERT_TEXT_TYPES_STMT:
                 return schemasAndValuesForTextTypes();
+            case INSERT_QUOTED_TYPES_STMT:
+                return schemasAndValuesForQuotedTypes();
             default:
                 throw new IllegalArgumentException("unknown statement:" + insertTableStatement);
         }

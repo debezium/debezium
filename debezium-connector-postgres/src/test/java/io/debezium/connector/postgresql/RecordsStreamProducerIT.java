@@ -6,23 +6,23 @@
 
 package io.debezium.connector.postgresql;
 
-import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
-import static io.debezium.connector.postgresql.TestHelper.topicName;
-import static junit.framework.TestCase.assertEquals;
-import static org.junit.Assert.assertFalse;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
+import io.debezium.data.Envelope;
+import io.debezium.data.VerifyRecord;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import io.debezium.data.Envelope;
-import io.debezium.data.VerifyRecord;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
+import static io.debezium.connector.postgresql.TestHelper.topicName;
+import static junit.framework.TestCase.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 /**
  * Integration test for the {@link RecordsStreamProducer} class. This also tests indirectly the PG plugin functionality for
@@ -92,8 +92,20 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // timezone range types
         consumer.expects(1);
         assertInsert(INSERT_TSTZRANGE_TYPES_STMT, schemaAndValuesForTstzRangeTypes());
+
     }
-    
+
+    @Test
+    public void shouldReceiveChangesForInsertsWithQuotedNames() throws Exception {
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer);
+
+        // Quoted column name
+        assertInsert(INSERT_QUOTED_TYPES_STMT, schemasAndValuesForQuotedTypes());
+    }
+
     @Test
     public void shouldReceiveChangesForNewTable() throws Exception {
         String statement = "CREATE SCHEMA s1;" +

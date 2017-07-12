@@ -37,6 +37,12 @@ public final class TableId implements Comparable<TableId> {
     public static TableId parse(String str, boolean useCatalogBeforeSchema) {
         String[] parts = str.split("[\\" + '.' + "]");
         if ( parts.length < 0 ) return null;
+        for (int i = 0; i < parts.length; i++) {
+            String part = parts[i];
+            if ( part.startsWith("\"") && part.endsWith("\"") ) {
+                parts[i] = part.substring(1, part.length()-1);
+            }
+        }
         return TableId.parse(parts, parts.length, useCatalogBeforeSchema);
     }
 
