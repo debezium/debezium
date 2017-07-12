@@ -6,22 +6,6 @@
 
 package io.debezium.connector.postgresql;
 
-import static io.debezium.connector.postgresql.PostgresConnectorConfig.SCHEMA_BLACKLIST;
-import static org.fest.assertions.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-
-import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.stream.IntStream;
-
-import org.apache.kafka.connect.data.Decimal;
-import org.apache.kafka.connect.data.Field;
-import org.apache.kafka.connect.data.Schema;
-import org.junit.Before;
-import org.junit.Test;
-
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.data.Bits;
 import io.debezium.data.Json;
@@ -30,13 +14,21 @@ import io.debezium.data.Xml;
 import io.debezium.data.geometry.Point;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
-import io.debezium.time.Date;
-import io.debezium.time.MicroDuration;
-import io.debezium.time.NanoTime;
-import io.debezium.time.NanoTimestamp;
-import io.debezium.time.ZonedTime;
-import io.debezium.time.ZonedTimestamp;
+import io.debezium.time.*;
 import io.debezium.util.AvroValidator;
+import org.apache.kafka.connect.data.Decimal;
+import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Schema;
+import org.junit.Before;
+import org.junit.Test;
+
+import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.stream.IntStream;
+
+import static io.debezium.connector.postgresql.PostgresConnectorConfig.SCHEMA_BLACKLIST;
+import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.*;
 
 /**
  * Unit test for {@link PostgresSchema}
@@ -47,7 +39,7 @@ public class PostgresSchemaIT {
 
     private static final String[] TEST_TABLES = new String[] { "public.numeric_table", "public.string_table", "public.cash_table",
                                                                "public.bitbin_table",
-                                                               "public.time_table", "public.text_table", "public.geom_table", "public.tstzrange_table" };
+                                                               "public.time_table", "public.text_table", "public.geom_table", "public.tstzrange_table", "public.Quoted_Table" };
 
     private PostgresSchema schema;
 
@@ -85,6 +77,8 @@ public class PostgresSchemaIT {
             assertTableSchema("public.geom_table", "p", Point.builder().optional().build());
             assertTableSchema("public.tstzrange_table", "unbounded_exclusive_range, bounded_inclusive_range",
                               Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA);
+            assertTableSchema("public.Quoted_Table", "Quoted_Text_Column",
+                              Schema.OPTIONAL_STRING_SCHEMA);
         }
     }
 
