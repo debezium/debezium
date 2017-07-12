@@ -10,7 +10,7 @@ import io.debezium.config.Field;
 
 /**
  * A helper for easily building connector configurations for testing.
- * 
+ *
  * @author Randall Hauch
  */
 public class Configurator {
@@ -42,6 +42,14 @@ public class Configurator {
 
     public Configurator maxBatchSize(int maxBatchSize) {
         return with(MongoDbConnectorConfig.MAX_BATCH_SIZE, maxBatchSize);
+    }
+
+    public Configurator includeDatabases(String regexList) {
+        return with(MongoDbConnectorConfig.DATABASE_WHITELIST, regexList);
+    }
+
+    public Configurator excludeDatabases(String regexList) {
+        return with(MongoDbConnectorConfig.DATABASE_BLACKLIST, regexList);
     }
 
     public Configurator includeCollections(String regexList) {

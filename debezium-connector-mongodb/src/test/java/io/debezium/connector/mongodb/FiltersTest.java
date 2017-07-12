@@ -5,10 +5,10 @@
  */
 package io.debezium.connector.mongodb;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 /**
  * @author Randall Hauch
@@ -22,6 +22,64 @@ public class FiltersTest {
     public void beforeEach() {
         build = new Configurator();
         filters = null;
+    }
+
+    @Test
+    public void shouldIncludeDatabaseCoveredByLiteralInWhitelist() {
+        filters = build.includeDatabases("db1").createFilters();
+        assertThat(filters.databaseFilter().test("db1")).isTrue();
+    }
+
+    @Test
+    public void shouldIncludeDatabaseCoveredByMultipleLiteralsInWhitelist() {
+        filters = build.includeDatabases("db1,db2").createFilters();
+        assertThat(filters.databaseFilter().test("db1")).isTrue();
+        assertThat(filters.databaseFilter().test("db2")).isTrue();
+    }
+
+    @Test
+    public void shouldIncludeDatabaseCoveredByWildcardInWhitelist() {
+        filters = build.includeDatabases("db.*").createFilters();
+        assertThat(filters.databaseFilter().test("db1")).isTrue();
+    }
+
+    @Test
+    public void shouldIncludeDatabaseCoveredByMultipleWildcardsInWhitelist() {
+        filters = build.includeDatabases("db.*,mongo.*").createFilters();
+        assertThat(filters.databaseFilter().test("db1")).isTrue();
+        assertThat(filters.databaseFilter().test("mongo2")).isTrue();
+    }
+
+    @Test
+    public void shouldExcludeDatabaseCoveredByLiteralInBlacklist() {
+        filters = build.excludeDatabases("db1").createFilters();
+        assertThat(filters.databaseFilter().test("db1")).isFalse();
+    }
+
+    @Test
+    public void shouldExcludeDatabaseCoveredByMultipleLiteralsInBlacklist() {
+        filters = build.excludeDatabases("db1,db2").createFilters();
+        assertThat(filters.databaseFilter().test("db1")).isFalse();
+        assertThat(filters.databaseFilter().test("db2")).isFalse();
+    }
+
+    @Test
+    public void shouldNotExcludeDatabaseNotCoveredByLiteralInBlacklist() {
+        filters = build.excludeDatabases("db1").createFilters();
+        assertThat(filters.databaseFilter().test("db2")).isTrue();
+    }
+
+    @Test
+    public void shouldExcludeDatabaseCoveredByWildcardInBlacklist() {
+        filters = build.excludeDatabases("db.*").createFilters();
+        assertThat(filters.databaseFilter().test("db1")).isFalse();
+    }
+
+    @Test
+    public void shouldExcludeDatabaseCoveredByMultipleWildcardsInBlacklist() {
+        filters = build.excludeDatabases("db.*,mongo.*").createFilters();
+        assertThat(filters.databaseFilter().test("db1")).isFalse();
+        assertThat(filters.databaseFilter().test("mongo2")).isFalse();
     }
 
     @Test

@@ -96,6 +96,7 @@ public class Replicator {
     private final RecordMakers recordMakers;
     private final BufferableRecorder bufferedRecorder;
     private final Predicate<CollectionId> collectionFilter;
+    private final Predicate<String> databaseFilter;
     private final Clock clock;
     private ReplicationContext.MongoPrimary primaryClient;
 
@@ -116,6 +117,7 @@ public class Replicator {
         this.bufferedRecorder = new BufferableRecorder(recorder);
         this.recordMakers = new RecordMakers(this.source, context.topicSelector(), this.bufferedRecorder);
         this.collectionFilter = this.context.collectionFilter();
+        this.databaseFilter = this.context.databaseFilter();
         this.clock = this.context.clock();
     }
 
@@ -250,7 +252,7 @@ public class Replicator {
         // We need to copy each collection, so put the collection IDs into a queue ...
         final List<CollectionId> collections = new ArrayList<>();
         primaryClient.collections().forEach(id -> {
-            if (collectionFilter.test(id)) collections.add(id);
+            if (databaseFilter.test(id.dbName()) && collectionFilter.test(id))collections.add(id);
         });
         final Queue<CollectionId> collectionsToCopy = new ConcurrentLinkedQueue<>(collections);
         final int numThreads = Math.min(collections.size(), context.maxNumberOfCopyThreads());
@@ -430,6 +432,7 @@ public class Replicator {
                     logger.error("Get current primary executeBlocking", e);
                 }
                 ServerAddress serverAddress = address.get();
+
                 if (serverAddress != null && !serverAddress.equals(primaryAddress)) {
                     logger.info("Found new primary event in oplog, so stopping use of {} to continue with new primary",
                             primaryAddress);
@@ -456,6 +459,10 @@ public class Replicator {
                 return true;
             }
             // Otherwise, it is an event on a document in a collection ...
+            if (!databaseFilter.test(dbName)){
+                logger.debug("Skipping the event for database {} based on database.whitelist");
+                return true;
+            }
             CollectionId collectionId = new CollectionId(rsName, dbName, collectionName);
             if (collectionFilter.test(collectionId)) {
                 RecordsForCollection factory = recordMakers.forCollection(collectionId);
