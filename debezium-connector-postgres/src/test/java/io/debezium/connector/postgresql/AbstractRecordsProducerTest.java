@@ -62,7 +62,7 @@ import io.debezium.util.VariableLatch;
  */
 public abstract class AbstractRecordsProducerTest {
 
-    protected static final Pattern INSERT_TABLE_MATCHING_PATTERN = Pattern.compile("insert into (\\w+).+", Pattern.CASE_INSENSITIVE);
+    protected static final Pattern INSERT_TABLE_MATCHING_PATTERN = Pattern.compile("insert into \"?(\\w+)\"?.+", Pattern.CASE_INSENSITIVE);
 
     protected static final String INSERT_CASH_TYPES_STMT = "INSERT INTO cash_table (csh) VALUES ('$1234.11')";
     protected static final String INSERT_DATE_TIME_TYPES_STMT = "INSERT INTO time_table(ts, tz, date, ti, ttz, it) " +
@@ -86,9 +86,13 @@ public abstract class AbstractRecordsProducerTest {
     protected static final String INSERT_ARRAY_TYPES_STMT = "INSERT INTO array_table (int_array, bigint_array, text_array) " +
                                                              "VALUES ('{1,2,3}', '{1550166368505037572}', '{\"one\",\"two\",\"three\"}')";
 
+    protected static final String INSERT_QUOTED_TYPES_STMT = "INSERT INTO \"Quoted_Table\" (\"Quoted_Text_Column\") " +
+                                                             "VALUES ('some text')";
+
     protected static final Set<String> ALL_STMTS = new HashSet<>(Arrays.asList(INSERT_NUMERIC_TYPES_STMT, INSERT_DATE_TIME_TYPES_STMT,
                                                                  INSERT_BIN_TYPES_STMT, INSERT_GEOM_TYPES_STMT, INSERT_TEXT_TYPES_STMT,
-                                                                 INSERT_CASH_TYPES_STMT, INSERT_STRING_TYPES_STMT, INSERT_ARRAY_TYPES_STMT));
+                                                                 INSERT_CASH_TYPES_STMT, INSERT_STRING_TYPES_STMT, INSERT_ARRAY_TYPES_STMT,
+                                                                 INSERT_QUOTED_TYPES_STMT));
 
     protected List<SchemaAndValueField> schemasAndValuesForNumericType() {
         return Arrays.asList(new SchemaAndValueField("si", SchemaBuilder.OPTIONAL_INT16_SCHEMA, (short) 1),
@@ -179,6 +183,10 @@ public abstract class AbstractRecordsProducerTest {
                             );
     }
 
+    protected List<SchemaAndValueField> schemasAndValuesForQuotedTypes() {
+       return Arrays.asList(new SchemaAndValueField("Quoted_Text_Column", Schema.OPTIONAL_STRING_SCHEMA, "some text"));
+    }
+
     protected Map<String, List<SchemaAndValueField>> schemaAndValuesByTableName() {
         return ALL_STMTS.stream().collect(Collectors.toMap(AbstractRecordsProducerTest::tableNameFromInsertStmt,
                                                            this::schemasAndValuesForTable));
@@ -202,6 +210,8 @@ public abstract class AbstractRecordsProducerTest {
                 return schemasAndValuesForTextTypes();
             case INSERT_ARRAY_TYPES_STMT:
                 return schemasAndValuesForArrayTypes();
+            case INSERT_QUOTED_TYPES_STMT:
+                return schemasAndValuesForQuotedTypes();
             default:
                 throw new IllegalArgumentException("unknown statement:" + insertTableStatement);
         }
