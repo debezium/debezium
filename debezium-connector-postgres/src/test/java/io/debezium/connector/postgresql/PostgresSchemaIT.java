@@ -14,7 +14,12 @@ import io.debezium.data.Xml;
 import io.debezium.data.geometry.Point;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
-import io.debezium.time.*;
+import io.debezium.time.Date;
+import io.debezium.time.MicroDuration;
+import io.debezium.time.NanoTime;
+import io.debezium.time.NanoTimestamp;
+import io.debezium.time.ZonedTime;
+import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.AvroValidator;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
@@ -28,7 +33,9 @@ import java.util.stream.IntStream;
 
 import static io.debezium.connector.postgresql.PostgresConnectorConfig.SCHEMA_BLACKLIST;
 import static org.fest.assertions.Assertions.assertThat;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 /**
  * Unit test for {@link PostgresSchema}

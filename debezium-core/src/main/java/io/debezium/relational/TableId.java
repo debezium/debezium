@@ -70,6 +70,7 @@ public final class TableId implements Comparable<TableId> {
     private final String schemaName;
     private final String tableName;
     private final String id;
+    private final String quotedId;
 
     /**
      * Create a new table identifier.
@@ -86,6 +87,7 @@ public final class TableId implements Comparable<TableId> {
         this.tableName = tableName;
         assert this.tableName != null;
         this.id = tableId(this.catalogName, this.schemaName, this.tableName);
+        this.quotedId = quotedTableId(this.catalogName, this.schemaName, this.tableName);
     }
 
     /**
@@ -144,6 +146,11 @@ public final class TableId implements Comparable<TableId> {
         return id;
     }
 
+
+    public String toQuotedId() {
+        return quotedId;
+    }
+
     private static String tableId(String catalog, String schema, String table) {
         if (catalog == null || catalog.length() == 0) {
             if (schema == null || schema.length() == 0) {
@@ -155,5 +162,19 @@ public final class TableId implements Comparable<TableId> {
             return catalog + "." + table;
         }
         return catalog + "." + schema + "." + table;
+    }
+
+
+    private static String quotedTableId(String catalog, String schema, String table) {
+        if (catalog == null || catalog.length() == 0) {
+            if (schema == null || schema.length() == 0) {
+                return '"'+table+'"';
+            }
+            return '"'+ schema + "\".\"" + table + '"';
+        }
+        if (schema == null || schema.length() == 0) {
+            return '"' + catalog + "\".\"" + table + '"';
+        }
+        return '"' + catalog + "\".\"" + schema + "\".\"" + table + '"';
     }
 }
