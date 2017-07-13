@@ -94,7 +94,10 @@ or the following Docker commands:
 
 ### Making changes
 
-Everything the community does with the codebase -- fixing bugs, adding features, making improvements, adding tests, etc. -- should be described by an issue in our [JIRA](https://issues.jboss.org/projects/DBZ/issues/). If no such issue exists for what you want to do, please create an issue with a meaningful and easy-to-understand description. If you're new to the project, ask in our [chat room for developers](https://gitter.im/debezium/dev) for the 'developer' JIRA role so you can assign the issue to yourself, which lets other people know you're working on it.
+Everything the community does with the codebase -- fixing bugs, adding features, making improvements, adding tests, etc. -- should be described by an issue in our [JIRA](https://issues.jboss.org/projects/DBZ/issues/). If no such issue exists for what you want to do, please create an issue with a meaningful and easy-to-understand description.
+If you are going to work on a specific issue and it's your first contribution,
+please add a short comment to the issue, so other people know you're working on it.
+If you are contributing repeatedly, ask in our [chat room for developers](https://gitter.im/debezium/dev) for the 'developer' JIRA role so you can assign issues to yourself.
 
 Before you make any changes, be sure to switch to the `master` branch and pull the latest commits on the `master` branch from the upstream repository. Also, it's probably good to run a build and verify all tests pass *before* you make any changes.
 
@@ -129,7 +132,7 @@ DBZ-1235 Added support for ingesting data from PostgreSQL.
 
 The new ingest library supports PostgreSQL 9.4 or later. It requires a small plugin to be installed
 on the database server, and the database to be configured so that the ingest component can connect
-to the database and use logical decoding to read the transaction log. Several new unit tests and one 
+to the database and use logical decoding to read the transaction log. Several new unit tests and one
 integration test were added.
 ```
 
@@ -150,7 +153,7 @@ Once you're finished making your changes, your topic branch should have your com
 
     $ git push origin DBZ-1234
 
-Then, in a browser go to https://github.com/debezium/debezium, and you should see a small section near the top of the page with a button labeled "Create pull request". GitHub recognized that you pushed a new topic branch to your fork of the upstream repository, and it knows you probably want to create a pull request with those changes. Click on the button, and GitHub will present you with a short form that you should fill out with information about your pull request. The title should start with the JIRA issue and ending with a short phrase that summarizes the changes included in the pull request. (If the pull request contains a single commit, GitHub will automatically prepopulate the title and description fields from the commit message.) 
+Then, in a browser go to https://github.com/debezium/debezium, and you should see a small section near the top of the page with a button labeled "Create pull request". GitHub recognized that you pushed a new topic branch to your fork of the upstream repository, and it knows you probably want to create a pull request with those changes. Click on the button, and GitHub will present you with a short form that you should fill out with information about your pull request. The title should start with the JIRA issue and ending with a short phrase that summarizes the changes included in the pull request. (If the pull request contains a single commit, GitHub will automatically prepopulate the title and description fields from the commit message.)
 
 When completed, press the "Create" button and copy the URL to the new pull request. Go to the corresponding JIRA issue and record the pull request by pasting the URL into the "Pull request" field. (Be sure to not overwrite any URLs that were already in this field; this is how a single issue is bound to multiple pull requests.) Also, please add a JIRA comment with a clear description of what you changed. You might even use the commit message (except for the first line).
 
@@ -172,7 +175,7 @@ Once your pull request has been merged, feel free to delete your topic branch bo
 
     $ git branch -d DBZ-1234
 
-and in your fork: 
+and in your fork:
 
     $ git push origin :DBZ-1234
 
