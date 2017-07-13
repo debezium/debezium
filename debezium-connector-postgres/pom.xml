@@ -17,7 +17,7 @@
           work on all platforms. We'll set some of these as system properties during integration testing.
       -->
         <version.postgres.server>9.6</version.postgres.server>
-        <postgres.port>5432</postgres.port>
+        <postgres.port>5433</postgres.port>
         <postgres.user>postgres</postgres.user>
         <postgres.password>postgres</postgres.password>
         <postgres.db.name>postgres</postgres.db.name>
