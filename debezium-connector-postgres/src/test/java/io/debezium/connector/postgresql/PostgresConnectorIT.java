@@ -54,6 +54,10 @@ import io.debezium.util.Strings;
  */
 public class PostgresConnectorIT extends AbstractConnectorTest {
 
+    /*
+     * Specific tests that need to extend the initial DDL set should do it in a form of
+     * TestHelper.execute(SETUP_TABLES_STMT + ADDITIONAL_STATEMENTS)
+     */
     private static final String INSERT_STMT = "INSERT INTO s1.a (aa) VALUES (1);" +
                                               "INSERT INTO s2.a (aa) VALUES (1);";
     private static final String SETUP_TABLES_STMT = "DROP SCHEMA IF EXISTS s1 CASCADE;" +
