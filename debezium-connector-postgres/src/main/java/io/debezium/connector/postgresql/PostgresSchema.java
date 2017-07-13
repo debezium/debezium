@@ -14,11 +14,11 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-import io.debezium.connector.postgresql.connection.PostgresTableIdTransformer;
 import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.postgresql.connection.PostgresTableIdTransformer;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ServerInfo;

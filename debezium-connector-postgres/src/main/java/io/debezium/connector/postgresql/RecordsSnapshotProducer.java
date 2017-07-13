@@ -20,13 +20,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-import io.debezium.connector.postgresql.connection.PostgresTableIdTransformer;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.postgresql.util.PGmoney;
 
+import io.debezium.connector.postgresql.connection.PostgresTableIdTransformer;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
