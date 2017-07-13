@@ -6,6 +6,24 @@
 
 package io.debezium.connector.postgresql;
 
+import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.connector.postgresql.connection.ReplicationStream;
+import io.debezium.connector.postgresql.proto.PgProto;
+import io.debezium.data.Envelope;
+import io.debezium.relational.Column;
+import io.debezium.relational.Table;
+import io.debezium.relational.TableId;
+import io.debezium.relational.TableSchema;
+import io.debezium.util.LoggingContext;
+
+import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.source.SourceRecord;
+import org.postgresql.geometric.PGpoint;
+
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.Charset;
@@ -19,23 +37,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-import org.apache.kafka.connect.data.Field;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.source.SourceRecord;
-import org.postgresql.geometric.PGpoint;
-
-import io.debezium.annotation.ThreadSafe;
-import io.debezium.connector.postgresql.connection.ReplicationConnection;
-import io.debezium.connector.postgresql.connection.ReplicationStream;
-import io.debezium.connector.postgresql.proto.PgProto;
-import io.debezium.data.Envelope;
-import io.debezium.relational.Column;
-import io.debezium.relational.Table;
-import io.debezium.relational.TableId;
-import io.debezium.relational.TableSchema;
-import io.debezium.util.LoggingContext;
 /**
  * A {@link RecordsProducer} which creates {@link org.apache.kafka.connect.source.SourceRecord records} from a Postgres
  * streaming replication connection and {@link io.debezium.connector.postgresql.proto.PgProto messages}.
