@@ -36,7 +36,6 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.util.LoggingContext;
-
 /**
  * A {@link RecordsProducer} which creates {@link org.apache.kafka.connect.source.SourceRecord records} from a Postgres
  * streaming replication connection and {@link io.debezium.connector.postgresql.proto.PgProto messages}.
@@ -352,7 +351,8 @@ public class RecordsStreamProducer extends RecordsProducer {
         List<String> columnNames = table.columnNames();
         Object[] values = new Object[messageList.size()];
         messageList.forEach(message -> {
-            int position = columnNames.indexOf(message.getColumnName());
+            final String columnName = message.getColumnName().startsWith("\"") ? message.getColumnName().substring(1, message.getColumnName().length()-1) : message.getColumnName();
+            int position = columnNames.indexOf(columnName);
             assert position >= 0;
             values[position] = extractValueFromMessage(message);
         });
@@ -372,6 +372,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         // on what we have in the table metadata....
         return messageList.stream().filter(message -> {
             String columnName = message.getColumnName();
+            if ( columnName.startsWith("\"") && columnName.endsWith("\"")) columnName = columnName.substring(1, columnName.length()-1);
             Column column = table.columnWithName(columnName);
             if (column == null) {
                 logger.debug("found new column '{}' present in the server message which is not part of the table metadata; refreshing table schema", columnName);
