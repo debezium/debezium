@@ -252,7 +252,7 @@ public class Replicator {
         // We need to copy each collection, so put the collection IDs into a queue ...
         final List<CollectionId> collections = new ArrayList<>();
         primaryClient.collections().forEach(id -> {
-            if (databaseFilter.test(id.dbName()) && collectionFilter.test(id))collections.add(id);
+            if (databaseFilter.test(id.dbName()) && collectionFilter.test(id)) collections.add(id);
         });
         final Queue<CollectionId> collectionsToCopy = new ConcurrentLinkedQueue<>(collections);
         final int numThreads = Math.min(collections.size(), context.maxNumberOfCopyThreads());
@@ -432,7 +432,6 @@ public class Replicator {
                     logger.error("Get current primary executeBlocking", e);
                 }
                 ServerAddress serverAddress = address.get();
-
                 if (serverAddress != null && !serverAddress.equals(primaryAddress)) {
                     logger.info("Found new primary event in oplog, so stopping use of {} to continue with new primary",
                             primaryAddress);
