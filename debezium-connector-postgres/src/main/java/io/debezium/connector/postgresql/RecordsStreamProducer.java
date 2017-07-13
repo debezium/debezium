@@ -6,23 +6,6 @@
 
 package io.debezium.connector.postgresql;
 
-import io.debezium.annotation.ThreadSafe;
-import io.debezium.connector.postgresql.connection.ReplicationConnection;
-import io.debezium.connector.postgresql.connection.ReplicationStream;
-import io.debezium.connector.postgresql.proto.PgProto;
-import io.debezium.data.Envelope;
-import io.debezium.relational.Column;
-import io.debezium.relational.Table;
-import io.debezium.relational.TableId;
-import io.debezium.relational.TableSchema;
-import io.debezium.util.LoggingContext;
-import org.apache.kafka.connect.data.Field;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.source.SourceRecord;
-import org.postgresql.geometric.PGpoint;
-
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.Charset;
@@ -35,6 +18,25 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+
+import io.debezium.connector.postgresql.connection.PostgresTableIdTransformer;
+import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.source.SourceRecord;
+import org.postgresql.geometric.PGpoint;
+
+import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.connector.postgresql.connection.ReplicationStream;
+import io.debezium.connector.postgresql.proto.PgProto;
+import io.debezium.data.Envelope;
+import io.debezium.relational.Column;
+import io.debezium.relational.Table;
+import io.debezium.relational.TableId;
+import io.debezium.relational.TableSchema;
+import io.debezium.util.LoggingContext;
 
 /**
  * A {@link RecordsProducer} which creates {@link org.apache.kafka.connect.source.SourceRecord records} from a Postgres
@@ -332,7 +334,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         }
         recordConsumer.accept(record);
     }
-    
+
     private Object[] columnValues(List<PgProto.DatumMessage> messageList, TableId tableId, boolean refreshSchemaIfChanged)
             throws SQLException {
         if (messageList == null || messageList.isEmpty()) {
@@ -351,7 +353,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         List<String> columnNames = table.columnNames();
         Object[] values = new Object[messageList.size()];
         messageList.forEach(message -> {
-            final String columnName = message.getColumnName().startsWith("\"") ? message.getColumnName().substring(1, message.getColumnName().length()-1) : message.getColumnName();
+            final String columnName = PostgresTableIdTransformer.INSTANCE.fromSqlQuoted(message.getColumnName());
             int position = columnNames.indexOf(columnName);
             assert position >= 0;
             values[position] = extractValueFromMessage(message);
@@ -371,8 +373,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         // go through the list of columns from the message to figure out if any of them are new or have changed their type based
         // on what we have in the table metadata....
         return messageList.stream().filter(message -> {
-            String columnName = message.getColumnName();
-            if ( columnName.startsWith("\"") && columnName.endsWith("\"")) columnName = columnName.substring(1, columnName.length()-1);
+            final String columnName = PostgresTableIdTransformer.INSTANCE.fromSqlQuoted(message.getColumnName());
             Column column = table.columnWithName(columnName);
             if (column == null) {
                 logger.debug("found new column '{}' present in the server message which is not part of the table metadata; refreshing table schema", columnName);

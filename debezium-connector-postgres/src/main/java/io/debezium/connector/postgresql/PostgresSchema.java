@@ -18,6 +18,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.postgresql.connection.PostgresTableIdTransformer;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ServerInfo;
@@ -150,7 +151,7 @@ public class PostgresSchema {
     }
 
     protected Table tableFor(String fqn) {
-        return tableFor(TableId.parse(fqn, false));
+        return tableFor(TableId.parse(fqn, false, PostgresTableIdTransformer.INSTANCE));
     }
 
     protected String validateSchemaName(String name) {
@@ -166,7 +167,7 @@ public class PostgresSchema {
     }
 
     protected TableSchema schemaFor(String fqn) {
-        return schemaFor(TableId.parse(fqn, false));
+        return schemaFor(TableId.parse(fqn, false, PostgresTableIdTransformer.INSTANCE));
     }
 
     protected boolean isType(String localTypeName, int jdbcType) {
@@ -200,7 +201,7 @@ public class PostgresSchema {
     }
 
     protected static TableId parse(String table) {
-        TableId tableId = TableId.parse(table, false);
+        TableId tableId = TableId.parse(table, false, PostgresTableIdTransformer.INSTANCE);
         if (tableId == null) {
             return null;
         }

@@ -6,25 +6,12 @@
 
 package io.debezium.connector.postgresql;
 
-import io.debezium.data.Bits;
-import io.debezium.data.Json;
-import io.debezium.data.Uuid;
-import io.debezium.data.Xml;
-import io.debezium.data.geometry.Point;
-import io.debezium.time.Date;
-import io.debezium.time.MicroDuration;
-import io.debezium.time.NanoTime;
-import io.debezium.time.NanoTimestamp;
-import io.debezium.time.ZonedTime;
-import io.debezium.time.ZonedTimestamp;
-import io.debezium.util.VariableLatch;
-import org.apache.kafka.connect.data.Decimal;
-import org.apache.kafka.connect.data.Field;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.Assert;
+import static junit.framework.TestCase.assertTrue;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -47,12 +34,26 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static junit.framework.TestCase.assertTrue;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.fail;
+import org.apache.kafka.connect.data.Decimal;
+import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.Assert;
+
+import io.debezium.data.Bits;
+import io.debezium.data.Json;
+import io.debezium.data.Uuid;
+import io.debezium.data.Xml;
+import io.debezium.data.geometry.Point;
+import io.debezium.time.Date;
+import io.debezium.time.MicroDuration;
+import io.debezium.time.NanoTime;
+import io.debezium.time.NanoTimestamp;
+import io.debezium.time.ZonedTime;
+import io.debezium.time.ZonedTimestamp;
+import io.debezium.util.VariableLatch;
 
 /**
  * Base class for the integration tests for the different {@link RecordsProducer} instances

@@ -6,23 +6,23 @@
 
 package io.debezium.connector.postgresql;
 
-import io.debezium.data.Envelope;
-import io.debezium.data.VerifyRecord;
+import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
+import static io.debezium.connector.postgresql.TestHelper.topicName;
+import static junit.framework.TestCase.assertEquals;
+import static org.junit.Assert.assertFalse;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-
-import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
-import static io.debezium.connector.postgresql.TestHelper.topicName;
-import static junit.framework.TestCase.assertEquals;
-import static org.junit.Assert.assertFalse;
+import io.debezium.data.Envelope;
+import io.debezium.data.VerifyRecord;
 
 /**
  * Integration test for the {@link RecordsStreamProducer} class. This also tests indirectly the PG plugin functionality for
