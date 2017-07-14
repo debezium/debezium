@@ -25,7 +25,9 @@ public class ConnectionIT implements Testing {
 
     @Test
     public void shouldDoStuffWithDatabase() throws SQLException {
-        try (MySQLConnection conn = MySQLConnection.forTestDatabase("readbinlog_test");) {
+        final UniqueDatabase DATABASE = new UniqueDatabase("readbinlog", "readbinlog_test");
+        DATABASE.createAndInitialize();
+        try (MySQLConnection conn = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             conn.connect();
             // Set up the table as one transaction and wait to see the events ...
             conn.execute("DROP TABLE IF EXISTS person",

@@ -22,7 +22,6 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.util.Testing;
 
 /**
@@ -32,12 +31,15 @@ public class MySqlFixedLengthBinaryColumnIT extends AbstractConnectorTest {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-binary-column.txt")
                                                              .toAbsolutePath();
+    private final UniqueDatabase DATABASE = new UniqueDatabase("binarycolumnit", "binary_column_test")
+            .withDbHistoryPath(DB_HISTORY_PATH);
 
     private Configuration config;
 
     @Before
     public void beforeEach() {
         stopConnector();
+        DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Testing.Files.delete(DB_HISTORY_PATH);
     }
@@ -55,19 +57,8 @@ public class MySqlFixedLengthBinaryColumnIT extends AbstractConnectorTest {
     @FixFor("DBZ-254")
     public void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
-        config = Configuration.create()
-                .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
-                .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
-                .with(MySqlConnectorConfig.USER, "snapper")
-                .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                .with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.SecureConnectionMode.DISABLED)
-                .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                .with(MySqlConnectorConfig.SERVER_NAME, "binarycolumnit")
-                .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                .with(MySqlConnectorConfig.DATABASE_WHITELIST, "binary_column_test")
-                .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+        config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
-                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                 .build();
 
         // Start the connector ...
@@ -83,7 +74,7 @@ public class MySqlFixedLengthBinaryColumnIT extends AbstractConnectorTest {
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numInserts);
         stopConnector();
         assertThat(records).isNotNull();
-        List<SourceRecord> dmls = records.recordsForTopic("binarycolumnit.binary_column_test.dbz_254_binary_column_test");
+        List<SourceRecord> dmls = records.recordsForTopic(DATABASE.topicForTable("dbz_254_binary_column_test"));
         assertThat(dmls).hasSize(4);
 
         // source value has a trailing "00" which is not distinguishable from

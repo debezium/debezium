@@ -19,12 +19,10 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.data.KeyValueStore;
 import io.debezium.data.KeyValueStore.Collection;
 import io.debezium.data.SchemaChangeHistory;
 import io.debezium.data.VerifyRecord;
-import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.util.Testing;
 
 /**
@@ -34,8 +32,9 @@ import io.debezium.util.Testing;
 public class SnapshotReaderIT {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-snapshot.txt").toAbsolutePath();
-    private static final String DB_NAME = "connector_test_ro";
-    private static final String LOGICAL_NAME = "logical_server_name";
+    private final UniqueDatabase DATABASE = new UniqueDatabase("logical_server_name", "connector_test_ro")
+            .withDbHistoryPath(DB_HISTORY_PATH);
+    private final UniqueDatabase OTHER_DATABASE = new UniqueDatabase("logical_server_name", "connector_test", DATABASE);
 
     private Configuration config;
     private MySqlTaskContext context;
@@ -45,6 +44,8 @@ public class SnapshotReaderIT {
     @Before
     public void beforeEach() {
         Testing.Files.delete(DB_HISTORY_PATH);
+        DATABASE.createAndInitialize();
+        OTHER_DATABASE.createAndInitialize();
         completed = new CountDownLatch(1);
     }
 
@@ -68,28 +69,14 @@ public class SnapshotReaderIT {
     }
 
     protected Configuration.Builder simpleConfig() {
-        String hostname = System.getProperty("database.hostname");
-        String port = System.getProperty("database.port");
-        assertThat(hostname).isNotNull();
-        assertThat(port).isNotNull();
-        return Configuration.create()
-                            .with(MySqlConnectorConfig.HOSTNAME, hostname)
-                            .with(MySqlConnectorConfig.PORT, port)
-                            .with(MySqlConnectorConfig.USER, "snapper")
-                            .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                            .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
-                            .with(MySqlConnectorConfig.SERVER_ID, 18911)
-                            .with(MySqlConnectorConfig.SERVER_NAME, LOGICAL_NAME)
-                            .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                            .with(MySqlConnectorConfig.DATABASE_WHITELIST, DB_NAME)
-                            .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                            .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH);
+        return DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
     }
 
     @Test
     public void shouldCreateSnapshotOfSingleDatabase() throws Exception {
-        config = simpleConfig().build();
+        config = simpleConfig()
+                .build();
         context = new MySqlTaskContext(config);
         context.start();
         reader = new SnapshotReader("snapshot", context);
@@ -103,8 +90,8 @@ public class SnapshotReaderIT {
         // Poll for records ...
         // Testing.Print.enable();
         List<SourceRecord> records = null;
-        KeyValueStore store = KeyValueStore.createForTopicsBeginningWith(LOGICAL_NAME + ".");
-        SchemaChangeHistory schemaChanges = new SchemaChangeHistory(LOGICAL_NAME);
+        KeyValueStore store = KeyValueStore.createForTopicsBeginningWith(DATABASE.getServerName() + ".");
+        SchemaChangeHistory schemaChanges = new SchemaChangeHistory(DATABASE.getServerName());
         while ((records = reader.poll()) != null) {
             records.forEach(record -> {
                 VerifyRecord.isValid(record);
@@ -120,7 +107,7 @@ public class SnapshotReaderIT {
 
         // Check the records via the store ...
         assertThat(store.collectionCount()).isEqualTo(4);
-        Collection products = store.collection(DB_NAME, "products");
+        Collection products = store.collection(DATABASE.getDatabaseName(), "products");
         assertThat(products.numberOfCreates()).isEqualTo(9);
         assertThat(products.numberOfUpdates()).isEqualTo(0);
         assertThat(products.numberOfDeletes()).isEqualTo(0);
@@ -129,7 +116,7 @@ public class SnapshotReaderIT {
         assertThat(products.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(products.numberOfValueSchemaChanges()).isEqualTo(1);
 
-        Collection products_on_hand = store.collection(DB_NAME, "products_on_hand");
+        Collection products_on_hand = store.collection(DATABASE.getDatabaseName(), "products_on_hand");
         assertThat(products_on_hand.numberOfCreates()).isEqualTo(9);
         assertThat(products_on_hand.numberOfUpdates()).isEqualTo(0);
         assertThat(products_on_hand.numberOfDeletes()).isEqualTo(0);
@@ -138,7 +125,7 @@ public class SnapshotReaderIT {
         assertThat(products_on_hand.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(products_on_hand.numberOfValueSchemaChanges()).isEqualTo(1);
 
-        Collection customers = store.collection(DB_NAME, "customers");
+        Collection customers = store.collection(DATABASE.getDatabaseName(), "customers");
         assertThat(customers.numberOfCreates()).isEqualTo(4);
         assertThat(customers.numberOfUpdates()).isEqualTo(0);
         assertThat(customers.numberOfDeletes()).isEqualTo(0);
@@ -147,7 +134,7 @@ public class SnapshotReaderIT {
         assertThat(customers.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(customers.numberOfValueSchemaChanges()).isEqualTo(1);
 
-        Collection orders = store.collection(DB_NAME, "orders");
+        Collection orders = store.collection(DATABASE.getDatabaseName(), "orders");
         assertThat(orders.numberOfCreates()).isEqualTo(5);
         assertThat(orders.numberOfUpdates()).isEqualTo(0);
         assertThat(orders.numberOfDeletes()).isEqualTo(0);
@@ -167,7 +154,7 @@ public class SnapshotReaderIT {
 
     @Test
     public void shouldCreateSnapshotOfSingleDatabaseUsingReadEvents() throws Exception {
-        config = simpleConfig().with(MySqlConnectorConfig.DATABASE_WHITELIST, "connector_(.*)").build();
+        config = simpleConfig().with(MySqlConnectorConfig.DATABASE_WHITELIST, "connector_(.*)_" + DATABASE.getIdentifier()).build();
         context = new MySqlTaskContext(config);
         context.start();
         reader = new SnapshotReader("snapshot", context);
@@ -181,8 +168,8 @@ public class SnapshotReaderIT {
         // Poll for records ...
         // Testing.Print.enable();
         List<SourceRecord> records = null;
-        KeyValueStore store = KeyValueStore.createForTopicsBeginningWith(LOGICAL_NAME + ".");
-        SchemaChangeHistory schemaChanges = new SchemaChangeHistory(LOGICAL_NAME);
+        KeyValueStore store = KeyValueStore.createForTopicsBeginningWith(DATABASE.getServerName() + ".");
+        SchemaChangeHistory schemaChanges = new SchemaChangeHistory(DATABASE.getServerName());
         while ((records = reader.poll()) != null) {
             records.forEach(record -> {
                 VerifyRecord.isValid(record);
@@ -197,10 +184,10 @@ public class SnapshotReaderIT {
         assertThat(schemaChanges.recordCount()).isEqualTo(0);
 
         // Check the records via the store ...
-        assertThat(store.databases()).containsOnly(DB_NAME, "connector_test"); // 2 databases
+        assertThat(store.databases()).containsOnly(DATABASE.getDatabaseName(), OTHER_DATABASE.getDatabaseName()); // 2 databases
         assertThat(store.collectionCount()).isEqualTo(8); // 2 databases
 
-        Collection products = store.collection(DB_NAME, "products");
+        Collection products = store.collection(DATABASE.getDatabaseName(), "products");
         assertThat(products.numberOfCreates()).isEqualTo(0);
         assertThat(products.numberOfUpdates()).isEqualTo(0);
         assertThat(products.numberOfDeletes()).isEqualTo(0);
@@ -209,7 +196,7 @@ public class SnapshotReaderIT {
         assertThat(products.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(products.numberOfValueSchemaChanges()).isEqualTo(1);
 
-        Collection products_on_hand = store.collection(DB_NAME, "products_on_hand");
+        Collection products_on_hand = store.collection(DATABASE.getDatabaseName(), "products_on_hand");
         assertThat(products_on_hand.numberOfCreates()).isEqualTo(0);
         assertThat(products_on_hand.numberOfUpdates()).isEqualTo(0);
         assertThat(products_on_hand.numberOfDeletes()).isEqualTo(0);
@@ -218,7 +205,7 @@ public class SnapshotReaderIT {
         assertThat(products_on_hand.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(products_on_hand.numberOfValueSchemaChanges()).isEqualTo(1);
 
-        Collection customers = store.collection(DB_NAME, "customers");
+        Collection customers = store.collection(DATABASE.getDatabaseName(), "customers");
         assertThat(customers.numberOfCreates()).isEqualTo(0);
         assertThat(customers.numberOfUpdates()).isEqualTo(0);
         assertThat(customers.numberOfDeletes()).isEqualTo(0);
@@ -227,7 +214,7 @@ public class SnapshotReaderIT {
         assertThat(customers.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(customers.numberOfValueSchemaChanges()).isEqualTo(1);
 
-        Collection orders = store.collection(DB_NAME, "orders");
+        Collection orders = store.collection(DATABASE.getDatabaseName(), "orders");
         assertThat(orders.numberOfCreates()).isEqualTo(0);
         assertThat(orders.numberOfUpdates()).isEqualTo(0);
         assertThat(orders.numberOfDeletes()).isEqualTo(0);
@@ -261,8 +248,8 @@ public class SnapshotReaderIT {
         // Poll for records ...
         // Testing.Print.enable();
         List<SourceRecord> records = null;
-        KeyValueStore store = KeyValueStore.createForTopicsBeginningWith(LOGICAL_NAME + ".");
-        SchemaChangeHistory schemaChanges = new SchemaChangeHistory(LOGICAL_NAME);
+        KeyValueStore store = KeyValueStore.createForTopicsBeginningWith(DATABASE.getServerName() + ".");
+        SchemaChangeHistory schemaChanges = new SchemaChangeHistory(DATABASE.getServerName());
         while ((records = reader.poll()) != null) {
             records.forEach(record -> {
                 VerifyRecord.isValid(record);
@@ -276,11 +263,11 @@ public class SnapshotReaderIT {
         // There should be 11 schema changes plus 1 SET statement ...
         assertThat(schemaChanges.recordCount()).isEqualTo(12);
         assertThat(schemaChanges.databaseCount()).isEqualTo(2);
-        assertThat(schemaChanges.databases()).containsOnly(DB_NAME, "");
+        assertThat(schemaChanges.databases()).containsOnly(DATABASE.getDatabaseName(), "");
 
         // Check the records via the store ...
         assertThat(store.collectionCount()).isEqualTo(4);
-        Collection products = store.collection(DB_NAME, "products");
+        Collection products = store.collection(DATABASE.getDatabaseName(), "products");
         assertThat(products.numberOfCreates()).isEqualTo(9);
         assertThat(products.numberOfUpdates()).isEqualTo(0);
         assertThat(products.numberOfDeletes()).isEqualTo(0);
@@ -289,7 +276,7 @@ public class SnapshotReaderIT {
         assertThat(products.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(products.numberOfValueSchemaChanges()).isEqualTo(1);
 
-        Collection products_on_hand = store.collection(DB_NAME, "products_on_hand");
+        Collection products_on_hand = store.collection(DATABASE.getDatabaseName(), "products_on_hand");
         assertThat(products_on_hand.numberOfCreates()).isEqualTo(9);
         assertThat(products_on_hand.numberOfUpdates()).isEqualTo(0);
         assertThat(products_on_hand.numberOfDeletes()).isEqualTo(0);
@@ -298,7 +285,7 @@ public class SnapshotReaderIT {
         assertThat(products_on_hand.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(products_on_hand.numberOfValueSchemaChanges()).isEqualTo(1);
 
-        Collection customers = store.collection(DB_NAME, "customers");
+        Collection customers = store.collection(DATABASE.getDatabaseName(), "customers");
         assertThat(customers.numberOfCreates()).isEqualTo(4);
         assertThat(customers.numberOfUpdates()).isEqualTo(0);
         assertThat(customers.numberOfDeletes()).isEqualTo(0);
@@ -307,7 +294,7 @@ public class SnapshotReaderIT {
         assertThat(customers.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(customers.numberOfValueSchemaChanges()).isEqualTo(1);
 
-        Collection orders = store.collection(DB_NAME, "orders");
+        Collection orders = store.collection(DATABASE.getDatabaseName(), "orders");
         assertThat(orders.numberOfCreates()).isEqualTo(5);
         assertThat(orders.numberOfUpdates()).isEqualTo(0);
         assertThat(orders.numberOfDeletes()).isEqualTo(0);
@@ -341,8 +328,8 @@ public class SnapshotReaderIT {
         // Poll for records ...
         // Testing.Print.enable();
         List<SourceRecord> records = null;
-        KeyValueStore store = KeyValueStore.createForTopicsBeginningWith(LOGICAL_NAME + ".");
-        SchemaChangeHistory schemaChanges = new SchemaChangeHistory(LOGICAL_NAME);
+        KeyValueStore store = KeyValueStore.createForTopicsBeginningWith(DATABASE.getServerName() + ".");
+        SchemaChangeHistory schemaChanges = new SchemaChangeHistory(DATABASE.getServerName());
         while ((records = reader.poll()) != null) {
             records.forEach(record -> {
                 VerifyRecord.isValid(record);
