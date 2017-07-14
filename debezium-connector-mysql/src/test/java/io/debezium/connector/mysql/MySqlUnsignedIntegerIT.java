@@ -5,6 +5,12 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.fest.assertions.Assertions.assertThat;
+
+import java.math.BigDecimal;
+import java.nio.file.Path;
+import java.sql.SQLException;
+
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -12,17 +18,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.math.BigDecimal;
-import java.nio.file.Path;
-import java.sql.SQLException;
-
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.util.Testing;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 /**
  * @author Omar Al-Safi
@@ -36,10 +36,12 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
 
     private static final String SERVER_NAME = "unsignednumericit";
     private static final String DATABASE_NAME = "unsigned_integer_test";
+    private final UniqueDatabase DATABASE = new UniqueDatabase(DATABASE_NAME, SERVER_NAME);
 
     @Before
     public void beforeEach() {
         stopConnector();
+        DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Testing.Files.delete(DB_HISTORY_PATH);
     }
@@ -65,7 +67,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
                 .with(MySqlConnectorConfig.SERVER_NAME, SERVER_NAME)
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                .with(MySqlConnectorConfig.DATABASE_WHITELIST, DATABASE_NAME)
+                .with(MySqlConnectorConfig.DATABASE_WHITELIST, DATABASE.getDatabaseName())
                 .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
                 .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
@@ -84,26 +86,26 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         stopConnector();
         assertThat(records).isNotNull();
         assertThat(records.recordsForTopic(SERVER_NAME).size()).isEqualTo(numCreateDatabase + numCreateTables);
-        assertThat(records.recordsForTopic(SERVER_NAME + "." + DATABASE_NAME + ".dbz_228_tinyint_unsigned").size())
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_228_tinyint_unsigned")).size())
                 .isEqualTo(3);
-        assertThat(records.recordsForTopic(SERVER_NAME + "." + DATABASE_NAME + ".dbz_228_smallint_unsigned").size())
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_228_smallint_unsigned")).size())
                 .isEqualTo(3);
-        assertThat(records.recordsForTopic(SERVER_NAME + "." + DATABASE_NAME + ".dbz_228_mediumint_unsigned").size())
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_228_mediumint_unsigned")).size())
                 .isEqualTo(3);
-        assertThat(records.recordsForTopic(SERVER_NAME + "." + DATABASE_NAME + ".dbz_228_int_unsigned").size())
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_228_int_unsigned")).size())
                 .isEqualTo(3);
-        assertThat(records.recordsForTopic(SERVER_NAME + "." + DATABASE_NAME + ".dbz_228_bigint_unsigned").size())
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_228_bigint_unsigned")).size())
                 .isEqualTo(3);
         assertThat(records.topics().size()).isEqualTo(1 + numCreateTables);
         assertThat(records.databaseNames().size()).isEqualTo(1);
-        assertThat(records.ddlRecordsForDatabase(DATABASE_NAME).size()).isEqualTo(
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(
                 numCreateDatabase + numCreateTables);
         assertThat(records.ddlRecordsForDatabase("regression_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("connector_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("json_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("geometry_test")).isNull();
-        records.ddlRecordsForDatabase(DATABASE_NAME).forEach(this::print);
+        records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).forEach(this::print);
 
         // Check that all records are valid, can be serialized and deserialized ...
         records.forEach(this::validate);
@@ -135,7 +137,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
                 .with(MySqlConnectorConfig.SERVER_NAME, SERVER_NAME)
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                .with(MySqlConnectorConfig.DATABASE_WHITELIST, DATABASE_NAME)
+                .with(MySqlConnectorConfig.DATABASE_WHITELIST, DATABASE.getDatabaseName())
                 .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                 .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                 .build();
@@ -155,26 +157,26 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         stopConnector();
         assertThat(records).isNotNull();
         assertThat(records.recordsForTopic(SERVER_NAME).size()).isEqualTo(numDdlRecords + numSetVariables);
-        assertThat(records.recordsForTopic(SERVER_NAME + "." + DATABASE_NAME + ".dbz_228_tinyint_unsigned").size())
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_228_tinyint_unsigned")).size())
                 .isEqualTo(3);
-        assertThat(records.recordsForTopic(SERVER_NAME + "." + DATABASE_NAME + ".dbz_228_smallint_unsigned").size())
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_228_smallint_unsigned")).size())
                 .isEqualTo(3);
-        assertThat(records.recordsForTopic(SERVER_NAME + "." + DATABASE_NAME + ".dbz_228_mediumint_unsigned").size())
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_228_mediumint_unsigned")).size())
                 .isEqualTo(3);
-        assertThat(records.recordsForTopic(SERVER_NAME + "." + DATABASE_NAME + ".dbz_228_int_unsigned").size())
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_228_int_unsigned")).size())
                 .isEqualTo(3);
-        assertThat(records.recordsForTopic(SERVER_NAME + "." + DATABASE_NAME + ".dbz_228_bigint_unsigned").size())
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_228_bigint_unsigned")).size())
                 .isEqualTo(3);
         assertThat(records.topics().size()).isEqualTo(numTables + 1);
-        assertThat(records.databaseNames()).containsOnly(DATABASE_NAME, "");
-        assertThat(records.ddlRecordsForDatabase(DATABASE_NAME).size()).isEqualTo(numDdlRecords);
+        assertThat(records.databaseNames()).containsOnly(DATABASE.getDatabaseName(), "");
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(numDdlRecords);
         assertThat(records.ddlRecordsForDatabase("regression_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("connector_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("json_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("geometry_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("").size()).isEqualTo(1); // SET statement
-        records.ddlRecordsForDatabase(DATABASE_NAME).forEach(this::print);
+        records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).forEach(this::print);
 
         // Check that all records are valid, can be serialized and deserialized ...
         records.forEach(this::validate);

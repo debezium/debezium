@@ -30,6 +30,10 @@ import mil.nga.wkb.io.WkbGeometryReader;
  */
 public class MySqlGeometryIT extends AbstractConnectorTest {
 
+    private static final String DATABASE_NAME = "geometry_test";
+    private static final String SERVER_NAME = "geometryit";
+    private final UniqueDatabase DATABASE = new UniqueDatabase(DATABASE_NAME, SERVER_NAME);
+
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-json.txt")
                                                              .toAbsolutePath();
 
@@ -38,6 +42,7 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
     @Before
     public void beforeEach() {
         stopConnector();
+        DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Testing.Files.delete(DB_HISTORY_PATH);
     }
@@ -61,9 +66,9 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                               .with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.SecureConnectionMode.DISABLED)
                               .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                              .with(MySqlConnectorConfig.SERVER_NAME, "geometryit")
+                              .with(MySqlConnectorConfig.SERVER_NAME, DATABASE.getServerName())
                               .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                              .with(MySqlConnectorConfig.DATABASE_WHITELIST, "geometry_test")
+                              .with(MySqlConnectorConfig.DATABASE_WHITELIST, DATABASE.getDatabaseName())
                               .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                               .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
@@ -81,17 +86,17 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords);
         stopConnector();
         assertThat(records).isNotNull();
-        assertThat(records.recordsForTopic("geometryit").size()).isEqualTo(numCreateDatabase + numCreateTables);
-        assertThat(records.recordsForTopic("geometryit.geometry_test.dbz_222_point").size()).isEqualTo(4);
+        assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(numCreateDatabase + numCreateTables);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_222_point")).size()).isEqualTo(4);
         assertThat(records.topics().size()).isEqualTo(1 + numCreateTables);
         assertThat(records.databaseNames().size()).isEqualTo(1);
-        assertThat(records.ddlRecordsForDatabase("geometry_test").size()).isEqualTo(
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(
             numCreateDatabase + numCreateTables);
         assertThat(records.ddlRecordsForDatabase("regression_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("connector_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("json_test")).isNull();
-        records.ddlRecordsForDatabase("geometry_test").forEach(this::print);
+        records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).forEach(this::print);
 
         // Check that all records are valid, can be serialized and deserialized ...
         records.forEach(this::validate);
@@ -113,9 +118,9 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                               .with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.SecureConnectionMode.DISABLED)
                               .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                              .with(MySqlConnectorConfig.SERVER_NAME, "geometryit")
+                              .with(MySqlConnectorConfig.SERVER_NAME, DATABASE.getServerName())
                               .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                              .with(MySqlConnectorConfig.DATABASE_WHITELIST, "geometry_test")
+                              .with(MySqlConnectorConfig.DATABASE_WHITELIST, DATABASE.getDatabaseName())
                               .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                               .build();
@@ -134,17 +139,17 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
         SourceRecords records = consumeRecordsByTopic(numDdlRecords + numSetVariables + numDataRecords);
         stopConnector();
         assertThat(records).isNotNull();
-        assertThat(records.recordsForTopic("geometryit").size()).isEqualTo(numDdlRecords + numSetVariables);
-        assertThat(records.recordsForTopic("geometryit.geometry_test.dbz_222_point").size()).isEqualTo(4);
+        assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(numDdlRecords + numSetVariables);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_222_point")).size()).isEqualTo(4);
         assertThat(records.topics().size()).isEqualTo(numTables + 1);
-        assertThat(records.databaseNames()).containsOnly("geometry_test", "");
-        assertThat(records.ddlRecordsForDatabase("geometry_test").size()).isEqualTo(numDdlRecords);
+        assertThat(records.databaseNames()).containsOnly(DATABASE.getDatabaseName(), "");
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(numDdlRecords);
         assertThat(records.ddlRecordsForDatabase("regression_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("connector_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("json_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("").size()).isEqualTo(1); // SET statement
-        records.ddlRecordsForDatabase("geometry_test").forEach(this::print);
+        records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).forEach(this::print);
 
         // Check that all records are valid, can be serialized and deserialized ...
         records.forEach(this::validate);

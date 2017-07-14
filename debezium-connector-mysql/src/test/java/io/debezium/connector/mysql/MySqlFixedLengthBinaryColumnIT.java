@@ -30,6 +30,10 @@ import io.debezium.util.Testing;
  */
 public class MySqlFixedLengthBinaryColumnIT extends AbstractConnectorTest {
 
+    private static final String DATABASE_NAME = "binary_column_test";
+    private static final String SERVER_NAME = "binarycolumnit";
+    private final UniqueDatabase DATABASE = new UniqueDatabase(DATABASE_NAME, SERVER_NAME);
+
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-binary-column.txt")
                                                              .toAbsolutePath();
 
@@ -38,6 +42,7 @@ public class MySqlFixedLengthBinaryColumnIT extends AbstractConnectorTest {
     @Before
     public void beforeEach() {
         stopConnector();
+        DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Testing.Files.delete(DB_HISTORY_PATH);
     }
@@ -62,9 +67,9 @@ public class MySqlFixedLengthBinaryColumnIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                 .with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.SecureConnectionMode.DISABLED)
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                .with(MySqlConnectorConfig.SERVER_NAME, "binarycolumnit")
+                .with(MySqlConnectorConfig.SERVER_NAME, DATABASE.getServerName())
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                .with(MySqlConnectorConfig.DATABASE_WHITELIST, "binary_column_test")
+                .with(MySqlConnectorConfig.DATABASE_WHITELIST, DATABASE.getDatabaseName())
                 .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
                 .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
@@ -83,7 +88,7 @@ public class MySqlFixedLengthBinaryColumnIT extends AbstractConnectorTest {
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numInserts);
         stopConnector();
         assertThat(records).isNotNull();
-        List<SourceRecord> dmls = records.recordsForTopic("binarycolumnit.binary_column_test.dbz_254_binary_column_test");
+        List<SourceRecord> dmls = records.recordsForTopic(DATABASE.topicForTable("dbz_254_binary_column_test"));
         assertThat(dmls).hasSize(4);
 
         // source value has a trailing "00" which is not distinguishable from
