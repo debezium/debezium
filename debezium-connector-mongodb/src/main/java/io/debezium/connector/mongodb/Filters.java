@@ -31,10 +31,13 @@ public final class Filters {
      */
     public Filters(Configuration config) {
         String dbWhitelist = config.getString(MongoDbConnectorConfig.DATABASE_WHITELIST);
+        String dbBlacklist = config.getString(MongoDbConnectorConfig.DATABASE_BLACKLIST);
         if (dbWhitelist != null && !dbWhitelist.trim().isEmpty()){
             databaseFilter = Predicates.includes(dbWhitelist);
+         } else if (dbBlacklist != null && !dbBlacklist.trim().isEmpty()) {
+            databaseFilter = Predicates.excludes(dbBlacklist);
         } else {
-            databaseFilter = Predicates.includes(".*");
+            databaseFilter = (db)->true;
         }
 
         String whitelist = config.getString(MongoDbConnectorConfig.COLLECTION_WHITELIST);

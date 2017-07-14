@@ -162,18 +162,31 @@ public class MongoDbConnectorConfig {
                                                    .withDependents(COLLECTION_LIST_NAME)
                                                    .withDescription("The databases for which changes are to be captured");
 
-        /**
-     * A comma-separated list of regular expressions that match the fully-qualified namespaces of collections to be monitored.
-     * Fully-qualified namespaces for collections are of the form {@code '<databaseName>.<collectionName>'}.
-     * May not be used with {@link #COLLECTION_BLACKLIST}.
+    /**
+     * A comma-separated list of regular expressions that match the databases to be monitored.
+     * May not be used with {@link #DATABASE_BLACKLIST}.
      */
     public static final Field DATABASE_WHITELIST = Field.create("database.whitelist")
                                                         .withDisplayName("DB Whitelist")
                                                         .withType(Type.LIST)
                                                         .withWidth(Width.LONG)
                                                         .withImportance(Importance.HIGH)
+                                                        .withValidation(Field::isListOfRegex,
+                                                                        MongoDbConnectorConfig::validateDatabaseBlacklist)
                                                         .withDescription("The databases for which changes are to be captured");
 
+    /**
+     * A comma-separated list of regular expressions that match the databases to be excluded.
+     * May not be used with {@link #DATABASE_WHITELIST}.
+     */
+    public static final Field DATABASE_BLACKLIST = Field.create("database.blacklist")
+                                                        .withDisplayName("DB Blacklist")
+                                                        .withType(Type.LIST)
+                                                        .withWidth(Width.LONG)
+                                                        .withImportance(Importance.HIGH)
+                                                        .withValidation(Field::isListOfRegex)
+                                                        .withDescription("The databases for which changes are to be excluded");
+    
     /**
      * A comma-separated list of regular expressions that match the fully-qualified namespaces of collections to be monitored.
      * Fully-qualified namespaces for collections are of the form {@code '<databaseName>.<collectionName>'}.
@@ -211,7 +224,9 @@ public class MongoDbConnectorConfig {
                                                      DATABASE_LIST,
                                                      COLLECTION_WHITELIST,
                                                      COLLECTION_BLACKLIST,
-                                                     AUTO_DISCOVER_MEMBERS);
+                                                     AUTO_DISCOVER_MEMBERS,
+                                                     DATABASE_WHITELIST,
+                                                     DATABASE_BLACKLIST);
 
     protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS;
 
@@ -219,7 +234,7 @@ public class MongoDbConnectorConfig {
         ConfigDef config = new ConfigDef();
         Field.group(config, "MongoDB", HOSTS, USER, PASSWORD, LOGICAL_NAME, CONNECT_BACKOFF_INITIAL_DELAY_MS,
                     CONNECT_BACKOFF_MAX_DELAY_MS, MAX_FAILED_CONNECTIONS, AUTO_DISCOVER_MEMBERS);
-        Field.group(config, "Events", DATABASE_LIST, COLLECTION_WHITELIST, COLLECTION_BLACKLIST);
+        Field.group(config, "Events", DATABASE_LIST, DATABASE_WHITELIST, DATABASE_BLACKLIST, COLLECTION_WHITELIST, COLLECTION_BLACKLIST);
         Field.group(config, "Connector", MAX_COPY_THREADS, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS);
         return config;
     }
@@ -260,6 +275,16 @@ public class MongoDbConnectorConfig {
         String blacklist = config.getString(COLLECTION_BLACKLIST);
         if (whitelist != null && blacklist != null) {
             problems.accept(COLLECTION_BLACKLIST, blacklist, "Whitelist is already specified");
+            return 1;
+        }
+        return 0;
+    }
+    
+    private static int validateDatabaseBlacklist(Configuration config, Field field, ValidationOutput problems) {
+        String whitelist = config.getString(DATABASE_WHITELIST);
+        String blacklist = config.getString(DATABASE_BLACKLIST);
+        if (whitelist != null && blacklist != null) {
+            problems.accept(DATABASE_BLACKLIST, blacklist, "Whitelist is already specified");
             return 1;
         }
         return 0;
