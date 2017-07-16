@@ -8,11 +8,13 @@ package io.debezium.connector.postgresql.connection;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.postgresql.jdbc.PgConnection;
 import org.postgresql.replication.LogSequenceNumber;
 import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
@@ -25,7 +27,7 @@ import io.debezium.relational.TableId;
 
 /**
  * {@link JdbcConnection} connection extension used for connecting to Postgres instances.
- * 
+ *
  * @author Horia Chiorean
  */
 public class PostgresConnection extends JdbcConnection {
@@ -39,7 +41,7 @@ public class PostgresConnection extends JdbcConnection {
 
     /**
      * Creates a Postgres connection using the supplied configuration.
-     * 
+     *
      * @param config {@link Configuration} instance, may not be null.
      */
     public PostgresConnection(Configuration config) {
@@ -48,7 +50,7 @@ public class PostgresConnection extends JdbcConnection {
 
     /**
      * Returns a JDBC connection string for the current configuration.
-     * 
+     *
      * @return a {@code String} where the variables in {@code urlPattern} are replaced with values from the configuration
      */
     public String connectionString() {
@@ -57,7 +59,7 @@ public class PostgresConnection extends JdbcConnection {
 
     /**
      * Executes a series of statements without explicitly committing the connection.
-     * 
+     *
      * @param statements a series of statements to execute
      * @return this object so methods can be chained together; never null
      * @throws SQLException if anything fails
@@ -75,7 +77,7 @@ public class PostgresConnection extends JdbcConnection {
     /**
      * Prints out information about the REPLICA IDENTITY status of a table.
      * This in turn determines how much information is available for UPDATE and DELETE operations for logical replication.
-     * 
+     *
      * @param tableId the identifier of the table
      * @return the replica identity information; never null
      * @throws SQLException if there is a problem obtaining the replica identity information for the given table
@@ -130,7 +132,7 @@ public class PostgresConnection extends JdbcConnection {
 
     /**
      * Drops a replication slot that was created on the DB
-     * 
+     *
      * @param slotName the name of the replication slot, may not be null
      * @return {@code true} if the slot was dropped, {@code false} otherwise
      */
@@ -165,7 +167,7 @@ public class PostgresConnection extends JdbcConnection {
 
     /**
      * Returns the PG id of the current active transaction
-     * 
+     *
      * @return a PG transaction identifier, or null if no tx is active
      * @throws SQLException if anything fails.
      */
@@ -182,7 +184,7 @@ public class PostgresConnection extends JdbcConnection {
 
     /**
      * Returns the current position in the server tx log.
-     * 
+     *
      * @return a long value, never negative
      * @throws SQLException if anything unexpected fails.
      */
@@ -199,7 +201,7 @@ public class PostgresConnection extends JdbcConnection {
 
     /**
      * Returns information about the PG server to which this instance is connected.
-     * 
+     *
      * @return a {@link ServerInfo} instance, never {@code null}
      * @throws SQLException if anything fails
      */
@@ -241,4 +243,22 @@ public class PostgresConnection extends JdbcConnection {
         }
     }
 
+    @Override
+    protected int resolveComponentType(ResultSet rs) {
+        try {
+            String typeName = rs.getString(6);
+            if (typeName.charAt(0) == '_') {
+                PgConnection connection = (PgConnection)connection();
+                return connection.getTypeInfo().getPGType(typeName);
+            }
+            else {
+                LOGGER.warn("resolveComponentType was expecting typeName to start with '_' character: '{}'", typeName);
+            }
+            return -1;
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Unexpected error trying to get underlying JDBC type for an array:", e);
+            return super.resolveComponentType(rs);
+        }
+    }
 }

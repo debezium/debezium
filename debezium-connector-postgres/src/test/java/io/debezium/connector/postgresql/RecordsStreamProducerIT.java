@@ -95,6 +95,17 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
     
     @Test
+    public void shouldReceiveChangesForInsertsWithArrayTypes() throws Exception {
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer);
+
+        // Quoted column name
+        assertInsert(INSERT_ARRAY_TYPES_STMT, schemasAndValuesForArrayTypes());
+    }
+
+    @Test
     public void shouldReceiveChangesForNewTable() throws Exception {
         String statement = "CREATE SCHEMA s1;" +
                            "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +

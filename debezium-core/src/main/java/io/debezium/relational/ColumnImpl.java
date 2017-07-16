@@ -11,6 +11,7 @@ final class ColumnImpl implements Column, Comparable<Column> {
     private final String name;
     private final int position;
     private final int jdbcType;
+    private final int componentType;
     private final String typeName;
     private final String typeExpression;
     private final String charsetName;
@@ -20,12 +21,13 @@ final class ColumnImpl implements Column, Comparable<Column> {
     private final boolean autoIncremented;
     private final boolean generated;
 
-    protected ColumnImpl(String columnName, int position, int jdbcType, String typeName, String typeExpression,
+    protected ColumnImpl(String columnName, int position, int jdbcType, int componentType, String typeName, String typeExpression,
                          String charsetName, String defaultCharsetName, int columnLength, int columnScale,
                          boolean optional, boolean autoIncremented, boolean generated) {
         this.name = columnName;
         this.position = position;
         this.jdbcType = jdbcType;
+        this.componentType = componentType;
         this.typeName = typeName;
         this.typeExpression = typeExpression;
         // We want to always capture the charset name for the column (if the column needs one) ...
@@ -56,6 +58,11 @@ final class ColumnImpl implements Column, Comparable<Column> {
     @Override
     public int jdbcType() {
         return jdbcType;
+    }
+
+    @Override
+    public int componentType() {
+        return componentType;
     }
 
     @Override

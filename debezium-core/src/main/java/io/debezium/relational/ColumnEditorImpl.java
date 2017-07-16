@@ -11,12 +11,13 @@ final class ColumnEditorImpl implements ColumnEditor {
 
     private String name;
     private int jdbcType = Types.INTEGER;
+    private int componentType = Column.UNSET_INT_VALUE;
     private String typeName;
     private String typeExpression;
     private String charsetName;
     private String tableCharsetName;
-    private int length = -1;
-    private int scale = -1;
+    private int length = Column.UNSET_INT_VALUE;
+    private int scale = Column.UNSET_INT_VALUE;
     private int position = 1;
     private boolean optional = true;
     private boolean autoIncremented = false;
@@ -44,17 +45,22 @@ final class ColumnEditorImpl implements ColumnEditor {
     public int jdbcType() {
         return jdbcType;
     }
-    
+
+    @Override
+    public int componentType() {
+        return componentType;
+    }
+
     @Override
     public String charsetName() {
         return charsetName;
     }
-    
+
     @Override
     public String charsetNameOfTable() {
         return tableCharsetName;
     }
-    
+
     @Override
     public int length() {
         return length;
@@ -97,7 +103,7 @@ final class ColumnEditorImpl implements ColumnEditor {
         this.typeExpression = typeName;
         return this;
     }
-    
+
     @Override
     public ColumnEditor type(String typeName, String typeExpression) {
         this.typeName = typeName;
@@ -112,11 +118,18 @@ final class ColumnEditorImpl implements ColumnEditor {
     }
 
     @Override
+    public ColumnEditorImpl componentType(int componentType) {
+        assert jdbcType == Types.ARRAY;
+        this.componentType = componentType;
+        return this;
+    }
+
+    @Override
     public ColumnEditor charsetName(String charsetName) {
         this.charsetName = charsetName;
         return this;
     }
-    
+
     @Override
     public ColumnEditor charsetNameOfTable(String charsetName) {
         this.tableCharsetName = charsetName;
@@ -163,7 +176,8 @@ final class ColumnEditorImpl implements ColumnEditor {
 
     @Override
     public Column create() {
-        return new ColumnImpl(name, position, jdbcType, typeName, typeExpression, charsetName, tableCharsetName, length, scale, optional, autoIncremented, generated);
+        return new ColumnImpl(name, position, jdbcType, componentType, typeName, typeExpression, charsetName, tableCharsetName, length, scale, optional,
+                              autoIncremented, generated);
     }
 
     @Override

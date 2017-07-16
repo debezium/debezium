@@ -11,6 +11,8 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -246,6 +248,12 @@ public class RecordsSnapshotProducer extends RecordsProducer {
     
     private Object valueForColumn(ResultSet rs, int colIdx, ResultSetMetaData metaData) throws SQLException {
         try {
+            int jdbcSqlType = metaData.getColumnType(colIdx);
+            if ( jdbcSqlType == Types.ARRAY) {
+                Object array = rs.getArray(colIdx).getArray();
+                if ( array == null ) return false;
+                return Arrays.asList((Object[])array);
+            }
             String columnTypeName = metaData.getColumnTypeName(colIdx);
             int colOid = PgOid.valueOf(columnTypeName);
             switch (colOid) {

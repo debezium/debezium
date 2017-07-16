@@ -19,6 +19,7 @@ import java.util.stream.IntStream;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -47,7 +48,9 @@ public class PostgresSchemaIT {
 
     private static final String[] TEST_TABLES = new String[] { "public.numeric_table", "public.string_table", "public.cash_table",
                                                                "public.bitbin_table",
-                                                               "public.time_table", "public.text_table", "public.geom_table", "public.tstzrange_table" };
+                                                               "public.time_table", "public.text_table", "public.geom_table", "public.tstzrange_table",
+                                                               "public.array_table"
+                                                             };
 
     private PostgresSchema schema;
 
@@ -85,6 +88,9 @@ public class PostgresSchemaIT {
             assertTableSchema("public.geom_table", "p", Point.builder().optional().build());
             assertTableSchema("public.tstzrange_table", "unbounded_exclusive_range, bounded_inclusive_range",
                               Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA);
+            assertTableSchema("public.array_table", "int_array, bigint_array, text_array",
+                              SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(), SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(),
+                              SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
         }
     }
 

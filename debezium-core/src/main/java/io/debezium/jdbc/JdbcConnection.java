@@ -14,6 +14,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -29,6 +30,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +49,7 @@ import io.debezium.util.Strings;
 
 /**
  * A utility that simplifies using a JDBC connection and executing transactions composed of multiple statements.
- * 
+ *
  * @author Randall Hauch
  */
 public class JdbcConnection implements AutoCloseable {
@@ -62,7 +64,7 @@ public class JdbcConnection implements AutoCloseable {
     public static interface ConnectionFactory {
         /**
          * Establish a connection to the database denoted by the given configuration.
-         * 
+         *
          * @param config the configuration with JDBC connection information
          * @return the JDBC connection; may not be null
          * @throws SQLException if there is an error connecting to the database
@@ -77,7 +79,7 @@ public class JdbcConnection implements AutoCloseable {
     public static interface Operations {
         /**
          * Apply a series of operations against the given JDBC statement.
-         * 
+         *
          * @param statement the JDBC statement to use to execute one or more operations
          * @throws SQLException if there is an error connecting to the database or executing the statements
          */
@@ -93,7 +95,7 @@ public class JdbcConnection implements AutoCloseable {
      * <li><code>${username}</code></li>
      * <li><code>${password}</code></li>
      * </ul>
-     * 
+     *
      * @param urlPattern the URL pattern string; may not be null
      * @param variables any custom or overridden configuration variables
      * @return the connection factory
@@ -116,7 +118,7 @@ public class JdbcConnection implements AutoCloseable {
             return conn;
         };
     }
-    
+
     /**
      * Create a {@link ConnectionFactory} that uses the specific JDBC driver class loaded with the given class loader, and obtains the connection URL by replacing the following variables in the URL pattern:
      * <ul>
@@ -154,18 +156,18 @@ public class JdbcConnection implements AutoCloseable {
                 ClassLoader driverClassLoader = classloader;
                 if (driverClassLoader == null) {
                     driverClassLoader = JdbcConnection.class.getClassLoader();
-                }                
+                }
                 Class<java.sql.Driver> driverClazz = (Class<java.sql.Driver>) Class.forName(driverClassName, true, driverClassLoader);
                 java.sql.Driver driver = driverClazz.newInstance();
                 conn = driver.connect(url, props);
             } catch (ClassNotFoundException|IllegalAccessException|InstantiationException e) {
                 throw new SQLException(e);
-            } 
+            }
             LOGGER.debug("Connected to {} with {}", url, props);
             return conn;
         };
-    } 
-    
+    }
+
     private static Field[] combineVariables(Field[] overriddenVariables,
                                             Field... defaultVariables) {
         Map<String, Field> fields = new HashMap<>();
@@ -191,7 +193,7 @@ public class JdbcConnection implements AutoCloseable {
         }
         return url;
     }
-    
+
     private static String findAndReplace(String url, String name, Properties props) {
         if (name != null && url.contains("${" + name + "}")) {
             // Otherwise, we have to remove it from the properties ...
@@ -212,7 +214,7 @@ public class JdbcConnection implements AutoCloseable {
 
     /**
      * Create a new instance with the given configuration and connection factory.
-     * 
+     *
      * @param config the configuration; may not be null
      * @param connectionFactory the connection factory; may not be null
      */
@@ -223,7 +225,7 @@ public class JdbcConnection implements AutoCloseable {
     /**
      * Create a new instance with the given configuration and connection factory, and specify the operations that should be
      * run against each newly-established connection.
-     * 
+     *
      * @param config the configuration; may not be null
      * @param connectionFactory the connection factory; may not be null
      * @param initialOperations the initial operations that should be run on each new connection; may be null
@@ -235,7 +237,7 @@ public class JdbcConnection implements AutoCloseable {
     /**
      * Create a new instance with the given configuration and connection factory, and specify the operations that should be
      * run against each newly-established connection.
-     * 
+     *
      * @param config the configuration; may not be null
      * @param connectionFactory the connection factory; may not be null
      * @param initialOperations the initial operations that should be run on each new connection; may be null
@@ -251,7 +253,7 @@ public class JdbcConnection implements AutoCloseable {
 
     /**
      * Obtain the configuration for this connection.
-     * 
+     *
      * @return the JDBC configuration; never null
      */
     public JdbcConfiguration config() {
@@ -265,7 +267,7 @@ public class JdbcConnection implements AutoCloseable {
 
     /**
      * Ensure a connection to the database is established.
-     * 
+     *
      * @return this object for chaining methods together
      * @throws SQLException if there is an error connecting to the database
      */
@@ -276,7 +278,7 @@ public class JdbcConnection implements AutoCloseable {
 
     /**
      * Execute a series of SQL statements as a single transaction.
-     * 
+     *
      * @param sqlStatements the SQL statements that are to be performed as a single transaction
      * @return this object for chaining methods together
      * @throws SQLException if there is an error connecting to the database or executing the statements
@@ -297,7 +299,7 @@ public class JdbcConnection implements AutoCloseable {
 
     /**
      * Execute a series of operations as a single transaction.
-     * 
+     *
      * @param operations the function that will be called with a newly-created {@link Statement}, and that performs
      *            one or more operations on that statement object
      * @return this object for chaining methods together
@@ -323,7 +325,7 @@ public class JdbcConnection implements AutoCloseable {
     public static interface StatementPreparer {
         void accept(PreparedStatement statement) throws SQLException;
     }
-    
+
     @FunctionalInterface
     public static interface CallPreparer {
         void accept(CallableStatement statement) throws SQLException;
@@ -331,7 +333,7 @@ public class JdbcConnection implements AutoCloseable {
 
     /**
      * Execute a SQL query.
-     * 
+     *
      * @param query the SQL query
      * @param resultConsumer the consumer of the query results
      * @return this object for chaining methods together
@@ -341,10 +343,10 @@ public class JdbcConnection implements AutoCloseable {
     public JdbcConnection query(String query, ResultSetConsumer resultConsumer) throws SQLException {
         return query(query,conn->conn.createStatement(),resultConsumer);
     }
-    
+
     /**
      * Execute a stored procedure.
-     * 
+     *
      * @param sql the SQL query; may not be {@code null}
      * @param callPreparer a {@link CallPreparer} instance which can be used to set additional parameters; may be null
      * @param resultSetConsumer a {@link ResultSetConsumer} instance which can be used to process the results; may be null
@@ -365,10 +367,10 @@ public class JdbcConnection implements AutoCloseable {
         }
         return this;
     }
-    
+
     /**
      * Execute a SQL query.
-     * 
+     *
      * @param query the SQL query
      * @param statementFactory the function that should be used to create the statement from the connection; may not be null
      * @param resultConsumer the consumer of the query results
@@ -390,7 +392,7 @@ public class JdbcConnection implements AutoCloseable {
         }
         return this;
     }
-    
+
     /**
      * A function to create a statement from a connection.
      * @author Randall Hauch
@@ -408,7 +410,7 @@ public class JdbcConnection implements AutoCloseable {
 
     /**
      * Execute a SQL prepared query.
-     * 
+     *
      * @param preparedQueryString the prepared query string
      * @param preparer the function that supplied arguments to the prepared statement; may not be null
      * @param resultConsumer the consumer of the query results
@@ -427,7 +429,7 @@ public class JdbcConnection implements AutoCloseable {
         }
         return this;
     }
-    
+
     /**
      * Execute a SQL update via a prepared statement.
      *
@@ -450,7 +452,7 @@ public class JdbcConnection implements AutoCloseable {
 
     /**
      * Execute a SQL prepared query.
-     * 
+     *
      * @param preparedQueryString the prepared query string
      * @param parameters the collection of values for the first and only parameter in the query; may not be null
      * @param resultConsumer the consumer of the query results
@@ -466,7 +468,7 @@ public class JdbcConnection implements AutoCloseable {
 
     /**
      * Execute a SQL prepared query.
-     * 
+     *
      * @param preparedQueryString the prepared query string
      * @param parameters the stream of values for the first and only parameter in the query; may not be null
      * @param resultConsumer the consumer of the query results
@@ -601,7 +603,7 @@ public class JdbcConnection implements AutoCloseable {
         }
         return catalogs;
     }
-    
+
     /**
      * Get the names of all of the schemas, optionally applying a filter.
      *
@@ -623,7 +625,7 @@ public class JdbcConnection implements AutoCloseable {
         }
         return schemas;
     }
-    
+
     public String[] tableTypes() throws SQLException {
         List<String> types = new ArrayList<>();
         DatabaseMetaData metadata = connection().getMetaData();
@@ -638,7 +640,7 @@ public class JdbcConnection implements AutoCloseable {
 
     /**
      * Get the identifiers of all available tables.
-     * 
+     *
      * @param tableTypes the set of table types to include in the results, which may be null for all table types
      * @return the set of {@link TableId}s; never null but possibly empty
      * @throws SQLException if an error occurs while accessing the database metadata
@@ -649,7 +651,7 @@ public class JdbcConnection implements AutoCloseable {
 
     /**
      * Get the identifiers of the tables.
-     * 
+     *
      * @param databaseCatalog the name of the catalog, which is typically the database name; may be an empty string for tables
      *            that have no catalog, or {@code null} if the catalog name should not be used to narrow the list of table
      *            identifiers
@@ -681,7 +683,7 @@ public class JdbcConnection implements AutoCloseable {
 
     /**
      * Returns a JDBC connection string using the current configuration and url.
-     * 
+     *
      * @param urlPattern a {@code String} representing a JDBC connection with variables that will be replaced
      * @return a {@code String} where the variables in {@code urlPattern} are replaced with values from the configuration
      */
@@ -693,7 +695,7 @@ public class JdbcConnection implements AutoCloseable {
 
     /**
      * Returns the username for this connection
-     * 
+     *
      * @return a {@code String}, never {@code null}
      */
     public String username()  {
@@ -701,7 +703,7 @@ public class JdbcConnection implements AutoCloseable {
     }
   /**
      * Returns the database name for this connection
-     * 
+     *
      * @return a {@code String}, never {@code null}
      */
     public String database()  {
@@ -709,9 +711,23 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     /**
+     * Resolves the underlying value type for column types where the JDBC type is generic (such as Types.ARRAY and Types.STRUCT).
+     *
+     * There isn't a standard way to obtain this information via JDBC APIs so this method exists to allow
+     * database specific information to be set in addition to the JDBC Type.
+     *
+     * @param rs the result set returned by DatabaseMetadata.getColumns at the current record.  Overrides should not
+     *           call next() on this instance or otherwise mutate it.
+     * @return A type constant for the specific database or -1.
+     */
+    protected int resolveComponentType(ResultSet rs) {
+        return Column.UNSET_INT_VALUE;
+    }
+
+    /**
      * Create definitions for each tables in the database, given the catalog name, schema pattern, table filter, and
      * column filter.
-     * 
+     *
      * @param tables the set of table definitions to be modified; may not be null
      * @param databaseCatalog the name of the catalog, which is typically the database name; may be null if all accessible
      *            databases are to be processed
@@ -759,6 +775,11 @@ public class JdbcConnection implements AutoCloseable {
                             // ignore, some drivers don't have this index - e.g. Postgres
                         }
                         column.generated("YES".equalsIgnoreCase(autogenerated));
+
+                        if (column.jdbcType() == Types.ARRAY) {
+                            column.componentType(resolveComponentType(rs));
+                        }
+
                         cols.add(column.create());
                     }
                 }
@@ -791,11 +812,11 @@ public class JdbcConnection implements AutoCloseable {
             tableIdsBefore.forEach(tables::removeTable);
         }
     }
-    
+
     /**
      * Returns a map which contains information about how a database maps it's data types to JDBC data types.
-     * 
-     * @return a {@link Map map of (localTypeName, jdbcType) pairs} 
+     *
+     * @return a {@link Map map of (localTypeName, jdbcType) pairs}
      * @throws SQLException if anything unexpected fails
      */
     public Map<String, Integer> readTypeInfo() throws SQLException {
@@ -808,10 +829,10 @@ public class JdbcConnection implements AutoCloseable {
         }
         return jdbcTypeByLocalTypeName;
     }
-    
+
     /**
      * Use the supplied table editor to create columns for the supplied result set.
-     * 
+     *
      * @param resultSet the query result set; may not be null
      * @param editor the consumer of the definitions; may not be null
      * @throws SQLException if an error occurs while using the result set
@@ -824,7 +845,7 @@ public class JdbcConnection implements AutoCloseable {
 
     /**
      * Determine the column definitions for the supplied result set and add each column to the specified consumer.
-     * 
+     *
      * @param resultSet the query result set; may not be null
      * @param consumer the consumer of the definitions; may not be null
      * @throws SQLException if an error occurs while using the result set
