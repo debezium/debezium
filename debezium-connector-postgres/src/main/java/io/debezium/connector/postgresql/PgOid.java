@@ -39,8 +39,11 @@ public final class PgOid extends Oid {
         if (typeName.toUpperCase().equals("TSTZRANGE")) {
             return TSTZRANGE_OID;
         }
+        else if ( column.underlyingType() >= 0 ) {
+            return column.underlyingType();
+        }
         try {
-            return valueOf(typeName);
+            return Oid.valueOf(typeName);
         } catch (PSQLException e) {
             // not known by the driver PG driver
             return column.jdbcType();

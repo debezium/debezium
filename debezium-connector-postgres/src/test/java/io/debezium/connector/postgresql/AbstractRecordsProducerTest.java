@@ -85,9 +85,12 @@ public abstract class AbstractRecordsProducerTest {
     protected static final String INSERT_QUOTED_TYPES_STMT = "INSERT INTO \"Quoted_Table\" (\"Quoted_Text_Column\") " +
                                                              "VALUES ('some text')";
 
+    protected static final String INSERT_ARRAY_TYPES_STMT = "INSERT INTO array_table (int_array, bigint_array, text_array) " +
+                                                             "VALUES ('{1,2,3}', '{1550166368505037572}', '{\"one\",\"two\",\"three\"}')";
+
     protected static final Set<String> ALL_STMTS = new HashSet<>(Arrays.asList(INSERT_NUMERIC_TYPES_STMT, INSERT_DATE_TIME_TYPES_STMT,
                                                                  INSERT_BIN_TYPES_STMT, INSERT_GEOM_TYPES_STMT, INSERT_TEXT_TYPES_STMT,
-                                                                 INSERT_CASH_TYPES_STMT, INSERT_STRING_TYPES_STMT, INSERT_QUOTED_TYPES_STMT));
+                                                                 INSERT_CASH_TYPES_STMT, INSERT_STRING_TYPES_STMT, INSERT_QUOTED_TYPES_STMT, INSERT_ARRAY_TYPES_STMT));
 
     protected List<SchemaAndValueField> schemasAndValuesForNumericType() {
         return Arrays.asList(new SchemaAndValueField("si", SchemaBuilder.OPTIONAL_INT16_SCHEMA, (short) 1),
@@ -172,6 +175,16 @@ public abstract class AbstractRecordsProducerTest {
        return Arrays.asList(new SchemaAndValueField("Quoted_Text_Column", Schema.OPTIONAL_STRING_SCHEMA, "some text"));
     }
 
+    protected List<SchemaAndValueField> schemasAndValuesForArrayTypes() {
+       return Arrays.asList(new SchemaAndValueField("int_array", SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(),
+                                Arrays.asList(1, 2, 3)),
+                            new SchemaAndValueField("bigint_array", SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(),
+                                Arrays.asList(1550166368505037572L)),
+                            new SchemaAndValueField("text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
+                                Arrays.asList("one", "two", "three"))
+                            );
+    }
+
     protected Map<String, List<SchemaAndValueField>> schemaAndValuesByTableName() {
         return ALL_STMTS.stream().collect(Collectors.toMap(AbstractRecordsProducerTest::tableNameFromInsertStmt,
                                                            this::schemasAndValuesForTable));
@@ -195,6 +208,8 @@ public abstract class AbstractRecordsProducerTest {
                 return schemasAndValuesForTextTypes();
             case INSERT_QUOTED_TYPES_STMT:
                 return schemasAndValuesForQuotedTypes();
+            case INSERT_ARRAY_TYPES_STMT:
+                return schemasAndValuesForArrayTypes();
             default:
                 throw new IllegalArgumentException("unknown statement:" + insertTableStatement);
         }
