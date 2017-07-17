@@ -533,7 +533,7 @@ public class SnapshotReader extends AbstractReader {
                                                         while (rs1.next()) {
                                                             hasRecordForLastOne.set(true);
                                                             for (int i = 0, j = 1; i != numColumns; ++i, ++j) {
-                                                                row[i] = rs.getObject(j);
+                                                                row[i] = rs1.getObject(j);
                                                             }
                                                         }
                                                     });
