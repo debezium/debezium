@@ -25,6 +25,64 @@ public class FiltersTest {
     }
 
     @Test
+    public void shouldIncludeDatabaseCoveredByLiteralInWhitelist() {
+        filters = build.includeDatabases("db1").createFilters();
+        assertThat(filters.databaseFilter().test("db1")).isTrue();
+    }
+
+    @Test
+    public void shouldIncludeDatabaseCoveredByMultipleLiteralsInWhitelist() {
+        filters = build.includeDatabases("db1,db2").createFilters();
+        assertThat(filters.databaseFilter().test("db1")).isTrue();
+        assertThat(filters.databaseFilter().test("db2")).isTrue();
+    }
+
+    @Test
+    public void shouldIncludeDatabaseCoveredByWildcardInWhitelist() {
+        filters = build.includeDatabases("db.*").createFilters();
+        assertThat(filters.databaseFilter().test("db1")).isTrue();
+    }
+
+    @Test
+    public void shouldIncludeDatabaseCoveredByMultipleWildcardsInWhitelist() {
+        filters = build.includeDatabases("db.*,mongo.*").createFilters();
+        assertThat(filters.databaseFilter().test("db1")).isTrue();
+        assertThat(filters.databaseFilter().test("mongo2")).isTrue();
+    }
+    
+    @Test
+    public void shouldExcludeDatabaseCoveredByLiteralInBlacklist() {
+        filters = build.excludeDatabases("db1").createFilters();
+        assertThat(filters.databaseFilter().test("db1")).isFalse();
+    }
+    
+    @Test
+    public void shouldExcludeDatabaseCoveredByMultipleLiteralsInBlacklist() {
+        filters = build.excludeDatabases("db1,db2").createFilters();
+        assertThat(filters.databaseFilter().test("db1")).isFalse();
+        assertThat(filters.databaseFilter().test("db2")).isFalse();
+    }
+    
+    @Test
+    public void shouldNotExcludeDatabaseNotCoveredByLiteralInBlacklist() {
+        filters = build.excludeDatabases("db1").createFilters();
+        assertThat(filters.databaseFilter().test("db2")).isTrue();
+    }
+
+    @Test
+    public void shouldExcludeDatabaseCoveredByWildcardInBlacklist() {
+        filters = build.excludeDatabases("db.*").createFilters();
+        assertThat(filters.databaseFilter().test("db1")).isFalse();
+    }
+
+    @Test
+    public void shouldExcludeDatabaseCoveredByMultipleWildcardsInBlacklist() {
+        filters = build.excludeDatabases("db.*,mongo.*").createFilters();
+        assertThat(filters.databaseFilter().test("db1")).isFalse();
+        assertThat(filters.databaseFilter().test("mongo2")).isFalse();
+    }
+
+    @Test
     public void shouldIncludeCollectionCoveredByLiteralWithPeriodAsWildcardInWhitelistAndNoBlacklist() {
         filters = build.includeCollections("db1.coll[.]?ection[x]?A,db1[.](.*)B").createFilters();
         assertCollectionIncluded("db1xcoll.ectionA"); // first '.' is an unescaped wildcard in regex

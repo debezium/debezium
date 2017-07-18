@@ -44,6 +44,14 @@ public class Configurator {
         return with(MongoDbConnectorConfig.MAX_BATCH_SIZE, maxBatchSize);
     }
 
+    public Configurator includeDatabases(String regexList) {
+        return with(MongoDbConnectorConfig.DATABASE_WHITELIST, regexList);
+    }
+    
+    public Configurator excludeDatabases(String regexList) {
+        return with(MongoDbConnectorConfig.DATABASE_BLACKLIST, regexList);
+    }
+
     public Configurator includeCollections(String regexList) {
         return with(MongoDbConnectorConfig.COLLECTION_WHITELIST, regexList);
     }

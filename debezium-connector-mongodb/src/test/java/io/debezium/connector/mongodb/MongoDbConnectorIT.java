@@ -93,7 +93,8 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.USER);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.PASSWORD);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS);
-        assertNoConfigurationErrors(result, MongoDbConnectorConfig.DATABASE_LIST);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.DATABASE_WHITELIST);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.DATABASE_BLACKLIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.COLLECTION_WHITELIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.COLLECTION_BLACKLIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_COPY_THREADS);
@@ -126,7 +127,8 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.USER);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.PASSWORD);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS);
-        assertNoConfigurationErrors(result, MongoDbConnectorConfig.DATABASE_LIST);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.DATABASE_WHITELIST);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.DATABASE_BLACKLIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.COLLECTION_WHITELIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.COLLECTION_BLACKLIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_COPY_THREADS);

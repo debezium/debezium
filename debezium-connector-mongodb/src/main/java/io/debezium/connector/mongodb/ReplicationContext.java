@@ -46,6 +46,10 @@ public class ReplicationContext extends ConnectionContext {
         return topicSelector;
     }
 
+    public Predicate<String> databaseFilter() {
+        return filters.databaseFilter();
+    }
+
     public Predicate<CollectionId> collectionFilter() {
         return filters.collectionFilter();
     }
