@@ -172,6 +172,8 @@ and push that commit which will cause the image to be re-published on Docker Hub
 
 ## Update the documentation and blog
 
-Update the documentation on the [Debezium website](http://debezium.io) by following the [instructions for changing the website](http://debezium.io/docs/contribute/#website). This typically involes updating the documentation and writing a blog post to announce the release. Then, create a pull request with your changes and wait for a committer to approve and merge your changes.
+Update the documentation on the [Debezium website](http://debezium.io) by following the [instructions for changing the website](http://debezium.io/docs/contribute/#website).
+This typically involves updating the documentation (look for pending pull requests tagged as "Merge after next release") and writing a blog post to announce the release.
+Then, create a pull request with your changes and wait for a committer to approve and merge your changes.
 
 When the blog post is available, use the [Debezium Twitter account](https://twitter.com/debezium) to announce the release by linking to the blog post.
