@@ -154,14 +154,6 @@ public class MongoDbConnectorConfig {
                                                                    + "or whether the address(es) in 'hosts' should be used as is ('false'). "
                                                                    + "The default is 'true'.");
 
-    public static final Field DATABASE_LIST = Field.create(DATABASE_LIST_NAME)
-                                                   .withDisplayName("Databases")
-                                                   .withType(Type.LIST)
-                                                   .withWidth(Width.LONG)
-                                                   .withImportance(Importance.HIGH)
-                                                   .withDependents(COLLECTION_LIST_NAME)
-                                                   .withDescription("The databases for which changes are to be captured");
-
     /**
      * A comma-separated list of regular expressions that match the databases to be monitored.
      * May not be used with {@link #DATABASE_BLACKLIST}.
@@ -221,7 +213,6 @@ public class MongoDbConnectorConfig {
                                                      MAX_FAILED_CONNECTIONS,
                                                      CONNECT_BACKOFF_INITIAL_DELAY_MS,
                                                      CONNECT_BACKOFF_MAX_DELAY_MS,
-                                                     DATABASE_LIST,
                                                      COLLECTION_WHITELIST,
                                                      COLLECTION_BLACKLIST,
                                                      AUTO_DISCOVER_MEMBERS,
@@ -234,7 +225,7 @@ public class MongoDbConnectorConfig {
         ConfigDef config = new ConfigDef();
         Field.group(config, "MongoDB", HOSTS, USER, PASSWORD, LOGICAL_NAME, CONNECT_BACKOFF_INITIAL_DELAY_MS,
                     CONNECT_BACKOFF_MAX_DELAY_MS, MAX_FAILED_CONNECTIONS, AUTO_DISCOVER_MEMBERS);
-        Field.group(config, "Events", DATABASE_LIST, DATABASE_WHITELIST, DATABASE_BLACKLIST, COLLECTION_WHITELIST, COLLECTION_BLACKLIST);
+        Field.group(config, "Events", DATABASE_WHITELIST, DATABASE_BLACKLIST, COLLECTION_WHITELIST, COLLECTION_BLACKLIST);
         Field.group(config, "Connector", MAX_COPY_THREADS, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS);
         return config;
     }
