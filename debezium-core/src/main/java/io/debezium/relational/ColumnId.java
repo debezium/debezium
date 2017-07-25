@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.util.Strings;
@@ -21,7 +22,9 @@ import io.debezium.util.Strings;
  */
 @Immutable
 public final class ColumnId implements Comparable<ColumnId> {
-    
+
+    private static final Pattern IDENTIFIER_SEPARATOR_PATTERN = Pattern.compile("\\.");
+
     /**
      * Create the map of predicate functions that specify which columns are to be included.
      * <p>
@@ -56,7 +59,7 @@ public final class ColumnId implements Comparable<ColumnId> {
      * @return the column ID, or null if it could not be parsed
      */
     public static ColumnId parse(String str) {
-        return parse(str, '.', true);
+        return parse(str, true);
     }
 
     /**
@@ -64,15 +67,14 @@ public final class ColumnId implements Comparable<ColumnId> {
      * and the prior segments into the TableID.
      *
      * @param str the input string
-     * @param delimiter the delimiter between parts
      * @param useCatalogBeforeSchema {@code true} if the parsed string contains only 2 items and the first should be used as
      *            the catalog and the second as the table name, or {@code false} if the first should be used as the schema and the
      *            second
      *            as the table name
      * @return the column ID, or null if it could not be parsed
      */
-    public static ColumnId parse(String str, char delimiter, boolean useCatalogBeforeSchema) {
-        String[] parts = str.split("[\\" + delimiter + "]");
+    private static ColumnId parse(String str, boolean useCatalogBeforeSchema) {
+        String[] parts = IDENTIFIER_SEPARATOR_PATTERN.split(str);
         if ( parts.length < 2 ) return null;
         TableId tableId = TableId.parse(parts, parts.length - 1, useCatalogBeforeSchema);
         if ( tableId == null ) return null;

@@ -26,6 +26,8 @@ import io.debezium.util.Strings;
  */
 public class Predicates {
 
+    private static final Pattern LITERAL_SEPARATOR_PATTERN = Pattern.compile(",");
+
     /**
      * Generate a predicate function that for any supplied UUID strings returns {@code true} if <i>any</i> of the comma-separated
      * UUID literals or regular expressions matches the predicate parameter. This supplied strings can be a mixture
@@ -69,7 +71,7 @@ public class Predicates {
         // First create the predicates that handle either literals or patterns ...
         Set<String> literals = new HashSet<>();
         List<Pattern> patterns = new ArrayList<>();
-        for (String literalOrPattern : literalsOrPatterns.split(",")) {
+        for (String literalOrPattern : LITERAL_SEPARATOR_PATTERN.split(literalsOrPatterns)) {
             if (isLiteral.test(literalOrPattern)) {
                 literals.add(literalOrPattern.toLowerCase());
             } else {
@@ -138,7 +140,7 @@ public class Predicates {
      * @return the predicate function that performs the matching
      */
     public static <T> Predicate<T> includesLiterals(String literals, Function<T, String> conversion) {
-        String[] literalValues = literals.toLowerCase().split(",");
+        String[] literalValues = LITERAL_SEPARATOR_PATTERN.split(literals.toLowerCase());
         Set<String> literalSet = new HashSet<>(Arrays.asList(literalValues));
         return includedInLiterals(literalSet, conversion);
     }

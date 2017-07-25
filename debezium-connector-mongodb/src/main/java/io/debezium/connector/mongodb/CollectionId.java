@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.util.regex.Pattern;
+
 import io.debezium.annotation.Immutable;
 
 /**
@@ -15,6 +17,8 @@ import io.debezium.annotation.Immutable;
 @Immutable
 public final class CollectionId {
 
+    private static final Pattern IDENTIFIER_SEPARATOR_PATTERN = Pattern.compile("\\.");
+
     /**
      * Parse the supplied string, extracting the first 3 parts into a Collection.
      *
@@ -22,7 +26,7 @@ public final class CollectionId {
      * @return the collection ID, or null if it could not be parsed
      */
     public static CollectionId parse(String str) {
-        String[] parts = str.split("[\\" + '.' + "]");
+        String[] parts = IDENTIFIER_SEPARATOR_PATTERN.split(str);
         if (parts.length < 3) return null;
         return new CollectionId(parts[0], parts[1], parts[2]);
     }

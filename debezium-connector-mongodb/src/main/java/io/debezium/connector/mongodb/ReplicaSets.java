@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 import org.apache.kafka.connect.util.ConnectorUtils;
 
@@ -29,6 +30,8 @@ import io.debezium.util.Strings;
 @Immutable
 public class ReplicaSets {
 
+    private static final Pattern REPLICA_DELIMITER_PATTERN = Pattern.compile(";");
+
     /**
      * Parse the supplied string for the information about the replica set hosts. The string is a semicolon-delimited list of
      * shard hosts (e.g., "{@code shard01=replicaSet1/host1:27017,host2:27017}"), replica set hosts (e.g.,
@@ -42,7 +45,7 @@ public class ReplicaSets {
     public static ReplicaSets parse(String hosts) {
         Set<ReplicaSet> replicaSets = new HashSet<>();
         if (hosts != null) {
-            for (String replicaSetStr : hosts.trim().split("[;]")) {
+            for (String replicaSetStr : REPLICA_DELIMITER_PATTERN.split(hosts.trim())) {
                 if (!replicaSetStr.isEmpty()) {
                     ReplicaSet replicaSet = ReplicaSet.parse(replicaSetStr);
                     if (replicaSetStr != null) {
