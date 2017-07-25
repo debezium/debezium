@@ -9,7 +9,7 @@ import io.debezium.annotation.Immutable;
 
 /**
  * A simple identifier for collections in a replica set.
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable
@@ -17,7 +17,7 @@ public final class CollectionId {
 
     /**
      * Parse the supplied string, extracting the first 3 parts into a Collection.
-     * 
+     *
      * @param str the string representation of the collection identifier; may not be null
      * @return the collection ID, or null if it could not be parsed
      */
@@ -33,7 +33,7 @@ public final class CollectionId {
 
     /**
      * Create a new collection identifier.
-     * 
+     *
      * @param replicaSetName the name of the replica set; may not be null
      * @param dbName the name of the database; may not be null
      * @param collectionName the name of the collection; may not be null
@@ -49,7 +49,7 @@ public final class CollectionId {
 
     /**
      * Get the name of the collection.
-     * 
+     *
      * @return the collection's name; never null
      */
     public String name() {
@@ -58,7 +58,7 @@ public final class CollectionId {
 
     /**
      * Get the name of the database in which the collection exists.
-     * 
+     *
      * @return the database name; never null
      */
     public String dbName() {
@@ -67,7 +67,7 @@ public final class CollectionId {
 
     /**
      * Get the name of the replica set in which the collection (and database) exist.
-     * 
+     *
      * @return the replica set name; never null
      */
     public String replicaSetName() {
@@ -93,7 +93,7 @@ public final class CollectionId {
     /**
      * Get the namespace of this collection, which is comprised of the {@link #dbName database name} and {@link #name collection
      * name}.
-     * 
+     *
      * @return the namespace for this collection; never null
      */
     public String namespace() {

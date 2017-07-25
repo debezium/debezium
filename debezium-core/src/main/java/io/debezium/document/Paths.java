@@ -18,7 +18,7 @@ import io.debezium.util.Strings;
 
 /**
  * A package-level utility that implements useful operations to create paths.
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable

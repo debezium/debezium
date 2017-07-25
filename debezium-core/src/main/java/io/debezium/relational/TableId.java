@@ -9,7 +9,7 @@ import io.debezium.annotation.Immutable;
 
 /**
  * Unique identifier for a database table.
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable
@@ -17,17 +17,17 @@ public final class TableId implements Comparable<TableId> {
 
     /**
      * Parse the supplied string, extracting up to the first 3 parts into a TableID.
-     * 
+     *
      * @param str the string representation of the table identifier; may not be null
      * @return the table ID, or null if it could not be parsed
      */
     public static TableId parse(String str) {
         return parse(str, true);
-    }   
-    
+    }
+
     /**
      * Parse the supplied string, extracting up to the first 3 parts into a TableID.
-     * 
+     *
      * @param str the string representation of the table identifier; may not be null
      * @param useCatalogBeforeSchema {@code true} if the parsed string contains only 2 items and the first should be used as
      *            the catalog and the second as the table name, or {@code false} if the first should be used as the schema and the
@@ -42,7 +42,7 @@ public final class TableId implements Comparable<TableId> {
 
     /**
      * Parse the supplied string, extracting up to the first 3 parts into a TableID.
-     * 
+     *
      * @param parts the parts of the identifier; may not be null
      * @param numParts the number of parts to use for the table identifier
      * @param useCatalogBeforeSchema {@code true} if the parsed string contains only 2 items and the first should be used as
@@ -67,7 +67,7 @@ public final class TableId implements Comparable<TableId> {
 
     /**
      * Create a new table identifier.
-     * 
+     *
      * @param catalogName the name of the database catalog that contains the table; may be null if the JDBC driver does not
      *            show a schema for this table
      * @param schemaName the name of the database schema that contains the table; may be null if the JDBC driver does not
@@ -84,7 +84,7 @@ public final class TableId implements Comparable<TableId> {
 
     /**
      * Get the name of the JDBC catalog.
-     * 
+     *
      * @return the catalog name, or null if the table does not belong to a catalog
      */
     public String catalog() {
@@ -93,7 +93,7 @@ public final class TableId implements Comparable<TableId> {
 
     /**
      * Get the name of the JDBC schema.
-     * 
+     *
      * @return the JDBC schema name, or null if the table does not belong to a JDBC schema
      */
     public String schema() {
@@ -102,7 +102,7 @@ public final class TableId implements Comparable<TableId> {
 
     /**
      * Get the name of the table.
-     * 
+     *
      * @return the table name; never null
      */
     public String table() {

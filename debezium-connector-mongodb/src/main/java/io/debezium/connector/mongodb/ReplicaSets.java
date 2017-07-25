@@ -23,7 +23,7 @@ import io.debezium.util.Strings;
 
 /**
  * A set of replica set specifications.
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable
@@ -34,7 +34,7 @@ public class ReplicaSets {
      * shard hosts (e.g., "{@code shard01=replicaSet1/host1:27017,host2:27017}"), replica set hosts (e.g.,
      * "{@code replicaSet1/host1:27017,host2:27017}"), and standalone hosts (e.g., "{@code host1:27017}" or
      * "{@code 1.2.3.4:27017}").
-     * 
+     *
      * @param hosts the hosts string; may be null
      * @return the replica sets; never null but possibly empty
      * @see ReplicaSets#hosts()
@@ -56,7 +56,7 @@ public class ReplicaSets {
 
     /**
      * Get an instance that contains no replica sets.
-     * 
+     *
      * @return the empty instance; never null
      */
     public static ReplicaSets empty() {
@@ -68,7 +68,7 @@ public class ReplicaSets {
 
     /**
      * Create a set of replica set specifications.
-     * 
+     *
      * @param rsSpecs the replica set specifications; may be null or empty
      */
     public ReplicaSets(Collection<ReplicaSet> rsSpecs) {
@@ -86,7 +86,7 @@ public class ReplicaSets {
 
     /**
      * Get the number of replica sets.
-     * 
+     *
      * @return the replica set count
      */
     public int replicaSetCount() {
@@ -95,16 +95,16 @@ public class ReplicaSets {
 
     /**
      * Get the number of replica sets with names.
-     * 
+     *
      * @return the valid replica set count
      */
     public int validReplicaSetCount() {
         return replicaSetsByName.size();
     }
-    
+
     /**
      * Perform the supplied function on each of the replica sets
-     * 
+     *
      * @param function the consumer function; may not be null
      */
     public void onEachReplicaSet(Consumer<ReplicaSet> function) {
@@ -114,7 +114,7 @@ public class ReplicaSets {
 
     /**
      * Subdivide this collection of replica sets into the maximum number of groups.
-     * 
+     *
      * @param maxSubdivisionCount the maximum number of subdivisions
      * @param subdivisionConsumer the function to be called with each subdivision; may not be null
      */
@@ -132,7 +132,7 @@ public class ReplicaSets {
 
     /**
      * Get a copy of all of the {@link ReplicaSet} objects.
-     * 
+     *
      * @return the replica set objects; never null but possibly empty
      */
     public List<ReplicaSet> all() {
@@ -144,7 +144,7 @@ public class ReplicaSets {
 
     /**
      * Get a copy of all of the valid {@link ReplicaSet} objects that have names.
-     * 
+     *
      * @return the valid replica set objects; never null but possibly empty
      */
     public List<ReplicaSet> validReplicaSets() {
@@ -155,7 +155,7 @@ public class ReplicaSets {
 
     /**
      * Get a copy of all of the {@link ReplicaSet} objects that have no names.
-     * 
+     *
      * @return the unnamed replica set objects; never null but possibly empty
      */
     public List<ReplicaSet> unnamedReplicaSets() {
@@ -166,7 +166,7 @@ public class ReplicaSets {
 
     /**
      * Determine if one or more replica sets has been added or removed since the prior state.
-     * 
+     *
      * @param priorState the prior state of the replica sets; may be null
      * @return {@code true} if the replica sets have changed since the prior state, or {@code false} otherwise
      */
@@ -194,7 +194,7 @@ public class ReplicaSets {
     /**
      * Get the string containing the host names for the replica sets. The result is a string with each replica set hosts
      * separated by a semicolon.
-     * 
+     *
      * @return the host names; never null
      * @see #parse(String)
      */

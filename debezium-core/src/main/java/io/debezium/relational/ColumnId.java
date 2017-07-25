@@ -16,7 +16,7 @@ import io.debezium.util.Strings;
 
 /**
  * Unique identifier for a column in a database table.
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable
@@ -26,7 +26,7 @@ public final class ColumnId implements Comparable<ColumnId> {
      * Create the map of predicate functions that specify which columns are to be included.
      * <p>
      * Qualified column names are comma-separated strings that are each {@link #parse(String) parsed} into {@link ColumnId} objects.
-     * 
+     *
      * @param columnBlacklist the comma-separated string listing the qualified names of the columns to be explicitly disallowed;
      *            may be null
      * @return the predicate function; never null
@@ -47,11 +47,11 @@ public final class ColumnId implements Comparable<ColumnId> {
         });
         return exclusionFilterByTable;
     }
-    
+
     /**
      * Parse the supplied string delimited with a period ({@code .}) character, extracting the last segment into a column name
      * and the prior segments into the TableID.
-     * 
+     *
      * @param str the input string
      * @return the column ID, or null if it could not be parsed
      */
@@ -62,7 +62,7 @@ public final class ColumnId implements Comparable<ColumnId> {
     /**
      * Parse the supplied string delimited with the specified delimiter character, extracting the last segment into a column name
      * and the prior segments into the TableID.
-     * 
+     *
      * @param str the input string
      * @param delimiter the delimiter between parts
      * @param useCatalogBeforeSchema {@code true} if the parsed string contains only 2 items and the first should be used as
@@ -85,7 +85,7 @@ public final class ColumnId implements Comparable<ColumnId> {
 
     /**
      * Create a new column identifier.
-     * 
+     *
      * @param tableId the identifier of the table; may not be null
      * @param columnName the name of the column; may not be null
      */
@@ -99,7 +99,7 @@ public final class ColumnId implements Comparable<ColumnId> {
 
     /**
      * Create a new column identifier.
-     * 
+     *
      * @param catalogName the name of the database catalog that contains the table; may be null if the JDBC driver does not
      *            show a schema for this table
      * @param schemaName the name of the database schema that contains the table; may be null if the JDBC driver does not
@@ -113,7 +113,7 @@ public final class ColumnId implements Comparable<ColumnId> {
 
     /**
      * Get the identifier for the table that owns this column.
-     * 
+     *
      * @return the table identifier; never null
      */
     public TableId tableId() {
@@ -122,7 +122,7 @@ public final class ColumnId implements Comparable<ColumnId> {
 
     /**
      * Get the name of the JDBC catalog.
-     * 
+     *
      * @return the catalog name, or null if the table does not belong to a catalog
      */
     public String catalog() {
@@ -131,7 +131,7 @@ public final class ColumnId implements Comparable<ColumnId> {
 
     /**
      * Get the name of the JDBC schema.
-     * 
+     *
      * @return the JDBC schema name, or null if the table does not belong to a JDBC schema
      */
     public String schema() {
@@ -140,7 +140,7 @@ public final class ColumnId implements Comparable<ColumnId> {
 
     /**
      * Get the name of the table.
-     * 
+     *
      * @return the table name; never null
      */
     public String table() {
@@ -149,7 +149,7 @@ public final class ColumnId implements Comparable<ColumnId> {
 
     /**
      * Get the name of the table.
-     * 
+     *
      * @return the table name; never null
      */
     public String columnName() {
