@@ -25,6 +25,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.postgresql.util.PGmoney;
 
+import io.debezium.connector.postgresql.connection.PostgresTableIdTransformer;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
@@ -148,7 +149,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             // we're locking in SHARE UPDATE EXCLUSIVE MODE to avoid concurrent schema changes while we're taking the snapshot
             // this does not prevent writes to the table, but prevents changes to the table's schema....
             schema.tables().forEach(tableId -> statements.append("LOCK TABLE ")
-                                                         .append(tableId.toString())
+                                                         .append(tableId.toQuotedId(PostgresTableIdTransformer.INSTANCE))
                                                          .append(" IN SHARE UPDATE EXCLUSIVE MODE;")
                                                          .append(lineSeparator));
             connection.executeWithoutCommitting(statements.toString());
@@ -177,7 +178,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                 long exportStart = clock().currentTimeInMillis();
                 logger.info("\t exporting data from table '{}'", tableId);
                 try {
-                    connection.query("SELECT * FROM " + tableId, 
+                    connection.query("SELECT * FROM " + tableId.toQuotedId(PostgresTableIdTransformer.INSTANCE),
                                      this::readTableStatement, 
                                      rs -> readTable(tableId, rs, consumer, rowsCounter));
                     logger.info("\t finished exporting '{}' records for '{}'; total duration '{}'", rowsCounter.get(),

@@ -1,3 +1,5 @@
+-- noinspection SqlNoDataSourceInspectionForFile
+
 -- Generate a number of tables to cover as many of the PG types as possible
 DROP SCHEMA IF EXISTS public CASCADE;
 CREATE SCHEMA public;
@@ -9,3 +11,4 @@ CREATE TABLE time_table (pk SERIAL, ts TIMESTAMP, tz TIMESTAMPTZ, date DATE, ti 
 CREATE TABLE text_table (pk SERIAL, j JSON, jb JSONB, x XML, u Uuid, PRIMARY KEY(pk));
 CREATE TABLE geom_table (pk SERIAL, p POINT, PRIMARY KEY(pk));
 CREATE TABLE tstzrange_table (pk serial, unbounded_exclusive_range tstzrange, bounded_inclusive_range tstzrange, PRIMARY KEY(pk));
+CREATE TABLE "Quoted_Table" (pk SERIAL, "Quoted_Text_Column" TEXT, PRIMARY KEY(pk));
