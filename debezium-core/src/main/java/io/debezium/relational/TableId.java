@@ -5,6 +5,8 @@
  */
 package io.debezium.relational;
 
+import java.util.regex.Pattern;
+
 import io.debezium.annotation.Immutable;
 
 /**
@@ -14,6 +16,8 @@ import io.debezium.annotation.Immutable;
  */
 @Immutable
 public final class TableId implements Comparable<TableId> {
+
+    private static final Pattern IDENTIFIER_SEPARATOR = Pattern.compile("\\.");
 
     /**
      * Parse the supplied string, extracting up to the first 3 parts into a TableID.
@@ -35,7 +39,7 @@ public final class TableId implements Comparable<TableId> {
      * @return the table ID, or null if it could not be parsed
      */
     public static TableId parse(String str, boolean useCatalogBeforeSchema) {
-        String[] parts = str.split("[\\" + '.' + "]");
+        String[] parts = IDENTIFIER_SEPARATOR.split(str);
         if ( parts.length < 0 ) return null;
         return TableId.parse(parts, parts.length, useCatalogBeforeSchema);
     }

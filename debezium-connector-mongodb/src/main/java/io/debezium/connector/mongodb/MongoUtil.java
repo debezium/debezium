@@ -36,6 +36,9 @@ public class MongoUtil {
      * The delimiter used between addresses.
      */
     private static final String ADDRESS_DELIMITER = ",";
+
+    public static final Pattern ADDRESS_DELIMITER_PATTERN = Pattern.compile(ADDRESS_DELIMITER);
+
     /**
      * Regular expression that gets the host and (optional) port. The raw expression is {@code ([^:]+)(:(\d+))?}.
      */
@@ -241,7 +244,7 @@ public class MongoUtil {
         List<ServerAddress> addresses = new ArrayList<>();
         if (addressStr != null) {
             addressStr = addressStr.trim();
-            for (String address : addressStr.split(ADDRESS_DELIMITER)) {
+            for (String address : ADDRESS_DELIMITER_PATTERN.split(addressStr)) {
                 String hostAndPort = null;
                 if (address.startsWith("[")) {
                     // Definitely an IPv6 address without a replica set name ...

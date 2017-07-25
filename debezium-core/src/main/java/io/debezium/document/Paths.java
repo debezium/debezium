@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.util.HashCode;
@@ -24,11 +25,13 @@ import io.debezium.util.Strings;
 @Immutable
 final class Paths {
 
+    private static final Pattern PATH_SEPARATOR_PATTERN = Pattern.compile("/");
+
     static Path parse(String path, boolean resolveJsonPointerEscapes) {
         // Remove leading and trailing whitespace and '/' characters ...
         path = Strings.trim(path, (c) -> c < ' ' || c == '/');
         if (path.length() == 0) return RootPath.INSTANCE;
-        String[] segments = path.split("/");
+        String[] segments = PATH_SEPARATOR_PATTERN.split(path);
         if (segments.length == 1) {
             return new SingleSegmentPath(parseSegment(segments[0], resolveJsonPointerEscapes));
         }

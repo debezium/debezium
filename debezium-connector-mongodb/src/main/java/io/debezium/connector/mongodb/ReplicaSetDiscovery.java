@@ -91,7 +91,7 @@ public class ReplicaSetDiscovery {
                 // is almost certainly our replica set name ...
                 String replicaSetName = MongoUtil.replicaSetUsedIn(seedAddresses);
                 if (replicaSetName != null) {
-                    for (String address : seedAddresses.split(",")) {
+                    for (String address : MongoUtil.ADDRESS_DELIMITER_PATTERN.split(seedAddresses)) {
                         replicaSetSpecs.add(new ReplicaSet(address, replicaSetName, null));
                     }
                 }
