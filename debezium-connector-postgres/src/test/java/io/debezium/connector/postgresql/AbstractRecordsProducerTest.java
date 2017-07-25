@@ -14,7 +14,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
-import java.math.MathContext;
 import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -91,8 +90,8 @@ public abstract class AbstractRecordsProducerTest {
         return Arrays.asList(new SchemaAndValueField("si", SchemaBuilder.OPTIONAL_INT16_SCHEMA, (short) 1),
                              new SchemaAndValueField("i", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 123456),
                              new SchemaAndValueField("bi", SchemaBuilder.OPTIONAL_INT64_SCHEMA, 1234567890123L),
-                             new SchemaAndValueField("d", Decimal.builder(2).optional().build(), new BigDecimal(1.10, new MathContext(3))),
-                             new SchemaAndValueField("n", Decimal.builder(3).optional().build(), new BigDecimal(22.220, new MathContext(5))),
+                             new SchemaAndValueField("d", Decimal.builder(2).optional().build(), new BigDecimal("1.10")),
+                             new SchemaAndValueField("n", Decimal.builder(4).optional().build(), new BigDecimal("22.2200")),
                              new SchemaAndValueField("r", Schema.OPTIONAL_FLOAT32_SCHEMA, 3.3f),
                              new SchemaAndValueField("db", Schema.OPTIONAL_FLOAT64_SCHEMA, 4.44d),
                              new SchemaAndValueField("ss", Schema.INT16_SCHEMA, (short) 1),

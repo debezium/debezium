@@ -8,7 +8,6 @@ package io.debezium.connector.postgresql;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.math.MathContext;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -41,23 +40,23 @@ import io.debezium.time.ZonedTimestamp;
 
 /**
  * A provider of {@link ValueConverter}s and {@link SchemaBuilder}s for various Postgres specific column types.
- * 
+ *
  * In addition to handling data type conversion from values coming from JDBC, this is also expected to handle data type
  * conversion for data types coming from the logical decoding plugin.
- * 
+ *
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 public class PostgresValueConverter extends JdbcValueConverters {
-    
+
     /**
      * The approximation used by the plugin when converting a duration to micros
      */
     protected static final double DAYS_PER_MONTH_AVG = 365.25 / 12.0d;
-    
+
     protected PostgresValueConverter(boolean adaptiveTimePrecision, ZoneOffset defaultOffset) {
         super(DecimalMode.PRECISE, adaptiveTimePrecision, defaultOffset, null);
     }
-    
+
     @Override
     public SchemaBuilder schemaBuilder(Column column) {
         int oidValue = PgOid.jdbcColumnToOid(column);
@@ -91,7 +90,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return super.schemaBuilder(column);
         }
     }
-    
+
     @Override
     public ValueConverter converter(Column column, Field fieldDefn) {
         int oidValue = PgOid.jdbcColumnToOid(column);
@@ -122,7 +121,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return super.converter(column, fieldDefn);
         }
     }
-    
+
     @Override
     protected Object convertDecimal(Column column, Field fieldDefn, Object data) {
         BigDecimal newDecimal = (BigDecimal) super.convertDecimal(column, fieldDefn, data);
@@ -130,8 +129,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             return newDecimal;
         }
         if (column.scale() > newDecimal.scale()) {
-          MathContext mc = new MathContext((newDecimal.precision() - newDecimal.scale()) + column.scale());
-          newDecimal = new BigDecimal(newDecimal.doubleValue(), mc);
+          newDecimal = newDecimal.setScale(column.scale());
         }
         return newDecimal;
     }
@@ -143,7 +141,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
         return super.convertBit(column, fieldDefn, data);
     }
-    
+
     @Override
     protected Object convertBits(Column column, Field fieldDefn, Object data, int numBytes) {
         if (data instanceof PGobject) {
@@ -163,7 +161,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
         return super.convertBits(column, fieldDefn, data, numBytes);
     }
-    
+
     protected Object convertMoney(Column column, Field fieldDefn, Object data) {
         if (data == null) {
             data = fieldDefn.schema().defaultValue();
@@ -181,7 +179,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
         return handleUnknownData(column, fieldDefn, data);
     }
-    
+
     protected Object convertInterval(Column column, Field fieldDefn, Object data) {
         if (data == null) {
             data = fieldDefn.schema().defaultValue();
@@ -201,7 +199,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
         return handleUnknownData(column, fieldDefn, data);
     }
-    
+
     @Override
     protected Object convertTimestampToEpochMillis(Column column, Field fieldDefn, Object data) {
         if (data instanceof Long) {
@@ -209,7 +207,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
         return super.convertTimestampToEpochMillis(column, fieldDefn, data);
     }
-    
+
     @Override
     protected Object convertTimestampToEpochMicros(Column column, Field fieldDefn, Object data) {
         if (data instanceof Long) {
@@ -217,7 +215,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
         return super.convertTimestampToEpochMicros(column, fieldDefn, data);
     }
-    
+
     @Override
     protected Object convertTimestampToEpochNanos(Column column, Field fieldDefn, Object data) {
         if (data instanceof Long) {
@@ -225,7 +223,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
         return super.convertTimestampToEpochNanos(column, fieldDefn, data);
     }
-    
+
     @Override
     protected Object convertTimestampToEpochMillisAsDate(Column column, Field fieldDefn, Object data) {
         if (data instanceof Long) {
@@ -233,7 +231,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
         return super.convertTimestampToEpochMillisAsDate(column, fieldDefn, data);
     }
-    
+
     @Override
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
         if (data instanceof Long) {
@@ -259,7 +257,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
         return super.convertTimeWithZone(column, fieldDefn, data);
     }
-    
+
     private static LocalDateTime nanosToLocalDateTimeUTC(long epocNanos) {
         // the pg plugin stores date/time info as microseconds since epoch
         BigInteger epochMicrosBigInt = BigInteger.valueOf(epocNanos);
@@ -267,10 +265,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
         return LocalDateTime.ofInstant(Instant.ofEpochSecond(secondsAndNanos[0].longValue(), secondsAndNanos[1].longValue()),
                                        ZoneOffset.UTC);
     }
- 
+
     /**
      * Converts a value representing a Postgres point for a column, to a Kafka Connect value.
-     * 
+     *
      * @param column the JDBC column; never null
      * @param fieldDefn the Connect field definition for this column; never null
      * @param data a data for the point column, either coming from the JDBC driver or logical decoding plugin

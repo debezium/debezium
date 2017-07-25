@@ -66,7 +66,7 @@ public class PostgresSchemaIT {
             Arrays.stream(TEST_TABLES).forEach(tableId -> assertKeySchema(tableId, "pk", Schema.INT32_SCHEMA));
             assertTableSchema("public.numeric_table", "si, i, bi, d, n, r, db, ss, bs, b",
                               Schema.OPTIONAL_INT16_SCHEMA, Schema.OPTIONAL_INT32_SCHEMA, Schema.OPTIONAL_INT64_SCHEMA,
-                              Decimal.builder(2).optional().build(), Decimal.builder(3).optional().build(), Schema.OPTIONAL_FLOAT32_SCHEMA,
+                              Decimal.builder(2).optional().build(), Decimal.builder(4).optional().build(), Schema.OPTIONAL_FLOAT32_SCHEMA,
                               Schema.OPTIONAL_FLOAT64_SCHEMA, Schema.INT16_SCHEMA, Schema.INT64_SCHEMA, Schema.OPTIONAL_BOOLEAN_SCHEMA);
             assertTableSchema("public.string_table", "vc, vcv, ch, c, t",
                               Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA,
