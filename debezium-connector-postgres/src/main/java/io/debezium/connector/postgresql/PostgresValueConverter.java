@@ -53,8 +53,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
      */
     protected static final double DAYS_PER_MONTH_AVG = 365.25 / 12.0d;
     
-    protected PostgresValueConverter(boolean adaptiveTimePrecision, ZoneOffset defaultOffset) {
-        super(DecimalMode.PRECISE, adaptiveTimePrecision, defaultOffset, null);
+    protected PostgresValueConverter(DecimalMode decimalMode, boolean adaptiveTimePrecision, ZoneOffset defaultOffset) {
+        super(decimalMode, adaptiveTimePrecision, defaultOffset, null);
     }
     
     @Override

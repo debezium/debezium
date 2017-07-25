@@ -6,10 +6,12 @@
 
 package io.debezium.connector.postgresql;
 
+import java.math.BigDecimal;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -81,6 +83,72 @@ public class PostgresConnectorConfig {
          */
         public static TemporalPrecisionMode parse(String value, String defaultValue) {
             TemporalPrecisionMode mode = parse(value);
+            if (mode == null && defaultValue != null) mode = parse(defaultValue);
+            return mode;
+        }
+    }
+
+    /**
+     * The set of predefined DecimalHandlingMode options or aliases.
+     */
+    public static enum DecimalHandlingMode implements EnumeratedValue {
+        /**
+         * Represent {@code DECIMAL} and {@code NUMERIC} values as precise {@link BigDecimal} values, which are
+         * represented in change events in a binary form. This is precise but difficult to use.
+         */
+        PRECISE("precise"),
+
+        /**
+         * Represent {@code DECIMAL} and {@code NUMERIC} values as precise {@code double} values. This may be less precise
+         * but is far easier to use.
+         */
+        DOUBLE("double");
+
+        private final String value;
+
+        private DecimalHandlingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public DecimalMode asDecimalMode() {
+            switch (this) {
+                case DOUBLE:
+                    return DecimalMode.DOUBLE;
+                case PRECISE:
+                default:
+                    return DecimalMode.PRECISE;
+            }
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static DecimalHandlingMode parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+            for (DecimalHandlingMode option : DecimalHandlingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static DecimalHandlingMode parse(String value, String defaultValue) {
+            DecimalHandlingMode mode = parse(value);
             if (mode == null && defaultValue != null) mode = parse(defaultValue);
             return mode;
         }
@@ -552,6 +620,15 @@ public class PostgresConnectorConfig {
                                                                  + "'connect' always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
                                                                  + "which uses millisecond precision regardless of the database columns' precision .");
 
+    public static final Field DECIMAL_HANDLING_MODE = Field.create("decimal.handling.mode")
+                                                        .withDisplayName("Decimal Handling")
+                                                        .withEnum(DecimalHandlingMode.class, DecimalHandlingMode.PRECISE)
+                                                        .withWidth(Width.SHORT)
+                                                        .withImportance(Importance.MEDIUM)
+                                                        .withDescription("Specify how DECIMAL and NUMERIC columns should be represented in change events, including:"
+                                                                + "'precise' (the default) uses java.math.BigDecimal to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; "
+                                                                + "'double' represents values using Java's 'double', which may not offer the precision but will be far easier to use in consumers.");
+
     public static final Field STATUS_UPDATE_INTERVAL_MS = Field.create("status.update.interval.ms")
             .withDisplayName("Status update interval (ms)")
             .withType(Type.INT) // Postgres doesn't accept long for this value
@@ -577,7 +654,7 @@ public class PostgresConnectorConfig {
                                                      MAX_QUEUE_SIZE, POLL_INTERVAL_MS, SCHEMA_WHITELIST,
                                                      SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE,
-                                                     TIME_PRECISION_MODE,
+                                                     TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                                                      SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD,
                                                      SSL_ROOT_CERT, SSL_CLIENT_KEY, SNAPSHOT_LOCK_TIMEOUT_MS, ROWS_FETCH_SIZE, SSL_SOCKET_FACTORY,
                                                      STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE);
@@ -585,6 +662,7 @@ public class PostgresConnectorConfig {
     private final Configuration config;
     private final String serverName;
     private final boolean adaptiveTimePrecision;
+    private final DecimalMode decimalHandlingMode;
     private final SnapshotMode snapshotMode;
 
     protected PostgresConnectorConfig(Configuration config) {
@@ -596,6 +674,9 @@ public class PostgresConnectorConfig {
         this.serverName = serverName;
         TemporalPrecisionMode timePrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
         this.adaptiveTimePrecision = TemporalPrecisionMode.ADAPTIVE == timePrecisionMode;
+        String decimalHandlingModeStr = config.getString(PostgresConnectorConfig.DECIMAL_HANDLING_MODE);
+        DecimalHandlingMode decimalHandlingMode = DecimalHandlingMode.parse(decimalHandlingModeStr);
+        this.decimalHandlingMode = decimalHandlingMode.asDecimalMode();
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
     }
 
@@ -641,6 +722,10 @@ public class PostgresConnectorConfig {
 
     protected boolean adaptiveTimePrecision() {
         return adaptiveTimePrecision;
+    }
+
+    protected DecimalMode decimalHandlingMode() {
+        return decimalHandlingMode;
     }
 
     protected Configuration jdbcConfig() {
@@ -713,7 +798,7 @@ public class PostgresConnectorConfig {
         Field.group(config, "Events", SCHEMA_WHITELIST, SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
                     COLUMN_BLACKLIST);
         Field.group(config, "Connector", TOPIC_SELECTION_STRATEGY, POLL_INTERVAL_MS, MAX_BATCH_SIZE, MAX_QUEUE_SIZE,
-                    SNAPSHOT_MODE, SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, ROWS_FETCH_SIZE);
+                    SNAPSHOT_MODE, SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, ROWS_FETCH_SIZE);
         return config;
     }
 
