@@ -75,8 +75,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     private final ZoneOffset defaultOffset;
-    private final boolean adaptiveTimePrecision;
-    private final DecimalMode decimalMode;
+    protected final boolean adaptiveTimePrecision;
+    protected final DecimalMode decimalMode;
     private final TemporalAdjuster adjuster;
 
     /**

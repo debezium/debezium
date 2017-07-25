@@ -49,6 +49,14 @@ public interface Column extends Comparable<Column> {
     int jdbcType();
 
     /**
+     * Get the underlying type for this column where
+     * jdbcType() itself is the generic Types.ARRAY.
+     *
+     * @return a type constant for the specific database
+     */
+    int underlyingType();
+
+    /**
      * Get the database-specific name of the column's data type.
      * 
      * @return the name of the type

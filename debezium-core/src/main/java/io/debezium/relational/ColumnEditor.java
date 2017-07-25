@@ -39,6 +39,14 @@ public interface ColumnEditor extends Comparable<Column> {
     int jdbcType();
 
     /**
+     * Get the underlying type for this column where
+     * jdbcType() itself is the generic Types.ARRAY.
+     *
+     * @return a type constant for the specific database
+     */
+    int underlyingType();
+
+    /**
      * Get the database-specific name of the column's data type.
      * 
      * @return the name of the type; may be null if not set
@@ -138,6 +146,14 @@ public interface ColumnEditor extends Comparable<Column> {
      * @return this editor so callers can chain methods together
      */
     ColumnEditor jdbcType(int jdbcType);
+
+    /**
+     * Set the underlying type for this column where
+     * jdbcType() itself is the generic Types.ARRAY.
+     *
+     * @return a type constant for the specific database
+     */
+    ColumnEditor underlyingType(int underlyingType);
 
     /**
      * Set the database-specific name of the character set used by this column.

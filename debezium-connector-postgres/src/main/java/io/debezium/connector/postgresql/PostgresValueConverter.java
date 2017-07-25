@@ -16,6 +16,7 @@ import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Decimal;
@@ -86,11 +87,77 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return Point.builder();
             case PgOid.MONEY:
                 return Decimal.builder(column.scale());
+            case PgOid.INT2_ARRAY:
+                return SchemaBuilder.array(SchemaBuilder.OPTIONAL_INT16_SCHEMA);
+            case PgOid.INT4_ARRAY:
+                return SchemaBuilder.array(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
+            case PgOid.INT8_ARRAY:
+                return SchemaBuilder.array(SchemaBuilder.OPTIONAL_INT64_SCHEMA);
+            case PgOid.TEXT_ARRAY:
+                return SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+            case PgOid.NUMERIC_ARRAY:
+                switch (decimalMode) {
+                    case DOUBLE:
+                        return SchemaBuilder.array(Schema.OPTIONAL_FLOAT64_SCHEMA);
+                    case PRECISE:
+                        // values are fixed-precision decimal values with exact precision.
+                        // Use Kafka Connect's arbitrary precision decimal type and use the column's specified scale ...
+                        return SchemaBuilder.array(Decimal.builder(column.scale()).optional().build());
+                }
+            case PgOid.FLOAT4_ARRAY:
+                return SchemaBuilder.array(Schema.OPTIONAL_FLOAT32_SCHEMA);
+            case PgOid.FLOAT8_ARRAY:
+                return SchemaBuilder.array(Schema.OPTIONAL_FLOAT64_SCHEMA);
+            case PgOid.BOOL_ARRAY:
+                return SchemaBuilder.array(SchemaBuilder.OPTIONAL_BOOLEAN_SCHEMA);
+            case PgOid.DATE_ARRAY:
+                if (adaptiveTimePrecision) {
+                    return SchemaBuilder.array(io.debezium.time.Date.builder().optional().build());
+                }
+                return SchemaBuilder.array(org.apache.kafka.connect.data.Date.builder().optional().build());
+            case PgOid.TIME_ARRAY:
+                return null;
+            case PgOid.TIMETZ_ARRAY:
+                return null;
+            case PgOid.TIMESTAMP_ARRAY:
+                return null;
+            case PgOid.TIMESTAMPTZ_ARRAY:
+                return null;
+            case PgOid.BYTEA_ARRAY:
+                return null;
+            case PgOid.VARCHAR_ARRAY:
+                return null;
+            case PgOid.OID_ARRAY:
+                return null;
+            case PgOid.BPCHAR_ARRAY:
+                return null;
+            case PgOid.MONEY_ARRAY:
+                return null;
+            case PgOid.NAME_ARRAY:
+                return null;
+            case PgOid.INTERVAL_ARRAY:
+                return null;
+            case PgOid.CHAR_ARRAY:
+                return null;
+            case PgOid.VARBIT_ARRAY:
+                return null;
+            case PgOid.UUID_ARRAY:
+                return null;
+            case PgOid.XML_ARRAY:
+                return null;
+            case PgOid.POINT_ARRAY:
+                return null;
+            case PgOid.JSONB_ARRAY:
+                return null;
+            case PgOid.JSON_ARRAY:
+                return null;
+            case PgOid.REF_CURSOR_ARRAY:
+                return null;
             default:
                 return super.schemaBuilder(column);
         }
     }
-    
+
     @Override
     public ValueConverter converter(Column column, Field fieldDefn) {
         int oidValue = PgOid.jdbcColumnToOid(column);
@@ -115,6 +182,35 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return data -> convertPoint(column, fieldDefn, data);
             case PgOid.MONEY:
                 return data -> convertMoney(column, fieldDefn, data);
+            case PgOid.INT2_ARRAY:
+            case PgOid.INT4_ARRAY:
+            case PgOid.INT8_ARRAY:
+            case PgOid.TEXT_ARRAY:
+            case PgOid.NUMERIC_ARRAY:
+            case PgOid.FLOAT4_ARRAY:
+            case PgOid.FLOAT8_ARRAY:
+            case PgOid.BOOL_ARRAY:
+            case PgOid.DATE_ARRAY:
+            case PgOid.TIME_ARRAY:
+            case PgOid.TIMETZ_ARRAY:
+            case PgOid.TIMESTAMP_ARRAY:
+            case PgOid.TIMESTAMPTZ_ARRAY:
+            case PgOid.BYTEA_ARRAY:
+            case PgOid.VARCHAR_ARRAY:
+            case PgOid.OID_ARRAY:
+            case PgOid.BPCHAR_ARRAY:
+            case PgOid.MONEY_ARRAY:
+            case PgOid.NAME_ARRAY:
+            case PgOid.INTERVAL_ARRAY:
+            case PgOid.CHAR_ARRAY:
+            case PgOid.VARBIT_ARRAY:
+            case PgOid.UUID_ARRAY:
+            case PgOid.XML_ARRAY:
+            case PgOid.POINT_ARRAY:
+            case PgOid.JSONB_ARRAY:
+            case PgOid.JSON_ARRAY:
+            case PgOid.REF_CURSOR_ARRAY:
+                return data -> convertArray(column, fieldDefn, data);
             default:
                 return super.converter(column, fieldDefn);
         }
@@ -287,5 +383,16 @@ public class PostgresValueConverter extends JdbcValueConverters {
             return Point.createValue(schema, ((PgProto.Point) data).getX(), ((PgProto.Point) data).getY());
         }
         return handleUnknownData(column, fieldDefn, data);
+    }
+
+    protected Object convertArray(Column column, Field fieldDefn, Object data) {
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        // RecordStreamProducer and RecordsSnapshotProducer should ensure this arrives as a list
+        if (!(data instanceof List)) {
+            return handleUnknownData(column, fieldDefn, data);
+        }
+        return data;
     }
 }

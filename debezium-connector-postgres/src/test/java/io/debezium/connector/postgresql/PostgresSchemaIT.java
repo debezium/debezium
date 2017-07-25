@@ -19,9 +19,11 @@ import java.util.stream.IntStream;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.connector.postgresql.connection.PostgresTableIdTransformer;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.data.Bits;
 import io.debezium.data.Json;
@@ -47,7 +49,8 @@ public class PostgresSchemaIT {
 
     private static final String[] TEST_TABLES = new String[] { "public.numeric_table", "public.string_table", "public.cash_table",
                                                                "public.bitbin_table",
-                                                               "public.time_table", "public.text_table", "public.geom_table", "public.tstzrange_table" };
+                                                               "public.time_table", "public.text_table", "public.geom_table", "public.tstzrange_table", "public.Quoted_Table",
+                                                               "public.array_table"/*, "public.composite_table"*/};
 
     private PostgresSchema schema;
 
@@ -85,6 +88,18 @@ public class PostgresSchemaIT {
             assertTableSchema("public.geom_table", "p", Point.builder().optional().build());
             assertTableSchema("public.tstzrange_table", "unbounded_exclusive_range, bounded_inclusive_range",
                               Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA);
+            assertTableSchema("public.Quoted_Table", "Quoted_Text_Column",
+                              Schema.OPTIONAL_STRING_SCHEMA);
+            assertTableSchema("public.array_table", "int_array, bigint_array, text_array",
+                              SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(), SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(),
+                              SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
+            /*
+            assertTableSchema("public.composite_table", "c_type",
+                              SchemaBuilder.struct()
+                                      .field("f1", Schema.OPTIONAL_INT32_SCHEMA)
+                                      .field("f2", Schema.OPTIONAL_STRING_SCHEMA)
+                             );
+                              */
         }
     }
 
@@ -172,7 +187,7 @@ public class PostgresSchemaIT {
 
         TestHelper.execute(statements);
         try (PostgresConnection connection = TestHelper.create()) {
-            schema.refresh(connection, TableId.parse(tableId, false));
+            schema.refresh(connection, TableId.parse(tableId, false, PostgresTableIdTransformer.INSTANCE));
             assertTablesIncluded(tableId);
             assertTablesExcluded("public.table1");
             assertTableSchema(tableId, "vc, si",

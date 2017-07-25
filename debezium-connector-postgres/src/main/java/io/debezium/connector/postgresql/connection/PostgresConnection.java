@@ -10,9 +10,11 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.ResultSet;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.postgresql.jdbc.PgConnection;
 import org.postgresql.replication.LogSequenceNumber;
 import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
@@ -241,4 +243,23 @@ public class PostgresConnection extends JdbcConnection {
         }
     }
 
+    @Override
+    protected int resolveUnderlyingTypeForArray(ResultSet rs) {
+        try {
+            String typeName = rs.getString(6);
+            if (typeName.charAt(0) == '_') {
+                PgConnection connection = (PgConnection)connection();
+                //String underlyingTypeName = typeName.substring(1);
+                return connection.getTypeInfo().getPGType(typeName);
+            }
+            else {
+                LOGGER.warn("resolveUnderlyingJdbcTypeForArray was expecting typeName to start with '_' character: '{}'", typeName);
+            }
+            return -1;
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Unexpected error trying to get underlying JDBC type for an array:", e);
+            return super.resolveUnderlyingTypeForArray(rs);
+        }
+    }
 }

@@ -35,14 +35,34 @@ public final class TableId implements Comparable<TableId> {
      * @return the table ID, or null if it could not be parsed
      */
     public static TableId parse(String str, boolean useCatalogBeforeSchema) {
+        return TableId.parse(str, useCatalogBeforeSchema, null);
+    }
+
+    /**
+     * Parse the supplied string, extracting up to the first 3 parts into a TableID.
+     *
+     * @param str the string representation of the table identifier; may not be null
+     * @param useCatalogBeforeSchema {@code true} if the parsed string contains only 2 items and the first should be used as
+     *            the catalog and the second as the table name, or {@code false} if the first should be used as the schema and the
+     *            second as the table name
+     * @param tableIdTransformer Transformer to use in order to un-escape quoted table names, may be null in which case no
+     *            transformer will be applied
+     * @return the table ID, or null if it could not be parsed
+     */
+    public static TableId parse(String str, boolean useCatalogBeforeSchema, TableIdTransformer tableIdTransformer) {
         String[] parts = str.split("[\\" + '.' + "]");
         if ( parts.length < 0 ) return null;
+        if ( tableIdTransformer != null ) {
+            for (int i = 0; i < parts.length; i++) {
+                parts[i] = tableIdTransformer.fromSqlQuoted(parts[i]);
+            }
+        }
         return TableId.parse(parts, parts.length, useCatalogBeforeSchema);
     }
 
     /**
      * Parse the supplied string, extracting up to the first 3 parts into a TableID.
-     * 
+     *
      * @param parts the parts of the identifier; may not be null
      * @param numParts the number of parts to use for the table identifier
      * @param useCatalogBeforeSchema {@code true} if the parsed string contains only 2 items and the first should be used as
@@ -138,6 +158,11 @@ public final class TableId implements Comparable<TableId> {
         return id;
     }
 
+
+    public String toQuotedId(TableIdTransformer tableIdTransformer) {
+        return quotedTableId(this.catalogName, this.schemaName, this.tableName, tableIdTransformer);
+    }
+
     private static String tableId(String catalog, String schema, String table) {
         if (catalog == null || catalog.length() == 0) {
             if (schema == null || schema.length() == 0) {
@@ -149,5 +174,19 @@ public final class TableId implements Comparable<TableId> {
             return catalog + "." + table;
         }
         return catalog + "." + schema + "." + table;
+    }
+
+
+    private static String quotedTableId(String catalog, String schema, String table, TableIdTransformer tableIdTransformer) {
+        if (catalog == null || catalog.length() == 0) {
+            if (schema == null || schema.length() == 0) {
+                return tableIdTransformer.toSqlQuoted(table);
+            }
+            return tableIdTransformer.toSqlQuoted(schema) + "." + tableIdTransformer.toSqlQuoted(table);
+        }
+        if (schema == null || schema.length() == 0) {
+            return tableIdTransformer.toSqlQuoted(catalog) + "." + tableIdTransformer.toSqlQuoted(table);
+        }
+        return tableIdTransformer.toSqlQuoted(catalog) + "." + tableIdTransformer.toSqlQuoted(schema) + "." + tableIdTransformer.toSqlQuoted(table);
     }
 }

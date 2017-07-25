@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -19,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import io.debezium.connector.postgresql.connection.PostgresTableIdTransformer;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -36,6 +38,8 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.util.LoggingContext;
+import org.postgresql.jdbc.PgArray;
+import org.postgresql.jdbc.PgConnection;
 
 /**
  * A {@link RecordsProducer} which creates {@link org.apache.kafka.connect.source.SourceRecord records} from a Postgres
@@ -51,7 +55,7 @@ public class RecordsStreamProducer extends RecordsProducer {
     private final ExecutorService executorService;
     private final ReplicationConnection replicationConnection;
     private final AtomicReference<ReplicationStream> replicationStream;
-    
+    private PgConnection typeResolverConnection = null;
     /**
      * Creates new producer instance for the given task context
      *
@@ -333,7 +337,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         }
         recordConsumer.accept(record);
     }
-    
+
     private Object[] columnValues(List<PgProto.DatumMessage> messageList, TableId tableId, boolean refreshSchemaIfChanged)
             throws SQLException {
         if (messageList == null || messageList.isEmpty()) {
@@ -352,7 +356,8 @@ public class RecordsStreamProducer extends RecordsProducer {
         List<String> columnNames = table.columnNames();
         Object[] values = new Object[messageList.size()];
         messageList.forEach(message -> {
-            int position = columnNames.indexOf(message.getColumnName());
+            final String columnName = PostgresTableIdTransformer.INSTANCE.fromSqlQuoted(message.getColumnName());
+            int position = columnNames.indexOf(columnName);
             assert position >= 0;
             values[position] = extractValueFromMessage(message);
         });
@@ -371,7 +376,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         // go through the list of columns from the message to figure out if any of them are new or have changed their type based
         // on what we have in the table metadata....
         return messageList.stream().filter(message -> {
-            String columnName = message.getColumnName();
+            final String columnName = PostgresTableIdTransformer.INSTANCE.fromSqlQuoted(message.getColumnName());
             Column column = table.columnWithName(columnName);
             if (column == null) {
                 logger.debug("found new column '{}' present in the server message which is not part of the table metadata; refreshing table schema", columnName);
@@ -476,11 +481,68 @@ public class RecordsStreamProducer extends RecordsProducer {
             }
             case PgOid.TSTZRANGE_OID:
                 return datumMessage.hasDatumBytes() ? new String(datumMessage.getDatumBytes().toByteArray(), Charset.forName("UTF-8")) : null;
+            case PgOid.INT2_ARRAY:
+            case PgOid.INT4_ARRAY:
+            case PgOid.INT8_ARRAY:
+            case PgOid.TEXT_ARRAY:
+            case PgOid.NUMERIC_ARRAY:
+            case PgOid.FLOAT4_ARRAY:
+            case PgOid.FLOAT8_ARRAY:
+            case PgOid.BOOL_ARRAY:
+            case PgOid.DATE_ARRAY:
+            case PgOid.TIME_ARRAY:
+            case PgOid.TIMETZ_ARRAY:
+            case PgOid.TIMESTAMP_ARRAY:
+            case PgOid.TIMESTAMPTZ_ARRAY:
+            case PgOid.BYTEA_ARRAY:
+            case PgOid.VARCHAR_ARRAY:
+            case PgOid.OID_ARRAY:
+            case PgOid.BPCHAR_ARRAY:
+            case PgOid.MONEY_ARRAY:
+            case PgOid.NAME_ARRAY:
+            case PgOid.INTERVAL_ARRAY:
+            case PgOid.CHAR_ARRAY:
+            case PgOid.VARBIT_ARRAY:
+            case PgOid.UUID_ARRAY:
+            case PgOid.XML_ARRAY:
+            case PgOid.POINT_ARRAY:
+            case PgOid.JSONB_ARRAY:
+            case PgOid.JSON_ARRAY:
+            case PgOid.REF_CURSOR_ARRAY:
+                // Currently the logical decoding plugin sends unhandled types as a byte array containing the string
+                // representation (in Postgres) of the array value.
+                // The approach to decode this is sub-optimal but the only way to improve this is to update the plugin.
+                // Reasons for it being sub-optimal include:
+                // 1. It requires a Postgres JDBC connection to deserialize
+                // 2. The byte-array is a serialised string but we make the assumption its UTF-8 encoded (which it will
+                //    be in most cases)
+                // 3. For larger arrays and especially 64-bit integers and the like it is less efficient sending string
+                //    representations over the wire.
+                try {
+                    byte[] data = datumMessage.hasDatumBytes()? datumMessage.getDatumBytes().toByteArray() : null;
+                    if (data == null) return null;
+                    String dataString = new String(data, Charset.forName("UTF-8"));
+                    PgArray arrayData = new PgArray(typeResolverConnection(), columnType, dataString);
+                    Object deserializedArray = arrayData.getArray();
+                    return Arrays.asList((Object[])deserializedArray);
+                }
+                catch (SQLException e) {
+                    logger.warn("Unexpected exception trying to process PgArray column '{}'", datumMessage.getColumnName(), e);
+                }
+                return null;
             default: {
                 logger.warn("processing column '{}' with unknown data type '{}' as byte array", datumMessage.getColumnName(),
                             datumMessage.getColumnType());
                 return datumMessage.hasDatumBytes()? datumMessage.getDatumBytes().toByteArray() : null;
             }
         }
+    }
+
+
+    private synchronized PgConnection typeResolverConnection() throws SQLException {
+        if (typeResolverConnection == null) {
+            typeResolverConnection = (PgConnection)taskContext.createConnection().connection();
+        }
+        return typeResolverConnection;
     }
 }
