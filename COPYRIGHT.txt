@@ -13,6 +13,7 @@ Gunnar Morling
 Horia Chiorean
 Jiri Pechanec
 Jure Kajzer
+Matteo Capitanio
 Omar Al-Safi
 Prannoy Mittal
 Ramesh Reddy
