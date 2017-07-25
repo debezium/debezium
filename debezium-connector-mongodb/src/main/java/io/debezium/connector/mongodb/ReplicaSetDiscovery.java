@@ -20,7 +20,7 @@ import io.debezium.util.Strings;
 
 /**
  * A component that monitors a single replica set or the set of replica sets that make up the shards in a sharded cluster.
- * 
+ *
  * @author Randall Hauch
  */
 @ThreadSafe
@@ -42,7 +42,7 @@ public class ReplicaSetDiscovery {
 
     /**
      * Create a cluster component.
-     * 
+     *
      * @param context the replication context; may not be null
      */
     public ReplicaSetDiscovery(ReplicationContext context) {
@@ -53,7 +53,7 @@ public class ReplicaSetDiscovery {
     /**
      * Connect to the shard cluster or replica set defined by the seed addresses, and obtain the specifications for each of the
      * replica sets.
-     * 
+     *
      * @return the information about the replica sets; never null but possibly empty
      */
     public ReplicaSets getReplicaSets() {

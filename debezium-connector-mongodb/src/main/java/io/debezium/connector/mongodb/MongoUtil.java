@@ -27,7 +27,7 @@ import io.debezium.util.Strings;
 
 /**
  * Utilities for working with MongoDB.
- * 
+ *
  * @author Randall Hauch
  */
 public class MongoUtil {
@@ -49,7 +49,7 @@ public class MongoUtil {
 
     /**
      * Find the name of the replica set precedes the host addresses.
-     * 
+     *
      * @param addresses the string containing the host addresses, of the form {@code replicaSetName/...}; may not be null
      * @return the replica set name, or {@code null} if no replica set name is in the string
      */
@@ -66,7 +66,7 @@ public class MongoUtil {
 
     /**
      * Perform the given operation on each of the database names.
-     * 
+     *
      * @param client the MongoDB client; may not be null
      * @param operation the operation to perform; may not be null
      */
@@ -76,7 +76,7 @@ public class MongoUtil {
 
     /**
      * Perform the given operation on each of the collection names in the named database.
-     * 
+     *
      * @param client the MongoDB client; may not be null
      * @param databaseName the name of the database; may not be null
      * @param operation the operation to perform; may not be null
@@ -88,7 +88,7 @@ public class MongoUtil {
 
     /**
      * Perform the given operation on each of the values in the iterable container.
-     * 
+     *
      * @param iterable the iterable collection obtained from a MongoDB client; may not be null
      * @param operation the operation to perform; may not be null
      */
@@ -102,7 +102,7 @@ public class MongoUtil {
 
     /**
      * Perform the given operation on the database with the given name, only if that database exists.
-     * 
+     *
      * @param client the MongoDB client; may not be null
      * @param dbName the name of the database; may not be null
      * @param dbOperation the operation to perform; may not be null
@@ -115,7 +115,7 @@ public class MongoUtil {
 
     /**
      * Perform the given operation on the named collection in the named database, if the database and collection both exist.
-     * 
+     *
      * @param client the MongoDB client; may not be null
      * @param dbName the name of the database; may not be null
      * @param collectionName the name of the collection; may not be null
@@ -134,7 +134,7 @@ public class MongoUtil {
      * Perform the given operation on all of the documents inside the named collection in the named database, if the database and
      * collection both exist. The operation is called once for each document, so if the collection exists but is empty then the
      * function will not be called.
-     * 
+     *
      * @param client the MongoDB client; may not be null
      * @param dbName the name of the database; may not be null
      * @param collectionName the name of the collection; may not be null
@@ -158,7 +158,7 @@ public class MongoUtil {
 
     /**
      * Determine if the supplied {@link MongoIterable} contains an element that is equal to the supplied value.
-     * 
+     *
      * @param iterable the iterable; may not be null
      * @param match the value to find in the iterable; may be null
      * @return {@code true} if a matching value was found, or {@code false} otherwise
@@ -169,7 +169,7 @@ public class MongoUtil {
 
     /**
      * Determine if the supplied {@link MongoIterable} contains at least one element that satisfies the given predicate.
-     * 
+     *
      * @param iterable the iterable; may not be null
      * @param matcher the predicate function called on each value in the iterable until a match is found; may not be null
      * @return {@code true} if a matching value was found, or {@code false} otherwise
@@ -187,7 +187,7 @@ public class MongoUtil {
      * Parse the server address string, of the form {@code host:port} or {@code host}.
      * <p>
      * The IP address can be either an IPv4 address, or an IPv6 address surrounded by square brackets.
-     * 
+     *
      * @param addressStr the string containing the host and port; may be null
      * @return the server address, or {@code null} if the string did not contain a host or host:port pair
      */
@@ -213,7 +213,7 @@ public class MongoUtil {
 
     /**
      * Parse the comma-separated list of server addresses. The format of the supplied string is one of the following:
-     * 
+     *
      * <pre>
      * replicaSetName/host:port
      * replicaSetName/host:port,host2:port2
@@ -222,7 +222,7 @@ public class MongoUtil {
      * host:port,host2:port2
      * host:port,host2:port2,host3:port3
      * </pre>
-     * 
+     *
      * where {@code replicaSetName} is the name of the replica set, {@code host} contains the resolvable hostname or IP address of
      * the server, and {@code port} is the integral port number. If the port is not provided, the
      * {@link ServerAddress#defaultPort() default port} is used. If neither the host or port are provided (or
@@ -232,7 +232,7 @@ public class MongoUtil {
      * The IP address can be either an IPv4 address, or an IPv6 address surrounded by square brackets.
      * <p>
      * This method does not use the replica set name.
-     * 
+     *
      * @param addressStr the string containing a comma-separated list of host and port pairs, optionally preceded by a
      *            replica set name
      * @return the list of server addresses; never null, but possibly empty

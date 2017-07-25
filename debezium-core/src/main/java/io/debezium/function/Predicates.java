@@ -20,7 +20,7 @@ import io.debezium.util.Strings;
 
 /**
  * Utilities for constructing various predicates.
- * 
+ *
  * @author Randall Hauch
  *
  */
@@ -30,7 +30,7 @@ public class Predicates {
      * Generate a predicate function that for any supplied UUID strings returns {@code true} if <i>any</i> of the comma-separated
      * UUID literals or regular expressions matches the predicate parameter. This supplied strings can be a mixture
      * of regular expressions and UUID literals, and the most efficient method will be used for each.
-     * 
+     *
      * @param uuidPatterns the comma-separated UUID literals or regular expression patterns; may not be null
      * @return the predicate function that performs the matching
      * @throws PatternSyntaxException if the string includes an invalid regular expression
@@ -43,7 +43,7 @@ public class Predicates {
      * Generate a predicate function that for any supplied string returns {@code true} if <i>none</i> of the regular
      * expressions or literals in the supplied comma-separated list matches the predicate parameter. This supplied strings can be
      * a mixture of regular expressions and UUID literals, and the most efficient method will be used for each.
-     * 
+     *
      * @param uuidPatterns the comma-separated regular expression pattern (or literal) strings; may not be null
      * @return the predicate function that performs the matching
      * @throws PatternSyntaxException if the string includes an invalid regular expression
@@ -56,7 +56,7 @@ public class Predicates {
      * Generate a predicate function that for any supplied string returns {@code true} if <i>any</i> of the regular expressions
      * or literals in the supplied comma-separated list matches the predicate parameter. This supplied strings can be a mixture
      * of regular expressions and literals, and the most efficient method will be used for each.
-     * 
+     *
      * @param literalsOrPatterns the comma-separated regular expression pattern (or literal) strings; may not be null
      * @param isLiteral function that determines if a given pattern is a literal string; may not be null
      * @param conversion the function that converts each predicate-supplied value to a string that can be matched against the
@@ -78,7 +78,7 @@ public class Predicates {
         }
         Predicate<T> patternsPredicate = includedInPatterns(patterns, conversion);
         Predicate<T> literalsPredicate = includedInLiterals(literals, conversion);
-        
+
         // Now figure out which predicate(s) we need to use ...
         if (patterns.isEmpty()) {
             return literalsPredicate;
@@ -93,7 +93,7 @@ public class Predicates {
      * Generate a predicate function that for any supplied string returns {@code true} if <i>none</i> of the regular
      * expressions or literals in the supplied comma-separated list matches the predicate parameter. This supplied strings can be
      * a mixture of regular expressions and literals, and the most efficient method will be used for each.
-     * 
+     *
      * @param patterns the comma-separated regular expression pattern (or literal) strings; may not be null
      * @param isLiteral function that determines if a given pattern is a literal string; may not be null
      * @param conversion the function that converts each predicate-supplied value to a string that can be matched against the
@@ -109,7 +109,7 @@ public class Predicates {
     /**
      * Generate a predicate function that for any supplied string returns {@code true} if <i>any</i> of the literals in
      * the supplied comma-separated list case insensitively matches the predicate parameter.
-     * 
+     *
      * @param literals the comma-separated literal strings; may not be null
      * @return the predicate function that performs the matching
      */
@@ -120,7 +120,7 @@ public class Predicates {
     /**
      * Generate a predicate function that for any supplied string returns {@code true} if <i>none</i> of the literals in
      * the supplied comma-separated list case insensitively matches the predicate parameter.
-     * 
+     *
      * @param literals the comma-separated literal strings; may not be null
      * @return the predicate function that performs the matching
      */
@@ -131,7 +131,7 @@ public class Predicates {
     /**
      * Generate a predicate function that for any supplied string returns {@code true} if <i>any</i> of the literals in
      * the supplied comma-separated list case insensitively matches the predicate parameter.
-     * 
+     *
      * @param literals the comma-separated literal strings; may not be null
      * @param conversion the function that converts each predicate-supplied value to a string that can be matched against the
      *            regular expressions; may not be null
@@ -146,7 +146,7 @@ public class Predicates {
     /**
      * Generate a predicate function that for any supplied string returns {@code true} if <i>none</i> of the literals in
      * the supplied comma-separated list case insensitively matches the predicate parameter.
-     * 
+     *
      * @param literals the comma-separated literal strings; may not be null
      * @param conversion the function that converts each predicate-supplied value to a string that can be matched against the
      *            regular expressions; may not be null
@@ -159,7 +159,7 @@ public class Predicates {
     /**
      * Generate a predicate function that for any supplied string returns {@code true} if <i>any</i> of the regular expressions in
      * the supplied comma-separated list matches the predicate parameter.
-     * 
+     *
      * @param regexPatterns the comma-separated regular expression pattern (or literal) strings; may not be null
      * @return the predicate function that performs the matching
      * @throws PatternSyntaxException if the string includes an invalid regular expression
@@ -171,7 +171,7 @@ public class Predicates {
     /**
      * Generate a predicate function that for any supplied string returns {@code true} if <i>none</i> of the regular
      * expressions in the supplied comma-separated list matches the predicate parameter.
-     * 
+     *
      * @param regexPatterns the comma-separated regular expression pattern (or literal) strings; may not be null
      * @return the predicate function that performs the matching
      * @throws PatternSyntaxException if the string includes an invalid regular expression
@@ -183,7 +183,7 @@ public class Predicates {
     /**
      * Generate a predicate function that for any supplied parameter returns {@code true} if <i>any</i> of the regular expressions
      * in the supplied comma-separated list matches the predicate parameter in a case-insensitive manner.
-     * 
+     *
      * @param regexPatterns the comma-separated regular expression pattern (or literal) strings; may not be null
      * @param conversion the function that converts each predicate-supplied value to a string that can be matched against the
      *            regular expressions; may not be null
@@ -206,7 +206,7 @@ public class Predicates {
             return false;
         };
     }
-    
+
     protected static <T> Predicate<T> includedInLiterals(Collection<String> literals, Function<T, String> conversion) {
         return (s) -> {
             String str = conversion.apply(s).toLowerCase();
@@ -217,7 +217,7 @@ public class Predicates {
     /**
      * Generate a predicate function that for any supplied parameter returns {@code true} if <i>none</i> of the regular
      * expressions in the supplied comma-separated list matches the predicate parameter.
-     * 
+     *
      * @param regexPatterns the comma-separated regular expression pattern (or literal) strings; may not be null
      * @param conversion the function that converts each predicate-supplied value to a string that can be matched against the
      *            regular expressions; may not be null
@@ -230,7 +230,7 @@ public class Predicates {
 
     /**
      * Create a predicate function that allows only those values are allowed or not disallowed by the supplied predicates.
-     * 
+     *
      * @param allowed the predicate that defines the allowed values; may be null
      * @param disallowed the predicate that defines the disallowed values; may be null
      * @return the predicate function; never null
