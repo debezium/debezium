@@ -11,6 +11,8 @@ package io.debezium.relational;
  *
  */
 public interface TableIdTransformer {
+    TableIdTransformer DOUBLE_QUOTED = new TableIdTransformerQuoted("\"");
+
     String fromSqlQuoted(String part);
 
     String toSqlQuoted(String part);

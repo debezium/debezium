@@ -18,6 +18,8 @@ import io.debezium.annotation.Immutable;
 @Immutable
 public interface Column extends Comparable<Column> {
 
+    int UNSET_INT_VALUE = -1;
+
     /**
      * Obtain an column definition editor that can be used to define a column.
      * 
@@ -49,12 +51,13 @@ public interface Column extends Comparable<Column> {
     int jdbcType();
 
     /**
-     * Get the underlying type for this column where
-     * jdbcType() itself is the generic Types.ARRAY.
+     * Get the component type for this column where jdbcType(). This is database specific and can be any integer value
+     * that relays additional information about the column-type since some jdbcTypes return generic type information
+     * (such as Types.ARRAY) that is not enough to understand the underlying column type.
      *
      * @return a type constant for the specific database
      */
-    int underlyingType();
+    int componentType();
 
     /**
      * Get the database-specific name of the column's data type.

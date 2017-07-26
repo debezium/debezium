@@ -244,12 +244,11 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     @Override
-    protected int resolveUnderlyingTypeForArray(ResultSet rs) {
+    protected int resolveUnderlyingComponentType(ResultSet rs) {
         try {
             String typeName = rs.getString(6);
             if (typeName.charAt(0) == '_') {
                 PgConnection connection = (PgConnection)connection();
-                //String underlyingTypeName = typeName.substring(1);
                 return connection.getTypeInfo().getPGType(typeName);
             }
             else {
@@ -259,7 +258,7 @@ public class PostgresConnection extends JdbcConnection {
         }
         catch (SQLException e) {
             LOGGER.warn("Unexpected error trying to get underlying JDBC type for an array:", e);
-            return super.resolveUnderlyingTypeForArray(rs);
+            return super.resolveUnderlyingComponentType(rs);
         }
     }
 }

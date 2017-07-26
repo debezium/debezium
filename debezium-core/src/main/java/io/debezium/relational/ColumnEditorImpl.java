@@ -11,14 +11,14 @@ final class ColumnEditorImpl implements ColumnEditor {
 
     private String name;
     private int jdbcType = Types.INTEGER;
-    private int underlyingType = -1;
+    private int componentType = Column.UNSET_INT_VALUE;
     private String typeName;
     private String typeExpression;
     private String charsetName;
     private String tableCharsetName;
-    private int length = -1;
-    private int scale = -1;
-    private int position = 1;
+    private int length = Column.UNSET_INT_VALUE;
+    private int scale = Column.UNSET_INT_VALUE;
+    private int position = Column.UNSET_INT_VALUE;
     private boolean optional = true;
     private boolean autoIncremented = false;
     private boolean generated = false;
@@ -47,8 +47,8 @@ final class ColumnEditorImpl implements ColumnEditor {
     }
 
     @Override
-    public int underlyingType() {
-        return underlyingType;
+    public int componentType() {
+        return componentType;
     }
 
     @Override
@@ -118,9 +118,9 @@ final class ColumnEditorImpl implements ColumnEditor {
     }
 
     @Override
-    public ColumnEditorImpl underlyingType(int underlyingType) {
+    public ColumnEditorImpl componentType(int componentType) {
         assert jdbcType == Types.ARRAY;
-        this.underlyingType = underlyingType;
+        this.componentType = componentType;
         return this;
     }
 
@@ -176,7 +176,7 @@ final class ColumnEditorImpl implements ColumnEditor {
 
     @Override
     public Column create() {
-        return new ColumnImpl(name, position, jdbcType, underlyingType, typeName, typeExpression, charsetName, tableCharsetName, length, scale, optional,
+        return new ColumnImpl(name, position, jdbcType, componentType, typeName, typeExpression, charsetName, tableCharsetName, length, scale, optional,
                               autoIncremented, generated);
     }
 

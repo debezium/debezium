@@ -27,13 +27,13 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.postgresql.util.PGmoney;
 
-import io.debezium.connector.postgresql.connection.PostgresTableIdTransformer;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.data.Envelope;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.relational.TableIdTransformer;
 import io.debezium.relational.TableSchema;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Strings;
@@ -151,7 +151,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             // we're locking in SHARE UPDATE EXCLUSIVE MODE to avoid concurrent schema changes while we're taking the snapshot
             // this does not prevent writes to the table, but prevents changes to the table's schema....
             schema.tables().forEach(tableId -> statements.append("LOCK TABLE ")
-                                                         .append(tableId.toQuotedId(PostgresTableIdTransformer.INSTANCE))
+                                                         .append(tableId.toQuotedId(TableIdTransformer.DOUBLE_QUOTED))
                                                          .append(" IN SHARE UPDATE EXCLUSIVE MODE;")
                                                          .append(lineSeparator));
             connection.executeWithoutCommitting(statements.toString());
@@ -180,7 +180,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                 long exportStart = clock().currentTimeInMillis();
                 logger.info("\t exporting data from table '{}'", tableId);
                 try {
-                    connection.query("SELECT * FROM " + tableId.toQuotedId(PostgresTableIdTransformer.INSTANCE),
+                    connection.query("SELECT * FROM " + tableId.toQuotedId(TableIdTransformer.DOUBLE_QUOTED),
                                      this::readTableStatement, 
                                      rs -> readTable(tableId, rs, consumer, rowsCounter));
                     logger.info("\t finished exporting '{}' records for '{}'; total duration '{}'", rowsCounter.get(),

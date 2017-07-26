@@ -23,7 +23,6 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.Before;
 import org.junit.Test;
 
-import io.debezium.connector.postgresql.connection.PostgresTableIdTransformer;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.data.Bits;
 import io.debezium.data.Json;
@@ -31,6 +30,7 @@ import io.debezium.data.Uuid;
 import io.debezium.data.Xml;
 import io.debezium.data.geometry.Point;
 import io.debezium.relational.TableId;
+import io.debezium.relational.TableIdTransformer;
 import io.debezium.relational.TableSchema;
 import io.debezium.time.Date;
 import io.debezium.time.MicroDuration;
@@ -187,7 +187,7 @@ public class PostgresSchemaIT {
 
         TestHelper.execute(statements);
         try (PostgresConnection connection = TestHelper.create()) {
-            schema.refresh(connection, TableId.parse(tableId, false, PostgresTableIdTransformer.INSTANCE));
+            schema.refresh(connection, TableId.parse(tableId, false, TableIdTransformer.DOUBLE_QUOTED));
             assertTablesIncluded(tableId);
             assertTablesExcluded("public.table1");
             assertTableSchema(tableId, "vc, si",

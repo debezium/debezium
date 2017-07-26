@@ -39,8 +39,9 @@ public final class PgOid extends Oid {
         if (typeName.toUpperCase().equals("TSTZRANGE")) {
             return TSTZRANGE_OID;
         }
-        else if ( column.underlyingType() >= 0 ) {
-            return column.underlyingType();
+        else if ( column.componentType() != Column.UNSET_INT_VALUE ) {
+            // If there is an underlying type (indicated by value being the default (-1) then use it
+            return column.componentType();
         }
         try {
             return Oid.valueOf(typeName);

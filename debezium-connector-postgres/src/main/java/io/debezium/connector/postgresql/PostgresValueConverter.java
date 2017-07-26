@@ -116,42 +116,26 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 }
                 return SchemaBuilder.array(org.apache.kafka.connect.data.Date.builder().optional().build());
             case PgOid.TIME_ARRAY:
-                return null;
             case PgOid.TIMETZ_ARRAY:
-                return null;
             case PgOid.TIMESTAMP_ARRAY:
-                return null;
             case PgOid.TIMESTAMPTZ_ARRAY:
-                return null;
             case PgOid.BYTEA_ARRAY:
-                return null;
             case PgOid.VARCHAR_ARRAY:
-                return null;
             case PgOid.OID_ARRAY:
-                return null;
             case PgOid.BPCHAR_ARRAY:
-                return null;
             case PgOid.MONEY_ARRAY:
-                return null;
             case PgOid.NAME_ARRAY:
-                return null;
             case PgOid.INTERVAL_ARRAY:
-                return null;
             case PgOid.CHAR_ARRAY:
-                return null;
             case PgOid.VARBIT_ARRAY:
-                return null;
             case PgOid.UUID_ARRAY:
-                return null;
             case PgOid.XML_ARRAY:
-                return null;
             case PgOid.POINT_ARRAY:
-                return null;
             case PgOid.JSONB_ARRAY:
-                return null;
             case PgOid.JSON_ARRAY:
-                return null;
             case PgOid.REF_CURSOR_ARRAY:
+                // These array types still need to be implemented.  The superclass won't handle them so
+                // we return null here until we can code schema implementations for them.
                 return null;
             default:
                 return super.schemaBuilder(column);

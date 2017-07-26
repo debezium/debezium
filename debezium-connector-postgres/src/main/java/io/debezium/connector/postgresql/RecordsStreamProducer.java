@@ -20,7 +20,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-import io.debezium.connector.postgresql.connection.PostgresTableIdTransformer;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -36,6 +35,7 @@ import io.debezium.data.Envelope;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.relational.TableIdTransformer;
 import io.debezium.relational.TableSchema;
 import io.debezium.util.LoggingContext;
 import org.postgresql.jdbc.PgArray;
@@ -356,7 +356,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         List<String> columnNames = table.columnNames();
         Object[] values = new Object[messageList.size()];
         messageList.forEach(message -> {
-            final String columnName = PostgresTableIdTransformer.INSTANCE.fromSqlQuoted(message.getColumnName());
+            final String columnName = TableIdTransformer.DOUBLE_QUOTED.fromSqlQuoted(message.getColumnName());
             int position = columnNames.indexOf(columnName);
             assert position >= 0;
             values[position] = extractValueFromMessage(message);
@@ -376,7 +376,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         // go through the list of columns from the message to figure out if any of them are new or have changed their type based
         // on what we have in the table metadata....
         return messageList.stream().filter(message -> {
-            final String columnName = PostgresTableIdTransformer.INSTANCE.fromSqlQuoted(message.getColumnName());
+            final String columnName = TableIdTransformer.DOUBLE_QUOTED.fromSqlQuoted(message.getColumnName());
             Column column = table.columnWithName(columnName);
             if (column == null) {
                 logger.debug("found new column '{}' present in the server message which is not part of the table metadata; refreshing table schema", columnName);
