@@ -166,7 +166,8 @@ public class PostgresSchema {
     }
 
     protected TableSchema schemaFor(String fqn) {
-        return schemaFor(TableId.parse(fqn, false));
+        Table table = tableFor(fqn);
+        return table != null ? schemaFor(table.id()) : null;
     }
 
     protected boolean isType(String localTypeName, int jdbcType) {

@@ -47,6 +47,7 @@ import io.debezium.data.Json;
 import io.debezium.data.Uuid;
 import io.debezium.data.Xml;
 import io.debezium.data.geometry.Point;
+import io.debezium.relational.TableId;
 import io.debezium.time.Date;
 import io.debezium.time.MicroDuration;
 import io.debezium.time.NanoTime;
@@ -62,7 +63,7 @@ import io.debezium.util.VariableLatch;
  */
 public abstract class AbstractRecordsProducerTest {
 
-    protected static final Pattern INSERT_TABLE_MATCHING_PATTERN = Pattern.compile("insert into \"?(\\w+)\"?.+", Pattern.CASE_INSENSITIVE);
+    protected static final Pattern INSERT_TABLE_MATCHING_PATTERN = Pattern.compile("insert into (.*)\\(.*\\) VALUES .*", Pattern.CASE_INSENSITIVE);
 
     protected static final String INSERT_CASH_TYPES_STMT = "INSERT INTO cash_table (csh) VALUES ('$1234.11')";
     protected static final String INSERT_DATE_TIME_TYPES_STMT = "INSERT INTO time_table(ts, tz, date, ti, ttz, it) " +
@@ -86,7 +87,7 @@ public abstract class AbstractRecordsProducerTest {
     protected static final String INSERT_ARRAY_TYPES_STMT = "INSERT INTO array_table (int_array, bigint_array, text_array) " +
                                                              "VALUES ('{1,2,3}', '{1550166368505037572}', '{\"one\",\"two\",\"three\"}')";
 
-    protected static final String INSERT_QUOTED_TYPES_STMT = "INSERT INTO \"Quoted_Table\" (\"Quoted_Text_Column\") " +
+    protected static final String INSERT_QUOTED_TYPES_STMT = "INSERT INTO \"Quoted_\"\" . Schema\".\"Quoted_\"\" . Table\" (\"Quoted_\"\" . Text_Column\") " +
                                                              "VALUES ('some text')";
 
     protected static final Set<String> ALL_STMTS = new HashSet<>(Arrays.asList(INSERT_NUMERIC_TYPES_STMT, INSERT_DATE_TIME_TYPES_STMT,
@@ -184,7 +185,7 @@ public abstract class AbstractRecordsProducerTest {
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForQuotedTypes() {
-       return Arrays.asList(new SchemaAndValueField("Quoted_Text_Column", Schema.OPTIONAL_STRING_SCHEMA, "some text"));
+       return Arrays.asList(new SchemaAndValueField("Quoted_\" . Text_Column", Schema.OPTIONAL_STRING_SCHEMA, "some text"));
     }
 
     protected Map<String, List<SchemaAndValueField>> schemaAndValuesByTableName() {
@@ -242,9 +243,20 @@ public abstract class AbstractRecordsProducerTest {
     }
 
     protected static String tableNameFromInsertStmt(String statement) {
+        return tableIdFromInsertStmt(statement).toString();
+    }
+
+    protected static TableId tableIdFromInsertStmt(String statement) {
         Matcher matcher = INSERT_TABLE_MATCHING_PATTERN.matcher(statement);
-        assertTrue("invalid statement: " + statement, matcher.matches());
-        return matcher.group(1);
+        assertTrue("Extraction of table name from insert statement failed: " + statement, matcher.matches());
+
+        TableId id = TableId.parse(matcher.group(1), false);
+
+        if (id.schema() == null) {
+            id = new TableId(id.catalog(), "public", id.table());
+        }
+
+        return id;
     }
 
     protected static class SchemaAndValueField {
@@ -289,26 +301,48 @@ public abstract class AbstractRecordsProducerTest {
         }
     }
 
-    protected TestConsumer testConsumer(int expectedRecordsCount) {
-         return new TestConsumer(expectedRecordsCount);
+    protected TestConsumer testConsumer(int expectedRecordsCount, String... topicPrefixes) {
+         return new TestConsumer(expectedRecordsCount, topicPrefixes);
     }
 
     protected static class TestConsumer implements Consumer<SourceRecord> {
-        private ConcurrentLinkedQueue<SourceRecord> records;
-        private VariableLatch latch;
+        private final ConcurrentLinkedQueue<SourceRecord> records;
+        private final VariableLatch latch;
+        private final List<String> topicPrefixes;
 
-        protected TestConsumer(int expectedRecordsCount) {
+        protected TestConsumer(int expectedRecordsCount, String... topicPrefixes) {
             this.latch = new VariableLatch(expectedRecordsCount);
             this.records = new ConcurrentLinkedQueue<>();
+            this.topicPrefixes = Arrays.stream(topicPrefixes)
+                    .map(p -> TestHelper.TEST_SERVER + "." + p)
+                    .collect(Collectors.toList());
         }
 
         @Override
         public void accept(SourceRecord record) {
+            if ( ignoreTopic(record.topic()) ) {
+                return;
+            }
+
             if (latch.getCount() == 0) {
                 fail("received more events than expected");
             }
             records.add(record);
             latch.countDown();
+        }
+
+        private boolean ignoreTopic(String topicName) {
+            if (topicPrefixes.isEmpty()) {
+                return false;
+            }
+
+            for (String prefix : topicPrefixes) {
+                if ( topicName.startsWith(prefix)) {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         protected void expects(int expectedRecordsCount) {

@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
@@ -23,6 +24,7 @@ import org.junit.Test;
 
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
+import io.debezium.relational.TableId;
 
 /**
  * Integration test for the {@link RecordsStreamProducer} class. This also tests indirectly the PG plugin functionality for
@@ -304,8 +306,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     private void assertInsert(String statement, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {
-        String tableName = tableNameFromInsertStmt(statement);
-        String expectedTopicName = "public." + tableName;
+        TableId table = tableIdFromInsertStmt(statement);
+        String expectedTopicName = table.schema() + "." + table.table();
         try {
             executeAndWait(statement);
             SourceRecord record = assertRecordInserted(expectedTopicName, PK_FIELD, 1);

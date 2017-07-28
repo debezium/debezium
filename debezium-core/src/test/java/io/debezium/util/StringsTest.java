@@ -5,6 +5,7 @@
  */
 package io.debezium.util;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
@@ -14,8 +15,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 /**
  * @author Randall Hauch
@@ -197,7 +196,43 @@ public class StringsTest {
         assertReplacement("some ${v1,v2,v3:other} text ${v1,v2,v3:other}",vars("var10", "replaced", "v2", "s"), "some s text s");
         assertReplacement("some ${v1,v2:other}${v2,v3:other} text",vars("v1", "1", "v2", "2"), "some 12 text");
     }
-    
+
+    @Test
+    public void unquoteIdentifierPartShouldReturnNullForNull() {
+        assertThat(Strings.unquoteIdentifierPart(null)).isNull();
+    }
+
+    @Test
+    public void unquoteIdentifierPartShouldReturnSameValueForUnquotedString() {
+        assertThat(Strings.unquoteIdentifierPart("table")).isEqualTo("table");
+    }
+
+
+    @Test
+    public void unquoteIdentifierPartShouldReturnEmptyStringForEmptyQuotedString() {
+        assertThat(Strings.unquoteIdentifierPart("''")).isEqualTo("");
+    }
+
+    @Test
+    public void unquoteIdentifierPartShouldReturnUnquotedString() {
+        assertThat(Strings.unquoteIdentifierPart("'Table'")).isEqualTo("Table");
+    }
+
+    @Test
+    public void unquoteIdentifierPartShouldUnescapeEscapedQuote() {
+        assertThat(Strings.unquoteIdentifierPart("'Tab''le'")).isEqualTo("Tab'le");
+    }
+
+    @Test
+    public void unquoteIdentifierPartShouldSupportDoubleQuotes() {
+        assertThat(Strings.unquoteIdentifierPart("\"Tab\"\"le\"")).isEqualTo("Tab\"le");
+    }
+
+    @Test
+    public void unquoteIdentifierPartShouldSupportBackTicks() {
+        assertThat(Strings.unquoteIdentifierPart("`Tab``le`")).isEqualTo("Tab`le");
+    }
+
     protected void assertReplacement(String before, Map<String, String> replacements, String after) {
         String result = Strings.replaceVariables(before, replacements::get);
         assertThat(result).isEqualTo(after);

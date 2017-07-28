@@ -52,7 +52,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
     private final ExecutorService executorService;
     private final Optional<RecordsStreamProducer> streamProducer;
 
-    private AtomicReference<SourceRecord> currentRecord;
+    private final AtomicReference<SourceRecord> currentRecord;
 
     public RecordsSnapshotProducer(PostgresTaskContext taskContext,
                                    SourceInfo sourceInfo,
@@ -150,8 +150,9 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             statements.append("SET lock_timeout = ").append(lockTimeoutMillis).append(";").append(lineSeparator);
             // we're locking in SHARE UPDATE EXCLUSIVE MODE to avoid concurrent schema changes while we're taking the snapshot
             // this does not prevent writes to the table, but prevents changes to the table's schema....
+            // DBZ-298 Quoting name in case it has been quoted originally; it doesn't do harm if it hasn't been quoted
             schema.tables().forEach(tableId -> statements.append("LOCK TABLE ")
-                                                         .append(tableId.toString())
+                                                         .append(tableId.toDoubleQuotedString())
                                                          .append(" IN SHARE UPDATE EXCLUSIVE MODE;")
                                                          .append(lineSeparator));
             connection.executeWithoutCommitting(statements.toString());
@@ -180,8 +181,9 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                 long exportStart = clock().currentTimeInMillis();
                 logger.info("\t exporting data from table '{}'", tableId);
                 try {
-                    connection.query("SELECT * FROM " + tableId, 
-                                     this::readTableStatement, 
+                    // DBZ-298 Quoting name in case it has been quoted originally; it doesn't do harm if it hasn't been quoted
+                    connection.query("SELECT * FROM " + tableId.toDoubleQuotedString(),
+                                     this::readTableStatement,
                                      rs -> readTable(tableId, rs, consumer, rowsCounter));
                     logger.info("\t finished exporting '{}' records for '{}'; total duration '{}'", rowsCounter.get(),
                                 tableId, Strings.duration(clock().currentTimeInMillis() - exportStart));

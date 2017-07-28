@@ -798,6 +798,37 @@ public final class Strings {
         }
     }
 
+    /**
+     * Unquotes the given identifier part (e.g. an unqualified table name), if the
+     * first character is one of the supported quoting characters (single quote,
+     * double quote and back-tick) and the last character equals to the first
+     * character. Otherwise, the original string will be returned.
+     */
+    public static String unquoteIdentifierPart(String identifierPart) {
+        if (identifierPart == null || identifierPart.length() < 2) {
+            return identifierPart;
+        }
+
+        Character quotingChar = deriveQuotingChar(identifierPart);
+        if (quotingChar != null) {
+            identifierPart = identifierPart.substring(1, identifierPart.length() - 1);
+            identifierPart = identifierPart.replace(quotingChar.toString() + quotingChar.toString(), quotingChar.toString());
+        }
+
+        return identifierPart;
+    }
+
+    private static Character deriveQuotingChar(String identifierPart) {
+        char first = identifierPart.charAt(0);
+        char last = identifierPart.charAt(identifierPart.length() - 1);
+
+        if (first == last && (first == '"' || first == '\'' || first == '`')) {
+            return first;
+        }
+
+        return null;
+    }
+
     private Strings() {
     }
 }

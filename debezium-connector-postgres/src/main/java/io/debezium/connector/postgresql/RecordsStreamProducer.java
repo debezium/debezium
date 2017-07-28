@@ -39,6 +39,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.util.LoggingContext;
+import io.debezium.util.Strings;
 
 /**
  * A {@link RecordsProducer} which creates {@link org.apache.kafka.connect.source.SourceRecord records} from a Postgres
@@ -170,7 +171,7 @@ public class RecordsStreamProducer extends RecordsProducer {
             // in some cases we can get null if PG gives us back a message earlier than the latest reported flushed LSN
             return;
         }
-        
+
         TableId tableId = PostgresSchema.parse(message.getTable());
         assert tableId != null;
 
@@ -355,7 +356,9 @@ public class RecordsStreamProducer extends RecordsProducer {
         List<String> columnNames = table.columnNames();
         Object[] values = new Object[messageList.size()];
         messageList.forEach(message -> {
-            int position = columnNames.indexOf(message.getColumnName());
+            //DBZ-298 Quoted column names will be sent like that in messages, but stored unquoted in the column names
+            String columnName = Strings.unquoteIdentifierPart(message.getColumnName());
+            int position = columnNames.indexOf(columnName);
             assert position >= 0;
             values[position] = extractValueFromMessage(message);
         });
