@@ -154,21 +154,21 @@ public class StringsTest {
     public void justifyCenterShouldReturnStringsThatAreTheDesiredLength() {
         assertEquals("This is the string", Strings.justifyCenter("This is the string", 18, ' '));
     }
-    
+
     @Test
     public void replaceVariablesShouldReplaceVariableThatHaveSameCase() {
         assertReplacement("some ${v1} text",vars("v1", "abc"), "some abc text");
         assertReplacement("some ${v1} text",vars("v1", "abc", "V1", "ABC"), "some abc text");
         assertReplacement("some ${v1:other} text",vars("V1", "ABC"), "some other text");
     }
-    
+
     @Test
     public void replaceVariablesShouldNotReplaceVariableThatHasNoDefaultAndIsNotFound() {
         assertReplacement("some ${varName} text",vars("v1", "value1"), "some ${varName} text");
         assertReplacement("some${varName}text",vars("v1", "value1"), "some${varName}text");
         assertReplacement("${varName}",vars("v1", "value1"), "${varName}");
     }
-    
+
     @Test
     public void replaceVariablesShouldReplaceVariablesWithNoDefault() {
         assertReplacement("${varName}",vars("varName", "replaced"), "replaced");
@@ -178,7 +178,7 @@ public class StringsTest {
         assertReplacement("some ${var1,var2,var3:other} text",vars("v1", "replaced", "var2", "new"), "some new text");
         assertReplacement("some ${var1,var2,var3:other} text",vars("v1", "replaced", "var3", "new"), "some new text");
     }
-    
+
     @Test
     public void replaceVariablesShouldReplaceVariablesWithDefaultWhenNoReplacementIsFound() {
         assertReplacement("some${varName:other}text",vars("v1", "replaced"), "someothertext");
@@ -186,7 +186,7 @@ public class StringsTest {
         assertReplacement("some ${var1,var2,var3:other} text",vars("var10", "replaced"), "some other text");
         assertReplacement("some ${var1,var2,var3:other} text",vars("var10", "replaced", "var11", "new"), "some other text");
     }
-    
+
     @Test
     public void replaceVariablesShouldReplaceMultipleVariables() {
         assertReplacement("${v1}${v1}",vars("v1", "first", "v2", "second"), "firstfirst");
@@ -202,11 +202,11 @@ public class StringsTest {
         String result = Strings.replaceVariables(before, replacements::get);
         assertThat(result).isEqualTo(after);
     }
-    
+
     protected Map<String, String> vars(String var1, String val1) {
         return Collect.hashMapOf(var1, val1);
     }
-    
+
     protected Map<String, String> vars(String var1, String val1, String var2, String val2) {
         return Collect.hashMapOf(var1, val1, var2, val2);
     }

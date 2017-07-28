@@ -26,6 +26,8 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.postgresql.geometric.PGpoint;
+import org.postgresql.jdbc.PgArray;
+import org.postgresql.jdbc.PgConnection;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
@@ -37,20 +39,18 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.util.LoggingContext;
-import org.postgresql.jdbc.PgArray;
-import org.postgresql.jdbc.PgConnection;
 
 /**
  * A {@link RecordsProducer} which creates {@link org.apache.kafka.connect.source.SourceRecord records} from a Postgres
  * streaming replication connection and {@link io.debezium.connector.postgresql.proto.PgProto messages}.
- * 
+ *
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 @ThreadSafe
 public class RecordsStreamProducer extends RecordsProducer {
-    
+
     private static final String CONTEXT_NAME = "records-stream-producer";
-    
+
     private final ExecutorService executorService;
     private final ReplicationConnection replicationConnection;
     private final AtomicReference<ReplicationStream> replicationStream;
@@ -72,7 +72,7 @@ public class RecordsStreamProducer extends RecordsProducer {
             throw new ConnectException(e);
         }
     }
-    
+
     @Override
     protected void start(Consumer<SourceRecord> recordConsumer)  {
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
@@ -88,7 +88,7 @@ public class RecordsStreamProducer extends RecordsProducer {
                 logger.info("no previous LSN found in Kafka, streaming from the latest xlogpos or flushed LSN...");
                 replicationStream.compareAndSet(null, replicationConnection.startStreaming());
             }
-          
+
             // refresh the schema so we have a latest view of the DB tables
             taskContext.refreshSchema(true);
             // the new thread will inherit it's parent MDC
@@ -99,7 +99,7 @@ public class RecordsStreamProducer extends RecordsProducer {
             previousContext.restore();
         }
     }
-    
+
     private void streamChanges(Consumer<SourceRecord> consumer) {
         ReplicationStream stream = this.replicationStream.get();
         // run while we haven't been requested to stop
@@ -121,7 +121,7 @@ public class RecordsStreamProducer extends RecordsProducer {
             }
         }
     }
-    
+
     @Override
     protected synchronized void commit()  {
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
@@ -140,7 +140,7 @@ public class RecordsStreamProducer extends RecordsProducer {
             previousContext.restore();
         }
     }
-    
+
     @Override
     protected synchronized void stop() {
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
@@ -164,7 +164,7 @@ public class RecordsStreamProducer extends RecordsProducer {
             previousContext.restore();
         }
     }
-  
+
     private void process(PgProto.RowMessage message, Long lsn, Consumer<SourceRecord> consumer) throws SQLException {
         if (message == null) {
             // in some cases we can get null if PG gives us back a message earlier than the latest reported flushed LSN
@@ -173,7 +173,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         
         TableId tableId = PostgresSchema.parse(message.getTable());
         assert tableId != null;
-        
+
         // update the source info with the coordinates for this message
         long commitTimeNs = message.getCommitTime();
         int txId = message.getTransactionId();
@@ -181,7 +181,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         if (logger.isDebugEnabled()) {
             logger.debug("received new message at position {}\n{}", ReplicationConnection.format(lsn), message);
         }
-        
+
         TableSchema tableSchema = tableSchemaFor(tableId);
         if (tableSchema == null) {
             return;
@@ -189,7 +189,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         if (tableSchema.keySchema() == null) {
             logger.warn("ignoring message for table '{}' because it does not have a primary key defined", tableId);
         }
-        
+
         PgProto.Op operation = message.getOp();
         switch (operation) {
             case INSERT: {
@@ -213,7 +213,7 @@ public class RecordsStreamProducer extends RecordsProducer {
             }
         }
     }
-    
+
     protected void generateCreateRecord(TableId tableId, Object[] rowData, Consumer<SourceRecord> recordConsumer) {
         if (rowData == null || rowData.length == 0) {
             logger.warn("no new values found for table '{}' from update message at '{}';skipping record" , tableId, sourceInfo);
@@ -231,7 +231,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         Map<String, ?> offset = sourceInfo.offset();
         String topicName = topicSelector().topicNameFor(tableId);
         Envelope envelope = createEnvelope(tableSchema, topicName);
-        
+
         SourceRecord record = new SourceRecord(partition, offset, topicName, null, keySchema, key, envelope.schema(),
                                                envelope.create(value, sourceInfo.source(), clock().currentTimeInMillis()));
         if (logger.isDebugEnabled()) {
@@ -239,7 +239,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         }
         recordConsumer.accept(record);
     }
-    
+
     protected void generateUpdateRecord(TableId tableId, Object[] oldRowData, Object[] newRowData,
                                         Consumer<SourceRecord> recordConsumer) {
         if (newRowData == null || newRowData.length == 0) {
@@ -249,29 +249,29 @@ public class RecordsStreamProducer extends RecordsProducer {
         Schema oldKeySchema = null;
         Struct oldValue = null;
         Object oldKey = null;
-        
+
         TableSchema tableSchema = schema().schemaFor(tableId);
         assert tableSchema != null;
-        
+
         if (oldRowData != null && oldRowData.length > 0) {
             oldKey = tableSchema.keyFromColumnData(oldRowData);
             oldKeySchema = tableSchema.keySchema();
             oldValue = tableSchema.valueFromColumnData(oldRowData);
         }
-        
+
         Object newKey = tableSchema.keyFromColumnData(newRowData);
         Struct newValue = tableSchema.valueFromColumnData(newRowData);
-        
+
         Schema newKeySchema = tableSchema.keySchema();
         Map<String, ?> partition = sourceInfo.partition();
         Map<String, ?> offset = sourceInfo.offset();
         String topicName = topicSelector().topicNameFor(tableId);
         Envelope envelope = createEnvelope(tableSchema, topicName);
         Struct source = sourceInfo.source();
-        
+
         if (oldKey != null && !Objects.equals(oldKey, newKey)) {
             // the primary key has changed, so we need to send a DELETE followed by a CREATE
-            
+
             // then send a delete event for the old key ...
             SourceRecord record = new SourceRecord(partition, offset, topicName, null, oldKeySchema, oldKey, envelope.schema(),
                                                    envelope.delete(oldValue, source, clock().currentTimeInMillis()));
@@ -279,14 +279,14 @@ public class RecordsStreamProducer extends RecordsProducer {
                 logger.debug("sending delete event '{}' to topic '{}'", record, topicName);
             }
             recordConsumer.accept(record);
-            
+
             // send a tombstone event (null value) for the old key so it can be removed from the Kafka log eventually...
             record = new SourceRecord(partition, offset, topicName, null, oldKeySchema, oldKey, null, null);
             if (logger.isDebugEnabled()) {
                 logger.debug("sending tombstone event '{}' to topic '{}'", record, topicName);
             }
             recordConsumer.accept(record);
-            
+
             // then send a create event for the new key...
             record = new SourceRecord(partition, offset, topicName, null, newKeySchema, newKey, envelope.schema(),
                                       envelope.create(newValue, source, clock().currentTimeInMillis()));
@@ -301,7 +301,7 @@ public class RecordsStreamProducer extends RecordsProducer {
             recordConsumer.accept(record);
         }
     }
-    
+
     protected void generateDeleteRecord(TableId tableId, Object[] oldRowData, Consumer<SourceRecord> recordConsumer) {
         if (oldRowData == null || oldRowData.length == 0) {
             logger.warn("no values found for table '{}' from update message at '{}';skipping record" , tableId, sourceInfo);
@@ -319,7 +319,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         Map<String, ?> offset = sourceInfo.offset();
         String topicName = topicSelector().topicNameFor(tableId);
         Envelope envelope = createEnvelope(tableSchema, topicName);
-        
+
         // create the regular delete record
         SourceRecord record = new SourceRecord(partition, offset, topicName, null,
                                                keySchema, key, envelope.schema(),
@@ -328,7 +328,7 @@ public class RecordsStreamProducer extends RecordsProducer {
             logger.debug("sending delete event '{}' to topic '{}'", record, topicName);
         }
         recordConsumer.accept(record);
-        
+
         // And send a tombstone event (null value) for the old key so it can be removed from the Kafka log eventually...
         record = new SourceRecord(partition, offset, topicName, null, keySchema, key, null, null);
         if (logger.isDebugEnabled()) {
@@ -336,7 +336,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         }
         recordConsumer.accept(record);
     }
-    
+
     private Object[] columnValues(List<PgProto.DatumMessage> messageList, TableId tableId, boolean refreshSchemaIfChanged)
             throws SQLException {
         if (messageList == null || messageList.isEmpty()) {
@@ -344,13 +344,13 @@ public class RecordsStreamProducer extends RecordsProducer {
         }
         Table table = schema().tableFor(tableId);
         assert table != null;
-    
+
         // check if we need to refresh our local schema due to DB schema changes for this table
         if (refreshSchemaIfChanged && schemaChanged(messageList, table)) {
             schema().refresh(taskContext.createConnection(), tableId);
             table = schema().tableFor(tableId);
         }
-        
+
         // based on the schema columns, create the values on the same position as the columns
         List<String> columnNames = table.columnNames();
         Object[] values = new Object[messageList.size()];
@@ -361,7 +361,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         });
         return values;
     }
-    
+
     private boolean schemaChanged(List<PgProto.DatumMessage> messageList, Table table) {
         List<String> columnNames = table.columnNames();
         int messagesCount = messageList.size();
@@ -370,7 +370,7 @@ public class RecordsStreamProducer extends RecordsProducer {
             // so we need to trigger a refresh...
            return true;
         }
-        
+
         // go through the list of columns from the message to figure out if any of them are new or have changed their type based
         // on what we have in the table metadata....
         return messageList.stream().filter(message -> {
@@ -387,7 +387,7 @@ public class RecordsStreamProducer extends RecordsProducer {
             return false;
         }).findFirst().isPresent();
     }
-    
+
     private TableSchema tableSchemaFor(TableId tableId) throws SQLException {
         PostgresSchema schema = schema();
         if (schema.isFilteredOut(tableId)) {
@@ -410,7 +410,7 @@ public class RecordsStreamProducer extends RecordsProducer {
             return tableSchema;
         }
     }
-    
+
     /**
      * Converts the Protobuf value for a {@link io.debezium.connector.postgresql.proto.PgProto.DatumMessage plugin message} to
      * a Java value based on the type of the column from the message. This value will be converted later on if necessary by the

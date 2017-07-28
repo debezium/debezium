@@ -29,7 +29,7 @@ import io.debezium.annotation.ThreadSafe;
 
 /**
  * String-related utility methods.
- * 
+ *
  * @author Randall Hauch
  * @author Horia Chiorean
  */
@@ -38,7 +38,7 @@ public final class Strings {
 
     /**
      * Generate the set of values that are included in the list.
-     * 
+     *
      * @param input the input string
      * @param splitter the function that splits the input into multiple items; may not be null
      * @param factory the factory for creating string items into filter matches; may not be null
@@ -56,7 +56,7 @@ public final class Strings {
 
     /**
      * Generate the set of values that are included in the list delimited by the given delimiter.
-     * 
+     *
      * @param input the input string
      * @param delimiter the character used to delimit the items in the input
      * @param factory the factory for creating string items into filter matches; may not be null
@@ -68,7 +68,7 @@ public final class Strings {
 
     /**
      * Generate the set of values that are included in the list separated by commas.
-     * 
+     *
      * @param input the input string
      * @param factory the factory for creating string items into filter matches; may not be null
      * @return the list of objects included in the list; never null
@@ -80,7 +80,7 @@ public final class Strings {
     /**
      * Generate the set of regular expression {@link Pattern}s that are specified in the string containing comma-separated
      * regular expressions.
-     * 
+     *
      * @param input the input string with comma-separated regular expressions
      * @return the list of regular expression {@link Pattern}s included in the list; never null
      * @throws PatternSyntaxException if the input includes an invalid regular expression
@@ -92,7 +92,7 @@ public final class Strings {
     /**
      * Generate the set of regular expression {@link Pattern}s that are specified in the string containing comma-separated
      * regular expressions.
-     * 
+     *
      * @param input the input string with comma-separated regular expressions
      * @param regexFlags the flags for {@link Pattern#compile(String, int) compiling regular expressions}
      * @return the list of regular expression {@link Pattern}s included in the list; never null
@@ -120,7 +120,7 @@ public final class Strings {
 
     /**
      * Split the supplied content into lines, returning each line as an element in the returned list.
-     * 
+     *
      * @param content the string content that is to be split
      * @return the list of lines; never null but may be an empty (unmodifiable) list if the supplied content is null or empty
      */
@@ -132,7 +132,7 @@ public final class Strings {
 
     /**
      * Compare two {@link CharSequence} instances.
-     * 
+     *
      * @param str1 the first character sequence; may be null
      * @param str2 the second character sequence; may be null
      * @return a negative integer if the first sequence is less than the second, zero if the sequence are equivalent (including if
@@ -147,7 +147,7 @@ public final class Strings {
 
     /**
      * Check whether the two {@link String} instances are equal ignoring case.
-     * 
+     *
      * @param str1 the first character sequence; may be null
      * @param str2 the second character sequence; may be null
      * @return {@code true} if both are null or if the two strings are equal to each other ignoring case, or {@code false}
@@ -234,7 +234,7 @@ public final class Strings {
      * Trim away any leading or trailing whitespace characters.
      * <p>
      * This is semantically equivalent to {@link String#trim()} but instead uses {@link #trim(String, CharacterPredicate)}.
-     * 
+     *
      * @param str the string to be trimmed; may not be null
      * @return the trimmed string; never null
      * @see #trim(String,CharacterPredicate)
@@ -245,7 +245,7 @@ public final class Strings {
 
     /**
      * Trim away any leading or trailing characters that satisfy the supplied predicate
-     * 
+     *
      * @param str the string to be trimmed; may not be null
      * @param predicate the predicate function; may not be null
      * @return the trimmed string; never null
@@ -266,7 +266,7 @@ public final class Strings {
 
     /**
      * Create a new string containing the specified character repeated a specific number of times.
-     * 
+     *
      * @param charToRepeat the character to repeat
      * @param numberOfRepeats the number of times the character is to repeat in the result; must be greater than 0
      * @return the resulting string
@@ -283,7 +283,7 @@ public final class Strings {
 
     /**
      * Pad the string with the specific character to ensure the string is at least the specified length.
-     * 
+     *
      * @param original the string to be padded; may not be null
      * @param length the minimum desired length; must be positive
      * @param padChar the character to use for padding, if the supplied string is not long enough
@@ -305,7 +305,7 @@ public final class Strings {
      * Set the length of the string, padding with the supplied character if the supplied string is shorter than desired, or
      * truncating the string if it is longer than desired. Unlike {@link #justifyLeft(String, int, char)}, this method does not
      * remove leading and trailing whitespace.
-     * 
+     *
      * @param original the string for which the length is to be set; may not be null
      * @param length the desired length; must be positive
      * @param padChar the character to use for padding, if the supplied string is not long enough
@@ -324,7 +324,7 @@ public final class Strings {
 
     /**
      * Justify the contents of the string.
-     * 
+     *
      * @param justify the way in which the string is to be justified
      * @param str the string to be right justified; if null, an empty string is used
      * @param width the desired width of the string; must be positive
@@ -353,7 +353,7 @@ public final class Strings {
      * last position. If the supplied string is shorter than the desired width, the padding character is inserted one or more
      * times such that the last character in the supplied string appears as the last character in the resulting string and that
      * the length matches that specified.
-     * 
+     *
      * @param str the string to be right justified; if null, an empty string is used
      * @param width the desired width of the string; must be positive
      * @param padWithChar the character to use for padding, if needed
@@ -389,7 +389,7 @@ public final class Strings {
      * resulting string is of the desired length. If the supplied string is longer than the desired width, it is truncated to the
      * specified length. If the supplied string is shorter than the desired width, the padding character is added to the end of
      * the string one or more times such that the length is that specified. All leading and trailing whitespace is removed.
-     * 
+     *
      * @param str the string to be left justified; if null, an empty string is used
      * @param width the desired width of the string; must be positive
      * @param padWithChar the character to use for padding, if needed
@@ -432,7 +432,7 @@ public final class Strings {
      * specified length. If the supplied string is shorter than the desired width, padding characters are added to the beginning
      * and end of the string such that the length is that specified; one additional padding character is prepended if required.
      * All leading and trailing whitespace is removed before centering.
-     * 
+     *
      * @param str the string to be left justified; if null, an empty string is used
      * @param width the desired width of the string; must be positive
      * @param padWithChar the character to use for padding, if needed
@@ -479,7 +479,7 @@ public final class Strings {
 
     /**
      * Get the stack trace of the supplied exception.
-     * 
+     *
      * @param throwable the exception for which the stack trace is to be returned
      * @return the stack trace, or null if the supplied exception is null
      */
@@ -494,7 +494,7 @@ public final class Strings {
 
     /**
      * Parse the supplied string as a number.
-     * 
+     *
      * @param value the string representation of a integer value
      * @return the number, or {@code null} if the value is not a number
      */
@@ -504,7 +504,7 @@ public final class Strings {
 
     /**
      * Parse the supplied string as a number.
-     * 
+     *
      * @param value the string representation of a integer value
      * @param defaultValueProvider the function that returns a value to be used when the string value is null or cannot be parsed
      *            as a number; may be null if no default value is to be used
@@ -545,7 +545,7 @@ public final class Strings {
 
     /**
      * Parse the supplied string as a integer value.
-     * 
+     *
      * @param value the string representation of a integer value
      * @param defaultValue the value to return if the string value is null or cannot be parsed as an int
      * @return the int value
@@ -561,7 +561,7 @@ public final class Strings {
 
     /**
      * Parse the supplied string as a long value.
-     * 
+     *
      * @param value the string representation of a long value
      * @param defaultValue the value to return if the string value is null or cannot be parsed as a long
      * @return the long value
@@ -577,7 +577,7 @@ public final class Strings {
 
     /**
      * Parse the supplied string as a double value.
-     * 
+     *
      * @param value the string representation of a double value
      * @param defaultValue the value to return if the string value is null or cannot be parsed as a double
      * @return the double value
@@ -593,7 +593,7 @@ public final class Strings {
 
     /**
      * Parse the supplied string as a boolean value.
-     * 
+     *
      * @param value the string representation of a boolean value
      * @param defaultValue the value to return if the string value is null or cannot be parsed as a boolean
      * @return the boolean value
@@ -619,7 +619,7 @@ public final class Strings {
      * <dt>mmm</dt>
      * <dd>is the fractional part of seconds, written with 1-3 digits (any trailing zeros are dropped)</dd>
      * </dl>
-     * 
+     *
      * @param durationInMillis the duration in milliseconds
      * @return the readable duration.
      */
@@ -647,21 +647,21 @@ public final class Strings {
      * <p>
      * Variables may appear anywhere within a string value, and multiple variables can be used within the same value. Variables
      * take the form:
-     * 
+     *
      * <pre>
      *    variable := '${' variableNames [ ':' defaultValue ] '}'
      *    variableNames := variableName [ ',' variableNames ]
      *    variableName := // any characters except ',' and ':' and '}'
      *    defaultValue := // any characters except '}'
      * </pre>
-     * 
+     *
      * Note that <i>variableName</i> is the name used to look up a the property.
      * </p>
      * Notice that the syntax supports multiple <i>variables</i>. The logic will process the <i>variables</i> from let to right,
      * until an existing property is found. And at that point, it will stop and will not attempt to find values for the other
      * <i>variables</i>.
      * <p>
-     * 
+     *
      * @param replacementsByVariableName the function used to find the replacements for variable names; may not be null
      * @return the function that will replace variables in supplied strings; never null
      */
@@ -681,21 +681,21 @@ public final class Strings {
      * <p>
      * Variables may appear anywhere within a string value, and multiple variables can be used within the same value. Variables
      * take the form:
-     * 
+     *
      * <pre>
      *    variable := '${' variableNames [ ':' defaultValue ] '}'
      *    variableNames := variableName [ ',' variableNames ]
      *    variableName := // any characters except ',' and ':' and '}'
      *    defaultValue := // any characters except '}'
      * </pre>
-     * 
+     *
      * Note that <i>variableName</i> is the name used to look up a the property.
      * </p>
      * Notice that the syntax supports multiple <i>variables</i>. The logic will process the <i>variables</i> from let to right,
      * until an existing property is found. And at that point, it will stop and will not attempt to find values for the other
      * <i>variables</i>.
      * <p>
-     * 
+     *
      * @param value the content in which the variables are to be found and replaced; may not be null
      * @param replacementsByVariableName the function used to find the replacements for variable names; may not be null
      * @return the function that will replace variables in supplied strings; never null
@@ -768,7 +768,7 @@ public final class Strings {
     /**
      * Split a string into pieces based on delimiters. Similar to the Perl function of the same name. The delimiters are not
      * included in the returned strings.
-     * 
+     *
      * @param str Full string
      * @param splitter Characters to split on
      * @return List of String pieces from full string

@@ -28,79 +28,79 @@ import io.debezium.data.VerifyRecord;
 
 /**
  * Integration test for {@link RecordsSnapshotProducerIT}
- * 
+ *
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
-    
+
     private RecordsSnapshotProducer snapshotProducer;
     private PostgresTaskContext context;
-    
+
     @Before
     public void before() throws SQLException {
         TestHelper.dropAllSchemas();
-        
+
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
         context = new PostgresTaskContext(config, new PostgresSchema(config));
     }
-    
+
     @After
     public void after() throws Exception {
         if (snapshotProducer != null) {
             snapshotProducer.stop();
         }
     }
-    
+
     @Test
     public void shouldGenerateSnapshotsForDefaultDatatypes() throws Exception {
         snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER), false);
-    
+
         TestHelper.executeDDL("postgres_create_tables.ddl");
         TestConsumer consumer = testConsumer(ALL_STMTS.size());
-        
+
         //insert data for each of different supported types
         String statementsBuilder = ALL_STMTS.stream().collect(Collectors.joining(";" + System.lineSeparator())) + ";";
         TestHelper.execute(statementsBuilder);
-        
+
         //then start the producer and validate all records are there
         snapshotProducer.start(consumer);
         consumer.await(2, TimeUnit.SECONDS);
        
         Map<String, List<SchemaAndValueField>> expectedValuesByTableName = super.schemaAndValuesByTableName();
         consumer.process(record -> assertReadRecord(record, expectedValuesByTableName));
-         
+
         // check the offset information for each record
         while (!consumer.isEmpty()) {
             SourceRecord record = consumer.remove();
             assertRecordOffset(record, true, consumer.isEmpty());
         }
     }
-    
+
     @Test
     public void shouldGenerateSnapshotAndContinueStreaming() throws Exception {
         String insertStmt = "INSERT INTO s1.a (aa) VALUES (1);" +
                             "INSERT INTO s2.a (aa) VALUES (1);";
-        
+
         String statements = "CREATE SCHEMA s1; " +
                             "CREATE SCHEMA s2; " +
                             "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
                             "CREATE TABLE s2.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
                             insertStmt;
         TestHelper.execute(statements);
-    
+
         snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER), true);
         TestConsumer consumer = testConsumer(2);
         snapshotProducer.start(consumer);
-        
+
         // first make sure we get the initial records from both schemas...
         consumer.await(2, TimeUnit.SECONDS);
         consumer.clear();
-    
+
         // then insert some more data and check that we get it back
         TestHelper.execute(insertStmt);
         consumer.expects(2);
         consumer.await(2, TimeUnit.SECONDS);
-        
+
         SourceRecord first = consumer.remove();
         VerifyRecord.isValidInsert(first, PK_FIELD, 2);
         assertEquals(topicName("s1.a"), first.topic());
@@ -110,11 +110,11 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidInsert(second, PK_FIELD, 2);
         assertEquals(topicName("s2.a"), second.topic());
         assertRecordOffset(second, false, false);
-        
+
         // now shut down the producers and insert some more records
         snapshotProducer.stop();
         TestHelper.execute(insertStmt);
-        
+
         // start a new producer back up, take a new snapshot (we expect all the records to be read back)
         int expectedRecordsCount = 6;
         consumer = testConsumer(expectedRecordsCount);
@@ -130,16 +130,16 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
             assertRecordOffset(record, true, counterVal == (expectedRecordsCount - 1));
         });
         consumer.clear();
-        
+
         // now insert two more records and check that we only get those back from the stream
         TestHelper.execute(insertStmt);
         consumer.expects(2);
-    
+
         consumer.await(2, TimeUnit.SECONDS);
         first = consumer.remove();
         VerifyRecord.isValidInsert(first, PK_FIELD, 4);
         assertRecordOffset(first, false, false);
-    
+
         second = consumer.remove();
         VerifyRecord.isValidInsert(second, PK_FIELD, 4);
         assertRecordOffset(second, false, false);
