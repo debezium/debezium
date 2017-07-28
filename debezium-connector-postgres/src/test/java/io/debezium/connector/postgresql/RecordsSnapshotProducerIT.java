@@ -10,7 +10,6 @@ import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
 import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -18,6 +17,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
@@ -65,7 +65,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         //then start the producer and validate all records are there
         snapshotProducer.start(consumer);
         consumer.await(2, TimeUnit.SECONDS);
-       
+
         Map<String, List<SchemaAndValueField>> expectedValuesByTableName = super.schemaAndValuesByTableName();
         consumer.process(record -> assertReadRecord(record, expectedValuesByTableName));
 
@@ -89,7 +89,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         TestHelper.execute(statements);
 
         snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER), true);
-        TestConsumer consumer = testConsumer(2);
+        TestConsumer consumer = testConsumer(2, "s1", "s2");
         snapshotProducer.start(consumer);
 
         // first make sure we get the initial records from both schemas...
@@ -117,7 +117,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         // start a new producer back up, take a new snapshot (we expect all the records to be read back)
         int expectedRecordsCount = 6;
-        consumer = testConsumer(expectedRecordsCount);
+        consumer = testConsumer(expectedRecordsCount, "s1", "s2");
         snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER), true);
         snapshotProducer.start(consumer);
         consumer.await(2, TimeUnit.SECONDS);
@@ -144,15 +144,12 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidInsert(second, PK_FIELD, 4);
         assertRecordOffset(second, false, false);
     }
-    
+
     private void assertReadRecord(SourceRecord record, Map<String, List<SchemaAndValueField>> expectedValuesByTableName) {
         VerifyRecord.isValidRead(record, PK_FIELD, 1);
-        String actualTopicName = record.topic();
-        String topicPrefix = topicName("public.");
-        assertTrue("Invalid topic name for records", actualTopicName.startsWith(topicPrefix));
-        String tableName = actualTopicName.replace(topicPrefix, "");
+        String tableName = record.topic().replace(TestHelper.TEST_SERVER + ".", "");
         List<SchemaAndValueField> expectedValuesAndSchemasForTable = expectedValuesByTableName.get(tableName);
         assertNotNull("No expected values for " + tableName + " found", expectedValuesAndSchemasForTable);
-        assertRecordSchemaAndValues(expectedValuesAndSchemasForTable, record, Envelope.FieldName.AFTER); 
+        assertRecordSchemaAndValues(expectedValuesAndSchemasForTable, record, Envelope.FieldName.AFTER);
     }
 }
