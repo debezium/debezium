@@ -54,7 +54,7 @@ public class PostgresSchema {
 
     /**
      * Create a schema component given the supplied {@link PostgresConnectorConfig Postgres connector configuration}.
-     * 
+     *
      * @param config the connector configuration, which is presumed to be valid
      */
     protected PostgresSchema(PostgresConnectorConfig config) {
@@ -130,7 +130,7 @@ public class PostgresSchema {
 
     /**
      * Get the {@link Filters database and table filters} defined by the configuration.
-     * 
+     *
      * @return the filters; never null
      */
     public Filters filters() {
@@ -140,7 +140,7 @@ public class PostgresSchema {
     /**
      * Get the {@link TableSchema Schema information} for the table with the given identifier, if that table exists and is
      * included by the {@link #filters() filter}.
-     * 
+     *
      * @param id the fully-qualified table identifier; may be null
      * @return the current table definition, or null if there is no table with the given identifier, if the identifier is null,
      *         or if the table has been excluded by the filters

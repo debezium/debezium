@@ -21,6 +21,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -40,19 +41,19 @@ import io.debezium.util.Strings;
 /**
  * Producer of {@link org.apache.kafka.connect.source.SourceRecord source records} from a database snapshot. Once completed,
  * this producer can optionally continue streaming records, using another {@link RecordsStreamProducer} instance.
- *                                                                                                      
+ *
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 @ThreadSafe
 public class RecordsSnapshotProducer extends RecordsProducer {
-    
+
     private static final String CONTEXT_NAME = "records-snapshot-producer";
-    
-    private final ExecutorService executorService;     
+
+    private final ExecutorService executorService;
     private final Optional<RecordsStreamProducer> streamProducer;
- 
+
     private AtomicReference<SourceRecord> currentRecord;
-    
+
     public RecordsSnapshotProducer(PostgresTaskContext taskContext,
                                    SourceInfo sourceInfo,
                                    boolean continueStreamingAfterCompletion) {
@@ -60,14 +61,14 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         executorService = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, CONTEXT_NAME + "-thread"));
         currentRecord = new AtomicReference<>();
         if (continueStreamingAfterCompletion) {
-            // we need to create the stream producer here to make sure it creates the replication connection; 
+            // we need to create the stream producer here to make sure it creates the replication connection;
             // otherwise we can't stream back changes happening while the snapshot is taking place
             streamProducer = Optional.of(new RecordsStreamProducer(taskContext, sourceInfo));
         } else {
             streamProducer = Optional.empty();
         }
     }
-    
+
     @Override
     protected void start(Consumer<SourceRecord> recordConsumer) {
         // MDC should be in inherited from parent to child threads
@@ -80,7 +81,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             previousContext.restore();
         }
     }
-    
+
     private Void handleException(Throwable t) {
         logger.error("unexpected exception", t.getCause() != null ? t.getCause() : t);
         // always stop to clean up data
@@ -88,26 +89,26 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         taskContext.failTask(t);
         return null;
     }
-    
+
     private void startStreaming(Consumer<SourceRecord> consumer) {
         try {
             // and then start streaming if necessary
             streamProducer.ifPresent(producer -> {
                 logger.info("Snapshot finished, continuing streaming changes from {}", ReplicationConnection.format(sourceInfo.lsn()));
                 producer.start(consumer);
-                
+
             });
         } finally {
             // always cleanup our local data
             cleanup();
         }
     }
-    
+
     @Override
     protected void commit()  {
         streamProducer.ifPresent(RecordsStreamProducer::commit);
     }
-    
+
     @Override
     protected void stop() {
         try {
@@ -116,34 +117,34 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             cleanup();
         }
     }
-    
+
     private void cleanup() {
         currentRecord.set(null);
         executorService.shutdownNow();
     }
-    
+
     private void takeSnapshot(Consumer<SourceRecord> consumer) {
         long snapshotStart = clock().currentTimeInMillis();
         Connection jdbcConnection = null;
         try (PostgresConnection connection = taskContext.createConnection()) {
             jdbcConnection = connection.connection();
             String lineSeparator = System.lineSeparator();
-    
+
             logger.info("Step 0: disabling autocommit");
             connection.setAutoCommit(false);
-    
+
             long lockTimeoutMillis = taskContext.config().snapshotLockTimeoutMillis();
-            logger.info("Step 1: starting transaction and refreshing the DB schemas for database '{}' and user '{}'", 
+            logger.info("Step 1: starting transaction and refreshing the DB schemas for database '{}' and user '{}'",
                         connection.database(), connection.username());
             // we're using the same isolation level that pg_backup uses
             StringBuilder statements = new StringBuilder("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE, READ ONLY, DEFERRABLE;");
             connection.executeWithoutCommitting(statements.toString());
             statements.delete(0, statements.length());
-    
-            //next refresh the schema which will load all the tables taking the filters into account 
+
+            //next refresh the schema which will load all the tables taking the filters into account
             PostgresSchema schema = schema();
             schema.refresh(connection, false);
-    
+
             logger.info("Step 2: locking each of the database tables, waiting a maximum of '{}' seconds for each lock",
                         lockTimeoutMillis / 1000d);
             statements.append("SET lock_timeout = ").append(lockTimeoutMillis).append(";").append(lineSeparator);
@@ -154,21 +155,21 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                                                          .append(" IN SHARE UPDATE EXCLUSIVE MODE;")
                                                          .append(lineSeparator));
             connection.executeWithoutCommitting(statements.toString());
-    
+
             //now that we have the locks, refresh the schema
             schema.refresh(connection, false);
-    
+
             // get the current position in the log, from which we'll continue streaming once the snapshot it finished
-            // If rows are being inserted while we're doing the snapshot, the xlog pos should increase and so when 
+            // If rows are being inserted while we're doing the snapshot, the xlog pos should increase and so when
             // we start streaming, we should get back those changes
             long xlogStart = connection.currentXLogLocation();
             int txId = connection.currentTransactionId().intValue();
             logger.info("\t read xlogStart at '{}' from transaction '{}'", ReplicationConnection.format(xlogStart), txId);
-    
+
             // and mark the start of the snapshot
             sourceInfo.startSnapshot();
             sourceInfo.update(xlogStart, clock().currentTimeInMicros(), txId);
-    
+
             logger.info("Step 3: reading and exporting the contents of each table");
             AtomicInteger rowsCounter = new AtomicInteger(0);
             schema.tables().forEach(tableId -> {
@@ -189,15 +190,15 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                     throw new ConnectException(e);
                 }
             });
-            
+
             // finally commit the transaction to release all the locks...
             logger.info("Step 4: committing transaction '{}'", txId);
             jdbcConnection.commit();
-    
+
             // process and send the last record after marking it as such
             logger.info("Step 5: sending the last snapshot record");
             SourceRecord currentRecord = this.currentRecord.get();
-            if (currentRecord != null) {  
+            if (currentRecord != null) {
                 sourceInfo.markLastSnapshotRecord();
                 this.currentRecord.set(new SourceRecord(currentRecord.sourcePartition(), sourceInfo.offset(),
                                                         currentRecord.topic(), currentRecord.kafkaPartition(),
@@ -205,7 +206,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                                                         currentRecord.valueSchema(), currentRecord.value()));
                 sendCurrentRecord(consumer);
             }
-    
+
             // and complete the snapshot
             sourceInfo.completeSnapshot();
             logger.info("Snapshot completed in '{}'", Strings.duration(clock().currentTimeInMillis() - snapshotStart));
@@ -220,16 +221,16 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             throw new ConnectException(e);
         }
     }
-    
+
     private Statement readTableStatement(Connection conn) throws SQLException {
         int rowsFetchSize = taskContext.config().rowsFetchSize();
         Statement statement = conn.createStatement(); // the default cursor is FORWARD_ONLY
         statement.setFetchSize(rowsFetchSize);
         return statement;
     }
-    
+
     private void readTable(TableId tableId, ResultSet rs,
-                           Consumer<SourceRecord> consumer, 
+                           Consumer<SourceRecord> consumer,
                            AtomicInteger rowsCounter) throws SQLException {
         Table table = schema().tableFor(tableId);
         assert table != null;
@@ -245,7 +246,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             generateReadRecord(tableId, row);
         }
     }
-    
+
     private Object valueForColumn(ResultSet rs, int colIdx, ResultSetMetaData metaData) throws SQLException {
         try {
             int jdbcSqlType = metaData.getColumnType(colIdx);
@@ -270,7 +271,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             return rs.getObject(colIdx);
         }
     }
-    
+
     protected void generateReadRecord(TableId tableId, Object[] rowData) {
         if (rowData.length == 0) {
             return;
@@ -291,7 +292,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         currentRecord.set(new SourceRecord(partition, offset, topicName, null, keySchema, key, envelope.schema(),
                                            envelope.read(value, sourceInfo.source(), clock().currentTimeInMillis())));
     }
-    
+
     private void sendCurrentRecord(Consumer<SourceRecord> consumer) {
         SourceRecord record = currentRecord.get();
         if (record == null) {
