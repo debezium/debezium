@@ -24,6 +24,7 @@ public class ReplicationContext extends ConnectionContext {
     private final SourceInfo source;
     private final Clock clock = Clock.system();
     private final TopicSelector topicSelector;
+    private String kafkaURl;
 
     /**
      * @param config the configuration
@@ -35,6 +36,7 @@ public class ReplicationContext extends ConnectionContext {
         this.filters = new Filters(config);
         this.source = new SourceInfo(serverName);
         this.topicSelector = TopicSelector.defaultSelector(serverName);
+        this.kafkaURl = config.getString(MongoDbConnectorConfig.KAFKA_URL);
     }
     
     @Override
@@ -60,5 +62,9 @@ public class ReplicationContext extends ConnectionContext {
 
     public Clock clock() {
         return clock;
+    }
+
+    public String getKafkaURl() {
+        return kafkaURl;
     }
 }
