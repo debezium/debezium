@@ -4,7 +4,7 @@ All notable changes are documented in this file. Release numbers follow [Semanti
 
 ## 0.5.1
 
-June 9, 2017 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?version=12333615)
+June 9, 2017 - [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12333615)
 
 ### New features since 0.5.0
 
