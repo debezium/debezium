@@ -31,7 +31,7 @@ import com.mongodb.client.model.InsertOneOptions;
 import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
+import io.debezium.connector.mongodb.ConnectionContext.MongoClient;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.embedded.AbstractConnectorTest;
@@ -337,9 +337,9 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(expected.code());
     }
 
-    protected MongoPrimary primary() {
+    protected MongoClient primary() {
         ReplicaSet replicaSet = ReplicaSet.parse(context.hosts());
-        return context.primaryFor(replicaSet, connectionErrorHandler(3));
+        return context.clientFor(replicaSet, connectionErrorHandler(3));
     }
 
     protected void storeDocuments(String dbName, String collectionName, String pathOnClasspath) {

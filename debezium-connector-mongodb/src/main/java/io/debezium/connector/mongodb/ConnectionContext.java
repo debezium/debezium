@@ -15,10 +15,10 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.apache.kafka.connect.errors.ConnectException;
+import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.mongodb.MongoClient;
 import com.mongodb.MongoCredential;
 import com.mongodb.ReplicaSetStatus;
 import com.mongodb.ServerAddress;
@@ -98,16 +98,16 @@ public class ConnectionContext implements AutoCloseable {
         return false;
     }
 
-    public MongoClient clientForReplicaSet(ReplicaSet replicaSet) {
+    public com.mongodb.MongoClient clientForReplicaSet(ReplicaSet replicaSet) {
         return clientFor(replicaSet.addresses());
     }
 
-    public MongoClient clientFor(String seedAddresses) {
+    public com.mongodb.MongoClient clientFor(String seedAddresses) {
         List<ServerAddress> addresses = MongoUtil.parseAddresses(seedAddresses);
         return clientFor(addresses);
     }
 
-    public MongoClient clientFor(List<ServerAddress> addresses) {
+    public com.mongodb.MongoClient clientFor(List<ServerAddress> addresses) {
         if ( this.useHostsAsSeeds || addresses.isEmpty() ) {
             return pool.clientForMembers(addresses);
         }
@@ -122,7 +122,7 @@ public class ConnectionContext implements AutoCloseable {
         return config.getInteger(MongoDbConnectorConfig.POLL_INTERVAL_SEC);
     }
 
-    public int maxConnectionAttemptsForPrimary() {
+    public int maxConnectionAttempts() {
         return config.getInteger(MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS);
     }
 
@@ -140,11 +140,11 @@ public class ConnectionContext implements AutoCloseable {
      * 
      * @param replicaSet the replica set information; may not be null
      * @param errorHandler the function to be called whenever the primary is unable to
-     *            {@link MongoPrimary#execute(String, Consumer) execute} an operation to completion; may be null
+     *            {@link MongoClient#execute(String, Consumer) execute} an operation to completion; may be null
      * @return the client, or {@code null} if no primary could be found for the replica set
      */
-    public ConnectionContext.MongoPrimary primaryFor(ReplicaSet replicaSet, BiConsumer<String, Throwable> errorHandler) {
-        return new ConnectionContext.MongoPrimary(this, replicaSet, errorHandler);
+    public MongoClient clientFor(ReplicaSet replicaSet, BiConsumer<String, Throwable> errorHandler) {
+        return new MongoClient(this, replicaSet, errorHandler);
     }
 
     /**
@@ -154,12 +154,12 @@ public class ConnectionContext implements AutoCloseable {
      * @param replicaSet the replica set information; may not be null
      * @return the client, or {@code null} if no primary could be found for the replica set
      */
-    protected Supplier<MongoClient> primaryClientFor(ReplicaSet replicaSet) {
-        return primaryClientFor(replicaSet, (attempts, remaining, error) -> {
+    protected Supplier<com.mongodb.MongoClient> clientFor(ReplicaSet replicaSet) {
+        return clientFor(replicaSet, (attempts, remaining, error) -> {
             if (error == null) {
-                logger().info("Unable to connect to primary node of '{}' after attempt #{} ({} remaining)", replicaSet, attempts, remaining);
+                logger().info("Unable to connect to node of '{}' after attempt #{} ({} remaining)", replicaSet, attempts, remaining);
             } else {
-                logger().error("Error while attempting to connect to primary node of '{}' after attempt #{} ({} remaining): {}", replicaSet,
+                logger().error("Error while attempting to connect to node of '{}' after attempt #{} ({} remaining): {}", replicaSet,
                              attempts, remaining, error.getMessage(), error);
             }
         });
@@ -173,18 +173,18 @@ public class ConnectionContext implements AutoCloseable {
      * @param handler the function that will be called when the primary could not be obtained; may not be null
      * @return the client, or {@code null} if no primary could be found for the replica set
      */
-    protected Supplier<MongoClient> primaryClientFor(ReplicaSet replicaSet, PrimaryConnectFailed handler) {
-        Supplier<MongoClient> factory = () -> clientForPrimary(replicaSet);
-        int maxAttempts = maxConnectionAttemptsForPrimary();
+    protected Supplier<com.mongodb.MongoClient> clientFor(ReplicaSet replicaSet, ClientConnectFailed handler) {
+        Supplier<com.mongodb.MongoClient> factory = () -> clientForMongo(replicaSet);
+        int maxAttempts = maxConnectionAttempts();
         return () -> {
             int attempts = 0;
-            MongoClient primary = null;
-            while (primary == null) {
+            com.mongodb.MongoClient mongoClient = null;
+            while (mongoClient == null) {
                 ++attempts;
                 try {
                     // Try to get the primary
-                    primary = factory.get();
-                    if (primary != null) break;
+                    mongoClient = factory.get();
+                    if (mongoClient != null) break;
                 } catch (Throwable t) {
                     handler.failed(attempts, maxAttempts - attempts, t);
                 }
@@ -196,26 +196,26 @@ public class ConnectionContext implements AutoCloseable {
                 primaryBackoffStrategy.sleepWhen(true);
                 continue;
             }
-            return primary;
+            return mongoClient;
         };
     }
 
     @FunctionalInterface
-    public static interface PrimaryConnectFailed {
+    public static interface ClientConnectFailed {
         void failed(int attemptNumber, int attemptsRemaining, Throwable error);
     }
 
     /**
      * A supplier of a client that connects only to the primary of a replica set. Operations on the primary will continue
      */
-    public static class MongoPrimary {
+    public static class MongoClient {
         private final ReplicaSet replicaSet;
-        private final Supplier<MongoClient> primaryConnectionSupplier;
+        private final Supplier<com.mongodb.MongoClient> mongoClientSupplier;
         private final BiConsumer<String, Throwable> errorHandler;
 
-        protected MongoPrimary(ConnectionContext context, ReplicaSet replicaSet, BiConsumer<String, Throwable> errorHandler) {
+        protected MongoClient(ConnectionContext context, ReplicaSet replicaSet, BiConsumer<String, Throwable> errorHandler) {
             this.replicaSet = replicaSet;
-            this.primaryConnectionSupplier = context.primaryClientFor(replicaSet);
+            this.mongoClientSupplier = context.clientFor(replicaSet);
             this.errorHandler = errorHandler;
         }
 
@@ -251,9 +251,9 @@ public class ConnectionContext implements AutoCloseable {
          * @param desc the description of the operation, for logging purposes
          * @param operation the operation to be performed on the primary.
          */
-        public void execute(String desc, Consumer<MongoClient> operation) {
+        public void execute(String desc, Consumer<com.mongodb.MongoClient> operation) {
             while (true) {
-                MongoClient primary = primaryConnectionSupplier.get();
+                com.mongodb.MongoClient primary = mongoClientSupplier.get();
                 try {
                     operation.accept(primary);
                     return;
@@ -271,9 +271,9 @@ public class ConnectionContext implements AutoCloseable {
          * @param operation the operation to be performed on the primary.
          * @throws InterruptedException if the operation was interrupted
          */
-        public void executeBlocking(String desc, BlockingConsumer<MongoClient> operation) throws InterruptedException {
+        public void executeBlocking(String desc, BlockingConsumer<com.mongodb.MongoClient> operation) throws InterruptedException {
             while (true) {
-                MongoClient primary = primaryConnectionSupplier.get();
+                com.mongodb.MongoClient primary = mongoClientSupplier.get();
                 try {
                     operation.accept(primary);
                     return;
@@ -328,8 +328,9 @@ public class ConnectionContext implements AutoCloseable {
      * @param replicaSet the replica set information; may not be null
      * @return the client, or {@code null} if no primary could be found for the replica set
      */
-    protected MongoClient clientForPrimary(ReplicaSet replicaSet) {
-        MongoClient replicaSetClient = clientForReplicaSet(replicaSet);
+    protected com.mongodb.MongoClient clientForMongo(ReplicaSet replicaSet) {
+        boolean readFromSecondaryFlag = config.getBoolean(MongoDbConnectorConfig.READ_FROM_SECONDARY);
+        com.mongodb.MongoClient replicaSetClient = clientForReplicaSet(replicaSet);
         ReplicaSetStatus rsStatus = replicaSetClient.getReplicaSetStatus();
         if (rsStatus == null) {
             if ( !this.useHostsAsSeeds ) {
@@ -341,9 +342,36 @@ public class ConnectionContext implements AutoCloseable {
                     "' is not a valid replica set and cannot be used");
         }
         // It is a replica set ...
-        ServerAddress primaryAddress = rsStatus.getMaster();
-        if (primaryAddress != null) {
-            return pool.clientFor(primaryAddress);
+        ServerAddress serverAddress = rsStatus.getMaster();
+
+        if(readFromSecondaryFlag){
+            Document document = replicaSetClient.getDatabase("admin").runCommand(new Document("replSetGetStatus", 1));
+            List<Document> documentList = (List<Document>) document.get("members");
+            String aribterName = "";
+            for (Document d : documentList) {
+                if ("ARBITER".equals(d.get("stateStr"))) {
+                    aribterName = (String) d.get("name");
+                    logger.info("--------arbiter name == " + aribterName);
+                }
+            }
+            List<ServerAddress> serverAddressList = replicaSet.addresses();
+            for (ServerAddress sa : serverAddressList) {
+                logger.debug("Server details : {} : {}", sa.getHost(), sa.getPort());
+            }
+            for (ServerAddress sa : serverAddressList) {
+                if (serverAddress != null && !serverAddress.equals(sa)) {
+                    if ((sa.getHost() + ":" + sa.getPort()).equals(aribterName)) {
+                        continue;
+                    }
+                    logger.info("Assigning secondary server for read : {}:{}", sa.getHost(), sa.getPort());
+                    serverAddress = sa;
+                    break;
+                }
+            }
+        }
+
+        if (serverAddress != null) {
+            return pool.clientFor(serverAddress);
         }
         return null;
     }

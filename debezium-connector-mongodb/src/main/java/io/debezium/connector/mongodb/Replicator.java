@@ -27,7 +27,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.CursorType;
-import com.mongodb.MongoClient;
 import com.mongodb.ServerAddress;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
@@ -77,7 +76,7 @@ import io.debezium.util.Strings;
  * This replicator does each of its tasks using a connection to the primary. If the replicator is not able to establish a
  * connection to the primary (e.g., there is no primary, or the replicator cannot communicate with the primary), the replicator
  * will continue to try to establish a connection, using an exponential back-off strategy to prevent saturating the system.
- * After a {@link ReplicationContext#maxConnectionAttemptsForPrimary() configurable} number of failed attempts, the replicator
+ * After a {@link ReplicationContext#maxConnectionAttempts() configurable} number of failed attempts, the replicator
  * will fail by throwing a {@link ConnectException}.
  * 
  * @author Randall Hauch
@@ -97,7 +96,7 @@ public class Replicator {
     private final Predicate<CollectionId> collectionFilter;
     private final Predicate<String> databaseFilter;
     private final Clock clock;
-    private ReplicationContext.MongoPrimary primaryClient;
+    private ConnectionContext.MongoClient mongoClient;
 
     /**
      * @param context the replication context; may not be null
@@ -135,7 +134,7 @@ public class Replicator {
     public void run() {
         if (this.running.compareAndSet(false, true)) {
             try {
-                if (establishConnectionToPrimary()) {
+                if (establishConnection()) {
                     if (isInitialSyncExpected()) {
                         recordCurrentOplogPosition();
                         if (!performInitialSync(new ArrayList<>())) {
@@ -170,7 +169,7 @@ public class Replicator {
         KafkaConsumer<String, String> consumer = new KafkaConsumer<String, String>(props);
         Map<String, List<PartitionInfo>> topics = consumer.listTopics();
         final List<CollectionId> collections = new ArrayList<>();
-        primaryClient.collections().forEach(id -> {
+        mongoClient.collections().forEach(id -> {
             logger.debug("Collection name : {} to be considered for the colletion filter", id.name());
             if (databaseFilter.test(id.dbName()) && collectionFilter.test(id) && !topics.containsKey(context
                     .topicSelector()
@@ -187,19 +186,19 @@ public class Replicator {
      * 
      * @return {@code true} if a connection was established, or {@code false} otherwise
      */
-    protected boolean establishConnectionToPrimary() {
+    protected boolean establishConnection() {
         logger.info("Connecting to '{}'", replicaSet);
-        primaryClient = context.primaryFor(replicaSet, (desc, error) -> {
+        mongoClient = context.clientFor(replicaSet, (desc, error) -> {
             logger.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
         });
-        return primaryClient != null;
+        return mongoClient != null;
     }
 
     /**
      * Obtain the current position of the oplog, and record it in the source.
      */
     protected void recordCurrentOplogPosition() {
-        primaryClient.execute("get oplog position", primary -> {
+        mongoClient.execute("get oplog position", primary -> {
             MongoCollection<Document> oplog = primary.getDatabase("local").getCollection("oplog.rs");
             Document last = oplog.find().sort(new Document("$natural", -1)).limit(1).first(); // may be null
             source.offsetStructForEvent(replicaSet.replicaSetName(), last);
@@ -230,7 +229,7 @@ public class Replicator {
                     // There is no ongoing initial sync, so look to see if our last recorded offset still exists in the oplog.
                     BsonTimestamp lastRecordedTs = source.lastOffsetTimestamp(rsName);
                     AtomicReference<BsonTimestamp> firstExistingTs = new AtomicReference<>();
-                    primaryClient.execute("get oplog position", primary -> {
+                    mongoClient.execute("get oplog position", primary -> {
                         MongoCollection<Document> oplog = primary.getDatabase("local").getCollection("oplog.rs");
                         Document firstEvent = oplog.find().sort(new Document("$natural", 1)).limit(1).first(); // may be null
                         firstExistingTs.set(SourceInfo.extractEventTimestamp(firstEvent));
@@ -281,10 +280,15 @@ public class Replicator {
         final long syncStart = clock.currentTimeInMillis();
 
         // We need to copy each collection, so put the collection IDs into a queue ...
-        final List<CollectionId> collections = new ArrayList<>();
-        primaryClient.collections().forEach(id -> {
-            if (databaseFilter.test(id.dbName()) && collectionFilter.test(id))collections.add(id);
-        });
+        if (collections.size() == 0) {
+            mongoClient.collections().forEach(id -> {
+                logger.info("-------- Collection name : " + id.name());
+                if (databaseFilter.test(id.dbName()) && collectionFilter.test(id)) {
+                    logger.info("------ Collection filter - add collection for initial sync : " + id.name());
+                    collections.add(id);
+                }
+            });
+        }
         final Queue<CollectionId> collectionsToCopy = new ConcurrentLinkedQueue<>(collections);
         final int numThreads = Math.min(collections.size(), context.maxNumberOfCopyThreads());
         final CountDownLatch latch = new CountDownLatch(numThreads);
@@ -363,7 +367,7 @@ public class Replicator {
      */
     protected long copyCollection(CollectionId collectionId, long timestamp) throws InterruptedException {
         AtomicLong docCount = new AtomicLong();
-        primaryClient.executeBlocking("sync '" + collectionId + "'", primary -> {
+        mongoClient.executeBlocking("sync '" + collectionId + "'", primary -> {
             docCount.set(copyCollection(primary, collectionId, timestamp));
         });
         return docCount.get();
@@ -378,7 +382,7 @@ public class Replicator {
      * @return number of documents that were copied
      * @throws InterruptedException if the thread was interrupted while the copy operation was running
      */
-    protected long copyCollection(MongoClient primary, CollectionId collectionId, long timestamp) throws InterruptedException {
+    protected long copyCollection(com.mongodb.MongoClient primary, CollectionId collectionId, long timestamp) throws InterruptedException {
         RecordsForCollection factory = recordMakers.forCollection(collectionId);
         MongoDatabase db = primary.getDatabase(collectionId.dbName());
         MongoCollection<Document> docCollection = db.getCollection(collectionId.name());
@@ -400,7 +404,7 @@ public class Replicator {
      * is elected (as identified by an oplog event), of if the current thread doing the reading is interrupted.
      */
     protected void readOplog() {
-        primaryClient.execute("read from oplog on '" + replicaSet + "'", this::readOplog);
+        mongoClient.execute("read from oplog on '" + replicaSet + "'", this::readOplog);
     }
 
     /**
@@ -408,7 +412,7 @@ public class Replicator {
      * 
      * @param primary the connection to the replica set's primary node; may not be null
      */
-    protected void readOplog(MongoClient primary) {
+    protected void readOplog(com.mongodb.MongoClient primary) {
         BsonTimestamp oplogStart = source.lastOffsetTimestamp(replicaSet.replicaSetName());
         logger.info("Reading oplog for '{}' primary {} starting at {}", replicaSet, primary.getAddress(), oplogStart);
 
@@ -455,7 +459,7 @@ public class Replicator {
             if ("new primary".equals(msg)) {
                 AtomicReference<ServerAddress> address = new AtomicReference<>();
                 try {
-                    primaryClient.executeBlocking("conn", mongoClient -> {
+                    mongoClient.executeBlocking("conn", mongoClient -> {
                         ServerAddress currentPrimary = mongoClient.getAddress();
                         address.set(currentPrimary);
                     });

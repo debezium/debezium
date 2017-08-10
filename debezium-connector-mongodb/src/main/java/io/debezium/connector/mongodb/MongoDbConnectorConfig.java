@@ -208,6 +208,7 @@ public class MongoDbConnectorConfig {
                                                 .withInvisibleRecommender();
 
     public static final Field KAFKA_URL = Field.create("kafka.url").withDefault("localhost:9092");
+    public static final Field READ_FROM_SECONDARY = Field.create("read.from.secondary").withDefault(false);
 
     public static Field.Set ALL_FIELDS = Field.setOf(USER, PASSWORD, HOSTS, LOGICAL_NAME,
                                                      MAX_COPY_THREADS, MAX_QUEUE_SIZE, MAX_BATCH_SIZE,
@@ -219,7 +220,7 @@ public class MongoDbConnectorConfig {
                                                      COLLECTION_BLACKLIST,
                                                      AUTO_DISCOVER_MEMBERS,
                                                      DATABASE_WHITELIST,
-                                                     DATABASE_BLACKLIST, KAFKA_URL);
+                                                     DATABASE_BLACKLIST);
 
     protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS;
 

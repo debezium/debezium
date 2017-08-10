@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
 import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
+import io.debezium.connector.mongodb.ConnectionContext.MongoClient;
 import io.debezium.util.Testing;
 
 public abstract class AbstractMongoIT implements Testing {
@@ -29,7 +29,7 @@ public abstract class AbstractMongoIT implements Testing {
     protected Configuration config;
     protected ReplicationContext context;
     protected ReplicaSet replicaSet;
-    protected MongoPrimary primary;
+    protected MongoClient primary;
 
     @Before
     public void beforeEach() {
@@ -86,7 +86,7 @@ public abstract class AbstractMongoIT implements Testing {
         }
 
         // Get a connection to the primary ...
-        primary = context.primaryFor(replicaSet, connectionErrorHandler(3));
+        primary = context.clientFor(replicaSet, connectionErrorHandler(3));
     }
 
     @After
