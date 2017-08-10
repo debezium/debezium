@@ -5,10 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -19,6 +16,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.BsonTimestamp;
@@ -139,8 +138,17 @@ public class Replicator {
                 if (establishConnectionToPrimary()) {
                     if (isInitialSyncExpected()) {
                         recordCurrentOplogPosition();
-                        if (!performInitialSync()) {
+                        if (!performInitialSync(new ArrayList<>())) {
                             return;
+                        }
+                    }
+                    else {
+                        List<CollectionId> collectionIdList = getListOfNewCollectionsAdded();
+                        if (collectionIdList.size() != 0) {
+                            recordCurrentOplogPosition();
+                            if (!performInitialSync(collectionIdList)) {
+                                return;
+                            }
                         }
                     }
                     readOplog();
@@ -149,6 +157,29 @@ public class Replicator {
                 this.running.set(false);
             }
         }
+    }
+    /**
+     * Get lost of collections which are newly added in the white list
+     **/
+    protected List<CollectionId> getListOfNewCollectionsAdded() {
+        //get all topics to get the collection names which do not require initial sync
+        Properties props = new Properties();
+        props.put("bootstrap.servers", context.getKafkaURl());
+        props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+        props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+        KafkaConsumer<String, String> consumer = new KafkaConsumer<String, String>(props);
+        Map<String, List<PartitionInfo>> topics = consumer.listTopics();
+        final List<CollectionId> collections = new ArrayList<>();
+        primaryClient.collections().forEach(id -> {
+            logger.debug("Collection name : {} to be considered for the colletion filter", id.name());
+            if (databaseFilter.test(id.dbName()) && collectionFilter.test(id) && !topics.containsKey(context
+                    .topicSelector()
+                    .getTopic(id))) {
+                logger.info("Collection filter - add collection {} for the initial sync : ", id.name());
+                collections.add(id);
+            }
+        });
+        return collections;
     }
 
     /**
@@ -233,7 +264,7 @@ public class Replicator {
      * 
      * @return {@code true} if the initial sync was completed, or {@code false} if it was stopped for any reason
      */
-    protected boolean performInitialSync() {
+    protected boolean performInitialSync(List<CollectionId> collections) {
         logger.info("Beginning initial sync of '{}' at {}", rsName, source.lastOffset(rsName));
         source.startInitialSync(replicaSet.replicaSetName());
 
