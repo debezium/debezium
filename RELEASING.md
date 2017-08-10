@@ -126,7 +126,11 @@ After all of the Docker files have been created or updated, go to the top of you
 
 or using the correct Debezium version. After this successfully builds the images, run through the tutorial, being sure to use the same Docker image label (e.g., `0.2`) that you just built.
 
-When the tutorial can be successfully run with the new version, edit the Dockerfile for the Connect service to again use the official Maven Central repository URL. You can commit the changes locally
+When the tutorial can be successfully run with the new version, edit the Dockerfile for the Connect service to again use the official Maven Central repository URL.
+
+It is also necessary to update the Connect snapshot(nightly) image with a new development version. Edit `snapshot/Dockerfile` and set `DEBEZIUM_VERSION` environment variable to a new development version, e.g. `0.6.0-SNAPSHOT`.
+
+Now you can commit the changes locally
 
     $ git commit -m "Updated Docker images for release 0.2.1" .
     $ git push origin <branch-name>
