@@ -149,10 +149,6 @@ public class PostgresSchema {
         return filters.tableFilter().test(id) ? tables.forTable(id) : null;
     }
 
-    protected Table tableFor(String fqn) {
-        return tableFor(TableId.parse(fqn, false));
-    }
-
     protected String validateSchemaName(String name) {
         return this.schemaNameValidator.apply(name);
     }
@@ -163,11 +159,6 @@ public class PostgresSchema {
 
     protected boolean isFilteredOut(TableId id) {
         return !filters.tableFilter().test(id);
-    }
-
-    protected TableSchema schemaFor(String fqn) {
-        Table table = tableFor(fqn);
-        return table != null ? schemaFor(table.id()) : null;
     }
 
     protected boolean isType(String localTypeName, int jdbcType) {
