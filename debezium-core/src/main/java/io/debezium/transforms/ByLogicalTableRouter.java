@@ -8,6 +8,7 @@ package io.debezium.transforms;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -46,20 +47,11 @@ import io.debezium.util.AvroValidator;
  * {@link #KEY_FIELD_REPLACEMENT} may be used to change it. For instance, in our above example, we might choose to
  * make the identifier `db_shard1` and `db_shard2` respectively.
  *
- * @author David Leibovic
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
+ * @author David Leibovic
+ * @author Mario Mueller
  */
 public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transformation<R> {
-
-    private final Logger logger = LoggerFactory.getLogger(getClass());
-    private Pattern topicRegex;
-    private String topicReplacement;
-    private Pattern keyFieldRegex;
-    private String keyFieldReplacement;
-    private String keyFieldName;
-    private Cache<Schema, Schema> keySchemaUpdateCache;
-    private Cache<Schema, Schema> envelopeSchemaUpdateCache;
-    private final AvroValidator schemaNameValidator = AvroValidator.create(logger);
 
     private static final Field TOPIC_REGEX = Field.create("topic.regex")
             .withDisplayName("Topic regex")
@@ -68,7 +60,6 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
             .withImportance(ConfigDef.Importance.LOW)
             .withValidation(Field::isRequired, Field::isRegex)
             .withDescription("The regex used for extracting the name of the logical table from the original topic name.");
-
     private static final Field TOPIC_REPLACEMENT = Field.create("topic.replacement")
             .withDisplayName("Topic replacement")
             .withType(ConfigDef.Type.STRING)
@@ -76,8 +67,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
             .withImportance(ConfigDef.Importance.LOW)
             .withValidation(Field::isRequired)
             .withDescription("The replacement string used in conjunction with " + TOPIC_REGEX.name() +
-                    ". This will be used to create the new topic name.");
-
+                ". This will be used to create the new topic name.");
     private static final Field KEY_FIELD_REGEX = Field.create("key.field.regex")
             .withDisplayName("Key field regex")
             .withType(ConfigDef.Type.STRING)
@@ -89,16 +79,6 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
                 "to include fields other than just those for the record's primary/unique key, since these are not " +
                 "guaranteed to be unique across tables. We need some identifier added to the key that distinguishes " +
                 "the different physical tables.");
-
-    private static final Field KEY_FIELD_REPLACEMENT = Field.create("key.field.replacement")
-            .withDisplayName("Key field replacement")
-            .withType(ConfigDef.Type.STRING)
-            .withWidth(ConfigDef.Width.LONG)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withValidation(ByLogicalTableRouter::validateKeyFieldReplacement)
-            .withDescription("The replacement string used in conjunction with " + KEY_FIELD_REGEX.name() +
-                    ". This will be used to create the physical table identifier in the record's key.");
-
     private static final Field KEY_FIELD_NAME = Field.create("key.field.name")
             .withDisplayName("Key field name")
             .withType(ConfigDef.Type.STRING)
@@ -107,15 +87,71 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
             // Default is prefixed with "__dbz__" to minimize the likelihood of a conflict with an existing key field name.
             .withDefault("__dbz__physicalTableIdentifier")
             .withDescription("Each record's key schema will be augmented with this field name. The purpose of this " +
-                    "field is to distinguish the different physical tables that can now share a single topic. Make " +
-                    "sure not to configure a field name that is at risk of conflict with existing key schema field " +
-                    "names.");
+                "field is to distinguish the different physical tables that can now share a single topic. Make " +
+                "sure not to configure a field name that is at risk of conflict with existing key schema field " +
+                "names.");
+    private static final Field KEY_FIELD_REPLACEMENT = Field.create("key.field.replacement")
+            .withDisplayName("Key field replacement")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withValidation(ByLogicalTableRouter::validateKeyFieldReplacement)
+            .withDescription("The replacement string used in conjunction with " + KEY_FIELD_REGEX.name() +
+                ". This will be used to create the physical table identifier in the record's key.");
+
+    private static final Logger logger = LoggerFactory.getLogger(ByLogicalTableRouter.class);
+    private final AvroValidator schemaNameValidator = AvroValidator.create(logger);
+    private Pattern topicRegex;
+    private String topicReplacement;
+    private Pattern keyFieldRegex;
+    private String keyFieldReplacement;
+    private String keyFieldName;
+    private final Cache<Schema, Schema> keySchemaUpdateCache = new SynchronizedCache<>(new LRUCache<Schema, Schema>(16));
+    private final Cache<Schema, Schema> envelopeSchemaUpdateCache = new SynchronizedCache<>(new LRUCache<Schema, Schema>(16));
+
+    /**
+     * If KEY_FIELD_REGEX has a value that is really a regex, then the KEY_FIELD_REPLACEMENT must be a non-empty value.
+     */
+    private static int validateKeyFieldReplacement(Configuration config, Field field, Field.ValidationOutput problems) {
+        String keyFieldRegex = config.getString(KEY_FIELD_REGEX);
+        if (keyFieldRegex != null) {
+            keyFieldRegex = keyFieldRegex.trim();
+        }
+
+        String keyFieldReplacement = config.getString(KEY_FIELD_REPLACEMENT);
+        if (keyFieldReplacement != null) {
+            keyFieldReplacement = keyFieldReplacement.trim();
+        }
+
+        if (keyFieldRegex == null && keyFieldReplacement == null) {
+            return 0;
+        }
+
+        if (!Objects.equals(keyFieldRegex, "")
+                && (keyFieldReplacement == null || Objects.equals(keyFieldReplacement, ""))) {
+            problems.accept(
+                    KEY_FIELD_REPLACEMENT,
+                    null,
+                    String.format("%s must be non-empty if %s is set.",
+                            KEY_FIELD_REPLACEMENT.name(),
+                            KEY_FIELD_REGEX.name()
+                    )
+            );
+            return 1;
+        }
+        return 0;
+    }
 
     @Override
     public void configure(Map<String, ?> props) {
         Configuration config = Configuration.from(props);
-        final Field.Set configFields = Field.setOf(TOPIC_REGEX, TOPIC_REPLACEMENT, KEY_FIELD_REGEX,
-                KEY_FIELD_REPLACEMENT);
+        final Field.Set configFields = Field.setOf(
+                TOPIC_REGEX,
+                TOPIC_REPLACEMENT,
+                KEY_FIELD_REGEX,
+                KEY_FIELD_REPLACEMENT
+        );
+
         if (!config.validateAndRecord(configFields, logger::error)) {
             throw new ConnectException("Unable to validate config.");
         }
@@ -127,58 +163,76 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
         if (keyFieldRegexString != null) {
             keyFieldRegexString = keyFieldRegexString.trim();
         }
-        if (keyFieldRegexString != null && keyFieldRegexString != "") {
+        if (keyFieldRegexString != null && !keyFieldRegexString.isEmpty()) {
             keyFieldRegex = Pattern.compile(config.getString(KEY_FIELD_REGEX));
             keyFieldReplacement = config.getString(KEY_FIELD_REPLACEMENT);
         }
         keyFieldName = config.getString(KEY_FIELD_NAME);
-
-        keySchemaUpdateCache = new SynchronizedCache<>(new LRUCache<Schema, Schema>(16));
-        envelopeSchemaUpdateCache = new SynchronizedCache<>(new LRUCache<Schema, Schema>(16));
     }
 
     @Override
     public R apply(R record) {
         final String oldTopic = record.topic();
         final String newTopic = determineNewTopic(oldTopic);
+
         if (newTopic == null) {
             return record;
         }
 
-        logger.debug("Applying topic name transformation from " + oldTopic + " to " + newTopic + ".");
+        logger.debug("Applying topic name transformation from {} to {}", oldTopic, newTopic);
+
         final Struct oldKey = requireStruct(record.key(), "Updating schema");
         final Schema newKeySchema = updateKeySchema(oldKey.schema(), newTopic);
         final Struct newKey = updateKey(newKeySchema, oldKey, oldTopic);
 
         if (record.value() == null) {
             // Value will be null in the case of a delete event tombstone
-            return record.newRecord(newTopic, record.kafkaPartition(), newKeySchema, newKey, record.valueSchema(),
-                    record.value(), record.timestamp());
+            return record.newRecord(
+                    newTopic,
+                    record.kafkaPartition(),
+                    newKeySchema,
+                    newKey,
+                    record.valueSchema(),
+                    record.value(),
+                    record.timestamp()
+            );
         }
 
         final Struct oldEnvelope = requireStruct(record.value(), "Updating schema");
         final Schema newEnvelopeSchema = updateEnvelopeSchema(oldEnvelope.schema(), newTopic);
         final Struct newEnvelope = updateEnvelope(newEnvelopeSchema, oldEnvelope);
-        return record.newRecord(newTopic, record.kafkaPartition(), newKeySchema, newKey, newEnvelopeSchema,
-                newEnvelope, record.timestamp());
+
+        return record.newRecord(
+                newTopic,
+                record.kafkaPartition(),
+                newKeySchema,
+                newKey,
+                newEnvelopeSchema,
+                newEnvelope,
+                record.timestamp()
+        );
     }
 
     @Override
     public void close() {
-        keySchemaUpdateCache = null;
-        envelopeSchemaUpdateCache = null;
     }
 
     @Override
     public ConfigDef config() {
         ConfigDef config = new ConfigDef();
-        Field.group(config, null, TOPIC_REGEX, TOPIC_REPLACEMENT, KEY_FIELD_REGEX,
+        Field.group(
+                config,
+                null,
+                TOPIC_REGEX,
+                TOPIC_REPLACEMENT,
+                KEY_FIELD_REGEX,
                 KEY_FIELD_REPLACEMENT);
         return config;
     }
 
     /**
      * Determine the new topic name.
+     *
      * @param oldTopic the name of the old topic
      * @return return the new topic name, if the regex applies. Otherwise, return null.
      */
@@ -242,7 +296,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
         for (org.apache.kafka.connect.data.Field field : oldEnvelopeSchema.fields()) {
             final String fieldName = field.name();
             Schema fieldSchema = field.schema();
-            if (fieldName == Envelope.FieldName.BEFORE || fieldName == Envelope.FieldName.AFTER) {
+            if (Objects.equals(fieldName, Envelope.FieldName.BEFORE) || Objects.equals(fieldName, Envelope.FieldName.AFTER)) {
                 fieldSchema = newValueSchema;
             }
             envelopeBuilder.field(fieldName, fieldSchema);
@@ -260,8 +314,8 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
         for (org.apache.kafka.connect.data.Field field : oldEnvelope.schema().fields()) {
             final String fieldName = field.name();
             Object fieldValue = oldEnvelope.get(field);
-            if ((fieldName == Envelope.FieldName.BEFORE || fieldName == Envelope.FieldName.AFTER) &&
-                    fieldValue != null) {
+            if ((Objects.equals(fieldName, Envelope.FieldName.BEFORE) || Objects.equals(fieldName, Envelope.FieldName.AFTER))
+                    && fieldValue != null) {
                 fieldValue = updateValue(newValueSchema, requireStruct(fieldValue, "Updating schema"));
             }
             newEnvelope.put(fieldName, fieldValue);
@@ -285,10 +339,12 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
     private SchemaBuilder copySchemaExcludingName(Schema source, SchemaBuilder builder, boolean copyFields) {
         builder.version(source.version());
         builder.doc(source.doc());
+
         Map<String, String> params = source.parameters();
         if (params != null) {
             builder.parameters(params);
         }
+
         if (source.isOptional()) {
             builder.optional();
         } else {
@@ -303,26 +359,4 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
 
         return builder;
     }
-
-    private static int validateKeyFieldReplacement(Configuration config, Field field, Field.ValidationOutput problems) {
-        String keyFieldRegex = config.getString(KEY_FIELD_REGEX);
-        if (keyFieldRegex != null) {
-            keyFieldRegex = keyFieldRegex.trim();
-        }
-        String keyFieldReplacement = config.getString(KEY_FIELD_REPLACEMENT);
-        if (keyFieldReplacement != null) {
-            keyFieldReplacement = keyFieldReplacement.trim();
-        }
-
-        if (keyFieldRegex != null && keyFieldRegex != "") {
-            if (keyFieldReplacement == null || keyFieldReplacement == "") {
-                problems.accept(KEY_FIELD_REPLACEMENT, keyFieldReplacement,
-                        KEY_FIELD_REPLACEMENT.name() + " must be specified if " +
-                                KEY_FIELD_REGEX.name() + " is specified");
-                return 1;
-            }
-        }
-        return 0;
-    }
-
 }
