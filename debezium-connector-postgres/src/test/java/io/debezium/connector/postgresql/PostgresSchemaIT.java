@@ -192,13 +192,13 @@ public class PostgresSchemaIT {
     }
 
     protected void assertKeySchema(String fullyQualifiedTableName, String fields, Schema... types) {
-        TableSchema tableSchema = schema.schemaFor(fullyQualifiedTableName);
+        TableSchema tableSchema = schemaFor(fullyQualifiedTableName);
         Schema keySchema = tableSchema.keySchema();
         assertSchemaContent(fields.split(","), types, keySchema);
     }
 
     protected void assertTableSchema(String fullyQualifiedTableName, String fields, Schema... types) {
-        TableSchema tableSchema = schema.schemaFor(fullyQualifiedTableName);
+        TableSchema tableSchema = schemaFor(fullyQualifiedTableName);
         Schema keySchema = tableSchema.valueSchema();
         assertSchemaContent(fields.split(","), types, keySchema);
     }
@@ -214,7 +214,7 @@ public class PostgresSchemaIT {
 
     protected void assertTablesIncluded(String... fullyQualifiedTableNames) {
         Arrays.stream(fullyQualifiedTableNames).forEach(fullyQualifiedTableName -> {
-            TableSchema tableSchema = schema.schemaFor(fullyQualifiedTableName);
+            TableSchema tableSchema = schemaFor(fullyQualifiedTableName);
             assertNotNull(fullyQualifiedTableName + " not included", tableSchema);
             assertThat(tableSchema.keySchema().name()).isEqualTo(validFullName(fullyQualifiedTableName, ".Key"));
             assertThat(tableSchema.valueSchema().name()).isEqualTo(validFullName(fullyQualifiedTableName, ".Value"));
@@ -228,8 +228,8 @@ public class PostgresSchemaIT {
 
     protected void assertTablesExcluded(String... fullyQualifiedTableNames) {
         Arrays.stream(fullyQualifiedTableNames).forEach(fullyQualifiedTableName -> {
-            assertThat(schema.tableFor(fullyQualifiedTableName)).isNull();
-            assertThat(schema.schemaFor(fullyQualifiedTableName)).isNull();
+            assertThat(tableFor(fullyQualifiedTableName)).isNull();
+            assertThat(schemaFor(fullyQualifiedTableName)).isNull();
         });
     }
 
@@ -238,7 +238,7 @@ public class PostgresSchemaIT {
             int lastDotIdx = fqColumnName.lastIndexOf(".");
             String fullyQualifiedTableName = fqColumnName.substring(0, lastDotIdx);
             String columnName = lastDotIdx > 0 ? fqColumnName.substring(lastDotIdx + 1) : fqColumnName;
-            TableSchema tableSchema = schema.schemaFor(fullyQualifiedTableName);
+            TableSchema tableSchema = schemaFor(fullyQualifiedTableName);
             assertNotNull(fullyQualifiedTableName + " not included", tableSchema);
             Schema valueSchema = tableSchema.valueSchema();
             assertNotNull(fullyQualifiedTableName + ".Value schema not included", valueSchema);
