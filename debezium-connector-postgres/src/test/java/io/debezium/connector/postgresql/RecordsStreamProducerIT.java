@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
@@ -23,22 +24,23 @@ import org.junit.Test;
 
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
+import io.debezium.relational.TableId;
 
 /**
  * Integration test for the {@link RecordsStreamProducer} class. This also tests indirectly the PG plugin functionality for
  * different use cases.
- * 
+ *
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
-    
+
     private RecordsStreamProducer recordsProducer;
     private TestConsumer consumer;
-    
+
     @Before
     public void before() throws Exception {
         TestHelper.dropAllSchemas();
-        String statements = "CREATE SCHEMA public;" + 
+        String statements = "CREATE SCHEMA public;" +
                             "DROP TABLE IF EXISTS test_table;" +
                             "CREATE TABLE test_table (pk SERIAL, text TEXT, PRIMARY KEY(pk));" +
                             "INSERT INTO test_table(text) VALUES ('insert');";
@@ -47,44 +49,44 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config));
         recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.serverName()));
     }
-    
+
     @After
     public void after() throws Exception {
         if (recordsProducer != null) {
             recordsProducer.stop();
         }
     }
-    
+
     @Test
     public void shouldReceiveChangesForInsertsWithDifferentDataTypes() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
-       
+
         consumer = testConsumer(1);
         recordsProducer.start(consumer);
 
         //numerical types
         assertInsert(INSERT_NUMERIC_TYPES_STMT, schemasAndValuesForNumericType());
-       
+
         // string types
         consumer.expects(1);
         assertInsert(INSERT_STRING_TYPES_STMT, schemasAndValuesForStringTypes());
-        
+
         // monetary types
         consumer.expects(1);
         assertInsert(INSERT_CASH_TYPES_STMT,  schemaAndValuesForMoneyTypes());
-        
+
         // bits and bytes
         consumer.expects(1);
         assertInsert(INSERT_BIN_TYPES_STMT, schemaAndValuesForBinTypes());
-        
+
         //date and time
         consumer.expects(1);
         assertInsert(INSERT_DATE_TIME_TYPES_STMT, schemaAndValuesForDateTimeTypes());
-        
+
         // text
         consumer.expects(1);
         assertInsert(INSERT_TEXT_TYPES_STMT, schemasAndValuesForTextTypes());
-        
+
         // geom types
         consumer.expects(1);
         assertInsert(INSERT_GEOM_TYPES_STMT, schemaAndValuesForGeomTypes());
@@ -92,8 +94,20 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // timezone range types
         consumer.expects(1);
         assertInsert(INSERT_TSTZRANGE_TYPES_STMT, schemaAndValuesForTstzRangeTypes());
+
     }
-    
+
+    @Test
+    public void shouldReceiveChangesForInsertsWithQuotedNames() throws Exception {
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer);
+
+        // Quoted column name
+        assertInsert(INSERT_QUOTED_TYPES_STMT, schemasAndValuesForQuotedTypes());
+    }
+
     @Test
     public void shouldReceiveChangesForInsertsWithArrayTypes() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -115,7 +129,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         assertRecordInserted("s1.a", PK_FIELD, 1);
     }
-    
+
     @Test
     public void shouldReceiveChangesForRenamedTable() throws Exception {
         String statement = "DROP TABLE IF EXISTS renamed_test_table;" +
@@ -132,13 +146,13 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(1);
         recordsProducer.start(consumer);
         executeAndWait("UPDATE test_table set text='update' WHERE pk=1");
-        
+
         // the update record should be the last record
         SourceRecord updatedRecord = consumer.remove();
         String topicName = topicName("public.test_table");
         assertEquals(topicName, updatedRecord.topic());
         VerifyRecord.isValidUpdate(updatedRecord, PK_FIELD, 1);
-        
+
         // default replica identity only fires previous values for PK changes
         List<SchemaAndValueField> expectedAfter = Collections.singletonList(
                 new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "update"));
@@ -148,96 +162,96 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer.expects(1);
         TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY FULL");
         executeAndWait("UPDATE test_table set text='update2' WHERE pk=1");
-        
+
         updatedRecord = consumer.remove();
         assertEquals(topicName, updatedRecord.topic());
         VerifyRecord.isValidUpdate(updatedRecord, PK_FIELD, 1);
-        
+
         // now we should get both old and new values
         List<SchemaAndValueField> expectedBefore = Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA,
                                                                                                "update"));
         assertRecordSchemaAndValues(expectedBefore, updatedRecord, Envelope.FieldName.BEFORE);
-    
+
         expectedAfter = Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "update2"));
         assertRecordSchemaAndValues(expectedAfter, updatedRecord, Envelope.FieldName.AFTER);
     }
-    
+
     @Test
     public void shouldReceiveChangesForUpdatesWithColumnChanges() throws Exception {
         // add a new column
         String statements = "ALTER TABLE test_table ADD COLUMN uvc VARCHAR(2);" +
                             "ALTER TABLE test_table REPLICA IDENTITY FULL;" +
                             "UPDATE test_table SET uvc ='aa' WHERE pk = 1;";
-                            
+
         consumer = testConsumer(1);
         recordsProducer.start(consumer);
         executeAndWait(statements);
-      
+
         // the update should be the last record
         SourceRecord updatedRecord = consumer.remove();
         String topicName = topicName("public.test_table");
         assertEquals(topicName, updatedRecord.topic());
         VerifyRecord.isValidUpdate(updatedRecord, PK_FIELD, 1);
-    
+
         // now check we got the updated value (the old value should be null, the new one whatever we set)
         List<SchemaAndValueField> expectedBefore = Collections.singletonList(new SchemaAndValueField("uvc", null, null));
         assertRecordSchemaAndValues(expectedBefore, updatedRecord, Envelope.FieldName.BEFORE);
-    
-        List<SchemaAndValueField> expectedAfter = Collections.singletonList(new SchemaAndValueField("uvc", SchemaBuilder.OPTIONAL_STRING_SCHEMA, 
+
+        List<SchemaAndValueField> expectedAfter = Collections.singletonList(new SchemaAndValueField("uvc", SchemaBuilder.OPTIONAL_STRING_SCHEMA,
                                                                                            "aa"));
         assertRecordSchemaAndValues(expectedAfter, updatedRecord, Envelope.FieldName.AFTER);
-    
+
         // rename a column
         statements = "ALTER TABLE test_table RENAME COLUMN uvc to xvc;" +
                      "UPDATE test_table SET xvc ='bb' WHERE pk = 1;";
 
         consumer.expects(1);
         executeAndWait(statements);
-       
+
         updatedRecord = consumer.remove();
         VerifyRecord.isValidUpdate(updatedRecord, PK_FIELD, 1);
-    
+
         // now check we got the updated value (the old value should be null, the new one whatever we set)
         expectedBefore = Collections.singletonList(new SchemaAndValueField("xvc", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "aa"));
         assertRecordSchemaAndValues(expectedBefore, updatedRecord, Envelope.FieldName.BEFORE);
-    
+
         expectedAfter = Collections.singletonList(new SchemaAndValueField("xvc", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "bb"));
         assertRecordSchemaAndValues(expectedAfter, updatedRecord, Envelope.FieldName.AFTER);
-    
+
         // drop a column
         statements = "ALTER TABLE test_table DROP COLUMN xvc;" +
                      "UPDATE test_table SET text ='update' WHERE pk = 1;";
-        
+
         consumer.expects(1);
         executeAndWait(statements);
         updatedRecord = consumer.remove();
         VerifyRecord.isValidUpdate(updatedRecord, PK_FIELD, 1);
     }
-    
+
     @Test
     public void shouldReceiveChangesForUpdatesWithPKChanges() throws Exception {
         consumer = testConsumer(3);
         recordsProducer.start(consumer);
         executeAndWait("UPDATE test_table SET text = 'update', pk = 2");
-        
+
         String topicName = topicName("public.test_table");
-        
+
         // first should be a delete of the old pk
         SourceRecord deleteRecord = consumer.remove();
         assertEquals(topicName, deleteRecord.topic());
         VerifyRecord.isValidDelete(deleteRecord, PK_FIELD, 1);
-    
+
         // followed by a tombstone of the old pk
         SourceRecord tombstoneRecord = consumer.remove();
         assertEquals(topicName, tombstoneRecord.topic());
         VerifyRecord.isValidTombstone(tombstoneRecord, PK_FIELD, 1);
-        
+
         // and finally insert of the new value
         SourceRecord insertRecord = consumer.remove();
         assertEquals(topicName, insertRecord.topic());
-        VerifyRecord.isValidInsert(insertRecord, PK_FIELD, 2);    
+        VerifyRecord.isValidInsert(insertRecord, PK_FIELD, 2);
     }
-    
+
     @Test
     public void shouldReceiveChangesForDefaultValues() throws Exception {
         String statements = "ALTER TABLE test_table REPLICA IDENTITY FULL;" +
@@ -255,7 +269,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 new SchemaAndValueField("default_column", SchemaBuilder.OPTIONAL_STRING_SCHEMA ,"default"));
         assertRecordSchemaAndValues(expectedSchemaAndValues, insertRecord, Envelope.FieldName.AFTER);
     }
-    
+
     @Test
     public void shouldReceiveChangesForDeletes() throws Exception {
         // add a new entry and remove both
@@ -264,17 +278,17 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(5);
         recordsProducer.start(consumer);
         executeAndWait(statements);
-    
-    
+
+
         String topicPrefix = "public.test_table";
         String topicName = topicName(topicPrefix);
         assertRecordInserted(topicPrefix, PK_FIELD, 2);
-    
+
         // first entry removed
         SourceRecord record = consumer.remove();
         assertEquals(topicName, record.topic());
         VerifyRecord.isValidDelete(record, PK_FIELD, 1);
-    
+
         // followed by a tombstone
         record = consumer.remove();
         assertEquals(topicName, record.topic());
@@ -290,10 +304,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertEquals(topicName, record.topic());
         VerifyRecord.isValidTombstone(record, PK_FIELD, 2);
     }
-   
+
     private void assertInsert(String statement, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {
-        String tableName = tableNameFromInsertStmt(statement);
-        String expectedTopicName = "public." + tableName;
+        TableId table = tableIdFromInsertStmt(statement);
+        String expectedTopicName = table.schema() + "." + table.table();
         try {
             executeAndWait(statement);
             SourceRecord record = assertRecordInserted(expectedTopicName, PK_FIELD, 1);
@@ -303,7 +317,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             throw new RuntimeException(e);
         }
     }
-    
+
     private SourceRecord assertRecordInserted(String expectedTopicName, String pkColumn, int pk) throws InterruptedException {
         assertFalse("records not generated", consumer.isEmpty());
         SourceRecord insertedRecord = consumer.remove();
@@ -311,7 +325,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidInsert(insertedRecord, pkColumn, pk);
         return insertedRecord;
     }
-    
+
     private void executeAndWait(String statements) throws Exception {
         TestHelper.execute(statements);
         consumer.await(2, TimeUnit.SECONDS);

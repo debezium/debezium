@@ -1,3 +1,5 @@
+-- noinspection SqlNoDataSourceInspectionForFile
+
 -- Generate a number of tables to cover as many of the PG types as possible
 DROP SCHEMA IF EXISTS public CASCADE;
 CREATE SCHEMA public;
@@ -10,3 +12,8 @@ CREATE TABLE text_table (pk SERIAL, j JSON, jb JSONB, x XML, u Uuid, PRIMARY KEY
 CREATE TABLE geom_table (pk SERIAL, p POINT, PRIMARY KEY(pk));
 CREATE TABLE tstzrange_table (pk serial, unbounded_exclusive_range tstzrange, bounded_inclusive_range tstzrange, PRIMARY KEY(pk));
 CREATE TABLE array_table (pk SERIAL, int_array INT[], bigint_array BIGINT[], text_array TEXT[], PRIMARY KEY(pk));
+
+DROP SCHEMA IF EXISTS "Quoted_"" . Schema" CASCADE;
+CREATE SCHEMA "Quoted_"" . Schema";
+-- GRANT ALL ON ALL TABLES IN SCHEMA "Quoted_Schema" TO postgres;
+CREATE TABLE "Quoted_"" . Schema"."Quoted_"" . Table" (pk SERIAL, "Quoted_"" . Text_Column" TEXT, PRIMARY KEY(pk));

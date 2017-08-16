@@ -29,6 +29,7 @@ import io.debezium.data.Json;
 import io.debezium.data.Uuid;
 import io.debezium.data.Xml;
 import io.debezium.data.geometry.Point;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.time.Date;
@@ -38,6 +39,7 @@ import io.debezium.time.NanoTimestamp;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.AvroValidator;
+import io.debezium.util.Strings;
 
 /**
  * Unit test for {@link PostgresSchema}
@@ -49,7 +51,7 @@ public class PostgresSchemaIT {
     private static final String[] TEST_TABLES = new String[] { "public.numeric_table", "public.string_table", "public.cash_table",
                                                                "public.bitbin_table",
                                                                "public.time_table", "public.text_table", "public.geom_table", "public.tstzrange_table",
-                                                               "public.array_table"
+                                                               "public.array_table", "\"Quoted_\"\" . Schema\".\"Quoted_\"\" . Table\""
                                                              };
 
     private PostgresSchema schema;
@@ -91,6 +93,8 @@ public class PostgresSchemaIT {
             assertTableSchema("public.array_table", "int_array, bigint_array, text_array",
                               SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(), SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(),
                               SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
+            assertTableSchema("\"Quoted_\"\" . Schema\".\"Quoted_\"\" . Table\"", "\"Quoted_\"\" . Text_Column\"",
+                              Schema.OPTIONAL_STRING_SCHEMA);
         }
     }
 
@@ -188,13 +192,13 @@ public class PostgresSchemaIT {
     }
 
     protected void assertKeySchema(String fullyQualifiedTableName, String fields, Schema... types) {
-        TableSchema tableSchema = schema.schemaFor(fullyQualifiedTableName);
+        TableSchema tableSchema = schemaFor(fullyQualifiedTableName);
         Schema keySchema = tableSchema.keySchema();
         assertSchemaContent(fields.split(","), types, keySchema);
     }
 
     protected void assertTableSchema(String fullyQualifiedTableName, String fields, Schema... types) {
-        TableSchema tableSchema = schema.schemaFor(fullyQualifiedTableName);
+        TableSchema tableSchema = schemaFor(fullyQualifiedTableName);
         Schema keySchema = tableSchema.valueSchema();
         assertSchemaContent(fields.split(","), types, keySchema);
     }
@@ -202,7 +206,7 @@ public class PostgresSchemaIT {
     private void assertSchemaContent(String[] fields, Schema[] types, Schema keySchema) {
         IntStream.range(0, fields.length).forEach(i -> {
             String fieldName = fields[i].trim();
-            Field field = keySchema.field(fieldName);
+            Field field = keySchema.field(Strings.unquoteIdentifierPart(fieldName));
             assertNotNull(fieldName + " not found in schema", field);
             assertEquals("'" + fieldName + "' has incorrect schema.", types[i], field.schema());
         });
@@ -210,7 +214,7 @@ public class PostgresSchemaIT {
 
     protected void assertTablesIncluded(String... fullyQualifiedTableNames) {
         Arrays.stream(fullyQualifiedTableNames).forEach(fullyQualifiedTableName -> {
-            TableSchema tableSchema = schema.schemaFor(fullyQualifiedTableName);
+            TableSchema tableSchema = schemaFor(fullyQualifiedTableName);
             assertNotNull(fullyQualifiedTableName + " not included", tableSchema);
             assertThat(tableSchema.keySchema().name()).isEqualTo(validFullName(fullyQualifiedTableName, ".Key"));
             assertThat(tableSchema.valueSchema().name()).isEqualTo(validFullName(fullyQualifiedTableName, ".Value"));
@@ -218,13 +222,14 @@ public class PostgresSchemaIT {
     }
 
     private String validFullName(String proposedName, String suffix) {
-        return AvroValidator.validFullname(TestHelper.TEST_SERVER + "." + proposedName + suffix);
+        TableId id = TableId.parse(proposedName, false);
+        return AvroValidator.validFullname(TestHelper.TEST_SERVER + "." + id.schema() + "." + id.table() + suffix);
     }
 
     protected void assertTablesExcluded(String... fullyQualifiedTableNames) {
         Arrays.stream(fullyQualifiedTableNames).forEach(fullyQualifiedTableName -> {
-            assertThat(schema.tableFor(fullyQualifiedTableName)).isNull();
-            assertThat(schema.schemaFor(fullyQualifiedTableName)).isNull();
+            assertThat(tableFor(fullyQualifiedTableName)).isNull();
+            assertThat(schemaFor(fullyQualifiedTableName)).isNull();
         });
     }
 
@@ -233,11 +238,20 @@ public class PostgresSchemaIT {
             int lastDotIdx = fqColumnName.lastIndexOf(".");
             String fullyQualifiedTableName = fqColumnName.substring(0, lastDotIdx);
             String columnName = lastDotIdx > 0 ? fqColumnName.substring(lastDotIdx + 1) : fqColumnName;
-            TableSchema tableSchema = schema.schemaFor(fullyQualifiedTableName);
+            TableSchema tableSchema = schemaFor(fullyQualifiedTableName);
             assertNotNull(fullyQualifiedTableName + " not included", tableSchema);
             Schema valueSchema = tableSchema.valueSchema();
             assertNotNull(fullyQualifiedTableName + ".Value schema not included", valueSchema);
             assertNull(columnName + " not excluded;", valueSchema.field(columnName));
         });
+    }
+
+    private Table tableFor(String fqn) {
+        return schema.tableFor(TableId.parse(fqn, false));
+    }
+
+    protected TableSchema schemaFor(String fqn) {
+        Table table = tableFor(fqn);
+        return table != null ? schema.schemaFor(table.id()) : null;
     }
 }

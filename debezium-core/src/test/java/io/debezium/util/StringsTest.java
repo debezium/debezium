@@ -5,6 +5,7 @@
  */
 package io.debezium.util;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
@@ -14,8 +15,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 /**
  * @author Randall Hauch
@@ -154,21 +153,21 @@ public class StringsTest {
     public void justifyCenterShouldReturnStringsThatAreTheDesiredLength() {
         assertEquals("This is the string", Strings.justifyCenter("This is the string", 18, ' '));
     }
-    
+
     @Test
     public void replaceVariablesShouldReplaceVariableThatHaveSameCase() {
         assertReplacement("some ${v1} text",vars("v1", "abc"), "some abc text");
         assertReplacement("some ${v1} text",vars("v1", "abc", "V1", "ABC"), "some abc text");
         assertReplacement("some ${v1:other} text",vars("V1", "ABC"), "some other text");
     }
-    
+
     @Test
     public void replaceVariablesShouldNotReplaceVariableThatHasNoDefaultAndIsNotFound() {
         assertReplacement("some ${varName} text",vars("v1", "value1"), "some ${varName} text");
         assertReplacement("some${varName}text",vars("v1", "value1"), "some${varName}text");
         assertReplacement("${varName}",vars("v1", "value1"), "${varName}");
     }
-    
+
     @Test
     public void replaceVariablesShouldReplaceVariablesWithNoDefault() {
         assertReplacement("${varName}",vars("varName", "replaced"), "replaced");
@@ -178,7 +177,7 @@ public class StringsTest {
         assertReplacement("some ${var1,var2,var3:other} text",vars("v1", "replaced", "var2", "new"), "some new text");
         assertReplacement("some ${var1,var2,var3:other} text",vars("v1", "replaced", "var3", "new"), "some new text");
     }
-    
+
     @Test
     public void replaceVariablesShouldReplaceVariablesWithDefaultWhenNoReplacementIsFound() {
         assertReplacement("some${varName:other}text",vars("v1", "replaced"), "someothertext");
@@ -186,7 +185,7 @@ public class StringsTest {
         assertReplacement("some ${var1,var2,var3:other} text",vars("var10", "replaced"), "some other text");
         assertReplacement("some ${var1,var2,var3:other} text",vars("var10", "replaced", "var11", "new"), "some other text");
     }
-    
+
     @Test
     public void replaceVariablesShouldReplaceMultipleVariables() {
         assertReplacement("${v1}${v1}",vars("v1", "first", "v2", "second"), "firstfirst");
@@ -197,16 +196,52 @@ public class StringsTest {
         assertReplacement("some ${v1,v2,v3:other} text ${v1,v2,v3:other}",vars("var10", "replaced", "v2", "s"), "some s text s");
         assertReplacement("some ${v1,v2:other}${v2,v3:other} text",vars("v1", "1", "v2", "2"), "some 12 text");
     }
-    
+
+    @Test
+    public void unquoteIdentifierPartShouldReturnNullForNull() {
+        assertThat(Strings.unquoteIdentifierPart(null)).isNull();
+    }
+
+    @Test
+    public void unquoteIdentifierPartShouldReturnSameValueForUnquotedString() {
+        assertThat(Strings.unquoteIdentifierPart("table")).isEqualTo("table");
+    }
+
+
+    @Test
+    public void unquoteIdentifierPartShouldReturnEmptyStringForEmptyQuotedString() {
+        assertThat(Strings.unquoteIdentifierPart("''")).isEqualTo("");
+    }
+
+    @Test
+    public void unquoteIdentifierPartShouldReturnUnquotedString() {
+        assertThat(Strings.unquoteIdentifierPart("'Table'")).isEqualTo("Table");
+    }
+
+    @Test
+    public void unquoteIdentifierPartShouldUnescapeEscapedQuote() {
+        assertThat(Strings.unquoteIdentifierPart("'Tab''le'")).isEqualTo("Tab'le");
+    }
+
+    @Test
+    public void unquoteIdentifierPartShouldSupportDoubleQuotes() {
+        assertThat(Strings.unquoteIdentifierPart("\"Tab\"\"le\"")).isEqualTo("Tab\"le");
+    }
+
+    @Test
+    public void unquoteIdentifierPartShouldSupportBackTicks() {
+        assertThat(Strings.unquoteIdentifierPart("`Tab``le`")).isEqualTo("Tab`le");
+    }
+
     protected void assertReplacement(String before, Map<String, String> replacements, String after) {
         String result = Strings.replaceVariables(before, replacements::get);
         assertThat(result).isEqualTo(after);
     }
-    
+
     protected Map<String, String> vars(String var1, String val1) {
         return Collect.hashMapOf(var1, val1);
     }
-    
+
     protected Map<String, String> vars(String var1, String val1, String var2, String val2) {
         return Collect.hashMapOf(var1, val1, var2, val2);
     }

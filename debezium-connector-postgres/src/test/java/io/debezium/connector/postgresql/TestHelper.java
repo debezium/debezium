@@ -91,6 +91,7 @@ public final class TestHelper {
             schemaNames.add(PostgresSchema.PUBLIC_SCHEMA_NAME);
         }
         String dropStmts = schemaNames.stream()
+                                      .map(schema -> "\"" + schema.replaceAll("\"", "\"\"") + "\"")
                                       .map(schema -> "DROP SCHEMA IF EXISTS " + schema + " CASCADE;")
                                       .collect(Collectors.joining(lineSeparator));
         TestHelper.execute(dropStmts);

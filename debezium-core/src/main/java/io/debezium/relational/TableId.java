@@ -5,8 +5,6 @@
  */
 package io.debezium.relational;
 
-import java.util.regex.Pattern;
-
 import io.debezium.annotation.Immutable;
 
 /**
@@ -16,8 +14,6 @@ import io.debezium.annotation.Immutable;
  */
 @Immutable
 public final class TableId implements Comparable<TableId> {
-
-    private static final Pattern IDENTIFIER_SEPARATOR = Pattern.compile("\\.");
 
     /**
      * Parse the supplied string, extracting up to the first 3 parts into a TableID.
@@ -39,8 +35,9 @@ public final class TableId implements Comparable<TableId> {
      * @return the table ID, or null if it could not be parsed
      */
     public static TableId parse(String str, boolean useCatalogBeforeSchema) {
-        String[] parts = IDENTIFIER_SEPARATOR.split(str);
-        if ( parts.length < 0 ) return null;
+        String[] parts = TableIdParser.parse(str).stream()
+                .toArray(String[]::new);
+
         return TableId.parse(parts, parts.length, useCatalogBeforeSchema);
     }
 
@@ -61,7 +58,7 @@ public final class TableId implements Comparable<TableId> {
             if (useCatalogBeforeSchema) return new TableId(parts[0], null, parts[1]); // catalog & table only
             return new TableId(null, parts[0], parts[1]); // schema & table only
         }
-        return new TableId(parts[0], parts[1], parts[2]); // catalog & table only
+        return new TableId(parts[0], parts[1], parts[2]); // catalog, schema & table
     }
 
     private final String catalogName;
@@ -142,6 +139,34 @@ public final class TableId implements Comparable<TableId> {
         return id;
     }
 
+    /**
+     * Returns a dot-separated String representation of this identifier, quoting all
+     * name parts with the {@code "} char.
+     */
+    public String toDoubleQuotedString() {
+        return toQuotedString('"');
+    }
+
+    /**
+     * Returns a dot-separated String representation of this identifier, quoting all
+     * name parts with the given quoting char.
+     */
+    public String toQuotedString(char quotingChar) {
+        StringBuilder quoted = new StringBuilder();
+
+        if (catalogName != null && !catalogName.isEmpty()) {
+            quoted.append(quote(catalogName, quotingChar)).append(".");
+        }
+
+        if (schemaName != null && !schemaName.isEmpty()) {
+            quoted.append(quote(schemaName, quotingChar)).append(".");
+        }
+
+        quoted.append(quote(tableName, quotingChar));
+
+        return quoted.toString();
+    }
+
     private static String tableId(String catalog, String schema, String table) {
         if (catalog == null || catalog.length() == 0) {
             if (schema == null || schema.length() == 0) {
@@ -154,4 +179,28 @@ public final class TableId implements Comparable<TableId> {
         }
         return catalog + "." + schema + "." + table;
     }
+
+    /**
+     * Quotes the given identifier part, e.g. schema or table name.
+     */
+   private static String quote(String identifierPart, char quotingChar) {
+       if (identifierPart == null) {
+           return null;
+       }
+
+       if (identifierPart.isEmpty()) {
+           return new StringBuilder().append(quotingChar).append(quotingChar).toString();
+       }
+
+       if (identifierPart.charAt(0) != quotingChar && identifierPart.charAt(identifierPart.length() - 1) != quotingChar) {
+           identifierPart = identifierPart.replace(quotingChar + "", repeat(quotingChar));
+           identifierPart = quotingChar + identifierPart + quotingChar;
+       }
+
+       return identifierPart;
+   }
+
+   private static String repeat(char quotingChar) {
+       return new StringBuilder().append(quotingChar).append(quotingChar).toString();
+   }
 }
