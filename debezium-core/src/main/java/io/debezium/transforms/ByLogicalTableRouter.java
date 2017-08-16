@@ -29,6 +29,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
 import io.debezium.util.AvroValidator;
+import io.debezium.util.Strings;
 
 /**
  * A logical table consists of one or more physical tables with the same schema. A common use case is sharding -- the
@@ -123,12 +124,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
             keyFieldReplacement = keyFieldReplacement.trim();
         }
 
-        if (keyFieldRegex == null && keyFieldReplacement == null) {
-            return 0;
-        }
-
-        if (!Objects.equals(keyFieldRegex, "")
-                && (keyFieldReplacement == null || Objects.equals(keyFieldReplacement, ""))) {
+        if (!Strings.isNullOrEmpty(keyFieldRegex) && Strings.isNullOrEmpty(keyFieldReplacement)) {
             problems.accept(
                     KEY_FIELD_REPLACEMENT,
                     null,
@@ -137,8 +133,10 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
                             KEY_FIELD_REGEX.name()
                     )
             );
+
             return 1;
         }
+
         return 0;
     }
 
