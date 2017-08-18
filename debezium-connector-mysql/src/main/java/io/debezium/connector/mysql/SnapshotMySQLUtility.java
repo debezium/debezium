@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 /**
- * Todo better name??
+ * Todo better name
  */
 public class SnapshotMySQLUtility {
 
@@ -37,26 +37,26 @@ public class SnapshotMySQLUtility {
 
     private final MySqlTaskContext context;
     private final JdbcConnection mysql;
-    // vvv I still have no idea wtf the point of this is?
+    // vvv I still have no idea what the point of this is?
     private final AtomicReference<String> sql = new AtomicReference<>();
 
     private boolean minimalBlocking = true;
 
-    private List<TableId> tableIds;
-    private Map<String, List<TableId>> tableIdsByDbName;
-    private Set<String> readableDatabaseNames;
+    private List<TableId> tableIds = null;
+    private Map<String, List<TableId>> tableIdsByDbName = null;
+    private Set<String> readableDatabaseNames = null;
 
     private boolean activeTransaction = false;
     private boolean tablesLocked = false;
-    private long lockAcquired; // not totally sure what this is for.
+    private long lockAcquiredTsMs;
     private Collection<TableId> lockedTables = null;
     private AtomicBoolean interrupted = new AtomicBoolean(false); // I still don't totally understand what this is for.
 
 
-    public SnapshotMySQLUtility(MySqlTaskContext context, JdbcConnection mysql) {
+    public SnapshotMySQLUtility(MySqlTaskContext context) {
         this.context = context;
         this.metrics = new SnapshotReaderMetrics(context.clock());
-        this.mysql = mysql;
+        this.mysql = context.jdbc();
     }
 
     /**
@@ -74,6 +74,10 @@ public class SnapshotMySQLUtility {
         this.minimalBlocking = minimalBlocking;
     }
 
+    /**
+     * Begin a transaction. Required before doing anything else.
+     * @throws SQLException
+     */
     public void beginTransaction() throws SQLException {
         // Set the transaction isolation level to REPEATABLE READ. This is the default, but the default can be changed
         // which is why we explicitly set it here.
@@ -94,6 +98,15 @@ public class SnapshotMySQLUtility {
         sql.set("START TRANSACTION WITH CONSISTENT SNAPSHOT");
         mysql.execute(sql.get());
         activeTransaction = true;
+    }
+
+    /**
+     * Read table list if it hasn't been read yet.
+     */
+    public void maybeReadTableList() throws SQLException {
+        if (tableIds == null) {
+            readTableList();
+        }
     }
 
     /**
@@ -150,19 +163,30 @@ public class SnapshotMySQLUtility {
                 logger.warn("\t skipping database '{}' due to error reading tables: {}", dbName, e.getMessage());
             }
         }
-        final Set<String> includedDatabaseNames = readableDatabaseNames.stream().filter(filters.databaseFilter()).collect(Collectors.toSet());
+        final Set<String> includedDatabaseNames =
+            readableDatabaseNames.stream().filter(filters.databaseFilter()).collect(Collectors.toSet());
         logger.info("\tsnapshot continuing with database(s): {}", includedDatabaseNames);
 
     }
 
+    /**
+     * @return the list of tableIds that have been read, or null if no tables have been read.
+     */
     public List<TableId> getTableIds() {
         return tableIds;
     }
 
+    /**
+     * @return a map from databases to tableIds of all the tables that have been read,
+     *         or null if no tables have been read.
+     */
     public Map<String, List<TableId>> getTableIdsByDbName() {
         return tableIdsByDbName;
     }
 
+    /**
+     * @return the list of database names that have been read, or null if no tables have been read.
+     */
     public Set<String> getReadableDatabaseNames() {
         return readableDatabaseNames;
     }
@@ -174,14 +198,34 @@ public class SnapshotMySQLUtility {
     }
 
     /**
-     * Lock all tables.
+     * Lock all the tables.
+     * If possible, this will be done by acquiring the global lock.
+     * If not possible, all tables will be individually locked.
+     *
+     * @throws SQLException
      */
     public void lockAllTables() throws SQLException {
+        try {
+            lockGlobal();
+        } catch (SQLException e) {
+            if (tableIds == null) {
+                // todo should I always read the table list?
+                readTableList();
+            }
+            lockTables(tableIds);
+        }
+    }
+
+    /**
+     * Acquire the global lock
+     * @throws SQLException
+     */
+    public void lockGlobal() throws SQLException {
         verifyActiveTransaction("locking tables");
         sql.set("FLUSH TABLES WITH READ LOCK");
         mysql.execute(sql.get());
 
-        lockAcquired = context.clock().currentTimeInMillis();
+        lockAcquiredTsMs = context.clock().currentTimeInMillis();
         metrics.globalLockAcquired();
         tablesLocked = true;
 
@@ -190,7 +234,9 @@ public class SnapshotMySQLUtility {
 
     /**
      * Lock a specific list of tables.
+     *
      * @param tableIds the tables to lock.
+     * @throws SQLException
      */
     public void lockTables(Collection<TableId> tableIds) throws SQLException {
         verifyActiveTransaction("locking tables");
@@ -210,7 +256,7 @@ public class SnapshotMySQLUtility {
             mysql.execute(sql.get());
         }
 
-        lockAcquired = context.clock().currentTimeInMillis();
+        lockAcquiredTsMs = context.clock().currentTimeInMillis();
         metrics.globalLockAcquired();
         tablesLocked = true;
         lockedTables = new ArrayList<>(tableIds);
@@ -245,6 +291,11 @@ public class SnapshotMySQLUtility {
         });
     }
 
+    public void bufferLockedTables(SnapshotServerReader.RecordRecorder recorder,
+                                   BufferedBlockingConsumer<SourceRecord> bufferedRecordQueue) throws SQLException {
+        bufferLockedTables(tableIds, recorder, bufferedRecordQueue);
+    }
+
     /**
      *
      * @param recorder
@@ -252,12 +303,18 @@ public class SnapshotMySQLUtility {
      * @throws SQLException
      */
     // todo method input order?
-    public void bufferAllLockedTables(SnapshotServerReader.RecordRecorder recorder,
-                                      BufferedBlockingConsumer<SourceRecord> bufferedRecordQueue)
+    // todo buffer a given list of tables (those tables must be locked, of course)
+    // but that way we can lock all the tables but only buffer/read some tables.  Which is useful because then we
+    // can release the lock earlier than we could normally.
+    public void bufferLockedTables(List<TableId> tableIdsToBuffer,
+                                   SnapshotServerReader.RecordRecorder recorder,
+                                   BufferedBlockingConsumer<SourceRecord> bufferedRecordQueue)
             throws SQLException {
         if (!tablesLocked) {
             throw new IllegalStateException("No locked tables to buffer");
         }
+
+        // todo: verify that all tables to be buffered are locked?
 
         final long bufferingStartTs = context.clock().currentTimeInMillis();
         final MySqlSchema schema = context.dbSchema();
@@ -282,15 +339,15 @@ public class SnapshotMySQLUtility {
         }
 
         // Dump all of the tables and generate source records ...
-        logger.info("scanning contents of {} tables while still in transaction", tableIds.size());
-        metrics.setTableCount(tableIds.size());
+        logger.info("scanning contents of {} tables while still in transaction", tableIdsToBuffer.size());
+        metrics.setTableCount(tableIdsToBuffer.size());
 
         long startScan = context.clock().currentTimeInMillis();
         AtomicLong totalRowCount = new AtomicLong();
         int counter = 0;
         int completedCounter = 0;
         long largeTableCount = context.rowCountForLargeTable();
-        Iterator<TableId> tableIdIter = tableIds.iterator();
+        Iterator<TableId> tableIdIter = tableIdsToBuffer.iterator();
         while (tableIdIter.hasNext()) {
             TableId tableId = tableIdIter.next();
 
@@ -374,12 +431,12 @@ public class SnapshotMySQLUtility {
         try {
             bufferedRecordQueue.flush(this::replaceOffset);
             logger.info("scanned {} rows in {} tables in {}",
-                        totalRowCount, tableIds.size(), Strings.duration(stop - startScan));
+                        totalRowCount, tableIdsToBuffer.size(), Strings.duration(stop - startScan));
         } catch (InterruptedException e) {
             Thread.interrupted();
             // We were not able to finish all rows in all tables ...
             logger.info("aborting the snapshot after {} rows in {} of {} tables {}",
-                        totalRowCount, completedCounter, tableIds.size(), Strings.duration(stop - startScan));
+                        totalRowCount, completedCounter, tableIdsToBuffer.size(), Strings.duration(stop - startScan));
             interrupted.set(true);
         }
     }
@@ -401,8 +458,8 @@ public class SnapshotMySQLUtility {
         logger.info("committing transaction");
         sql.set("COMMIT");
         mysql.execute(sql.get());
+        activeTransaction = false;
         metrics.completeSnapshot();
-
 
         unLockTables();
     }
@@ -423,7 +480,7 @@ public class SnapshotMySQLUtility {
         long lockReleased = context.clock().currentTimeInMillis(); // I don't know what this is for either.
         metrics.globalLockReleased();
         logger.info("blocked writes to MySQL for a total of {}",
-            Strings.duration(lockReleased - lockAcquired));
+            Strings.duration(lockReleased - lockAcquiredTsMs));
     }
 
     /**
