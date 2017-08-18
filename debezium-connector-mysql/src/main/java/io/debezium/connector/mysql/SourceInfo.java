@@ -407,8 +407,8 @@ final class SourceInfo {
             result.put(DB_NAME_KEY, tableId.catalog());
             result.put(TABLE_NAME_KEY, tableId.table());
             result.put(DpRecordConstants.SOURCE_ENTITY_NAME_KEY, tableId.table());
-            result.put(DpRecordConstants.SOURCE_ENTITY_SNAPSHOT_SIZE_KEY, entitySize);
-            result.put(DpRecordConstants.SOURCE_ENTITY_SNAPSHOT_RECORD_INDEX_KEY, lastIndex);
+            result.put(DpRecordConstants.SOURCE_ENTITY_SNAPSHOT_SIZE_KEY, isSnapshotInEffect() ? entitySize : 0);
+            result.put(DpRecordConstants.SOURCE_ENTITY_SNAPSHOT_RECORD_INDEX_KEY, isSnapshotInEffect() ? lastIndex : 0);
         }
         return result;
     }
