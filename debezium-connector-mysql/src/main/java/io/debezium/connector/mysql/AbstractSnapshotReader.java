@@ -110,4 +110,13 @@ public abstract class AbstractSnapshotReader extends AbstractReader {
     protected static interface RecordRecorder {
         void recordRow(RecordMakers.RecordsForTable recordMaker, Object[] row, long ts) throws InterruptedException;
     }
+
+    protected void enqueueSchemaChanges(String dbName, String ddlStatement) {
+        if (!context.includeSchemaChangeRecords() || ddlStatement.length() == 0) {
+            return;
+        }
+        if (context.makeRecord().schemaChanges(dbName, ddlStatement, super::enqueueRecord) > 0) {
+            logger.info("\t{}", ddlStatement);
+        }
+    }
 }

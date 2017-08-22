@@ -452,6 +452,7 @@ public class SnapshotMySQLUtility {
             sql.set("ROLLBACK");
             mysql.execute(sql.get());
             metrics.abortSnapshot();
+            unLockTables();
             return;
         }
         // Otherwise, commit our transaction
@@ -460,8 +461,8 @@ public class SnapshotMySQLUtility {
         mysql.execute(sql.get());
         activeTransaction = false;
         metrics.completeSnapshot();
-
         unLockTables();
+        context.source().completeSnapshot();
     }
 
     /**

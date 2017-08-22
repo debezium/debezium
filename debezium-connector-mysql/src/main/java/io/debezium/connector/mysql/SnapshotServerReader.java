@@ -169,16 +169,13 @@ public class SnapshotServerReader extends AbstractSnapshotReader {
                 }
             } else {
                 // We completed the snapshot...
-                try {
-                    // Mark the source as having completed the snapshot. This will ensure the `source` field on records
-                    // are not denoted as a snapshot ...
-                    source.completeSnapshot();
-                } finally {
-                    // Set the completion flag ...
-                    completeSuccessfully();
-                    long stop = clock.currentTimeInMillis();
-                    logger.info("Completed snapshot in {}", Strings.duration(stop - ts));
-                }
+                // Mark the source as having completed the snapshot. This will ensure the `source` field on records
+                // are not denoted as a snapshot ...
+                source.completeSnapshot();
+                // Set the completion flag ...
+                completeSuccessfully();
+                long stop = clock.currentTimeInMillis();
+                logger.info("Completed snapshot in {}", Strings.duration(stop - ts));
             }
         } catch (Throwable e) {
             failed(e, "Aborting snapshot due to error when last running '" + sql.get() + "': " + e.getMessage());
@@ -227,15 +224,6 @@ public class SnapshotServerReader extends AbstractSnapshotReader {
             }
         } catch (SQLException e) {
             logger.info("Cannot determine the privileges for '{}' ", mysql.username(), e);
-        }
-    }
-
-    protected void enqueueSchemaChanges(String dbName, String ddlStatement) {
-        if (!context.includeSchemaChangeRecords() || ddlStatement.length() == 0) {
-            return;
-        }
-        if (context.makeRecord().schemaChanges(dbName, ddlStatement, super::enqueueRecord) > 0) {
-            logger.info("\t{}", ddlStatement);
         }
     }
 }

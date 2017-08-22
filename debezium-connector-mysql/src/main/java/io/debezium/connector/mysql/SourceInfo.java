@@ -257,7 +257,7 @@ final class SourceInfo {
         return offsetUsingPosition(totalNumberOfRows);
     }
 
-    private Map<String, ?> offsetUsingPosition(long rowsToSkip) { // base method!
+    private Map<String, ?> offsetUsingPosition(long rowsToSkip) {
         Map<String, Object> map = new HashMap<>();
         if (serverId != 0) map.put(SERVER_ID_KEY, serverId);
         if (restartGtidSet != null) {

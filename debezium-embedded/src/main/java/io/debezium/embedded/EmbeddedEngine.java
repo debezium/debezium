@@ -665,7 +665,7 @@ public final class EmbeddedEngine implements Runnable {
                                                 keepProcessing = false;
                                                 // Stop processing any more but first record the offset for this record's
                                                 // partition
-                                                offsetWriter.offset(record.sourcePartition(), record.sourceOffset()); //...
+                                                offsetWriter.offset(record.sourcePartition(), record.sourceOffset());
                                                 recordsSinceLastCommit += 1;
                                                 break;
                                             } catch (Throwable t) {
