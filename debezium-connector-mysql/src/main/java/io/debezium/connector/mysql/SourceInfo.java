@@ -111,12 +111,12 @@ final class SourceInfo {
     public static final String DB_NAME_KEY = "db";
     public static final String TABLE_NAME_KEY = "table";
 
-    public static final String HAS_FILTER_INFO = "filter.info";
-    // using the same names as the config names for ease of creating a filter
-    public static final String FILTERS_DATABASE_WHITELIST = MySqlConnectorConfig.DATABASE_WHITELIST.name();
-    public static final String FILTERS_DATABASE_BLACKLIST = MySqlConnectorConfig.DATABASE_BLACKLIST.name();
-    public static final String FILTERS_TABLE_WHITELIST = MySqlConnectorConfig.TABLE_WHITELIST.name();
-    public static final String FILTERS_TABLE_BLACKLIST = MySqlConnectorConfig.TABLE_BLACKLIST.name();
+    // Avro Schema doesn't allow . to be included as field name, use "_" instead.
+    public static final String HAS_FILTER_INFO = "filter_info";
+    public static final String FILTERS_DATABASE_WHITELIST = "database_whitelist";
+    public static final String FILTERS_DATABASE_BLACKLIST = "database_blacklist";
+    public static final String FILTERS_TABLE_WHITELIST = "table_whitelist";
+    public static final String FILTERS_TABLE_BLACKLIST = "table_blacklist";
 
     /**
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition()} and {@link #offset()} information.
