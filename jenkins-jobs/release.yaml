@@ -1,0 +1,21 @@
+# Job definition to execute Debezium release
+---
+- job:
+    project-type: pipeline
+    name: debezium-release
+    display-name: Debezium Release
+    description: Builds Debezium and deploys into Maven Central and Docker Hub
+    node: Slave
+    properties:
+      - build-discarder:
+          num-to-keep: 5
+    parameters:
+      - string:
+          name: RELEASE_VERSION
+          description: "Version of Debezium to be released - e.g. 0.5.2"
+      - string:
+          name: DEVELOPMENT_VERSION
+          description: "Next development version - e.g. 0.5.3-SNAPSHOT"
+    dsl:
+      !include-raw:
+        - "scripts/release-pipeline.groovy"
