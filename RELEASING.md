@@ -2,7 +2,13 @@
 
 The Debezium project uses Maven for its build system, relying up on the _release_ plugin to most of the work. This document describes the steps required to perform a release.
 
-# Update the changelog
+## Verify Jira issues
+All issues planned for this release must be resolved. If not they have to either be re-planned to another release or rejected. Use JQL query to find offending issues
+```
+project=DBZ AND fixVersion=<VERSION> AND status NOT IN ('Resolved', 'Closed')
+```
+
+## Update the changelog
 
 The change log should be updated with all relevant info on new features, bug fixes and breaking changes.
 It currently exists in two versions, one in the main code repo and one on the website:
@@ -166,13 +172,20 @@ Only after the artifacts are available on Maven Central can you merge the pull r
 
 Otherwise, for major and minor releases your pull request should have added new Docker images, and you need to log into [Debezium's Docker Hub organization](https://hub.docker.com/r/debezium/) and add/update the build settings for each of the affected images.
 
-If the logical decoding plug-in has undergone any changes as part of the release, the Docker image for PostgreSQL needs to be updated as well.
+With every release the Docker image for PostgreSQL needs to be updated as well.
 First create a tag in the https://github.com/debezium/postgres-decoderbufs[postgres-decoderbufs] repository:
 
     $ git tag v<%version%> && git push upstream v<%version%>
 
 Then update the Debezium version referenced in the https://github.com/debezium/docker-images/blob/master/postgres/9.6/Dockerfile#L22[postgres Docker file]
 and push that commit which will cause the image to be re-published on Docker Hub automatically.
+
+## Close Jira issues
+Close all issues relesed with this version. The affected issues can be found using JQL query
+```
+project=DBZ AND fixVersion=<VERSION> AND status='Resolved'
+```
+Then mark release in Jira as *Released* using `Release` action.
 
 ## Update the documentation and blog
 
@@ -181,3 +194,8 @@ This typically involves updating the documentation (look for pending pull reques
 Then, create a pull request with your changes and wait for a committer to approve and merge your changes.
 
 When the blog post is available, use the [Debezium Twitter account](https://twitter.com/debezium) to announce the release by linking to the blog post.
+
+# Automated Release
+To perform release automatically invoke a [Jenkins job](http://ci.hibernate.org/view/Debezium/job/debezium-release/). Two parameters are requested
+* `RELEASE_VERSION` - a version to be released in format x.y.z
+* `DEVELOPMENT_VERSION` - next development version in format x.y.z-SNAPSHOT
