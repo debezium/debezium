@@ -9,11 +9,15 @@ import static org.junit.Assert.assertNotNull;
 
 import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import io.debezium.config.Configuration;
+import io.debezium.relational.history.FileDatabaseHistory;
 
 public class UniqueDatabase {
     private static final String DEFAULT_DATABASE = "mysql";
@@ -25,8 +29,9 @@ public class UniqueDatabase {
     private final String databaseName;
     private final String templateName;
     private final String serverName;
+    private Path dbHistoryPath;
 
-    public UniqueDatabase(final String databaseName, final String serverName) {
+    public UniqueDatabase(final String serverName, final String databaseName) {
         this.databaseName = databaseName + "_" + Integer.toUnsignedString(new Random().nextInt(), 36);
         this.templateName = databaseName;
         this.serverName = serverName;
@@ -67,6 +72,32 @@ public class UniqueDatabase {
         } catch (final Exception e) {
             throw new IllegalStateException(e);
         }
-        
+    }
+
+    public UniqueDatabase withDbHistoryPath(final Path dbHistoryPath) {
+        this.dbHistoryPath = dbHistoryPath;
+        return this;
+    }
+
+    public Configuration.Builder defaultJdbcConfigBuilder() {
+        return Configuration.create()
+                .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname", "localhost"))
+                .with(MySqlConnectorConfig.PORT, System.getProperty("database.port", "3306"))
+                .with(MySqlConnectorConfig.USER, "snapper")
+                .with(MySqlConnectorConfig.PASSWORD, "snapperpass");
+    }
+
+    public Configuration.Builder defaultConfig() {
+        final Configuration.Builder builder = defaultJdbcConfigBuilder()
+                .with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.SecureConnectionMode.DISABLED)
+                .with(MySqlConnectorConfig.SERVER_ID, 18765)
+                .with(MySqlConnectorConfig.SERVER_NAME, getServerName())
+                .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MySqlConnectorConfig.DATABASE_WHITELIST, getDatabaseName())
+                .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class);
+        if (dbHistoryPath != null) {
+            builder.with(FileDatabaseHistory.FILE_PATH, dbHistoryPath);
+        }
+        return builder;
     }
 }

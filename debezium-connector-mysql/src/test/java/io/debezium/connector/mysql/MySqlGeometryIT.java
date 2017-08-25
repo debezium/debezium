@@ -19,7 +19,6 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
 import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.util.Testing;
 import mil.nga.wkb.geom.Point;
 import mil.nga.wkb.io.ByteReader;
@@ -30,12 +29,10 @@ import mil.nga.wkb.io.WkbGeometryReader;
  */
 public class MySqlGeometryIT extends AbstractConnectorTest {
 
-    private static final String DATABASE_NAME = "geometry_test";
-    private static final String SERVER_NAME = "geometryit";
-    private final UniqueDatabase DATABASE = new UniqueDatabase(DATABASE_NAME, SERVER_NAME);
-
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-json.txt")
                                                              .toAbsolutePath();
+    private final UniqueDatabase DATABASE = new UniqueDatabase("geometryit", "geometry_test")
+            .withDbHistoryPath(DB_HISTORY_PATH);
 
     private Configuration config;
 
@@ -59,20 +56,10 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
     @Test
     public void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
-        config = Configuration.create()
-                              .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
-                              .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
-                              .with(MySqlConnectorConfig.USER, "snapper")
-                              .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                              .with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.SecureConnectionMode.DISABLED)
-                              .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                              .with(MySqlConnectorConfig.SERVER_NAME, DATABASE.getServerName())
-                              .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                              .with(MySqlConnectorConfig.DATABASE_WHITELIST, DATABASE.getDatabaseName())
-                              .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                              .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
-                              .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                              .build();
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
+                .build();
+
         // Start the connector ...
         start(MySqlConnector.class, config);
 
@@ -111,19 +98,8 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
     @Test
     public void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
-        config = Configuration.create()
-                              .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
-                              .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
-                              .with(MySqlConnectorConfig.USER, "snapper")
-                              .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                              .with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.SecureConnectionMode.DISABLED)
-                              .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                              .with(MySqlConnectorConfig.SERVER_NAME, DATABASE.getServerName())
-                              .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                              .with(MySqlConnectorConfig.DATABASE_WHITELIST, DATABASE.getDatabaseName())
-                              .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                              .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                              .build();
+        config = DATABASE.defaultConfig().build();
+
         // Start the connector ...
         start(MySqlConnector.class, config);
 

@@ -21,7 +21,6 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
 import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.util.Testing;
 
 /**
@@ -34,9 +33,8 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
 
     private Configuration config;
 
-    private static final String SERVER_NAME = "unsignednumericit";
-    private static final String DATABASE_NAME = "unsigned_integer_test";
-    private final UniqueDatabase DATABASE = new UniqueDatabase(DATABASE_NAME, SERVER_NAME);
+    private final UniqueDatabase DATABASE = new UniqueDatabase("unsignednumericit", "unsigned_integer_test")
+            .withDbHistoryPath(DB_HISTORY_PATH);
 
     @Before
     public void beforeEach() {
@@ -58,20 +56,10 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
     @Test
     public void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
-        config = Configuration.create()
-                .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
-                .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
-                .with(MySqlConnectorConfig.USER, "snapper")
-                .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                .with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.SecureConnectionMode.DISABLED)
-                .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                .with(MySqlConnectorConfig.SERVER_NAME, SERVER_NAME)
-                .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                .with(MySqlConnectorConfig.DATABASE_WHITELIST, DATABASE.getDatabaseName())
-                .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+        config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
-                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                 .build();
+
         // Start the connector ...
         start(MySqlConnector.class, config);
 
@@ -85,7 +73,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords);
         stopConnector();
         assertThat(records).isNotNull();
-        assertThat(records.recordsForTopic(SERVER_NAME).size()).isEqualTo(numCreateDatabase + numCreateTables);
+        assertThat(records.recordsForTopic("unsignednumericit").size()).isEqualTo(numCreateDatabase + numCreateTables);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_228_tinyint_unsigned")).size())
                 .isEqualTo(3);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_228_smallint_unsigned")).size())
@@ -128,19 +116,8 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
     @Test
     public void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
-        config = Configuration.create()
-                .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
-                .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
-                .with(MySqlConnectorConfig.USER, "snapper")
-                .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                .with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.SecureConnectionMode.DISABLED)
-                .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                .with(MySqlConnectorConfig.SERVER_NAME, SERVER_NAME)
-                .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                .with(MySqlConnectorConfig.DATABASE_WHITELIST, DATABASE.getDatabaseName())
-                .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                .build();
+        config = DATABASE.defaultConfig().build();
+
         // Start the connector ...
         start(MySqlConnector.class, config);
 
@@ -156,7 +133,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         SourceRecords records = consumeRecordsByTopic(numDdlRecords + numSetVariables + numDataRecords);
         stopConnector();
         assertThat(records).isNotNull();
-        assertThat(records.recordsForTopic(SERVER_NAME).size()).isEqualTo(numDdlRecords + numSetVariables);
+        assertThat(records.recordsForTopic("unsignednumericit").size()).isEqualTo(numDdlRecords + numSetVariables);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_228_tinyint_unsigned")).size())
                 .isEqualTo(3);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_228_smallint_unsigned")).size())

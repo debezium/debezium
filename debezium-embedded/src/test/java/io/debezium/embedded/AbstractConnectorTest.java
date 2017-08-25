@@ -8,12 +8,8 @@ package io.debezium.embedded;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -22,7 +18,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -32,7 +27,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.data.Field;
@@ -52,7 +46,6 @@ import org.apache.kafka.connect.storage.OffsetStorageReaderImpl;
 import org.fest.assertions.Delta;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.slf4j.Logger;
@@ -98,18 +91,6 @@ public abstract class AbstractConnectorTest implements Testing {
     private JsonConverter valueJsonConverter = new JsonConverter();
     private JsonDeserializer keyJsonDeserializer = new JsonDeserializer();
     private JsonDeserializer valueJsonDeserializer = new JsonDeserializer();
-
-    @BeforeClass
-    public static void initializeDatabaseProperties() throws IOException {
-        final File databasePropertyFile = Paths.get(".", "database.properties").toFile();
-        if (databasePropertyFile.exists()) {
-            final Properties props = new Properties();
-            try (final FileInputStream fis = new FileInputStream(databasePropertyFile)) {
-                props.load(fis);
-            }
-            props.entrySet().forEach(x -> System.getProperties().putIfAbsent(x.getKey(), x.getValue()));
-        }
-    }
 
     @Before
     public final void initializeConnectorTestFramework() {
