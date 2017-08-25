@@ -1,23 +1,24 @@
 import groovy.json.*
 import java.util.stream.*
 
-if (!RELEASE_VERSION || !DEVELOPMENT_VERSION) {
+if (
+    !RELEASE_VERSION ||
+    !DEVELOPMENT_VERSION ||
+    !DEBEZIUM_REPOSITORY ||
+    !DEBEZIUM_BRANCH ||
+    !IMAGES_REPOSITORY ||
+    !IMAGES_BRANCH ||
+    !POSTGRES_DECODER_REPOSITORY ||
+    !POSTGRES_DECODER_BRANCH
+) {
     error 'Input parameters not provided'
 }
 
 GIT_CREDENTIALS_ID = '17e7a907-8401-4b7e-a91b-a7823047b3e5'
 JIRA_CREDENTIALS_ID = '	debezium-jira'
 
-DEBEZIUM_REPOSITORY = 'github.com/debezium/debezium.git'
-DEBEZIUM_BRANCH = 'master'
 DEBEZIUM_DIR = 'debezium'
-
-IMAGES_REPOSITORY = 'github.com/debezium/docker-images.git'
-IMAGES_BRANCH = 'master'
 IMAGES_DIR = 'images'
-
-POSTGRES_DECODER_REPOSITORY = 'github.com/debezium/postgres-decoderbufs.git'
-POSTGRES_DECODER_BRANCH = 'master'
 POSTGRES_DECODER_DIR = 'postgres-decoder'
 
 VERSION_TAG = "v$RELEASE_VERSION"
@@ -168,7 +169,7 @@ node('Slave') {
     }
 
     stage ('Check changelog') {
-        if (!new URL('https://raw.githubusercontent.com/debezium/debezium/master/CHANGELOG.md').text.contains(RELEASE_VERSION) ||
+        if (!new URL('https://raw.githubusercontent.com/debezium/debezium/$DEBEZIUM_BRANCH/CHANGELOG.md').text.contains(RELEASE_VERSION) ||
             !new URL('https://raw.githubusercontent.com/debezium/debezium.github.io/develop/docs/releases.asciidoc').text.contains(RELEASE_VERSION)
         ) {
             error 'Changelog was not modified to include release information'
@@ -192,7 +193,7 @@ node('Slave') {
         dir(DEBEZIUM_DIR) {
             sh "mvn release:clean release:prepare -DreleaseVersion=$RELEASE_VERSION -Dtag=$VERSION_TAG -DdevelopmentVersion=$DEVELOPMENT_VERSION -DpushChanges=true -Darguments=\"-DskipTests -DskipITs -Passembly\""
             withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
-                sh "git push \"https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${DEBEZIUM_REPOSITORY}\" HEAD:master --follow-tags"
+                sh "git push \"https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${DEBEZIUM_REPOSITORY}\" HEAD:$DEBEZIUM_BRANCH --follow-tags"
             }
             withCredentials([
                 string(credentialsId: 'debezium-ci-gpg-passphrase', variable: 'PASSPHRASE'),
