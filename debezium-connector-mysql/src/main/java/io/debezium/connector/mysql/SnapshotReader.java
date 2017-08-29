@@ -172,37 +172,40 @@ public class SnapshotReader extends AbstractReader {
             int step = 1;
 
             try {
-                // ------
-                // STEP 1
-                // ------
-                // First, start a transaction and request that a consistent MVCC snapshot is obtained immediately.
-                // See http://dev.mysql.com/doc/refman/5.7/en/commit.html
-                if (!isRunning()) return;
-                logger.info("Step 1: start transaction with consistent snapshot");
-                sql.set("START TRANSACTION WITH CONSISTENT SNAPSHOT");
-                mysql.execute(sql.get());
-                isTxnStarted = true;
-
                 // ------------------------------------
-                // LOCK TABLES and READ BINLOG POSITION
+                // LOCK TABLES
                 // ------------------------------------
                 // Obtain read lock on all tables. This statement closes all open tables and locks all tables
                 // for all databases with a global read lock, and it prevents ALL updates while we have this lock.
                 // It also ensures that everything we do while we have this lock will be consistent.
                 if (!isRunning()) return;
                 try {
-                    logger.info("Step 2: flush and obtain global read lock to prevent writes to database");
+                    logger.info("Step 1: flush and obtain global read lock to prevent writes to database");
                     sql.set("FLUSH TABLES WITH READ LOCK");
                     mysql.execute(sql.get());
                     lockAcquired = clock.currentTimeInMillis();
                     metrics.globalLockAcquired();
                     isLocked = true;
                 } catch (SQLException e) {
-                    logger.info("Step 2: unable to flush and acquire global read lock, will use table read locks after reading table names");
+                    logger.info("Step 1: unable to flush and acquire global read lock, will use table read locks after reading table names");
                     // Continue anyway, since RDS (among others) don't allow setting a global lock
                     assert !isLocked;
                 }
 
+                // ------
+                // START TRANSACTION
+                // ------
+                // First, start a transaction and request that a consistent MVCC snapshot is obtained immediately.
+                // See http://dev.mysql.com/doc/refman/5.7/en/commit.html
+                if (!isRunning()) return;
+                logger.info("Step 2: start transaction with consistent snapshot");
+                sql.set("START TRANSACTION WITH CONSISTENT SNAPSHOT");
+                mysql.execute(sql.get());
+                isTxnStarted = true;
+
+                // ------------------------------------
+                // READ BINLOG POSITION
+                // ------------------------------------
                 if (!isRunning()) return;
                 step = 3;
                 if (isLocked) {
