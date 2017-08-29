@@ -5,9 +5,16 @@
  */
 package io.debezium.connector.mysql;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import io.debezium.config.Configuration;
 import org.apache.kafka.connect.data.Schema;
@@ -134,6 +141,7 @@ final class SourceInfo {
                                                      .field(THREAD_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                      .field(DB_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(TABLE_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                                                     .field(HAS_FILTER_INFO, Schema.OPTIONAL_BOOLEAN_SCHEMA) // optional for backwards compatibility reasons. in practice it should be either true or absent.
                                                      .field(FILTERS_DATABASE_WHITELIST, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(FILTERS_DATABASE_BLACKLIST, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(FILTERS_TABLE_WHITELIST, Schema.OPTIONAL_STRING_SCHEMA)
@@ -160,7 +168,12 @@ final class SourceInfo {
     private boolean lastSnapshot = true;
     private boolean nextSnapshot = false;
     private Configuration config;
+    private Set<String> resolvedDatabaseWhitelist;
+    private Set<String> resolvedDatabaseBlacklist;
+    private Set<TableId> resolvedTableWhitelist;
+    private Set<TableId> resolvedTableBlacklist;
 
+    // is this nonsense even what i want?
     public SourceInfo(Configuration config) {
         this.config = config;
     }
@@ -276,14 +289,125 @@ final class SourceInfo {
         if (isSnapshotInEffect()) {
             map.put(SNAPSHOT_KEY, true);
         }
-        if (config != null) {
-            map.put(HAS_FILTER_INFO, true);
-            map.put(FILTERS_DATABASE_WHITELIST, config.getString(MySqlConnectorConfig.DATABASE_WHITELIST));
-            map.put(FILTERS_DATABASE_BLACKLIST, config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST));
-            map.put(FILTERS_TABLE_WHITELIST, config.getString(MySqlConnectorConfig.TABLE_WHITELIST));
-            map.put(FILTERS_TABLE_BLACKLIST, config.getString(MySqlConnectorConfig.TABLE_BLACKLIST));
+        
+        map.put(HAS_FILTER_INFO, true);
+        if (resolvedDatabaseWhitelist != null) {
+            map.put(FILTERS_DATABASE_WHITELIST, String.join(",", resolvedDatabaseWhitelist));
         }
+        if (resolvedDatabaseBlacklist != null) {
+            map.put(FILTERS_DATABASE_BLACKLIST, String.join(",", resolvedDatabaseBlacklist));
+        }
+        if (resolvedTableWhitelist != null) {
+            List<String> tableNamesAsStrings = new ArrayList<>(this.resolvedTableWhitelist.stream().map(TableId::toString).collect(Collectors.toList()));
+            map.put(FILTERS_TABLE_WHITELIST, String.join(",", tableNamesAsStrings));
+        }
+        if (resolvedTableBlacklist != null) {
+            List<String> tableNamesAsStrings = new ArrayList<>(this.resolvedTableBlacklist.stream().map(TableId::toString).collect(Collectors.toList()));
+            map.put(FILTERS_TABLE_BLACKLIST, String.join(",", tableNamesAsStrings));
+        }
+
         return map;
+    }
+
+    /**
+     * Signify that a new whitelisted table has been successfully resolved and should be added to
+     * the offset information.
+     * @param newDatabase the new database
+     */
+    public void addWhitelistedDatabase(String newDatabase) {
+        if (resolvedDatabaseWhitelist == null) {
+            resolvedTableWhitelist = new HashSet<>();
+        }
+        resolvedDatabaseWhitelist.add(newDatabase);
+        resolvedDatabaseBlacklist = null;
+    }
+
+    /**
+     * Signify that a new whitelisted table has been successfully resolved (minus some blacklisted
+     * tables) and should be added to the offset information.
+     * @param newDatabase the new database
+     * @param blacklistedTables blacklisted tables in the new database.
+     */
+    public void addWhitelistedDatabase(String newDatabase, Collection<TableId> blacklistedTables) {
+        addWhitelistedDatabase(newDatabase);
+        addBlacklistedTables(blacklistedTables);
+    }
+
+    /**
+     * Signify that a new set of blacklisted databases have been successfully resolved and should be
+     * added to the offset information.
+     * @param blacklistedDatabases the new set of blacklisted databases.
+     */
+    public void addBlacklistedDatabases(Collection<String> blacklistedDatabases) {
+        if (resolvedDatabaseBlacklist == null) {
+            resolvedDatabaseBlacklist = new HashSet<>();
+        }
+        resolvedDatabaseBlacklist.addAll(blacklistedDatabases);
+        resolvedDatabaseWhitelist = null;
+    }
+
+    /**
+     * Signifiy that a new set of blacklisted databases and blacklisted tables have been
+     * successfully resolved and should be added to the offset information.
+     * @param blacklistedDatabases
+     * @param blacklistedTables
+     */
+    public void addBlacklistedDatabases(Collection<String> blacklistedDatabases, Collection<TableId> blacklistedTables) {
+        addBlacklistedDatabases(blacklistedDatabases);
+        addBlacklistedTables(blacklistedTables);
+    }
+
+    /**
+     * Signifiy that a previously blacklisted database has been successfully resolved and should be
+     * removed from the offset information.
+     * @param unblacklistedDatabase
+     */
+    public void removeBlacklistedDatabase(String unblacklistedDatabase) {
+        resolvedDatabaseBlacklist.remove(unblacklistedDatabase);
+    }
+
+
+    /**
+     * Signify that a previously blacklisted database has been successfully resolved (minus
+     * relevant blacklisted tables) and should be removed from the offset information. (And any new
+     * blacklisted tables should be added).
+     * @param unblacklistedDatabase
+     * @param blacklistedTables
+     */
+    public void removedBlacklistedDatabase(String unblacklistedDatabase, List<TableId> blacklistedTables) {
+        removeBlacklistedDatabase(unblacklistedDatabase);
+        addBlacklistedTables(blacklistedTables);
+    }
+
+    /**
+     * Signify that a new whitelisted table has been successfully resolved and should be added to
+     * the offset information.
+     * @param newTableId
+     */
+    public void addWhitelistedTable(TableId newTableId) {
+        resolvedTableWhitelist.add(newTableId);
+    }
+
+    /**
+     * Signify that a new set of blacklisted tables has been successfully resolved and should be
+     * added to the offset information.
+     * @param blacklistedTables
+     */
+    public void addBlacklistedTables(Collection<TableId> blacklistedTables) {
+        if (resolvedTableBlacklist == null) {
+            resolvedTableBlacklist = new HashSet<>();
+        }
+        resolvedTableBlacklist.addAll(blacklistedTables);
+        resolvedTableWhitelist = null;
+    }
+
+    /**
+     * Signify that a previously blacklisted table has been successfuly resolved and should be removed from
+     * the offset information.
+     * @param unblacklistedTable
+     */
+    public void removeBlacklistedTable(Collection<TableId> unblacklistedTable) {
+        resolvedTableBlacklist.removeAll(unblacklistedTable);
     }
 
     /**
@@ -497,7 +621,33 @@ final class SourceInfo {
             this.restartRowsToSkip = (int) longOffsetValue(sourceOffset, BINLOG_ROW_IN_EVENT_OFFSET_KEY);
             nextSnapshot = booleanOffsetValue(sourceOffset, SNAPSHOT_KEY);
             lastSnapshot = nextSnapshot;
+
+            String commaSplitRegex = "\\s*,\\s*";
+            if(sourceOffset.containsKey(HAS_FILTER_INFO) && (Boolean)sourceOffset.get(HAS_FILTER_INFO)) {
+                String offsetDatabaseWhitelist = (String) sourceOffset.get(FILTERS_DATABASE_WHITELIST);
+                this.resolvedDatabaseWhitelist = offsetDatabaseWhitelist == null? null : new HashSet<>(Arrays.asList(offsetDatabaseWhitelist.split(commaSplitRegex)));
+                String offsetDatabaseBlacklist = (String) sourceOffset.get(FILTERS_DATABASE_BLACKLIST);
+                this.resolvedDatabaseBlacklist = offsetDatabaseBlacklist == null? null : new HashSet<>(Arrays.asList(offsetDatabaseBlacklist.split(commaSplitRegex)));
+                String offsetTableWhitelist = (String) sourceOffset.get(FILTERS_TABLE_WHITELIST);
+                this.resolvedTableWhitelist = offsetTableWhitelist == null? null : new HashSet<>(stringsToTableIds(Arrays.asList(offsetTableWhitelist.split(commaSplitRegex))));
+                String offsetTableBlacklist = (String) sourceOffset.get(FILTERS_TABLE_BLACKLIST);
+                this.resolvedTableBlacklist = offsetTableBlacklist == null? null : new HashSet<>(stringsToTableIds(Arrays.asList(offsetTableBlacklist.split(commaSplitRegex))));
+            } else {
+                // if the offset doesn't have filter info, we have to assume everything in the config has been or will be resolved.
+                String configDatabaseWhitelist = config.getString(MySqlConnectorConfig.DATABASE_WHITELIST);
+                this.resolvedDatabaseWhitelist = configDatabaseWhitelist == null? null : new HashSet<>(Arrays.asList(configDatabaseWhitelist.split(commaSplitRegex)));
+                String configDatabaseBlacklist = config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST);
+                this.resolvedDatabaseBlacklist = configDatabaseBlacklist == null? null : new HashSet<>(Arrays.asList(configDatabaseBlacklist.split(commaSplitRegex)));
+                String configTableWhitelist = config.getString(MySqlConnectorConfig.TABLE_WHITELIST);
+                this.resolvedTableWhitelist = configDatabaseBlacklist == null? null : new HashSet<>(stringsToTableIds(Arrays.asList(configTableWhitelist.split(commaSplitRegex))));
+                String configTableBlacklist = config.getString(MySqlConnectorConfig.TABLE_BLACKLIST);
+                this.resolvedTableBlacklist = configDatabaseBlacklist == null? null : new HashSet<>(stringsToTableIds(Arrays.asList(configTableBlacklist.split(commaSplitRegex))));
+            }
         }
+    }
+
+    private static List<TableId> stringsToTableIds(List<String> stringTableIds) {
+        return new ArrayList<>(stringTableIds.stream().map(TableId::parse).collect(Collectors.toList()));
     }
 
     private long longOffsetValue(Map<String, ?> values, String key) {
