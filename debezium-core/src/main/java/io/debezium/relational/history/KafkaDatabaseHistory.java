@@ -216,7 +216,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                             offsetsByPartition.put(partition, new Long(record.offset()));
                             ++numRecordsProcessed;
                         }
-                    } catch (IOException e) {
+                    } catch (final IOException e) {
                         logger.error("Error while deserializing history record '{}'", record, e);
                     } catch (final Exception e) {
                         logger.error("Unexpected exception while processing record '{}'", record, e);
