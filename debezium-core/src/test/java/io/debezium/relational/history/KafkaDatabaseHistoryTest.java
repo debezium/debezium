@@ -9,6 +9,10 @@ import java.io.File;
 import java.util.Map;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -34,6 +38,8 @@ public class KafkaDatabaseHistoryTest {
     private Map<String, Object> position;
     private String topicName;
     private String ddl;
+
+    private static final int PARTITION_NO = 0;
 
     @Before
     public void beforeEach() throws Exception {
@@ -175,4 +181,58 @@ public class KafkaDatabaseHistoryTest {
                                           "position", index);
     }
 
+    @Test
+    public void shouldIgnoreUnparseableMessages() throws Exception {
+        // Create the empty topic ...
+        kafka.createTopic(topicName, 1, 1);
+
+        // Create invalid records
+        final ProducerRecord<String, String> nullRecord = new ProducerRecord<>(topicName, PARTITION_NO, null, null);
+        final ProducerRecord<String, String> emptyRecord = new ProducerRecord<>(topicName, PARTITION_NO, null, "");
+        final ProducerRecord<String, String> noSourceRecord = new ProducerRecord<>(topicName, PARTITION_NO, null,
+                "{\"position\":{\"filename\":\"my-txn-file.log\",\"position\":39},\"databaseName\":\"db1\",\"ddl\":\"DROP TABLE foo;\"}");
+        final ProducerRecord<String, String> noPositionRecord = new ProducerRecord<>(topicName, PARTITION_NO, null,
+                "{\"source\":{\"server\":\"my-server\"},\"databaseName\":\"db1\",\"ddl\":\"DROP TABLE foo;\"}");
+        final ProducerRecord<String, String> invalidJSONRecord1 = new ProducerRecord<>(topicName, PARTITION_NO, null,
+                "{\"source\":{\"server\":\"my-server\"},\"position\":{\"filename\":\"my-txn-file.log\",\"position\":39},\"databaseName\":\"db1\",\"ddl\":\"DROP TABLE foo;\"");
+        final ProducerRecord<String, String> invalidJSONRecord2 = new ProducerRecord<>(topicName, PARTITION_NO, null,
+                "\"source\":{\"server\":\"my-server\"},\"position\":{\"filename\":\"my-txn-file.log\",\"position\":39},\"databaseName\":\"db1\",\"ddl\":\"DROP TABLE foo;\"}");
+
+        // Start up the history ...
+        Configuration config = Configuration.create()
+                                            .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
+                                            .with(KafkaDatabaseHistory.TOPIC, topicName)
+                                            .with(DatabaseHistory.NAME, "my-db-history")
+                                            .with(KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, 1000)
+                                            .with(KafkaDatabaseHistory.consumerConfigPropertyName(
+                                                  ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG),
+                                                  100)
+                                            .with(KafkaDatabaseHistory.consumerConfigPropertyName(
+                                                  ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG),
+                                                  50000)
+                                            .build();
+        history.configure(config, null);
+        history.start();
+
+        final Configuration interuderConfig = Configuration.create()
+                .withDefault(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.brokerList())
+                .withDefault(ProducerConfig.CLIENT_ID_CONFIG, "intruder")
+                .withDefault(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
+                .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
+                .build();
+        try (final KafkaProducer<String, String> producer = new KafkaProducer<>(interuderConfig.asProperties())) {
+            producer.send(nullRecord).get();
+            producer.send(emptyRecord).get();
+            producer.send(noSourceRecord).get();
+            producer.send(noPositionRecord).get();
+            producer.send(invalidJSONRecord1).get();
+            producer.send(invalidJSONRecord2).get();
+        }
+
+        DdlParser recoveryParser = new DdlParserSql2003();
+
+        Tables recoveredTables = new Tables();
+        setLogPosition(1000);
+        history.recover(source, position, recoveredTables, recoveryParser);
+    }
 }

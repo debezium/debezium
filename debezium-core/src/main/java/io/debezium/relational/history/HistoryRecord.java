@@ -74,4 +74,13 @@ public class HistoryRecord {
     public String toString() {
         return doc.toString();
     }
+
+    /**
+     * Verifies that the record contains mandatory fields - source and position
+     *
+     * @return false if mandatory fields are missing
+     */
+    public boolean isValid() {
+        return source() != null && position() != null;
+    }
 }

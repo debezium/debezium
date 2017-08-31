@@ -198,14 +198,33 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                         Long partition = new Long(record.partition());
                         Long lastOffset = offsetsByPartition.get(partition);
                         if (lastOffset == null || lastOffset.longValue() < record.offset()) {
-                            HistoryRecord recordObj = new HistoryRecord(reader.read(record.value()));
-                            records.accept(recordObj);
-                            logger.trace("Recovered database history: {}" + recordObj);
+                            if (record.value() == null) {
+                                logger.warn("Skipping null database history record. " +
+                                        "This is often not an issue, but if it happens repeatedly please check the '{}' topic.");
+                            }
+                            else {
+                                HistoryRecord recordObj = new HistoryRecord(reader.read(record.value()));
+                                logger.trace("Recovering database history: {}" + recordObj);
+                                if (recordObj == null || !recordObj.isValid()) {
+                                    logger.warn("Skipping invalid database history record '{}'. " +
+                                            "This is often not an issue, but if it happens repeatedly please check the '{}' topic.",
+                                            recordObj,
+                                            topicName);
+                                }
+                                else {
+                                    records.accept(recordObj);
+                                    logger.trace("Recovered database history: {}" + recordObj);
+                                }
+                            }
                             offsetsByPartition.put(partition, new Long(record.offset()));
                             ++numRecordsProcessed;
                         }
                     } catch (IOException e) {
-                        logger.error("Error while deserializing history record", e);
+                        logger.error("Error while deserializing history record '{}'", record, e);
+                    }
+                    catch (final Exception e) {
+                        logger.error("Unexpected exception while processing record '{}'", record, e);
+                        throw e;
                     }
                 }
                 if (numRecordsProcessed == 0) {
