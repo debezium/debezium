@@ -511,7 +511,10 @@ public class SnapshotReader extends AbstractReader {
                             // Scan the rows in the table ...
                             long start = clock.currentTimeInMillis();
                             logger.info("Step {}: - scanning table '{}' ({} of {} tables)", step, tableId, ++counter, tableIds.size());
-                            sql.set("SELECT * FROM " + quote(tableId));
+                            String selectStatement = context.getSnapshotSelectOverride(tableId.toString())
+                                    .orElse("SELECT * FROM " + quote(tableId));
+                            logger.info("For table '{}' using select statement: '{}'", tableId, selectStatement);
+                            sql.set(selectStatement);
                             try {
                                 int stepNum = step;
                                 mysql.query(sql.get(), statementFactory, rs -> {
