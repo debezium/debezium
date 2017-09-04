@@ -443,10 +443,12 @@ public class MySqlDdlParser extends DdlParser {
             return true;
         } else if (tokens.canConsume("UNION")) {
             tokens.canConsume('=');
+            tokens.consume('(');
             tokens.consume();
             while (tokens.canConsume(',')) {
                 tokens.consume();
             }
+            tokens.consume(')');
             return true;
         }
         return false;
