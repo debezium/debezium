@@ -1061,6 +1061,30 @@ public class MySqlDdlParserTest {
     }
 
     @Test
+    public void shouldParseCreateTableUnionStatement() {
+        final String ddl =
+                "CREATE TABLE `merge_table` (`id` int(11) NOT NULL, `name` varchar(45) DEFAULT NULL, PRIMARY KEY (`id`)) UNION = (`table1`,`table2`) ENGINE=MRG_MyISAM DEFAULT CHARSET=latin1;";
+
+        parser.parse(ddl, tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(1);
+        assertThat(listener.total()).isEqualTo(1);
+    }
+
+    @FixFor("DBZ-346")
+    @Test
+    public void shouldParseAlterTableUnionStatement() {
+        final String ddl =
+                "CREATE TABLE `merge_table` (`id` int(11) NOT NULL, `name` varchar(45) DEFAULT NULL, PRIMARY KEY (`id`)) ENGINE=MRG_MyISAM DEFAULT CHARSET=latin1;" +
+                "ALTER TABLE `merge_table` UNION = (`table1`,`table2`)";
+
+        parser.parse(ddl, tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(1);
+        assertThat(listener.total()).isEqualTo(2);
+    }
+
+    @Test
     public void shouldParseStatementForDbz142() {
         parser.parse(readFile("ddl/mysql-dbz-142.ddl"), tables);
         Testing.print(tables);
