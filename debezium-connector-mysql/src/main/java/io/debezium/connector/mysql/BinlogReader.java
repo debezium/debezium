@@ -699,11 +699,20 @@ public class BinlogReader extends AbstractReader {
 
         @Override
         public void onCommunicationFailure(BinaryLogClient client, Exception ex) {
+            logger.debug("A communication failure event arrived", ex);
+            try {
+                // Stop BinaryLogClient background threads
+                client.disconnect();
+            }
+            catch (final Exception e) {
+                logger.debug("Exception while closing client", e);
+            }
             BinlogReader.this.failed(ex);
         }
 
         @Override
         public void onEventDeserializationFailure(BinaryLogClient client, Exception ex) {
+            logger.debug("A deserialization failure event arrived", ex);
             BinlogReader.this.failed(ex);
         }
     }
