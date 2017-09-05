@@ -22,6 +22,16 @@ import java.util.stream.Stream;
 import io.debezium.config.Configuration;
 import io.debezium.relational.history.FileDatabaseHistory;
 
+/**
+ * Create and populate a unique instance of a MySQL database for each run of JUnit test. A user of class
+ * needs to provide a logical name for Debezium and database name. It is expected that there is a init file
+ * in <code>src/test/resources/ddl/&lt;database_name&gt;.sql</code>.
+ * The database name is enriched with a unique suffix that guarantees complete isolation between runs
+ * <code>&lt;database_name&gt_&lt;suffix&gt</code>
+ * 
+ * @author jpechane
+ *
+ */
 public class UniqueDatabase {
     private static final String DEFAULT_DATABASE = "mysql";
     private static final String[] CREATE_DATABASE_DDL = new String[] {
@@ -36,10 +46,6 @@ public class UniqueDatabase {
     private Path dbHistoryPath;
     private String identifier;
 
-    public UniqueDatabase(final String serverName, final String databaseName) {
-        this(serverName, databaseName, Integer.toUnsignedString(new Random().nextInt(), 36));
-    }
-
     private UniqueDatabase(final String serverName, final String databaseName, final String identifier) {
         this.identifier = identifier;
         this.databaseName = databaseName + "_" + identifier;
@@ -47,11 +53,30 @@ public class UniqueDatabase {
         this.serverName = serverName;
     }
 
+    /**
+     * Creates an instance with given Debezium logical name and database name
+     * 
+     * @param serverName - logical Debezium server name 
+     * @param databaseName - the name of the database (prix)
+     */
+    public UniqueDatabase(final String serverName, final String databaseName) {
+        this(serverName, databaseName, Integer.toUnsignedString(new Random().nextInt(), 36));
+    }
+
+    /**
+     * Creates an instance with given Debezium logical name and database name and id suffix same
+     * as another database. This is handy for tests that need multpli databases and can use regex
+     * based whitelisting.
+
+     * @param serverName - logical Debezium server name 
+     * @param databaseName - the name of the database (prix)
+     * @param sibling - a database whose unique suffix will be used
+     */
     public UniqueDatabase(final String serverName, final String databaseName, final UniqueDatabase sibling) {
         this(serverName, databaseName, sibling.getIdentifier());
     }
 
-    public String convertSQL(final String sql) {
+    private String convertSQL(final String sql) {
         return sql.replace("$DBNAME$", databaseName);
     }
 
@@ -59,10 +84,18 @@ public class UniqueDatabase {
         return databaseName;
     }
 
-    public String topicForTable(final String topicName) {
-        return String.format("%s.%s.%s", serverName, databaseName, topicName);
+    /**
+     * @param tableName
+     * @return Fully qualified Kafka topic name for a given table <code>&lt;serverName&gt;.&lt;databaseName&gt;.&lt;tableName&gt;</code>
+     */
+    public String topicForTable(final String tableName) {
+        return String.format("%s.%s.%s", serverName, databaseName, tableName);
     }
 
+    /**
+     * @param tableName
+     * @return Fully qualified table name <code>&lt;databaseName&gt;.&lt;tableName&gt;</code>
+     */
     public String qualifiedTableName(final String tableName) {
         return String.format("%s.%s", databaseName, tableName);
     }
@@ -71,6 +104,11 @@ public class UniqueDatabase {
         return serverName;
     }
 
+    /**
+     * Creates the database and populates it with initialization SQL script. To use multiline
+     * statements for stored procedures definition use delimiter $$ to delimit statements in the procedure.
+     * See fnDbz162 procedure in reqression_test.sql for example of usage.
+     */
     public void createAndInitialize() {
         final String ddlFile = String.format("ddl/%s.sql", templateName);
         final URL ddlTestFile = UniqueDatabase.class.getClassLoader().getResource(ddlFile);
@@ -99,11 +137,18 @@ public class UniqueDatabase {
         }
     }
 
+    /**
+     * @param dbHistoryPath - directory where to store database schema history
+     * @see io.debezium.relational.history.FileDatabaseHistory
+     */
     public UniqueDatabase withDbHistoryPath(final Path dbHistoryPath) {
         this.dbHistoryPath = dbHistoryPath;
         return this;
     }
 
+    /**
+     * @return Configuration builder initialized with JDBC connection parameters.
+     */
     public Configuration.Builder defaultJdbcConfigBuilder() {
         return Configuration.create()
                 .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname", "localhost"))
@@ -112,6 +157,9 @@ public class UniqueDatabase {
                 .with(MySqlConnectorConfig.PASSWORD, "snapperpass");
     }
 
+    /**
+     * @return Configuration builder initialized with JDBC connection parameters and most frequently used parameters
+     */
     public Configuration.Builder defaultConfig() {
         final Configuration.Builder builder = defaultJdbcConfigBuilder()
                 .with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.SecureConnectionMode.DISABLED)
@@ -126,6 +174,9 @@ public class UniqueDatabase {
         return builder;
     }
 
+    /**
+     * @return The unique database suffix
+     */
     public String getIdentifier() {
         return identifier;
     }
