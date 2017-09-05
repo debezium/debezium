@@ -40,12 +40,18 @@ import io.debezium.util.Testing;
 public class MySqlConnectorIT extends AbstractConnectorTest {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
+    private final UniqueDatabase DATABASE = new UniqueDatabase("myServer1", "connector_test")
+            .withDbHistoryPath(DB_HISTORY_PATH);
+    private final UniqueDatabase RO_DATABASE = new UniqueDatabase("myServer2", "connector_test_ro", DATABASE)
+            .withDbHistoryPath(DB_HISTORY_PATH);
 
     private Configuration config;
 
     @Before
     public void beforeEach() {
         stopConnector();
+        DATABASE.createAndInitialize();
+        RO_DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Testing.Files.delete(DB_HISTORY_PATH);
     }
@@ -125,11 +131,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
     @Test
     public void shouldValidateValidConfigurationWithSSL() {
-        Configuration config = Configuration.create()
-                                            .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
-                                            .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
-                                            .with(MySqlConnectorConfig.USER, "snapper")
-                                            .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
+        Configuration config = DATABASE.defaultJdbcConfigBuilder()
                                             .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.REQUIRED)
                                             .with(MySqlConnectorConfig.SSL_KEYSTORE, "/some/path/to/keystore")
                                             .with(MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD, "keystore1234")
@@ -182,11 +184,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
     @Test
     public void shouldValidateAcceptableConfiguration() {
-        Configuration config = Configuration.create()
-                                            .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
-                                            .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
-                                            .with(MySqlConnectorConfig.USER, "snapper")
-                                            .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
+        Configuration config = DATABASE.defaultJdbcConfigBuilder()
                                             .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                                             .with(MySqlConnectorConfig.SERVER_ID, 18765)
                                             .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
@@ -233,8 +231,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
     @Test
     public void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
-        String masterPort = System.getProperty("database.port");
-        String replicaPort = System.getProperty("database.replica.port");
+        String masterPort = System.getProperty("database.port", "3306");
+        String replicaPort = System.getProperty("database.replica.port", "3306");
         boolean replicaIsMaster = masterPort.equals(replicaPort);
         if (!replicaIsMaster) {
             // Give time for the replica to catch up to the master ...
@@ -244,15 +242,15 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Use the DB configuration to define the connector's configuration to use the "replica"
         // which may be the same as the "master" ...
         config = Configuration.create()
-                              .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname"))
-                              .with(MySqlConnectorConfig.PORT, System.getProperty("database.replica.port"))
+                              .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
+                              .with(MySqlConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                               .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                              .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+                              .with(MySqlConnectorConfig.SERVER_NAME, DATABASE.getServerName())
                               .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                               .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                              .with(MySqlConnectorConfig.DATABASE_WHITELIST, "connector_test")
+                              .with(MySqlConnectorConfig.DATABASE_WHITELIST, DATABASE.getDatabaseName())
                               .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                               .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
@@ -267,17 +265,17 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
         SourceRecords records = consumeRecordsByTopic(5 + 9 + 9 + 4 + 11 + 1); // 11 schema change records + 1 SET statement
-        assertThat(records.recordsForTopic("myServer").size()).isEqualTo(12);
-        assertThat(records.recordsForTopic("myServer.connector_test.products").size()).isEqualTo(9);
-        assertThat(records.recordsForTopic("myServer.connector_test.products_on_hand").size()).isEqualTo(9);
-        assertThat(records.recordsForTopic("myServer.connector_test.customers").size()).isEqualTo(4);
-        assertThat(records.recordsForTopic("myServer.connector_test.orders").size()).isEqualTo(5);
+        assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(12);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("products")).size()).isEqualTo(9);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("products_on_hand")).size()).isEqualTo(9);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("customers")).size()).isEqualTo(4);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("orders")).size()).isEqualTo(5);
         assertThat(records.topics().size()).isEqualTo(5);
         assertThat(records.databaseNames().size()).isEqualTo(2);
-        assertThat(records.ddlRecordsForDatabase("connector_test").size()).isEqualTo(11);
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(11);
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("").size()).isEqualTo(1);
-        records.ddlRecordsForDatabase("connector_test").forEach(this::print);
+        records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).forEach(this::print);
 
         // Check that all records are valid, can be serialized and deserialized ...
         records.forEach(this::validate);
@@ -303,7 +301,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         stopConnector();
 
         // Make some changes to data only while the connector is stopped ...
-        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.query("SELECT * FROM products", rs -> {
                     if (Testing.Print.isEnabled()) connection.print(rs);
@@ -321,9 +319,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         Testing.print("*** Restarting connector after inserts were made");
         start(MySqlConnector.class, config);
         records = consumeRecordsByTopic(1);
-        assertThat(records.recordsForTopic("myServer.connector_test.products").size()).isEqualTo(1);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("products")).size()).isEqualTo(1);
         assertThat(records.topics().size()).isEqualTo(1);
-        List<SourceRecord> inserts = records.recordsForTopic("myServer.connector_test.products");
+        List<SourceRecord> inserts = records.recordsForTopic(DATABASE.topicForTable("products"));
         assertInsert(inserts.get(0), "id", 110);
         Testing.print("*** Done with inserts and restart");
 
@@ -335,7 +333,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Simple INSERT
         // ---------------------------------------------------------------------------------------------------------------
-        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("INSERT INTO products VALUES (1001,'roy','old robot',1234.56);");
                 connection.query("SELECT * FROM products", rs -> {
@@ -346,9 +344,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         // And consume the one insert ...
         records = consumeRecordsByTopic(1);
-        assertThat(records.recordsForTopic("myServer.connector_test.products").size()).isEqualTo(1);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("products")).size()).isEqualTo(1);
         assertThat(records.topics().size()).isEqualTo(1);
-        inserts = records.recordsForTopic("myServer.connector_test.products");
+        inserts = records.recordsForTopic(DATABASE.topicForTable("products"));
         assertInsert(inserts.get(0), "id", 1001);
 
         // Testing.print("*** Done with simple insert");
@@ -356,7 +354,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Changing the primary key of a row should result in 3 events: INSERT, DELETE, and TOMBSTONE
         // ---------------------------------------------------------------------------------------------------------------
-        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("UPDATE products SET id=2001, description='really old robot' WHERE id=1001");
                 connection.query("SELECT * FROM products", rs -> {
@@ -366,7 +364,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         }
         // And consume the update of the PK, which is one insert followed by a delete followed by a tombstone ...
         records = consumeRecordsByTopic(3);
-        List<SourceRecord> updates = records.recordsForTopic("myServer.connector_test.products");
+        List<SourceRecord> updates = records.recordsForTopic(DATABASE.topicForTable("products"));
         assertThat(updates.size()).isEqualTo(3);
         assertDelete(updates.get(0), "id", 1001);
         assertTombstone(updates.get(1), "id", 1001);
@@ -377,7 +375,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Simple UPDATE (with no schema changes)
         // ---------------------------------------------------------------------------------------------------------------
-        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("UPDATE products SET weight=1345.67 WHERE id=2001");
                 connection.query("SELECT * FROM products", rs -> {
@@ -389,7 +387,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // And consume the one update ...
         records = consumeRecordsByTopic(1);
         assertThat(records.topics().size()).isEqualTo(1);
-        updates = records.recordsForTopic("myServer.connector_test.products");
+        updates = records.recordsForTopic(DATABASE.topicForTable("products"));
         assertThat(updates.size()).isEqualTo(1);
         assertUpdate(updates.get(0), "id", 2001);
         updates.forEach(this::validate);
@@ -402,9 +400,11 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Change our schema with a fully-qualified name; we should still see this event
         // ---------------------------------------------------------------------------------------------------------------
         // Add a column with default to the 'products' table and explicitly update one record ...
-        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
-                connection.execute("ALTER TABLE connector_test.products ADD COLUMN volume FLOAT, ADD COLUMN alias VARCHAR(30) NULL AFTER description");
+                connection.execute(String.format(
+                        "ALTER TABLE %s.products ADD COLUMN volume FLOAT, ADD COLUMN alias VARCHAR(30) NULL AFTER description",
+                        DATABASE.getDatabaseName()));
                 connection.execute("UPDATE products SET volume=13.5 WHERE id=2001");
                 connection.query("SELECT * FROM products", rs -> {
                     if (Testing.Print.isEnabled()) connection.print(rs);
@@ -415,8 +415,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // And consume the one schema change event and one update event ...
         records = consumeRecordsByTopic(2);
         assertThat(records.topics().size()).isEqualTo(2);
-        assertThat(records.recordsForTopic("myServer").size()).isEqualTo(1);
-        updates = records.recordsForTopic("myServer.connector_test.products");
+        assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(1);
+        updates = records.recordsForTopic(DATABASE.topicForTable("products"));
         assertThat(updates.size()).isEqualTo(1);
         assertUpdate(updates.get(0), "id", 2001);
         updates.forEach(this::validate);
@@ -429,19 +429,19 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Connect to a different database, but use the fully qualified name for a table in our database ...
         try (MySQLConnection db = MySQLConnection.forTestDatabase("emptydb");) {
             try (JdbcConnection connection = db.connect()) {
-                connection.execute("CREATE TABLE connector_test.stores ("
+                connection.execute(String.format("CREATE TABLE %s.stores ("
                         + " id INT(11) PRIMARY KEY NOT NULL AUTO_INCREMENT,"
                         + " first_name VARCHAR(255) NOT NULL,"
                         + " last_name VARCHAR(255) NOT NULL,"
-                        + " email VARCHAR(255) NOT NULL );");
+                        + " email VARCHAR(255) NOT NULL );", DATABASE.getDatabaseName()));
             }
         }
 
         // And consume the one schema change event only ...
         records = consumeRecordsByTopic(1);
         assertThat(records.topics().size()).isEqualTo(1);
-        assertThat(records.recordsForTopic("myServer").size()).isEqualTo(1);
-        records.recordsForTopic("myServer").forEach(this::validate);
+        assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(1);
+        records.recordsForTopic(DATABASE.getServerName()).forEach(this::validate);
 
         Testing.print("*** Done with PK change (different db and fully-qualified name)");
 
@@ -450,7 +450,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
 
         // Do something completely different with a table we've not modified yet and then read that event.
-        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("UPDATE products_on_hand SET quantity=20 WHERE product_id=109");
                 connection.query("SELECT * FROM products_on_hand", rs -> {
@@ -462,7 +462,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // And make sure we consume that one update ...
         records = consumeRecordsByTopic(1);
         assertThat(records.topics().size()).isEqualTo(1);
-        updates = records.recordsForTopic("myServer.connector_test.products_on_hand");
+        updates = records.recordsForTopic(DATABASE.topicForTable("products_on_hand"));
         assertThat(updates.size()).isEqualTo(1);
         assertUpdate(updates.get(0), "product_id", 109);
         updates.forEach(this::validate);
@@ -492,7 +492,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         BinlogPosition positionBeforeInserts = new BinlogPosition();
         BinlogPosition positionAfterInserts = new BinlogPosition();
         BinlogPosition positionAfterUpdate = new BinlogPosition();
-        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.query("SHOW MASTER STATUS", positionBeforeInserts::readFromDatabase);
                 connection.execute("INSERT INTO products(id,name,description,weight,volume,alias) VALUES "
@@ -516,9 +516,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         // And consume the one insert ...
         records = consumeRecordsByTopic(2);
-        assertThat(records.recordsForTopic("myServer.connector_test.products").size()).isEqualTo(2);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("products")).size()).isEqualTo(2);
         assertThat(records.topics().size()).isEqualTo(1);
-        inserts = records.recordsForTopic("myServer.connector_test.products");
+        inserts = records.recordsForTopic(DATABASE.topicForTable("products"));
         assertInsert(inserts.get(0), "id", 3001);
         assertInsert(inserts.get(1), "id", 3002);
 
@@ -565,9 +565,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // And consume the insert for 3003 ...
         records = consumeRecordsByTopic(1);
         assertThat(records.topics().size()).isEqualTo(1);
-        inserts = records.recordsForTopic("myServer.connector_test.products");
+        inserts = records.recordsForTopic(DATABASE.topicForTable("products"));
         if (inserts == null) {
-            updates = records.recordsForTopic("myServer.connector_test.products_on_hand");
+            updates = records.recordsForTopic(DATABASE.topicForTable("products_on_hand"));
             if (updates != null) {
                 fail("Restarted connector and missed the insert of product id=3003!");
             }
@@ -594,7 +594,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // And make sure we consume that one extra update ...
         records = consumeRecordsByTopic(1);
         assertThat(records.topics().size()).isEqualTo(1);
-        updates = records.recordsForTopic("myServer.connector_test.products_on_hand");
+        updates = records.recordsForTopic(DATABASE.topicForTable("products_on_hand"));
         assertThat(updates.size()).isEqualTo(1);
         assertUpdate(updates.get(0), "product_id", 109);
         updates.forEach(this::validate);
@@ -647,20 +647,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         Testing.Files.delete(DB_HISTORY_PATH);
 
         // Use the DB configuration to define the connector's configuration ...
-        config = Configuration.create()
-                              .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
-                              .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
-                              .with(MySqlConnectorConfig.USER, "snapper")
-                              .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
-                              .with(MySqlConnectorConfig.SERVER_ID, 18780)
-                              .with(MySqlConnectorConfig.SERVER_NAME, "myServer1")
-                              .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                              .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                              .with(MySqlConnectorConfig.DATABASE_WHITELIST, "connector_test_ro")
+        config = RO_DATABASE.defaultConfig()
                               .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
                               .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                              .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                               .build();
 
         // Start the connector ...
@@ -669,12 +658,12 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Consume the first records due to startup and initialization of the database ...
         // Testing.Print.enable();
         SourceRecords records = consumeRecordsByTopic(9 + 9 + 4 + 5 + 6); // 6 DDL changes
-        assertThat(records.recordsForTopic("myServer1.connector_test_ro.products").size()).isEqualTo(9);
-        assertThat(records.recordsForTopic("myServer1.connector_test_ro.products_on_hand").size()).isEqualTo(9);
-        assertThat(records.recordsForTopic("myServer1.connector_test_ro.customers").size()).isEqualTo(4);
-        assertThat(records.recordsForTopic("myServer1.connector_test_ro.orders").size()).isEqualTo(5);
+        assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("products")).size()).isEqualTo(9);
+        assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("products_on_hand")).size()).isEqualTo(9);
+        assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("customers")).size()).isEqualTo(4);
+        assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("orders")).size()).isEqualTo(5);
         assertThat(records.topics().size()).isEqualTo(4 + 1);
-        assertThat(records.ddlRecordsForDatabase("connector_test_ro").size()).isEqualTo(6);
+        assertThat(records.ddlRecordsForDatabase(RO_DATABASE.getDatabaseName()).size()).isEqualTo(6);
 
         // Check that all records are valid, can be serialized and deserialized ...
         records.forEach(this::validate);
@@ -682,11 +671,11 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // More records may have been written (if this method were run after the others), but we don't care ...
         stopConnector();
 
-        records.recordsForTopic("myServer1.connector_test_ro.orders").forEach(record -> {
+        records.recordsForTopic(RO_DATABASE.topicForTable("orders")).forEach(record -> {
             print(record);
         });
 
-        records.recordsForTopic("myServer1.connector_test_ro.customers").forEach(record -> {
+        records.recordsForTopic(RO_DATABASE.topicForTable("customers")).forEach(record -> {
             print(record);
         });
     }
@@ -696,21 +685,10 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         Testing.Files.delete(DB_HISTORY_PATH);
 
         // Use the DB configuration to define the connector's configuration ...
-        config = Configuration.create()
-                              .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
-                              .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
-                              .with(MySqlConnectorConfig.USER, "snapper")
-                              .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
-                              .with(MySqlConnectorConfig.SERVER_ID, 18780)
-                              .with(MySqlConnectorConfig.SERVER_NAME, "myServer2")
-                              .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                              .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                              .with(MySqlConnectorConfig.DATABASE_WHITELIST, "connector_test_ro")
-                              .with(MySqlConnectorConfig.COLUMN_BLACKLIST, "connector_test_ro.orders.order_number")
-                              .with(MySqlConnectorConfig.MASK_COLUMN(12), "connector_test_ro.customers.email")
+        config = RO_DATABASE.defaultConfig()
+                              .with(MySqlConnectorConfig.COLUMN_BLACKLIST, RO_DATABASE.qualifiedTableName("orders") + ".order_number")
+                              .with(MySqlConnectorConfig.MASK_COLUMN(12), RO_DATABASE.qualifiedTableName("customers") + ".email")
                               .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                              .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                               .build();
 
         // Start the connector ...
@@ -719,10 +697,10 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Consume the first records due to startup and initialization of the database ...
         // Testing.Print.enable();
         SourceRecords records = consumeRecordsByTopic(9 + 9 + 4 + 5);
-        assertThat(records.recordsForTopic("myServer2.connector_test_ro.products").size()).isEqualTo(9);
-        assertThat(records.recordsForTopic("myServer2.connector_test_ro.products_on_hand").size()).isEqualTo(9);
-        assertThat(records.recordsForTopic("myServer2.connector_test_ro.customers").size()).isEqualTo(4);
-        assertThat(records.recordsForTopic("myServer2.connector_test_ro.orders").size()).isEqualTo(5);
+        assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("products")).size()).isEqualTo(9);
+        assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("products_on_hand")).size()).isEqualTo(9);
+        assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("customers")).size()).isEqualTo(4);
+        assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("orders")).size()).isEqualTo(5);
         assertThat(records.topics().size()).isEqualTo(4);
 
         // Check that all records are valid, can be serialized and deserialized ...
@@ -732,7 +710,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         stopConnector();
 
         // Check that the orders.order_number is not present ...
-        records.recordsForTopic("myServer2.connector_test_ro.orders").forEach(record -> {
+        records.recordsForTopic(RO_DATABASE.topicForTable("orders")).forEach(record -> {
             print(record);
             Struct value = (Struct) record.value();
             try {
@@ -744,7 +722,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         });
 
         // Check that the customer.email is masked ...
-        records.recordsForTopic("myServer2.connector_test_ro.customers").forEach(record -> {
+        records.recordsForTopic(RO_DATABASE.topicForTable("customers")).forEach(record -> {
             Struct value = (Struct) record.value();
             if (value.getStruct("after") != null) {
                 assertThat(value.getStruct("after").getString("email")).isEqualTo("************");

@@ -69,12 +69,15 @@ public class ReadBinLogIT implements Testing {
     private List<Event> events = new LinkedList<>();
     private JdbcConfiguration config;
 
+    private final UniqueDatabase DATABASE = new UniqueDatabase("readbinlog_it", "readbinlog_test");
+
     @Before
     public void beforeEach() throws TimeoutException, IOException, SQLException, InterruptedException {
         events.clear();
 
         // Connect the normal SQL client ...
-        conn = MySQLConnection.forTestDatabase("readbinlog_test");
+        DATABASE.createAndInitialize();
+        conn = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());
         conn.connect();
 
         // Get the configuration that we used ...

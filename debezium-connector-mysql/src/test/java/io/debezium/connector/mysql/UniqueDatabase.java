@@ -12,7 +12,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -25,16 +28,27 @@ public class UniqueDatabase {
             "CREATE DATABASE $DBNAME$;",
             "USE $DBNAME$;"
     };
+    private static final Pattern COMMENT_PATTERN = Pattern.compile("^(.*)--.*$");
 
     private final String databaseName;
     private final String templateName;
     private final String serverName;
     private Path dbHistoryPath;
+    private String identifier;
 
     public UniqueDatabase(final String serverName, final String databaseName) {
-        this.databaseName = databaseName + "_" + Integer.toUnsignedString(new Random().nextInt(), 36);
+        this(serverName, databaseName, Integer.toUnsignedString(new Random().nextInt(), 36));
+    }
+
+    private UniqueDatabase(final String serverName, final String databaseName, final String identifier) {
+        this.identifier = identifier;
+        this.databaseName = databaseName + "_" + identifier;
         this.templateName = databaseName;
         this.serverName = serverName;
+    }
+
+    public UniqueDatabase(final String serverName, final String databaseName, final UniqueDatabase sibling) {
+        this(serverName, databaseName, sibling.getIdentifier());
     }
 
     public String convertSQL(final String sql) {
@@ -49,6 +63,10 @@ public class UniqueDatabase {
         return String.format("%s.%s.%s", serverName, databaseName, topicName);
     }
 
+    public String qualifiedTableName(final String tableName) {
+        return String.format("%s.%s", databaseName, tableName);
+    }
+
     protected String getServerName() {
         return serverName;
     }
@@ -59,15 +77,22 @@ public class UniqueDatabase {
         assertNotNull("Cannot locate " + ddlFile, ddlTestFile);
         try {
             try (MySQLConnection connection = MySQLConnection.forTestDatabase(DEFAULT_DATABASE)) {
-                connection.execute(
-                           Stream.concat(
-                                   Arrays.stream(CREATE_DATABASE_DDL),
-                                   Files.readAllLines(Paths.get(ddlTestFile.toURI())).stream())
-                               .map(String::trim)
-                               .filter(x -> !x.trim().startsWith("--"))
-                               .map(this::convertSQL)
-                               .collect(Collectors.joining()).split(";")
-                );
+                final List<String> statements = Arrays.stream(
+                        Stream.concat(
+                                Arrays.stream(CREATE_DATABASE_DDL),
+                                Files.readAllLines(Paths.get(ddlTestFile.toURI())).stream())
+                            .map(String::trim)
+                            .filter(x -> !x.startsWith("--") && !x.isEmpty())
+                            .map(x -> {
+                                final Matcher m = COMMENT_PATTERN.matcher(x);
+                                return m.matches() ? m.group(1) : x;
+                            })
+                            .map(this::convertSQL)
+                            .collect(Collectors.joining("\n")).split(";")
+                        )
+                       .map(x -> x.replace("$$", ";"))
+                       .collect(Collectors.toList());
+                connection.execute(statements.toArray(new String[statements.size()]));
             }
         } catch (final Exception e) {
             throw new IllegalStateException(e);
@@ -99,5 +124,9 @@ public class UniqueDatabase {
             builder.with(FileDatabaseHistory.FILE_PATH, dbHistoryPath);
         }
         return builder;
+    }
+
+    public String getIdentifier() {
+        return identifier;
     }
 }

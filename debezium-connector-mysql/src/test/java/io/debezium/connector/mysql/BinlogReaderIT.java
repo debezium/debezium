@@ -22,14 +22,12 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.data.Envelope;
 import io.debezium.data.KeyValueStore;
 import io.debezium.data.KeyValueStore.Collection;
 import io.debezium.data.SchemaChangeHistory;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Testing;
 
@@ -40,8 +38,8 @@ import io.debezium.util.Testing;
 public class BinlogReaderIT {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-binlog.txt").toAbsolutePath();
-    private static final String DB_NAME = "connector_test_ro";
-    private static final String LOGICAL_NAME = "logical_server_name";
+    private final UniqueDatabase DATABASE = new UniqueDatabase("logical_server_name", "connector_test_ro")
+            .withDbHistoryPath(DB_HISTORY_PATH);
 
     private Configuration config;
     private MySqlTaskContext context;
@@ -52,8 +50,9 @@ public class BinlogReaderIT {
     @Before
     public void beforeEach() {
         Testing.Files.delete(DB_HISTORY_PATH);
-        this.store = KeyValueStore.createForTopicsBeginningWith(LOGICAL_NAME + ".");
-        this.schemaChanges = new SchemaChangeHistory(LOGICAL_NAME);
+        DATABASE.createAndInitialize();
+        this.store = KeyValueStore.createForTopicsBeginningWith(DATABASE.getServerName() + ".");
+        this.schemaChanges = new SchemaChangeHistory(DATABASE.getServerName());
     }
 
     @After
@@ -98,23 +97,10 @@ public class BinlogReaderIT {
     }
 
     protected Configuration.Builder simpleConfig() {
-        String hostname = System.getProperty("database.hostname");
-        String port = System.getProperty("database.port");
-        assertThat(hostname).isNotNull();
-        assertThat(port).isNotNull();
-        return Configuration.create()
-                            .with(MySqlConnectorConfig.HOSTNAME, hostname)
-                            .with(MySqlConnectorConfig.PORT, port)
+        return DATABASE.defaultConfig()
                             .with(MySqlConnectorConfig.USER, "replicator")
                             .with(MySqlConnectorConfig.PASSWORD, "replpass")
-                            .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
-                            .with(MySqlConnectorConfig.SERVER_ID, 18911)
-                            .with(MySqlConnectorConfig.SERVER_NAME, LOGICAL_NAME)
-                            .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                            .with(MySqlConnectorConfig.DATABASE_WHITELIST, DB_NAME)
-                            .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                            .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH);
+                            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
     }
 
     @Test
@@ -140,7 +126,7 @@ public class BinlogReaderIT {
 
         // Check the records via the store ...
         assertThat(store.collectionCount()).isEqualTo(4);
-        Collection products = store.collection(DB_NAME, "products");
+        Collection products = store.collection(DATABASE.getDatabaseName(), "products");
         assertThat(products.numberOfCreates()).isEqualTo(9);
         assertThat(products.numberOfUpdates()).isEqualTo(0);
         assertThat(products.numberOfDeletes()).isEqualTo(0);
@@ -149,7 +135,7 @@ public class BinlogReaderIT {
         assertThat(products.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(products.numberOfValueSchemaChanges()).isEqualTo(1);
 
-        Collection products_on_hand = store.collection(DB_NAME, "products_on_hand");
+        Collection products_on_hand = store.collection(DATABASE.getDatabaseName(), "products_on_hand");
         assertThat(products_on_hand.numberOfCreates()).isEqualTo(9);
         assertThat(products_on_hand.numberOfUpdates()).isEqualTo(0);
         assertThat(products_on_hand.numberOfDeletes()).isEqualTo(0);
@@ -158,7 +144,7 @@ public class BinlogReaderIT {
         assertThat(products_on_hand.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(products_on_hand.numberOfValueSchemaChanges()).isEqualTo(1);
 
-        Collection customers = store.collection(DB_NAME, "customers");
+        Collection customers = store.collection(DATABASE.getDatabaseName(), "customers");
         assertThat(customers.numberOfCreates()).isEqualTo(4);
         assertThat(customers.numberOfUpdates()).isEqualTo(0);
         assertThat(customers.numberOfDeletes()).isEqualTo(0);
@@ -167,7 +153,7 @@ public class BinlogReaderIT {
         assertThat(customers.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(customers.numberOfValueSchemaChanges()).isEqualTo(1);
 
-        Collection orders = store.collection(DB_NAME, "orders");
+        Collection orders = store.collection(DATABASE.getDatabaseName(), "orders");
         assertThat(orders.numberOfCreates()).isEqualTo(5);
         assertThat(orders.numberOfUpdates()).isEqualTo(0);
         assertThat(orders.numberOfDeletes()).isEqualTo(0);
@@ -202,7 +188,7 @@ public class BinlogReaderIT {
 
         // Check the records via the store ...
         assertThat(store.collectionCount()).isEqualTo(4);
-        Collection products = store.collection(DB_NAME, "products");
+        Collection products = store.collection(DATABASE.getDatabaseName(), "products");
         assertThat(products.numberOfCreates()).isEqualTo(9);
         assertThat(products.numberOfUpdates()).isEqualTo(0);
         assertThat(products.numberOfDeletes()).isEqualTo(0);
@@ -211,7 +197,7 @@ public class BinlogReaderIT {
         assertThat(products.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(products.numberOfValueSchemaChanges()).isEqualTo(1);
 
-        Collection products_on_hand = store.collection(DB_NAME, "products_on_hand");
+        Collection products_on_hand = store.collection(DATABASE.getDatabaseName(), "products_on_hand");
         assertThat(products_on_hand.numberOfCreates()).isEqualTo(9);
         assertThat(products_on_hand.numberOfUpdates()).isEqualTo(0);
         assertThat(products_on_hand.numberOfDeletes()).isEqualTo(0);
@@ -220,7 +206,7 @@ public class BinlogReaderIT {
         assertThat(products_on_hand.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(products_on_hand.numberOfValueSchemaChanges()).isEqualTo(1);
 
-        Collection customers = store.collection(DB_NAME, "customers");
+        Collection customers = store.collection(DATABASE.getDatabaseName(), "customers");
         assertThat(customers.numberOfCreates()).isEqualTo(4);
         assertThat(customers.numberOfUpdates()).isEqualTo(0);
         assertThat(customers.numberOfDeletes()).isEqualTo(0);
@@ -229,7 +215,7 @@ public class BinlogReaderIT {
         assertThat(customers.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(customers.numberOfValueSchemaChanges()).isEqualTo(1);
 
-        Collection orders = store.collection(DB_NAME, "orders");
+        Collection orders = store.collection(DATABASE.getDatabaseName(), "orders");
         assertThat(orders.numberOfCreates()).isEqualTo(5);
         assertThat(orders.numberOfUpdates()).isEqualTo(0);
         assertThat(orders.numberOfDeletes()).isEqualTo(0);
@@ -242,11 +228,14 @@ public class BinlogReaderIT {
     @Test
     @FixFor( "DBZ-183" )
     public void shouldHandleTimestampTimezones() throws Exception {
-        String dbName = "regression_test";
+        final UniqueDatabase REGRESSION_DATABASE = new UniqueDatabase("logical_server_name", "regression_test")
+                .withDbHistoryPath(DB_HISTORY_PATH);
+        REGRESSION_DATABASE.createAndInitialize();
+
         String tableName = "dbz_85_fractest";
         config = simpleConfig().with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                               .with(MySqlConnectorConfig.DATABASE_WHITELIST, dbName)
-                               .with(MySqlConnectorConfig.TABLE_WHITELIST, dbName + "." + tableName)
+                               .with(MySqlConnectorConfig.DATABASE_WHITELIST, REGRESSION_DATABASE.getDatabaseName())
+                               .with(MySqlConnectorConfig.TABLE_WHITELIST, REGRESSION_DATABASE.qualifiedTableName(tableName))
                                .build();
         context = new MySqlTaskContext(config);
         context.start();
