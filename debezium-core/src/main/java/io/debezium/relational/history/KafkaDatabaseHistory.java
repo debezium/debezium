@@ -200,17 +200,17 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                         if (lastOffset == null || lastOffset.longValue() < record.offset()) {
                             if (record.value() == null) {
                                 logger.warn("Skipping null database history record. " +
-                                        "This is often not an issue, but if it happens repeatedly please check the '{}' topic.");
+                                        "This is often not an issue, but if it happens repeatedly please check the '{}' topic.", topicName);
                             } else {
                                 HistoryRecord recordObj = new HistoryRecord(reader.read(record.value()));
-                                logger.trace("Recovering database history: {}" + recordObj);
+                                logger.trace("Recovering database history: {}", recordObj);
                                 if (recordObj == null || !recordObj.isValid()) {
                                     logger.warn("Skipping invalid database history record '{}'. " +
                                             "This is often not an issue, but if it happens repeatedly please check the '{}' topic.",
                                             recordObj, topicName);
                                 } else {
                                     records.accept(recordObj);
-                                    logger.trace("Recovered database history: {}" + recordObj);
+                                    logger.trace("Recovered database history: {}", recordObj);
                                 }
                             }
                             offsetsByPartition.put(partition, new Long(record.offset()));
