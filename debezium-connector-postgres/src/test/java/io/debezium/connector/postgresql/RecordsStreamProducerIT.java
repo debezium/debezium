@@ -16,7 +16,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
@@ -67,6 +66,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         //numerical types
         assertInsert(INSERT_NUMERIC_TYPES_STMT, schemasAndValuesForNumericType());
+
+        //numerical decimal types
+        consumer.expects(1);
+        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT, schemasAndValuesForNumericDecimalType());
 
         // string types
         consumer.expects(1);
@@ -319,11 +322,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(1);
         recordsProducer.start(consumer);
 
-        List<SchemaAndValueField> schemasAndValuesForNumericType = schemasAndValuesForNumericType();
-        schemasAndValuesForNumericType.set(3, new SchemaAndValueField("d", Schema.OPTIONAL_FLOAT64_SCHEMA, 1.1d));
-        schemasAndValuesForNumericType.set(4, new SchemaAndValueField("n", Schema.OPTIONAL_FLOAT64_SCHEMA, 22.22d));
-
-        assertInsert(INSERT_NUMERIC_TYPES_STMT, schemasAndValuesForNumericType);
+        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT, schemasAndValuesForImpreciseNumericDecimalType());
     }
 
     private void assertInsert(String statement, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {

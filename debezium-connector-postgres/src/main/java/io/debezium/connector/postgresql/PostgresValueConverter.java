@@ -31,6 +31,7 @@ import io.debezium.connector.postgresql.proto.PgProto;
 import io.debezium.data.Bits;
 import io.debezium.data.Json;
 import io.debezium.data.Uuid;
+import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.geometry.Point;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.relational.Column;
@@ -53,6 +54,13 @@ public class PostgresValueConverter extends JdbcValueConverters {
      * The approximation used by the plugin when converting a duration to micros
      */
     protected static final double DAYS_PER_MONTH_AVG = 365.25 / 12.0d;
+
+    /**
+     * Variable scale decimal/numeric is defined by metadata
+     * scale - 0
+     * length - 131089
+     */
+    private static final int VARIABLE_SCALE_DECIMAL_LENGTH = 131089;
 
     protected PostgresValueConverter(DecimalMode decimalMode, boolean adaptiveTimePrecision, ZoneOffset defaultOffset) {
         super(decimalMode, adaptiveTimePrecision, defaultOffset, null);
@@ -87,6 +95,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return Point.builder();
             case PgOid.MONEY:
                 return Decimal.builder(column.scale());
+            case PgOid.NUMERIC:
+                return numericSchema(column).optional();
             case PgOid.INT2_ARRAY:
                 return SchemaBuilder.array(SchemaBuilder.OPTIONAL_INT16_SCHEMA);
             case PgOid.INT4_ARRAY:
@@ -96,14 +106,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.TEXT_ARRAY:
                 return SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
             case PgOid.NUMERIC_ARRAY:
-                switch (decimalMode) {
-                    case DOUBLE:
-                        return SchemaBuilder.array(Schema.OPTIONAL_FLOAT64_SCHEMA);
-                    case PRECISE:
-                        // values are fixed-precision decimal values with exact precision.
-                        // Use Kafka Connect's arbitrary precision decimal type and use the column's specified scale ...
-                        return SchemaBuilder.array(Decimal.builder(column.scale()).optional().build());
-                }
+                return SchemaBuilder.array(numericSchema(column).optional());
             case PgOid.FLOAT4_ARRAY:
                 return SchemaBuilder.array(Schema.OPTIONAL_FLOAT32_SCHEMA);
             case PgOid.FLOAT8_ARRAY:
@@ -139,6 +142,17 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return null;
             default:
                 return super.schemaBuilder(column);
+        }
+    }
+
+    private SchemaBuilder numericSchema(final Column column) {
+        switch (decimalMode) {
+            case DOUBLE:
+                return SchemaBuilder.float64();
+            case PRECISE:
+                return isVariableScaleDecimal(column) ? VariableScaleDecimal.builder() : Decimal.builder(column.scale());
+            default:
+                throw new IllegalArgumentException("Unknown decimalMode");
         }
     }
 
@@ -215,6 +229,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
         if (column.scale() > newDecimal.scale()) {
           newDecimal = newDecimal.setScale(column.scale());
+        }
+        if (isVariableScaleDecimal(column)) {
+            return VariableScaleDecimal.fromLogical(fieldDefn.schema(), (BigDecimal)newDecimal);
         }
         return newDecimal;
     }
@@ -397,5 +414,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
             return handleUnknownData(column, fieldDefn, data);
         }
         return data;
+    }
+
+    private boolean isVariableScaleDecimal(final Column column) {
+        return column.scale() == 0 && column.length() == VARIABLE_SCALE_DECIMAL_LENGTH;
     }
 }
