@@ -3,7 +3,9 @@
 -- Generate a number of tables to cover as many of the PG types as possible
 DROP SCHEMA IF EXISTS public CASCADE;
 CREATE SCHEMA public;
-CREATE TABLE numeric_table (pk SERIAL, si SMALLINT, i INTEGER, bi BIGINT, d DECIMAL(3,2), n NUMERIC(6,4), r REAL, db DOUBLE PRECISION, ss SMALLSERIAL, bs BIGSERIAL, b BOOLEAN, PRIMARY KEY(pk));
+CREATE TABLE numeric_table (pk SERIAL, si SMALLINT, i INTEGER, bi BIGINT, r REAL, db DOUBLE PRECISION, ss SMALLSERIAL, bs BIGSERIAL, b BOOLEAN, PRIMARY KEY(pk));
+-- no suffix -fixed scale, zs - zero scale, vs - variable scale
+CREATE TABLE numeric_decimal_table (pk SERIAL, d DECIMAL(3,2), dzs DECIMAL(4), dvs DECIMAL, n NUMERIC(6,4), nzs NUMERIC(4), nvs NUMERIC, PRIMARY KEY(pk));
 CREATE TABLE string_table (pk SERIAL, vc VARCHAR(2), vcv CHARACTER VARYING(2), ch CHARACTER(4), c CHAR(3), t TEXT, PRIMARY KEY(pk));
 CREATE TABLE cash_table (pk SERIAL, csh MONEY, PRIMARY KEY(pk));
 CREATE TABLE bitbin_table (pk SERIAL, ba BYTEA, bol BIT(1), bs BIT(2), bv BIT VARYING(2) , PRIMARY KEY(pk));
