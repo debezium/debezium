@@ -35,6 +35,16 @@ public interface DatabaseHistory {
                                           .withDescription("The name used for the database history, perhaps differently by each implementation.")
                                           .withValidation(Field::isOptional);
 
+    public static final Field SKIP_UNPARSEABLE_DDL_STATEMENTS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "skip.unparseable.ddl")
+            .withDisplayName("Skip DDL statements that cannot be parsed")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Controls the action Debezium will take when it meets a DDL statement in binlog, that it cannot parse."
+                    + "By default the connector will stop operating but by changing the setting it can ignore the statements "
+                    + "which it cannot parse. If skipping is enabled then Debezium can miss metadata changes.")
+            .withDefault(false);
+
     /**
      * Configure this instance.
      * 
