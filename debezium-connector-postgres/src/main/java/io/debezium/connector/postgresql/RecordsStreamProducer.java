@@ -30,6 +30,7 @@ import org.postgresql.jdbc.PgArray;
 import org.postgresql.jdbc.PgConnection;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.ReplicationStream;
 import io.debezium.connector.postgresql.proto.PgProto;
@@ -348,7 +349,9 @@ public class RecordsStreamProducer extends RecordsProducer {
 
         // check if we need to refresh our local schema due to DB schema changes for this table
         if (refreshSchemaIfChanged && schemaChanged(messageList, table)) {
-            schema().refresh(taskContext.createConnection(), tableId);
+            try (final PostgresConnection connection = taskContext.createConnection()) {
+                schema().refresh(connection, tableId);
+            }
             table = schema().tableFor(tableId);
         }
 
@@ -403,7 +406,9 @@ public class RecordsStreamProducer extends RecordsProducer {
         }
         // we don't have a schema registered for this table, even though the filters would allow it...
         // which means that is a newly created table; so refresh our schema to get the definition for this table
-        schema.refresh(taskContext.createConnection(), tableId);
+        try (final PostgresConnection connection = taskContext.createConnection()) {
+            schema.refresh(connection, tableId);
+        }
         tableSchema = schema.schemaFor(tableId);
         if (tableSchema == null) {
             logger.warn("cannot load schema for table '{}'", tableId);

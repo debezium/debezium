@@ -66,7 +66,9 @@ public class PostgresTaskContext {
     }
 
     protected void refreshSchema(boolean printReplicaIdentityInfo) throws SQLException {
-        schema.refresh(createConnection(), printReplicaIdentityInfo);
+        try (final PostgresConnection connection = createConnection()) {
+            schema.refresh(connection, printReplicaIdentityInfo);
+        }
     }
 
     protected ReplicationConnection createReplicationConnection() throws SQLException {
