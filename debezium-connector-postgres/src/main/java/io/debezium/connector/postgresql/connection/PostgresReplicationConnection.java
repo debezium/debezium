@@ -9,6 +9,7 @@ package io.debezium.connector.postgresql.connection;
 import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLWarning;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -163,11 +164,15 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         PGReplicationStream stream = streamBuilder.start();
         final long lsnLong = lsn.asLong();
         return new ReplicationStream() {
+            private static final int CHECK_WARNINGS_AFTER_COUNT = 100;
+            private int warningCheckCounter = CHECK_WARNINGS_AFTER_COUNT;
+
             // make sure this is volatile since multiple threads may be interested in this value
             private volatile LogSequenceNumber lastReceivedLSN;
 
             @Override
             public PgProto.RowMessage read() throws SQLException {
+                processWarnings(false);
                 ByteBuffer read = stream.read();
                 // the lsn we started from is inclusive, so we need to avoid sending back the same message twice
                 if (lsnLong >= stream.getLastReceiveLSN().asLong()) {
@@ -178,6 +183,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
             @Override
             public PgProto.RowMessage readPending() throws SQLException {
+                processWarnings(false);
                 ByteBuffer read = stream.readPending();
                 // the lsn we started from is inclusive, so we need to avoid sending back the same message twice
                 if (read == null ||  lsnLong >= stream.getLastReceiveLSN().asLong()) {
@@ -203,6 +209,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
             @Override
             public void close() throws SQLException {
+                processWarnings(true);
                 stream.close();
             }
 
@@ -220,6 +227,16 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             @Override
             public Long lastReceivedLSN() {
                 return lastReceivedLSN != null ? lastReceivedLSN.asLong() : null;
+            }
+
+            private void processWarnings(final boolean forced) throws SQLException {
+                if (--warningCheckCounter == 0 || forced) {
+                    warningCheckCounter = CHECK_WARNINGS_AFTER_COUNT;
+                    for (SQLWarning w = connection().getWarnings(); w != null; w = w.getNextWarning()) {
+                        LOGGER.debug("Server-side message: '{}', state = {}, code = {}",
+                                w.getMessage(), w.getSQLState(), w.getErrorCode());
+                    }
+                }
             }
         };
     }
