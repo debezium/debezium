@@ -1,0 +1,30 @@
+# Job definition to build and deploy snapshot artifact
+---
+- job:
+    project-type: freestyle
+    name: debezium-deploy-snapshots
+    display-name: Deploy Snapshots
+    description: Deploy -SNAPSHOT versions to Maven Central
+    node: Slave
+    properties:
+      - build-discarder:
+          days-to-keep: 7
+      - github:
+          url: https://github.com/debezium/debezium
+    scm:
+      - git:
+         url: https://github.com/debezium/debezium
+         branches:
+          - "*/master"
+    wrappers:
+      - timeout:
+          timeout: 45
+    triggers:
+      - timed: "H 03 * * *"
+    builders:
+      - maven-target:
+          maven-version: (Default)
+          goals: clean deploy -U -s $HOME/.m2/settings-snapshots.xml -DdeployAtEnd=true -DskipITs -DskipTests -Passembly
+    publishers:
+      - email:
+          recipients: jpechane@redhat.com

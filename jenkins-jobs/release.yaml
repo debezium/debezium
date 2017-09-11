@@ -1,0 +1,45 @@
+# Job definition to execute Debezium release
+---
+- job:
+    project-type: pipeline
+    name: debezium-release
+    display-name: Debezium Release
+    description: Builds Debezium and deploys into Maven Central and Docker Hub
+    node: Slave
+    properties:
+      - build-discarder:
+          num-to-keep: 5
+    parameters:
+      - string:
+          name: RELEASE_VERSION
+          description: "Version of Debezium to be released - e.g. 0.5.2"
+      - string:
+          name: DEVELOPMENT_VERSION
+          description: "Next development version - e.g. 0.5.3-SNAPSHOT"
+      - string:
+          name: DEBEZIUM_REPOSITORY
+          description: "Repository from which Debezium is built"
+          default: "github.com/debezium/debezium.git"
+      - string:
+          name: DEBEZIUM_BRANCH
+          description: "A branch from which Debezium is built"
+          default: "master"
+      - string:
+          name: IMAGES_REPOSITORY
+          description: "Repository from which Debezium images are built"
+          default: "github.com/debezium/docker-images.git"
+      - string:
+          name: IMAGES_BRANCH
+          description: "A branch from which Debezium images are built"
+          default: "master"
+      - string:
+          name: POSTGRES_DECODER_REPOSITORY
+          description: "Repository from which PostgreSQL decoder plugin is built"
+          default: "github.com/debezium/postgres-decoderbufs.git"
+      - string:
+          name: POSTGRES_DECODER_BRANCH
+          description: "A branch from which Debezium images are built PostgreSQL decoder plugin is built"
+          default: "master"
+    dsl:
+      !include-raw:
+        - "scripts/release-pipeline.groovy"

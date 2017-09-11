@@ -1,0 +1,26 @@
+# Job definition to trigger nightly Docker image build
+---
+- job:
+    project-type: freestyle
+    name: debezium-nightly-image
+    display-name: Nightly Image
+    description: Triggers a Docker Hub build for a Connect image nightly tag
+    node: Slave
+    properties:
+      - build-discarder:
+          days-to-keep: 7
+      - github:
+          url: https://github.com/debezium/docker-images
+    wrappers:
+      - timeout:
+          timeout: 5
+    triggers:
+      - reverse:
+          jobs: 'debezium-deploy-snapshots'
+    builders:
+      - shell:
+          !include-raw:
+            - "scripts/trigger-nightly-docker.sh"
+    publishers:
+      - email:
+          recipients: jpechane@redhat.com
