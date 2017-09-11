@@ -15,7 +15,7 @@ if (
 }
 
 GIT_CREDENTIALS_ID = '17e7a907-8401-4b7e-a91b-a7823047b3e5'
-JIRA_CREDENTIALS_ID = '	debezium-jira'
+JIRA_CREDENTIALS_ID = 'debezium-jira'
 
 DEBEZIUM_DIR = 'debezium'
 IMAGES_DIR = 'images'
