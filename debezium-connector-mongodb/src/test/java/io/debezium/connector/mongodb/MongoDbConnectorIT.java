@@ -18,6 +18,7 @@ import java.util.function.BiConsumer;
 
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
 import org.junit.After;
@@ -104,6 +105,8 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.CONNECT_BACKOFF_INITIAL_DELAY_MS);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.CONNECT_BACKOFF_MAX_DELAY_MS);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.SSL_ENABLED);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.SSL_ALLOW_INVALID_HOSTNAMES);
     }
 
     @Test
@@ -138,6 +141,8 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.CONNECT_BACKOFF_INITIAL_DELAY_MS);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.CONNECT_BACKOFF_MAX_DELAY_MS);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.SSL_ENABLED);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.SSL_ALLOW_INVALID_HOSTNAMES);
     }
 
     @Test
@@ -384,5 +389,28 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             }
             logger.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
         };
+    }
+
+    @Test(expected = ConnectException.class)
+    public void shouldUseSSL() throws InterruptedException, IOException {
+        // Use the DB configuration to define the connector's configuration ...
+        config = Configuration.create()
+                              .with(MongoDbConnectorConfig.HOSTS, System.getProperty("connector.mongodb.hosts"))
+                              .with(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS,
+                                    System.getProperty("connector.mongodb.members.auto.discover"))
+                              .with(MongoDbConnectorConfig.LOGICAL_NAME, System.getProperty("connector.mongodb.name"))
+                              .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                              .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
+                              .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                              .with(MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS, 0)
+                              .with(MongoDbConnectorConfig.SSL_ENABLED, true)
+                              .build();
+
+        // Set up the replication context for connections ...
+        context = new ReplicationContext(config);
+
+        primary().executeBlocking("Try SSL connection", mongo -> {
+            mongo.getDatabase("dbit");
+        });
     }
 }

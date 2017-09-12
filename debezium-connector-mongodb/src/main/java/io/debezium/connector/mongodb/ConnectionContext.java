@@ -52,11 +52,16 @@ public class ConnectionContext implements AutoCloseable {
         final String username = config.getString(MongoDbConnectorConfig.USER);
         final String password = config.getString(MongoDbConnectorConfig.PASSWORD);
         final String adminDbName = ReplicaSetDiscovery.ADMIN_DATABASE_NAME;
+        final boolean useSSL = config.getBoolean(MongoDbConnectorConfig.SSL_ENABLED);
+        final boolean sslAllowInvalidHostnames = config.getBoolean(MongoDbConnectorConfig.SSL_ALLOW_INVALID_HOSTNAMES);
 
         // Set up the client pool so that it ...
         MongoClients.Builder clientBuilder = MongoClients.create();
         if (username != null || password != null) {
             clientBuilder.withCredential(MongoCredential.createCredential(username, adminDbName, password.toCharArray()));
+        }
+        if (useSSL) {
+            clientBuilder.options().sslEnabled(true).sslInvalidHostNameAllowed(sslAllowInvalidHostnames);
         }
         pool = clientBuilder.build();
 
