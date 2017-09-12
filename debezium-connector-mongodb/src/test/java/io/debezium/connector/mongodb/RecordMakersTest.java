@@ -8,6 +8,7 @@ package io.debezium.connector.mongodb;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.mongodb.util.JSONSerializers;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.BsonTimestamp;
@@ -76,7 +77,7 @@ public class RecordMakersTest {
         Struct key = (Struct) record.key();
         Struct value = (Struct) record.value();
         assertThat(key.schema()).isSameAs(record.keySchema());
-        assertThat(key.get("_id")).isEqualTo(objId.toString());
+        assertThat(key.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
         assertThat(value.schema()).isSameAs(record.valueSchema());
         // assertThat(value.getString(FieldName.BEFORE)).isNull();
         assertThat(value.getString(FieldName.AFTER)).isEqualTo(obj.toJson(WRITER_SETTINGS));
@@ -106,7 +107,7 @@ public class RecordMakersTest {
         Struct key = (Struct) record.key();
         Struct value = (Struct) record.value();
         assertThat(key.schema()).isSameAs(record.keySchema());
-        assertThat(key.get("_id")).isEqualTo(objId.toString());
+        assertThat(key.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
         assertThat(value.schema()).isSameAs(record.valueSchema());
         // assertThat(value.getString(FieldName.BEFORE)).isNull();
         assertThat(value.getString(FieldName.AFTER)).isNull();
@@ -137,7 +138,7 @@ public class RecordMakersTest {
         Struct key = (Struct) record.key();
         Struct value = (Struct) record.value();
         assertThat(key.schema()).isSameAs(record.keySchema());
-        assertThat(key.get("_id")).isEqualTo(objId.toString());
+        assertThat(key.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
         assertThat(value.schema()).isSameAs(record.valueSchema());
         assertThat(value.getString(FieldName.AFTER)).isNull();
         assertThat(value.getString("patch")).isNull();
@@ -150,7 +151,7 @@ public class RecordMakersTest {
         SourceRecord tombstone = produced.get(1);
         Struct key2 = (Struct) tombstone.key();
         assertThat(key2.schema()).isSameAs(tombstone.keySchema());
-        assertThat(key2.get("_id")).isEqualTo(objId.toString());
+        assertThat(key2.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
         assertThat(tombstone.value()).isNull();
         assertThat(tombstone.valueSchema()).isNull();
     }

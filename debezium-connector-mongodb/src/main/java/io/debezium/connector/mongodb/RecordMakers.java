@@ -9,6 +9,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
+import com.mongodb.DBCollection;
+import com.mongodb.util.JSONSerializers;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -16,7 +18,6 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
-import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -101,7 +102,7 @@ public class RecordMakers {
             this.topicName = topicName;
             this.keySchema = SchemaBuilder.struct()
                                           .name(validator.validate(topicName + ".Key"))
-                                          .field("_id", Schema.STRING_SCHEMA)
+                                          .field("id", Schema.STRING_SCHEMA)
                                           .build();
             this.valueSchema = SchemaBuilder.struct()
                                             .name(validator.validate(topicName + ".Envelope"))
@@ -138,7 +139,8 @@ public class RecordMakers {
         public int recordObject(CollectionId id, Document object, long timestamp) throws InterruptedException {
             final Struct sourceValue = source.lastOffsetStruct(replicaSetName, id);
             final Map<String, ?> offset = source.lastOffset(replicaSetName);
-            String objId = objectIdLiteralFrom(object);
+            String objId = idObjToJson(object);
+            assert objId != null;
             return createRecords(sourceValue, offset, Operation.READ, objId, object, timestamp);
         }
 
@@ -157,7 +159,7 @@ public class RecordMakers {
             Document patchObj = oplogEvent.get("o", Document.class);
             // Updates have an 'o2' field, since the updated object in 'o' might not have the ObjectID ...
             Object o2 = oplogEvent.get("o2");
-            String objId = o2 != null ? objectIdLiteral(o2) : objectIdLiteralFrom(patchObj);
+            String objId = o2 != null ? idObjToJson(o2) : idObjToJson(patchObj);
             assert objId != null;
             Operation operation = operationLiterals.get(oplogEvent.getString("op"));
             return createRecords(sourceValue, offset, operation, objId, patchObj, timestamp);
@@ -201,37 +203,20 @@ public class RecordMakers {
             return 1;
         }
 
-        protected String objectIdLiteralFrom(Document obj) {
-            if (obj == null) {
+        protected String idObjToJson(Object idObj) {
+            if(idObj == null) {
                 return null;
             }
-            Object id = obj.get("_id");
-            return objectIdLiteral(id);
-        }
-
-        protected String objectIdLiteral(Object id) {
-            if (id == null) {
-                return null;
+            if(!(idObj instanceof Document)) {
+                return JSONSerializers.getStrict().serialize(idObj);
             }
-            if (id instanceof ObjectId) {
-                return ((ObjectId) id).toHexString();
-            }
-            if (id instanceof String) {
-                return (String) id;
-            }
-            if (id instanceof Document) {
-                Document doc = (Document)id;
-                if (doc.containsKey("_id") && doc.size() == 1) {
-                    // This is an embedded ObjectId ...
-                    return objectIdLiteral(doc.get("_id"));
-                }
-                return valueTransformer.apply((Document) id);
-            }
-            return id.toString();
+            return JSONSerializers.getStrict().serialize(
+                    ((Document)idObj).get(DBCollection.ID_FIELD_NAME)
+            );
         }
 
         protected Struct keyFor(String objId) {
-            return new Struct(keySchema).put("_id", objId);
+            return new Struct(keySchema).put("id", objId);
         }
     }
 
