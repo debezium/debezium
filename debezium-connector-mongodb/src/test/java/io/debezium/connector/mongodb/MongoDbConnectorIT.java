@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
+import com.mongodb.util.JSON;
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -298,10 +299,10 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         Testing.debug("Update event: " + updateRecord);
         Struct insertKey = (Struct)insertRecord.key();
         Struct updateKey = (Struct)updateRecord.key();
-        String insertId = insertKey.getString("_id");
-        String updatetId = updateKey.getString("_id");
+        String insertId = JSON.parse(insertKey.getString("id")).toString();
+        String updateId = JSON.parse(updateKey.getString("id")).toString();
         assertThat(insertId).isEqualTo(id.get());
-        assertThat(updatetId).isEqualTo(id.get());
+        assertThat(updateId).isEqualTo(id.get());
     }
 
     protected void verifyFromInitialSync(SourceRecord record, AtomicBoolean foundLast) {

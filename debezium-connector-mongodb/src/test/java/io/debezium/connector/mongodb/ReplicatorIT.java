@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.mongodb.util.JSON;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
@@ -208,7 +209,7 @@ public class ReplicatorIT extends AbstractMongoIT {
         records.forEach(record -> {
             VerifyRecord.isValid(record);
             Struct key = (Struct) record.key();
-            ObjectId id = new ObjectId(key.getString("_id"));
+            ObjectId id = (ObjectId)(JSON.parse(key.getString("id")));
             foundIds.add(id);
             if (record.value() != null) {
                 Struct value = (Struct) record.value();
