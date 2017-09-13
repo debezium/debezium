@@ -749,14 +749,29 @@ public class JdbcConnection implements AutoCloseable {
 
         // Read the metadata for the table columns ...
         DatabaseMetaData metadata = connection().getMetaData();
+
+        // Find views as they cannot be snapshotted
+        final Set<TableId> viewIds = new HashSet<>();
+        try (final ResultSet rs = metadata.getTables(databaseCatalog, schemaNamePattern, null, new String[] {"VIEW"})) {
+            while (rs.next()) {
+                final String catalogName = rs.getString(1);
+                final String schemaName = rs.getString(2);
+                final String tableName = rs.getString(3);
+                viewIds.add(new TableId(catalogName, schemaName, tableName));
+            }
+        }
+
         ConcurrentMap<TableId, List<Column>> columnsByTable = new ConcurrentHashMap<>();
         try (ResultSet rs = metadata.getColumns(databaseCatalog, schemaNamePattern, null, null)) {
             while (rs.next()) {
                 String catalogName = rs.getString(1);
                 String schemaName = rs.getString(2);
                 String tableName = rs.getString(3);
+                TableId tableId = new TableId(catalogName, schemaName, tableName);
+                if (viewIds.contains(tableId)) {
+                    continue;
+                }
                 if (tableFilter == null || tableFilter.matches(catalogName, schemaName, tableName)) {
-                    TableId tableId = new TableId(catalogName, schemaName, tableName);
                     List<Column> cols = columnsByTable.computeIfAbsent(tableId, name -> new ArrayList<>());
                     String columnName = rs.getString(4);
                     if (columnFilter == null || columnFilter.matches(catalogName, schemaName, tableName, columnName)) {

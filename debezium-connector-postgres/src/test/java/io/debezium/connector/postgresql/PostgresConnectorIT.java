@@ -199,6 +199,40 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    public void shouldIgnoreViews() throws Exception {
+        TestHelper.execute(
+                SETUP_TABLES_STMT +
+                "CREATE VIEW s1.myview AS SELECT * from s1.a;"
+        );
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                                               .with(PostgresConnectorConfig.SNAPSHOT_MODE, INITIAL.getValue())
+                                               .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        //check the records from the snapshot
+        assertRecordsFromSnapshot(2, 1, 1);
+
+        // insert 2 new records
+        TestHelper.execute(INSERT_STMT);
+        assertRecordsAfterInsert(2, 2, 2);
+
+        //now stop the connector
+        stopConnector();
+        assertNoRecordsToConsume();
+
+        //insert some more records
+        TestHelper.execute(INSERT_STMT);
+
+        //start the connector back up and check that a new snapshot has not been performed (we're running initial only mode)
+        //but the 2 records that we were inserted while we were down will be retrieved
+        start(PostgresConnector.class, configBuilder.with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE).build());
+        assertConnectorIsRunning();
+
+        assertRecordsAfterInsert(2, 3, 3);
+    }
+
+    @Test
     public void shouldProduceEventsWhenSnapshotsAreNeverAllowed() throws InterruptedException {
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
