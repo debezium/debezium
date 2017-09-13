@@ -23,6 +23,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcConnection.ConnectionFactory;
+import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.util.Strings;
 
 /**
@@ -47,7 +48,8 @@ public class MySqlJdbcContext implements AutoCloseable {
         // to give us better JDBC database metadata behavior, including using UTF-8 for the client-side character encoding
         // per https://dev.mysql.com/doc/connector-j/5.1/en/connector-j-reference-charsets.html
         boolean useSSL = sslModeEnabled();
-        Configuration jdbcConfig = config.subset("database.", true)
+        Configuration jdbcConfig = config.filter(x -> !(x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING) || x.equals(MySqlConnectorConfig.DATABASE_HISTORY.name())))
+                                         .subset("database.", true)
                                          .edit()
                                          .with("useSSL", Boolean.toString(useSSL))
                                          .build();

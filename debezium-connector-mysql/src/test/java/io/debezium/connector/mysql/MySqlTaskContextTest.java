@@ -22,6 +22,7 @@ import io.debezium.document.Document;
 import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.relational.history.KafkaDatabaseHistory;
 import io.debezium.util.Testing;
 
 /**
@@ -265,6 +266,18 @@ public class MySqlTaskContextTest {
 
         assertThat(comparator.isAtOrBefore(rec1, rec2)).isTrue();
         assertThat(comparator.isAtOrBefore(rec2, rec1)).isFalse();
+    }
+
+    @Test
+    public void shouldIgnoreDatabaseHistoryProperties() throws Exception {
+        config = simpleConfig().with(KafkaDatabaseHistory.TOPIC, "dummytopic")
+                               .build();
+        context = new MySqlTaskContext(config);
+        context.start();
+
+        context.jdbc().config().forEach((k, v) -> {
+            assertThat(k).doesNotMatch("^history");
+        });
     }
 
     protected HistoryRecord historyRecord(String serverName, String binlogFilename, int position, String gtids,
