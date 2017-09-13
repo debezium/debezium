@@ -12,11 +12,13 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import io.debezium.config.Configuration;
+import io.debezium.relational.Selectors;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -374,7 +376,8 @@ final class SourceInfo {
      * @param unblacklistedDatabase
      * @param blacklistedTables
      */
-    public void removedBlacklistedDatabase(String unblacklistedDatabase, List<TableId> blacklistedTables) {
+    public void removeBlacklistedDatabase(String unblacklistedDatabase,
+                                          Collection<TableId> blacklistedTables) {
         removeBlacklistedDatabase(unblacklistedDatabase);
         addBlacklistedTables(blacklistedTables);
     }
@@ -406,8 +409,8 @@ final class SourceInfo {
      * the offset information.
      * @param unblacklistedTable
      */
-    public void removeBlacklistedTable(Collection<TableId> unblacklistedTable) {
-        resolvedTableBlacklist.removeAll(unblacklistedTable);
+    public void removeBlacklistedTable(TableId unblacklistedTable) {
+        resolvedTableBlacklist.remove(unblacklistedTable);
     }
 
     /**
@@ -634,20 +637,46 @@ final class SourceInfo {
                 this.resolvedTableBlacklist = offsetTableBlacklist == null? null : new HashSet<>(stringsToTableIds(Arrays.asList(offsetTableBlacklist.split(commaSplitRegex))));
             } else {
                 // if the offset doesn't have filter info, we have to assume everything in the config has been or will be resolved.
-                String configDatabaseWhitelist = config.getString(MySqlConnectorConfig.DATABASE_WHITELIST);
-                this.resolvedDatabaseWhitelist = configDatabaseWhitelist == null? null : new HashSet<>(Arrays.asList(configDatabaseWhitelist.split(commaSplitRegex)));
-                String configDatabaseBlacklist = config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST);
-                this.resolvedDatabaseBlacklist = configDatabaseBlacklist == null? null : new HashSet<>(Arrays.asList(configDatabaseBlacklist.split(commaSplitRegex)));
-                String configTableWhitelist = config.getString(MySqlConnectorConfig.TABLE_WHITELIST);
-                this.resolvedTableWhitelist = configDatabaseBlacklist == null? null : new HashSet<>(stringsToTableIds(Arrays.asList(configTableWhitelist.split(commaSplitRegex))));
-                String configTableBlacklist = config.getString(MySqlConnectorConfig.TABLE_BLACKLIST);
-                this.resolvedTableBlacklist = configDatabaseBlacklist == null? null : new HashSet<>(stringsToTableIds(Arrays.asList(configTableBlacklist.split(commaSplitRegex))));
+                setResolvedFromConfig();
             }
         }
     }
 
+    /**
+     * Completely set the sets of resolved databases and tables directly from the config.
+     * Useful after an initial snapshot or if we don't have any filter info in the existing offset.
+     */
+    public void setResolvedFromConfig() {
+        String commaSplitRegex = "\\s*,\\s*";
+        String configDatabaseWhitelist = config.getString(MySqlConnectorConfig.DATABASE_WHITELIST);
+        this.resolvedDatabaseWhitelist = configDatabaseWhitelist == null? null : new HashSet<>(Arrays.asList(configDatabaseWhitelist.split(commaSplitRegex)));
+        String configDatabaseBlacklist = config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST);
+        this.resolvedDatabaseBlacklist = configDatabaseBlacklist == null? null : new HashSet<>(Arrays.asList(configDatabaseBlacklist.split(commaSplitRegex)));
+        String configTableWhitelist = config.getString(MySqlConnectorConfig.TABLE_WHITELIST);
+        this.resolvedTableWhitelist = configDatabaseBlacklist == null? null : new HashSet<>(stringsToTableIds(Arrays.asList(configTableWhitelist.split(commaSplitRegex))));
+        String configTableBlacklist = config.getString(MySqlConnectorConfig.TABLE_BLACKLIST);
+        this.resolvedTableBlacklist = configDatabaseBlacklist == null? null : new HashSet<>(stringsToTableIds(Arrays.asList(configTableBlacklist.split(commaSplitRegex))));
+    }
+
+    /**
+     * @return a predicate that can determine if a given table is resolved.
+     */
+    private Predicate<TableId> resolvedPredicate() {
+        return Selectors.tableSelector()
+                        .includeDatabases(listToString(resolvedDatabaseWhitelist))
+                        .excludeDatabases(listToString(resolvedDatabaseBlacklist))
+                        .includeTables(listToString(resolvedTableWhitelist))
+                        .excludeTables(listToString(resolvedTableBlacklist))
+                        .build();
+    }
+
     private static List<TableId> stringsToTableIds(List<String> stringTableIds) {
         return new ArrayList<>(stringTableIds.stream().map(TableId::parse).collect(Collectors.toList()));
+    }
+
+    private static String listToString(Collection<? extends Object> elements) {
+        Collection<String> stringifiedElements = elements.stream().map(Object::toString).collect(Collectors.toCollection(ArrayList::new));
+        return String.join(",", stringifiedElements);
     }
 
     private long longOffsetValue(Map<String, ?> values, String key) {
