@@ -74,6 +74,24 @@ public class MongoDbConnectorConfig {
                                                        .withValidation(Field::isPositiveInteger)
                                                        .withDescription("Frequency in seconds to look for new, removed, or changed replica sets. Defaults to 30 seconds.");
 
+    public static final Field SSL_ENABLED = Field.create("mongodb.ssl.enabled")
+            .withDisplayName("Enable SSL connection to MongoDB")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(false)
+            .withValidation(Field::isBoolean)
+            .withDescription("Should connector use SSL to connect to MongoDB instances");
+
+    public static final Field SSL_ALLOW_INVALID_HOSTNAMES = Field.create("mongodb.ssl.invalid.hostname.allowed")
+            .withDisplayName("Allow invalid hostnames for SSL connection")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(false)
+            .withValidation(Field::isBoolean)
+            .withDescription("Whether invalid host names are allowed when using SSL. If true the connection will not prevent man-in-the-middle attacks");
+
     public static final Field MAX_COPY_THREADS = Field.create("initial.sync.max.threads")
                                                       .withDisplayName("Maximum number of threads for initial sync")
                                                       .withType(Type.INT)
@@ -208,6 +226,7 @@ public class MongoDbConnectorConfig {
                                                 .withInvisibleRecommender();
 
     public static Field.Set ALL_FIELDS = Field.setOf(USER, PASSWORD, HOSTS, LOGICAL_NAME,
+                                                     SSL_ENABLED, SSL_ALLOW_INVALID_HOSTNAMES,
                                                      MAX_COPY_THREADS, MAX_QUEUE_SIZE, MAX_BATCH_SIZE,
                                                      POLL_INTERVAL_MS,
                                                      MAX_FAILED_CONNECTIONS,
@@ -224,7 +243,8 @@ public class MongoDbConnectorConfig {
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
         Field.group(config, "MongoDB", HOSTS, USER, PASSWORD, LOGICAL_NAME, CONNECT_BACKOFF_INITIAL_DELAY_MS,
-                    CONNECT_BACKOFF_MAX_DELAY_MS, MAX_FAILED_CONNECTIONS, AUTO_DISCOVER_MEMBERS);
+                    CONNECT_BACKOFF_MAX_DELAY_MS, MAX_FAILED_CONNECTIONS, AUTO_DISCOVER_MEMBERS,
+                    SSL_ENABLED, SSL_ALLOW_INVALID_HOSTNAMES);
         Field.group(config, "Events", DATABASE_WHITELIST, DATABASE_BLACKLIST, COLLECTION_WHITELIST, COLLECTION_BLACKLIST);
         Field.group(config, "Connector", MAX_COPY_THREADS, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS);
         return config;
