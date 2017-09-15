@@ -74,6 +74,22 @@
             <groupId>io.confluent</groupId>
             <artifactId>kafka-connect-avro-converter</artifactId>
         </dependency>
+        <!-- Used for unit testing with Docker -->
+        <dependency>
+            <groupId>org.arquillian.cube</groupId>
+            <artifactId>arquillian-cube-docker</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.arquillian.junit</groupId>
+            <artifactId>arquillian-junit-standalone</artifactId> 
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.arquillian.core</groupId>
+            <artifactId>arquillian-core-api</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <properties>
         <!-- 
@@ -88,6 +104,7 @@
         <mysql.gtid.replica.port>3306</mysql.gtid.replica.port>
         <mysql.replica.port>3306</mysql.replica.port> <!-- by default use master as 'replica' -->
         <mysql.init.timeout>60000</mysql.init.timeout> <!-- 60 seconds -->
+        <test.mysql.gtid>false</test.mysql.gtid>
         <!--
         By default, we should use the docker image maintained by the MySQL team. This property is changed with different profiles.
         However, we run one container with GTIDs and one without.
@@ -112,8 +129,9 @@
                   <image>
                     <!-- A Docker image using a partial MySQL installation maintained by MySQL team. -->
                     <name>debezium/mysql-server-test-database</name>
+                    <alias>mysql-server</alias>
                     <run>
-                      <namingStrategy>none</namingStrategy>
+                      <namingStrategy>alias</namingStrategy>
                       <env>
                         <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
                         <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
@@ -208,8 +226,9 @@
                     that is a replica of `debezium/mysql-server-gtids-test-database`
                     -->
                     <name>debezium/mysql-server-gtids-test-database-replica</name>
+                    <alias>replica-gtids</alias>
                     <run>
-                      <namingStrategy>none</namingStrategy>
+                      <namingStrategy>alias</namingStrategy>
                       <env>
                         <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
                         <MYSQL_USER>${mysql.replica.user}</MYSQL_USER>
@@ -265,7 +284,6 @@
                   <phase>pre-integration-test</phase>
                   <goals>
                     <goal>build</goal>
-                    <goal>start</goal>
                   </goals>
                 </execution>
                 <execution>
@@ -361,6 +379,7 @@
               <mysql.port>4301</mysql.port>
               <mysql.gtid.port>4302</mysql.gtid.port>
               <mysql.gtid.replica.port>4303</mysql.gtid.replica.port>
+              <test.mysql.gtid>true</test.mysql.gtid>
             </properties>
             <build>
                 <plugins>
@@ -411,6 +430,7 @@
                                 <database.replica.password>${mysql.replica.password}</database.replica.password>
                                 <database.port>${mysql.port}</database.port>
                                 <database.replica.port>${mysql.port}</database.replica.port>
+                                <test.mysql.gtid>${test.mysql.gtid}</test.mysql.gtid>
                                 <skipLongRunningTests>false</skipLongRunningTests>
                             </systemPropertyVariables>
                         </configuration>

@@ -17,12 +17,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.jboss.arquillian.junit.Arquillian;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.cube.DatabaseCube;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
+import io.debezium.connector.mysql.cube.DefaultDatabase;
 import io.debezium.data.Envelope;
 import io.debezium.data.KeyValueStore;
 import io.debezium.data.KeyValueStore.Collection;
@@ -37,11 +41,15 @@ import io.debezium.util.Testing;
  * @author Randall Hauch
  *
  */
+@RunWith(Arquillian.class)
 public class BinlogReaderIT {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-binlog.txt").toAbsolutePath();
     private static final String DB_NAME = "connector_test_ro";
     private static final String LOGICAL_NAME = "logical_server_name";
+
+    @DefaultDatabase
+    private DatabaseCube cube;
 
     private Configuration config;
     private MySqlTaskContext context;
@@ -98,13 +106,7 @@ public class BinlogReaderIT {
     }
 
     protected Configuration.Builder simpleConfig() {
-        String hostname = System.getProperty("database.hostname");
-        String port = System.getProperty("database.port");
-        assertThat(hostname).isNotNull();
-        assertThat(port).isNotNull();
-        return Configuration.create()
-                            .with(MySqlConnectorConfig.HOSTNAME, hostname)
-                            .with(MySqlConnectorConfig.PORT, port)
+        return cube.configuration()
                             .with(MySqlConnectorConfig.USER, "replicator")
                             .with(MySqlConnectorConfig.PASSWORD, "replpass")
                             .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)

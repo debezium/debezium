@@ -8,24 +8,32 @@ package io.debezium.connector.mysql;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+import org.jboss.arquillian.junit.Arquillian;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import io.debezium.connector.cube.DatabaseCube;
+import io.debezium.connector.mysql.cube.DefaultDatabase;
 import io.debezium.util.Testing;
 
+@RunWith(Arquillian.class)
 public class ConnectionIT implements Testing {
+
+    @DefaultDatabase
+    private DatabaseCube cube;
 
     @Ignore
     @Test
     public void shouldConnectToDefaulDatabase() throws SQLException {
-        try (MySQLConnection conn = MySQLConnection.forTestDatabase("mysql");) {
+        try (MySQLConnection conn = MySQLConnection.forTestDatabase("mysql", cube.getHost(), cube.getPort())) {
             conn.connect();
         }
     }
 
     @Test
     public void shouldDoStuffWithDatabase() throws SQLException {
-        try (MySQLConnection conn = MySQLConnection.forTestDatabase("readbinlog_test");) {
+        try (MySQLConnection conn = MySQLConnection.forTestDatabase("readbinlog_test", cube.getHost(), cube.getPort())) {
             conn.connect();
             // Set up the table as one transaction and wait to see the events ...
             conn.execute("DROP TABLE IF EXISTS person",
@@ -46,7 +54,7 @@ public class ConnectionIT implements Testing {
     @Ignore
     @Test
     public void shouldConnectToEmptyDatabase() throws SQLException {
-        try (MySQLConnection conn = MySQLConnection.forTestDatabase("emptydb");) {
+        try (MySQLConnection conn = MySQLConnection.forTestDatabase("emptydb", cube.getHost(), cube.getPort())) {
             conn.connect();
         }
     }

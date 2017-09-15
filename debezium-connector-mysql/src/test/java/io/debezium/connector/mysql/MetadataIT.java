@@ -5,19 +5,27 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.sql.SQLException;
 import java.sql.Types;
 
+import org.jboss.arquillian.junit.Arquillian;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import static org.fest.assertions.Assertions.assertThat;
-
+import io.debezium.connector.cube.DatabaseCube;
+import io.debezium.connector.mysql.cube.DefaultDatabase;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.Tables;
 import io.debezium.util.Testing;
 
+@RunWith(Arquillian.class)
 public class MetadataIT implements Testing {
+
+    @DefaultDatabase
+    private DatabaseCube cube; 
 
     /**
      * Loads the {@link Tables} definition by reading JDBC metadata. Note that some characteristics, such as whether columns
@@ -26,7 +34,7 @@ public class MetadataIT implements Testing {
      */
     @Test
     public void shouldLoadMetadataViaJdbc() throws SQLException {
-        try (MySQLConnection conn = MySQLConnection.forTestDatabase("readbinlog_test");) {
+        try (MySQLConnection conn = MySQLConnection.forTestDatabase("readbinlog_test", cube.getHost(), cube.getPort())) {
             conn.connect();
             // Set up the table as one transaction and wait to see the events ...
             conn.execute("DROP TABLE IF EXISTS person",

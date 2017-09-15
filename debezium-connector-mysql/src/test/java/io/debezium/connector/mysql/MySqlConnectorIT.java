@@ -19,13 +19,21 @@ import org.apache.kafka.common.config.Config;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.arquillian.cube.CubeController;
+import org.jboss.arquillian.junit.Arquillian;
+import org.jboss.arquillian.test.api.ArquillianResource;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.cube.DatabaseCube;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.connector.mysql.cube.DefaultDatabase;
+import io.debezium.connector.mysql.cube.GtidsMasterDatabase;
+import io.debezium.connector.mysql.cube.GtidsReplicaDatabase;
 import io.debezium.data.Envelope;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.EmbeddedEngine.CompletionResult;
@@ -37,11 +45,39 @@ import io.debezium.util.Testing;
 /**
  * @author Randall Hauch
  */
+@RunWith(Arquillian.class)
 public class MySqlConnectorIT extends AbstractConnectorTest {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
 
+    @ArquillianResource
+    private CubeController cubeController;
+
+    @DefaultDatabase
+    private DatabaseCube defaultCube;
+
+    @GtidsMasterDatabase
+    private DatabaseCube masterCube;
+
+    @GtidsReplicaDatabase
+    private DatabaseCube replicaCube;
+
     private Configuration config;
+
+    public void startGTIDSCubes() {
+        stopGTIDSCubes();
+        masterCube.getCube().create();
+        replicaCube.getCube().create();
+        masterCube.getCube().start();
+        replicaCube.getCube().start();
+    }
+
+    public void stopGTIDSCubes() {
+        masterCube.getCube().stop();
+        replicaCube.getCube().stop();
+        masterCube.getCube().destroy();
+        replicaCube.getCube().destroy();
+    }
 
     @Before
     public void beforeEach() {
@@ -64,9 +100,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
      */
     @Test
     public void shouldNotStartWithInvalidConfiguration() {
-        config = Configuration.create()
-                              .with(MySqlConnectorConfig.SERVER_NAME, "myserver")
-                              .with(KafkaDatabaseHistory.TOPIC, "myserver")
+        config = defaultCube.configuration()
                               .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                               .build();
@@ -125,9 +159,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
     @Test
     public void shouldValidateValidConfigurationWithSSL() {
-        Configuration config = Configuration.create()
-                                            .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
-                                            .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
+        Configuration config = defaultCube.configuration()
                                             .with(MySqlConnectorConfig.USER, "snapper")
                                             .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                                             .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.REQUIRED)
@@ -182,9 +214,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
     @Test
     public void shouldValidateAcceptableConfiguration() {
-        Configuration config = Configuration.create()
-                                            .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
-                                            .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
+        Configuration config = defaultCube.configuration()
                                             .with(MySqlConnectorConfig.USER, "snapper")
                                             .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                                             .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
@@ -194,6 +224,12 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                                             .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
                                             .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                                             .build();
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
         MySqlConnector connector = new MySqlConnector();
         Config result = connector.validate(config.asMap());
 
@@ -233,19 +269,16 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
     @Test
     public void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
-        String masterPort = System.getProperty("database.port");
-        String replicaPort = System.getProperty("database.replica.port");
-        boolean replicaIsMaster = masterPort.equals(replicaPort);
-        if (!replicaIsMaster) {
-            // Give time for the replica to catch up to the master ...
-            Thread.sleep(5000L);
+        DatabaseCube cube = defaultCube;
+        boolean replicaIsMaster = TestConfiguration.isGTIDEnabled();
+        if (replicaIsMaster) {
+            cube = replicaCube;
+            startGTIDSCubes();
         }
 
         // Use the DB configuration to define the connector's configuration to use the "replica"
         // which may be the same as the "master" ...
-        config = Configuration.create()
-                              .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname"))
-                              .with(MySqlConnectorConfig.PORT, System.getProperty("database.replica.port"))
+        config = cube.configuration()
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                               .with(MySqlConnectorConfig.SERVER_ID, 18765)
@@ -267,6 +300,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
         SourceRecords records = consumeRecordsByTopic(5 + 9 + 9 + 4 + 11 + 1); // 11 schema change records + 1 SET statement
+        records.recordsForTopic("myServer").stream().forEach(System.out::println);
         assertThat(records.recordsForTopic("myServer").size()).isEqualTo(12);
         assertThat(records.recordsForTopic("myServer.connector_test.products").size()).isEqualTo(9);
         assertThat(records.recordsForTopic("myServer.connector_test.products_on_hand").size()).isEqualTo(9);
@@ -303,7 +337,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         stopConnector();
 
         // Make some changes to data only while the connector is stopped ...
-        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
+        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test", cube.getHost(), cube.getPort());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.query("SELECT * FROM products", rs -> {
                     if (Testing.Print.isEnabled()) connection.print(rs);
@@ -335,7 +369,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Simple INSERT
         // ---------------------------------------------------------------------------------------------------------------
-        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
+        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test", cube.getHost(), cube.getPort());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("INSERT INTO products VALUES (1001,'roy','old robot',1234.56);");
                 connection.query("SELECT * FROM products", rs -> {
@@ -356,7 +390,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Changing the primary key of a row should result in 3 events: INSERT, DELETE, and TOMBSTONE
         // ---------------------------------------------------------------------------------------------------------------
-        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
+        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test",  cube.getHost(), cube.getPort());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("UPDATE products SET id=2001, description='really old robot' WHERE id=1001");
                 connection.query("SELECT * FROM products", rs -> {
@@ -377,7 +411,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Simple UPDATE (with no schema changes)
         // ---------------------------------------------------------------------------------------------------------------
-        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
+        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test",  cube.getHost(), cube.getPort());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("UPDATE products SET weight=1345.67 WHERE id=2001");
                 connection.query("SELECT * FROM products", rs -> {
@@ -402,7 +436,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Change our schema with a fully-qualified name; we should still see this event
         // ---------------------------------------------------------------------------------------------------------------
         // Add a column with default to the 'products' table and explicitly update one record ...
-        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
+        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test",  cube.getHost(), cube.getPort());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("ALTER TABLE connector_test.products ADD COLUMN volume FLOAT, ADD COLUMN alias VARCHAR(30) NULL AFTER description");
                 connection.execute("UPDATE products SET volume=13.5 WHERE id=2001");
@@ -427,7 +461,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // DBZ-55 Change our schema using a different database and a fully-qualified name; we should still see this event
         // ---------------------------------------------------------------------------------------------------------------
         // Connect to a different database, but use the fully qualified name for a table in our database ...
-        try (MySQLConnection db = MySQLConnection.forTestDatabase("emptydb");) {
+        try (MySQLConnection db = MySQLConnection.forTestDatabase("emptydb",  cube.getHost(), cube.getPort());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("CREATE TABLE connector_test.stores ("
                         + " id INT(11) PRIMARY KEY NOT NULL AUTO_INCREMENT,"
@@ -450,7 +484,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
 
         // Do something completely different with a table we've not modified yet and then read that event.
-        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
+        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test", cube.getHost(), cube.getPort());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("UPDATE products_on_hand SET quantity=20 WHERE product_id=109");
                 connection.query("SELECT * FROM products_on_hand", rs -> {
@@ -492,7 +526,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         BinlogPosition positionBeforeInserts = new BinlogPosition();
         BinlogPosition positionAfterInserts = new BinlogPosition();
         BinlogPosition positionAfterUpdate = new BinlogPosition();
-        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test");) {
+        try (MySQLConnection db = MySQLConnection.forTestDatabase("connector_test", cube.getHost(), cube.getPort());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.query("SHOW MASTER STATUS", positionBeforeInserts::readFromDatabase);
                 connection.execute("INSERT INTO products(id,name,description,weight,volume,alias) VALUES "
@@ -602,6 +636,10 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Start the connector again, and we should see the next two
         Testing.print("*** Done with simple insert");
 
+        if (replicaIsMaster) {
+            cube = replicaCube;
+            stopGTIDSCubes();
+        }
     }
 
     protected static class BinlogPosition {
@@ -647,9 +685,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         Testing.Files.delete(DB_HISTORY_PATH);
 
         // Use the DB configuration to define the connector's configuration ...
-        config = Configuration.create()
-                              .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
-                              .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
+        config = defaultCube.configuration()
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                               .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
@@ -696,9 +732,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         Testing.Files.delete(DB_HISTORY_PATH);
 
         // Use the DB configuration to define the connector's configuration ...
-        config = Configuration.create()
-                              .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
-                              .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
+        config = defaultCube.configuration()
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                               .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
@@ -755,5 +789,4 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             print(record);
         });
     }
-
 }

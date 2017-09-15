@@ -5,18 +5,42 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.sql.SQLException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.jboss.arquillian.junit.Arquillian;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import static org.fest.assertions.Assertions.assertThat;
+import io.debezium.config.Configuration;
+import io.debezium.connector.cube.DatabaseCube;
+import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
+import io.debezium.connector.mysql.cube.DefaultDatabase;
+import io.debezium.relational.history.FileDatabaseHistory;
 
 /**
  * @author Randall Hauch
  *
  */
+@RunWith(Arquillian.class)
 public class MySqlTaskContextIT extends MySqlTaskContextTest {
+
+    @DefaultDatabase
+    private DatabaseCube cube;
+
+    protected Configuration.Builder simpleConfig() {
+        return cube.configuration()
+                            .with(MySqlConnectorConfig.USER, username)
+                            .with(MySqlConnectorConfig.PASSWORD, password)
+                            .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
+                            .with(MySqlConnectorConfig.SERVER_ID, serverId)
+                            .with(MySqlConnectorConfig.SERVER_NAME, serverName)
+                            .with(MySqlConnectorConfig.DATABASE_WHITELIST, databaseName)
+                            .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+                            .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH);
+    }
 
     @Test
     public void shouldCreateTaskFromConfiguration() throws Exception {
@@ -33,8 +57,8 @@ public class MySqlTaskContextIT extends MySqlTaskContextTest {
         assertThat(context.source()).isNotNull();
         assertThat(context.topicSelector()).isNotNull();
 
-        assertThat(context.hostname()).isEqualTo(hostname);
-        assertThat(context.port()).isEqualTo(port);
+        assertThat(context.hostname()).isEqualTo(cube.getHost());
+        assertThat(context.port()).isEqualTo(cube.getPort());
         assertThat(context.username()).isEqualTo(username);
         assertThat(context.password()).isEqualTo(password);
         assertThat(context.serverId()).isEqualTo(serverId);

@@ -80,6 +80,17 @@
             <artifactId>kafka-connect-avro-converter</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Used for unit testing with Docker -->
+        <dependency>
+            <groupId>org.arquillian.cube</groupId>
+            <artifactId>arquillian-cube-docker</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.arquillian.core</groupId>
+            <artifactId>arquillian-core-api</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <build>
         <resources>
