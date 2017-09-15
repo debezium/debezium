@@ -20,10 +20,14 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
+import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.ShouldFailWhen;
 import io.debezium.relational.TableId;
 
 /**
@@ -36,6 +40,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     private RecordsStreamProducer recordsProducer;
     private TestConsumer consumer;
+
+    @Rule
+    public TestRule conditionalFail = new ConditionalFail();
 
     @Before
     public void before() throws Exception {
@@ -102,6 +109,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @ShouldFailWhen(DecoderDifferences.AreQuotedIdentifiersUnsupported.class)
     public void shouldReceiveChangesForInsertsWithQuotedNames() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
@@ -348,6 +356,6 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     private void executeAndWait(String statements) throws Exception {
         TestHelper.execute(statements);
-        consumer.await(2, TimeUnit.SECONDS);
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
     }
 }

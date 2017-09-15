@@ -23,8 +23,8 @@ import java.util.function.Consumer;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.connector.postgresql.DecoderDifferences;
 import io.debezium.connector.postgresql.TestHelper;
-import io.debezium.connector.postgresql.proto.PgProto;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 
@@ -77,7 +77,7 @@ public class ReplicationConnectionIT {
         // create a replication connection which should be dropped once it's closed
         try (ReplicationConnection connection = TestHelper.createForReplication("test", true)) {
             ReplicationStream stream = connection.startStreaming(); // this creates the replication slot
-            int expectedMessages = insertLargeTestData();
+            int expectedMessages = DecoderDifferences.updatesWithoutPK(insertLargeTestData(), 1);
             expectedMessagesFromStream(stream, expectedMessages);
         }
     }
@@ -237,18 +237,18 @@ public class ReplicationConnectionIT {
         return expectedMessageCount;
     }
     
-    private List<PgProto.RowMessage> expectedMessagesFromStream(ReplicationStream stream,
+    private List<ReplicationMessage> expectedMessagesFromStream(ReplicationStream stream,
                                                                 int expectedMessages) throws Exception {
-        List<PgProto.RowMessage> actualMessages = new ArrayList<>();
+        List<ReplicationMessage> actualMessages = new ArrayList<>();
         
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         CountDownLatch latch = new CountDownLatch(expectedMessages);
         Metronome metronome = Metronome.sleeper(50, TimeUnit.MILLISECONDS, Clock.SYSTEM);
         Future<?> result = executorService.submit(() -> {
-            PgProto.RowMessage message;
+            List<ReplicationMessage> message;
             while (!Thread.interrupted()) {
                 while ((message = stream.readPending()) != null) {
-                    actualMessages.add(message);
+                    actualMessages.addAll(message);
                     latch.countDown();
                 }
                 metronome.pause();

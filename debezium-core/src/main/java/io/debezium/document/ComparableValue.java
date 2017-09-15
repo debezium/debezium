@@ -210,6 +210,7 @@ final class ComparableValue implements Value {
     public Double asDouble() {
         if (value instanceof Double) return (Double) value;
         if (value instanceof Float) return new Double(((Float) value).doubleValue());
+        if (value instanceof Number) return ((Number)value).doubleValue();
         return null;
     }
 

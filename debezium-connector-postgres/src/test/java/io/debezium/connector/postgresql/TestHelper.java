@@ -17,6 +17,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.postgresql.PostgresConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -44,10 +45,21 @@ public final class TestHelper {
      * @throws SQLException if there is a problem obtaining a replication connection
      */
     public static ReplicationConnection createForReplication(String slotName, boolean dropOnClose) throws SQLException {
+        String pluginName = decoderPluginName();
         return ReplicationConnection.builder(defaultJdbcConfig())
+                                    .withPlugin(pluginName)
+                                    .replicationMessageDecoder(PostgresConnectorConfig.createDefaultMessageDecoder(pluginName))
                                     .withSlot(slotName)
                                     .dropSlotOnClose(dropOnClose)
                                     .build();
+    }
+
+    /**
+     * @return
+     */
+    static String decoderPluginName() {
+        final String s = System.getProperty(PostgresConnectorConfig.PLUGIN_NAME.name());
+        return (s == null || s.length() == 0) ? ReplicationConnection.Builder.PROTOBUF_PLUGIN_NAME : s;
     }
 
     /**
@@ -117,9 +129,16 @@ public final class TestHelper {
         JdbcConfiguration jdbcConfiguration = defaultJdbcConfig();
         Configuration.Builder builder = Configuration.create();
         jdbcConfiguration.forEach((field, value) -> builder.with(PostgresConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
-        return builder.with(PostgresConnectorConfig.SERVER_NAME, TEST_SERVER)
-                      .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, true)
-                      .with(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS, 100);
+        builder.with(PostgresConnectorConfig.SERVER_NAME, TEST_SERVER)
+               .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, true)
+               .with(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS, 100)
+               .with(PostgresConnectorConfig.PLUGIN_NAME, decoderPluginName())
+               .with(PostgresConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED);
+        final String testNetworkTimeout = System.getProperty("test.network.timeout");
+        if (testNetworkTimeout != null && testNetworkTimeout.length() != 0) {
+            builder.with(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS, Integer.parseInt(testNetworkTimeout));
+        }
+        return builder;
     }
 
     protected static void executeDDL(String ddlFile) throws Exception {
@@ -135,5 +154,13 @@ public final class TestHelper {
 
     protected static String topicName(String suffix) {
         return TestHelper.TEST_SERVER + "." + suffix;
+    }
+
+    protected static boolean shouldSSLConnectionFail() {
+        return Boolean.parseBoolean(System.getProperty("test.ssl.failonconnect", "true"));
+    }
+
+    protected static int waitTimeForRecords() {
+        return Integer.parseInt(System.getProperty("test.records.waittime", "2"));
     }
 }

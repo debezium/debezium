@@ -122,7 +122,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertConfigurationErrors(validatedConfig, PostgresConnectorConfig.DATABASE_NAME, 1);
 
         // validate the non required fields
-        validateField(validatedConfig, PostgresConnectorConfig.PLUGIN_NAME, ReplicationConnection.Builder.DEFAULT_PLUGIN_NAME);
+        validateField(validatedConfig, PostgresConnectorConfig.PLUGIN_NAME, ReplicationConnection.Builder.PROTOBUF_PLUGIN_NAME);
+        validateField(validatedConfig, PostgresConnectorConfig.PLUGIN_DECODING_CLASS, null);
         validateField(validatedConfig, PostgresConnectorConfig.SLOT_NAME, ReplicationConnection.Builder.DEFAULT_SLOT_NAME);
         validateField(validatedConfig, PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
         validateField(validatedConfig, PostgresConnectorConfig.PORT, PostgresConnectorConfig.DEFAULT_PORT);
@@ -157,14 +158,22 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         Configuration config = TestHelper.defaultConfig().with(PostgresConnectorConfig.SSL_MODE,
                                                                PostgresConnectorConfig.SecureConnectionMode.REQUIRED).build();
         start(PostgresConnector.class, config, (success, msg, error) -> {
-            // we expect the task to fail at startup when we're printing the server info
-            assertThat(success).isFalse();
-            assertThat(error).isInstanceOf(ConnectException.class);
-            Throwable cause = error.getCause();
-            assertThat(cause).isInstanceOf(SQLException.class);
-            assertThat(PSQLState.CONNECTION_REJECTED).isEqualTo(new PSQLState(((SQLException)cause).getSQLState()));
+            if (TestHelper.shouldSSLConnectionFail()) {
+                // we expect the task to fail at startup when we're printing the server info
+                assertThat(success).isFalse();
+                assertThat(error).isInstanceOf(ConnectException.class);
+                Throwable cause = error.getCause();
+                assertThat(cause).isInstanceOf(SQLException.class);
+                assertThat(PSQLState.CONNECTION_REJECTED).isEqualTo(new PSQLState(((SQLException)cause).getSQLState()));
+            }
         });
-        assertConnectorNotRunning();
+        if (TestHelper.shouldSSLConnectionFail()) {
+            assertConnectorNotRunning();
+        } else {
+            assertConnectorIsRunning();
+            Thread.sleep(10000);
+            stopConnector();
+        }
     }
 
     @Test
