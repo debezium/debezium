@@ -77,7 +77,10 @@ public class KafkaDatabaseHistoryTest {
     public void shouldStartWithEmptyTopicAndStoreDataAndRecoverAllState() throws Exception {
         // Create the empty topic ...
         kafka.createTopic(topicName, 1, 1);
+        testHistoryTopicContent();
+    }
 
+    private void testHistoryTopicContent() {
         // Start up the history ...
         Configuration config = Configuration.create()
                                             .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
@@ -198,29 +201,13 @@ public class KafkaDatabaseHistoryTest {
         final ProducerRecord<String, String> invalidJSONRecord2 = new ProducerRecord<>(topicName, PARTITION_NO, null,
                 "\"source\":{\"server\":\"my-server\"},\"position\":{\"filename\":\"my-txn-file.log\",\"position\":39},\"databaseName\":\"db1\",\"ddl\":\"DROP TABLE foo;\"}");
 
-        // Start up the history ...
-        Configuration config = Configuration.create()
-                                            .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
-                                            .with(KafkaDatabaseHistory.TOPIC, topicName)
-                                            .with(DatabaseHistory.NAME, "my-db-history")
-                                            .with(KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, 1000)
-                                            .with(KafkaDatabaseHistory.consumerConfigPropertyName(
-                                                  ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG),
-                                                  100)
-                                            .with(KafkaDatabaseHistory.consumerConfigPropertyName(
-                                                  ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG),
-                                                  50000)
-                                            .build();
-        history.configure(config, null);
-        history.start();
-
-        final Configuration interuderConfig = Configuration.create()
+        final Configuration intruderConfig = Configuration.create()
                 .withDefault(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.brokerList())
                 .withDefault(ProducerConfig.CLIENT_ID_CONFIG, "intruder")
                 .withDefault(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
                 .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
                 .build();
-        try (final KafkaProducer<String, String> producer = new KafkaProducer<>(interuderConfig.asProperties())) {
+        try (final KafkaProducer<String, String> producer = new KafkaProducer<>(intruderConfig.asProperties())) {
             producer.send(nullRecord).get();
             producer.send(emptyRecord).get();
             producer.send(noSourceRecord).get();
@@ -229,10 +216,6 @@ public class KafkaDatabaseHistoryTest {
             producer.send(invalidJSONRecord2).get();
         }
 
-        DdlParser recoveryParser = new DdlParserSql2003();
-
-        Tables recoveredTables = new Tables();
-        setLogPosition(1000);
-        history.recover(source, position, recoveredTables, recoveryParser);
+        testHistoryTopicContent();
     }
 }
