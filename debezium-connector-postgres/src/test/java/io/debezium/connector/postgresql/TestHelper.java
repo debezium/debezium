@@ -44,10 +44,20 @@ public final class TestHelper {
      * @throws SQLException if there is a problem obtaining a replication connection
      */
     public static ReplicationConnection createForReplication(String slotName, boolean dropOnClose) throws SQLException {
+        String pluginName = decoderPluginName();
         return ReplicationConnection.builder(defaultJdbcConfig())
+                                    .withPlugin(pluginName)
+                                    .replicationMessageDecoder(PostgresConnectorConfig.createDefaultMessageDecoder(pluginName))
                                     .withSlot(slotName)
                                     .dropSlotOnClose(dropOnClose)
                                     .build();
+    }
+
+    /**
+     * @return
+     */
+    private static String decoderPluginName() {
+        return System.getProperty(PostgresConnectorConfig.PLUGIN_NAME.name(), ReplicationConnection.Builder.PROTOBUF_PLUGIN_NAME);
     }
 
     /**
@@ -119,7 +129,8 @@ public final class TestHelper {
         jdbcConfiguration.forEach((field, value) -> builder.with(PostgresConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
         return builder.with(PostgresConnectorConfig.SERVER_NAME, TEST_SERVER)
                       .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, true)
-                      .with(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS, 100);
+                      .with(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS, 100)
+                      .with(PostgresConnectorConfig.PLUGIN_NAME, decoderPluginName());
     }
 
     protected static void executeDDL(String ddlFile) throws Exception {

@@ -9,7 +9,6 @@ package io.debezium.connector.postgresql.connection;
 import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -20,10 +19,8 @@ import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.protobuf.InvalidProtocolBufferException;
-
 import io.debezium.config.Configuration;
-import io.debezium.connector.postgresql.proto.PgProto;
+import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcConnectionException;
 
@@ -41,6 +38,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private final boolean dropSlotOnClose;
     private final Configuration originalConfig;
     private final Integer statusUpdateIntervalMillis;
+    private final MessageDecoder messageDecoder;
 
     private long defaultStartingPos;
 
@@ -58,7 +56,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                          String slotName,
                                          String pluginName,
                                          boolean dropSlotOnClose,
-                                         Integer statusUpdateIntervalMillis) {
+                                         Integer statusUpdateIntervalMillis,
+                                         MessageDecoder messageDecoder) {
         super(config, PostgresConnection.FACTORY, null ,PostgresReplicationConnection::defaultSettings);
 
         this.originalConfig = config;
@@ -66,6 +65,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.pluginName = pluginName;
         this.dropSlotOnClose = dropSlotOnClose;
         this.statusUpdateIntervalMillis = statusUpdateIntervalMillis;
+        this.messageDecoder = messageDecoder;
 
         try {
             initReplicationSlot();
@@ -167,7 +167,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             private volatile LogSequenceNumber lastReceivedLSN;
 
             @Override
-            public PgProto.RowMessage read() throws SQLException {
+            public ReplicationMessage read() throws SQLException {
                 ByteBuffer read = stream.read();
                 // the lsn we started from is inclusive, so we need to avoid sending back the same message twice
                 if (lsnLong >= stream.getLastReceiveLSN().asLong()) {
@@ -177,7 +177,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             }
 
             @Override
-            public PgProto.RowMessage readPending() throws SQLException {
+            public ReplicationMessage readPending() throws SQLException {
                 ByteBuffer read = stream.readPending();
                 // the lsn we started from is inclusive, so we need to avoid sending back the same message twice
                 if (read == null ||  lsnLong >= stream.getLastReceiveLSN().asLong()) {
@@ -186,19 +186,10 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 return deserializeMessage(read);
             }
 
-            private PgProto.RowMessage deserializeMessage(ByteBuffer buffer) {
-                try {
-                    if (!buffer.hasArray()) {
-                        throw new IllegalStateException(
-                                "Invalid buffer received from PG server during streaming replication");
-                    }
-                    byte[] source = buffer.array();
-                    byte[] content = Arrays.copyOfRange(source, buffer.arrayOffset(), source.length);
-                    lastReceivedLSN = stream.getLastReceiveLSN();
-                    return PgProto.RowMessage.parseFrom(content);
-                } catch (InvalidProtocolBufferException e) {
-                    throw new RuntimeException(e);
-                }
+            private ReplicationMessage deserializeMessage(ByteBuffer buffer) {
+                final ReplicationMessage msg = messageDecoder.deserializeMessage(buffer);
+                lastReceivedLSN = stream.getLastReceiveLSN();
+                return msg;
             }
 
             @Override
@@ -251,7 +242,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
         private Configuration config;
         private String slotName = DEFAULT_SLOT_NAME;
-        private String pluginName = DEFAULT_PLUGIN_NAME;
+        private String pluginName = PROTOBUF_PLUGIN_NAME;
+        private MessageDecoder messageDecoder = PostgresConnectorConfig.createDefaultMessageDecoder(PROTOBUF_PLUGIN_NAME);
         private boolean dropSlotOnClose = DEFAULT_DROP_SLOT_ON_CLOSE;
         private Integer statusUpdateIntervalMillis;
 
@@ -287,8 +279,16 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
 
         @Override
+        public Builder replicationMessageDecoder(final MessageDecoder messageDecoder) {
+            this.messageDecoder = messageDecoder;
+            return this;
+        }
+
+        @Override
         public ReplicationConnection build() {
-            return new PostgresReplicationConnection(config, slotName, pluginName, dropSlotOnClose, statusUpdateIntervalMillis);
+            assert pluginName != null : "Decoding plugin name is not set";
+            assert messageDecoder != null : "Replication message decoder is not provided";
+            return new PostgresReplicationConnection(config, slotName, pluginName, dropSlotOnClose, statusUpdateIntervalMillis, messageDecoder);
         }
     }
 }
