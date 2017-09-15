@@ -30,13 +30,11 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.DecimalHandlingMode;
-import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.TemporalPrecisionMode;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Testing;
 
@@ -46,6 +44,9 @@ import io.debezium.util.Testing;
 public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-regression.txt").toAbsolutePath();
+    private final UniqueDatabase DATABASE = new UniqueDatabase("regression", "regression_test")
+            .withDbHistoryPath(DB_HISTORY_PATH);
+
     private static final TemporalAdjuster ADJUSTER = MySqlValueConverters::adjustTemporal;
 
     private Configuration config;
@@ -53,6 +54,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
     @Before
     public void beforeEach() {
         stopConnector();
+        DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Testing.Files.delete(DB_HISTORY_PATH);
     }
@@ -70,21 +72,10 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
     @FixFor("DBZ-61")
     public void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
-        config = Configuration.create()
-                              .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
-                              .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
-                              .with(MySqlConnectorConfig.USER, "snapper")
-                              .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
-                              .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                              .with(MySqlConnectorConfig.SERVER_NAME, "regression")
-                              .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                              .with(MySqlConnectorConfig.DATABASE_WHITELIST, "regression_test")
-                              .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                              .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                              .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.toString())
-                              .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                              .build();
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
+                .build();
         // Start the connector ...
         start(MySqlConnector.class, config);
 
@@ -98,22 +89,22 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords);
         stopConnector();
         assertThat(records).isNotNull();
-        assertThat(records.recordsForTopic("regression").size()).isEqualTo(numCreateDatabase + numCreateTables);
-        assertThat(records.recordsForTopic("regression.regression_test.t1464075356413_testtable6").size()).isEqualTo(1);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz84_integer_types_table").size()).isEqualTo(1);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz_85_fractest").size()).isEqualTo(1);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz_100_enumsettest").size()).isEqualTo(3);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz_102_charsettest").size()).isEqualTo(1);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz_114_zerovaluetest").size()).isEqualTo(2);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz_123_bitvaluetest").size()).isEqualTo(2);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz_104_customers").size()).isEqualTo(4);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz_147_decimalvalues").size()).isEqualTo(1);
+        assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(numCreateDatabase + numCreateTables);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("t1464075356413_testtable6")).size()).isEqualTo(1);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz84_integer_types_table")).size()).isEqualTo(1);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_85_fractest")).size()).isEqualTo(1);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_100_enumsettest")).size()).isEqualTo(3);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_102_charsettest")).size()).isEqualTo(1);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_114_zerovaluetest")).size()).isEqualTo(2);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_123_bitvaluetest")).size()).isEqualTo(2);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_104_customers")).size()).isEqualTo(4);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_147_decimalvalues")).size()).isEqualTo(1);
         assertThat(records.topics().size()).isEqualTo(1 + numCreateTables);
         assertThat(records.databaseNames().size()).isEqualTo(1);
-        assertThat(records.ddlRecordsForDatabase("regression_test").size()).isEqualTo(numCreateDatabase + numCreateTables);
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(numCreateDatabase + numCreateTables);
         assertThat(records.ddlRecordsForDatabase("connector_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
-        records.ddlRecordsForDatabase("regression_test").forEach(this::print);
+        records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).forEach(this::print);
 
         // Check that all records are valid, can be serialized and deserialized ...
         records.forEach(this::validate);
@@ -277,21 +268,11 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
     @FixFor("DBZ-61")
     public void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshotAndConnectTimesTypes() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
-        config = Configuration.create()
-                              .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
-                              .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
-                              .with(MySqlConnectorConfig.USER, "snapper")
-                              .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
-                              .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                              .with(MySqlConnectorConfig.SERVER_NAME, "regression")
-                              .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                              .with(MySqlConnectorConfig.DATABASE_WHITELIST, "regression_test")
-                              .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                               .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                               .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
                               .with(MySqlConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.CONNECT)
-                              .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                               .build();
         // Start the connector ...
         start(MySqlConnector.class, config);
@@ -306,22 +287,22 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords);
         stopConnector();
         assertThat(records).isNotNull();
-        assertThat(records.recordsForTopic("regression").size()).isEqualTo(numCreateDatabase + numCreateTables);
-        assertThat(records.recordsForTopic("regression.regression_test.t1464075356413_testtable6").size()).isEqualTo(1);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz84_integer_types_table").size()).isEqualTo(1);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz_85_fractest").size()).isEqualTo(1);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz_100_enumsettest").size()).isEqualTo(3);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz_102_charsettest").size()).isEqualTo(1);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz_114_zerovaluetest").size()).isEqualTo(2);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz_123_bitvaluetest").size()).isEqualTo(2);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz_104_customers").size()).isEqualTo(4);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz_147_decimalvalues").size()).isEqualTo(1);
+        assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(numCreateDatabase + numCreateTables);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("t1464075356413_testtable6")).size()).isEqualTo(1);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz84_integer_types_table")).size()).isEqualTo(1);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_85_fractest")).size()).isEqualTo(1);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_100_enumsettest")).size()).isEqualTo(3);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_102_charsettest")).size()).isEqualTo(1);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_114_zerovaluetest")).size()).isEqualTo(2);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_123_bitvaluetest")).size()).isEqualTo(2);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_104_customers")).size()).isEqualTo(4);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_147_decimalvalues")).size()).isEqualTo(1);
         assertThat(records.topics().size()).isEqualTo(1 + numCreateTables);
         assertThat(records.databaseNames().size()).isEqualTo(1);
-        assertThat(records.ddlRecordsForDatabase("regression_test").size()).isEqualTo(numCreateDatabase + numCreateTables);
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(numCreateDatabase + numCreateTables);
         assertThat(records.ddlRecordsForDatabase("connector_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
-        records.ddlRecordsForDatabase("regression_test").forEach(this::print);
+        records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).forEach(this::print);
 
         // Check that all records are valid, can be serialized and deserialized ...
         // records.forEach(this::validate); // Can't run this with 0.10.0.1; see KAFKA-4183
@@ -485,19 +466,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
     @Test
     public void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
-        config = Configuration.create()
-                              .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
-                              .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
-                              .with(MySqlConnectorConfig.USER, "snapper")
-                              .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
-                              .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                              .with(MySqlConnectorConfig.SERVER_NAME, "regression")
-                              .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                              .with(MySqlConnectorConfig.DATABASE_WHITELIST, "regression_test")
-                              .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                              .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                              .build();
+        config = DATABASE.defaultConfig().build();
         // Start the connector ...
         start(MySqlConnector.class, config);
 
@@ -512,25 +481,25 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         SourceRecords records = consumeRecordsByTopic(numDdlRecords + numSetVariables + numDataRecords);
         stopConnector();
         assertThat(records).isNotNull();
-        assertThat(records.recordsForTopic("regression").size()).isEqualTo(numDdlRecords + numSetVariables);
-        assertThat(records.recordsForTopic("regression.regression_test.t1464075356413_testtable6").size()).isEqualTo(1);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz84_integer_types_table").size()).isEqualTo(1);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz_85_fractest").size()).isEqualTo(1);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz_100_enumsettest").size()).isEqualTo(3);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz_102_charsettest").size()).isEqualTo(1);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz_114_zerovaluetest").size()).isEqualTo(2);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz_123_bitvaluetest").size()).isEqualTo(2);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz_104_customers").size()).isEqualTo(4);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz_147_decimalvalues").size()).isEqualTo(1);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz_195_numvalues").size()).isEqualTo(3);
+        assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(numDdlRecords + numSetVariables);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("t1464075356413_testtable6")).size()).isEqualTo(1);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz84_integer_types_table")).size()).isEqualTo(1);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_85_fractest")).size()).isEqualTo(1);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_100_enumsettest")).size()).isEqualTo(3);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_102_charsettest")).size()).isEqualTo(1);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_114_zerovaluetest")).size()).isEqualTo(2);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_123_bitvaluetest")).size()).isEqualTo(2);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_104_customers")).size()).isEqualTo(4);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_147_decimalvalues")).size()).isEqualTo(1);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_195_numvalues")).size()).isEqualTo(3);
         assertThat(records.topics().size()).isEqualTo(numTables + 1);
         assertThat(records.databaseNames().size()).isEqualTo(2);
-        assertThat(records.databaseNames()).containsOnly("regression_test", "");
-        assertThat(records.ddlRecordsForDatabase("regression_test").size()).isEqualTo(numDdlRecords);
+        assertThat(records.databaseNames()).containsOnly(DATABASE.getDatabaseName(), "");
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(numDdlRecords);
         assertThat(records.ddlRecordsForDatabase("connector_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("").size()).isEqualTo(1); // SET statement
-        records.ddlRecordsForDatabase("regression_test").forEach(this::print);
+        records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).forEach(this::print);
 
         // Check that all records are valid, can be serialized and deserialized ...
         records.forEach(this::validate);
@@ -668,22 +637,11 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
     @FixFor("DBZ-147")
     public void shouldConsumeAllEventsFromDecimalTableInDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
-        config = Configuration.create()
-                              .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname"))
-                              .with(MySqlConnectorConfig.PORT, System.getProperty("database.port"))
-                              .with(MySqlConnectorConfig.USER, "snapper")
-                              .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
-                              .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                              .with(MySqlConnectorConfig.SERVER_NAME, "regression")
-                              .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                              .with(MySqlConnectorConfig.DATABASE_WHITELIST, "regression_test")
-                              .with(MySqlConnectorConfig.TABLE_WHITELIST, "regression_test.dbz_147_decimalvalues")
-                              .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+        config = DATABASE.defaultConfig()
+                              .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("dbz_147_decimalvalues"))
                               .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                               .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.toString())
                               .with(MySqlConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
-                              .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                               .build();
         // Start the connector ...
         start(MySqlConnector.class, config);
@@ -698,8 +656,8 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords);
         stopConnector();
         assertThat(records).isNotNull();
-        assertThat(records.recordsForTopic("regression").size()).isEqualTo(numCreateDatabase + numCreateTables);
-        assertThat(records.recordsForTopic("regression.regression_test.dbz_147_decimalvalues").size()).isEqualTo(1);
+        assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(numCreateDatabase + numCreateTables);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_147_decimalvalues")).size()).isEqualTo(1);
         assertThat(records.topics().size()).isEqualTo(2); // rather than 1+numCreateTables
 
         // Check that all records are valid, can be serialized and deserialized ...

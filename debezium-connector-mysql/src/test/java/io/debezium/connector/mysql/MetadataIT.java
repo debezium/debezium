@@ -26,7 +26,10 @@ public class MetadataIT implements Testing {
      */
     @Test
     public void shouldLoadMetadataViaJdbc() throws SQLException {
-        try (MySQLConnection conn = MySQLConnection.forTestDatabase("readbinlog_test");) {
+        final UniqueDatabase DATABASE = new UniqueDatabase("readbinlog_it", "readbinlog_test");
+        DATABASE.createAndInitialize();
+
+        try (MySQLConnection conn = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             conn.connect();
             // Set up the table as one transaction and wait to see the events ...
             conn.execute("DROP TABLE IF EXISTS person",
@@ -42,10 +45,10 @@ public class MetadataIT implements Testing {
                                  + ")");
             conn.execute("SELECT * FROM person");
             Tables tables = new Tables();
-            conn.readSchema(tables, "readbinlog_test", null, null, null, true);
+            conn.readSchema(tables, DATABASE.getDatabaseName(), null, null, null, true);
             //System.out.println(tables);
             assertThat(tables.size()).isEqualTo(1);
-            Table person = tables.forTable("readbinlog_test", null, "person");
+            Table person = tables.forTable(DATABASE.getDatabaseName(), null, "person");
             assertThat(person).isNotNull();
             assertThat(person.filterColumns(col->col.isAutoIncremented())).isEmpty();
             assertThat(person.primaryKeyColumnNames()).containsOnly("name");
@@ -104,10 +107,10 @@ public class MetadataIT implements Testing {
                                  + ")");
             conn.execute("SELECT * FROM product");
             tables = new Tables();
-            conn.readSchema(tables, "readbinlog_test", null, null, null, true);
+            conn.readSchema(tables, DATABASE.getDatabaseName(), null, null, null, true);
             // System.out.println(tables);
             assertThat(tables.size()).isEqualTo(2);
-            Table product = tables.forTable("readbinlog_test", null, "product");
+            Table product = tables.forTable(DATABASE.getDatabaseName(), null, "product");
             assertThat(product).isNotNull();
             assertThat(product.filterColumnNames(Column::isAutoIncremented)).containsOnly("id");
             assertThat(product.primaryKeyColumnNames()).containsOnly("id");
@@ -148,10 +151,10 @@ public class MetadataIT implements Testing {
                                  + ")");
             conn.execute("SELECT * FROM purchased");
             tables = new Tables();
-            conn.readSchema(tables, "readbinlog_test", null, null, null, true);
+            conn.readSchema(tables, DATABASE.getDatabaseName(), null, null, null, true);
             //System.out.println(tables);
             assertThat(tables.size()).isEqualTo(3);
-            Table purchased = tables.forTable("readbinlog_test", null, "purchased");
+            Table purchased = tables.forTable(DATABASE.getDatabaseName(), null, "purchased");
             assertThat(purchased).isNotNull();
             assertThat(person.filterColumns(col->col.isAutoIncremented())).isEmpty();
             assertThat(purchased.primaryKeyColumnNames()).containsOnly("productId","purchaser");

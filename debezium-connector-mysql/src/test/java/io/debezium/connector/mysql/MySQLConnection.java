@@ -27,6 +27,7 @@ public class MySQLConnection extends JdbcConnection {
         return new MySQLConnection(JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
                                                     .withDatabase(databaseName)
                                                     .with("useSSL", false)
+                                                    .with("characterEncoding", "utf8")
                                                     .build());
     }
 
