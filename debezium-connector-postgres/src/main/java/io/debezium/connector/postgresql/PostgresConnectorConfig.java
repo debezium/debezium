@@ -16,12 +16,16 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.common.config.ConfigValue;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
+import io.debezium.connector.postgresql.connection.MessageDecoder;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.connector.postgresql.connection.pgproto.PgProtoMessageDecoder;
+import io.debezium.connector.postgresql.connection.wal2json.WAL2JSONMessageDecoder;
 import io.debezium.jdbc.JdbcConfiguration;
 
 /**
@@ -350,8 +354,16 @@ public class PostgresConnectorConfig {
                                               .withType(Type.STRING)
                                               .withWidth(Width.MEDIUM)
                                               .withImportance(Importance.MEDIUM)
-                                              .withDefault(ReplicationConnection.Builder.DEFAULT_PLUGIN_NAME)
-                                              .withDescription("The name of the Postgres logical decoding plugin installed on the server. Defaults to 'decoderbufs'");
+                                              .withDefault(ReplicationConnection.Builder.PROTOBUF_PLUGIN_NAME)
+                                              .withDescription("The name of the Postgres logical decoding plugin installed on the server. Defaults to '"+ ReplicationConnection.Builder.PROTOBUF_PLUGIN_NAME + "'");
+
+    public static final Field PLUGIN_DECODING_CLASS = Field.create("plugin.decoding.class")
+                                                        .withDisplayName("Plugin decoder class")
+                                                        .withType(Type.CLASS)
+                                                        .withWidth(Width.MEDIUM)
+                                                        .withImportance(Importance.LOW)
+                                                        .withDescription("The Java class used to decode events coming from logical decoder plugin." + 
+                                                                         "If not provided then default class associated with requested plugin is ued.");
 
     public static final Field SLOT_NAME = Field.create("slot.name")
                                               .withDisplayName("Slot")
@@ -648,7 +660,7 @@ public class PostgresConnectorConfig {
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
-    public static Field.Set ALL_FIELDS = Field.setOf(PLUGIN_NAME, SLOT_NAME, DROP_SLOT_ON_STOP,
+    public static Field.Set ALL_FIELDS = Field.setOf(PLUGIN_NAME, PLUGIN_DECODING_CLASS, SLOT_NAME, DROP_SLOT_ON_STOP,
                                                      DATABASE_NAME, USER, PASSWORD, HOSTNAME, PORT, SERVER_NAME,
                                                      TOPIC_SELECTION_STRATEGY, MAX_BATCH_SIZE,
                                                      MAX_QUEUE_SIZE, POLL_INTERVAL_MS, SCHEMA_WHITELIST,
@@ -694,6 +706,27 @@ public class PostgresConnectorConfig {
 
     protected String pluginName() {
         return config.getString(PLUGIN_NAME);
+    }
+
+    protected MessageDecoder pluginDecoder() {
+        final MessageDecoder decoder = config.getInstance(PLUGIN_DECODING_CLASS, MessageDecoder.class);
+        return decoder != null ? decoder : createDefaultMessageDecoder(pluginName());
+    }
+
+    /**
+     * Provides default replication message decoder instance for a given plugin name
+     *
+     * @param pluginName
+     * @return an instance of decoder
+     */
+    public static MessageDecoder createDefaultMessageDecoder(final String pluginName) {
+        switch (pluginName) {
+            case ReplicationConnection.Builder.PROTOBUF_PLUGIN_NAME:
+                return new PgProtoMessageDecoder();
+            case ReplicationConnection.Builder.WAL2JSON_PLUGIN_NAME:
+                return new WAL2JSONMessageDecoder();
+        }
+        throw new ConnectException("Undefined default plugin decoding class for decoder plugin '" + pluginName + "'");
     }
 
     protected String slotName() {
@@ -792,7 +825,7 @@ public class PostgresConnectorConfig {
 
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
-        Field.group(config, "Postgres", SLOT_NAME, PLUGIN_NAME, SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
+        Field.group(config, "Postgres", SLOT_NAME, PLUGIN_NAME, PLUGIN_DECODING_CLASS, SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
                     USER, PASSWORD, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD, SSL_ROOT_CERT, SSL_CLIENT_KEY,
                     DROP_SLOT_ON_STOP, SSL_SOCKET_FACTORY, STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE);
         Field.group(config, "Events", SCHEMA_WHITELIST, SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,

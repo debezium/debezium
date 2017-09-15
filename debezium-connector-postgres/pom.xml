@@ -196,6 +196,7 @@
                         <database.user>${postgres.user}</database.user>
                         <database.password>${postgres.password}</database.password>
                         <database.dbname>${postgres.db.name}</database.dbname>
+                        <plugin.name>${decoder.plugin.name}</plugin.name>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
                 </configuration>
@@ -278,6 +279,12 @@
             </activation>
             <properties>
                 <docker.skip>true</docker.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>wal2json-decoder</id>
+            <properties>
+                <decoder.plugin.name>wal2json</decoder.plugin.name>
             </properties>
         </profile>
     </profiles>

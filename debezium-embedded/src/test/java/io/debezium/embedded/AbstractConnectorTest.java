@@ -371,6 +371,7 @@ public abstract class AbstractConnectorTest implements Testing {
                     print(record);
                 }
             } else {
+                // TODO Add support for cases when records are returned in more than one batch
                 return recordsConsumed;
             }
         }

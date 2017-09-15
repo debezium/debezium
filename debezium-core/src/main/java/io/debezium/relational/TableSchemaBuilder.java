@@ -233,6 +233,10 @@ public class TableSchemaBuilder {
                             Column col = columns.get(i);
                             LOGGER.error("Failed to properly convert data value for '{}.{}' of type {} for row {}:",
                                          tableId, col.name(), col.typeName(), row, e);
+                        } catch (final Exception e) {
+                            Column col = columns.get(i);
+                            LOGGER.error("Failed to properly convert data value for '{}.{}' of type {} for row {}:",
+                                         tableId, col.name(), col.typeName(), row, e);
                         }
                     } else if (traceMessage.getAndSet(false)) {
                         Column col = columns.get(i);

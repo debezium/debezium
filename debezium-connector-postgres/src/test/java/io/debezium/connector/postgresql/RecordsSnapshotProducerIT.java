@@ -64,7 +64,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         //then start the producer and validate all records are there
         snapshotProducer.start(consumer);
-        consumer.await(2, TimeUnit.SECONDS);
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
 
         Map<String, List<SchemaAndValueField>> expectedValuesByTableName = super.schemaAndValuesByTableName();
         consumer.process(record -> assertReadRecord(record, expectedValuesByTableName));
@@ -93,13 +93,13 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         snapshotProducer.start(consumer);
 
         // first make sure we get the initial records from both schemas...
-        consumer.await(2, TimeUnit.SECONDS);
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
         consumer.clear();
 
         // then insert some more data and check that we get it back
         TestHelper.execute(insertStmt);
         consumer.expects(2);
-        consumer.await(2, TimeUnit.SECONDS);
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
 
         SourceRecord first = consumer.remove();
         VerifyRecord.isValidInsert(first, PK_FIELD, 2);
@@ -120,7 +120,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(expectedRecordsCount, "s1", "s2");
         snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER), true);
         snapshotProducer.start(consumer);
-        consumer.await(2, TimeUnit.SECONDS);
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
 
         AtomicInteger counter = new AtomicInteger(0);
         consumer.process(record -> {
@@ -135,7 +135,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         TestHelper.execute(insertStmt);
         consumer.expects(2);
 
-        consumer.await(2, TimeUnit.SECONDS);
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
         first = consumer.remove();
         VerifyRecord.isValidInsert(first, PK_FIELD, 4);
         assertRecordOffset(first, false, false);

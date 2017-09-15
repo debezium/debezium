@@ -75,6 +75,7 @@ public class PostgresTaskContext {
         return ReplicationConnection.builder(config.jdbcConfig())
                                     .withSlot(config.slotName())
                                     .withPlugin(config.pluginName())
+                                    .replicationMessageDecoder(config.pluginDecoder())
                                     .dropSlotOnClose(config.dropSlotOnStop())
                                     .statusUpdateIntervalMillis(config.statusUpdateIntervalMillis())
                                     .build();

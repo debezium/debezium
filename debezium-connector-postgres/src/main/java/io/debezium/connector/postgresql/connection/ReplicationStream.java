@@ -7,9 +7,9 @@
 package io.debezium.connector.postgresql.connection;
 
 import java.sql.SQLException;
-import org.postgresql.replication.PGReplicationStream;
+import java.util.List;
 
-import io.debezium.connector.postgresql.proto.PgProto;
+import org.postgresql.replication.PGReplicationStream;
 
 /**
  * A stream from which messages sent by a logical decoding plugin can be consumed over a replication connection.
@@ -27,7 +27,7 @@ public interface ReplicationStream extends AutoCloseable {
      * @throws SQLException if anything unexpected fails
      * @see PGReplicationStream#read() 
      */
-    PgProto.RowMessage read() throws SQLException;
+    List<ReplicationMessage> read() throws SQLException;
     
     /**
      * Attempts to read a Protobuf message from a replication connection, returning that message if it's available or returning
@@ -40,7 +40,7 @@ public interface ReplicationStream extends AutoCloseable {
      * @throws SQLException if anything unexpected fails
      * @see PGReplicationStream#readPending() 
      */
-    PgProto.RowMessage readPending() throws SQLException;
+    List<ReplicationMessage> readPending() throws SQLException;
     
     /**
      * Sends a message to the server informing it about that latest position in the WAL that this stream has read via

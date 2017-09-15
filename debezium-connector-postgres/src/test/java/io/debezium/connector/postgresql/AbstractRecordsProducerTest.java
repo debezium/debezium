@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -293,11 +294,17 @@ public abstract class AbstractRecordsProducerTest {
         private final Object schema;
         private final Object value;
         private final String fieldName;
+        private Supplier<Boolean> assertValueOnlyIf = null;
 
         public SchemaAndValueField(String fieldName, Object schema, Object value) {
             this.schema = schema;
             this.value = value;
             this.fieldName = fieldName;
+        }
+
+        public SchemaAndValueField assertValueOnlyIf(final Supplier<Boolean> predicate) {
+            assertValueOnlyIf = predicate;
+            return this;
         }
 
         protected void assertFor(Struct content) {
@@ -306,6 +313,10 @@ public abstract class AbstractRecordsProducerTest {
         }
 
         private void assertValue(Struct content) {
+            if (assertValueOnlyIf != null && !assertValueOnlyIf.get()) {
+                return;
+            }
+
             if (value == null) {
                 assertNull(fieldName + " is present in the actual content", content.get(fieldName));
                 return;
