@@ -4,6 +4,7 @@ import io.debezium.function.BufferedBlockingConsumer;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.relational.ddl.DdlChanges.DatabaseStatementStringConsumer;
 import io.debezium.util.Strings;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -75,7 +76,9 @@ public class SnapshotMySQLUtility {
     }
 
     /**
-     * Begin a transaction. Required before doing anything else.
+     * Begin a transaction and read the binlog position. Required before calling
+     * {@link #bufferLockedTables(SnapshotServerReader.RecordRecorder, BufferedBlockingConsumer)} or
+     * {@link #bufferLockedTables(List, SnapshotServerReader.RecordRecorder, BufferedBlockingConsumer)}.
      * @throws SQLException
      */
     public void beginTransaction() throws SQLException {
@@ -98,15 +101,8 @@ public class SnapshotMySQLUtility {
         sql.set("START TRANSACTION WITH CONSISTENT SNAPSHOT");
         mysql.execute(sql.get());
         activeTransaction = true;
-    }
 
-    /**
-     * Read table list if it hasn't been read yet.
-     */
-    public void maybeReadTableList() throws SQLException {
-        if (tableIds == null) {
-            readTableList();
-        }
+        readBinlogPosition();
     }
 
     /**
@@ -169,6 +165,10 @@ public class SnapshotMySQLUtility {
 
     }
 
+    public boolean hasReadTables(){
+        return tableIds != null;
+    }
+
     /**
      * @return the list of tableIds that have been read, or null if no tables have been read.
      */
@@ -201,6 +201,7 @@ public class SnapshotMySQLUtility {
      * Lock all the tables.
      * If possible, this will be done by acquiring the global lock.
      * If not possible, all tables will be individually locked.
+     * Individual locking will result in reading the table list, if that has not been done.
      *
      * @throws SQLException
      */
@@ -228,8 +229,6 @@ public class SnapshotMySQLUtility {
         lockAcquiredTsMs = context.clock().currentTimeInMillis();
         metrics.globalLockAcquired();
         tablesLocked = true;
-
-        readBinlogPosition();
     }
 
     /**
@@ -260,8 +259,6 @@ public class SnapshotMySQLUtility {
         metrics.globalLockAcquired();
         tablesLocked = true;
         lockedTables = new ArrayList<>(tableIds);
-
-        readBinlogPosition();
     }
 
     private void readBinlogPosition() throws SQLException {
@@ -294,6 +291,66 @@ public class SnapshotMySQLUtility {
     public void bufferLockedTables(SnapshotServerReader.RecordRecorder recorder,
                                    BufferedBlockingConsumer<SourceRecord> bufferedRecordQueue) throws SQLException {
         bufferLockedTables(tableIds, recorder, bufferedRecordQueue);
+    }
+
+    public void createDropDatabaseEvents(Collection<String> databases,
+                                         DatabaseStatementStringConsumer statementConsumer) throws SQLException {
+        MySqlSchema schema = context.dbSchema();
+        SourceInfo source = context.source();
+        for(String database : databases) {
+            schema.applyDdl(source,
+                            database,
+                            "DROP DATABASE IF EXISTS " + quote(database),
+                            statementConsumer);
+        }
+    }
+
+    public void createDropTableEvents(Collection<TableId> tables,
+                                      DatabaseStatementStringConsumer statementConsumer) throws SQLException {
+        MySqlSchema schema = context.dbSchema();
+        SourceInfo source = context.source();
+        for (TableId tableId : tables) {
+            schema.applyDdl(source,
+                            tableId.schema(),
+                            "DROP TABLE IF EXISTS " + quote(tableId),
+                            statementConsumer);
+        }
+    }
+
+    public void createCreateDatabaseEvents(Collection<String> databases,
+                                           DatabaseStatementStringConsumer statementConsumer) throws SQLException {
+        MySqlSchema schema = context.dbSchema();
+        SourceInfo source = context.source();
+        for (String database: databases) {
+            schema.applyDdl(source, database, "CREATE DATABASE " + quote(database), statementConsumer);
+        }
+    }
+
+    /**
+     * Create 'CREATE' events for the given tables.
+     * @param tables The collection of tables to create 'CREATE' events for.
+     */
+    public void createCreateTableEvents(Collection<TableId> tables,
+                                        DatabaseStatementStringConsumer statementConsumer) throws SQLException {
+        // todo I could make this a bit less repetitive by grouping the tables by database.
+        MySqlSchema schema = context.dbSchema();
+        SourceInfo source = context.source();
+        for (TableId tableId : tables) {
+            String database = tableId.catalog();
+            // put us in the correct database
+            // todo is this really needed?
+            schema.applyDdl(source, database, "USE " + quote(database), statementConsumer);
+            // create the table.
+            sql.set("SHOW CREATE TABLE " + quote(tableId));
+            mysql.query(sql.get(), rs -> {
+                if (rs.next()) {
+                    schema.applyDdl(source,
+                                    database,
+                                    rs.getString(2),
+                                    statementConsumer);
+                }
+            });
+        }
     }
 
     /**
@@ -334,7 +391,7 @@ public class SnapshotMySQLUtility {
                 // (since we started it "...with consistent snapshot"). So, since we're only doing very simple SELECT
                 // without WHERE predicates, we can release the lock now ...
                 logger.info("releasing global read lock to enable MySQL writes");
-                unLockTables();
+                unlockTables();
             }
         }
 
@@ -444,7 +501,7 @@ public class SnapshotMySQLUtility {
     /**
      * Complete the current transaction, and unlock any tables that are still locked.
      */
-    public void completeTransaction() throws SQLException {
+    public void completeTransactionAndUnlockTables() throws SQLException {
         if (interrupted.get()) {
             // We were interrupted or were stopped while reading the tables,
             // so roll back the transaction and return immediately ...
@@ -452,7 +509,7 @@ public class SnapshotMySQLUtility {
             sql.set("ROLLBACK");
             mysql.execute(sql.get());
             metrics.abortSnapshot();
-            unLockTables();
+            unlockTables();
             return;
         }
         // Otherwise, commit our transaction
@@ -461,14 +518,14 @@ public class SnapshotMySQLUtility {
         mysql.execute(sql.get());
         activeTransaction = false;
         metrics.completeSnapshot();
-        unLockTables();
+        unlockTables();
         context.source().completeSnapshot();
     }
 
     /**
      * Unlock any locked tables.
      */
-    public void unLockTables() throws SQLException {
+    public void unlockTables() throws SQLException {
         if (!tablesLocked) {
             // nothing to be done.
             return;
