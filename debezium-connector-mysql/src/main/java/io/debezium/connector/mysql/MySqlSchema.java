@@ -347,7 +347,6 @@ public class MySqlSchema {
      */
     public boolean applyDdl(SourceInfo source, String databaseName, String ddlStatements,
                             DatabaseStatementStringConsumer statementConsumer) {
-        ParsingException throwException = null;
         if (ignoredQueryStatements.contains(ddlStatements)) return false;
         try {
             this.ddlChanges.reset();
@@ -358,12 +357,9 @@ public class MySqlSchema {
                 logger.warn("Ignoring unparseable DDL statement '{}': {}", ddlStatements);
             } else {
                 logger.error("Error parsing DDL statement and updating tables: {}", ddlStatements);
-                throwException = e;
+                throw e;
             }
         } finally {
-            if (throwException != null) {
-                throw throwException;
-            }
             if (statementConsumer != null) {
 
                 // We are supposed to _also_ record the schema changes as SourceRecords, but these need to be filtered

@@ -103,7 +103,7 @@ public class MySqlSchemaTest {
     }
 
     @Test(expected = ParsingException.class)
-    public void shouldFailOnUnparseableDdlAndRecover() throws InterruptedException {
+    public void shouldFailOnUnparseableDdl() throws InterruptedException {
         mysql = build
                 .storeDatabaseHistoryInFile(TEST_FILE_PATH)
                 .serverName(SERVER_NAME)
