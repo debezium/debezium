@@ -68,6 +68,6 @@ public class VariableScaleDecimal {
      * @return the decoded value
      */
     public static BigDecimal toLogical(final Struct value) {
-        return new BigDecimal(new BigInteger((byte[])value.getBytes(VALUE_FIELD)), value.getInt16(SCALE_FIELD));
+        return new BigDecimal(new BigInteger((byte[])value.getBytes(VALUE_FIELD)), value.getInt32(SCALE_FIELD));
     }
 }

@@ -96,7 +96,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.MONEY:
                 return Decimal.builder(column.scale());
             case PgOid.NUMERIC:
-                return numericSchema(column);
+                return numericSchema(column).optional();
             case PgOid.INT2_ARRAY:
                 return SchemaBuilder.array(SchemaBuilder.OPTIONAL_INT16_SCHEMA);
             case PgOid.INT4_ARRAY:
@@ -106,7 +106,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.TEXT_ARRAY:
                 return SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
             case PgOid.NUMERIC_ARRAY:
-                return SchemaBuilder.array(numericSchema(column));
+                return SchemaBuilder.array(numericSchema(column).optional());
             case PgOid.FLOAT4_ARRAY:
                 return SchemaBuilder.array(Schema.OPTIONAL_FLOAT32_SCHEMA);
             case PgOid.FLOAT8_ARRAY:
