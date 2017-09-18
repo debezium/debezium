@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -14,8 +15,6 @@ import java.nio.file.Path;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -65,7 +64,7 @@ public class MySqlSchemaTest {
         // Testing.Print.enable();
 
         // Set up the server ...
-        source.setBinlogStartPoint("binlog-001",400);
+        source.setBinlogStartPoint("binlog-001", 400);
         mysql.applyDdl(source, "db1", "SET " + MySqlSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", this::printStatements);
         mysql.applyDdl(source, "db1", readFile("ddl/mysql-products.ddl"), this::printStatements);
 
@@ -184,7 +183,7 @@ public class MySqlSchemaTest {
         assertThat(mysql.tables().forTable(tableId)).isNull();
         assertThat(mysql.schemaFor(tableId)).isNull();
     }
-    
+
     protected void assertNoTablesExistForDatabase(String dbName) {
         assertThat(mysql.tables().tableIds().stream().filter(id->id.catalog().equals(dbName)).count()).isEqualTo(0);
     }
