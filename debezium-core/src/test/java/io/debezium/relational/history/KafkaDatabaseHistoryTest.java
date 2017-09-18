@@ -24,6 +24,7 @@ import io.debezium.kafka.KafkaCluster;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.ddl.DdlParserSql2003;
+import io.debezium.text.ParsingException;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
@@ -77,10 +78,10 @@ public class KafkaDatabaseHistoryTest {
     public void shouldStartWithEmptyTopicAndStoreDataAndRecoverAllState() throws Exception {
         // Create the empty topic ...
         kafka.createTopic(topicName, 1, 1);
-        testHistoryTopicContent();
+        testHistoryTopicContent(false);
     }
 
-    private void testHistoryTopicContent() {
+    private void testHistoryTopicContent(boolean skipUnparseableDDL) {
         // Start up the history ...
         Configuration config = Configuration.create()
                                             .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
@@ -96,6 +97,7 @@ public class KafkaDatabaseHistoryTest {
                                             .with(KafkaDatabaseHistory.consumerConfigPropertyName(
                                                   ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG),
                                                   50000)
+                                            .with(KafkaDatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, skipUnparseableDDL)
                                             .build();
         history.configure(config, null);
         history.start();
@@ -200,6 +202,8 @@ public class KafkaDatabaseHistoryTest {
                 "{\"source\":{\"server\":\"my-server\"},\"position\":{\"filename\":\"my-txn-file.log\",\"position\":39},\"databaseName\":\"db1\",\"ddl\":\"DROP TABLE foo;\"");
         final ProducerRecord<String, String> invalidJSONRecord2 = new ProducerRecord<>(topicName, PARTITION_NO, null,
                 "\"source\":{\"server\":\"my-server\"},\"position\":{\"filename\":\"my-txn-file.log\",\"position\":39},\"databaseName\":\"db1\",\"ddl\":\"DROP TABLE foo;\"}");
+        final ProducerRecord<String, String> invalidSQL = new ProducerRecord<>(topicName, PARTITION_NO, null,
+                "{\"source\":{\"server\":\"my-server\"},\"position\":{\"filename\":\"my-txn-file.log\",\"position\":39},\"databaseName\":\"db1\",\"ddl\":\"xxxDROP TABLE foo;\"}");
 
         final Configuration intruderConfig = Configuration.create()
                 .withDefault(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.brokerList())
@@ -214,8 +218,31 @@ public class KafkaDatabaseHistoryTest {
             producer.send(noPositionRecord).get();
             producer.send(invalidJSONRecord1).get();
             producer.send(invalidJSONRecord2).get();
+            producer.send(invalidSQL).get();
         }
 
-        testHistoryTopicContent();
+        testHistoryTopicContent(true);
+    }
+
+    @Test(expected = ParsingException.class)
+    public void shouldStopOnUnparseableSQL() throws Exception {
+        // Create the empty topic ...
+        kafka.createTopic(topicName, 1, 1);
+
+        // Create invalid records
+        final ProducerRecord<String, String> invalidSQL = new ProducerRecord<>(topicName, PARTITION_NO, null,
+                "{\"source\":{\"server\":\"my-server\"},\"position\":{\"filename\":\"my-txn-file.log\",\"position\":39},\"databaseName\":\"db1\",\"ddl\":\"xxxDROP TABLE foo;\"}");
+
+        final Configuration intruderConfig = Configuration.create()
+                .withDefault(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.brokerList())
+                .withDefault(ProducerConfig.CLIENT_ID_CONFIG, "intruder")
+                .withDefault(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
+                .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
+                .build();
+        try (final KafkaProducer<String, String> producer = new KafkaProducer<>(intruderConfig.asProperties())) {
+            producer.send(invalidSQL).get();
+        }
+
+        testHistoryTopicContent(false);
     }
 }

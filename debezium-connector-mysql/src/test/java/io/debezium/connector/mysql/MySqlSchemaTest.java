@@ -20,6 +20,8 @@ import static org.fest.assertions.Assertions.assertThat;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
+import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.text.ParsingException;
 import io.debezium.util.AvroValidator;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
@@ -73,6 +75,47 @@ public class MySqlSchemaTest {
         assertTableIncluded("connector_test.customers");
         assertTableIncluded("connector_test.orders");
         assertHistoryRecorded();
+    }
+
+    @Test
+    public void shouldIgnoreUnparseableDdlAndRecover() throws InterruptedException {
+        mysql = build
+                .with(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)
+                .storeDatabaseHistoryInFile(TEST_FILE_PATH)
+                .serverName(SERVER_NAME)
+                .createSchemas();
+        mysql.start();
+
+        // Testing.Print.enable();
+
+        // Set up the server ...
+        source.setBinlogStartPoint("binlog-001",400);
+        mysql.applyDdl(source, "db1", "SET " + MySqlSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", this::printStatements);
+        mysql.applyDdl(source, "db1", "xxxCREATE TABLE mytable\n" + readFile("ddl/mysql-products.ddl"), this::printStatements);
+        mysql.applyDdl(source, "db1", readFile("ddl/mysql-products.ddl"), this::printStatements);
+
+        // Check that we have tables ...
+        assertTableIncluded("connector_test.products");
+        assertTableIncluded("connector_test.products_on_hand");
+        assertTableIncluded("connector_test.customers");
+        assertTableIncluded("connector_test.orders");
+        assertHistoryRecorded();
+    }
+
+    @Test(expected = ParsingException.class)
+    public void shouldFailOnUnparseableDdl() throws InterruptedException {
+        mysql = build
+                .storeDatabaseHistoryInFile(TEST_FILE_PATH)
+                .serverName(SERVER_NAME)
+                .createSchemas();
+        mysql.start();
+
+        // Testing.Print.enable();
+
+        // Set up the server ...
+        source.setBinlogStartPoint("binlog-001",400);
+        mysql.applyDdl(source, "db1", "SET " + MySqlSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", this::printStatements);
+        mysql.applyDdl(source, "db1", "xxxCREATE TABLE mytable\n" + readFile("ddl/mysql-products.ddl"), this::printStatements);
     }
 
     @Test

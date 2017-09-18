@@ -72,6 +72,7 @@ public class MySqlSchema {
     private final String schemaPrefix;
     private final HistoryRecordComparator historyComparator;
     private Tables tables;
+    private final boolean skipUnparseableDDL;
 
     /**
      * Create a schema component given the supplied {@link MySqlConnectorConfig MySQL connector configuration}.
@@ -129,12 +130,14 @@ public class MySqlSchema {
             }
         };
         this.dbHistory.configure(dbHistoryConfig, historyComparator); // validates
+
+        this.skipUnparseableDDL = dbHistoryConfig.getBoolean(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS);
     }
-    
+
     protected HistoryRecordComparator historyComparator() {
         return this.historyComparator;
     }
-    
+
     /**
      * Start by acquiring resources needed to persist the database history
      */
@@ -350,7 +353,12 @@ public class MySqlSchema {
             this.ddlParser.setCurrentSchema(databaseName);
             this.ddlParser.parse(ddlStatements, tables);
         } catch (ParsingException e) {
-            logger.error("Error parsing DDL statement and updating tables: {}", ddlStatements, e);
+            if (skipUnparseableDDL) {
+                logger.warn("Ignoring unparseable DDL statement '{}': {}", ddlStatements);
+            } else {
+                logger.error("Error parsing DDL statement and updating tables: {}", ddlStatements);
+                throw e;
+            }
         } finally {
             if (statementConsumer != null) {
 

@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
+import io.debezium.text.ParsingException;
 
 /**
  * @author Randall Hauch
@@ -24,6 +25,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     protected Configuration config;
     private HistoryRecordComparator comparator = HistoryRecordComparator.INSTANCE;
+    private boolean skipUnparseableDDL;
 
     protected AbstractDatabaseHistory() {
     }
@@ -32,6 +34,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     public void configure(Configuration config, HistoryRecordComparator comparator) {
         this.config = config;
         this.comparator = comparator != null ? comparator : HistoryRecordComparator.INSTANCE;
+        this.skipUnparseableDDL = config.getBoolean(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS);
     }
 
     @Override
@@ -54,8 +57,17 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
                 String ddl = recovered.ddl();
                 if (ddl != null) {
                     ddlParser.setCurrentSchema(recovered.databaseName()); // may be null
-                    ddlParser.parse(ddl, schema);
-                    logger.debug("Applying: {}", ddl);
+                    try {
+                        ddlParser.parse(ddl, schema);
+                        logger.debug("Applying: {}", ddl);
+                    } catch (final ParsingException e) {
+                        if (skipUnparseableDDL) {
+                            logger.warn("Ignoring unparseable statements '{}' stored in database history: {}", ddl, e);
+                        } else {
+                            logger.error("Cannot parse DDL statements {} stored in history, exiting", ddl);
+                            throw e;
+                        }
+                    }
                 }
             } else {
                 logger.debug("Skipping: {}", recovered.ddl());

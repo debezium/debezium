@@ -709,7 +709,8 @@ public class MySqlConnectorConfig {
     protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS.with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                                                                 KafkaDatabaseHistory.TOPIC,
                                                                 KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
-                                                                KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS);
+                                                                KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS,
+                                                                DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS);
 
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
@@ -717,7 +718,8 @@ public class MySqlConnectorConfig {
                     SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD, SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER);
         Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                     KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
-                    KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, DATABASE_HISTORY);
+                    KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, DATABASE_HISTORY,
+                    DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS);
         Field.group(config, "Events", INCLUDE_SCHEMA_CHANGES, TABLES_IGNORE_BUILTIN, DATABASE_WHITELIST, TABLE_WHITELIST,
                     COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST,
                     GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS);
