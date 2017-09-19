@@ -1075,6 +1075,19 @@ public class MySqlDdlParserTest {
     }
 
     @Test
+    public void parseDecAndFixed() {
+        String ddl = "CREATE TABLE t ( c1 DEC(2) NOT NULL, c2 FIXED(0,0) NOT NULL);";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table t = tables.forTable(new TableId(null, null, "t"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("c1", "c2");
+        assertThat(t.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t, "c1", "DEC", Types.DECIMAL, 2, -1, false, false, false);
+        assertColumn(t, "c2", "FIXED", Types.DECIMAL, 0, 0, false, false, false);
+    }
+
+    @Test
     public void shouldParseStatementForDbz142() {
         parser.parse(readFile("ddl/mysql-dbz-142.ddl"), tables);
         Testing.print(tables);

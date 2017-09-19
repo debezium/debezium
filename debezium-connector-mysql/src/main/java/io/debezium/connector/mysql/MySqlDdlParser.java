@@ -90,6 +90,8 @@ public class MySqlDdlParser extends DdlParser {
         dataTypes.register(Types.DOUBLE, "DOUBLE PRECISION[(M[,D])] [UNSIGNED|SIGNED] [ZEROFILL]");
         dataTypes.register(Types.FLOAT, "FLOAT[(M[,D])] [UNSIGNED|SIGNED] [ZEROFILL]");
         dataTypes.register(Types.DECIMAL, "DECIMAL[(M[,D])] [UNSIGNED|SIGNED] [ZEROFILL]");
+        dataTypes.register(Types.DECIMAL, "DEC[(M[,D])] [UNSIGNED|SIGNED] [ZEROFILL]");
+        dataTypes.register(Types.DECIMAL, "FIXED[(M[,D])] [UNSIGNED|SIGNED] [ZEROFILL]");
         dataTypes.register(Types.NUMERIC, "NUMERIC[(M[,D])] [UNSIGNED|SIGNED] [ZEROFILL]");
         dataTypes.register(Types.BOOLEAN, "BOOLEAN");
         dataTypes.register(Types.BOOLEAN, "BOOL");
