@@ -654,6 +654,9 @@ public class MySqlConnectorConfig {
                                                                    + "'precise' (the default) uses java.math.BigDecimal to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; "
                                                                    + "'double' represents values using Java's 'double', which may not offer the precision but will be far easier to use in consumers.");
 
+    // the regex delimitor for database/table whitelist/blacklist configuration elements.
+    public static final String WHITELIST_BLACKLIST_DELIMITER = "\\s*,\\s*";
+
     /**
      * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
      * have their values truncated to be no longer than the specified number of characters.

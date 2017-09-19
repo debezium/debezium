@@ -647,15 +647,30 @@ final class SourceInfo {
      * Useful after an initial snapshot or if we don't have any filter info in the existing offset.
      */
     public void setResolvedFromConfig() {
-        String commaSplitRegex = "\\s*,\\s*";
-        String configDatabaseWhitelist = config.getString(MySqlConnectorConfig.DATABASE_WHITELIST);
-        this.resolvedDatabaseWhitelist = configDatabaseWhitelist == null? null : new HashSet<>(Arrays.asList(configDatabaseWhitelist.split(commaSplitRegex)));
-        String configDatabaseBlacklist = config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST);
-        this.resolvedDatabaseBlacklist = configDatabaseBlacklist == null? null : new HashSet<>(Arrays.asList(configDatabaseBlacklist.split(commaSplitRegex)));
-        String configTableWhitelist = config.getString(MySqlConnectorConfig.TABLE_WHITELIST);
-        this.resolvedTableWhitelist = configDatabaseBlacklist == null? null : new HashSet<>(stringsToTableIds(Arrays.asList(configTableWhitelist.split(commaSplitRegex))));
-        String configTableBlacklist = config.getString(MySqlConnectorConfig.TABLE_BLACKLIST);
-        this.resolvedTableBlacklist = configDatabaseBlacklist == null? null : new HashSet<>(stringsToTableIds(Arrays.asList(configTableBlacklist.split(commaSplitRegex))));
+        this.resolvedDatabaseWhitelist = new HashSet<>(config.getStrings(MySqlConnectorConfig.DATABASE_WHITELIST, MySqlConnectorConfig.WHITELIST_BLACKLIST_DELIMITER));
+        this.resolvedDatabaseBlacklist = new HashSet<>(config.getStrings(MySqlConnectorConfig.DATABASE_BLACKLIST, MySqlConnectorConfig.WHITELIST_BLACKLIST_DELIMITER));
+        this.resolvedTableWhitelist = new HashSet<>(config.getElements(MySqlConnectorConfig.TABLE_WHITELIST, MySqlConnectorConfig.WHITELIST_BLACKLIST_DELIMITER, TableId::parse));
+        this.resolvedTableBlacklist = new HashSet<>(config.getElements(MySqlConnectorConfig.TABLE_BLACKLIST, MySqlConnectorConfig.WHITELIST_BLACKLIST_DELIMITER, TableId::parse));
+    }
+
+    // I'm not sure if these methods are a good idea, but here they are for now.
+    // package private probably would be better than public, but with the format of the codebase, they are essentially equivalent.
+    // return copies so ours isn't modified.
+
+    public Set<String> getResolvedDatabaseWhitelist() {
+        return new HashSet<>(this.resolvedDatabaseWhitelist);
+    }
+
+    public Set<String> getResolvedDatabaseBlacklist() {
+        return new HashSet<>(this.resolvedDatabaseBlacklist);
+    }
+
+    public Set<TableId> getResolvedTableWhitelist() {
+        return new HashSet<>(this.resolvedTableWhitelist);
+    }
+
+    public Set<TableId> getResolvedTableBlacklist() {
+        return new HashSet<>(this.resolvedTableBlacklist);
     }
 
     /**

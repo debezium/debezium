@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
 
@@ -64,31 +65,19 @@ public class SnapshotServerReader extends AbstractSnapshotReader {
         try {
             metrics.startSnapshot();
 
-            snapshotMySQLUtility.beginTransaction();
-
             try {
                 // I can't help but feel like there's got to be a better way to do this.
                 if (!isRunning()) return;
 
                 snapshotMySQLUtility.lockAllTables();
+                snapshotMySQLUtility.beginTransaction();
 
-                // ------
-                // START TRANSACTION
-                // ------
-                // First, start a transaction and request that a consistent MVCC snapshot is obtained immediately.
-                // See http://dev.mysql.com/doc/refman/5.7/en/commit.html
                 if (!isRunning()) return;
-                logger.info("Step 2: start transaction with consistent snapshot");
-                sql.set("START TRANSACTION WITH CONSISTENT SNAPSHOT");
-                mysql.execute(sql.get());
 
-                // ------------------------------------
-                // READ BINLOG POSITION
-                // ------------------------------------
-                if (!isRunning()) return;
-                //logger.info("\tsnapshot continuing with database(s): {}", includedDatabaseNames);
+                if (!snapshotMySQLUtility.hasReadTables()) {
+                    snapshotMySQLUtility.readTableList();
+                }
 
-                snapshotMySQLUtility.maybeReadTableList();
                 List<TableId> tableIds = snapshotMySQLUtility.getTableIds();
                 Set<String> readableDatabaseNames = snapshotMySQLUtility.getReadableDatabaseNames();
                 Map<String, List<TableId>> tableIdsByDbName = snapshotMySQLUtility.getTableIdsByDbName();
@@ -104,44 +93,25 @@ public class SnapshotServerReader extends AbstractSnapshotReader {
                 // First, get the DROP TABLE and CREATE TABLE statement (with keys and constraint definitions) for our tables ...
                 // Generate the DDL statements that set the charset-related system variables ...
                 logger.info("Step {}: generating DROP and CREATE statements to reflect current database schemas:", 6);
+                // todo figure out what this is for/where it needs to be in snapshotmysqlutility
                 String setSystemVariablesStatement = context.setStatementFor(context.readMySqlCharsetSystemVariables(sql));
                 schema.applyDdl(source, null, setSystemVariablesStatement, this::enqueueSchemaChanges);
 
-                // Add DROP TABLE statements for all tables that we knew about AND those tables found in the databases ...
+                // Add DROP TABLE statements for all tables that we knew about AND those tables found in the databases...
                 Set<TableId> allTableIds = new HashSet<>(schema.tables().tableIds());
                 allTableIds.addAll(tableIds);
-                allTableIds.stream()
-                           .filter(id -> isRunning()) // ignore all subsequent tables if this reader is stopped
-                           .forEach(tableId -> schema.applyDdl(source, tableId.schema(),
-                                                               "DROP TABLE IF EXISTS " + quote(tableId),
-                                                               this::enqueueSchemaChanges));
+                snapshotMySQLUtility.createDropTableEvents(allTableIds, this::enqueueSchemaChanges);
 
                 // Add a DROP DATABASE statement for each database that we no longer know about ...
-                schema.tables().tableIds().stream().map(TableId::catalog)
-                      .filter(Predicates.not(readableDatabaseNames::contains))
-                      .filter(id -> isRunning()) // ignore all subsequent tables if this reader is stopped
-                      .forEach(missingDbName -> schema.applyDdl(source, missingDbName,
-                                                                "DROP DATABASE IF EXISTS " + quote(missingDbName),
-                                                                this::enqueueSchemaChanges));
+                Set<String> unreadableDatabases = schema.tables().tableIds().stream().map(TableId::catalog).filter(Predicates.not(readableDatabaseNames::contains)).collect(Collectors.toSet());
+                snapshotMySQLUtility.createDropDatabaseEvents(unreadableDatabases, this::enqueueSchemaChanges);
+                // todo I'm pretty sure this can be simplified to just droping all dbs
+                //drop and re-create databases
+                snapshotMySQLUtility.createDropDatabaseEvents(readableDatabaseNames, this::enqueueSchemaChanges);
+                snapshotMySQLUtility.createCreateDatabaseEvents(readableDatabaseNames, this::enqueueSchemaChanges);
+                //create tables
+                snapshotMySQLUtility.createCreateTableEvents(tableIds, this::enqueueSchemaChanges);
 
-                // Now process all of our tables for each database ...
-                for (Map.Entry<String, List<TableId>> entry : tableIdsByDbName.entrySet()) {
-                    if (!isRunning()) break;
-                    String dbName = entry.getKey();
-                    // First drop, create, and then use the named database ...
-                    schema.applyDdl(source, dbName, "DROP DATABASE IF EXISTS " + quote(dbName), this::enqueueSchemaChanges);
-                    schema.applyDdl(source, dbName, "CREATE DATABASE " + quote(dbName), this::enqueueSchemaChanges);
-                    schema.applyDdl(source, dbName, "USE " + quote(dbName), this::enqueueSchemaChanges);
-                    for (TableId tableId : entry.getValue()) {
-                        if (!isRunning()) break;
-                        sql.set("SHOW CREATE TABLE " + quote(tableId));
-                        mysql.query(sql.get(), rs -> {
-                            if (rs.next()) {
-                                schema.applyDdl(source, dbName, rs.getString(2), this::enqueueSchemaChanges);
-                            }
-                        });
-                    }
-                }
                 context.makeRecord().regenerate();
 
                 if (!isRunning()) return;
@@ -153,7 +123,7 @@ public class SnapshotServerReader extends AbstractSnapshotReader {
                     logger.info("Step {}: encountered only schema based snapshot, skipping data snapshot", 7);
                 }
             } finally {
-                snapshotMySQLUtility.completeTransaction();
+                snapshotMySQLUtility.completeTransactionAndUnlockTables();
             }
 
             if (!isRunning()) {

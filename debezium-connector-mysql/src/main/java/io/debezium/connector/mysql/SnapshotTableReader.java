@@ -50,7 +50,6 @@ public class SnapshotTableReader extends AbstractSnapshotReader {
 
         try {
             metrics.startSnapshot();
-            snapshotMySQLUtility.beginTransaction();
             try {
                 boolean globalLock = false;
                 if (minimalBlocking) {
@@ -62,30 +61,30 @@ public class SnapshotTableReader extends AbstractSnapshotReader {
                         // can't globally lock, instead just lock the single table
                         logger.info("Can't globally lock, locking single table instead.");
                     }
+
                 }
 
                 if (!globalLock) {
                     snapshotMySQLUtility.lockTables(Collections.singleton(tableId));
                 }
 
-                snapshotMySQLUtility.maybeReadTableList();
+                snapshotMySQLUtility.beginTransaction();
+
+                if (globalLock) {
+                    // read the table list.
+                    // if we locked an individual table we have already read the table list
+                    snapshotMySQLUtility.readTableList();
+                }
+
                 List<TableId> allTableIds = snapshotMySQLUtility.getTableIds();
 
                 if (!allTableIds.contains(tableId)) {
-                    // sanity check:
-                    // we should only be here if we encountered an event for this table in the binlog, so it should exist.
+                    // sanity check
                     throw new IllegalArgumentException("Table cannot be snapshotted because it does not exist");
                 }
 
-                String dbName = tableId.catalog(); // is this right?
-
-                // skip dealing with database aspects: those can be handled on startup.
-                sql.set("SHOW CREATE TABLE " + quote(tableId));
-                mysql.query(sql.get(), rs -> {
-                    if (rs.next()) {
-                        schema.applyDdl(source, dbName, rs.getString(2), this::enqueueSchemaChanges);
-                    }
-                });
+                // todo delete table before hand? delete/create database?
+                snapshotMySQLUtility.createCreateTableEvents(Collections.singleton(tableId), this::enqueueSchemaChanges);
 
                 context.makeRecord().regenerate();
 
@@ -97,7 +96,7 @@ public class SnapshotTableReader extends AbstractSnapshotReader {
                     logger.info("Encountered only schema based snapshot, skipping data snapshot for table: " + tableId.toString());
                 }
             } finally {
-                snapshotMySQLUtility.completeTransaction();
+                snapshotMySQLUtility.completeTransactionAndUnlockTables();
             }
 
             // todo verify success?
