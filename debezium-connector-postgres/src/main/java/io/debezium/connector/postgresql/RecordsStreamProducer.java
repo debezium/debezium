@@ -191,6 +191,10 @@ public class RecordsStreamProducer extends RecordsProducer {
 
                 throw rethrown;
             }
+
+            if (closingException != null) {
+                throw new ConnectException(closingException);
+            }
         }
     }
 
