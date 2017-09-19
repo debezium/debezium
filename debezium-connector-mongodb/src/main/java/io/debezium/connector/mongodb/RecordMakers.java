@@ -11,6 +11,7 @@ import java.util.function.Function;
 
 import com.mongodb.DBCollection;
 import com.mongodb.util.JSONSerializers;
+import com.mongodb.util.ObjectSerializer;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -36,6 +37,7 @@ import io.debezium.util.AvroValidator;
 @ThreadSafe
 public class RecordMakers {
 
+    private static final ObjectSerializer jsonSerializer = JSONSerializers.getStrict();
     private static final Map<String, Operation> operationLiterals = new HashMap<>();
     static {
         operationLiterals.put("i", Operation.CREATE);
@@ -204,13 +206,13 @@ public class RecordMakers {
         }
 
         protected String idObjToJson(Object idObj) {
-            if(idObj == null) {
+            if (idObj == null) {
                 return null;
             }
-            if(!(idObj instanceof Document)) {
-                return JSONSerializers.getStrict().serialize(idObj);
+            if (!(idObj instanceof Document)) {
+                return jsonSerializer.serialize(idObj);
             }
-            return JSONSerializers.getStrict().serialize(
+            return jsonSerializer.serialize(
                     ((Document)idObj).get(DBCollection.ID_FIELD_NAME)
             );
         }
