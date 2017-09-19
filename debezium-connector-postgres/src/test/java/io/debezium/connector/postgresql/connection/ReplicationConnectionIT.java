@@ -24,7 +24,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.connector.postgresql.TestHelper;
-import io.debezium.connector.postgresql.proto.PgProto;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 
@@ -237,15 +236,15 @@ public class ReplicationConnectionIT {
         return expectedMessageCount;
     }
     
-    private List<PgProto.RowMessage> expectedMessagesFromStream(ReplicationStream stream,
+    private List<ReplicationMessage> expectedMessagesFromStream(ReplicationStream stream,
                                                                 int expectedMessages) throws Exception {
-        List<PgProto.RowMessage> actualMessages = new ArrayList<>();
+        List<ReplicationMessage> actualMessages = new ArrayList<>();
         
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         CountDownLatch latch = new CountDownLatch(expectedMessages);
         Metronome metronome = Metronome.sleeper(50, TimeUnit.MILLISECONDS, Clock.SYSTEM);
         Future<?> result = executorService.submit(() -> {
-            PgProto.RowMessage message;
+            ReplicationMessage message;
             while (!Thread.interrupted()) {
                 while ((message = stream.readPending()) != null) {
                     actualMessages.add(message);

@@ -24,14 +24,14 @@ public final class PgOid extends Oid {
     /**
      * A list of PG types not known by the JDBC driver atm.
      */
-    protected static final int JSONB_JDBC_OID = 1111;
+    public static final int JSONB_JDBC_OID = 1111;
 
     /**
      * Internal PG types as returned by the plugin
      */
-    protected static final int JSONB_OID = 3802;
+    public static final int JSONB_OID = 3802;
 
-    protected static final int TSTZRANGE_OID = 3910;
+    public static final int TSTZRANGE_OID = 3910;
 
     private PgOid() {
     }
