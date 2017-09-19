@@ -1103,6 +1103,19 @@ public class MySqlDdlParserTest {
         assertColumn(t2, "c2", "NCHAR", Types.NCHAR, 10, "utf8", true);
     }
 
+    @Test
+    public void parseDdlForDecAndFixed() {
+        String ddl = "CREATE TABLE t ( c1 DEC(2) NOT NULL, c2 FIXED(1,0) NOT NULL);";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table t = tables.forTable(new TableId(null, null, "t"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("c1", "c2");
+        assertThat(t.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t, "c1", "DEC", Types.DECIMAL, 2, -1, false, false, false);
+        assertColumn(t, "c2", "FIXED", Types.DECIMAL, 1, 0, false, false, false);
+    }
+
     protected void assertParseEnumAndSetOptions(String typeExpression, String optionString) {
         List<String> options = MySqlDdlParser.parseSetAndEnumOptions(typeExpression);
         String commaSeperatedOptions = Strings.join(",", options);
