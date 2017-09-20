@@ -24,14 +24,13 @@ import io.debezium.config.Field;
  * <code>before</code> and <code>after change</code>. Sink connectors usually are not able to work
  * with a complex structure so a user use this SMT to extract <code>after</code> value and send it down
  * unwrapped in <code>Envelope</code>.
+ * <p>
  * The functionality is similar to <code>ExtractField</code> SMT but has a special semantics for handling
- * delete events.
- *
- * When delete event is emitted by database then Debezium emits two messages - delete message and tombstone
- * message that serves as a signal to Kafka compaction process.
- *
- * The SMT by default drops tombstone message created by Debezium and converts delete message into a tombstone
- * message that can be dropped too if required.
+ * delete events; when delete event is emitted by database then Debezium emits two messages: a delete
+ * message and a tombstone message that serves as a signal to Kafka compaction process.
+ * <p>
+ * The SMT by default drops the tombstone message created by Debezium and converts the delete message into
+ * a tombstone message that can be dropped, too, if required.
  *
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author Jiri Pechanec
@@ -48,7 +47,7 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
             .withDefault(true)
             .withDescription("Debezium by default generates a tombstone record to enable Kafka compaction after "
                     + "a delete record was generated. This record is usually filtered out to avoid duplicates "
-                    + "as a delete record is converted to a tombstone record too");
+                    + "as a delete record is converted to a tombstone record, too");
 
     private static final Field DROP_DELETES = Field.create("drop.deletes")
             .withDisplayName("Drop outgoing tombstones")
@@ -56,12 +55,12 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.MEDIUM)
             .withDefault(true)
-            .withDescription("Drop delete recorrds converted to tombstones records if a processiong connector "
+            .withDescription("Drop delete records converted to tombstones records if a processing connector "
                     + "cannot process them or a compaction is undesirable.");
 
     private boolean dropTombstones;
     private boolean dropDeletes;
-    private ExtractField<R> delegate = new ExtractField.Value<R>();
+    private final ExtractField<R> delegate = new ExtractField.Value<R>();
 
     @Override
     public void configure(final Map<String, ?> configs) {
