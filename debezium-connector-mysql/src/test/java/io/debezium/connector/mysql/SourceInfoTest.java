@@ -52,40 +52,38 @@ public class SourceInfoTest {
     public void offsetsShouldContainFilterInfo() {
         // test whitelists
         Configuration config = Configuration.create()
-                                            .with("database.whitelist", "foo,bar,baz")
-                                            .with("table.whitelist", "foo.bar.baz, qux.fred.alice")
+                                            .with("database.whitelist", "bar,foo,baz")
+                                            .with("table.whitelist", "foo.bar.baz,qux.fred.alice")
                                             .build();
 
         source = new SourceInfo(config);
+        // we need to resolve from the config to get the data into the offset.
+        source.setResolvedFromConfig();
 
         assertTrue((Boolean) source.offset().get("filter_info"));
 
         assertThat(source.offset().containsKey("database_whitelist"));
-        assertEquals("foo,bar,baz", source.offset().get("database_whitelist"));
+        assertEquals("bar,foo,baz", source.offset().get("database_whitelist"));
 
         assertThat(source.offset().containsKey("table_whitelist"));
-        assertEquals("foo.bar.baz, qux.fred.alice", source.offset().get("table_whitelist"));
+        assertEquals("foo.bar.baz,qux.fred.alice", source.offset().get("table_whitelist"));
 
         // test blacklists
         config = Configuration.create()
-          .with("database.blacklist", "foo,bar,baz")
-          .with("table.blacklist", "foo.bar.baz, qux.fred.alice")
+          .with("database.blacklist", "bar,foo,baz")
+          .with("table.blacklist", "foo.bar.baz,qux.fred.alice")
           .build();
 
         source = new SourceInfo(config);
+        source.setResolvedFromConfig();
 
         assertTrue((Boolean) source.offset().get("filter_info"));
 
         assertThat(source.offset().containsKey("database_blacklist"));
-        assertEquals("foo,bar,baz", source.offset().get("database_blacklist"));
+        assertEquals("bar,foo,baz", source.offset().get("database_blacklist"));
 
         assertThat(source.offset().containsKey("table_blacklist"));
-        assertEquals("foo.bar.baz, qux.fred.alice", source.offset().get("table_blacklist"));
-    }
-
-    @Test
-    public void offsetsShouldContainBlacklistFilterInfo() {
-
+        assertEquals("foo.bar.baz,qux.fred.alice", source.offset().get("table_blacklist"));
     }
 
     @Test

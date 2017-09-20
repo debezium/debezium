@@ -8,6 +8,7 @@ package io.debezium.connector.mysql;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -647,10 +648,14 @@ final class SourceInfo {
      * Useful after an initial snapshot or if we don't have any filter info in the existing offset.
      */
     public void setResolvedFromConfig() {
-        this.resolvedDatabaseWhitelist = new HashSet<>(config.getStrings(MySqlConnectorConfig.DATABASE_WHITELIST, MySqlConnectorConfig.WHITELIST_BLACKLIST_DELIMITER));
-        this.resolvedDatabaseBlacklist = new HashSet<>(config.getStrings(MySqlConnectorConfig.DATABASE_BLACKLIST, MySqlConnectorConfig.WHITELIST_BLACKLIST_DELIMITER));
-        this.resolvedTableWhitelist = new HashSet<>(config.getElements(MySqlConnectorConfig.TABLE_WHITELIST, MySqlConnectorConfig.WHITELIST_BLACKLIST_DELIMITER, TableId::parse));
-        this.resolvedTableBlacklist = new HashSet<>(config.getElements(MySqlConnectorConfig.TABLE_BLACKLIST, MySqlConnectorConfig.WHITELIST_BLACKLIST_DELIMITER, TableId::parse));
+        List<String> configDatabaseWhitelist = config.getStrings(MySqlConnectorConfig.DATABASE_WHITELIST, MySqlConnectorConfig.WHITELIST_BLACKLIST_DELIMITER);
+        this.resolvedDatabaseWhitelist = configDatabaseWhitelist == null ? Collections.emptySet() : new HashSet<>(configDatabaseWhitelist);
+        List<String> configDatabaseBlacklist = config.getStrings(MySqlConnectorConfig.DATABASE_BLACKLIST, MySqlConnectorConfig.WHITELIST_BLACKLIST_DELIMITER);
+        this.resolvedDatabaseBlacklist = configDatabaseBlacklist == null ? Collections.emptySet() : new HashSet<>(configDatabaseBlacklist);
+        List<TableId> configTableWhitelist = config.getElements(MySqlConnectorConfig.TABLE_WHITELIST, MySqlConnectorConfig.WHITELIST_BLACKLIST_DELIMITER, TableId::parse);
+        this.resolvedTableWhitelist = configTableWhitelist == null ? Collections.emptySet() : new HashSet<>(configTableWhitelist);
+        List<TableId> configTableBlackList = config.getElements(MySqlConnectorConfig.TABLE_BLACKLIST, MySqlConnectorConfig.WHITELIST_BLACKLIST_DELIMITER, TableId::parse);
+        this.resolvedTableBlacklist = configTableBlackList == null ? Collections.emptySet() : new HashSet<>(configTableBlackList);
     }
 
     // I'm not sure if these methods are a good idea, but here they are for now.

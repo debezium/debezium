@@ -1092,8 +1092,9 @@ public interface Configuration {
      * @return the parsed list of elements.
      */
     default <T> List<T> getElements(String key, String delimiterRegex, Function<String, T> parsingFunction) {
-        String value = getString(key);
-        return Arrays.stream(value.split(delimiterRegex)).map(parsingFunction).collect(Collectors.toList());
+        List<String> stringValues = getStrings(key, delimiterRegex);
+        if (stringValues == null) return null;
+        return stringValues.stream().map(parsingFunction).collect(Collectors.toList());
     }
 
     /**
