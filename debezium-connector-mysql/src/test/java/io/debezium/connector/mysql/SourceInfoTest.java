@@ -35,6 +35,7 @@ public class SourceInfoTest {
     private static final String GTID_SET = "gtid-set"; // can technically be any string
     private static final String SERVER_NAME = "my-server"; // can technically be any string
 
+    private Configuration config;
     private SourceInfo source;
     private boolean inTxn = false;
     private long positionOfBeginEvent = 0L;
@@ -42,7 +43,8 @@ public class SourceInfoTest {
 
     @Before
     public void beforeEach() {
-        source = new SourceInfo(null);
+        config = Configuration.empty();
+        source = new SourceInfo(config);
         inTxn = false;
         positionOfBeginEvent = 0L;
         eventNumberInTxn = 0;
@@ -51,10 +53,10 @@ public class SourceInfoTest {
     @Test
     public void offsetsShouldContainFilterInfo() {
         // test whitelists
-        Configuration config = Configuration.create()
-                                            .with("database.whitelist", "bar,foo,baz")
-                                            .with("table.whitelist", "foo.bar.baz,qux.fred.alice")
-                                            .build();
+        config = Configuration.create()
+                              .with("database.whitelist", "bar,foo,baz")
+                              .with("table.whitelist", "foo.bar.baz,qux.fred.alice")
+                              .build();
 
         source = new SourceInfo(config);
         // we need to resolve from the config to get the data into the offset.
@@ -462,7 +464,7 @@ public class SourceInfoTest {
     }
 
     protected SourceInfo sourceWith(Map<String, String> offset) {
-        source = new SourceInfo(null);
+        source = new SourceInfo(config);
         source.setOffset(offset);
         source.setServerName(SERVER_NAME);
         return source;
