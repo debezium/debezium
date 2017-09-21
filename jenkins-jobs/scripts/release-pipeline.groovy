@@ -117,7 +117,7 @@ def closeJiraIssues() {
         'jql': "project=$JIRA_PROJECT AND fixVersion=$JIRA_VERSION AND status='Resolved'",
         'fields': 'key'
     ]).issues.collect { it.self }
-    
+
     resolvedIssues.each { issue -> jiraUpdate("${issue}/transitions", JIRA_CLOSE_ISSUE) }
 }
 
@@ -169,7 +169,7 @@ node('Slave') {
     }
 
     stage ('Check changelog') {
-        if (!new URL('https://raw.githubusercontent.com/debezium/debezium/$DEBEZIUM_BRANCH/CHANGELOG.md').text.contains(RELEASE_VERSION) ||
+        if (!new URL("https://raw.githubusercontent.com/debezium/debezium/$DEBEZIUM_BRANCH/CHANGELOG.md").text.contains(RELEASE_VERSION) ||
             !new URL('https://raw.githubusercontent.com/debezium/debezium.github.io/develop/docs/releases.asciidoc').text.contains(RELEASE_VERSION)
         ) {
             error 'Changelog was not modified to include release information'
@@ -252,9 +252,9 @@ node('Slave') {
             sleep 10
             docker run -it -d --name kafka -p 9092:9092 --link zookeeper:zookeeper debezium/kafka:$IMAGE_TAG
             sleep 10
-            docker run -it -d --name connect -p 8083:8083 -e GROUP_ID=1 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets --link zookeeper:zookeeper --link kafka:kafka --link mysql:mysql debezium/connect:0.5
+            docker run -it -d --name connect -p 8083:8083 -e GROUP_ID=1 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets --link zookeeper:zookeeper --link kafka:kafka --link mysql:mysql debezium/connect:$IMAGE_TAG
             sleep 30
-            
+
             curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d '
             {
                 "name": "inventory-connector",
@@ -277,7 +277,7 @@ node('Slave') {
             sleep 10
         """
         timeout (time: 2, unit: java.util.concurrent.TimeUnit.MINUTES) {
-            def watcherlog = sh(script: 'docker run --name watcher --rm --link zookeeper:zookeeper debezium/kafka:0.5 watch-topic -a -k dbserver1.inventory.customers --max-messages 2 2>&1', returnStdout: true).trim()
+            def watcherlog = sh(script: 'docker run --name watcher --rm --link zookeeper:zookeeper debezium/kafka:$IMAGE_TAG watch-topic -a -k dbserver1.inventory.customers --max-messages 2 2>&1', returnStdout: true).trim()
             echo watcherlog
             sh 'docker rm -f connect zookeeper kafka mysql'
             if (!watcherlog.contains('Processed a total of 2 messages')) {
@@ -298,9 +298,15 @@ node('Slave') {
     }
 
     stage ('Push to Central') {
-//      TODO: Publish staging repo
+        echo '================================================================================='
+        echo '|                                                                               |'
+        echo '|                                                                               |'
+        echo '|          Log in into the OSS Central and release the staging repo"            |'
+        echo '|                                                                               |'
+        echo '|                                                                               |'
+        echo '================================================================================='
     }
-    
+
     stage ('Wait for Central sync') {
         timeout (time: 2, unit: java.util.concurrent.TimeUnit.HOURS) {
             while (true) {
