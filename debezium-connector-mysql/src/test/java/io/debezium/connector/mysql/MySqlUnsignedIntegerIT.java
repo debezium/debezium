@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.sql.SQLException;
 
+import io.debezium.doc.FixFor;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -58,6 +59,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
+                .with(MySqlConnectorConfig.BIGINT_UNSIGNED_HANDLING_MODE, MySqlConnectorConfig.BigIntUnsignedHandlingMode.PRECISE)
                 .build();
 
         // Start the connector ...
@@ -108,7 +110,42 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
             } else if (record.topic().endsWith("dbz_228_mediumint_unsigned")) {
                 assertMediumUnsigned(value);
             } else if (record.topic().endsWith("dbz_228_bigint_unsigned")) {
-                assertBigintUnsigned(value);
+                assertBigintUnsignedPrecise(value);
+            }
+        });
+    }
+
+    @Test
+    @FixFor("DBZ-363")
+    public void shouldConsumeAllEventsFromBigIntTableInDatabaseUsingBinlogAndNoSnapshotUsingLong() throws SQLException, InterruptedException {
+        // Use the DB configuration to define the connector's configuration ...
+        config = DATABASE.defaultConfig()
+                         .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER.toString())
+                         .with(MySqlConnectorConfig.BIGINT_UNSIGNED_HANDLING_MODE, MySqlConnectorConfig.BigIntUnsignedHandlingMode.LONG)
+                         .build();
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        Testing.Debug.enable();
+        int numCreateDatabase = 1;
+        int numCreateTables = 5;
+        int numDataRecords = numCreateTables * 3; //Total data records
+        SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords);
+        stopConnector();
+        assertThat(records).isNotNull();
+        assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(numCreateDatabase + numCreateTables);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_228_bigint_unsigned")).size()).isEqualTo(3);
+        assertThat(records.topics().size()).isEqualTo(1 + numCreateTables);
+
+        // Check that all records are valid, can be serialized and deserialized ...
+        records.forEach(this::validate);
+        records.forEach(record -> {
+            Struct value = (Struct) record.value();
+            if (record.topic().endsWith("dbz_228_bigint_unsigned")) {
+                assertBigintUnsignedLong(value);
             }
         });
     }
@@ -168,7 +205,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
             } else if (record.topic().endsWith("dbz_228_mediumint_unsigned")) {
                 assertMediumUnsigned(value);
             } else if (record.topic().endsWith("dbz_228_bigint_unsigned")) {
-                assertBigintUnsigned(value);
+                assertBigintUnsignedPrecise(value);
             }
         });
     }
@@ -316,7 +353,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         }
     }
 
-    private void assertBigintUnsigned(Struct value) {
+    private void assertBigintUnsignedPrecise(Struct value) {
         Struct after = value.getStruct(Envelope.FieldName.AFTER);
         Integer i = after.getInt32("id");
         assertThat(i).isNotNull();
@@ -347,4 +384,37 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
             assertThat(after.getInt64("c3")).isEqualTo(-9223372036854775808L);
         }
     }
+
+    private void assertBigintUnsignedLong(Struct value) {
+        Struct after = value.getStruct(Envelope.FieldName.AFTER);
+        Integer i = after.getInt32("id");
+        assertThat(i).isNotNull();
+        //Validate the schema first, we are expecting int-64 since we have forced Long mode for BIGINT UNSIGNED
+        assertThat(after.schema().field("c1").schema()).isEqualTo(Schema.INT64_SCHEMA);
+        assertThat(after.schema().field("c2").schema()).isEqualTo(Schema.INT64_SCHEMA);
+
+        //Validate the schema first, we are expecting int-64 since we are dealing with signed-bigint.
+        //So Signed BIGINT would be an INT64 type
+        assertThat(after.schema().field("c3").schema()).isEqualTo(Schema.INT64_SCHEMA);
+
+        //Validate candidates values, note the loss in precision which is expected since BIGINT UNSIGNED cannot always be repsented by
+        //a long datatype.
+        switch (i) {
+        case 1:
+            assertThat(after.getInt64("c1")).isEqualTo(-1L);
+            assertThat(after.getInt64("c2")).isEqualTo(-1L);
+            assertThat(after.getInt64("c3")).isEqualTo(9223372036854775807L);
+            break;
+        case 2:
+            assertThat(after.getInt64("c1")).isEqualTo(-4000000000000000001L);
+            assertThat(after.getInt64("c2")).isEqualTo(-4000000000000000001L);
+            assertThat(after.getInt64("c3")).isEqualTo(-1223372036854775807L);
+            break;
+        case 3:
+            assertThat(after.getInt64("c1")).isEqualTo(0L);
+            assertThat(after.getInt64("c2")).isEqualTo(0L);
+            assertThat(after.getInt64("c3")).isEqualTo(-9223372036854775808L);
+        }
+    }
+
 }
