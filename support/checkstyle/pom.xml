@@ -67,4 +67,8 @@
             </exclusions>
         </dependency>
     </dependencies>
+
+  <scm>
+    <tag>v0.5.3</tag>
+  </scm>
 </project>

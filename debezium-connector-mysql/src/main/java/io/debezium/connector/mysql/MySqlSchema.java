@@ -20,11 +20,13 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.DecimalHandlingMode;
+import io.debezium.connector.mysql.MySqlConnectorConfig.BigIntUnsignedHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.TemporalPrecisionMode;
 import io.debezium.connector.mysql.MySqlSystemVariables.Scope;
 import io.debezium.document.Document;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
+import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
@@ -97,7 +99,10 @@ public class MySqlSchema {
         String decimalHandlingModeStr = config.getString(MySqlConnectorConfig.DECIMAL_HANDLING_MODE);
         DecimalHandlingMode decimalHandlingMode = DecimalHandlingMode.parse(decimalHandlingModeStr);
         DecimalMode decimalMode = decimalHandlingMode.asDecimalMode();
-        MySqlValueConverters valueConverters = new MySqlValueConverters(decimalMode, adaptiveTimePrecision);
+        String bigIntUnsignedHandlingModeStr = config.getString(MySqlConnectorConfig.BIGINT_UNSIGNED_HANDLING_MODE);
+        BigIntUnsignedHandlingMode bigIntUnsignedHandlingMode = BigIntUnsignedHandlingMode.parse(bigIntUnsignedHandlingModeStr);
+        BigIntUnsignedMode bigIntUnsignedMode = bigIntUnsignedHandlingMode.asBigIntUnsignedMode();
+        MySqlValueConverters valueConverters = new MySqlValueConverters(decimalMode, adaptiveTimePrecision, bigIntUnsignedMode);
         this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameValidator::validate);
 
         // Set up the server name and schema prefix ...
