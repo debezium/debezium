@@ -5,6 +5,25 @@
  */
 package io.debezium.connector.mysql;
 
+import com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDataDeserializer;
+import com.github.shyiko.mysql.binlog.event.deserialization.json.JsonBinary;
+import com.mysql.jdbc.CharsetMapping;
+import io.debezium.annotation.Immutable;
+import io.debezium.data.Json;
+import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.relational.Column;
+import io.debezium.relational.ValueConverter;
+import io.debezium.time.Year;
+import io.debezium.util.Strings;
+import mil.nga.wkb.geom.Point;
+import mil.nga.wkb.util.WkbException;
+import org.apache.kafka.connect.data.Decimal;
+import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.source.SourceRecord;
+
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -20,27 +39,6 @@ import java.time.temporal.ChronoUnit;
 import java.time.temporal.Temporal;
 import java.util.Arrays;
 import java.util.List;
-
-import org.apache.kafka.connect.data.Decimal;
-import org.apache.kafka.connect.data.Field;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.source.SourceRecord;
-
-import com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDataDeserializer;
-import com.github.shyiko.mysql.binlog.event.deserialization.json.JsonBinary;
-import com.mysql.jdbc.CharsetMapping;
-
-import io.debezium.annotation.Immutable;
-import io.debezium.data.Json;
-import io.debezium.jdbc.JdbcValueConverters;
-import io.debezium.relational.Column;
-import io.debezium.relational.ValueConverter;
-import io.debezium.time.Year;
-import io.debezium.util.Strings;
-import mil.nga.wkb.geom.Point;
-import mil.nga.wkb.util.WkbException;
 
 /**
  * MySQL-specific customization of the conversions from JDBC values obtained from the MySQL binlog client library.
@@ -115,9 +113,11 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @param adaptiveTimePrecision {@code true} if the time, date, and timestamp values should be based upon the precision of the
      *            database columns using {@link io.debezium.time} semantic types, or {@code false} if they should be fixed to
      *            millisecond precision using Kafka Connect {@link org.apache.kafka.connect.data} logical types.
+     * @param bigIntUnsignedMode how {@code BIGINT UNSIGNED} values should be treated; may be null if
+     *            {@link io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode#PRECISE} is to be used
      */
-    public MySqlValueConverters(DecimalMode decimalMode, boolean adaptiveTimePrecision) {
-        this(decimalMode, adaptiveTimePrecision, ZoneOffset.UTC);
+    public MySqlValueConverters(DecimalMode decimalMode, boolean adaptiveTimePrecision, BigIntUnsignedMode bigIntUnsignedMode) {
+        this(decimalMode, adaptiveTimePrecision, ZoneOffset.UTC, bigIntUnsignedMode);
     }
 
     /**
@@ -132,9 +132,11 @@ public class MySqlValueConverters extends JdbcValueConverters {
      *            millisecond precision using Kafka Connect {@link org.apache.kafka.connect.data} logical types.
      * @param defaultOffset the zone offset that is to be used when converting non-timezone related values to values that do
      *            have timezones; may be null if UTC is to be used
+     * @param bigIntUnsignedMode how {@code BIGINT UNSIGNED} values should be treated; may be null if
+     *            {@link io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode#PRECISE} is to be used
      */
-    public MySqlValueConverters(DecimalMode decimalMode, boolean adaptiveTimePrecision, ZoneOffset defaultOffset) {
-        super(decimalMode, adaptiveTimePrecision, defaultOffset, MySqlValueConverters::adjustTemporal);
+    public MySqlValueConverters(DecimalMode decimalMode, boolean adaptiveTimePrecision, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode) {
+        super(decimalMode, adaptiveTimePrecision, defaultOffset, MySqlValueConverters::adjustTemporal, bigIntUnsignedMode);
     }
 
     @Override
@@ -174,9 +176,14 @@ public class MySqlValueConverters extends JdbcValueConverters {
             return SchemaBuilder.int64();
         }
         if (matches(typeName, "BIGINT UNSIGNED") || matches(typeName, "BIGINT UNSIGNED ZEROFILL")) {
-            // In order to capture unsigned INT 64-bit data source, org.apache.kafka.connect.data.Decimal:Byte will be required to safely capture all valid values with scale of 0
-            // Source: https://kafka.apache.org/0102/javadoc/org/apache/kafka/connect/data/Schema.Type.html
-            return Decimal.builder(0);
+            switch (super.bigIntUnsignedMode) {
+            case LONG:
+                return SchemaBuilder.int64();
+            case PRECISE:
+                // In order to capture unsigned INT 64-bit data source, org.apache.kafka.connect.data.Decimal:Byte will be required to safely capture all valid values with scale of 0
+                // Source: https://kafka.apache.org/0102/javadoc/org/apache/kafka/connect/data/Schema.Type.html
+                return Decimal.builder(0);
+            }
         }
         // Otherwise, let the base class handle it ...
         return super.schemaBuilder(column);
@@ -222,8 +229,13 @@ public class MySqlValueConverters extends JdbcValueConverters {
             return (data) -> convertUnsignedInt(column, fieldDefn, data);
         }
         if (matches(typeName, "BIGINT UNSIGNED") || matches(typeName, "BIGINT UNSIGNED ZEROFILL")) {
-            // Convert BIGINT UNSIGNED internally from SIGNED to UNSIGNED based on the boundary settings
-            return (data) -> convertUnsignedBigint(column, fieldDefn, data);
+            switch (super.bigIntUnsignedMode) {
+            case LONG:
+                return (data) -> convertBigInt(column, fieldDefn, data);
+            case PRECISE:
+                // Convert BIGINT UNSIGNED internally from SIGNED to UNSIGNED based on the boundary settings
+                return (data) -> convertUnsignedBigint(column, fieldDefn, data);
+            }
         }
 
         // We have to convert bytes encoded in the column's character set ...

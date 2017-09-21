@@ -62,6 +62,10 @@ public class JdbcValueConverters implements ValueConverterProvider {
         PRECISE, DOUBLE;
     }
 
+    public static enum BigIntUnsignedMode {
+        PRECISE, LONG;
+    }
+
     private static final Short SHORT_TRUE = new Short((short) 1);
     private static final Short SHORT_FALSE = new Short((short) 0);
     private static final Integer INTEGER_TRUE = new Integer(1);
@@ -78,6 +82,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
     protected final boolean adaptiveTimePrecision;
     protected final DecimalMode decimalMode;
     private final TemporalAdjuster adjuster;
+    protected final BigIntUnsignedMode bigIntUnsignedMode;
 
     /**
      * Create a new instance that always uses UTC for the default time zone when converting values without timezone information
@@ -85,7 +90,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * columns.
      */
     public JdbcValueConverters() {
-        this(null, true, ZoneOffset.UTC, null);
+        this(null, true, ZoneOffset.UTC, null, null);
     }
 
     /**
@@ -102,13 +107,16 @@ public class JdbcValueConverters implements ValueConverterProvider {
      *            have timezones; may be null if UTC is to be used
      * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
      *            adjustment is necessary
+     * @param bigIntUnsignedMode how {@code BIGINT UNSIGNED} values should be treated; may be null if
+     *            {@link BigIntUnsignedMode#PRECISE} is to be used
      */
     public JdbcValueConverters(DecimalMode decimalMode, boolean adaptiveTimePrecision, ZoneOffset defaultOffset,
-                               TemporalAdjuster adjuster) {
+                               TemporalAdjuster adjuster, BigIntUnsignedMode bigIntUnsignedMode) {
         this.defaultOffset = defaultOffset != null ? defaultOffset : ZoneOffset.UTC;
         this.adaptiveTimePrecision = adaptiveTimePrecision;
         this.decimalMode = decimalMode != null ? decimalMode : DecimalMode.PRECISE;
         this.adjuster = adjuster;
+        this.bigIntUnsignedMode = bigIntUnsignedMode != null ? bigIntUnsignedMode : BigIntUnsignedMode.PRECISE;
     }
 
     @Override
