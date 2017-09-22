@@ -191,6 +191,7 @@ Then mark release in Jira as *Released* using `Release` action.
 
 Update the documentation on the [Debezium website](http://debezium.io) by following the [instructions for changing the website](http://debezium.io/docs/contribute/#website).
 This typically involves updating the documentation (look for pending pull requests tagged as "Merge after next release") and writing a blog post to announce the release.
+Also update the `debezium-version` and `debezium-docker-label` attributes in _\_config/site.yml_.
 Then, create a pull request with your changes and wait for a committer to approve and merge your changes.
 
 When the blog post is available, use the [Debezium Twitter account](https://twitter.com/debezium) to announce the release by linking to the blog post.
