@@ -7,10 +7,13 @@ package io.debezium.connector.mysql;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
+import io.debezium.relational.TableId;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
@@ -59,6 +62,8 @@ public final class MySqlConnectorTask extends SourceTask {
         if (!config.validateAndRecord(MySqlConnectorConfig.ALL_FIELDS, logger::error)) {
             throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }
+
+        // set the config in the source info...
 
         // Create and start the task context ...
         this.taskContext = new MySqlTaskContext(config);
@@ -144,12 +149,13 @@ public final class MySqlConnectorTask extends SourceTask {
             readers = new ChainedReader();
             readers.uponCompletion(this::completeReaders);
             BinlogReader binlogReader = new BinlogReader("binlog", taskContext);
+            binlogReader.addKnownTablesToSnapshot(calculateKnownNewTables(offsets, taskContext.makeRecord()));
             if (startWithSnapshot) {
                 // We're supposed to start with a snapshot, so set that up ...
-                SnapshotReader snapshotReader = new SnapshotReader("snapshot", taskContext);
-                snapshotReader.useMinimalBlocking(taskContext.useMinimalSnapshotLocking());
-                if (snapshotEventsAreInserts) snapshotReader.generateInsertEvents();
-                readers.add(snapshotReader);
+                SnapshotServerReader snapshotServerReader = new SnapshotServerReader("snapshot", taskContext);
+                snapshotServerReader.useMinimalBlocking(taskContext.useMinimalSnapshotLocking());
+                if (snapshotEventsAreInserts) snapshotServerReader.generateInsertEvents();
+                readers.add(snapshotServerReader);
 
                 if (taskContext.isInitialSnapshotOnly()) {
                     logger.warn("This connector will only perform a snapshot, and will stop after that completes.");
@@ -193,6 +199,42 @@ public final class MySqlConnectorTask extends SourceTask {
         } finally {
             prevLoggingContext.restore();
         }
+    }
+
+  /**
+   * Calculate the set of new tables that we already know about in RecordMakers.
+   *
+   * During binlog reading, if we encounter an unknown table, then we know that that table will
+   * need to be snapshotted. But, we could encounter a table that has been newly added to the
+   * config that we already have schema information for. We will still need to snapshot those
+   * tables so we are calculating that set of tables here.
+   *
+   * @param offsets the previous offset information.
+   * @param recordMakers current RecordMakers.
+   * @return
+   */
+    private Set<TableId> calculateKnownNewTables(Map<String, ?> offsets, RecordMakers recordMakers) {
+
+        if((Boolean) offsets.get(SourceInfo.HAS_FILTER_INFO)) {
+
+            Configuration oldPartialConfig = Configuration.from(offsets);
+            // note: presently ignoring config for built-in tables.  If config switched from on to off, those tables
+            // /may/ not be snapshotted.
+            Filters oldFilters = new Filters(oldPartialConfig);
+
+            Configuration currentConfig = taskContext.config();
+            Filters newFilters = new Filters(currentConfig);
+
+            Set<TableId> newKnownTables = new HashSet<>();
+            for (TableId tableId : recordMakers.getAllTableIds()) {
+                if (!oldFilters.tableFilter().test(tableId) && newFilters.tableFilter().test(tableId)){
+                    newKnownTables.add(tableId);
+                }
+            }
+            return newKnownTables;
+        }
+        // otherwise we cannot evaluate what tables, if any, are new.
+        return null;
     }
 
     @Override

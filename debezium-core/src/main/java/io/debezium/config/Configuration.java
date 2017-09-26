@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.net.URL;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1061,6 +1062,39 @@ public interface Configuration {
         String value = getString(key);
         if (value == null) return null;
         return Collect.arrayListOf(value.split(regex));
+    }
+
+    /**
+     * Get the parsed value(s) associated with the given key, where the supplied delimiter regular expression is used to parse
+     * the single string value into multiple values, and the given parsing function is used to parse the individual string
+     * elements into elements of the correct type.
+     * 
+     * @param field the field; may not be null
+     * @param delimiterRegex the delimiting regular expression
+     * @param parsingFunction a function to parse the individual elements from strings.
+     * @param <T> The type of the elements in the list
+     * @return the parsed list of elements.
+     */
+    default <T> List<T> getElements(Field field, String delimiterRegex, Function<String, T> parsingFunction) {
+        return getElements(field.name(), delimiterRegex, parsingFunction);
+    }
+
+
+    /**
+     * Get the parsed value(s) associated with the given key, where the supplied delimiter regular expression is used to parse
+     * the single string value into multiple values, and the given parsing function is used to parse the individual string
+     * elements into elements of the correct type.
+     *
+     * @param key the key for the configuration property
+     * @param delimiterRegex the delimiting regular expression
+     * @param parsingFunction a function to parse the individual elements from strings.
+     * @param <T> The type of the elements in the list
+     * @return the parsed list of elements.
+     */
+    default <T> List<T> getElements(String key, String delimiterRegex, Function<String, T> parsingFunction) {
+        List<String> stringValues = getStrings(key, delimiterRegex);
+        if (stringValues == null) return null;
+        return stringValues.stream().map(parsingFunction).collect(Collectors.toList());
     }
 
     /**

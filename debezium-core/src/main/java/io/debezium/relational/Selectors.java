@@ -5,7 +5,11 @@
  */
 package io.debezium.relational;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.function.Predicates;
@@ -50,7 +54,7 @@ public class Selectors {
 
         /**
          * Specify the names of the databases that should be included. This method will override previously included and
-         * {@link #excludeDatabases(String) excluded} databases.
+         * excluded databases.
          * 
          * @param databaseNames the comma-separated list of database names to include; may be null or empty
          * @return this builder so that methods can be chained together; never null
@@ -60,6 +64,38 @@ public class Selectors {
                 dbInclusions = null;
             } else {
                 dbInclusions = Predicates.includes(databaseNames);
+            }
+            return this;
+        }
+
+        /**
+         * Specify the names of the databases that should be included. This method will override previously included and
+         * excluded databases.
+         *
+         * @param databaseNames A Collection of database names to include; may be null or empty.
+         * @return this builder so that methods can be chained together; never null
+         */
+        public DatabaseSelectionPredicateBuilder includeDatabases(Collection<String> databaseNames) {
+            if (databaseNames == null || databaseNames.isEmpty()) {
+                dbInclusions = null;
+            } else {
+                includeDatabases(String.join(",", databaseNames));
+            }
+            return this;
+        }
+
+        /**
+         * Add a single database that should be included.
+         * @param databaseName the database name to be included. Cannot be null. This method will override database
+         *                     exclusion.
+         * @return this builder so that methods can be chained together; never null
+         */
+        public DatabaseSelectionPredicateBuilder includeSingleDatabase(String databaseName) {
+            Predicate<String> includeDatabase = Predicates.includes(databaseName);
+            if (dbInclusions != null) {
+                dbInclusions = dbInclusions.or(includeDatabase);
+            } else {
+                dbInclusions = includeDatabase;
             }
             return this;
         }
@@ -77,6 +113,30 @@ public class Selectors {
                 dbExclusions = null;
             } else {
                 dbExclusions = Predicates.excludes(databaseNames);
+            }
+            return this;
+        }
+
+        public DatabaseSelectionPredicateBuilder excludeDatabases(Collection<String> databaseNames) {
+            if (databaseNames == null || databaseNames.isEmpty()) {
+                dbInclusions = null;
+            } else {
+                excludeDatabases(String.join(",", databaseNames));
+            }
+            return this;
+        }
+
+        /**
+         * Add a single database that should be excluded. An include will override an exclusion.
+         * @param databaseName the database name to be excluded.  Cannot be null.
+         * @return
+         */
+        public DatabaseSelectionPredicateBuilder excludeSingleDatabase(String databaseName) {
+            Predicate<String> excludeDatabase = Predicates.includes(databaseName);
+            if (dbExclusions != null){
+                dbExclusions = dbExclusions.and(excludeDatabase); // TODO see {@link #includeDatabase(String)}
+            } else {
+                dbExclusions = excludeDatabase;
             }
             return this;
         }
@@ -116,7 +176,7 @@ public class Selectors {
 
         /**
          * Specify the names of the databases that should be included. This method will override previously included and
-         * {@link #excludeDatabases(String) excluded} databases.
+         * excluded databases.
          * 
          * @param databaseNames the comma-separated list of database names to include; may be null or empty
          * @return this builder so that methods can be chained together; never null
@@ -131,9 +191,40 @@ public class Selectors {
         }
 
         /**
-         * Specify the names of the databases that should be excluded. This method will override previously {@link
-         * #excludeDatabases(String) excluded} databases, although {@link #includeDatabases(String) including databases} overrides
-         * exclusions.
+         * Specify the names of the databases that should be included. This method will override previously included and
+         * excluded databases.
+         *
+         * @param databaseNames the collection of database names to include; may be null or empty
+         * @return
+         */
+        public TableSelectionPredicateBuilder includeDatabases(Collection<String> databaseNames) {
+            if (databaseNames == null || databaseNames.isEmpty()){
+                dbInclusions = null;
+            } else {
+                includeDatabases(String.join(",", databaseNames));
+            }
+            return this;
+        }
+
+        /**
+         * Add a single database that should be included.
+         * @param databaseName the database name to be included. Cannot be null. This method will override database
+         *                     exclusion.
+         * @return this builder so that methods can be chained together; never null
+         */
+        public TableSelectionPredicateBuilder includeSingleDatabase(String databaseName) {
+            Predicate<String> includeDatabase = Predicates.includes(databaseName);
+            if (dbInclusions != null) {
+                dbInclusions = dbInclusions.or(includeDatabase);
+            } else {
+                dbInclusions = includeDatabase;
+            }
+            return this;
+        }
+
+        /**
+         * Specify the names of the databases that should be excluded. This method will override previously
+         * excluded databases, although including databases overrides exclusions.
          * 
          * @param databaseNames the comma-separated list of database names to exclude; may be null or empty
          * @return this builder so that methods can be chained together; never null
@@ -143,6 +234,37 @@ public class Selectors {
                 dbExclusions = null;
             } else {
                 dbExclusions = Predicates.excludes(databaseNames);
+            }
+            return this;
+        }
+
+        /**
+         * Specify the names of the databases that should be excluded. This method will override previously
+         * excluded databases, although including databases overrides exclusions.
+         *
+         * @param databaseNames the comma-separated list of database names to exclude; may be null or empty
+         * @return this builder so that methods can be chained together; never null
+         */
+        public TableSelectionPredicateBuilder excludeDatabases(Collection<String> databaseNames) {
+            if (databaseNames == null || databaseNames.isEmpty()) {
+                dbExclusions = null;
+            } else {
+                excludeDatabases(String.join(",", databaseNames));
+            }
+            return this;
+        }
+
+        /**
+         * Add a single database that should be excluded. Including databases overrrides exclusions.
+         * @param databaseName the database name to be excluded. Cannot be null.
+         * @return this builder so that methods can be chained together; never null
+         */
+        public TableSelectionPredicateBuilder excludeSingleDatabase(String databaseName) {
+            Predicate<String> includeDatabase = Predicates.includes(databaseName);
+            if (dbInclusions != null) {
+                dbInclusions = dbInclusions.or(includeDatabase);
+            } else {
+                dbInclusions = includeDatabase;
             }
             return this;
         }
@@ -182,9 +304,9 @@ public class Selectors {
 
         /**
          * Specify the names of the tables that should be included. This method will override previously included and
-         * {@link #excludeTables(String) excluded} table names.
+         * excluded table names.
          * <p>
-         * Note that any specified tables that are in an {@link #excludeDatabases(String) excluded database} will not be included.
+         * Note that any specified tables that are in an excluded database will not be included.
          * 
          * @param fullyQualifiedTableNames the comma-separated list of fully-qualified table names to include; may be null or
          *            empty
@@ -200,11 +322,47 @@ public class Selectors {
         }
 
         /**
-         * Specify the names of the tables that should be excluded. This method will override previously {@link
-         * #excludeDatabases(String) excluded} tables, although {@link #includeTables(String) including tables} overrides
-         * exclusions.
+         * Specify the names of the tables that should be included. This method will override previously included and
+         * excluded table names.
          * <p>
-         * Note that any specified tables that are in an {@link #excludeDatabases(String) excluded database} will not be included.
+         * Note that any specified tables that are in an excluded database will not be included.
+         *
+         * @param tables the list of {@link TableId}s to include; may be null or empty.
+         * @return this builder so that methods may be chained together; never null
+         */
+        public TableSelectionPredicateBuilder includeTables(Collection<TableId> tables) {
+            if (tables == null || tables.isEmpty()) {
+                tableInclusions = null;
+            } else {
+                Collection<String> tableStrings = tables.stream().map(TableId::toString).collect(Collectors.toCollection(ArrayList::new));
+                includeTables(String.join(",", tableStrings));
+            }
+            return this;
+        }
+
+        /**
+         * Specify a single table that should be included. This method will override exclusion.
+         * <p>
+         * Note that if this table is in an excluded database will not be included.
+         *
+         * @param table the {@link TableId} to include; may not be null.
+         * @return this builder so that methods may be chained together; never null.
+         */
+        public TableSelectionPredicateBuilder includeSingleTable(TableId table) {
+            Predicate<TableId> includeTable = Predicates.includes(table.toString(), TableId::toString);
+            if (tableInclusions != null) {
+                tableInclusions = tableInclusions.or(includeTable);
+            } else {
+                tableInclusions = includeTable;
+            }
+            return this;
+        }
+
+        /**
+         * Specify the names of the tables that should be excluded. This method will override previously
+         * excluded tables, although including tables overrides exclusions.
+         * <p>
+         * Note that any specified tables that are in an excluded database will not be included.
          * 
          * @param fullyQualifiedTableNames the comma-separated list of fully-qualified table names to exclude; may be null or
          *            empty
@@ -215,6 +373,43 @@ public class Selectors {
                 tableExclusions = null;
             } else {
                 tableExclusions = Predicates.excludes(fullyQualifiedTableNames, TableId::toString);
+            }
+            return this;
+        }
+
+        /**
+         * Specify the tables that should be excluded. This method will override previously excluded tables,
+         * although including tables overrides exclusions.
+         * <p>
+         * Note that any specified tables that are in an excluded database will not be included.
+         *
+         * @param tables the list of tables to excluded; may be null or empty
+         * @return this builder so that methods can be chained together; never null
+         */
+        public TableSelectionPredicateBuilder excludeTables(Collection<TableId> tables) {
+            if (tables == null || tables.isEmpty()){
+                tableExclusions = null;
+            } else {
+                Collection<String> tableStrings = tables.stream().map(TableId::toString).collect(Collectors.toCollection(ArrayList::new));
+                excludeTables(String.join(",", tableStrings));
+            }
+            return this;
+        }
+
+        /**
+         * Specify a single table that should be excluded. Including tables overrides exclusions.
+         * <p>
+         * Note that any tables that are in any excluded database will not be included.
+         *
+         * @param table the table to exclude; may not be null
+         * @return this builder so that methods can be chained together; never null.
+         */
+        public TableSelectionPredicateBuilder excludeSingleTable(TableId table) {
+            Predicate<TableId> includeTable = Predicates.excludes(table.toString(), TableId::toString);
+            if (tableExclusions != null) {
+                tableExclusions = tableExclusions.and(includeTable);
+            } else {
+                tableExclusions = includeTable;
             }
             return this;
         }

@@ -6,7 +6,9 @@
 package io.debezium.connector.mysql;
 
 import java.util.BitSet;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -40,6 +42,7 @@ public class RecordMakers {
     private final TopicSelector topicSelector;
     private final Map<Long, Converter> convertersByTableNumber = new HashMap<>();
     private final Map<TableId, Long> tableNumbersByTableId = new HashMap<>();
+    private final Map<TableId, Long> unknownTableNumbersbyTableId = new HashMap<>();
     private final Schema schemaChangeKeySchema;
     private final Schema schemaChangeValueSchema;
     private final AvroValidator schemaNameValidator = AvroValidator.create(logger);
@@ -155,6 +158,10 @@ public class RecordMakers {
         });
     }
 
+    public Set<TableId> getAllTableIds() {
+        return Collections.unmodifiableSet(tableNumbersByTableId.keySet());
+    }
+
     /**
      * Assign the given table number to the table with the specified {@link TableId table ID}.
      * 
@@ -171,7 +178,17 @@ public class RecordMakers {
             return true;
         }
         TableSchema tableSchema = schema.schemaFor(id);
-        if (tableSchema == null) return false;
+        if (tableSchema == null) {
+            if(schema.filters().tableFilter().test(id)) {
+                unknownTableNumbersbyTableId.put(id, tableNumber);
+                return true;
+            }
+            else {
+                return false;
+            }
+        } else {
+            unknownTableNumbersbyTableId.remove(id);
+        }
 
         String topicName = topicSelector.getTopic(id);
         Envelope envelope = Envelope.defineSchema()

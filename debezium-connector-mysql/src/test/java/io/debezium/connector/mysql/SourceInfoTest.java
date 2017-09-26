@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Collections;
@@ -13,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import io.debezium.config.Configuration;
 import org.apache.avro.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.fest.assertions.GenericAssert;
@@ -33,6 +35,7 @@ public class SourceInfoTest {
     private static final String GTID_SET = "gtid-set"; // can technically be any string
     private static final String SERVER_NAME = "my-server"; // can technically be any string
 
+    private Configuration config;
     private SourceInfo source;
     private boolean inTxn = false;
     private long positionOfBeginEvent = 0L;
@@ -40,10 +43,49 @@ public class SourceInfoTest {
 
     @Before
     public void beforeEach() {
-        source = new SourceInfo();
+        config = Configuration.empty();
+        source = new SourceInfo(config);
         inTxn = false;
         positionOfBeginEvent = 0L;
         eventNumberInTxn = 0;
+    }
+
+    @Test
+    public void offsetsShouldContainFilterInfo() {
+        // test whitelists
+        config = Configuration.create()
+                              .with("database.whitelist", "bar,foo,baz")
+                              .with("table.whitelist", "foo.bar.baz,qux.fred.alice")
+                              .build();
+
+        source = new SourceInfo(config);
+        // we need to resolve from the config to get the data into the offset.
+        source.setResolvedFromConfig();
+
+        assertTrue((Boolean) source.offset().get("filter_info"));
+
+        assertThat(source.offset().containsKey("database_whitelist"));
+        assertEquals("bar,foo,baz", source.offset().get("database_whitelist"));
+
+        assertThat(source.offset().containsKey("table_whitelist"));
+        assertEquals("foo.bar.baz,qux.fred.alice", source.offset().get("table_whitelist"));
+
+        // test blacklists
+        config = Configuration.create()
+          .with("database.blacklist", "bar,foo,baz")
+          .with("table.blacklist", "foo.bar.baz,qux.fred.alice")
+          .build();
+
+        source = new SourceInfo(config);
+        source.setResolvedFromConfig();
+
+        assertTrue((Boolean) source.offset().get("filter_info"));
+
+        assertThat(source.offset().containsKey("database_blacklist"));
+        assertEquals("bar,foo,baz", source.offset().get("database_blacklist"));
+
+        assertThat(source.offset().containsKey("table_blacklist"));
+        assertEquals("foo.bar.baz,qux.fred.alice", source.offset().get("table_blacklist"));
     }
 
     @Test
@@ -422,7 +464,7 @@ public class SourceInfoTest {
     }
 
     protected SourceInfo sourceWith(Map<String, String> offset) {
-        source = new SourceInfo();
+        source = new SourceInfo(config);
         source.setOffset(offset);
         source.setServerName(SERVER_NAME);
         return source;

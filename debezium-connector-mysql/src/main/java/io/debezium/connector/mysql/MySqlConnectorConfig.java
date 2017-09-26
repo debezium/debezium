@@ -294,7 +294,9 @@ public class MySqlConnectorConfig {
     }
 
     private static final String DATABASE_WHITELIST_NAME = "database.whitelist";
+    private static final String DATABASE_BLACKLIST_NAME = "database.blacklist";
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
+    private static final String TABLE_BLACKLIST_NAME = "table.blacklist";
     private static final String TABLE_IGNORE_BUILTIN_NAME = "table.ignore.builtin";
 
     public static final Field HOSTNAME = Field.create("database.hostname")
@@ -430,7 +432,7 @@ public class MySqlConnectorConfig {
      * A comma-separated list of regular expressions that match database names to be excluded from monitoring.
      * May not be used with {@link #DATABASE_WHITELIST}.
      */
-    public static final Field DATABASE_BLACKLIST = Field.create("database.blacklist")
+    public static final Field DATABASE_BLACKLIST = Field.create(DATABASE_BLACKLIST_NAME)
                                                         .withDisplayName("Exclude Databases")
                                                         .withType(Type.STRING)
                                                         .withWidth(Width.LONG)
@@ -458,7 +460,7 @@ public class MySqlConnectorConfig {
      * monitoring. Fully-qualified names for tables are of the form {@code <databaseName>.<tableName>} or
      * {@code <databaseName>.<schemaName>.<tableName>}. May not be used with {@link #TABLE_WHITELIST}.
      */
-    public static final Field TABLE_BLACKLIST = Field.create("table.blacklist")
+    public static final Field TABLE_BLACKLIST = Field.create(TABLE_BLACKLIST_NAME)
                                                      .withDisplayName("Exclude Tables")
                                                      .withType(Type.STRING)
                                                      .withWidth(Width.LONG)
@@ -651,6 +653,9 @@ public class MySqlConnectorConfig {
                                                            .withDescription("Specify how DECIMAL and NUMERIC columns should be represented in change events, including:"
                                                                    + "'precise' (the default) uses java.math.BigDecimal to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; "
                                                                    + "'double' represents values using Java's 'double', which may not offer the precision but will be far easier to use in consumers.");
+
+    // the regex delimitor for database/table whitelist/blacklist configuration elements.
+    public static final String WHITELIST_BLACKLIST_DELIMITER = "\\s*,\\s*";
 
     /**
      * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should

@@ -38,7 +38,7 @@ public class SnapshotReaderIT {
 
     private Configuration config;
     private MySqlTaskContext context;
-    private SnapshotReader reader;
+    private SnapshotServerReader reader;
     private CountDownLatch completed;
 
     @Before
@@ -79,7 +79,7 @@ public class SnapshotReaderIT {
                 .build();
         context = new MySqlTaskContext(config);
         context.start();
-        reader = new SnapshotReader("snapshot", context);
+        reader = new SnapshotServerReader("snapshot", context);
         reader.uponCompletion(completed::countDown);
         reader.generateInsertEvents();
         reader.useMinimalBlocking(true);
@@ -157,7 +157,7 @@ public class SnapshotReaderIT {
         config = simpleConfig().with(MySqlConnectorConfig.DATABASE_WHITELIST, "connector_(.*)_" + DATABASE.getIdentifier()).build();
         context = new MySqlTaskContext(config);
         context.start();
-        reader = new SnapshotReader("snapshot", context);
+        reader = new SnapshotServerReader("snapshot", context);
         reader.uponCompletion(completed::countDown);
         reader.generateReadEvents();
         reader.useMinimalBlocking(true);
@@ -237,7 +237,7 @@ public class SnapshotReaderIT {
         config = simpleConfig().with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true).build();
         context = new MySqlTaskContext(config);
         context.start();
-        reader = new SnapshotReader("snapshot", context);
+        reader = new SnapshotServerReader("snapshot", context);
         reader.uponCompletion(completed::countDown);
         reader.generateInsertEvents();
         reader.useMinimalBlocking(true);
@@ -317,7 +317,7 @@ public class SnapshotReaderIT {
         config = simpleConfig().with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY).build();
         context = new MySqlTaskContext(config);
         context.start();
-        reader = new SnapshotReader("snapshot", context);
+        reader = new SnapshotServerReader("snapshot", context);
         reader.uponCompletion(completed::countDown);
         reader.generateInsertEvents();
         reader.useMinimalBlocking(true);

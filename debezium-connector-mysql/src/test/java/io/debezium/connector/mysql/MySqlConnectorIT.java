@@ -536,7 +536,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         stopConnector();
 
         // Read the last committed offsets, and verify the binlog coordinates ...
-        SourceInfo persistedOffsetSource = new SourceInfo();
+        SourceInfo persistedOffsetSource = new SourceInfo(config);
         persistedOffsetSource.setServerName(config.getString(MySqlConnectorConfig.SERVER_NAME));
         Map<String, ?> lastCommittedOffset = readLastCommittedOffset(config, persistedOffsetSource.partition());
         persistedOffsetSource.setOffset(lastCommittedOffset);
