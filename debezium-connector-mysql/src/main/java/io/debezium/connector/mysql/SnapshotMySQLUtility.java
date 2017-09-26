@@ -1,5 +1,6 @@
 package io.debezium.connector.mysql;
 
+import io.debezium.connector.mysql.AbstractSnapshotReader.RecordRecorder;
 import io.debezium.function.BufferedBlockingConsumer;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Table;
@@ -612,9 +613,5 @@ public class SnapshotMySQLUtility {
 
     private String quote(TableId id) {
         return quote(id.catalog()) + "." + quote(id.table());
-    }
-
-    protected static interface RecordRecorder {
-        void recordRow(RecordMakers.RecordsForTable recordMaker, Object[] row, long ts) throws InterruptedException;
     }
 }
