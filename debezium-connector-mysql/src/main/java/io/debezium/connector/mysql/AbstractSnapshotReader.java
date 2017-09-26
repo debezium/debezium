@@ -1,5 +1,12 @@
 package io.debezium.connector.mysql;
 
+import io.debezium.jdbc.JdbcConnection;
+import io.debezium.util.Strings;
+
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Abstract Snapshot Reader
  *
@@ -84,6 +91,43 @@ public abstract class AbstractSnapshotReader extends AbstractReader {
             logger.debug("Completed writing all snapshot records");
         } finally {
             metrics.unregister(logger);
+        }
+    }
+
+    protected void logServerInformation(JdbcConnection mysql) {
+        try {
+            logger.info("MySQL server variables related to change data capture:");
+            mysql.query("SHOW VARIABLES WHERE Variable_name REGEXP 'version|binlog|tx_|gtid|character_set|collation|time_zone'", rs -> {
+                while (rs.next()) {
+                    logger.info("\t{} = {}",
+                        Strings.pad(rs.getString(1), 45, ' '),
+                        Strings.pad(rs.getString(2), 45, ' '));
+                }
+            });
+        } catch (SQLException e) {
+            logger.info("Cannot determine MySql server version", e);
+        }
+    }
+
+    protected void logRolesForCurrentUser(JdbcConnection mysql) {
+        try {
+            List<String> grants = new ArrayList<>();
+            mysql.query("SHOW GRANTS FOR CURRENT_USER", rs -> {
+                while (rs.next()) {
+                    grants.add(rs.getString(1));
+                }
+            });
+            if (grants.isEmpty()) {
+                logger.warn("Snapshot is using user '{}' but it likely doesn't have proper privileges. " +
+                        "If tables are missing or are empty, ensure connector is configured with the correct MySQL user " +
+                        "and/or ensure that the MySQL user has the required privileges.",
+                    mysql.username());
+            } else {
+                logger.info("Snapshot is using user '{}' with these MySQL grants:", mysql.username());
+                grants.forEach(grant -> logger.info("\t{}", grant));
+            }
+        } catch (SQLException e) {
+            logger.info("Cannot determine the privileges for '{}' ", mysql.username(), e);
         }
     }
 
