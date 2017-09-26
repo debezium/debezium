@@ -11,10 +11,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Class snapshotting an individual table
- * todo use a chainedReader to link all these individual readers together? maybe? is that what I want?
- * the chained reader will make sure all of an individual reader's sourceRecords are polled before starting a new one.
- * is that what I want?
+ * A component that performs a snapshot of a single MySQL table, and records the schema changes in {@link MySqlSchema}.
  */
 public class SnapshotTableReader extends AbstractSnapshotReader {
 

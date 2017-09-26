@@ -306,7 +306,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
             }
         }
         if (data instanceof String) {
-            // The SnapshotReader sees JSON values as UTF-8 encoded strings.
+            // The SnapshotReaders see JSON values as UTF-8 encoded strings.
             return data;
         }
         return handleUnknownData(column, fieldDefn, data);
