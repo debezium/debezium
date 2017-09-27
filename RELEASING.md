@@ -173,15 +173,19 @@ Only after the artifacts are available on Maven Central can you merge the pull r
 Otherwise, for major and minor releases your pull request should have added new Docker images, and you need to log into [Debezium's Docker Hub organization](https://hub.docker.com/r/debezium/) and add/update the build settings for each of the affected images.
 
 With every release the Docker image for PostgreSQL needs to be updated as well.
-First create a tag in the https://github.com/debezium/postgres-decoderbufs[postgres-decoderbufs] repository:
+First create a tag in the [postgres-decoderbufs](https://github.com/debezium/postgres-decoderbufs) repository:
 
     $ git tag v<%version%> && git push upstream v<%version%>
 
-Then update the Debezium version referenced in the https://github.com/debezium/docker-images/blob/master/postgres/9.6/Dockerfile#L22[postgres Docker file]
+Then update the Debezium version referenced in the [Postgres Docker file](https://github.com/debezium/docker-images/blob/master/postgres/9.6/Dockerfile#L22)
 and push that commit which will cause the image to be re-published on Docker Hub automatically.
 
-When doing a new minor release (e.g. 0.7), log into Docker Hub and modify the "latest" tags to point to that new version.
-Also remove the jobs for the previous minor version as they won't change any more.
+## Reconfigure Docker Hub builds
+If a new version of Docker images is going to be added it is necessary in Docker Hub build settings to
+
+* add a new build for each image with new version
+* remove builds for obsolete versions
+* update `nightly` and `latest` build tags
 
 ## Close Jira issues
 Close all issues relesed with this version. The affected issues can be found using JQL query
@@ -203,3 +207,5 @@ When the blog post is available, use the [Debezium Twitter account](https://twit
 To perform release automatically invoke a [Jenkins job](http://ci.hibernate.org/view/Debezium/job/debezium-release/). Two parameters are requested
 * `RELEASE_VERSION` - a version to be released in format x.y.z
 * `DEVELOPMENT_VERSION` - next development version in format x.y.z-SNAPSHOT
+
+When the release is completed then execute the [manual reconfiguration](#reconfigure-docker-hub-builds) for Docker Hub builds.
