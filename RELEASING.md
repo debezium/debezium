@@ -180,6 +180,9 @@ First create a tag in the https://github.com/debezium/postgres-decoderbufs[postg
 Then update the Debezium version referenced in the https://github.com/debezium/docker-images/blob/master/postgres/9.6/Dockerfile#L22[postgres Docker file]
 and push that commit which will cause the image to be re-published on Docker Hub automatically.
 
+When doing a new minor release (e.g. 0.7), log into Docker Hub and modify the "latest" tags to point to that new version.
+Also remove the jobs for the previous minor version as they won't change any more.
+
 ## Close Jira issues
 Close all issues relesed with this version. The affected issues can be found using JQL query
 ```
