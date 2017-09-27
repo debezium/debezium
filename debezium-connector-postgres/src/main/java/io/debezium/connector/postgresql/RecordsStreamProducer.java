@@ -37,7 +37,7 @@ import io.debezium.util.Strings;
 
 /**
  * A {@link RecordsProducer} which creates {@link org.apache.kafka.connect.source.SourceRecord records} from a Postgres
- * streaming replication connection and {@link io.debezium.connector.postgresql.proto.PgProto messages}.
+ * streaming replication connection and {@link io.debezium.connector.postgresql.connection.ReplicationMessage messages}.
  *
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
@@ -107,10 +107,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 // this will block until a message is available
-                List<ReplicationMessage> messages = stream.read();
-                for (final ReplicationMessage message: messages) {
-                    process(message, stream.lastReceivedLSN(), consumer);
-                }
+                stream.read(x -> process(x, stream.lastReceivedLSN(), consumer));
             } catch (SQLException e) {
                 Throwable cause = e.getCause();
                 if (cause != null && (cause instanceof IOException)) {

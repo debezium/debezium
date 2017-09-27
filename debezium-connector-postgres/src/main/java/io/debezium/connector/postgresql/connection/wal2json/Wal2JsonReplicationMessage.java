@@ -21,12 +21,12 @@ import io.debezium.document.Document;
  * @author Jiri Pechanec
  *
  */
-class WAL2JSONReplicationMessage implements ReplicationMessage {
+class Wal2JsonReplicationMessage implements ReplicationMessage {
     private final int txId;
     private final long commitTime;
     private final Document rawMessage;
 
-    public WAL2JSONReplicationMessage(final int txId, final long commitTime, final Document rawMessage) {
+    public Wal2JsonReplicationMessage(final int txId, final long commitTime, final Document rawMessage) {
         this.txId = txId;
         this.commitTime = commitTime;
         this.rawMessage = rawMessage;
@@ -59,7 +59,7 @@ class WAL2JSONReplicationMessage implements ReplicationMessage {
 
     @Override
     public String getTable() {
-        return String.format("\"%s\".\"%s\"", rawMessage.getString("schema"), rawMessage.getString("table"));
+        return "\"" + rawMessage.getString("schema") + "\".\"" + rawMessage.getString("table") + "\"";
     }
 
     @Override
@@ -82,7 +82,7 @@ class WAL2JSONReplicationMessage implements ReplicationMessage {
         }
         final List<ReplicationMessage.Column> columns = new ArrayList<>();
         for (int i = 0; i < columnNames.size(); i++) {
-            columns.add(new WAL2JSONColumn(columnNames.get(i).asString(), columnTypes.get(i).asString(), columnValues.get(i)));
+            columns.add(new Wal2JsonColumn(columnNames.get(i).asString(), columnTypes.get(i).asString(), columnValues.get(i)));
         }
         return columns;
     }

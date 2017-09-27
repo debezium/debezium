@@ -8,18 +8,35 @@ package io.debezium.connector.postgresql;
 
 import java.util.function.Supplier;
 
-import io.debezium.connector.postgresql.connection.ReplicationConnection;
-
+/**
+ * A class that contains assertions or expected values tailored to the behaviour of a concrete decoder plugin
+ * 
+ * @author Jiri Pechanec
+ *
+ */
 public class DecoderDifferences {
 
+    /**
+     * wal2json plugin does not send events for updates on tables that does not define primary key.
+     * 
+     * @param expectedCount
+     * @param updatesWithoutPK
+     * @return modified count
+     */
     public static int updatesWithoutPK(final int expectedCount, final int updatesWithoutPK) {
-        return !ReplicationConnection.Builder.WAL2JSON_PLUGIN_NAME.equals(TestHelper.decoderPluginName()) ? expectedCount : expectedCount - updatesWithoutPK;
+        return TestHelper.decoderPlugin() != PostgresConnectorConfig.LogicalDecoder.WAL2JSON ? expectedCount : expectedCount - updatesWithoutPK;
     }
 
+    /**
+     * wal2json plugin is not currently able to encode and parse quoted identifiers
+     * 
+     * @author Jiri Pechanec
+     *
+     */
     public static class AreQuotedIdentifiersUnsupported implements Supplier<Boolean> {
         @Override
         public Boolean get() {
-            return ReplicationConnection.Builder.WAL2JSON_PLUGIN_NAME.equals(TestHelper.decoderPluginName());
+            return TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.WAL2JSON;
         }
     }
 }

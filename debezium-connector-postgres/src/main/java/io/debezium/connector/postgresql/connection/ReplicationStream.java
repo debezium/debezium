@@ -7,7 +7,6 @@
 package io.debezium.connector.postgresql.connection;
 
 import java.sql.SQLException;
-import java.util.List;
 
 import org.postgresql.replication.PGReplicationStream;
 
@@ -17,31 +16,32 @@ import org.postgresql.replication.PGReplicationStream;
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 public interface ReplicationStream extends AutoCloseable {
-    
+    @FunctionalInterface
+    public interface ReplicationMessageProcessor {
+        void process(ReplicationMessage message) throws SQLException;
+    }
+
     /**
-     * Blocks and waits for a Protobuf message to be sent over a replication connection. Once a message has been received, 
+     * Blocks and waits for a replication message to be sent over a replication connection. Once a message has been received, 
      * the value of the {@link #lastReceivedLSN() last received LSN} will also be updated accordingly.
      *
-     * @return a {@link io.debezium.connector.postgresql.proto.PgProto.RowMessage} instance; this may return {@code null} if
-     * the server sends back a message which has already been reported as consumed via the {@link #flushLSN()} method.
+     * @param processor - a callback to which the arrived message is passed
      * @throws SQLException if anything unexpected fails
      * @see PGReplicationStream#read() 
      */
-    List<ReplicationMessage> read() throws SQLException;
-    
+    void read(ReplicationMessageProcessor processor) throws SQLException;
+
     /**
-     * Attempts to read a Protobuf message from a replication connection, returning that message if it's available or returning
+     * Attempts to read a replication message from a replication connection, returning that message if it's available or returning
      * {@code null} if nothing is available. Once a message has been received, the value of the {@link #lastReceivedLSN() last received LSN} 
      * will also be updated accordingly.
      *
-     * @return a {@link io.debezium.connector.postgresql.proto.PgProto.RowMessage} instance if a message is available and was
-     * written by a server or {@code null} if nothing is available from the server or the server sends a message that has
-     * already been reported as consumed via the {@link #flushLSN()} method.
+     * @param processor - a callback to which the arrived message is passed
      * @throws SQLException if anything unexpected fails
      * @see PGReplicationStream#readPending() 
      */
-    List<ReplicationMessage> readPending() throws SQLException;
-    
+    void readPending(ReplicationMessageProcessor processor) throws SQLException;
+
     /**
      * Sends a message to the server informing it about that latest position in the WAL that this stream has read via
      * {@link ReplicationConnection#startStreaming()} or {@link ReplicationConnection#startStreaming(Long)}.
@@ -54,7 +54,7 @@ public interface ReplicationStream extends AutoCloseable {
      * @throws SQLException if anything goes wrong
      */
     void flushLSN() throws SQLException;
-    
+
     /**
      * Returns the value for the latest server received LSN during a read operation. The value is always updated once messages
      * are read via the {@link ReplicationConnection#startStreaming()} or {@link ReplicationConnection#startStreaming(Long)} 
@@ -63,7 +63,7 @@ public interface ReplicationStream extends AutoCloseable {
      * @return a {@link Long} value, possibly null if this is called before anything has been read
      */
     Long lastReceivedLSN();
-    
+
     /**
      * //TODO author=Horia Chiorean date=13/10/2016 description=Don't use this for now, because of the bug from the PG server
      * This is stream is closed atm. once the replication connection which created it is closed.

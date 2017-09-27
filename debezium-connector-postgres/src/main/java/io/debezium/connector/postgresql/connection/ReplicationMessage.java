@@ -84,4 +84,5 @@ public interface ReplicationMessage {
      */
     public List<Column> getNewTupleList();
 
+
 }
