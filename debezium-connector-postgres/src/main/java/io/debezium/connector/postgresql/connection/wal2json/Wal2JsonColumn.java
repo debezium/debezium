@@ -15,6 +15,7 @@ import org.postgresql.core.Oid;
 import org.postgresql.geometric.PGpoint;
 import org.postgresql.jdbc.PgArray;
 import org.postgresql.util.PGInterval;
+import org.postgresql.util.PGmoney;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,12 +31,12 @@ import io.debezium.relational.Column;
  * @author Jiri Pechanec
  *
  */
-class WAL2JSONColumn extends ReplicationMessage.Column {
-    private static final Logger logger = LoggerFactory.getLogger(WAL2JSONColumn.class);
+class Wal2JsonColumn extends ReplicationMessage.Column {
+    private static final Logger logger = LoggerFactory.getLogger(Wal2JsonColumn.class);
 
     private final Value rawValue;
 
-    public WAL2JSONColumn(final String name, final String type, final Value value) {
+    public Wal2JsonColumn(final String name, final String type, final Value value) {
         super(name, type);
         this.rawValue = value;
     }
@@ -92,15 +93,7 @@ class WAL2JSONColumn extends ReplicationMessage.Column {
             case "timetz":
                 return rawValue.isNotNull() ?  DateTimeFormat.get().timeWithTimeZone(rawValue.asString()) : null;
             case "bytea":
-                if (rawValue.isNull()) {
-                    return null;
-                }
-                final String hex = rawValue.asString();
-                final byte[] bytes = new byte[hex.length() / 2];
-                for (int i = 0; i < bytes.length; i++) {
-                    bytes[i] = (byte)Integer.parseInt(hex.substring(i * 2, i * 2 + 2), 16);
-                }
-                return bytes;
+            return hexStringToByteArray();
             case "point":
                 try {
                     return rawValue.isNotNull() ? new PGpoint(rawValue.asString()) : null;
@@ -109,7 +102,12 @@ class WAL2JSONColumn extends ReplicationMessage.Column {
                     throw new ConnectException(e);
                 }
             case "money":
-                return rawValue.isNotNull() ? Double.parseDouble(rawValue.asString().replace("$", "").replace(",", "")) : null;
+                try {
+                    return rawValue.isNotNull() ? new PGmoney(rawValue.asString()).val : null;
+                } catch (final SQLException e) {
+                    logger.error("Failed to parse money {}, {}", rawValue.asString(), e);
+                    throw new ConnectException(e);
+                }
             case "interval":
                 try {
                     return rawValue.isNotNull() ? new PGInterval(rawValue.asString()) : null;
@@ -159,5 +157,17 @@ class WAL2JSONColumn extends ReplicationMessage.Column {
         logger.warn("processing column '{}' with unknown data type '{}' as byte array", getName(),
                 getType());
         return rawValue.asBytes();
+    }
+
+    private byte[] hexStringToByteArray() {
+        if (rawValue.isNull()) {
+            return null;
+        }
+        final String hex = rawValue.asString();
+        final byte[] bytes = new byte[hex.length() / 2];
+        for (int i = 0; i < bytes.length; i++) {
+            bytes[i] = (byte)Integer.parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+        }
+        return bytes;
     }
 }

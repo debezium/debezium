@@ -11,13 +11,12 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.common.config.ConfigValue;
+import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -25,8 +24,9 @@ import io.debezium.config.Field;
 import io.debezium.connector.postgresql.connection.MessageDecoder;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.pgproto.PgProtoMessageDecoder;
-import io.debezium.connector.postgresql.connection.wal2json.WAL2JSONMessageDecoder;
+import io.debezium.connector.postgresql.connection.wal2json.Wal2JsonMessageDecoder;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 
 /**
  * The configuration properties for the {@link PostgresConnector}
@@ -339,6 +339,36 @@ public class PostgresConnectorConfig {
         }
     }
 
+    public enum LogicalDecoder implements EnumeratedValue {
+        DECODERBUFS("decoderbufs", PgProtoMessageDecoder.class),
+        WAL2JSON("wal2json", Wal2JsonMessageDecoder.class);
+
+        private final String decoderName;
+        private final Class<? extends MessageDecoder> messageDecoder;
+
+        LogicalDecoder(String decoderName, Class<? extends MessageDecoder> messageDecoder) {
+            this.decoderName = decoderName;
+            this.messageDecoder = messageDecoder;
+        }
+
+        public MessageDecoder messageDecoder() {
+            try {
+                return messageDecoder.newInstance();
+            } catch (InstantiationException | IllegalAccessException e) {
+                throw new ConnectException("Cannot instantiate decoding class '" + messageDecoder + "' for decoder plugin '" + getValue() + "'");
+            }
+        }
+
+        public static LogicalDecoder parse(String s) {
+            return valueOf(s.trim().toUpperCase());
+        }
+
+        @Override
+        public String getValue() {
+            return decoderName;
+        }
+    }
+
     protected static final String DATABASE_CONFIG_PREFIX = "database.";
     protected static final int DEFAULT_PORT = 5432;
     protected static final int DEFAULT_MAX_BATCH_SIZE = 10240;
@@ -351,11 +381,10 @@ public class PostgresConnectorConfig {
 
     public static final Field PLUGIN_NAME = Field.create("plugin.name")
                                               .withDisplayName("Plugin")
-                                              .withType(Type.STRING)
+                                              .withEnum(LogicalDecoder.class, LogicalDecoder.DECODERBUFS)
                                               .withWidth(Width.MEDIUM)
                                               .withImportance(Importance.MEDIUM)
-                                              .withDefault(ReplicationConnection.Builder.PROTOBUF_PLUGIN_NAME)
-                                              .withDescription("The name of the Postgres logical decoding plugin installed on the server. Defaults to '"+ ReplicationConnection.Builder.PROTOBUF_PLUGIN_NAME + "'");
+                                              .withDescription("The name of the Postgres logical decoding plugin installed on the server. Defaults to '"+ LogicalDecoder.DECODERBUFS.getValue() + "'");
 
     public static final Field PLUGIN_DECODING_CLASS = Field.create("plugin.decoding.class")
                                                         .withDisplayName("Plugin decoder class")
@@ -704,29 +733,8 @@ public class PostgresConnectorConfig {
         return config.getString(DATABASE_NAME);
     }
 
-    protected String pluginName() {
-        return config.getString(PLUGIN_NAME);
-    }
-
-    protected MessageDecoder pluginDecoder() {
-        final MessageDecoder decoder = config.getInstance(PLUGIN_DECODING_CLASS, MessageDecoder.class);
-        return decoder != null ? decoder : createDefaultMessageDecoder(pluginName());
-    }
-
-    /**
-     * Provides default replication message decoder instance for a given plugin name
-     *
-     * @param pluginName
-     * @return an instance of decoder
-     */
-    public static MessageDecoder createDefaultMessageDecoder(final String pluginName) {
-        switch (pluginName) {
-            case ReplicationConnection.Builder.PROTOBUF_PLUGIN_NAME:
-                return new PgProtoMessageDecoder();
-            case ReplicationConnection.Builder.WAL2JSON_PLUGIN_NAME:
-                return new WAL2JSONMessageDecoder();
-        }
-        throw new ConnectException("Undefined default plugin decoding class for decoder plugin '" + pluginName + "'");
+    protected LogicalDecoder plugin() {
+        return LogicalDecoder.parse(config.getString(PLUGIN_NAME));
     }
 
     protected String slotName() {

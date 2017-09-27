@@ -74,8 +74,7 @@ public class PostgresTaskContext {
     protected ReplicationConnection createReplicationConnection() throws SQLException {
         return ReplicationConnection.builder(config.jdbcConfig())
                                     .withSlot(config.slotName())
-                                    .withPlugin(config.pluginName())
-                                    .replicationMessageDecoder(config.pluginDecoder())
+                                    .withPlugin(config.plugin())
                                     .dropSlotOnClose(config.dropSlotOnStop())
                                     .statusUpdateIntervalMillis(config.statusUpdateIntervalMillis())
                                     .build();

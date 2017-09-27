@@ -245,9 +245,13 @@ public class ReplicationConnectionIT {
         CountDownLatch latch = new CountDownLatch(expectedMessages);
         Metronome metronome = Metronome.sleeper(50, TimeUnit.MILLISECONDS, Clock.SYSTEM);
         Future<?> result = executorService.submit(() -> {
-            List<ReplicationMessage> message;
             while (!Thread.interrupted()) {
-                while ((message = stream.readPending()) != null) {
+                for(;;) {
+                    List<ReplicationMessage> message = new ArrayList<>();
+                    stream.readPending(x -> message.add(x));
+                    if (message.isEmpty()) {
+                        break;
+                    }
                     actualMessages.addAll(message);
                     latch.countDown();
                 }

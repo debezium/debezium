@@ -10,8 +10,6 @@ import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
-import java.util.Collections;
-import java.util.List;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -38,7 +36,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private static Logger LOGGER = LoggerFactory.getLogger(PostgresReplicationConnection.class);
 
     private final String slotName;
-    private final String pluginName;
+    private final PostgresConnectorConfig.LogicalDecoder plugin;
     private final boolean dropSlotOnClose;
     private final Configuration originalConfig;
     private final Integer statusUpdateIntervalMillis;
@@ -51,25 +49,24 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      *
      * @param config the JDBC configuration for the connection; may not be null
      * @param slotName the name of the DB slot for logical replication; may not be null
-     * @param pluginName the name of the server side plugin used for streaming changes; may not be null;
+     * @param plugin the type of the server side plugin used for streaming changes; may not be null;
      * @param dropSlotOnClose whether the replication slot should be dropped once the connection is closed
      * @param statusUpdateIntervalMillis the number of milli-seconds at which the replication connection should periodically send status
      * updates to the server
      */
     private PostgresReplicationConnection(Configuration config,
                                          String slotName,
-                                         String pluginName,
+                                         PostgresConnectorConfig.LogicalDecoder plugin,
                                          boolean dropSlotOnClose,
-                                         Integer statusUpdateIntervalMillis,
-                                         MessageDecoder messageDecoder) {
+                                         Integer statusUpdateIntervalMillis) {
         super(config, PostgresConnection.FACTORY, null ,PostgresReplicationConnection::defaultSettings);
 
         this.originalConfig = config;
         this.slotName = slotName;
-        this.pluginName = pluginName;
+        this.plugin = plugin;
         this.dropSlotOnClose = dropSlotOnClose;
         this.statusUpdateIntervalMillis = statusUpdateIntervalMillis;
-        this.messageDecoder = messageDecoder;
+        this.messageDecoder = plugin.messageDecoder();
 
         try {
             initReplicationSlot();
@@ -81,25 +78,25 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     protected void initReplicationSlot() throws SQLException {
         ServerInfo.ReplicationSlot slotInfo;
         try (PostgresConnection connection = new PostgresConnection(originalConfig)) {
-            slotInfo = connection.readReplicationSlotInfo(slotName, pluginName);
+            slotInfo = connection.readReplicationSlotInfo(slotName, plugin.getValue());
         }
 
         boolean shouldCreateSlot = ServerInfo.ReplicationSlot.INVALID == slotInfo;
         try {
             if (shouldCreateSlot) {
-                LOGGER.debug("Creating new replication slot '{}' for plugin '{}'", slotName, pluginName);
+                LOGGER.debug("Creating new replication slot '{}' for plugin '{}'", slotName, plugin);
                 // there's no info for this plugin and slot so create a new slot
                 pgConnection().getReplicationAPI()
                               .createReplicationSlot()
                               .logical()
                               .withSlotName(slotName)
-                              .withOutputPlugin(pluginName)
+                              .withOutputPlugin(plugin.getValue())
                               .make();
             } else if (slotInfo.active()) {
                 LOGGER.error(
                         "A logical replication slot named '{}' for plugin '{}' and database '{}' is already active on the server." +
                         "You cannot have multiple slots with the same name active for the same database",
-                        slotName, pluginName, database());
+                        slotName, plugin.getValue(), database());
                 throw new IllegalStateException();
             }
 
@@ -176,29 +173,28 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             private volatile LogSequenceNumber lastReceivedLSN;
 
             @Override
-            public List<ReplicationMessage> read() throws SQLException {
+            public void read(ReplicationMessageProcessor processor) throws SQLException {
                 ByteBuffer read = stream.read();
                 // the lsn we started from is inclusive, so we need to avoid sending back the same message twice
                 if (lsnLong >= stream.getLastReceiveLSN().asLong()) {
-                    return Collections.emptyList();
+                    return;
                 }
-                return deserializeMessages(read);
+                deserializeMessages(read, processor);
             }
 
             @Override
-            public List<ReplicationMessage> readPending() throws SQLException {
+            public void readPending(ReplicationMessageProcessor processor) throws SQLException {
                 ByteBuffer read = stream.readPending();
                 // the lsn we started from is inclusive, so we need to avoid sending back the same message twice
                 if (read == null ||  lsnLong >= stream.getLastReceiveLSN().asLong()) {
-                    return Collections.emptyList();
+                    return;
                 }
-                return deserializeMessages(read);
+                deserializeMessages(read, processor);
             }
 
-            private List<ReplicationMessage> deserializeMessages(ByteBuffer buffer) {
-                final List<ReplicationMessage> msg = messageDecoder.deserializeMessage(buffer);
+            private void deserializeMessages(ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException {
                 lastReceivedLSN = stream.getLastReceiveLSN();
-                return msg;
+                messageDecoder.processMessage(buffer, processor);
             }
 
             @Override
@@ -262,8 +258,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
         private Configuration config;
         private String slotName = DEFAULT_SLOT_NAME;
-        private String pluginName = PROTOBUF_PLUGIN_NAME;
-        private MessageDecoder messageDecoder = PostgresConnectorConfig.createDefaultMessageDecoder(PROTOBUF_PLUGIN_NAME);
+        private PostgresConnectorConfig.LogicalDecoder plugin = PostgresConnectorConfig.LogicalDecoder.DECODERBUFS;
         private boolean dropSlotOnClose = DEFAULT_DROP_SLOT_ON_CLOSE;
         private Integer statusUpdateIntervalMillis;
 
@@ -280,9 +275,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
 
         @Override
-        public ReplicationConnectionBuilder withPlugin(final String pluginName) {
-            assert pluginName != null;
-            this.pluginName = pluginName;
+        public ReplicationConnectionBuilder withPlugin(final PostgresConnectorConfig.LogicalDecoder plugin) {
+            assert plugin != null;
+            this.plugin = plugin;
             return this;
         }
 
@@ -299,16 +294,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
 
         @Override
-        public Builder replicationMessageDecoder(final MessageDecoder messageDecoder) {
-            this.messageDecoder = messageDecoder;
-            return this;
-        }
-
-        @Override
         public ReplicationConnection build() {
-            assert pluginName != null : "Decoding plugin name is not set";
-            assert messageDecoder != null : "Replication message decoder is not provided";
-            return new PostgresReplicationConnection(config, slotName, pluginName, dropSlotOnClose, statusUpdateIntervalMillis, messageDecoder);
+            assert plugin != null : "Decoding plugin name is not set";
+            return new PostgresReplicationConnection(config, slotName, plugin, dropSlotOnClose, statusUpdateIntervalMillis);
         }
     }
 }

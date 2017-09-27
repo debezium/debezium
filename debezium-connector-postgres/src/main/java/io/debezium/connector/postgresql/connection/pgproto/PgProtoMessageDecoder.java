@@ -6,21 +6,20 @@
 package io.debezium.connector.postgresql.connection.pgproto;
 
 import java.nio.ByteBuffer;
+import java.sql.SQLException;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 
 import io.debezium.connector.postgresql.connection.MessageDecoder;
-import io.debezium.connector.postgresql.connection.ReplicationMessage;
+import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
 import io.debezium.connector.postgresql.proto.PgProto;
 
 /**
  * ProtoBuf deserialization of message sent by <a href="https://github.com/debezium/postgres-decoderbufs">Postgres Decoderbufs</>.
- * The message is encapsulated into a List as ProtBuf plugin sends only one message.
+ * Only one message is delivered for processing.
  * 
  * @author Jiri Pechanec
  *
@@ -32,7 +31,7 @@ public class PgProtoMessageDecoder implements MessageDecoder {
     }
 
     @Override
-    public List<ReplicationMessage> deserializeMessage(final ByteBuffer buffer) {
+    public void processMessage(final ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException {
         try {
             if (!buffer.hasArray()) {
                 throw new IllegalStateException(
@@ -40,7 +39,7 @@ public class PgProtoMessageDecoder implements MessageDecoder {
             }
             byte[] source = buffer.array();
             byte[] content = Arrays.copyOfRange(source, buffer.arrayOffset(), source.length);
-            return Collections.singletonList(new PgProtoReplicationMessage(PgProto.RowMessage.parseFrom(content)));
+            processor.process(new PgProtoReplicationMessage(PgProto.RowMessage.parseFrom(content)));
         } catch (InvalidProtocolBufferException e) {
             throw new RuntimeException(e);
         }
