@@ -163,7 +163,7 @@ public class MySqlSchema {
 
     /**
      * Get all of the table definitions for all database tables as defined by
-     * {@link #applyDdl(SourceInfo, String, String, DatabaseStatementStringConsumer) applied DDL statements}, including those
+     * {@link #applyDdl(SourceInfo, String, String, DatabaseStatementStringConsumer) applied DDL statements}, excluding those
      * that have been excluded by the {@link #filters() filters}.
      * 
      * @return the table definitions; never null
