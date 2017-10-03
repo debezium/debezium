@@ -357,6 +357,20 @@ public abstract class AbstractConnectorTest implements Testing {
         while (recordsConsumed < numberOfRecords) {
             SourceRecord record = consumedLines.poll(pollTimeoutInMs, TimeUnit.MILLISECONDS);
             if (record != null) {
+                if (record.value() instanceof Struct) {
+                    final Struct value = (Struct)record.value();
+                    if (
+                        record.keySchema() != null &&
+                        "io.debezium.connector.mysql.SchemaChangeKey".equals(record.keySchema().name()) &&
+                        value.getString("databaseName").length() == 0 &&
+                        value.getString("ddl").startsWith("#")
+                    ) {
+                        if (Testing.Debug.isEnabled()) {
+                            Testing.debug("Dropping " + record);
+                        }
+                        continue;
+                    }
+                }
                 ++recordsConsumed;
                 if (recordConsumer != null) {
                     recordConsumer.accept(record);

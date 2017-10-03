@@ -36,6 +36,10 @@
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.mariadb.jdbc</groupId>
+            <artifactId>mariadb-java-client</artifactId>
+        </dependency>
 
         <!-- Testing -->
         <dependency>
@@ -88,12 +92,14 @@
         <mysql.gtid.replica.port>3306</mysql.gtid.replica.port>
         <mysql.replica.port>3306</mysql.replica.port> <!-- by default use master as 'replica' -->
         <mysql.init.timeout>60000</mysql.init.timeout> <!-- 60 seconds -->
+        <mysql.vendor>mysql</mysql.vendor>
         <!--
         By default, we should use the docker image maintained by the MySQL team. This property is changed with different profiles.
         However, we run one container with GTIDs and one without.
         -->
         <docker.filter>debezium/mysql-server-test-database</docker.filter>
         <docker.skip>false</docker.skip>
+        <mysql.image.from>mysql/mysql-server:${version.mysql.server}</mysql.image.from>
     </properties>
     <build>
         <plugins>
@@ -134,7 +140,7 @@
                       </wait>
                     </run>
                     <build>
-                      <from>mysql/mysql-server:${version.mysql.server}</from>
+                      <from>${mysql.image.from}</from>
                       <assembly>
                         <inline>
                           <fileSets>
@@ -181,7 +187,7 @@
                       </wait>
                     </run>
                     <build>
-                      <from>mysql/mysql-server:${version.mysql.server}</from>
+                      <from>${mysql.image.from}</from>
                       <assembly>
                         <inline>
                           <fileSets>
@@ -232,7 +238,7 @@
                       </wait>
                     </run>
                     <build>
-                      <from>mysql/mysql-server:${version.mysql.server}</from>
+                      <from>${mysql.image.from}</from>
                       <assembly>
                         <inline>
                           <fileSets>
@@ -297,6 +303,7 @@
                         <database.replica.hostname>${docker.host.address}</database.replica.hostname>
                         <database.replica.port>${mysql.replica.port}</database.replica.port>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
+                        <mysql.vendor>${mysql.vendor}</mysql.vendor>
                     </systemPropertyVariables>
                 </configuration>
                 <executions>
@@ -512,6 +519,13 @@
           <!-- Integration test properties -->
           <database.port>${mysql.gtid.port}</database.port>
           <database.replica.port>${mysql.gtid.replica.port}</database.replica.port>
+        </properties>
+      </profile>
+      <profile>
+        <id>mariadb</id>
+        <properties>
+            <mysql.image.from>mariadb:${version.mariadb.server}</mysql.image.from>
+            <mysql.vendor>mariadb</mysql.vendor>
         </properties>
       </profile>
     </profiles>

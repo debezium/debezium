@@ -167,7 +167,8 @@ public class UniqueDatabase {
                 .with(MySqlConnectorConfig.SERVER_NAME, getServerName())
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_WHITELIST, getDatabaseName())
-                .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class);
+                .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+                .with(MySqlConnectorConfig.VENDOR, System.getProperty("mysql.vendor", "mysql"));
         if (dbHistoryPath != null) {
             builder.with(FileDatabaseHistory.FILE_PATH, dbHistoryPath);
         }

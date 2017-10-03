@@ -1,0 +1,41 @@
+# Job definition to build and deploy snapshot artifact
+---
+- job:
+    project-type: freestyle
+    name: debezium-mysql-test-mariadb
+    display-name: MariaDB Test
+    description: Executes tests fro MySQL Connector with MariaDB
+    node: Slave
+    properties:
+      - build-discarder:
+          days-to-keep: 7
+      - github:
+          url: https://github.com/debezium/debezium
+    parameters:
+      - string:
+          name: REPOSITORY
+          default: https://github.com/debezium/debezium
+          description: "Repository from which Debezium is built"
+      - string:
+          name: BRANCH
+          default: master
+          description: "A branch from which Debezium is built"
+    scm:
+      - git:
+         url: $REPOSITORY
+         branches:
+          - "*/$BRANCH"
+    wrappers:
+      - timeout:
+          timeout: 45
+    triggers:
+      - timed: "H 04 * * *"
+    builders:
+      - maven-target:
+          maven-version: (Default)
+          goals: clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-mysql -am -fae -Dmaven.test.failure.ignore=true -Dmysql.port=13306 -Pmariadb
+    publishers:
+      - junit:
+          results: "**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml"
+      - email:
+          recipients: jpechane@redhat.com
