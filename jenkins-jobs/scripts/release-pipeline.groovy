@@ -23,7 +23,7 @@ POSTGRES_DECODER_DIR = 'postgres-decoder'
 
 VERSION_TAG = "v$RELEASE_VERSION"
 CONNECTORS = ['mongodb','mysql','postgres']
-IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'kafka', 'zookeeper']
+IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/postgres', 'kafka', 'zookeeper']
 MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
 STAGING_REPO = 'https://oss.sonatype.org/content/repositories'
 STAGING_REPO_ID = null
