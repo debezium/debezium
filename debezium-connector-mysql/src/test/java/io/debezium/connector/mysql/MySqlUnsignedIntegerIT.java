@@ -116,7 +116,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-252")
+    @FixFor("DBZ-363")
     public void shouldConsumeAllEventsFromBigIntTableInDatabaseUsingBinlogAndNoSnapshotUsingLong() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
