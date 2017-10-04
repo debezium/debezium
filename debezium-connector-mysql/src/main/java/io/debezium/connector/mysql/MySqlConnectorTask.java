@@ -23,7 +23,7 @@ import io.debezium.util.LoggingContext.PreviousContext;
 
 /**
  * A Kafka Connect source task reads the MySQL binary log and generate the corresponding data change events.
- * 
+ *
  * @see MySqlConnector
  * @author Randall Hauch
  */
@@ -216,8 +216,10 @@ public final class MySqlConnectorTask extends SourceTask {
             PreviousContext prevLoggingContext = this.taskContext.configureLoggingContext("task");
             try {
                 logger.info("Stopping MySQL connector task");
-                // Stop the readers ...
-                readers.stop();
+
+                if (readers != null) {
+                    readers.stop();
+                }
             } finally {
                 prevLoggingContext.restore();
             }
@@ -246,7 +248,7 @@ public final class MySqlConnectorTask extends SourceTask {
     /**
      * Determine whether the binlog position as set on the {@link MySqlTaskContext#source() SourceInfo} is available in the
      * server.
-     * 
+     *
      * @return {@code true} if the server has the binlog coordinates, or {@code false} otherwise
      */
     protected boolean isBinlogAvailable() {
@@ -299,7 +301,7 @@ public final class MySqlConnectorTask extends SourceTask {
 
     /**
      * Determine the earliest binlog filename that is still available in the server.
-     * 
+     *
      * @return the name of the earliest binlog filename, or null if there are none.
      */
     protected String earliestBinlogFilename() {
@@ -322,7 +324,7 @@ public final class MySqlConnectorTask extends SourceTask {
 
     /**
      * Determine whether the MySQL server has GTIDs enabled.
-     * 
+     *
      * @return {@code false} if the server's {@code gtid_mode} is set and is {@code OFF}, or {@code true} otherwise
      */
     protected boolean isGtidModeEnabled() {
@@ -342,7 +344,7 @@ public final class MySqlConnectorTask extends SourceTask {
 
     /**
      * Determine whether the MySQL server has the row-level binlog enabled.
-     * 
+     *
      * @return {@code true} if the server's {@code binlog_format} is set to {@code ROW}, or {@code false} otherwise
      */
     protected boolean isRowBinlogEnabled() {
