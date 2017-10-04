@@ -1116,6 +1116,20 @@ public class MySqlDdlParserTest {
         assertColumn(t, "c2", "FIXED", Types.DECIMAL, 1, 0, false, false, false);
     }
 
+    @Test
+    public void parseTableWithPageChecksum() {
+        String ddl =
+                "CREATE TABLE t (id INT NOT NULL, PRIMARY KEY (`id`)) PAGE_CHECKSUM=1;" +
+                "ALTER TABLE t PAGE_CHECKSUM=0;";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table t = tables.forTable(new TableId(null, null, "t"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("id");
+        assertThat(t.primaryKeyColumnNames()).hasSize(1);
+        assertColumn(t, "id", "INT", Types.INTEGER, -1, -1, false, false, false);
+    }
+
     protected void assertParseEnumAndSetOptions(String typeExpression, String optionString) {
         List<String> options = MySqlDdlParser.parseSetAndEnumOptions(typeExpression);
         String commaSeperatedOptions = Strings.join(",", options);
