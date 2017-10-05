@@ -23,6 +23,8 @@ import org.bson.types.ObjectId;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.mongodb.DBRef;
+import com.mongodb.MongoClient;
 import com.mongodb.util.JSONSerializers;
 
 import io.debezium.connector.mongodb.RecordMakers.RecordsForCollection;
@@ -248,5 +250,35 @@ public class RecordMakersTest {
         record = produced.get(4);
         key = (Struct) record.key();
         assertThat(key.get("id")).isEqualTo("{ \"$numberDecimal\" : \"123.45678\"}");
+    }
+
+    @Test
+    public void shouldSupportDbRef() throws InterruptedException {
+        CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
+        BsonTimestamp ts = new BsonTimestamp(1000, 1);
+        ObjectId objId = new ObjectId();
+        Document obj = new Document().append("_id", objId)
+                                     .append("name", "Sally")
+                                     .append("ref", new DBRef("othercollection", 15));
+        Document event = new Document().append("o", obj)
+                                       .append("ns", "dbA.c1")
+                                       .append("ts", ts)
+                                       .append("h", new Long(12345678))
+                                       .append("op", "i");
+        RecordsForCollection records = recordMakers.forCollection(collectionId);
+        records.recordEvent(event, 1002);
+        assertThat(produced.size()).isEqualTo(1);
+        SourceRecord record = produced.get(0);
+        Struct key = (Struct) record.key();
+        Struct value = (Struct) record.value();
+        assertThat(key.schema()).isSameAs(record.keySchema());
+        assertThat(key.get("id")).isEqualTo("{ \"$oid\" : \"" + objId + "\"}");
+        assertThat(value.schema()).isSameAs(record.valueSchema());
+        assertThat(value.getString(FieldName.AFTER)).isEqualTo(obj.toJson(WRITER_SETTINGS, MongoClient.getDefaultCodecRegistry().get(Document.class)));
+        assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.CREATE.code());
+        assertThat(value.getInt64(FieldName.TIMESTAMP)).isEqualTo(1002L);
+        Struct actualSource = value.getStruct(FieldName.SOURCE);
+        Struct expectedSource = source.lastOffsetStruct("rs0", collectionId);
+        assertThat(actualSource).isEqualTo(expectedSource);
     }
 }

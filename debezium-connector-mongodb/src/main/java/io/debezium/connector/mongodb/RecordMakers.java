@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 import com.mongodb.DBCollection;
+import com.mongodb.MongoClient;
 import com.mongodb.util.JSONSerializers;
 import com.mongodb.util.ObjectSerializer;
 import org.apache.kafka.connect.data.Schema;
@@ -115,7 +116,7 @@ public class RecordMakers {
                                             .field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
                                             .build();
             JsonWriterSettings writerSettings = new JsonWriterSettings(JsonMode.STRICT, "", ""); // most compact JSON
-            this.valueTransformer = (doc) -> doc.toJson(writerSettings);
+            this.valueTransformer = (doc) -> doc.toJson(writerSettings, MongoClient.getDefaultCodecRegistry().get(Document.class));
             this.recorder = recorder;
         }
 
