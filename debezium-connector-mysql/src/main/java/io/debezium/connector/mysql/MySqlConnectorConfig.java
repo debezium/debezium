@@ -360,7 +360,9 @@ public class MySqlConnectorConfig {
     }
 
     private static final String DATABASE_WHITELIST_NAME = "database.whitelist";
+    private static final String DATABASE_BLACKLIST_NAME = "database.blacklist";
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
+    private static final String TABLE_BLACKLIST_NAME = "table.blacklist";
     private static final String TABLE_IGNORE_BUILTIN_NAME = "table.ignore.builtin";
 
     public static final Field HOSTNAME = Field.create("database.hostname")
@@ -496,7 +498,7 @@ public class MySqlConnectorConfig {
      * A comma-separated list of regular expressions that match database names to be excluded from monitoring.
      * May not be used with {@link #DATABASE_WHITELIST}.
      */
-    public static final Field DATABASE_BLACKLIST = Field.create("database.blacklist")
+    public static final Field DATABASE_BLACKLIST = Field.create(DATABASE_BLACKLIST_NAME)
                                                         .withDisplayName("Exclude Databases")
                                                         .withType(Type.STRING)
                                                         .withWidth(Width.LONG)
@@ -524,7 +526,7 @@ public class MySqlConnectorConfig {
      * monitoring. Fully-qualified names for tables are of the form {@code <databaseName>.<tableName>} or
      * {@code <databaseName>.<schemaName>.<tableName>}. May not be used with {@link #TABLE_WHITELIST}.
      */
-    public static final Field TABLE_BLACKLIST = Field.create("table.blacklist")
+    public static final Field TABLE_BLACKLIST = Field.create(TABLE_BLACKLIST_NAME)
                                                      .withDisplayName("Exclude Tables")
                                                      .withType(Type.STRING)
                                                      .withWidth(Width.LONG)

@@ -163,6 +163,14 @@ public final class MySqlConnectorTask extends SourceTask {
                     readers.add(binlogReader);
                 }
             } else {
+                if (!source.hasFilterInfo()) {
+                    // if we don't have filter info, either
+                    // 1. the snapshot was taken in a version of debezium before the filter info was stored in the offsets, or
+                    // 2. this connector previously had no filter information.
+                    // either way, we have to assume that the filter information currently in the config accurately reflects
+                    // the current state of the connector.
+                    source.setFilterData(new Filters(config));
+                }
                 if (!rowBinlogEnabled) {
                     throw new ConnectException(
                             "The MySQL server does not appear to be using a row-level binlog, which is required for this connector to work properly. Enable this mode and restart the connector.");

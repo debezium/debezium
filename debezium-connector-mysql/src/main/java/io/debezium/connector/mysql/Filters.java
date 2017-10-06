@@ -62,6 +62,12 @@ public class Filters {
     private final Predicate<ColumnId> columnFilter;
     private final ColumnMappers columnMappers;
 
+    // store this information for easy extraction later.
+    private final String dbWhitelist;
+    private final String dbBlacklist;
+    private final String tableWhitelist;
+    private final String tableBlacklist;
+
     /**
      * @param config the configuration; may not be null
      */
@@ -69,18 +75,23 @@ public class Filters {
         this.isBuiltInDb = Filters::isBuiltInDatabase;
         this.isBuiltInTable = Filters::isBuiltInTable;
 
+        this.dbWhitelist = config.getString(MySqlConnectorConfig.DATABASE_WHITELIST);
+        this.dbBlacklist = config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST);
+        this.tableWhitelist = config.getString(MySqlConnectorConfig.TABLE_WHITELIST);
+        this.tableBlacklist = config.getString(MySqlConnectorConfig.TABLE_BLACKLIST);
+
         // Define the filter used for database names ...
         Predicate<String> dbFilter = Selectors.databaseSelector()
-                                              .includeDatabases(config.getString(MySqlConnectorConfig.DATABASE_WHITELIST))
-                                              .excludeDatabases(config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST))
+                                              .includeDatabases(dbWhitelist)
+                                              .excludeDatabases(dbBlacklist)
                                               .build();
 
         // Define the filter using the whitelists and blacklists for tables and database names ...
         Predicate<TableId> tableFilter = Selectors.tableSelector()
-                                                  .includeDatabases(config.getString(MySqlConnectorConfig.DATABASE_WHITELIST))
-                                                  .excludeDatabases(config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST))
-                                                  .includeTables(config.getString(MySqlConnectorConfig.TABLE_WHITELIST))
-                                                  .excludeTables(config.getString(MySqlConnectorConfig.TABLE_BLACKLIST))
+                                                  .includeDatabases(dbWhitelist)
+                                                  .excludeDatabases(dbBlacklist)
+                                                  .includeTables(tableWhitelist)
+                                                  .excludeTables(tableBlacklist)
                                                   .build();
 
         // Ignore built-in databases and tables ...
@@ -136,4 +147,19 @@ public class Filters {
         return columnMappers;
     }
 
+    public String getDatabaseWhitelist() {
+        return this.dbWhitelist;
+    }
+
+    public String getDatabaseBlacklist() {
+        return this.dbBlacklist;
+    }
+
+    public String getTableWhitelist() {
+        return this.tableWhitelist;
+    }
+
+    public String getTableBlacklist() {
+        return this.tableBlacklist;
+    }
 }
