@@ -191,6 +191,57 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
         }
     }
 
+    public static enum SnapshotNewTables implements EnumeratedValue {
+        /**
+         * Do not snapshot new tables
+         */
+        OFF("off"),
+
+        /**
+         * Snapshot new tables in parallel to normal binlog reading.
+         */
+        PARALLEL("parallel");
+
+        private final String value;
+
+        private SnapshotNewTables(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static SnapshotNewTables parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+            for (SnapshotNewTables option : SnapshotNewTables.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static SnapshotNewTables parse(String value, String defaultValue) {
+            SnapshotNewTables snapshotNewTables = parse(value);
+            if (snapshotNewTables == null && defaultValue != null) snapshotNewTables = parse(defaultValue);
+            return snapshotNewTables;
+        }
+    }
+
     /**
      * The set of predefined Snapshot Locking Mode options.
      */
@@ -497,7 +548,9 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     private static final String DATABASE_WHITELIST_NAME = "database.whitelist";
+    private static final String DATABASE_BLACKLIST_NAME = "database.blacklist";
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
+    private static final String TABLE_BLACKLIST_NAME = "table.blacklist";
     private static final String TABLE_IGNORE_BUILTIN_NAME = "table.ignore.builtin";
 
     /**
@@ -571,6 +624,17 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                        + "currently-running database processes in the cluster. This connector joins the "
                                                        + "MySQL database cluster as another server (with this unique ID) so it can read "
                                                        + "the binlog. By default, a random number is generated between 5400 and 6400.");
+
+    public static final Field SERVER_ID_OFFSET = Field.create("database.server.id.offset")
+                                                      .withDisplayName("Cluster ID offset")
+                                                      .withType(Type.LONG)
+                                                      .withWidth(Width.LONG)
+                                                      .withImportance(Importance.HIGH)
+                                                      .withDefault(10000L)
+                                                      .withDescription("Only relevant in parallel snapshotting is configured. During "
+                                                              + "parallel snapshotting, multiple (4) connections open to the database "
+                                                              + "client, and they each need their own unique connection ID. This offset is "
+                                                              + "used to generate those IDs from the base configured cluster ID.");
 
     public static final Field SSL_MODE = Field.create("database.ssl.mode")
                                               .withDisplayName("SSL mode")
@@ -649,7 +713,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
      * A comma-separated list of regular expressions that match database names to be excluded from monitoring.
      * May not be used with {@link #DATABASE_WHITELIST}.
      */
-    public static final Field DATABASE_BLACKLIST = Field.create("database.blacklist")
+    public static final Field DATABASE_BLACKLIST = Field.create(DATABASE_BLACKLIST_NAME)
                                                         .withDisplayName("Exclude Databases")
                                                         .withType(Type.STRING)
                                                         .withWidth(Width.LONG)
@@ -677,7 +741,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
      * monitoring. Fully-qualified names for tables are of the form {@code <databaseName>.<tableName>} or
      * {@code <databaseName>.<schemaName>.<tableName>}. May not be used with {@link #TABLE_WHITELIST}.
      */
-    public static final Field TABLE_BLACKLIST = Field.create("table.blacklist")
+    public static final Field TABLE_BLACKLIST = Field.create(TABLE_BLACKLIST_NAME)
                                                      .withDisplayName("Exclude Tables")
                                                      .withType(Type.STRING)
                                                      .withWidth(Width.LONG)
@@ -878,6 +942,19 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                                + "'schema_only_recovery' and is only safe to use if no schema changes are happening while the snapshot is taken.")
                                                            .withValidation(MySqlConnectorConfig::validateSnapshotLockingMode);
 
+    public static final Field SNAPSHOT_NEW_TABLES = Field.create("snapshot.new.tables")
+                                                       .withDisplayName("Snapshot newly added tables")
+                                                       .withEnum(SnapshotNewTables.class, SnapshotNewTables.OFF)
+                                                       .withWidth(Width.SHORT)
+                                                       .withImportance(Importance.LOW)
+                                                       .withDescription("BETA FEATURE: On connector restart, the connector will check if there have been any new tables added to the configuration, "
+                                                           + "and snapshot them. There is presently only two options:"
+                                                           + "'off': Default behavior. Do not snapshot new tables."
+                                                           + "'parallel': The snapshot of the new tables will occur in parallel to the continued binlog reading of the old tables. When the snapshot "
+                                                           + "completes, an independent binlog reader will begin reading the events for the new tables until it catches up to present time. At this "
+                                                           + "point, both old and new binlog readers will be momentarily halted and new binlog reader will start that will read the binlog for all "
+                                                           + "configured tables. The parallel binlog reader will have a configured server id of 10000 + the primary binlog reader's server id.");
+
     public static final Field TIME_PRECISION_MODE = Field.create("time.precision.mode")
                                                          .withDisplayName("Time Precision")
                                                          .withEnum(TemporalPrecisionMode.class, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS)
@@ -973,7 +1050,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
-    public static Field.Set ALL_FIELDS = Field.setOf(USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS, SERVER_ID,
+    public static Field.Set ALL_FIELDS = Field.setOf(USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS, SERVER_ID, SERVER_ID_OFFSET,
                                                      SERVER_NAME,
                                                      CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS,
                                                      CommonConnectorConfig.MAX_QUEUE_SIZE,
@@ -983,7 +1060,8 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      Heartbeat.HEARTBEAT_TOPICS_PREFIX, DATABASE_HISTORY, INCLUDE_SCHEMA_CHANGES, INCLUDE_SQL_QUERY,
                                                      TABLE_WHITELIST, TABLE_BLACKLIST, TABLES_IGNORE_BUILTIN,
                                                      DATABASE_WHITELIST, DATABASE_BLACKLIST,
-                                                     COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, SNAPSHOT_LOCKING_MODE,
+                                                     COLUMN_BLACKLIST,
+                                                     SNAPSHOT_MODE, SNAPSHOT_NEW_TABLES, SNAPSHOT_MINIMAL_LOCKING, SNAPSHOT_LOCKING_MODE,
                                                      GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
                                                      GTID_SOURCE_FILTER_DML_EVENTS,
                                                      GTID_NEW_CHANNEL_POSITION,
@@ -1057,7 +1135,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
-        Field.group(config, "MySQL", HOSTNAME, PORT, USER, PASSWORD, ON_CONNECT_STATEMENTS, SERVER_NAME, SERVER_ID,
+        Field.group(config, "MySQL", HOSTNAME, PORT, USER, PASSWORD, ON_CONNECT_STATEMENTS, SERVER_NAME, SERVER_ID, SERVER_ID_OFFSET,
                     SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD, SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER);
         Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                     KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
@@ -1071,7 +1149,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                     CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
-                    SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
+                    SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE, SNAPSHOT_NEW_TABLES, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                     BIGINT_UNSIGNED_HANDLING_MODE, SNAPSHOT_DELAY_MS, DDL_PARSER_MODE);
         return config;
     }
