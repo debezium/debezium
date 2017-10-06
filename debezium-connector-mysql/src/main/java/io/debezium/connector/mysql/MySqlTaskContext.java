@@ -17,6 +17,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.mysql.MySqlConnectorConfig.GtidNewChannelPosition;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotNewTables;
 import io.debezium.function.Predicates;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.DatabaseHistory;
@@ -49,12 +50,15 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
      */
     private final boolean tableIdCaseInsensitive;
 
-    public MySqlTaskContext(Configuration config) {
-        this(config, null);
+    public MySqlTaskContext(Configuration config, Filters filters) {
+        this(config, filters, null, null);
     }
 
-    public MySqlTaskContext(Configuration config, Boolean tableIdCaseInsensitive) {
-        // MySQL now calculates JMX binlog reader metrics on its own
+    public MySqlTaskContext(Configuration config, Filters filters, Map<String, ?> restartOffset) {
+        this(config, filters, null, restartOffset);
+    }
+
+    public MySqlTaskContext(Configuration config, Filters filters, Boolean tableIdCaseInsensitive, Map<String, ?> restartOffset) {
         super("MySQL", config.getString(MySqlConnectorConfig.SERVER_NAME), Collections::emptyList);
 
         this.config = config;
@@ -81,10 +85,10 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         }
 
         // Set up the MySQL schema ...
-        this.dbSchema = new MySqlSchema(connectorConfig, this.gtidSourceFilter, this.tableIdCaseInsensitive, topicSelector);
+        this.dbSchema = new MySqlSchema(connectorConfig, this.gtidSourceFilter, this.tableIdCaseInsensitive, topicSelector, filters);
 
         // Set up the record processor ...
-        this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector, config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE));
+        this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector, config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE), restartOffset);
 
         // Set up the DDL filter
         final String ddlFilter = config.getString(DatabaseHistory.DDL_FILTER);
@@ -240,6 +244,11 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
     protected SnapshotMode snapshotMode() {
         String value = config.getString(MySqlConnectorConfig.SNAPSHOT_MODE);
         return SnapshotMode.parse(value, MySqlConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
+    }
+
+    protected SnapshotNewTables snapshotNewTables() {
+        String value = config.getString(MySqlConnectorConfig.SNAPSHOT_NEW_TABLES);
+        return SnapshotNewTables.parse(value, MySqlConnectorConfig.SNAPSHOT_NEW_TABLES.defaultValueAsString());
     }
 
     public String getSnapshotSelectOverrides() {

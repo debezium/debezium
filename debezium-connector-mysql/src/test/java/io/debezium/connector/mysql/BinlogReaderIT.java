@@ -116,7 +116,8 @@ public class BinlogReaderIT {
     @Test
     public void shouldCreateSnapshotOfSingleDatabase() throws Exception {
         config = simpleConfig().build();
-        context = new MySqlTaskContext(config);
+        Filters filters = new Filters.Builder(config).build();
+        context = new MySqlTaskContext(config, filters);
         context.start();
         context.source().setBinlogStartPoint("",0L); // start from beginning
         context.initializeHistory();
@@ -177,7 +178,8 @@ public class BinlogReaderIT {
     @Test
     public void shouldCreateSnapshotOfSingleDatabaseWithSchemaChanges() throws Exception {
         config = simpleConfig().with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true).build();
-        context = new MySqlTaskContext(config);
+        Filters filters = new Filters.Builder(config).build();
+        context = new MySqlTaskContext(config, filters);
         context.start();
         context.source().setBinlogStartPoint("",0L); // start from beginning
         context.initializeHistory();
@@ -248,7 +250,8 @@ public class BinlogReaderIT {
                                .with(MySqlConnectorConfig.DATABASE_WHITELIST, REGRESSION_DATABASE.getDatabaseName())
                                .with(MySqlConnectorConfig.TABLE_WHITELIST, REGRESSION_DATABASE.qualifiedTableName(tableName))
                                .build();
-        context = new MySqlTaskContext(config);
+        Filters filters = new Filters.Builder(config).build();
+        context = new MySqlTaskContext(config, filters);
         context.start();
         context.source().setBinlogStartPoint("",0L); // start from beginning
         context.initializeHistory();
@@ -291,11 +294,12 @@ public class BinlogReaderIT {
                                .with(MySqlConnectorConfig.DATABASE_WHITELIST, REGRESSION_DATABASE.getDatabaseName())
                                .with(MySqlConnectorConfig.TABLE_WHITELIST, REGRESSION_DATABASE.qualifiedTableName(tableName))
                                .build();
-        context = new MySqlTaskContext(config);
+        Filters filters = new Filters.Builder(config).build();
+        context = new MySqlTaskContext(config, filters);
         context.start();
         context.source().setBinlogStartPoint("",0L); // start from beginning
         context.initializeHistory();
-        reader = new BinlogReader("binlog", context);
+        reader = new BinlogReader("binlog", context, null);
 
         // Start reading the binlog ...
         reader.start();
@@ -391,11 +395,12 @@ public class BinlogReaderIT {
                     .build();
         }
 
-        context = new MySqlTaskContext(config);
+        Filters filters = new Filters.Builder(config).build();
+        context = new MySqlTaskContext(config, filters);
         context.start();
         context.source().setBinlogStartPoint("",0L); // start from beginning
         context.initializeHistory();
-        reader = new BinlogReader("binlog", context);
+        reader = new BinlogReader("binlog", context, null);
 
         // Start reading the binlog ...
         reader.start();

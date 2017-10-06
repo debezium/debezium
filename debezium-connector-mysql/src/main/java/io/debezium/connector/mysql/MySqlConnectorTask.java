@@ -7,10 +7,16 @@ package io.debezium.connector.mysql;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import io.debezium.util.LoggingContext;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
@@ -22,6 +28,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.schema.TopicSelector;
+import io.debezium.util.Collect;
 import io.debezium.util.LoggingContext.PreviousContext;
 
 /**
@@ -54,20 +61,21 @@ public final class MySqlConnectorTask extends BaseSourceTask {
 
     @Override
     public synchronized void start(Configuration config) {
-        // Create and start the task context ...
-        this.taskContext = new MySqlTaskContext(config);
-        this.connectionContext = taskContext.getConnectionContext();
+        final String serverName = config.getString(MySqlConnectorConfig.SERVER_NAME);
+        PreviousContext prevLoggingContext = LoggingContext.forConnector("MySQL", serverName, "task");
 
-        PreviousContext prevLoggingContext = this.taskContext.configureLoggingContext("task");
         try {
-            this.taskContext.start();
-
             // Get the offsets for our partition ...
             boolean startWithSnapshot = false;
             boolean snapshotEventsAreInserts = true;
-            final SourceInfo source = taskContext.source();
-            Map<String, ?> offsets = context.offsetStorageReader().offset(taskContext.source().partition());
+            Map<String, String> partition = Collect.hashMapOf(SourceInfo.SERVER_PARTITION_KEY, serverName);
+            Map<String, ?> offsets = getRestartOffset(context.offsetStorageReader().offset(partition));
+            final SourceInfo source;
             if (offsets != null) {
+                Filters filters = SourceInfo.offsetsHaveFilterInfo(offsets) ? getOldFilters(offsets, config) : getAllFilters(config);
+                this.taskContext = createAndStartTaskContext(config, filters);
+                this.connectionContext = taskContext.getConnectionContext();
+                source = taskContext.source();
                 // Set the position in our source info ...
                 source.setOffset(offsets);
                 logger.info("Found existing offset: {}", offsets);
@@ -124,7 +132,11 @@ public final class MySqlConnectorTask extends BaseSourceTask {
 
             } else {
                 // We have no recorded offsets ...
+                this.taskContext = createAndStartTaskContext(config, getAllFilters(config));
                 taskContext.initializeHistoryStorage();
+                this.connectionContext = taskContext.getConnectionContext();
+                source = taskContext.source();
+
                 if (taskContext.isSnapshotNeverAllowed()) {
                     // We're not allowed to take a snapshot, so instead we have to assume that the binlog contains the
                     // full history of the database.
@@ -161,7 +173,6 @@ public final class MySqlConnectorTask extends BaseSourceTask {
             ChainedReader.Builder chainedReaderBuilder = new ChainedReader.Builder();
 
             // Set up the readers, with a callback to `completeReaders` so that we know when it is finished ...
-            BinlogReader binlogReader = new BinlogReader("binlog", taskContext);
             if (startWithSnapshot) {
                 // We're supposed to start with a snapshot, so set that up ...
                 SnapshotReader snapshotReader = new SnapshotReader("snapshot", taskContext);
@@ -183,15 +194,57 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                                 + "required for this connector to work properly. Change the MySQL configuration to use a "
                                 + "row-level binlog and restart the connector.");
                     }
+                    BinlogReader binlogReader = new BinlogReader("binlog", taskContext, null);
                     chainedReaderBuilder.addReader(binlogReader);
                 }
             } else {
+                if (!source.hasFilterInfo()) {
+                    // if we don't have filter info, then either
+                    // 1. the snapshot was taken in a version of debezium before the filter info was stored in the offsets, or
+                    // 2. this connector previously had no filter information.
+                    // either way, we have to assume that the filter information currently in the config accurately reflects
+                    // the current state of the connector.
+                    source.maybeSetFilterDataFromConfig(config);
+                }
                 if (!rowBinlogEnabled) {
                     throw new ConnectException(
                             "The MySQL server does not appear to be using a row-level binlog, which is required for this connector to work properly. Enable this mode and restart the connector.");
                 }
-                // We're going to start by reading the binlog ...
-                chainedReaderBuilder.addReader(binlogReader);
+
+
+                // if there are new tables
+                if (newTablesInConfig()) {
+                    // and we are configured to run a parallel snapshot
+                    if (taskContext.snapshotNewTables() == MySqlConnectorConfig.SnapshotNewTables.PARALLEL) {
+                        ServerIdGenerator serverIdGenerator =
+                            new ServerIdGenerator(config.getLong(MySqlConnectorConfig.SERVER_ID),
+                                                  config.getLong(MySqlConnectorConfig.SERVER_ID_OFFSET));
+                        ParallelSnapshotReader parallelSnapshotReader = new ParallelSnapshotReader(config,
+                                                                                                   taskContext,
+                                                                                                   getNewFilters(offsets, config),
+                                                                                                   serverIdGenerator);
+
+                        MySqlTaskContext unifiedTaskContext = createAndStartTaskContext(config, getAllFilters(config));
+                        // we aren't completing a snapshot, but we need to make sure the "snapshot" flag is false for this new context.
+                        unifiedTaskContext.source().completeSnapshot();
+                        BinlogReader unifiedBinlogReader = new BinlogReader("binlog",
+                                                                            unifiedTaskContext,
+                                                                            null,
+                                                                            serverIdGenerator.getConfiguredServerId());
+                        ReconcilingBinlogReader reconcilingBinlogReader = parallelSnapshotReader.createReconcilingBinlogReader(unifiedBinlogReader);
+
+                        chainedReaderBuilder.addReader(parallelSnapshotReader);
+                        chainedReaderBuilder.addReader(reconcilingBinlogReader);
+                        chainedReaderBuilder.addReader(unifiedBinlogReader);
+
+                        unifiedBinlogReader.uponCompletion(unifiedTaskContext::shutdown);
+                    }
+                } else {
+                    // We're going to start by reading the binlog ...
+                    BinlogReader binlogReader = new BinlogReader("binlog", taskContext, null);
+                    chainedReaderBuilder.addReader(binlogReader);
+                }
+
             }
 
             readers = chainedReaderBuilder.build();
@@ -220,6 +273,133 @@ public final class MySqlConnectorTask extends BaseSourceTask {
         } finally {
             prevLoggingContext.restore();
         }
+    }
+
+    public class ServerIdGenerator {
+
+        private final long configuredServerId;
+        private final long offset;
+        private int counter;
+
+        private ServerIdGenerator(long configuredServerId, long configuredOffset) {
+            this.configuredServerId = configuredServerId;
+            this.offset = configuredOffset;
+            this.counter = 0;
+        }
+
+        public long getNextServerId() {
+            counter++;
+            return configuredServerId + (counter * offset);
+        }
+
+        public long getConfiguredServerId() {
+            return configuredServerId;
+        }
+    }
+
+    /**
+     * Get the offset to restart the connector from. Normally, this is just the stored offset.
+     *
+     * However, if we were doing a parallel load with new tables, it's possible that the last
+     * committed offset is from reading the new tables, which could be beyond where we want to
+     * restart from (and restarting there could cause skipped events). To fix this, the new
+     * tables binlog reader records extra information in its offset to tell the connector where
+     * to restart from. If this extra information is present in the stored offset, that is the
+     * offset that is returned.
+     * @param storedOffset the stored offset.
+     * @return the offset to restart from.
+     * @see RecordMakers#RecordMakers(MySqlSchema, SourceInfo, TopicSelector, boolean, Map)
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, ?> getRestartOffset(Map<String, ?> storedOffset) {
+        Map<String, Object> restartOffset = new HashMap<>();
+        if (storedOffset != null) {
+            for (String key : storedOffset.keySet()){
+                if (key.startsWith(SourceInfo.RESTART_PREFIX)) {
+                    String newKey = key.substring(SourceInfo.RESTART_PREFIX.length());
+                    restartOffset.put(newKey, storedOffset.get(key));
+                }
+            }
+        }
+        return restartOffset.isEmpty()? storedOffset : restartOffset;
+    }
+
+    private static MySqlTaskContext createAndStartTaskContext(Configuration config,
+                                                              Filters filters) {
+        MySqlTaskContext taskContext = new MySqlTaskContext(config, filters);
+        taskContext.start();
+        return taskContext;
+    }
+
+    /**
+     * @return true if new tables appear to have been added to the config, and false otherwise.
+     */
+    private boolean newTablesInConfig() {
+        final String elementSep = "/s*,/s*";
+
+        // take in two stringified lists, and return true if the first list contains elements that are not in the second list
+        BiFunction<String, String, Boolean> hasExclusiveElements = (String a, String b) -> {
+            if (a == null || a.isEmpty()) {
+                return false;
+            } else if (b == null || b.isEmpty()) {
+                return true;
+            }
+            Set<String> bSet = Stream.of(b.split(elementSep)).collect(Collectors.toSet());
+            return !Stream.of(a.split(elementSep)).filter((x) -> !bSet.contains(x)).collect(Collectors.toSet()).isEmpty();
+        };
+
+        final SourceInfo sourceInfo = taskContext.source();
+        final Configuration config = taskContext.config();
+        if (!sourceInfo.hasFilterInfo()) {
+            // if there was previously no filter info, then we either can't evaluate if there are new tables,
+            // or there aren't any new tables because we previously used no filter.
+            return false;
+        }
+        // otherwise, we have filter info
+        // if either whitelist has been added to, then we may have new tables
+
+        if (hasExclusiveElements.apply(config.getString(MySqlConnectorConfig.DATABASE_WHITELIST), sourceInfo.getDatabaseWhitelist())) {
+            return true;
+        }
+        if (hasExclusiveElements.apply(config.getString(MySqlConnectorConfig.TABLE_WHITELIST), sourceInfo.getTableWhitelist())) {
+            return true;
+        }
+        // if either blacklist has been removed from, then we may have new tables
+        if (hasExclusiveElements.apply(sourceInfo.getDatabaseBlacklist(), config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST))) {
+            return true;
+        }
+        if (hasExclusiveElements.apply(sourceInfo.getTableBlacklist(), config.getString(MySqlConnectorConfig.TABLE_BLACKLIST))) {
+            return true;
+        }
+        // otherwise, false.
+        return false;
+    }
+
+    /**
+     * Get the filters representing the tables that have been newly added to the config, but
+     * not those that previously existed in the config.
+     * @return {@link Filters}
+     */
+    private static Filters getNewFilters(Map<String, ?> offsets, Configuration config) {
+        Filters oldFilters = getOldFilters(offsets, config);
+        return new Filters.Builder(config).excludeAllTables(oldFilters).build();
+    }
+
+    /**
+     * Get the filters representing those tables that previously existed in the config, but
+     * not those newly added to the config.
+     * @return {@link Filters}
+     */
+    private static Filters getOldFilters(Map<String, ?> offsets, Configuration config) {
+        return new Filters.Builder(config).setFiltersFromOffsets(offsets).build();
+    }
+
+    /**
+     * Get the filters representing all tables represented by the config.
+     * @return {@link Filters}
+     */
+    private static Filters getAllFilters(Configuration config) {
+        return new Filters.Builder(config).build();
     }
 
     @Override

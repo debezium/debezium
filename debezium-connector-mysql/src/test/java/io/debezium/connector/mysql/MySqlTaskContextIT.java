@@ -21,7 +21,7 @@ public class MySqlTaskContextIT extends MySqlTaskContextTest {
     @Test
     public void shouldCreateTaskFromConfiguration() throws Exception {
         config = simpleConfig().build();
-        context = new MySqlTaskContext(config);
+        context = new MySqlTaskContext(config, new Filters.Builder(config).build());
         context.start();
         assertThat(context.config()).isSameAs(config);
 
@@ -58,7 +58,7 @@ public class MySqlTaskContextIT extends MySqlTaskContextTest {
     @Test
     public void shouldCloseJdbcConnectionOnShutdown() throws Exception {
         config = simpleConfig().build();
-        context = new MySqlTaskContext(config);
+        context = new MySqlTaskContext(config, new Filters.Builder(config).build());
         context.start();
 
         // JDBC connection is automatically created by MySqlTaskContext when it reads database variables

@@ -144,9 +144,22 @@ public class BinlogReader extends AbstractReader {
      *
      * @param name the name of this reader; may not be null
      * @param context the task context in which this reader is running; may not be null
+     * @param acceptAndContinue see {@link AbstractReader#AbstractReader(String, MySqlTaskContext, Predicate)}
      */
-    public BinlogReader(String name, MySqlTaskContext context) {
-        super(name, context);
+    public BinlogReader(String name, MySqlTaskContext context, Predicate<SourceRecord> acceptAndContinue) {
+        this(name, context, acceptAndContinue, context.serverId());
+    }
+
+    /**
+     * Create a binlog reader.
+     *
+     * @param name the name of this reader; may not be null
+     * @param context the task context in which this reader is running; may not be null
+     * @param acceptAndContinue see {@link AbstractReader#AbstractReader(String, MySqlTaskContext, Predicate)}
+     * @param serverId the server id to use for the {@link BinaryLogClient}
+     */
+    public BinlogReader(String name, MySqlTaskContext context, Predicate<SourceRecord> acceptAndContinue, long serverId) {
+        super(name, context, acceptAndContinue);
 
         connectionContext = context.getConnectionContext();
         source = context.source();
@@ -163,7 +176,7 @@ public class BinlogReader extends AbstractReader {
         client = new BinaryLogClient(connectionContext.hostname(), connectionContext.port(), connectionContext.username(), connectionContext.password());
         // BinaryLogClient will overwrite thread names later
         client.setThreadFactory(Threads.threadFactory(MySqlConnector.class, context.getConnectorConfig().getLogicalName(), "binlog-client", false));
-        client.setServerId(context.serverId());
+        client.setServerId(serverId);
         client.setSSLMode(sslModeFor(connectionContext.sslMode()));
         client.setKeepAlive(context.config().getBoolean(MySqlConnectorConfig.KEEP_ALIVE));
         client.setKeepAliveInterval(context.config().getLong(MySqlConnectorConfig.KEEP_ALIVE_INTERVAL_MS));
@@ -236,6 +249,10 @@ public class BinlogReader extends AbstractReader {
         metrics = new BinlogReaderMetrics(client, context);
         heartbeat = Heartbeat.create(context.config(), context.topicSelector().getHeartbeatTopic(),
                 context.getConnectorConfig().getLogicalName());
+    }
+
+    public BinlogReader(String name, MySqlTaskContext context) {
+        this(name, context, null);
     }
 
     @Override
@@ -360,16 +377,23 @@ public class BinlogReader extends AbstractReader {
         }
     }
 
+    /**
+     * @return a copy of the last offset of this reader, or null if this reader has not completed a poll.
+     */
+    public Map<String, ?> getLastOffset() {
+        return lastOffset == null? null : new HashMap<>(lastOffset);
+    }
+
     @Override
     protected void doStop() {
         try {
-            if (isRunning()) {
-                logger.debug("Stopping binlog reader, last recorded offset: {}", lastOffset);
+            if (client.isConnected()) {
+                logger.debug("Stopping binlog reader '{}', last recorded offset: {}", this.name(), lastOffset);
                 client.disconnect();
             }
             cleanupResources();
         } catch (IOException e) {
-            logger.error("Unexpected error when disconnecting from the MySQL binary log reader", e);
+            logger.error("Unexpected error when disconnecting from the MySQL binary log reader '{}'", this.name(), e);
         }
     }
 

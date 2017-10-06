@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Predicate;
 
+import io.debezium.config.Configuration;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -111,6 +112,11 @@ final class SourceInfo extends AbstractSourceInfo {
     public static final String DB_NAME_KEY = "db";
     public static final String TABLE_NAME_KEY = "table";
     public static final String QUERY_KEY = "query";
+    public static final String DATABASE_WHITELIST_KEY = "database_whitelist";
+    public static final String DATABASE_BLACKLIST_KEY = "database_blacklist";
+    public static final String TABLE_WHITELIST_KEY = "table_whitelist";
+    public static final String TABLE_BLACKLIST_KEY = "table_blacklist";
+    public static final String RESTART_PREFIX = "RESTART_";
 
     /**
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition()} and {@link #offset()} information.
@@ -151,6 +157,10 @@ final class SourceInfo extends AbstractSourceInfo {
     private boolean lastSnapshot = true;
     private boolean nextSnapshot = false;
     private String currentQuery = null;
+    private String databaseWhitelist;
+    private String databaseBlacklist;
+    private String tableWhitelist;
+    private String tableBlacklist;
 
     public SourceInfo() {
         super(Module.version());
@@ -286,6 +296,12 @@ final class SourceInfo extends AbstractSourceInfo {
         if (isSnapshotInEffect()) {
             map.put(SNAPSHOT_KEY, true);
         }
+        if(hasFilterInfo()) {
+            map.put(DATABASE_WHITELIST_KEY, databaseWhitelist);
+            map.put(DATABASE_BLACKLIST_KEY, databaseBlacklist);
+            map.put(TABLE_WHITELIST_KEY, tableWhitelist);
+            map.put(TABLE_BLACKLIST_KEY, tableBlacklist);
+        }
         return map;
     }
 
@@ -343,6 +359,7 @@ final class SourceInfo extends AbstractSourceInfo {
         result.put(BINLOG_ROW_IN_EVENT_OFFSET_KEY, currentRowNumber);
         result.put(TIMESTAMP_KEY, binlogTimestampSeconds);
         if (lastSnapshot) {
+            // if the snapshot is COMPLETED, then this will not happen.
             result.put(SNAPSHOT_KEY, true);
         }
         if (threadId >= 0) {
@@ -478,9 +495,10 @@ final class SourceInfo extends AbstractSourceInfo {
     /**
      * Denote that a snapshot will be complete after one last record.
      */
-    public void markLastSnapshot() {
+    public void markLastSnapshot(Configuration config) {
         this.lastSnapshot = true;
         this.nextSnapshot = false;
+        maybeSetFilterDataFromConfig(config);
     }
 
     /**
@@ -489,6 +507,58 @@ final class SourceInfo extends AbstractSourceInfo {
     public void completeSnapshot() {
         this.lastSnapshot = false;
         this.nextSnapshot = false;
+    }
+
+    /**
+     * Set the filter data for the offset from the given {@link Configuration}
+     * @param config the configuration
+     */
+    public void setFilterDataFromConfig(Configuration config) {
+        this.databaseWhitelist = config.getString(MySqlConnectorConfig.DATABASE_WHITELIST);
+        this.databaseBlacklist = config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST);
+        this.tableWhitelist = config.getString(MySqlConnectorConfig.TABLE_WHITELIST);
+        this.tableBlacklist = config.getString(MySqlConnectorConfig.TABLE_BLACKLIST);
+    }
+
+    /**
+     * Set filter data from config if and only if parallel snapshotting of new tables is turned on
+     * @param config the configuration.
+     */
+    public void maybeSetFilterDataFromConfig(Configuration config) {
+        if (config.getString(MySqlConnectorConfig.SNAPSHOT_NEW_TABLES).equals(
+            MySqlConnectorConfig.SnapshotNewTables.PARALLEL.getValue())) {
+            setFilterDataFromConfig(config);
+        }
+    }
+
+    /**
+     * @return true if this offset has filter info, false otherwise.
+     */
+    public boolean hasFilterInfo() {
+        /*
+         * There are 2 possible cases for us not having filter info.
+         * 1. The connector does not use a filter. Creating a filter in such a connector could never add any tables.
+         * 2. The initial snapshot occurred in a version of Debezium that did not store the filter information in the
+         *    offsets / the connector was not configured to store filter information.
+         */
+        return databaseWhitelist != null || databaseBlacklist != null ||
+               tableWhitelist != null || tableBlacklist != null;
+    }
+
+    public String getDatabaseWhitelist() {
+        return databaseWhitelist;
+    }
+
+    public String getDatabaseBlacklist() {
+        return databaseBlacklist;
+    }
+
+    public String getTableWhitelist() {
+        return tableWhitelist;
+    }
+
+    public String getTableBlacklist() {
+        return tableBlacklist;
     }
 
     /**
@@ -511,7 +581,19 @@ final class SourceInfo extends AbstractSourceInfo {
             this.restartRowsToSkip = (int) longOffsetValue(sourceOffset, BINLOG_ROW_IN_EVENT_OFFSET_KEY);
             nextSnapshot = booleanOffsetValue(sourceOffset, SNAPSHOT_KEY);
             lastSnapshot = nextSnapshot;
+            this.databaseWhitelist = (String) sourceOffset.get(DATABASE_WHITELIST_KEY);
+            this.databaseBlacklist = (String) sourceOffset.get(DATABASE_BLACKLIST_KEY);
+            this.tableWhitelist = (String) sourceOffset.get(TABLE_WHITELIST_KEY);
+            this.tableBlacklist = (String) sourceOffset.get(TABLE_BLACKLIST_KEY);
         }
+    }
+
+    public static boolean offsetsHaveFilterInfo(Map<String, ?> sourceOffset) {
+        return sourceOffset != null &&
+            sourceOffset.containsKey(DATABASE_BLACKLIST_KEY) ||
+            sourceOffset.containsKey(DATABASE_WHITELIST_KEY) ||
+            sourceOffset.containsKey(TABLE_BLACKLIST_KEY) ||
+            sourceOffset.containsKey(TABLE_WHITELIST_KEY);
     }
 
     private long longOffsetValue(Map<String, ?> values, String key) {
@@ -614,6 +696,24 @@ final class SourceInfo extends AbstractSourceInfo {
             }
         }
         return sb.toString();
+    }
+    
+    /**
+     * Create a {@link Document} from the given offset.
+     *
+     * @param offset the offset to create the document from.
+     * @return a {@link Document} with the offset data.
+     */
+    public static Document createDocumentFromOffset(Map<String, ?> offset) {
+        Document offsetDocument = Document.create();
+        // all of the offset keys represent int, long, or string types, so we  don't need to worry about references
+        // and information changing underneath us.
+
+        for (Map.Entry<String, ?> entry : offset.entrySet()) {
+            offsetDocument.set(entry.getKey(), entry.getValue());
+        }
+
+        return offsetDocument;
     }
 
     /**
