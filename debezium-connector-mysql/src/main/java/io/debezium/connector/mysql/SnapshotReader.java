@@ -667,6 +667,8 @@ public class SnapshotReader extends AbstractReader {
                     // Mark the source as having completed the snapshot. This will ensure the `source` field on records
                     // are not denoted as a snapshot ...
                     source.completeSnapshot();
+                    // set the filter in the offset
+                    source.setFilterData(filters);
                 } finally {
                     // Set the completion flag ...
                     completeSuccessfully();
