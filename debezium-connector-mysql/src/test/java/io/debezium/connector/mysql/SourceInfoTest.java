@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Collections;
@@ -13,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import io.debezium.config.Configuration;
 import org.apache.avro.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.fest.assertions.GenericAssert;
@@ -148,6 +150,44 @@ public class SourceInfoTest {
         assertThat(source.binlogPosition()).isEqualTo(100);
         assertThat(source.rowsToSkipUponRestart()).isEqualTo(5);
         assertThat(source.isSnapshotInEffect()).isTrue();
+    }
+
+    @Test
+    public void shouldRecoverSourceInfoFromOffsetWithFilterData() {
+        final String databaseWhitelist = "a,b";
+        final String tableWhitelist = "c.foo,d.bar,d.baz";
+        Map<String, String> offset = offset(10, 10);
+        offset.put(SourceInfo.DATABASE_WHITELIST_KEY, databaseWhitelist);
+        offset.put(SourceInfo.TABLE_WHITELIST_KEY, tableWhitelist);
+
+        sourceWith(offset);
+        assertThat(source.hasFilterInfo()).isTrue();
+        assertEquals(databaseWhitelist, source.getDatabaseWhitelist());
+        assertEquals(tableWhitelist, source.getTableWhitelist());
+        // confirm other filter info is null
+        assertThat(source.getDatabaseBlacklist()).isNull();
+        assertThat(source.getTableBlacklist()).isNull();
+    }
+
+    @Test
+    public void setOffsetFilterFromFilter() {
+        final String databaseBlacklist = "a,b";
+        final String tableBlacklist = "c.foo, d.bar, d.baz";
+        Map<String, String> offset = offset(10, 10);
+
+        sourceWith(offset);
+        assertThat(!source.hasFilterInfo());
+
+        final Configuration configuration = Configuration.create()
+                                                         .with(MySqlConnectorConfig.DATABASE_BLACKLIST, databaseBlacklist)
+                                                         .with(MySqlConnectorConfig.TABLE_BLACKLIST, tableBlacklist)
+                                                         .build();
+        final Filters filters = new Filters(configuration);
+        source.setFilterData(filters);
+
+        assertThat(source.hasFilterInfo()).isTrue();
+        assertEquals(databaseBlacklist, source.getDatabaseBlacklist());
+        assertEquals(tableBlacklist, source.getTableBlacklist());
     }
 
     @Test
