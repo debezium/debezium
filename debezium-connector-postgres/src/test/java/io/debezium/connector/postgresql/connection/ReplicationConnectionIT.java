@@ -13,10 +13,10 @@ import static org.junit.Assert.fail;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
@@ -240,9 +240,9 @@ public class ReplicationConnectionIT {
     private List<ReplicationMessage> expectedMessagesFromStream(ReplicationStream stream,
                                                                 int expectedMessages) throws Exception {
         List<ReplicationMessage> actualMessages = new ArrayList<>();
-        
+
         ExecutorService executorService = Executors.newSingleThreadExecutor();
-        CountDownLatch latch = new CountDownLatch(expectedMessages);
+        Semaphore latch = new Semaphore(0);
         Metronome metronome = Metronome.sleeper(50, TimeUnit.MILLISECONDS, Clock.SYSTEM);
         Future<?> result = executorService.submit(() -> {
             while (!Thread.interrupted()) {
@@ -253,15 +253,15 @@ public class ReplicationConnectionIT {
                         break;
                     }
                     actualMessages.addAll(message);
-                    latch.countDown();
+                    latch.release(message.size());
                 }
                 metronome.pause();
             }
-            return null;    
+            return null;
         });
-                        
+
         try {
-            if (!latch.await(10, TimeUnit.SECONDS)) {
+            if (!latch.tryAcquire(expectedMessages, 10, TimeUnit.SECONDS)) {
                 result.cancel(true);
                 fail("expected " + expectedMessages + " messages, but read only " + actualMessages.size());
             }
