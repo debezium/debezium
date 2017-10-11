@@ -46,8 +46,12 @@ public interface DateTimeFormat {
         private static final String TS_FORMAT_PATTERN = "yyyy-MM-dd HH:mm:ss";
         private static final DateTimeFormatter TS_FORMAT = DateTimeFormatter.ofPattern(TS_FORMAT_PATTERN);
 
-        private static final String TS_TZ_FORMAT_PATTERN = "yyyy-MM-dd HH:mm:ssX";
-        private static final DateTimeFormatter TS_TZ_FORMAT = DateTimeFormatter.ofPattern(TS_TZ_FORMAT_PATTERN);
+        private static final String TS_TZ_FORMAT_PATTERN = "yyyy-MM-dd HH:mm:ss[.S]X";
+        private static final DateTimeFormatter TS_TZ_FORMAT = new DateTimeFormatterBuilder()
+                .appendPattern("yyyy-MM-dd HH:mm:ss")
+                .appendFraction(ChronoField.MICRO_OF_SECOND, 0, 6, true)
+                .appendOffset("+HH", "")
+                .toFormatter();
 
         private static final String SYSTEM_TS_FORMAT_PATTERN = "yyyy-MM-dd HH:mm:ss.SSSSSSX";
         private static final DateTimeFormatter SYSTEM_TS_FORMAT = new DateTimeFormatterBuilder()
