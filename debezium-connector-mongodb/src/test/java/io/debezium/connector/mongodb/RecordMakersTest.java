@@ -24,7 +24,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.mongodb.DBRef;
-import com.mongodb.MongoClient;
 import com.mongodb.util.JSONSerializers;
 
 import io.debezium.connector.mongodb.RecordMakers.RecordsForCollection;
@@ -274,7 +273,12 @@ public class RecordMakersTest {
         assertThat(key.schema()).isSameAs(record.keySchema());
         assertThat(key.get("id")).isEqualTo("{ \"$oid\" : \"" + objId + "\"}");
         assertThat(value.schema()).isSameAs(record.valueSchema());
-        assertThat(value.getString(FieldName.AFTER)).isEqualTo(obj.toJson(WRITER_SETTINGS, MongoClient.getDefaultCodecRegistry().get(Document.class)));
+        assertThat(value.getString(FieldName.AFTER)).isEqualTo("{"
+                    + "\"_id\" : {\"$oid\" : \"" + objId + "\"},"
+                    + "\"name\" : \"Sally\","
+                    + "\"ref\" : {\"$ref\" : \"othercollection\",\"$id\" : 15}"
+                + "}"
+        );
         assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.CREATE.code());
         assertThat(value.getInt64(FieldName.TIMESTAMP)).isEqualTo(1002L);
         Struct actualSource = value.getStruct(FieldName.SOURCE);
