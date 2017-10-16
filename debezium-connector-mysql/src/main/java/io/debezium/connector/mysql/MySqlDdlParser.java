@@ -350,7 +350,11 @@ public class MySqlDdlParser extends DdlParser {
     }
 
     protected void parseCreateTable(Marker start) {
-        tokens.canConsume("TEMPORARY");
+        if (tokens.canConsume("TEMPORARY")) {
+            consumeRemainingStatement(start);
+            debugSkipped(start);
+            return;
+        }
         tokens.consume("TABLE");
         boolean onlyIfNotExists = tokens.canConsume("IF", "NOT", "EXISTS");
         TableId tableId = parseQualifiedTableName(start);
@@ -1319,7 +1323,11 @@ public class MySqlDdlParser extends DdlParser {
     }
 
     protected void parseDropTable(Marker start) {
-        tokens.canConsume("TEMPORARY");
+        if (tokens.canConsume("TEMPORARY")) {
+            consumeRemainingStatement(start);
+            debugSkipped(start);
+            return;
+        }
         tokens.consume("TABLE");
         tokens.canConsume("IF", "EXISTS");
         String statementPrefix = statement(start);
