@@ -4,7 +4,7 @@
     project-type: freestyle
     name: debezium-mysql-test-mariadb
     display-name: MariaDB Test
-    description: Executes tests fro MySQL Connector with MariaDB
+    description: Executes tests for MySQL Connector with MariaDB
     node: Slave
     properties:
       - build-discarder:
