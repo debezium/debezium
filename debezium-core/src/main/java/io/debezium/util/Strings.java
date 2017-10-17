@@ -822,6 +822,25 @@ public final class Strings {
         return identifierPart;
     }
 
+    /**
+     * Restores a byte array that is encoded as a hex string.
+     */
+    public static byte[] hexStringToByteArray(String hexString) {
+        if (hexString == null) {
+            return null;
+        }
+
+        int length = hexString.length();
+
+        byte[] bytes = new byte[length / 2];
+        for (int i = 0; i < length; i += 2) {
+            bytes[i / 2] = (byte) ((Character.digit(hexString.charAt(i), 16) << 4)
+                                 + Character.digit(hexString.charAt(i+1), 16));
+        }
+
+        return bytes;
+    }
+
     private static Character deriveQuotingChar(String identifierPart) {
         char first = identifierPart.charAt(0);
         char last = identifierPart.charAt(identifierPart.length() - 1);

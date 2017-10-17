@@ -24,15 +24,16 @@ import io.debezium.connector.postgresql.RecordsStreamProducer.PgConnectionSuppli
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.document.Value;
 import io.debezium.relational.Column;
+import io.debezium.util.Strings;
 
 /**
- * Logical encapsulation of column changes sent by <a href="https://github.com/debezium/postgres-decoderbufs">Postgres Decoderbufs</>
- * 
- * @author Jiri Pechanec
+ * Logical encapsulation of column changes sent by the wal2json logical decoding plug-in.
  *
+ * @author Jiri Pechanec
  */
 class Wal2JsonColumn extends ReplicationMessage.Column {
-    private static final Logger logger = LoggerFactory.getLogger(Wal2JsonColumn.class);
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(Wal2JsonColumn.class);
 
     private final Value rawValue;
 
@@ -47,7 +48,7 @@ class Wal2JsonColumn extends ReplicationMessage.Column {
      * {@link PostgresValueConverter#converter(Column, Field)} instance to match whatever the Connect schema type expects.
      *
      * Note that the logic here is tightly coupled (i.e. dependent) on the wal2json plugin logic which writes the actual
-     * Protobuf messages.
+     * JSON messages.
      *
      * @param a supplier to get a connection to Postgres instance for array handling
      * @return the value; may be null
@@ -93,26 +94,26 @@ class Wal2JsonColumn extends ReplicationMessage.Column {
             case "timetz":
                 return rawValue.isNotNull() ?  DateTimeFormat.get().timeWithTimeZone(rawValue.asString()) : null;
             case "bytea":
-            return hexStringToByteArray();
+            return Strings.hexStringToByteArray(rawValue.asString());
             case "point":
                 try {
                     return rawValue.isNotNull() ? new PGpoint(rawValue.asString()) : null;
                 } catch (final SQLException e) {
-                    logger.error("Failed to parse point {}, {}", rawValue.asString(), e);
+                    LOGGER.error("Failed to parse point {}, {}", rawValue.asString(), e);
                     throw new ConnectException(e);
                 }
             case "money":
                 try {
                     return rawValue.isNotNull() ? new PGmoney(rawValue.asString()).val : null;
                 } catch (final SQLException e) {
-                    logger.error("Failed to parse money {}, {}", rawValue.asString(), e);
+                    LOGGER.error("Failed to parse money {}, {}", rawValue.asString(), e);
                     throw new ConnectException(e);
                 }
             case "interval":
                 try {
                     return rawValue.isNotNull() ? new PGInterval(rawValue.asString()) : null;
                 } catch (final SQLException e) {
-                    logger.error("Failed to parse point {}, {}", rawValue.asString(), e);
+                    LOGGER.error("Failed to parse point {}, {}", rawValue.asString(), e);
                     throw new ConnectException(e);
                 }
             case "_int2":
@@ -150,24 +151,12 @@ class Wal2JsonColumn extends ReplicationMessage.Column {
                     return Arrays.asList((Object[])deserializedArray);
                 }
                 catch (SQLException e) {
-                    logger.warn("Unexpected exception trying to process PgArray column '{}'", getName(), e);
+                    LOGGER.warn("Unexpected exception trying to process PgArray column '{}'", getName(), e);
                 }
                 return null;
         }
-        logger.warn("processing column '{}' with unknown data type '{}' as byte array", getName(),
+        LOGGER.warn("processing column '{}' with unknown data type '{}' as byte array", getName(),
                 getType());
         return rawValue.asBytes();
-    }
-
-    private byte[] hexStringToByteArray() {
-        if (rawValue.isNull()) {
-            return null;
-        }
-        final String hex = rawValue.asString();
-        final byte[] bytes = new byte[hex.length() / 2];
-        for (int i = 0; i < bytes.length; i++) {
-            bytes[i] = (byte)Integer.parseInt(hex.substring(i * 2, i * 2 + 2), 16);
-        }
-        return bytes;
     }
 }

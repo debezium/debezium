@@ -27,12 +27,13 @@ import io.debezium.relational.Column;
 
 /**
  * Logical encapsulation of column changes sent by <a href="https://github.com/debezium/postgres-decoderbufs">Postgres Decoderbufs</>
- * 
+ *
  * @author Jiri Pechanec
  *
  */
 class PgProtoColumn extends ReplicationMessage. Column {
-    private final Logger logger = LoggerFactory.getLogger(getClass());
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(PgProtoColumn.class);
 
     private final PgProto.DatumMessage raw;
 
@@ -157,11 +158,11 @@ class PgProtoColumn extends ReplicationMessage. Column {
                     return Arrays.asList((Object[])deserializedArray);
                 }
                 catch (SQLException e) {
-                    logger.warn("Unexpected exception trying to process PgArray column '{}'", datumMessage.getColumnName(), e);
+                    LOGGER.warn("Unexpected exception trying to process PgArray column '{}'", datumMessage.getColumnName(), e);
                 }
                 return null;
             default: {
-                logger.warn("processing column '{}' with unknown data type '{}' as byte array", datumMessage.getColumnName(),
+                LOGGER.warn("processing column '{}' with unknown data type '{}' as byte array", datumMessage.getColumnName(),
                             datumMessage.getColumnType());
                 return datumMessage.hasDatumBytes()? datumMessage.getDatumBytes().toByteArray() : null;
             }

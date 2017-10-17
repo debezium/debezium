@@ -124,7 +124,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         // validate the non required fields
         validateField(validatedConfig, PostgresConnectorConfig.PLUGIN_NAME, LogicalDecoder.DECODERBUFS.getValue());
-        validateField(validatedConfig, PostgresConnectorConfig.PLUGIN_DECODING_CLASS, null);
         validateField(validatedConfig, PostgresConnectorConfig.SLOT_NAME, ReplicationConnection.Builder.DEFAULT_SLOT_NAME);
         validateField(validatedConfig, PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
         validateField(validatedConfig, PostgresConnectorConfig.PORT, PostgresConnectorConfig.DEFAULT_PORT);
