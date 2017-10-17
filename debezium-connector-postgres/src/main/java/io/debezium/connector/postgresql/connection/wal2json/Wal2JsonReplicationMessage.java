@@ -16,12 +16,12 @@ import io.debezium.document.Array;
 import io.debezium.document.Document;
 
 /**
- * Replication message representing message sent by <a href="https://github.com/debezium/postgres-decoderbufs">Postgres Decoderbufs</>
- * 
- * @author Jiri Pechanec
+ * Replication message representing message sent by the wal2json logical decoding plug-in.
  *
+ * @author Jiri Pechanec
  */
 class Wal2JsonReplicationMessage implements ReplicationMessage {
+
     private final int txId;
     private final long commitTime;
     private final Document rawMessage;
@@ -77,13 +77,17 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
         final Array columnNames = data.getArray(nameField);
         final Array columnTypes = data.getArray(typeField);
         final Array columnValues = data.getArray(valueField);
+
         if (columnNames.size() != columnTypes.size() || columnNames.size() != columnValues.size()) {
             throw new ConnectException("Column related arrays do not have the same size");
         }
-        final List<ReplicationMessage.Column> columns = new ArrayList<>();
+
+        final List<ReplicationMessage.Column> columns = new ArrayList<>(columnNames.size());
+
         for (int i = 0; i < columnNames.size(); i++) {
             columns.add(new Wal2JsonColumn(columnNames.get(i).asString(), columnTypes.get(i).asString(), columnValues.get(i)));
         }
+
         return columns;
     }
 }

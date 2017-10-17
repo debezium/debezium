@@ -36,8 +36,9 @@ import io.debezium.util.LoggingContext;
 import io.debezium.util.Strings;
 
 /**
- * A {@link RecordsProducer} which creates {@link org.apache.kafka.connect.source.SourceRecord records} from a Postgres
- * streaming replication connection and {@link io.debezium.connector.postgresql.connection.ReplicationMessage messages}.
+ * A {@link RecordsProducer} which creates {@link SourceRecord records} from a
+ * Postgres streaming replication connection and {@link ReplicationMessage
+ * messages}.
  *
  * @author Horia Chiorean (hchiorea@redhat.com)
  */

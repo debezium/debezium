@@ -24,8 +24,8 @@ import org.slf4j.LoggerFactory;
 import io.debezium.time.NanoTimestamp;
 
 /**
- * Transformer for time/date related string representation in JSON message coming from plugin.
- * 
+ * Transformer for time/date related string representations in JSON messages coming from the wal2json plugin.
+ *
  * @author Jiri Pechanec
  *
  */
@@ -41,7 +41,7 @@ public interface DateTimeFormat {
         return new ISODateTimeFormat();
     }
     public static class ISODateTimeFormat implements DateTimeFormat {
-        private final Logger logger = LoggerFactory.getLogger(getClass());
+        private static final Logger LOGGER = LoggerFactory.getLogger(ISODateTimeFormat.class);
 
         private static final String TS_FORMAT_PATTERN = "yyyy-MM-dd HH:mm:ss";
         private static final DateTimeFormatter TS_FORMAT = DateTimeFormatter.ofPattern(TS_FORMAT_PATTERN);
@@ -110,7 +110,7 @@ public interface DateTimeFormat {
             try {
                 return value.get();
             } catch (final DateTimeParseException e) {
-                logger.error("Cannot parse time/date value '{}', expected format '{}'", s, pattern);
+                LOGGER.error("Cannot parse time/date value '{}', expected format '{}'", s, pattern);
                 throw new ConnectException(e);
             }
         }

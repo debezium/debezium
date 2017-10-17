@@ -16,7 +16,6 @@ import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.common.config.ConfigValue;
-import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -340,24 +339,26 @@ public class PostgresConnectorConfig {
     }
 
     public enum LogicalDecoder implements EnumeratedValue {
-        DECODERBUFS("decoderbufs", PgProtoMessageDecoder.class),
-        WAL2JSON("wal2json", Wal2JsonMessageDecoder.class);
+        DECODERBUFS("decoderbufs") {
+            @Override
+            public MessageDecoder messageDecoder() {
+                return new PgProtoMessageDecoder();
+            }
+        },
+        WAL2JSON("wal2json") {
+            @Override
+            public MessageDecoder messageDecoder() {
+                return new Wal2JsonMessageDecoder();
+            }
+        };
 
         private final String decoderName;
-        private final Class<? extends MessageDecoder> messageDecoder;
 
-        LogicalDecoder(String decoderName, Class<? extends MessageDecoder> messageDecoder) {
+        LogicalDecoder(String decoderName) {
             this.decoderName = decoderName;
-            this.messageDecoder = messageDecoder;
         }
 
-        public MessageDecoder messageDecoder() {
-            try {
-                return messageDecoder.newInstance();
-            } catch (InstantiationException | IllegalAccessException e) {
-                throw new ConnectException("Cannot instantiate decoding class '" + messageDecoder + "' for decoder plugin '" + getValue() + "'");
-            }
-        }
+        public abstract MessageDecoder messageDecoder();
 
         public static LogicalDecoder parse(String s) {
             return valueOf(s.trim().toUpperCase());
@@ -385,14 +386,6 @@ public class PostgresConnectorConfig {
                                               .withWidth(Width.MEDIUM)
                                               .withImportance(Importance.MEDIUM)
                                               .withDescription("The name of the Postgres logical decoding plugin installed on the server. Defaults to '"+ LogicalDecoder.DECODERBUFS.getValue() + "'");
-
-    public static final Field PLUGIN_DECODING_CLASS = Field.create("plugin.decoding.class")
-                                                        .withDisplayName("Plugin decoder class")
-                                                        .withType(Type.CLASS)
-                                                        .withWidth(Width.MEDIUM)
-                                                        .withImportance(Importance.LOW)
-                                                        .withDescription("The Java class used to decode events coming from logical decoder plugin." + 
-                                                                         "If not provided then default class associated with requested plugin is ued.");
 
     public static final Field SLOT_NAME = Field.create("slot.name")
                                               .withDisplayName("Slot")
@@ -689,7 +682,7 @@ public class PostgresConnectorConfig {
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
-    public static Field.Set ALL_FIELDS = Field.setOf(PLUGIN_NAME, PLUGIN_DECODING_CLASS, SLOT_NAME, DROP_SLOT_ON_STOP,
+    public static Field.Set ALL_FIELDS = Field.setOf(PLUGIN_NAME, SLOT_NAME, DROP_SLOT_ON_STOP,
                                                      DATABASE_NAME, USER, PASSWORD, HOSTNAME, PORT, SERVER_NAME,
                                                      TOPIC_SELECTION_STRATEGY, MAX_BATCH_SIZE,
                                                      MAX_QUEUE_SIZE, POLL_INTERVAL_MS, SCHEMA_WHITELIST,
@@ -833,7 +826,7 @@ public class PostgresConnectorConfig {
 
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
-        Field.group(config, "Postgres", SLOT_NAME, PLUGIN_NAME, PLUGIN_DECODING_CLASS, SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
+        Field.group(config, "Postgres", SLOT_NAME, PLUGIN_NAME, SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
                     USER, PASSWORD, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD, SSL_ROOT_CERT, SSL_CLIENT_KEY,
                     DROP_SLOT_ON_STOP, SSL_SOCKET_FACTORY, STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE);
         Field.group(config, "Events", SCHEMA_WHITELIST, SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,

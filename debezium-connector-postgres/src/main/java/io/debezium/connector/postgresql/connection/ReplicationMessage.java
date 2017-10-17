@@ -11,16 +11,16 @@ import java.util.List;
 import io.debezium.connector.postgresql.RecordsStreamProducer.PgConnectionSupplier;
 
 /**
- * An abstract represantion of replication message that is sent by PostgreSQL logical decoding plugin and
- * is processed by Debezium PostgreSQL connector.
- * 
+ * An abstract representation of a replication message that is sent by a PostgreSQL logical decoding plugin and
+ * is processed by the Debezium PostgreSQL connector.
+ *
  * @author Jiri Pechanec
  *
  */
 public interface ReplicationMessage {
 
     /**
-     * 
+     *
      * Data modification operation executed
      *
      */
@@ -29,7 +29,7 @@ public interface ReplicationMessage {
     }
 
     /**
-     * 
+     *
      * A representation of column value delivered as a part of replication message
      *
      */
@@ -38,7 +38,6 @@ public interface ReplicationMessage {
         private final Object type;
 
         public Column(final String name, final Object type) {
-            super();
             this.name = name;
             this.type = type;
         }
@@ -83,6 +82,4 @@ public interface ReplicationMessage {
      * @return Set of new values of table columns, null for DELETE
      */
     public List<Column> getNewTupleList();
-
-
 }

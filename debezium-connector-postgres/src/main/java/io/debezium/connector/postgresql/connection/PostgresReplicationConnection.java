@@ -10,7 +10,6 @@ import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
-
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -49,7 +48,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      *
      * @param config the JDBC configuration for the connection; may not be null
      * @param slotName the name of the DB slot for logical replication; may not be null
-     * @param plugin the type of the server side plugin used for streaming changes; may not be null;
+     * @param plugin decoder matching the server side plug-in used for streaming changes; may not be null
      * @param dropSlotOnClose whether the replication slot should be dropped once the connection is closed
      * @param statusUpdateIntervalMillis the number of milli-seconds at which the replication connection should periodically send status
      * updates to the server
@@ -256,7 +255,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
     protected static class ReplicationConnectionBuilder implements Builder {
 
-        private Configuration config;
+        private final Configuration config;
         private String slotName = DEFAULT_SLOT_NAME;
         private PostgresConnectorConfig.LogicalDecoder plugin = PostgresConnectorConfig.LogicalDecoder.DECODERBUFS;
         private boolean dropSlotOnClose = DEFAULT_DROP_SLOT_ON_CLOSE;

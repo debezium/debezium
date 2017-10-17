@@ -251,6 +251,14 @@ public class StringsTest {
         assertThat(Strings.unquoteIdentifierPart("`Tab``le`")).isEqualTo("Tab`le");
     }
 
+    @Test
+    public void hexStringToByteArrayShouldReturnCorrectByteArray() {
+        assertThat(Strings.hexStringToByteArray(null)).isNull();
+        assertThat(Strings.hexStringToByteArray("00")).isEqualTo(new byte[] { 0 });
+        assertThat(Strings.hexStringToByteArray("010203")).isEqualTo(new byte[] { 1, 2, 3 });
+        assertThat(Strings.hexStringToByteArray("CAFEBABE")).isEqualTo(new byte[] { -54, -2, -70, -66 });
+    }
+
     protected void assertReplacement(String before, Map<String, String> replacements, String after) {
         String result = Strings.replaceVariables(before, replacements::get);
         assertThat(result).isEqualTo(after);
