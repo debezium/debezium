@@ -33,24 +33,10 @@ public interface ReplicationMessage {
      * A representation of column value delivered as a part of replication message
      *
      */
-    public abstract class Column {
-        private final String name;
-        private final Object type;
-
-        public Column(final String name, final Object type) {
-            this.name = name;
-            this.type = type;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public Object getType() {
-            return type;
-        }
-
-        public abstract Object getValue(final PgConnectionSupplier connection);
+    public interface Column {
+        String getName();
+        Object getType();
+        Object getValue(final PgConnectionSupplier connection);
     }
 
     /**
