@@ -144,6 +144,10 @@ public class BinlogReader extends AbstractReader {
 
         // Set up for JMX ...
         metrics = new BinlogReaderMetrics(client);
+    }
+
+    @Override
+    protected void doInitialize() {
         metrics.register(context, logger);
     }
 

@@ -65,7 +65,14 @@ public final class ChainedReader implements Reader {
     }
 
     @Override
+    public void initialize() {
+        // initialize all of the readers ...
+        readers.forEach(Reader::initialize);
+    }
+
+    @Override
     public synchronized void start() {
+        initialize();
         if (running.compareAndSet(false, true)) {
             completed.set(false);
 
