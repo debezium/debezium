@@ -65,6 +65,7 @@
         <!-- check new release version at https://github.com/confluentinc/schema-registry/releases -->
         <version.confluent.platform>3.2.2</version.confluent.platform>
 
+
         <!-- Databases -->
         <version.postgresql.driver>42.0.0-SNAPSHOT</version.postgresql.driver>
         <version.mysql.server>5.7</version.mysql.server>

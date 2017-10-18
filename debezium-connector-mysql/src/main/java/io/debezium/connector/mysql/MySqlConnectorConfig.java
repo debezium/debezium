@@ -20,6 +20,7 @@ import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
+import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.KafkaDatabaseHistory;
 
@@ -145,6 +146,71 @@ public class MySqlConnectorConfig {
          */
         public static DecimalHandlingMode parse(String value, String defaultValue) {
             DecimalHandlingMode mode = parse(value);
+            if (mode == null && defaultValue != null) mode = parse(defaultValue);
+            return mode;
+        }
+    }
+
+    /**
+     * The set of predefined BigIntUnsignedHandlingMode options or aliases.
+     */
+    public static enum BigIntUnsignedHandlingMode implements EnumeratedValue {
+        /**
+         * Represent {@code BIGINT UNSIGNED} values as precise {@link BigDecimal} values, which are
+         * represented in change events in a binary form. This is precise but difficult to use.
+         */
+        PRECISE("precise"),
+
+        /**
+         * Represent {@code BIGINT UNSIGNED} values as precise {@code long} values. This may be less precise
+         * but is far easier to use.
+         */
+        LONG("long");
+
+        private final String value;
+
+        private BigIntUnsignedHandlingMode(String value) {
+            this.value = value;
+        }
+
+        @Override public String getValue() {
+            return value;
+        }
+
+        public BigIntUnsignedMode asBigIntUnsignedMode() {
+            switch (this) {
+            case LONG:
+                return BigIntUnsignedMode.LONG;
+            case PRECISE:
+            default:
+                return BigIntUnsignedMode.PRECISE;
+            }
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static BigIntUnsignedHandlingMode parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+            for (BigIntUnsignedHandlingMode option : BigIntUnsignedHandlingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static BigIntUnsignedHandlingMode parse(String value, String defaultValue) {
+            BigIntUnsignedHandlingMode mode = parse(value);
             if (mode == null && defaultValue != null) mode = parse(defaultValue);
             return mode;
         }
@@ -651,6 +717,15 @@ public class MySqlConnectorConfig {
                                                            .withDescription("Specify how DECIMAL and NUMERIC columns should be represented in change events, including:"
                                                                    + "'precise' (the default) uses java.math.BigDecimal to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; "
                                                                    + "'double' represents values using Java's 'double', which may not offer the precision but will be far easier to use in consumers.");
+
+    public static final Field BIGINT_UNSIGNED_HANDLING_MODE = Field.create("bigint.unsigned.handling.mode")
+                                                           .withDisplayName("BIGINT UNSIGNED Handling")
+                                                           .withEnum(BigIntUnsignedHandlingMode.class, BigIntUnsignedHandlingMode.PRECISE)
+                                                           .withWidth(Width.SHORT)
+                                                           .withImportance(Importance.MEDIUM)
+                                                           .withDescription("Specify how BIGINT UNSIGNED columns should be represented in change events, including:"
+                                                                            + "'precise' (the default) uses java.math.BigDecimal to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; "
+                                                                            + "'long' represents values using Java's 'long', which may not offer the precision but will be far easier to use in consumers.");
 
     /**
      * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should

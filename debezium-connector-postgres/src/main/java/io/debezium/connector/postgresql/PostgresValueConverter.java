@@ -62,8 +62,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
      */
     private static final int VARIABLE_SCALE_DECIMAL_LENGTH = 131089;
 
-    protected PostgresValueConverter(DecimalMode decimalMode, boolean adaptiveTimePrecision, ZoneOffset defaultOffset) {
-        super(decimalMode, adaptiveTimePrecision, defaultOffset, null);
+    protected PostgresValueConverter(DecimalMode decimalMode, boolean adaptiveTimePrecision, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode) {
+        super(decimalMode, adaptiveTimePrecision, defaultOffset, null, bigIntUnsignedMode);
     }
 
     @Override
