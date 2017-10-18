@@ -522,33 +522,22 @@ public class SnapshotReader extends AbstractReader {
                                                         stepNum, currentIndex , tableId, Strings.duration(stop - start));
                                             source.markSnapshotted(tableId.table());
                                             if (currentIndex == 0 && lastIndex == 0) {
+                                                for (int i = 0; i != numColumns; ++i) {
+                                                    row[i] = null;
+                                                }
                                                 logger.info("{} is an empty table", tableId);
-                                            } else {
-                                                AtomicBoolean hasRecordForLastOne = new AtomicBoolean();
-                                                if (currentIndex == 0) {
-                                                    // no result from this query which means the last index is already the end of this table, while not marked as snapshotted.
-                                                    String queryLastRecord = "SELECT * FROM " + quote(tableId) + " WHERE " + quote(primaryKey) + " = " + singleQuote(lastId);
-                                                    logger.info("Select last one from table {} as the dp-last-record. Query: {}", tableId, queryLastRecord);
-                                                    mysql.query(queryLastRecord, this::createStatement, rs1 -> {
-                                                        while (rs1.next()) {
-                                                            hasRecordForLastOne.set(true);
-                                                            for (int i = 0, j = 1; i != numColumns; ++i, ++j) {
-                                                                row[i] = rs1.getObject(j);
-                                                            }
-                                                        }
-                                                    });
-                                                    currentIndex = lastIndex;
-                                                } else {
-                                                    hasRecordForLastOne.set(true);
+                                            } else if (currentIndex == 0) {
+                                                // no result from this query which means the last index is already the end of this table, while not marked as snapshotted.
+                                                for (int i = 0; i != numColumns; ++i) {
+                                                    row[i] = null;
                                                 }
-                                                source.setEntitySize(currentIndex);
-                                                if (hasRecordForLastOne.get()) {
-                                                    source.setSnapshotLastOne();
-                                                    // insert last record again with special flag "islastone = true"
-                                                    recorder.recordRow(recordMaker, row, ts);
-                                                    source.unsetSnapshotLastOne();
-                                                }
+                                                currentIndex = lastIndex;
                                             }
+                                            source.setEntitySize(currentIndex);
+                                            source.setSnapshotLastOne();
+                                            // insert last record again with special flag "islastone = true"
+                                            recorder.recordRow(recordMaker, row, ts);
+                                            source.unsetSnapshotLastOne();
                                         }
                                     } catch (InterruptedException e) {
                                         Thread.interrupted();

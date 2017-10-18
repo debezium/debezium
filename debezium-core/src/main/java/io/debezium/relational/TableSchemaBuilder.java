@@ -198,8 +198,8 @@ public class TableSchemaBuilder {
                     Object value = row[recordIndexes[i]];
                     ValueConverter converter = converters[i];
                     if (converter != null) {
-                        value = value == null ? value : converter.convert(value);
                         try {
+                            value = converter.convert(value);
                             result.put(fields[i], value);
                         } catch (DataException e) {
                             Column col = columns.get(i);
