@@ -153,6 +153,7 @@ public final class MySqlConnectorTask extends SourceTask {
 
                 if (taskContext.isInitialSnapshotOnly()) {
                     logger.warn("This connector will only perform a snapshot, and will stop after that completes.");
+                    readers.add(new BlockingReader("blocker"));
                     readers.uponCompletion("Connector configured to only perform snapshot, and snapshot completed successfully. Connector will terminate.");
                 } else {
                     if (!rowBinlogEnabled) {
