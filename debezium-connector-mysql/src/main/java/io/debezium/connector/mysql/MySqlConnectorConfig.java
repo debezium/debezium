@@ -652,6 +652,15 @@ public class MySqlConnectorConfig {
                                                                    + "'precise' (the default) uses java.math.BigDecimal to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; "
                                                                    + "'double' represents values using Java's 'double', which may not offer the precision but will be far easier to use in consumers.");
 
+    public static final Field SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE = Field.create("snapshot.select.statement.overrides")
+            .withDisplayName("Overrides for the default select statement used during snapshotting")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The value is a JSON-encoded map, where the key is the name of the table, the value is the select statement to use when retrieving data from the " +
+                    "specific table during snapshotting. A possible use case for large append-only tables is setting a specific point where to start snapshotting, in case " +
+                    "a previous snapshotting was interrupted.");
+
     /**
      * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
      * have their values truncated to be no longer than the specified number of characters.
