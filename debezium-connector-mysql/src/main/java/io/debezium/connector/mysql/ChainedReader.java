@@ -8,6 +8,7 @@ package io.debezium.connector.mysql;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -16,6 +17,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.util.Clock;
+import io.debezium.util.Metronome;
 
 /**
  * A {@link Reader} implementation that runs one or more other {@link Reader}s in a consistently, completely, and sequentially.
@@ -36,11 +39,13 @@ public final class ChainedReader implements Reader {
     private final AtomicReference<Reader> currentReader = new AtomicReference<>();
     private final AtomicReference<Runnable> uponCompletion = new AtomicReference<>();
     private final AtomicReference<String> completionMessage = new AtomicReference<>();
+    private final Metronome metronome;
 
     /**
      * Create a new chained reader.
      */
-    public ChainedReader() {
+    public ChainedReader(Long pollIntervalInMillseconds) {
+        this.metronome = Metronome.parker(pollIntervalInMillseconds, TimeUnit.MILLISECONDS, Clock.SYSTEM);
     }
 
     /**
@@ -122,6 +127,9 @@ public final class ChainedReader implements Reader {
                 // otherwise, we'll go ahead until the next reader is ready or until we're no longer running ...
             }
         }
+        
+        // No readers available, pause to slow relentless polling from Connect
+        metronome.pause();        
         return null;
     }
 

@@ -141,7 +141,7 @@ public final class MySqlConnectorTask extends SourceTask {
             final boolean rowBinlogEnabled = isRowBinlogEnabled();
 
             // Set up the readers, with a callback to `completeReaders` so that we know when it is finished ...
-            readers = new ChainedReader();
+            readers = new ChainedReader(taskContext.pollIntervalInMillseconds());
             readers.uponCompletion(this::completeReaders);
             BinlogReader binlogReader = new BinlogReader("binlog", taskContext);
             if (startWithSnapshot) {
