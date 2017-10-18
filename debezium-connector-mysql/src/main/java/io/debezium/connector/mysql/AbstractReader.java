@@ -69,7 +69,13 @@ public abstract class AbstractReader implements Reader {
     }
 
     @Override
+    public final void initialize() {
+        doInitialize();
+    }
+
+    @Override
     public void start() {
+        initialize();
         if (this.running.compareAndSet(false, true)) {
             this.failure.set(null);
             this.success.set(false);
@@ -93,7 +99,16 @@ public abstract class AbstractReader implements Reader {
     }
 
     /**
-     * The reader has been requested to start, so initialize any resources required by the reader.
+     * The reader has been requested to initialize resources prior to starting. This should only be
+     * called once before {@link #doStart()}.
+     */
+    protected void doInitialize() {
+        // do nothing
+    }
+
+    /**
+     * The reader has been requested to start, so initialize any un-initialized resources required
+     * by the reader.
      */
     protected abstract void doStart();
 
