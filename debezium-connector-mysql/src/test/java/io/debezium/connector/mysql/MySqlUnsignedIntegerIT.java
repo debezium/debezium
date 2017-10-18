@@ -11,7 +11,6 @@ import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.sql.SQLException;
 
-import io.debezium.doc.FixFor;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -21,6 +20,7 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Testing;
 
@@ -397,23 +397,23 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         //So Signed BIGINT would be an INT64 type
         assertThat(after.schema().field("c3").schema()).isEqualTo(Schema.INT64_SCHEMA);
 
-        //Validate candidates values, note the loss in precision which is expected since BIGINT UNSIGNED cannot always be repsented by
+        //Validate candidates values, note the loss in precision which is expected since BIGINT UNSIGNED cannot always be represented by
         //a long datatype.
         switch (i) {
-        case 1:
-            assertThat(after.getInt64("c1")).isEqualTo(-1L);
-            assertThat(after.getInt64("c2")).isEqualTo(-1L);
-            assertThat(after.getInt64("c3")).isEqualTo(9223372036854775807L);
-            break;
-        case 2:
-            assertThat(after.getInt64("c1")).isEqualTo(-4000000000000000001L);
-            assertThat(after.getInt64("c2")).isEqualTo(-4000000000000000001L);
-            assertThat(after.getInt64("c3")).isEqualTo(-1223372036854775807L);
-            break;
-        case 3:
-            assertThat(after.getInt64("c1")).isEqualTo(0L);
-            assertThat(after.getInt64("c2")).isEqualTo(0L);
-            assertThat(after.getInt64("c3")).isEqualTo(-9223372036854775808L);
+            case 1:
+                assertThat(after.getInt64("c1")).isEqualTo(-1L);
+                assertThat(after.getInt64("c2")).isEqualTo(-1L);
+                assertThat(after.getInt64("c3")).isEqualTo(9223372036854775807L);
+                break;
+            case 2:
+                assertThat(after.getInt64("c1")).isEqualTo(-4000000000000000001L);
+                assertThat(after.getInt64("c2")).isEqualTo(-4000000000000000001L);
+                assertThat(after.getInt64("c3")).isEqualTo(-1223372036854775807L);
+                break;
+            case 3:
+                assertThat(after.getInt64("c1")).isEqualTo(0L);
+                assertThat(after.getInt64("c2")).isEqualTo(0L);
+                assertThat(after.getInt64("c3")).isEqualTo(-9223372036854775808L);
         }
     }
 
