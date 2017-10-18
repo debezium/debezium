@@ -154,6 +154,8 @@ public final class MySqlConnectorTask extends SourceTask {
                 if (taskContext.isInitialSnapshotOnly()) {
                     logger.warn("This connector will only perform a snapshot, and will stop after that completes.");
                     readers.uponCompletion("Connector configured to only perform snapshot, and snapshot completed successfully. Connector will terminate.");
+                    // Snapshot Only: stop binlogReader in order to gracefully unregister metrics, which were registered during BinlogReader construction above
+                    binlogReader.stop();
                 } else {
                     if (!rowBinlogEnabled) {
                         throw new ConnectException("The MySQL server is not configured to use a row-level binlog, which is "
