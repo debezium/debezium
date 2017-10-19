@@ -482,6 +482,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         start(MySqlConnector.class, config, completion, (record) -> {
             // We want to stop before processing record 3003 ...
             Struct key = (Struct) record.key();
+            if (key.schema().field("id") == null) {
+                return false;
+            }
             Number id = (Number) key.get("id");
             if (id.intValue() == 3003) {
                 return true;

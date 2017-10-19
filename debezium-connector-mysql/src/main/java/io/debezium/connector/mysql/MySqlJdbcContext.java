@@ -22,7 +22,6 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.jdbc.JdbcConnection.ConnectionFactory;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.util.Strings;
 
@@ -33,13 +32,11 @@ import io.debezium.util.Strings;
  */
 public class MySqlJdbcContext implements AutoCloseable {
 
-    protected static final String MYSQL_CONNECTION_URL = "jdbc:mysql://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false&useSSL=${useSSL}&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=convertToNull";
-    protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(MYSQL_CONNECTION_URL);
-
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     protected final Configuration config;
     protected final JdbcConnection jdbc;
     private final Map<String, String> originalSystemProperties = new HashMap<>();
+    final MySqlConnectorConfig.DatabaseVendor vendor;
 
     public MySqlJdbcContext(Configuration config) {
         this.config = config; // must be set before most methods are used
@@ -53,9 +50,9 @@ public class MySqlJdbcContext implements AutoCloseable {
                                          .edit()
                                          .with("useSSL", Boolean.toString(useSSL))
                                          .build();
-        String driverClassName = jdbcConfig.getString(MySqlConnectorConfig.JDBC_DRIVER);
+        vendor = MySqlConnectorConfig.DatabaseVendor.parse(config.getString(MySqlConnectorConfig.VENDOR));
         this.jdbc = new JdbcConnection(jdbcConfig,
-                JdbcConnection.patternBasedFactory(MYSQL_CONNECTION_URL, driverClassName, getClass().getClassLoader()));
+                JdbcConnection.patternBasedFactory(vendor.connectionUrl(), vendor.driverClassName(), getClass().getClassLoader()));
     }
 
     public Configuration config() {
@@ -177,7 +174,7 @@ public class MySqlJdbcContext implements AutoCloseable {
     }
 
     protected String connectionString() {
-        return jdbc.connectionString(MYSQL_CONNECTION_URL);
+        return jdbc.connectionString(vendor.connectionUrl());
     }
 
     /**

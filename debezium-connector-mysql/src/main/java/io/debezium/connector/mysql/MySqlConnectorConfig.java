@@ -6,6 +6,7 @@
 package io.debezium.connector.mysql;
 
 import java.math.BigDecimal;
+import java.sql.Driver;
 import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
@@ -359,6 +360,53 @@ public class MySqlConnectorConfig {
         }
     }
 
+    /**
+     * A type to enumerate databases against which the connector can be used MySQL or MariaDB.
+     * 
+     * @author Jiri Pechanec
+     *
+     */
+    public static enum DatabaseVendor implements EnumeratedValue {
+        MYSQL("mysql", com.mysql.jdbc.Driver.class),
+        MARIADB("mariadb", org.mariadb.jdbc.Driver.class);
+
+        private final String value;
+        private final Class<? extends Driver> driverClass;
+
+        private DatabaseVendor(String value, Class<? extends Driver> driverClass) {
+            this.value = value;
+            this.driverClass = driverClass;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * @return a JDBC connection string pattern for the database
+         */
+        public String connectionUrl() {
+            return "jdbc:" + getValue() + "://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false&useSSL=${useSSL}&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=convertToNull";
+        }
+
+        /**
+         * @return a name of class providing {@link java.sql.Driver JDBC driver}
+         */
+        public String driverClassName() {
+            return driverClass.getName();
+        }
+
+        public static DatabaseVendor parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+            for (DatabaseVendor option : DatabaseVendor.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+    }
+
     private static final String DATABASE_WHITELIST_NAME = "database.whitelist";
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
     private static final String TABLE_IGNORE_BUILTIN_NAME = "table.ignore.builtin";
@@ -472,15 +520,14 @@ public class MySqlConnectorConfig {
                                                            .withDependents(DATABASE_WHITELIST_NAME)
                                                            .withDescription("Flag specifying whether built-in tables should be ignored.");
 
-    public static final Field JDBC_DRIVER = Field.create("database.jdbc.driver")
-                                                .withDisplayName("Jdbc Driver Class Name")
-                                                .withType(Type.CLASS)
-                                                .withWidth(Width.MEDIUM)
-                                                .withDefault(com.mysql.jdbc.Driver.class.getName())
-                                                .withImportance(Importance.LOW)
-                                                .withValidation(Field::isClassName)
-                                                .withDescription("JDBC Driver class name used to connect to the MySQL database server.");
-    /**
+    public static final Field VENDOR = Field.create("mysql.vendor")
+                                                     .withDisplayName("Database Vendor (mysql/mariadb)")
+                                                     .withEnum(DatabaseVendor.class, DatabaseVendor.MYSQL)
+                                                     .withWidth(Width.MEDIUM)
+                                                     .withImportance(Importance.LOW)
+                                                     .withDescription("The source database is either MySQL or MariaDB");
+
+/**
      * A comma-separated list of regular expressions that match database names to be monitored.
      * May not be used with {@link #DATABASE_BLACKLIST}.
      */
@@ -773,7 +820,7 @@ public class MySqlConnectorConfig {
                                                      GTID_SOURCE_FILTER_DML_EVENTS,
                                                      TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                                                      SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD,
-                                                     SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER);
+                                                     SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, VENDOR);
 
     /**
      * The set of {@link Field}s that are included in the {@link #configDef() configuration definition}. This includes
@@ -790,7 +837,7 @@ public class MySqlConnectorConfig {
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
         Field.group(config, "MySQL", HOSTNAME, PORT, USER, PASSWORD, SERVER_NAME, SERVER_ID,
-                    SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD, SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER);
+                    SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD, SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, VENDOR);
         Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                     KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
                     KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, DATABASE_HISTORY,
