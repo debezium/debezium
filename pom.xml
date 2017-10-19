@@ -109,6 +109,9 @@
 
         <!-- No debug options by default -->
         <debug.argline />
+
+        <!-- No modules options by default -->
+        <modules.argline />
     </properties>
 
     <modules>
@@ -425,7 +428,7 @@
                     <artifactId>maven-failsafe-plugin</artifactId>
                     <version>${version.failsafe.plugin}</version>
                     <configuration>
-                        <argLine>${debug.argline}</argLine>
+                        <argLine>${debug.argline} ${modules.argline}</argLine>
                     </configuration>
                 </plugin>
                 <plugin>
@@ -580,7 +583,7 @@
                             <value>${skipLongRunningTests}</value>
                         </property>
                     </systemProperties>
-                    <argLine>-Djava.awt.headless=true ${debug.argline}</argLine>
+                    <argLine>-Djava.awt.headless=true ${debug.argline} ${modules.argline}</argLine>
                     <!--runOrder>alphabetical</runOrder-->
                     <useFile>false</useFile>
                     <enableAssertions>true</enableAssertions>
@@ -731,20 +734,9 @@
             <activation>
                 <jdk>9</jdk>
             </activation>
-            <build>
-                <pluginManagement>
-                    <plugins>
-                        <plugin>
-                            <groupId>org.apache.maven.plugins</groupId>
-                            <artifactId>maven-surefire-plugin</artifactId>
-                            <!-- Connect is using javax.xml.bind.DatatypeConverter -->
-                            <configuration>
-                                <argLine>--add-modules java.xml.bind</argLine>
-                            </configuration>
-                        </plugin>
-                    </plugins>
-                </pluginManagement>
-            </build>
+            <properties>
+                <modules.argline>--add-modules java.xml.bind</modules.argline>
+            </properties>
         </profile>
     </profiles>
 </project>
