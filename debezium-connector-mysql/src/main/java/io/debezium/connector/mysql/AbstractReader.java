@@ -75,6 +75,7 @@ public abstract class AbstractReader implements Reader {
 
     @Override
     public void start() {
+        initialize();
         if (this.running.compareAndSet(false, true)) {
             this.failure.set(null);
             this.success.set(false);
