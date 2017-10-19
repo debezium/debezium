@@ -31,8 +31,12 @@ public class BlockingReader extends AbstractReader {
 
     @Override
     protected void doStop() {
-        this.completeSuccessfully();
-        latch.countDown();
+        try {
+            this.completeSuccessfully(); 
+        }
+        finally {
+            latch.countDown();
+        }
     }
 
     @Override
