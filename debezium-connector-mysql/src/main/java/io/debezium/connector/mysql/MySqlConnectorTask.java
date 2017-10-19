@@ -141,7 +141,7 @@ public final class MySqlConnectorTask extends SourceTask {
             final boolean rowBinlogEnabled = isRowBinlogEnabled();
 
             // Set up the readers, with a callback to `completeReaders` so that we know when it is finished ...
-            readers = new ChainedReader(taskContext.pollIntervalInMillseconds());
+            readers = new ChainedReader();
             readers.uponCompletion(this::completeReaders);
             BinlogReader binlogReader = new BinlogReader("binlog", taskContext);
             if (startWithSnapshot) {
@@ -153,6 +153,7 @@ public final class MySqlConnectorTask extends SourceTask {
 
                 if (taskContext.isInitialSnapshotOnly()) {
                     logger.warn("This connector will only perform a snapshot, and will stop after that completes.");
+                    readers.add(new BlockingReader("blocker", taskContext));
                     readers.uponCompletion("Connector configured to only perform snapshot, and snapshot completed successfully. Connector will terminate.");
                 } else {
                     if (!rowBinlogEnabled) {

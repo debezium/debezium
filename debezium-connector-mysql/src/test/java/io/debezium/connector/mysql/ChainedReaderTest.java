@@ -33,9 +33,6 @@ public class ChainedReaderTest {
     private static final List<SourceRecord> RL5 = Collect.arrayListOf(record());
     @SuppressWarnings("unchecked")
     private static final List<List<SourceRecord>> SOURCE_RECORDS = Collect.arrayListOf(RL1, RL2, RL3, RL4, RL5);
-    
-    // Manually set poll interval very short; for these unit tests we don't need to artificially wait
-    private static final Long POLL_INTERVAL_MS = 10l;
 
     protected static Supplier<List<SourceRecord>> records() {
         Iterator<List<SourceRecord>> iter = SOURCE_RECORDS.iterator();
@@ -52,7 +49,7 @@ public class ChainedReaderTest {
 
     @Before
     public void beforeEach() {
-        reader = new ChainedReader(POLL_INTERVAL_MS);
+        reader = new ChainedReader();
     }
 
     @Test
