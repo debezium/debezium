@@ -719,7 +719,7 @@ public class MySqlDdlParserTest {
         parser.parse(readFile("ddl/mysql-test-statements.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(6);
-        assertThat(listener.total()).isEqualTo(61);
+        assertThat(listener.total()).isEqualTo(59);
         listener.forEach(this::printEvent);
     }
 
@@ -734,7 +734,7 @@ public class MySqlDdlParserTest {
     public void shouldParseMySql56InitializationStatements() {
         parser.parse(readLines(1, "ddl/mysql-test-init-5.6.ddl"), tables);
         assertThat(tables.size()).isEqualTo(85); // 1 table
-        assertThat(listener.total()).isEqualTo(118);
+        assertThat(listener.total()).isEqualTo(115);
         listener.forEach(this::printEvent);
     }
 
