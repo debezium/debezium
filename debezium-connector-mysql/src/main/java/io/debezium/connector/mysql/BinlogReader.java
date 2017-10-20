@@ -462,6 +462,10 @@ public class BinlogReader extends AbstractReader {
             // This is an XA transaction, and we currently ignore these and do nothing ...
             return;
         }
+        if (context.ddlFilter().test(sql)) {
+            logger.info("a DDL '{}' was filtered out of processing", sql);
+            return;
+        }
         context.dbSchema().applyDdl(context.source(), command.getDatabase(), command.getSql(), (dbName, statements) -> {
             if (recordSchemaChangesInSourceRecords && recordMakers.schemaChanges(dbName, statements, super::enqueueRecord) > 0) {
                 logger.debug("Recorded DDL statements for database '{}': {}", dbName, statements);
