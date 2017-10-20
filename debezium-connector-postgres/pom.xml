@@ -137,7 +137,7 @@
                                 </log>
                                 <wait>
                                     <time>30000</time> <!-- 30 seconds max -->
-                                    <log>PostgreSQL init process complete</log>
+                                    <log>(?s)PostgreSQL init process complete.*database system is ready to accept connections</log>
                                 </wait>
                             </run>
                         </image>
