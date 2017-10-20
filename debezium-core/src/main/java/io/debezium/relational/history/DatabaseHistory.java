@@ -45,6 +45,16 @@ public interface DatabaseHistory {
                     + "which it cannot parse. If skipping is enabled then Debezium can miss metadata changes.")
             .withDefault(false);
 
+    public static final Field DDL_FILTER = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "ddl.filter")
+                                                .withDisplayName("DDL filter")
+                                                .withType(Type.STRING)
+                                                .withDefault("DROP TEMPORARY TABLE .*")
+                                                .withWidth(Width.LONG)
+                                                .withImportance(Importance.LOW)
+                                                .withDescription("A regular expression to filter out a subset of incoming DDL statements "
+                                                        + "from processing and storing into schema history evolution.")
+                                                .withValidation(Field::isListOfRegex);
+
     /**
      * Configure this instance.
      * 
