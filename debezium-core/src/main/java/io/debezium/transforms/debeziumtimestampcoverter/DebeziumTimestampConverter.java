@@ -1,11 +1,15 @@
-
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
 /*
 Note: All the null values for any fields should be made to optional, if not while validating the value and schema, we would end up getting null value for field error.
        Going to convert all null value columns into isoptional if they dont contains any data, so to avoid any kinds of (Conversion error: null value for field that is required and has no default value),
        not just for nestedvalues, but also for struct fields.
  */
 
-package org.telmate.SMT;
+package io.debezium.transforms.debeziumtimestampcoverter;
 
 import org.apache.kafka.common.cache.Cache;
 import org.apache.kafka.common.cache.LRUCache;
@@ -119,11 +123,11 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
             }
 
             @Override
-            public String toType(Config config, Date orig,String format) {
+            public String toType(Config config, Date orig, String format) {
                 synchronized (config.format) {
-                    if (format==DATE_FORMAT_CONFIG){
+                    if (format == DATE_FORMAT_CONFIG) {
                         return config.dateFormat.format(orig);
-                    }else {
+                    } else {
                         return config.format.format(orig);
                     }
                 }
@@ -149,7 +153,7 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
             }
 
             @Override
-            public Long toType(Config config, Date orig,String format) {
+            public Long toType(Config config, Date orig, String format) {
                 return Timestamp.fromLogical(Timestamp.SCHEMA, orig);
             }
 
@@ -174,7 +178,7 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
             }
 
             @Override
-            public Date toType(Config config, Date orig,String format) {
+            public Date toType(Config config, Date orig, String format) {
                 Calendar result = Calendar.getInstance(UTC);
                 result.setTime(orig);
                 result.set(Calendar.HOUR_OF_DAY, 0);
@@ -207,7 +211,7 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
             }
 
             @Override
-            public Date toType(Config config, Date orig,String format) {
+            public Date toType(Config config, Date orig, String format) {
                 Calendar origCalendar = Calendar.getInstance(UTC);
                 origCalendar.setTime(orig);
                 Calendar result = Calendar.getInstance(UTC);
@@ -241,7 +245,7 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
             }
 
             @Override
-            public Date toType(Config config, Date orig,String format) {
+            public Date toType(Config config, Date orig, String format) {
                 return orig;
             }
 
@@ -265,7 +269,7 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
             }
 
             @Override
-            public Object toType(Config config, Date orig,String format) {
+            public Object toType(Config config, Date orig, String format) {
                 Calendar origCalendar = Calendar.getInstance(UTC);
                 origCalendar.setTime(orig);
                 Calendar result = Calendar.getInstance(UTC);
@@ -335,7 +339,7 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
     // This is a bit unusual, but allows the transformation config to be passed to static anonymous classes to customize
     // their behavior
     public static class Config {
-        Config(String field, String type, SimpleDateFormat format,SimpleDateFormat dateFormat, String[] field_type, String[] struct_field) {
+        Config(String field, String type, SimpleDateFormat format, SimpleDateFormat dateFormat, String[] field_type, String[] struct_field) {
             this.field = field;
             this.type = type;
             this.format = format;
@@ -683,8 +687,7 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
 
         if (timestampFormat.equals(TYPE_EPCOH_DATE)) {
             return targetTranslator.toType(config, rawTimestamp, DATE_FORMAT_CONFIG);
-        }
-        else {
+        } else {
             return targetTranslator.toType(config, rawTimestamp, TIMESTAMP_FORMAT_CONFIG);
         }
     }
