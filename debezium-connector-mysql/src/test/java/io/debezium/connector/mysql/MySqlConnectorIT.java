@@ -398,30 +398,33 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         // ---------------------------------------------------------------------------------------------------------------
         // Transaction with rollback
+        // supported only for non-GTID setup 
         // ---------------------------------------------------------------------------------------------------------------
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
-            try (JdbcConnection connection = db.connect()) {
-                final Connection jdbc = connection.connection();
-                connection.setAutoCommit(false);
-                final Statement statement = jdbc.createStatement();
-                statement.executeUpdate("CREATE TEMPORARY TABLE tmp_ids (a int)");
-                statement.executeUpdate("INSERT INTO tmp_ids values(5)");
-                jdbc.commit();
-                statement.executeUpdate("DROP TEMPORARY TABLE tmp_ids");
-                statement.executeUpdate("UPDATE products SET weight=100.12 WHERE id=2001");
-                jdbc.rollback();
-                connection.query("SELECT * FROM products", rs -> {
-                    if (Testing.Print.isEnabled()) connection.print(rs);
-                });
-                connection.setAutoCommit(true);
+        if (replicaIsMaster) {
+            try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+                try (JdbcConnection connection = db.connect()) {
+                    final Connection jdbc = connection.connection();
+                    connection.setAutoCommit(false);
+                    final Statement statement = jdbc.createStatement();
+                    statement.executeUpdate("CREATE TEMPORARY TABLE tmp_ids (a int)");
+                    statement.executeUpdate("INSERT INTO tmp_ids values(5)");
+                    jdbc.commit();
+                    statement.executeUpdate("DROP TEMPORARY TABLE tmp_ids");
+                    statement.executeUpdate("UPDATE products SET weight=100.12 WHERE id=2001");
+                    jdbc.rollback();
+                    connection.query("SELECT * FROM products", rs -> {
+                        if (Testing.Print.isEnabled()) connection.print(rs);
+                    });
+                    connection.setAutoCommit(true);
+                }
             }
+    
+            // The rolled-back transaction should be skipped
+            records = consumeRecordsByTopic(0);
+            assertThat(records.topics().size()).isEqualTo(0);
+    
+            Testing.print("*** Done with rollback TX");
         }
-
-        // The rolled-back transaction should be skipped
-        records = consumeRecordsByTopic(0);
-        assertThat(records.topics().size()).isEqualTo(0);
-
-        Testing.print("*** Done with rollback TX");
 
         //Testing.Print.enable();
 
