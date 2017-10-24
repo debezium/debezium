@@ -13,6 +13,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
@@ -78,6 +80,8 @@ public class BinlogReader extends AbstractReader {
     private final AtomicLong totalRecordCounter = new AtomicLong();
     private volatile Map<String, ?> lastOffset = null;
     private com.github.shyiko.mysql.binlog.GtidSet gtidSet;
+    private final Queue<Event> buffer;
+    private boolean txStarted = false;
 
     /**
      * Create a binlog reader.
@@ -100,7 +104,10 @@ public class BinlogReader extends AbstractReader {
         client.setServerId(context.serverId());
         client.setSSLMode(sslModeFor(context.sslMode()));
         client.setKeepAlive(context.config().getBoolean(MySqlConnectorConfig.KEEP_ALIVE));
-        client.registerEventListener(this::handleEvent);
+
+        buffer = context.bufferSizeForBinlogReader() == 0 ? null : new ArrayBlockingQueue<>(context.bufferSizeForBinlogReader());
+        client.registerEventListener(buffer == null ? this::handleEvent : this::bufferEvent);
+
         client.registerLifecycleListener(new ReaderThreadLifecycleListener());
         if (logger.isDebugEnabled()) client.registerEventListener(this::logEvent);
 
@@ -345,6 +352,81 @@ public class BinlogReader extends AbstractReader {
             eventHandlers.clear();
             logger.info("Stopped processing binlog events due to thread interruption");
         }
+    }
+
+    protected void bufferEvent(Event event) {
+        if (event == null) return;
+        if (event.getHeader().getEventType() == EventType.QUERY) {
+            QueryEventData command = unwrapData(event);
+            logger.debug("Received query command: {}", event);
+            String sql = command.getSql().trim();
+            if (sql.equalsIgnoreCase("BEGIN")) {
+                beginTransaction(event);
+            } else if (sql.equalsIgnoreCase("COMMIT")) {
+                completeTransaction(true, event);
+            } else if (sql.equalsIgnoreCase("ROLLBACK")) {
+                rollbackTransaction();
+            } else {
+                consumeEvent(event);
+            }
+        } else if (event.getHeader().getEventType() == EventType.XID) {
+            completeTransaction(true, event);
+        } else {
+            consumeEvent(event);
+        }
+    }
+
+    private void consumeEvent(Event event) {
+        if (txStarted) {
+            buffer.add(event);
+        } else {
+            handleEvent(event);
+        }
+    }
+
+    private void beginTransaction(Event event) {
+        if (txStarted) {
+            logger.warn("New transaction started but the previous was not completed, processing the buffer");
+            completeTransaction(false, null);
+        } else {
+            txStarted = true;
+        }
+        buffer.add(event);
+    }
+
+    protected void completeTransaction(boolean wellFormed, Event event) {
+        logger.debug("Committing transaction");
+        if (event != null) {
+            buffer.add(event);
+        }
+        if (!txStarted) {
+            logger.warn("Commit requested but TX was not started before");
+            wellFormed = false;
+        }
+        for (Event e: buffer) {
+            handleEvent(e);
+        }
+        metrics.onCommittedTransaction();
+        if (!wellFormed) {
+            metrics.onNotWellFormedTransaction();
+        }
+        buffer.clear();
+        txStarted = false;
+    }
+
+    protected void rollbackTransaction() {
+        logger.debug("Rolling back transaction");
+        boolean wellFormed = true;
+        if (!txStarted) {
+            logger.warn("Rollback requested but TX was not started before");
+            wellFormed = false;
+        }
+        metrics.onRolledBackTransaction();
+        if (!wellFormed) {
+            metrics.onNotWellFormedTransaction();
+        }
+        buffer.clear();
+        txStarted = false;
     }
 
     @SuppressWarnings("unchecked")
