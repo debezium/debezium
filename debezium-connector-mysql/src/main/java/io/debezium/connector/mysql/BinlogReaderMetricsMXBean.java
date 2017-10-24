@@ -23,4 +23,9 @@ public interface BinlogReaderMetricsMXBean {
     long getNumberOfSkippedEvents();
     long getNumberOfDisconnects();
     void reset();
+
+    long getNumberOfCommitedTransactions();
+    long getNumberOfRolledBackTransactions();
+    long getNumberOfNotWellFormedTransactions();
+    long getNumberOfLargeTransactions();
 }
