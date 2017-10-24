@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.jmx.BinaryLogClientStatistics;
 
@@ -15,7 +17,11 @@ class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
 
     private final BinaryLogClient client;
     private final BinaryLogClientStatistics stats;
-    
+
+    private final AtomicLong numberOfCommitedTransactions = new AtomicLong();
+    private final AtomicLong numberOfRolledBackTransactions = new AtomicLong();
+    private final AtomicLong numberOfNotWellFormedTransactions = new AtomicLong();
+
     public BinlogReaderMetrics( BinaryLogClient client) {
         super("binlog");
         this.client = client;
@@ -75,6 +81,35 @@ class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
     @Override
     public void reset() {
         this.stats.reset();
+        numberOfCommitedTransactions.set(0);
+        numberOfRolledBackTransactions.set(0);
+        numberOfNotWellFormedTransactions.set(0);
     }
 
+    @Override
+    public long getNumberOfCommitedTransactions() {
+        return numberOfCommitedTransactions.get();
+    }
+
+    @Override
+    public long getNumberOfRolledBackTransactions() {
+        return numberOfRolledBackTransactions.get();
+    }
+
+    @Override
+    public long getNumberOfNotWellFormedTransactions() {
+        return numberOfNotWellFormedTransactions.get();
+    }
+
+    public void onCommittedTransaction() {
+        numberOfCommitedTransactions.incrementAndGet();
+    }
+
+    public void onRolledBackTransaction() {
+        numberOfRolledBackTransactions.incrementAndGet();
+    }
+
+    public void onNotWellFormedTransaction() {
+        numberOfNotWellFormedTransactions.incrementAndGet();
+    }
 }
