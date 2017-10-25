@@ -14,6 +14,7 @@ import org.apache.kafka.connect.data.Struct;
 import io.debezium.annotation.Immutable;
 import io.debezium.data.Envelope;
 import io.debezium.data.SchemaUtil;
+import io.debezium.schema.DataCollectionSchema;
 
 /**
  * Defines the Kafka Connect {@link Schema} functionality associated with a given {@link Table table definition}, and which can
@@ -46,7 +47,7 @@ import io.debezium.data.SchemaUtil;
  * @see TableSchemaBuilder
  */
 @Immutable
-public class TableSchema {
+public class TableSchema implements DataCollectionSchema {
 
     private final Schema keySchema;
     private final Envelope envelopeSchema;
@@ -89,6 +90,7 @@ public class TableSchema {
      *
      * @return the Schema describing the column's that make up the primary key; null if there is no primary key
      */
+    @Override
     public Schema keySchema() {
         return keySchema;
     }
@@ -99,6 +101,7 @@ public class TableSchema {
      *
      * @return the table's envelope schema
      */
+    @Override
     public Envelope getEnvelopeSchema() {
         return envelopeSchema;
     }

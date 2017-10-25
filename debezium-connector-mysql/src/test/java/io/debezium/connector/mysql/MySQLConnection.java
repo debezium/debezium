@@ -5,11 +5,11 @@
  */
 package io.debezium.connector.mysql;
 
+import java.util.Map;
+
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
-
-import java.util.Map;
 
 /**
  * A utility for integration test cases to connect the MySQL server running in the Docker container created by this module's
@@ -81,16 +81,5 @@ public class MySQLConnection extends JdbcConnection {
      */
     public MySQLConnection(Configuration config) {
         super(config, FACTORY, null, MySQLConnection::addDefaults);
-    }
-
-    /**
-     * Create a new instance with the given configuration and connection factory, and specify the operations that should be
-     * run against each newly-established connection.
-     *
-     * @param config the configuration; may not be null
-     * @param initialOperations the initial operations that should be run on each new connection; may be null
-     */
-    public MySQLConnection(Configuration config, Operations initialOperations) {
-        super(config, FACTORY, initialOperations, MySQLConnection::addDefaults);
     }
 }
