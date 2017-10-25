@@ -700,7 +700,7 @@ public class MySqlDdlParser extends DdlParser {
 
         try {
             // It's either quoted (meaning it's a column definition)
-            if (isAlterStatement) {
+            if (isAlterStatement && !quoted) {
                 tokens.canConsume("COLUMN"); // optional for ALTER TABLE
             }
 
@@ -1213,7 +1213,9 @@ public class MySqlDdlParser extends DdlParser {
             } else if (tokens.canConsume("PARTITION")) {
                 parsePartitionNames(start);
             } else {
-                tokens.canConsume("COLUMN");
+                if(!isNextTokenQuotedIdentifier()) {
+                    tokens.canConsume("COLUMN");
+                }
                 String columnName = parseColumnName();
                 table.removeColumn(columnName);
             }
