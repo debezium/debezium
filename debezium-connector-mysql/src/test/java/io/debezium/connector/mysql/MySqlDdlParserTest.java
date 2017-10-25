@@ -1104,6 +1104,22 @@ public class MySqlDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-408")
+    public void shouldParseCreateTableStatementWithColumnNamedColumn() {
+        String ddl = "CREATE TABLE `mytable` ( " + System.lineSeparator()
+                    + " `def` int(11) unsigned NOT NULL AUTO_INCREMENT, " + System.lineSeparator()
+                    + " `column` varchar(255) NOT NULL DEFAULT '', " + System.lineSeparator()
+                    + " PRIMARY KEY (`def`) " + System.lineSeparator()
+                  + " ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
+
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table mytable = tables.forTable(new TableId(null, null, "mytable"));
+        assertThat(mytable).isNotNull();
+        assertColumn(mytable, "column", "VARCHAR", Types.VARCHAR, 255, -1, false, false, false);
+    }
+
+    @Test
     public void parseDdlForDecAndFixed() {
         String ddl = "CREATE TABLE t ( c1 DEC(2) NOT NULL, c2 FIXED(1,0) NOT NULL);";
         parser.parse(ddl, tables);
