@@ -556,14 +556,17 @@ public class MySqlDdlParser extends DdlParser {
 
     protected void parseCreateDefinitionList(Marker start, TableEditor table) {
         tokens.consume('(');
-        parseCreateDefinition(start, table);
+        parseCreateDefinition(start, table, false);
         while (tokens.canConsume(',')) {
-            parseCreateDefinition(start, table);
+            parseCreateDefinition(start, table, false);
         }
         tokens.consume(')');
     }
 
-    protected void parseCreateDefinition(Marker start, TableEditor table) {
+    /**
+     * @param isAlterStatement whether this is an ALTER TABLE statement or not (i.e. CREATE TABLE)
+     */
+    protected void parseCreateDefinition(Marker start, TableEditor table, boolean isAlterStatement) {
         // If the first token is a quoted identifier, then we know it is a column name ...
         Collection<ParsingException> errors = null;
         boolean quoted = isNextTokenQuotedIdentifier();
@@ -697,7 +700,10 @@ public class MySqlDdlParser extends DdlParser {
 
         try {
             // It's either quoted (meaning it's a column definition)
-            tokens.canConsume("COLUMN"); // optional
+            if (isAlterStatement) {
+                tokens.canConsume("COLUMN"); // optional for ALTER TABLE
+            }
+
             String columnName = parseColumnName();
             parseCreateColumn(start, table, columnName, null);
         } catch (ParsingException e) {
@@ -1195,7 +1201,7 @@ public class MySqlDdlParser extends DdlParser {
                 parsePartitionDefinition(start, table);
                 tokens.consume(')');
             } else {
-                parseCreateDefinition(start, table);
+                parseCreateDefinition(start, table, true);
             }
         } else if (tokens.canConsume("DROP")) {
             if (tokens.canConsume("PRIMARY", "KEY")) {
