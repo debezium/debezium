@@ -1053,7 +1053,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
     private final DdlParsingMode ddlParsingMode;
 
     public MySqlConnectorConfig(Configuration config) {
-        super(config);
+        super(config, SERVER_NAME);
 
         this.config = config;
 

@@ -6,6 +6,7 @@
 package io.debezium.relational;
 
 import io.debezium.annotation.Immutable;
+import io.debezium.schema.DataCollectionId;
 
 /**
  * Unique identifier for a database table.
@@ -13,7 +14,7 @@ import io.debezium.annotation.Immutable;
  * @author Randall Hauch
  */
 @Immutable
-public final class TableId implements Comparable<TableId> {
+public final class TableId implements DataCollectionId, Comparable<TableId> {
 
     /**
      * Parse the supplied string, extracting up to the first 3 parts into a TableID.
