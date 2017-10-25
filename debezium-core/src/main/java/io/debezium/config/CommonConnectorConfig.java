@@ -66,12 +66,14 @@ public class CommonConnectorConfig {
     private final int maxQueueSize;
     private final int maxBatchSize;
     private final Duration pollInterval;
+    private final String logicalName;
 
-    protected CommonConnectorConfig(Configuration config) {
+    protected CommonConnectorConfig(Configuration config, Field logicalNameField) {
         this.emitTombstoneOnDelete = config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         this.maxQueueSize = config.getInteger(MAX_QUEUE_SIZE);
         this.maxBatchSize = config.getInteger(MAX_BATCH_SIZE);
         this.pollInterval = config.getDuration(POLL_INTERVAL_MS, ChronoUnit.MILLIS);
+        this.logicalName = config.getString(logicalNameField);
     }
 
     public boolean isEmitTombstoneOnDelete() {
@@ -88,6 +90,10 @@ public class CommonConnectorConfig {
 
     public Duration getPollInterval() {
         return pollInterval;
+    }
+
+    public String getLogicalName() {
+        return logicalName;
     }
 
     private static int validateMaxQueueSize(Configuration config, Field field, Field.ValidationOutput problems) {

@@ -936,7 +936,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
     private final SnapshotLockingMode snapshotLockingMode;
 
     public MySqlConnectorConfig(Configuration config) {
-        super(config);
+        super(config, SERVER_NAME);
 
         // If deprecated snapshot.minimal.locking property is explicitly configured
         if (config.hasKey(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING.name())) {

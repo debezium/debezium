@@ -118,6 +118,32 @@ To run the integration tests of the PG connector using wal2json, enable the "wal
 A few tests currently don't pass when using the wal2json plug-in.
 Look for references to the types defined in `io.debezium.connector.postgresql.DecoderDifferences` to find these tests.
 
+### Building the Oracle connector
+
+In order to build the Debezium Oracle connector, the following prerequisites must be met:
+
+* Oracle DB is installed and enabled for change data capturing (TODO: describe the details)
+* The Instant Client is downloaded (e.g. [from here](http://www.oracle.com/technetwork/topics/linuxx86-64soft-092277.html) for Linux) and unpacked
+* The _xstream.jar_ and _ojdbc8.jar_ from the Instant Client directory must be installed to the local Maven repository:
+  * mvn install:install-file \
+  -DgroupId=com.oracle.instantclient \
+  -DartifactId=ojdbc8 \
+  -Dversion=12.1.0.2 \
+  -Dpackaging=jar \
+  -Dfile=ojdbc8.jar`
+  * mvn install:install-file \
+  -DgroupId=com.oracle.instantclient \
+  -DartifactId=xstreams \
+  -Dversion=12.1.0.2 \
+  -Dpackaging=jar \
+  -Dfile=xstreams.jar
+* A user "debezium" with password "dbz" exists in the pluggable database (PDB) "ORCLPDB1"
+* A user "c##xstrmadmin" with password "xsa" exists in the container database (CDB) "ORCLCDB" and has XStream adminstrative privileges
+
+Then the Oracle connector can be built like so:
+
+    $ mvn clean install -pl debezium-connector-oracle -am -Poracle -Dinstantclient.dir=/path/to/instant-client-dir
+
 ## Contributing
 
 The Debezium community welcomes anyone that wants to help out in any way, whether that includes reporting problems, helping with documentation, or contributing code changes to fix bugs, add tests, or implement new features. See [this document](CONTRIBUTE.md) for details.
