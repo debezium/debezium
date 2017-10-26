@@ -51,7 +51,7 @@ import io.debezium.util.Strings;
 
 /**
  * A component that reads the binlog of a MySQL server, and records any schema changes in {@link MySqlSchema}.
- * 
+ *
  * @author Randall Hauch
  *
  */
@@ -81,7 +81,7 @@ public class BinlogReader extends AbstractReader {
 
     /**
      * Create a binlog reader.
-     * 
+     *
      * @param name the name of this reader; may not be null
      * @param context the task context in which this reader is running; may not be null
      */
@@ -174,7 +174,7 @@ public class BinlogReader extends AbstractReader {
         if (availableServerGtidStr != null && !availableServerGtidStr.trim().isEmpty()) {
             // The server is using GTIDs, so enable the handler ...
             eventHandlers.put(EventType.GTID, this::handleGtidEvent);
-            
+
             // Now look at the GTID set from the server and what we've previously seen ...
             GtidSet availableServerGtidSet = new GtidSet(availableServerGtidStr);
             GtidSet filteredGtidSet = context.filterGtidSet(availableServerGtidSet);
@@ -358,7 +358,7 @@ public class BinlogReader extends AbstractReader {
 
     /**
      * Handle the supplied event that signals that mysqld has stopped.
-     * 
+     *
      * @param event the server stopped event to be processed; may not be null
      */
     protected void handleServerStop(Event event) {
@@ -368,7 +368,7 @@ public class BinlogReader extends AbstractReader {
     /**
      * Handle the supplied event that is sent by a master to a slave to let the slave know that the master is still alive. Not
      * written to a binary log.
-     * 
+     *
      * @param event the server stopped event to be processed; may not be null
      */
     protected void handleServerHeartbeat(Event event) {
@@ -378,7 +378,7 @@ public class BinlogReader extends AbstractReader {
     /**
      * Handle the supplied event that signals that an out of the ordinary event that occurred on the master. It notifies the slave
      * that something happened on the master that might cause data to be in an inconsistent state.
-     * 
+     *
      * @param event the server stopped event to be processed; may not be null
      */
     protected void handleServerIncident(Event event) {
@@ -389,7 +389,7 @@ public class BinlogReader extends AbstractReader {
      * Handle the supplied event with a {@link RotateEventData} that signals the logs are being rotated. This means that either
      * the server was restarted, or the binlog has transitioned to a new file. In either case, subsequent table numbers will be
      * different than those seen to this point, so we need to {@link RecordMakers#clear() discard the cache of record makers}.
-     * 
+     *
      * @param event the database change data event to be processed; may not be null
      */
     protected void handleRotateLogsEvent(Event event) {
@@ -409,7 +409,7 @@ public class BinlogReader extends AbstractReader {
      * we actually want to capture all GTID set values found in the binlog, whether or not we process them.
      * However, only when we connect do we actually want to pass to MySQL only those GTID ranges that are applicable
      * per the configuration.
-     * 
+     *
      * @param event the GTID event to be processed; may not be null
      */
     protected void handleGtidEvent(Event event) {
@@ -430,7 +430,7 @@ public class BinlogReader extends AbstractReader {
     /**
      * Handle the supplied event with an {@link QueryEventData} by possibly recording the DDL statements as changes in the
      * MySQL schemas.
-     * 
+     *
      * @param event the database change data event to be processed; may not be null
      * @throws InterruptedException if this thread is interrupted while recording the DDL statements
      */
@@ -463,7 +463,7 @@ public class BinlogReader extends AbstractReader {
             return;
         }
         if (context.ddlFilter().test(sql)) {
-            logger.info("a DDL '{}' was filtered out of processing", sql);
+            logger.debug("DDL '{}' was filtered out of processing", sql);
             return;
         }
         context.dbSchema().applyDdl(context.source(), command.getDatabase(), command.getSql(), (dbName, statements) -> {
@@ -484,7 +484,7 @@ public class BinlogReader extends AbstractReader {
      * <li>the table structure is modified (e.g., via an {@code ALTER TABLE ...} command); or</li>
      * <li>MySQL rotates to a new binary log file, even if the table structure does not change.</li>
      * </ol>
-     * 
+     *
      * @param event the update event; never null
      */
     protected void handleUpdateTableMetadata(Event event) {
@@ -502,7 +502,7 @@ public class BinlogReader extends AbstractReader {
 
     /**
      * Generate source records for the supplied event with an {@link WriteRowsEventData}.
-     * 
+     *
      * @param event the database change data event to be processed; may not be null
      * @throws InterruptedException if this thread is interrupted while blocking
      */
@@ -549,7 +549,7 @@ public class BinlogReader extends AbstractReader {
 
     /**
      * Generate source records for the supplied event with an {@link UpdateRowsEventData}.
-     * 
+     *
      * @param event the database change data event to be processed; may not be null
      * @throws InterruptedException if this thread is interrupted while blocking
      */
@@ -600,7 +600,7 @@ public class BinlogReader extends AbstractReader {
 
     /**
      * Generate source records for the supplied event with an {@link DeleteRowsEventData}.
-     * 
+     *
      * @param event the database change data event to be processed; may not be null
      * @throws InterruptedException if this thread is interrupted while blocking
      */
@@ -647,7 +647,7 @@ public class BinlogReader extends AbstractReader {
 
     /**
      * Handle a {@link EventType#VIEW_CHANGE} event.
-     * 
+     *
      * @param event the database change data event to be processed; may not be null
      * @throws InterruptedException if this thread is interrupted while blocking
      */
@@ -655,10 +655,10 @@ public class BinlogReader extends AbstractReader {
         logger.debug("View Change event: {}", event);
         // do nothing
     }
-    
+
     /**
      * Handle a {@link EventType#XA_PREPARE} event.
-     * 
+     *
      * @param event the database change data event to be processed; may not be null
      * @throws InterruptedException if this thread is interrupted while blocking
      */
@@ -666,7 +666,7 @@ public class BinlogReader extends AbstractReader {
         logger.debug("XA Prepare event: {}", event);
         // do nothing
     }
-    
+
     protected SSLMode sslModeFor(SecureConnectionMode mode) {
         switch (mode) {
             case DISABLED:
