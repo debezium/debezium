@@ -277,7 +277,7 @@ node('Slave') {
             sleep 10
         """
         timeout (time: 2, unit: java.util.concurrent.TimeUnit.MINUTES) {
-            def watcherlog = sh(script: 'docker run --name watcher --rm --link zookeeper:zookeeper debezium/kafka:$IMAGE_TAG watch-topic -a -k dbserver1.inventory.customers --max-messages 2 2>&1', returnStdout: true).trim()
+            def watcherlog = sh(script: "docker run --name watcher --rm --link zookeeper:zookeeper debezium/kafka:$IMAGE_TAG watch-topic -a -k dbserver1.inventory.customers --max-messages 2 2>&1", returnStdout: true).trim()
             echo watcherlog
             sh 'docker rm -f connect zookeeper kafka mysql'
             if (!watcherlog.contains('Processed a total of 2 messages')) {
