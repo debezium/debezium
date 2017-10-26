@@ -24,6 +24,8 @@
         <docker.filter>debezium/postgres:${version.postgres.server}</docker.filter>
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
+
+        <protobuf.output.directory>${project.basedir}/generated-sources</protobuf.output.directory>
     </properties>
 
     <dependencies>

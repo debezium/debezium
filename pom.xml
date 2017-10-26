@@ -88,7 +88,6 @@
         <version.source.plugin>3.0.1</version.source.plugin>
         <version.assembly.plugin>2.4</version.assembly.plugin>
         <version.war.plugin>2.5</version.war.plugin>
-        <version.codehaus.helper.plugin>1.8</version.codehaus.helper.plugin>
         <version.google.formatter.plugin>0.3.1</version.google.formatter.plugin>
         <version.docker.maven.plugin>0.20.1</version.docker.maven.plugin>
         <version.staging.plugin>1.6.3</version.staging.plugin>
@@ -96,10 +95,6 @@
 
         <!-- Dockerfiles -->
         <docker.maintainer>Debezium community</docker.maintainer>
-
-        <!-- Protobuf compiler options -->
-        <protobuf.input.directory>${project.basedir}/src/main/proto</protobuf.input.directory>
-        <protobuf.output.directory>${project.basedir}/generated-sources</protobuf.output.directory>
 
         <!--Skip long running tests by default-->
         <skipLongRunningTests>true</skipLongRunningTests>
@@ -432,11 +427,6 @@
                     </configuration>
                 </plugin>
                 <plugin>
-                    <groupId>org.codehaus.mojo</groupId>
-                    <artifactId>build-helper-maven-plugin</artifactId>
-                    <version>${version.codehaus.helper.plugin}</version>
-                </plugin>
-                <plugin>
                     <groupId>com.googlecode.maven-java-formatter-plugin</groupId>
                     <artifactId>maven-java-formatter-plugin</artifactId>
                     <version>${version.google.formatter.plugin}</version>
@@ -499,24 +489,6 @@
                     <target>${maven.compiler.target}</target>
                     <encoding>${project.build.sourceEncoding}</encoding>
                 </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>build-helper-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>add-classes</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>add-source</goal>
-                        </goals>
-                        <configuration>
-                            <sources>
-                                <source>${protobuf.output.directory}</source>
-                            </sources>
-                        </configuration>
-                    </execution>
-                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
