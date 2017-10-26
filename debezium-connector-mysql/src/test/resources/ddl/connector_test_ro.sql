@@ -74,5 +74,8 @@ VALUES (default, '2016-01-16', 1001, 1, 102),
 
 -- Temporary table statements should be ignored
 CREATE TEMPORARY TABLE ids (id int);
+CREATE TEMPORARY TABLE ids2 (id int);
 INSERT INTO ids VALUES(1);
+INSERT INTO ids2 VALUES(1);
 DROP TEMPORARY TABLE ids;
+DROP TEMPORARY TABLE ids2;
