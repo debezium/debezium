@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.connector.mysql.MySqlConnectorConfig.EventDeserializationFailureHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcConnection.ConnectionFactory;
@@ -28,7 +29,7 @@ import io.debezium.util.Strings;
 
 /**
  * A context for a JDBC connection to MySQL.
- * 
+ *
  * @author Randall Hauch
  */
 public class MySqlJdbcContext implements AutoCloseable {
@@ -95,6 +96,11 @@ public class MySqlJdbcContext implements AutoCloseable {
         return sslMode() != SecureConnectionMode.DISABLED;
     }
 
+    public EventDeserializationFailureHandlingMode eventDeserializationFailureHandlingMode() {
+        String mode = config.getString(MySqlConnectorConfig.EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE);
+        return EventDeserializationFailureHandlingMode.parse(mode);
+    }
+
     public void start() {
         if (sslModeEnabled()) {
             originalSystemProperties.clear();
@@ -152,7 +158,7 @@ public class MySqlJdbcContext implements AutoCloseable {
     /**
      * Determine if the current user has the named privilege. Note that if the user has the "ALL" privilege this method
      * returns {@code true}.
-     * 
+     *
      * @param grantName the name of the MySQL privilege; may not be null
      * @return {@code true} if the user has the named privilege, or {@code false} otherwise
      */
@@ -182,7 +188,7 @@ public class MySqlJdbcContext implements AutoCloseable {
 
     /**
      * Read the MySQL charset-related system variables.
-     * 
+     *
      * @param sql the reference that should be set to the SQL statement; may be null if not needed
      * @return the system variables that are related to server character sets; never null
      */
@@ -213,7 +219,7 @@ public class MySqlJdbcContext implements AutoCloseable {
 
     /**
      * Read the MySQL system variables.
-     * 
+     *
      * @param sql the reference that should be set to the SQL statement; may be null if not needed
      * @return the system variables that are related to server character sets; never null
      */

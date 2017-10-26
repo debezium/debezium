@@ -42,8 +42,8 @@ import com.github.shyiko.mysql.binlog.io.ByteArrayInputStream;
 import com.github.shyiko.mysql.binlog.network.AuthenticationException;
 import com.github.shyiko.mysql.binlog.network.SSLMode;
 
+import io.debezium.connector.mysql.MySqlConnectorConfig.EventDeserializationFailureHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
-import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode.EventDeserializationFailureHandlingMode;
 import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.relational.TableId;
@@ -68,9 +68,11 @@ public class BinlogReader extends AbstractReader {
     private final EnumMap<EventType, BlockingConsumer<Event>> eventHandlers = new EnumMap<>(EventType.class);
     private final BinaryLogClient client;
     private final BinlogReaderMetrics metrics;
-    private int startingRowNumber = 0;
     private final Clock clock;
     private final ElapsedTimeStrategy pollOutputDelay;
+    private final EventDeserializationFailureHandlingMode eventDeserializationFailureHandlingMode;
+
+    private int startingRowNumber = 0;
     private long recordCounter = 0L;
     private long previousOutputMillis = 0L;
     private long initialEventsToSkip = 0L;
@@ -89,10 +91,12 @@ public class BinlogReader extends AbstractReader {
      */
     public BinlogReader(String name, MySqlTaskContext context) {
         super(name, context);
+
         source = context.source();
         recordMakers = context.makeRecord();
         recordSchemaChangesInSourceRecords = context.includeSchemaChangeRecords();
         clock = context.clock();
+        eventDeserializationFailureHandlingMode = context.eventDeserializationFailureHandlingMode();
 
         // Use exponential delay to log the progress frequently at first, but the quickly tapering off to once an hour...
         pollOutputDelay = ElapsedTimeStrategy.exponential(clock, INITIAL_POLL_PERIOD_IN_MILLIS, MAX_POLL_PERIOD_IN_MILLIS);
@@ -407,17 +411,15 @@ public class BinlogReader extends AbstractReader {
         if (event.getData() instanceof EventDataDeserializationExceptionData) {
             EventDataDeserializationExceptionData data = event.getData();
 
-            // TODO make it an option
-            EventDeserializationFailureHandlingMode deserializationFailureHandling = EventDeserializationFailureHandlingMode.FAIL;
             EventHeaderV4 eventHeader = (EventHeaderV4) data.getCause().getEventHeader(); // safe cast, instantiated that ourselves
 
-            if(deserializationFailureHandling == EventDeserializationFailureHandlingMode.FAIL) {
-                // logging some additional context but not the exception itself, this will happen in handleEvent()
-
+            // logging some additional context but not the exception itself, this will happen in handleEvent()
+            if(eventDeserializationFailureHandlingMode == EventDeserializationFailureHandlingMode.FAIL) {
                 logger.error(
-                        "Error while deserializing binlog event at offset {}." + System.lineSeparator() +
-                        "Use the mysqlbinlog tool to view the problematic event: `mysqlbinlog --start-position={} --stop-position={} --verbose {}",
+                        "Error while deserializing binlog event at offset {}.{}" +
+                        "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
                         source.offset(),
+                        System.lineSeparator(),
                         eventHeader.getPosition(),
                         eventHeader.getNextPosition(),
                         source.binlogFilename()
@@ -425,12 +427,14 @@ public class BinlogReader extends AbstractReader {
 
                 throw new RuntimeException(data.getCause());
             }
-            else if(deserializationFailureHandling == EventDeserializationFailureHandlingMode.WARN) {
+            else if(eventDeserializationFailureHandlingMode == EventDeserializationFailureHandlingMode.WARN) {
                 logger.warn(
-                        "Error while deserializing binlog event at offset {}." + System.lineSeparator() +
-                        "This exception will be ignored and the event be skipped." + System.lineSeparator() +
-                        "Use the mysqlbinlog tool to view the problematic event: `mysqlbinlog --start-position={} --stop-position={} --verbose {}",
+                        "Error while deserializing binlog event at offset {}.{}" +
+                        "This exception will be ignored and the event be skipped.{}" +
+                        "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
                         source.offset(),
+                        System.lineSeparator(),
+                        System.lineSeparator(),
                         eventHeader.getPosition(),
                         eventHeader.getNextPosition(),
                         source.binlogFilename(),

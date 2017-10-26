@@ -357,20 +357,54 @@ public class MySqlConnectorConfig {
             if (mode == null && defaultValue != null) mode = parse(defaultValue);
             return mode;
         }
+    }
 
-        public static enum EventDeserializationFailureHandlingMode implements EnumeratedValue {
+    /**
+     * The set of predefined modes for dealing with failures during binlog event serialization.
+     */
+    public static enum EventDeserializationFailureHandlingMode implements EnumeratedValue {
 
-            IGNORE,
-            WARN,
-            FAIL;
+        /**
+         * Problematic events will be skipped.
+         */
+        IGNORE("ignore"),
 
-            @Override
-            public String getValue() {
-                return null;
+        /**
+         * Problematic event and their binlog position will be logged and the events will be skipped.
+         */
+        WARN("warn"),
+
+        /**
+         * An exception indicating the problematic events and their binlog position is raised, causing the connector to be stopped.
+         */
+        FAIL("fail");
+
+        private final String value;
+
+        private EventDeserializationFailureHandlingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static EventDeserializationFailureHandlingMode parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+
+            for (EventDeserializationFailureHandlingMode option : EventDeserializationFailureHandlingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
             }
 
-
-
+            return null;
         }
     }
 
@@ -742,6 +776,16 @@ public class MySqlConnectorConfig {
                                                                             + "'precise' (the default) uses java.math.BigDecimal to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; "
                                                                             + "'long' represents values using Java's 'long', which may not offer the precision but will be far easier to use in consumers.");
 
+    public static final Field EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE = Field.create("event.deserialization.failure.handling.mode")
+            .withDisplayName("Event deserialization failure Handling")
+            .withEnum(EventDeserializationFailureHandlingMode.class, EventDeserializationFailureHandlingMode.FAIL)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Specify how failures during deserialization of binlog events (i.e. when encountering a corrupted event) should be handled, including:"
+                             + "'fail' (the default) an exception indicating the problematic event and its binlog position is raised, causing the connector to be stopped; "
+                             + "'warn' the problematic event and its binlog position will be logged and the event will be skipped;"
+                             + "'ignore' the problematic event will be skipped.");
+
     /**
      * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
      * have their values truncated to be no longer than the specified number of characters.
@@ -788,7 +832,9 @@ public class MySqlConnectorConfig {
                                                      GTID_SOURCE_FILTER_DML_EVENTS,
                                                      TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                                                      SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD,
-                                                     SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER);
+                                                     SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER,
+                                                     BIGINT_UNSIGNED_HANDLING_MODE,
+                                                     EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE);
 
     /**
      * The set of {@link Field}s that are included in the {@link #configDef() configuration definition}. This includes
@@ -813,9 +859,11 @@ public class MySqlConnectorConfig {
                     DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, DatabaseHistory.DDL_FILTER);
         Field.group(config, "Events", INCLUDE_SCHEMA_CHANGES, TABLES_IGNORE_BUILTIN, DATABASE_WHITELIST, TABLE_WHITELIST,
                     COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST,
-                    GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS);
+                    GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS,
+                    EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
-                    SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE);
+                    SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
+                    BIGINT_UNSIGNED_HANDLING_MODE);
         return config;
     }
 
