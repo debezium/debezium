@@ -13,6 +13,7 @@ import java.io.InputStream;
 import java.sql.Types;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -1084,6 +1085,21 @@ public class MySqlDdlParserTest {
         assertThat(listener.total()).isEqualTo(2);
     }
 
+    @FixFor("DBZ-419")
+    @Test
+    public void shouldParseCreateTableWithUnnamedPrimaryKeyConstraint() {
+        final String ddl =
+                "CREATE TABLE IF NOT EXISTS tables_exception (table_name VARCHAR(100), create_date TIMESTAMP DEFAULT NOW(), enabled INT(1), retention int(1) default 30, CONSTRAINT PRIMARY KEY (table_name));";
+
+        parser.parse(ddl, tables);
+        Testing.print(tables);
+
+        Table t = tables.forTable(new TableId(null, null, "tables_exception"));
+        assertThat(t).isNotNull();
+        assertThat(t.primaryKeyColumnNames()).containsExactly("table_name");
+        assertThat(tables.size()).isEqualTo(1);
+    }
+
     @Test
     public void shouldParseStatementForDbz142() {
         parser.parse(readFile("ddl/mysql-dbz-142.ddl"), tables);
@@ -1101,6 +1117,104 @@ public class MySqlDdlParserTest {
         Table t2 = tables.forTable(new TableId(null, null, "nchars"));
         assertColumn(t2, "c1", "NATIONAL CHARACTER", Types.NCHAR, 10, "utf8", true);
         assertColumn(t2, "c2", "NCHAR", Types.NCHAR, 10, "utf8", true);
+    }
+
+    @Test
+    @FixFor("DBZ-408")
+    public void shouldParseCreateTableStatementWithColumnNamedColumn() {
+        String ddl = "CREATE TABLE `mytable` ( " + System.lineSeparator()
+                    + " `def` int(11) unsigned NOT NULL AUTO_INCREMENT, " + System.lineSeparator()
+                    + " `ghi` varchar(255) NOT NULL DEFAULT '', " + System.lineSeparator()
+                    + " `column` varchar(255) NOT NULL DEFAULT '', " + System.lineSeparator()
+                    + " PRIMARY KEY (`def`) " + System.lineSeparator()
+                  + " ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
+
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table mytable = tables.forTable(new TableId(null, null, "mytable"));
+        assertThat(mytable).isNotNull();
+        assertColumn(mytable, "column", "VARCHAR", Types.VARCHAR, 255, -1, false, false, false);
+        assertColumn(mytable, "ghi", "VARCHAR", Types.VARCHAR, 255, -1, false, false, false);
+    }
+
+    @Test
+    @FixFor("DBZ-408")
+    public void shouldParseAlterTableStatementWithColumnNamedColumnWithoutColumnWord() {
+        String ddl = "CREATE TABLE `mytable` ( " + System.lineSeparator()
+                    + " `def` int(11) unsigned NOT NULL AUTO_INCREMENT, " + System.lineSeparator()
+                    + " PRIMARY KEY (`def`) " + System.lineSeparator()
+                  + " ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
+
+        parser.parse(ddl, tables);
+
+        ddl = "ALTER TABLE `mytable` "
+                + "ADD `column` varchar(255) NOT NULL DEFAULT '', "
+                + "ADD `ghi` varchar(255) NOT NULL DEFAULT '', "
+                + "ADD jkl varchar(255) NOT NULL DEFAULT '' ;";
+
+        parser.parse(ddl, tables);
+
+        assertThat(tables.size()).isEqualTo(1);
+
+        Table mytable = tables.forTable(new TableId(null, null, "mytable"));
+        assertThat(mytable).isNotNull();
+        assertColumn(mytable, "column", "VARCHAR", Types.VARCHAR, 255, -1, false, false, false);
+        assertColumn(mytable, "ghi", "VARCHAR", Types.VARCHAR, 255, -1, false, false, false);
+        assertColumn(mytable, "jkl", "VARCHAR", Types.VARCHAR, 255, -1, false, false, false);
+
+        ddl = "ALTER TABLE `mytable` "
+                + "DROP `column`, "
+                + "DROP `ghi`, "
+                + "DROP jkl";
+
+        parser.parse(ddl, tables);
+        mytable = tables.forTable(new TableId(null, null, "mytable"));
+        List<String> mytableColumnNames = mytable.columns()
+            .stream()
+            .map(Column::name)
+            .collect(Collectors.toList());
+
+        assertThat(mytableColumnNames).containsOnly("def");
+    }
+
+    @Test
+    @FixFor("DBZ-408")
+    public void shouldParseAlterTableStatementWithColumnNamedColumnWithColumnWord() {
+        String ddl = "CREATE TABLE `mytable` ( " + System.lineSeparator()
+                    + " `def` int(11) unsigned NOT NULL AUTO_INCREMENT, " + System.lineSeparator()
+                    + " PRIMARY KEY (`def`) " + System.lineSeparator()
+                  + " ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
+
+        parser.parse(ddl, tables);
+
+        ddl = "ALTER TABLE `mytable` "
+                + "ADD COLUMN `column` varchar(255) NOT NULL DEFAULT '', "
+                + "ADD COLUMN `ghi` varchar(255) NOT NULL DEFAULT '', "
+                + "ADD COLUMN jkl varchar(255) NOT NULL DEFAULT '' ;";
+
+        parser.parse(ddl, tables);
+
+        assertThat(tables.size()).isEqualTo(1);
+
+        Table mytable = tables.forTable(new TableId(null, null, "mytable"));
+        assertThat(mytable).isNotNull();
+        assertColumn(mytable, "column", "VARCHAR", Types.VARCHAR, 255, -1, false, false, false);
+        assertColumn(mytable, "ghi", "VARCHAR", Types.VARCHAR, 255, -1, false, false, false);
+        assertColumn(mytable, "jkl", "VARCHAR", Types.VARCHAR, 255, -1, false, false, false);
+
+        ddl = "ALTER TABLE `mytable` "
+                + "DROP COLUMN `column`, "
+                + "DROP COLUMN `ghi`, "
+                + "DROP COLUMN jkl";
+
+        parser.parse(ddl, tables);
+        mytable = tables.forTable(new TableId(null, null, "mytable"));
+        List<String> mytableColumnNames = mytable.columns()
+            .stream()
+            .map(Column::name)
+            .collect(Collectors.toList());
+
+        assertThat(mytableColumnNames).containsOnly("def");
     }
 
     @Test

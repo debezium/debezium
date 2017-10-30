@@ -71,3 +71,11 @@ VALUES (default, '2016-01-16', 1001, 1, 102),
        (default, '2016-02-18', 1004, 3, 109),
        (default, '2016-02-19', 1002, 2, 106),
        (default, '2016-02-21', 1003, 1, 107);
+
+-- Temporary table statements should be ignored
+CREATE TEMPORARY TABLE ids (id int);
+CREATE TEMPORARY TABLE ids2 (id int);
+INSERT INTO ids VALUES(1);
+INSERT INTO ids2 VALUES(1);
+DROP TEMPORARY TABLE ids;
+DROP TEMPORARY TABLE ids2;
