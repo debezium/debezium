@@ -1085,6 +1085,21 @@ public class MySqlDdlParserTest {
         assertThat(listener.total()).isEqualTo(2);
     }
 
+    @FixFor("DBZ-419")
+    @Test
+    public void shouldParseCreateTableWithUnnamedPrimaryKeyConstraint() {
+        final String ddl =
+                "CREATE TABLE IF NOT EXISTS tables_exception (table_name VARCHAR(100), create_date TIMESTAMP DEFAULT NOW(), enabled INT(1), retention int(1) default 30, CONSTRAINT PRIMARY KEY (table_name));";
+
+        parser.parse(ddl, tables);
+        Testing.print(tables);
+
+        Table t = tables.forTable(new TableId(null, null, "tables_exception"));
+        assertThat(t).isNotNull();
+        assertThat(t.primaryKeyColumnNames()).containsExactly("table_name");
+        assertThat(tables.size()).isEqualTo(1);
+    }
+
     @Test
     public void shouldParseStatementForDbz142() {
         parser.parse(readFile("ddl/mysql-dbz-142.ddl"), tables);

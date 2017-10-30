@@ -578,7 +578,10 @@ public class MySqlDdlParser extends DdlParser {
                 consumeExpression(start);
                 return;
             }
-            if (tokens.canConsume("CONSTRAINT", TokenStream.ANY_VALUE, "PRIMARY", "KEY") || tokens.canConsume("PRIMARY", "KEY")) {
+            if (tokens.canConsume("CONSTRAINT", TokenStream.ANY_VALUE, "PRIMARY", "KEY")
+                    || tokens.canConsume("CONSTRAINT", "PRIMARY", "KEY")
+                    || tokens.canConsume("PRIMARY", "KEY")
+            ) {
                 try {
                     if (tokens.canConsume("USING")) {
                         parseIndexType(start);
