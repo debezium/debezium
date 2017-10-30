@@ -172,7 +172,8 @@ public final class MySqlConnectorTask extends SourceTask {
                 readers.add(binlogReader);
             }
 
-            // And start the chain of readers ...
+            // And finally initialize and start the chain of readers ...
+            this.readers.initialize();
             this.readers.start();
         } catch (Throwable e) {
             // If we don't complete startup, then Kafka Connect will not attempt to stop the connector. So if we

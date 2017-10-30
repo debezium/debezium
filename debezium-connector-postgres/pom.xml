@@ -24,6 +24,8 @@
         <docker.filter>debezium/postgres:${version.postgres.server}</docker.filter>
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
+
+        <protobuf.output.directory>${project.basedir}/generated-sources</protobuf.output.directory>
     </properties>
 
     <dependencies>
@@ -137,7 +139,7 @@
                                 </log>
                                 <wait>
                                     <time>30000</time> <!-- 30 seconds max -->
-                                    <log>PostgreSQL init process complete</log>
+                                    <log>(?s)PostgreSQL init process complete.*database system is ready to accept connections</log>
                                 </wait>
                             </run>
                         </image>

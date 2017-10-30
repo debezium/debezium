@@ -14,6 +14,7 @@ import javax.management.ObjectName;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.function.Predicates;
+import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.LoggingContext.PreviousContext;
@@ -32,6 +33,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     private final TopicSelector topicSelector;
     private final RecordMakers recordProcessor;
     private final Predicate<String> gtidSourceFilter;
+    private final Predicate<String> ddlFilter;
     private final Clock clock = Clock.system();
 
     public MySqlTaskContext(Configuration config) {
@@ -55,6 +57,10 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
 
         // Set up the record processor ...
         this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector);
+
+        // Set up the DDL filter
+        final String ddlFilter = config.getString(DatabaseHistory.DDL_FILTER);
+        this.ddlFilter = (ddlFilter != null) ? Predicates.includes(ddlFilter) : (x -> false);
     }
 
     public String connectorName() {
@@ -280,4 +286,13 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         return mergedGtidSet;
     }
 
+    /**
+     * Get the predicate function that will return {@code true} if a DDL has to be skipped over and left out of the schema history
+     * or {@code false} when it should be processed.
+     *
+     * @return the DDL predicate function; never null
+     */
+    public Predicate<String> ddlFilter() {
+        return ddlFilter;
+    }
 }

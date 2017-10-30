@@ -58,7 +58,6 @@ public class SnapshotReader extends AbstractReader {
         this.includeData = !context.isSchemaOnlySnapshot();
         recorder = this::recordRowAsRead;
         metrics = new SnapshotReaderMetrics(context.clock());
-        metrics.register(context, logger);
     }
 
     /**
@@ -96,6 +95,11 @@ public class SnapshotReader extends AbstractReader {
     public SnapshotReader generateInsertEvents() {
         recorder = this::recordRowAsInsert;
         return this;
+    }
+
+    @Override
+    protected void doInitialize() {
+        metrics.register(context, logger);
     }
 
     /**
