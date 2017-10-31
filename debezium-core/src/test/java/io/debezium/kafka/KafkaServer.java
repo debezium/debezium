@@ -151,7 +151,8 @@ public class KafkaServer {
      * @return the properties for the currently-running server; may be empty if not running
      */
     public Properties config() {
-        Properties runningConfig = new Properties(config);
+        Properties runningConfig = new Properties();
+        runningConfig.putAll(config);
         runningConfig.setProperty(KafkaConfig.ZkConnectProp(), zookeeperConnection());
         runningConfig.setProperty(KafkaConfig.BrokerIdProp(), Integer.toString(brokerId));
         runningConfig.setProperty(KafkaConfig.HostNameProp(), "localhost");

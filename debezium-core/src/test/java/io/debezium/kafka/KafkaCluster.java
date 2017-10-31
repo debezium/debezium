@@ -161,7 +161,8 @@ public class KafkaCluster {
     public KafkaCluster withKafkaConfiguration(Properties properties) {
         if (running) throw new IllegalStateException("Unable to add a broker when the cluster is already running");
         if (properties != null && !properties.isEmpty()) {
-            kafkaConfig = new Properties(properties);
+            kafkaConfig = new Properties();
+            kafkaConfig.putAll(properties);
             kafkaServers.values().forEach(kafka -> kafka.setProperties(kafkaConfig));
         }
         return this;
