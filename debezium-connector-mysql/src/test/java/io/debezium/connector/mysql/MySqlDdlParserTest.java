@@ -824,6 +824,22 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(0);
     }
 
+    @FixFor("DBZ-415")
+    @Test
+    public void shouldParseProcedureEmbeddedIfs() {
+        parser.parse(readFile("ddl/mysql-dbz-415a.ddl"), tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(0);
+    }
+
+    @FixFor("DBZ-415")
+    @Test
+    public void shouldParseProcedureIfWithParenthesisStart() {
+        parser.parse(readFile("ddl/mysql-dbz-415b.ddl"), tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(0);
+    }
+
     @FixFor("DBZ-198")
     @Test
     public void shouldParseButIgnoreCreateFunctionWithDefiner() {

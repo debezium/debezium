@@ -1492,57 +1492,40 @@ public class MySqlDdlParser extends DdlParser {
         LinkedList<String> labels = new LinkedList<>();
         labels.addFirst(getPrecedingBlockLabel());
 
+        int expectedPlainEnds = 0;
+
         // Now look for the "END", ignoring intermediate control blocks that also use "END" ...
-        LinkedList<String> endSuffixes = new LinkedList<>();
         while (tokens.hasNext()) {
             if (tokens.matches("BEGIN")) {
                 consumeBeginStatement(tokens.mark());
             }
             if (tokens.canConsume("IF", "EXISTS")) {
                 // Ignore any IF EXISTS phrases ...
-            }
-            if (tokens.canConsume("IF")) {
-                boolean isControlBlock = true;
-                if (tokens.canConsume("(")) {
-                    // This may be an IF() function or a control block
-                    tokens.consumeThrough(")","(");
-                    if (!tokens.canConsume("THEN")) {
-                        // This was an IF function ...
-                        isControlBlock = false;
-                    }
-                }
-                if (isControlBlock) {
-                    endSuffixes.addFirst("IF"); // block ends with "END IF"
-                    labels.addFirst(null); // labels are not allowed
-                }
-            }
-            if (tokens.canConsume("CASE", "WHEN")) {
-                // This is the beginning of a control block ...
-                endSuffixes.addFirst(null);
-                labels.addFirst(null); // no label for case blocks
-            }
-            if (tokens.canConsume("CASE")) {
-                // This is the beginning of a control block ...
-                endSuffixes.addFirst("CASE");
-                labels.addFirst(null); // no label for case blocks
-            }
-            if (tokens.matchesAnyOf("REPEAT", "LOOP", "WHILE", "CASE")) {
-                // This is the beginning of a control block ...
+            } else if (tokens.canConsume("CASE", "WHEN")) {
+                // This block can end with END without suffix
+                expectedPlainEnds++;
+            } else if (tokens.matchesAnyOf("REPEAT", "LOOP", "WHILE")) {
+                // This block can contain label
                 String label = getPrecedingBlockLabel();
-                String keyword = tokens.consume();
-                endSuffixes.addFirst(keyword);
+                tokens.consume();
                 labels.addFirst(label); // may be null
-            }
-            if (tokens.canConsume("END")) {
-                if (endSuffixes.isEmpty()) {
+            } else if (tokens.canConsume("END")) {
+                if (tokens.matchesAnyOf("REPEAT", "LOOP", "WHILE")) {
+                    // Read block label if set
+                    tokens.consume();
+                    String label = labels.remove();
+                    if (label != null) tokens.canConsume(label);
+                } else if (tokens.matchesAnyOf("IF", "CASE")) {
+                    tokens.consume();
+                } else if (expectedPlainEnds > 0) {
+                    // There was a statement that will be ended with plain END
+                    expectedPlainEnds--;
+                } else {
                     break;
                 }
-                String suffix = endSuffixes.remove();
-                if (suffix != null) tokens.canConsume(suffix);
-                String label = labels.remove();
-                if (label != null) tokens.canConsume(label);
+            } else {
+                tokens.consume();
             }
-            tokens.consume();
         }
 
         // We've consumed the corresponding END of the BEGIN, but consume the label if one was used ...
