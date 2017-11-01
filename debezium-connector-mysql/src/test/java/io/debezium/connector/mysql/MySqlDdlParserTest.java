@@ -1138,7 +1138,7 @@ public class MySqlDdlParserTest {
     }
 
     @Test
-    @FixFor("DBZ-408")
+    @FixFor({"DBZ-408", "DBZ-412"})
     public void shouldParseAlterTableStatementWithColumnNamedColumnWithoutColumnWord() {
         String ddl = "CREATE TABLE `mytable` ( " + System.lineSeparator()
                     + " `def` int(11) unsigned NOT NULL AUTO_INCREMENT, " + System.lineSeparator()
@@ -1163,6 +1163,29 @@ public class MySqlDdlParserTest {
         assertColumn(mytable, "jkl", "VARCHAR", Types.VARCHAR, 255, -1, false, false, false);
 
         ddl = "ALTER TABLE `mytable` "
+                + "MODIFY `column` varchar(1023) NOT NULL DEFAULT '';";
+        parser.parse(ddl, tables);
+
+        ddl = "ALTER TABLE `mytable` "
+                + "ALTER `column` DROP DEFAULT;";
+        parser.parse(ddl, tables);
+
+        ddl = "ALTER TABLE `mytable` "
+                + "CHANGE `column` newcol varchar(1023) NOT NULL DEFAULT '';";
+        parser.parse(ddl, tables);
+
+        ddl = "ALTER TABLE `mytable` "
+                + "CHANGE newcol `column` varchar(255) NOT NULL DEFAULT '';";
+        parser.parse(ddl, tables);
+
+        assertThat(tables.size()).isEqualTo(1);
+        mytable = tables.forTable(new TableId(null, null, "mytable"));
+        assertThat(mytable).isNotNull();
+        assertColumn(mytable, "column", "VARCHAR", Types.VARCHAR, 255, -1, false, false, false);
+        assertColumn(mytable, "ghi", "VARCHAR", Types.VARCHAR, 255, -1, false, false, false);
+        assertColumn(mytable, "jkl", "VARCHAR", Types.VARCHAR, 255, -1, false, false, false);
+
+        ddl = "ALTER TABLE `mytable` "
                 + "DROP `column`, "
                 + "DROP `ghi`, "
                 + "DROP jkl";
@@ -1178,7 +1201,7 @@ public class MySqlDdlParserTest {
     }
 
     @Test
-    @FixFor("DBZ-408")
+    @FixFor({"DBZ-408", "DBZ-412"})
     public void shouldParseAlterTableStatementWithColumnNamedColumnWithColumnWord() {
         String ddl = "CREATE TABLE `mytable` ( " + System.lineSeparator()
                     + " `def` int(11) unsigned NOT NULL AUTO_INCREMENT, " + System.lineSeparator()
@@ -1197,6 +1220,29 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
 
         Table mytable = tables.forTable(new TableId(null, null, "mytable"));
+        assertThat(mytable).isNotNull();
+        assertColumn(mytable, "column", "VARCHAR", Types.VARCHAR, 255, -1, false, false, false);
+        assertColumn(mytable, "ghi", "VARCHAR", Types.VARCHAR, 255, -1, false, false, false);
+        assertColumn(mytable, "jkl", "VARCHAR", Types.VARCHAR, 255, -1, false, false, false);
+
+        ddl = "ALTER TABLE `mytable` "
+                + "MODIFY COLUMN `column` varchar(1023) NOT NULL DEFAULT '';";
+        parser.parse(ddl, tables);
+
+        ddl = "ALTER TABLE `mytable` "
+                + "ALTER COLUMN `column` DROP DEFAULT;";
+        parser.parse(ddl, tables);
+
+        ddl = "ALTER TABLE `mytable` "
+                + "CHANGE COLUMN `column` newcol varchar(1023) NOT NULL DEFAULT '';";
+        parser.parse(ddl, tables);
+
+        ddl = "ALTER TABLE `mytable` "
+                + "CHANGE COLUMN newcol `column` varchar(255) NOT NULL DEFAULT '';";
+        parser.parse(ddl, tables);
+
+        assertThat(tables.size()).isEqualTo(1);
+        mytable = tables.forTable(new TableId(null, null, "mytable"));
         assertThat(mytable).isNotNull();
         assertColumn(mytable, "column", "VARCHAR", Types.VARCHAR, 255, -1, false, false, false);
         assertColumn(mytable, "ghi", "VARCHAR", Types.VARCHAR, 255, -1, false, false, false);
