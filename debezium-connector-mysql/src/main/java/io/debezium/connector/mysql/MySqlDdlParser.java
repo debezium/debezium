@@ -1223,19 +1223,25 @@ public class MySqlDdlParser extends DdlParser {
                 table.removeColumn(columnName);
             }
         } else if (tokens.canConsume("ALTER")) {
-            tokens.canConsume("COLUMN");
+            if (!isNextTokenQuotedIdentifier()) {
+                tokens.canConsume("COLUMN");
+            }
             tokens.consume(); // column name
             if (!tokens.canConsume("DROP", "DEFAULT")) {
                 tokens.consume("SET", "DEFAULT");
                 parseDefaultClause(start);
             }
         } else if (tokens.canConsume("CHANGE")) {
-            tokens.canConsume("COLUMN");
+            if (!isNextTokenQuotedIdentifier()) {
+                tokens.canConsume("COLUMN");
+            }
             String oldName = parseColumnName();
             String newName = parseColumnName();
             parseCreateColumn(start, table, oldName, newName);
         } else if (tokens.canConsume("MODIFY")) {
-            tokens.canConsume("COLUMN");
+            if (!isNextTokenQuotedIdentifier()) {
+                tokens.canConsume("COLUMN");
+            }
             String columnName = parseColumnName();
             parseCreateColumn(start, table, columnName, null);
         } else if (tokens.canConsumeAnyOf("ALGORITHM", "LOCK")) {
