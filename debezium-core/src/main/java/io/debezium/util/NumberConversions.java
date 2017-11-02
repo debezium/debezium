@@ -8,31 +8,28 @@ package io.debezium.util;
 import java.math.BigDecimal;
 
 /**
- * A set of Convert method.
+ * A set of numeric conversion methods.
  *
  * @author MaoXiang Pan
  */
 public class NumberConversions {
 
-    public static final Short SHORT_TRUE = new Short((short) 1);
-    public static final Short SHORT_FALSE = new Short((short) 0);
+    public static final Short SHORT_TRUE = Short.valueOf((short) 1);
+    public static final Short SHORT_FALSE = Short.valueOf((short) 0);
 
-    public static final Integer INTEGER_TRUE = new Integer(1);
-    public static final Integer INTEGER_FALSE = new Integer(0);
+    public static final Integer INTEGER_TRUE = Integer.valueOf(1);
+    public static final Integer INTEGER_FALSE = Integer.valueOf(0);
 
-    public static final Long LONG_TRUE = new Long(1L);
-    public static final Long LONG_FALSE = new Long(0L);
+    public static final Long LONG_TRUE = Long.valueOf(1L);
+    public static final Long LONG_FALSE = Long.valueOf(0L);
 
-    public static final Float FLOAT_TRUE = new Float(1.0);
-    public static final Float FLOAT_FALSE = new Float(0.0);
+    public static final Float FLOAT_TRUE = Float.valueOf(1.0F);
+    public static final Float FLOAT_FALSE = Float.valueOf(0.0F);
 
-    public static final Double DOUBLE_TRUE = new Double(1.0d);
-    public static final Double DOUBLE_FALSE = new Double(0.0d);
+    public static final Double DOUBLE_TRUE = Double.valueOf(1.0);
+    public static final Double DOUBLE_FALSE = Double.valueOf(0.0);
 
     public static final byte[] BYTE_ZERO = new byte[0];
-
-    public static final BigDecimal BIGDECIMAL_ZERO = BigDecimal.valueOf(0);
-    public static final BigDecimal BIGDECIMAL_ONE = BigDecimal.valueOf(1);
 
     /**
      * Convert boolean object to bigDecimal object.
@@ -42,7 +39,7 @@ public class NumberConversions {
      * @throws NullPointerException If {@code data} is {@code null}
      */
     public static BigDecimal getBigDecimal(Boolean data) {
-        return data.booleanValue() ? BIGDECIMAL_ONE : BIGDECIMAL_ZERO;
+        return data.booleanValue() ? BigDecimal.ONE : BigDecimal.ZERO;
     }
 
     /**

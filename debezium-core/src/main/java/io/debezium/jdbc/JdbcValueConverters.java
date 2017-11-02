@@ -5,6 +5,9 @@
  */
 package io.debezium.jdbc;
 
+import static io.debezium.util.NumberConversions.BYTE_ZERO;
+import static io.debezium.util.NumberConversions.SHORT_FALSE;
+
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -20,7 +23,6 @@ import java.time.temporal.TemporalAdjuster;
 import java.util.BitSet;
 import java.util.concurrent.TimeUnit;
 
-import io.debezium.util.NumberConversions;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -42,9 +44,7 @@ import io.debezium.time.Time;
 import io.debezium.time.Timestamp;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
-
-import static io.debezium.util.NumberConversions.BYTE_ZERO;
-import static io.debezium.util.NumberConversions.SHORT_FALSE;
+import io.debezium.util.NumberConversions;
 
 /**
  * A provider of {@link ValueConverter}s and {@link SchemaBuilder}s for various column types. This implementation is aware
@@ -948,8 +948,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
-            return NumberConversions.BIGDECIMAL_ZERO;
+            if (column.isOptional()) {
+                return null;
+            }
+            else {
+                return BigDecimal.ZERO;
+            }
         }
         BigDecimal decimal = null;
         if (data instanceof BigDecimal)
@@ -986,8 +990,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
-            return NumberConversions.BIGDECIMAL_ZERO;
+            if (column.isOptional()) {
+                return null;
+            }
+            else {
+                return BigDecimal.ZERO;
+            }
         }
         BigDecimal decimal = null;
         if (data instanceof BigDecimal)
