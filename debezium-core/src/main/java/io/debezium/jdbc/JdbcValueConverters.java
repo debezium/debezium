@@ -801,7 +801,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
         }
         if (data == null) {
             if (column.isOptional()) return null;
-            return 0;
+            return new Short((short) 0);
         }
         if (data instanceof Short) return data;
         if (data instanceof Number) {
