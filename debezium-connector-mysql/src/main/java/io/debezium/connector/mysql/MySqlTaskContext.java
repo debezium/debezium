@@ -12,6 +12,7 @@ import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.MySqlConnectorConfig.RewindBinlogMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.function.Predicates;
 import io.debezium.relational.history.DatabaseHistory;
@@ -189,6 +190,11 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     protected SnapshotMode snapshotMode() {
         String value = config.getString(MySqlConnectorConfig.SNAPSHOT_MODE);
         return SnapshotMode.parse(value, MySqlConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
+    }
+
+    protected RewindBinlogMode rewindBinlogMode() {
+        String value = config.getString(MySqlConnectorConfig.REWIND_BINLOG);
+        return RewindBinlogMode.parse(value, MySqlConnectorConfig.REWIND_BINLOG.defaultValueAsString());
     }
 
     public boolean useMinimalSnapshotLocking() {

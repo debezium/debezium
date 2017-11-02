@@ -41,6 +41,35 @@ public class MySqlJdbcContext implements AutoCloseable {
     protected final JdbcConnection jdbc;
     private final Map<String, String> originalSystemProperties = new HashMap<>();
 
+    public static class MasterServerStatus {
+        private final String filename;
+        private final long position;
+        private final String knownGtid;
+
+        public MasterServerStatus(String filename, long position, String knownGtid) {
+            super();
+            this.filename = filename;
+            this.position = position;
+            this.knownGtid = knownGtid;
+        }
+
+        protected String getFilename() {
+            return filename;
+        }
+        protected long getPosition() {
+            return position;
+        }
+        protected String getKnownGtid() {
+            return knownGtid;
+        }
+
+        @Override
+        public String toString() {
+            return "MasterServerStatus [filename=" + filename + ", position=" + position + ", knownGtid=" + knownGtid
+                    + "]";
+        }
+    }
+
     public MySqlJdbcContext(Configuration config) {
         this.config = config; // must be set before most methods are used
 
@@ -134,19 +163,33 @@ public class MySqlJdbcContext implements AutoCloseable {
      * @return the string representation of MySQL's GTID sets; never null but an empty string if the server does not use GTIDs
      */
     public String knownGtidSet() {
-        AtomicReference<String> gtidSetStr = new AtomicReference<String>();
+        return masterReplicationStatus().getKnownGtid();
+    }
+
+    /**
+     * Finds current status of replication master
+     *
+     * @return the array containing filename, position and gtids
+     */
+    public MasterServerStatus masterReplicationStatus() {
+        AtomicReference<MasterServerStatus> result = new AtomicReference<>();
         try {
             jdbc.query("SHOW MASTER STATUS", rs -> {
-                if (rs.next() && rs.getMetaData().getColumnCount() > 4) {
-                    gtidSetStr.set(rs.getString(5));// GTID set, may be null, blank, or contain a GTID set
+                if (rs.next()) {
+                    String gtidStr = "";
+                    if (rs.getMetaData().getColumnCount() > 4) {
+                        gtidStr = rs.getString(5);// GTID set, may be null, blank, or contain a GTID set
+                        if (gtidStr == null) {
+                            gtidStr = "";
+                        }
+                    }
+                    result.set(new MasterServerStatus(rs.getString(1), rs.getLong(2), gtidStr));
                 }
             });
         } catch (SQLException e) {
             throw new ConnectException("Unexpected error while connecting to MySQL and looking at GTID mode: ", e);
         }
-
-        String result = gtidSetStr.get();
-        return result != null ? result : "";
+        return result.get();
     }
 
     /**

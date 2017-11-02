@@ -359,6 +359,65 @@ public class MySqlConnectorConfig {
         }
     }
 
+    /**
+     * Explicit change of binlog position during start
+     */
+    public static enum RewindBinlogMode implements EnumeratedValue {
+        /**
+         * Used saved state or from beginning if starting for the first time
+         */
+        NONE("none"),
+
+        /**
+         * Rewind to the first available event in binlog
+         */
+        BEGIN("begin"),
+
+        /**
+         * Rewind to the end of binlog
+         */
+        END("end");
+
+        private final String value;
+
+        private RewindBinlogMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static RewindBinlogMode parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+            for (RewindBinlogMode option : RewindBinlogMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static RewindBinlogMode parse(String value, String defaultValue) {
+            RewindBinlogMode mode = parse(value);
+            if (mode == null && defaultValue != null) mode = parse(defaultValue);
+            return mode;
+        }
+    }
+
     private static final String DATABASE_WHITELIST_NAME = "database.whitelist";
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
     private static final String TABLE_IGNORE_BUILTIN_NAME = "table.ignore.builtin";
@@ -686,6 +745,18 @@ public class MySqlConnectorConfig {
                                                            + "'never' to specify the connector should never run a snapshot and that upon first startup the connector should read from the beginning of the binlog. "
                                                            + "The 'never' mode should be used with care, and only when the binlog is known to contain all history.");
 
+    public static final Field REWIND_BINLOG = Field.create("binlog.rewind")
+                                                   .withDisplayName("Rewind binlog position")
+                                                   .withEnum(RewindBinlogMode.class, RewindBinlogMode.NONE)
+                                                   .withWidth(Width.SHORT)
+                                                   .withImportance(Importance.LOW)
+                                                   .withDescription("The option to rewind a binlog position after restart - useful for recovery after parts of binlog were lost"
+                                                           + "Options include: "
+                                                           + "'" + RewindBinlogMode.NONE.getValue() + "' (tde default) do not rewind binlog position explicitly; "
+                                                           + "'" + RewindBinlogMode.BEGIN.getValue() + "' rewind binlog position to the begin of binlog - can lead to event duplication; "
+                                                           + "'" + RewindBinlogMode.END.getValue() + "' rewind binlog position to the end of binlog - can lead to event loss; "
+                                                           + "Rewinding should be used with utmost care only when a distater recovery is needed.");
+
     public static final Field SNAPSHOT_MINIMAL_LOCKING = Field.create("snapshot.minimal.locks")
                                                               .withDisplayName("Use shortest database locking for snapshots")
                                                               .withType(Type.BOOLEAN)
@@ -769,7 +840,7 @@ public class MySqlConnectorConfig {
                                                      TABLE_WHITELIST, TABLE_BLACKLIST, TABLES_IGNORE_BUILTIN,
                                                      DATABASE_WHITELIST, DATABASE_BLACKLIST,
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING,
-                                                     GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
+                                                     REWIND_BINLOG, GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
                                                      GTID_SOURCE_FILTER_DML_EVENTS,
                                                      TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                                                      SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD,
@@ -800,7 +871,7 @@ public class MySqlConnectorConfig {
                     COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST,
                     GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
-                    SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE);
+                    SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, REWIND_BINLOG, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE);
         return config;
     }
 
