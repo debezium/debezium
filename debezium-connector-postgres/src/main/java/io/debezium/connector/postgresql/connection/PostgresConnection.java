@@ -190,7 +190,8 @@ public class PostgresConnection extends JdbcConnection {
      */
     public long currentXLogLocation() throws SQLException {
         AtomicLong result = new AtomicLong(0);
-        query("select * from pg_current_xlog_location()", rs -> {
+        int majorVersion = connection().getMetaData().getDatabaseMajorVersion();
+        query(majorVersion >= 10 ? "select * from pg_current_wal_lsn()" : "select * from pg_current_xlog_location()", rs -> {
             if (!rs.next()) {
                 throw new IllegalStateException("there should always be a valid xlog position");
             }
