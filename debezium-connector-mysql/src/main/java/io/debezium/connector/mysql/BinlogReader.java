@@ -333,6 +333,7 @@ public class BinlogReader extends AbstractReader {
 
         } catch (RuntimeException e) {
             // There was an error in the event handler, so propagate the failure to Kafka Connect ...
+            logReaderState();
             failed(e, "Error processing binlog event");
             // Do not stop the client, since Kafka Connect should stop the connector on it's own
             // (and doing it here may cause problems the second time it is stopped).
@@ -708,6 +709,7 @@ public class BinlogReader extends AbstractReader {
         @Override
         public void onCommunicationFailure(BinaryLogClient client, Exception ex) {
             logger.debug("A communication failure event arrived", ex);
+            logReaderState();
             try {
                 // Stop BinaryLogClient background threads
                 client.disconnect();
@@ -721,7 +723,15 @@ public class BinlogReader extends AbstractReader {
         @Override
         public void onEventDeserializationFailure(BinaryLogClient client, Exception ex) {
             logger.debug("A deserialization failure event arrived", ex);
+            logReaderState();
             BinlogReader.this.failed(ex);
         }
+    }
+
+    private void logReaderState() {
+        logger.error("Error during binlog processing. Last offset stored = {}, binlog reader near position = {}",
+                lastOffset,
+                client == null ? "N/A" : client.getBinlogFilename() + "/" + client.getBinlogPosition()
+        );
     }
 }
