@@ -12,7 +12,7 @@ Also works for any kind of nested org.apache.kafka.connect.data.Struct data.
 
 		example:
 		"transforms":"TimestampConv"
-		"transforms.TimestampConv.type":"org.telmate.SMT.TimestampConverter$Value"
+		"transforms.TimestampConv.type":"io.debezium.transforms.time.TimestampConverter$Value"
 		"transforms.TimestampConv.field":"ts_ms"
 		"transforms.TimestampConvtarget.type":"Timestamp"
 		"transforms.TimestampConv.timestamp.format":"yyyy-MM-dd hh:mm:ss"
@@ -22,7 +22,7 @@ Also works for any kind of nested org.apache.kafka.connect.data.Struct data.
 	b.Nested fields, like after or before.
 
 		struct.field - the field which is of Struct type(has nested data)
-		field.type - is a comma seperated string, providing an option to add multiple converters.
+		field.type - is a comma-seperated string, providing an option to add multiple converters.
 					<Type of Timestamp Object> -> <To Target type>
 					can add multiple type converters, <Type of Timestamp Object> -> <To Target type>,<Type of Timestamp Object> -> <To Target type>
 

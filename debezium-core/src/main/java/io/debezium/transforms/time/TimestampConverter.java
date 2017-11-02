@@ -9,7 +9,7 @@ Note: All the null values for any fields should be made to optional, if not whil
        not just for nestedvalues, but also for struct fields.
  */
 
-package io.debezium.transforms.debeziumtimestampcoverter;
+package io.debezium.transforms.time;
 
 import org.apache.kafka.common.cache.Cache;
 import org.apache.kafka.common.cache.LRUCache;
@@ -31,20 +31,46 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.*;
 import java.util.Date;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
+
+/**
+ * Background:
+ * Debezium currently does not convert the Timestamps/Dates in Mysql DB to formatted String(Timestamp/Date format),
+ * but rather produces timestamp values into long values, as Kafka connect supports.
+ *
+ * This Transformation allows us to change the long values of Timestamp/Date format data into Timestamp/Date formatted String.
+ * and we do this passing some additional connector configuration parameters like below,
+ *
+ *      TAKE FROM README.
+ *
+ *
+ *
+ * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
+ * @author David Leibovic
+ * @author Mario Mueller
+ */
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
-public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> implements Transformation<R> {
+/**
+ * DebeziumTimestampConverter uses this interface to define custom ways of converting different versions/types of timestamp/date formats.
+ * DebeziumTimestampConverter has a static block that collects all the custom conversion objects into TRANSLATORS map,
+ * and are called based the timestamp type conversion.
+ */
+
+
+public abstract class TimestampConverter<R extends ConnectRecord<R>> implements Transformation<R> {
 
     public static final String OVERVIEW_DOC =
             "Convert Debezium timestamps between different formats such as Unix epoch, strings, and Connect Date/Timestamp types."
                     + "Applies to org.apache.kafka.connect.data.Struct fields or individual fields or to the entire value."
-                    + "<p/>Use the concrete transformation type designed for the record key (<code>" + DebeziumTimestampConverter.Key.class.getName() + "</code>) "
-                    + "or value (<code>" + DebeziumTimestampConverter.Value.class.getName() + "</code>).";
+                    + "<p/>Use the concrete transformation type designed for the record key (<code>" + TimestampConverter.Key.class.getName() + "</code>) "
+                    + "or value (<code>" + TimestampConverter.Value.class.getName() + "</code>).";
 
     public static final String FIELD_CONFIG = "field";
-    private static final String FIELD_DEFAULT = "";
+    private static final String FIELD_DEFAULT = "empty";
 
     public static final String TARGET_TYPE_CONFIG = "target.type";
 
@@ -61,18 +87,16 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
     private static final String STRUCT_FIELD_NAME_DEFAULT = "";
 
 
-    public static final ConfigDef CONFIG_DEF = new ConfigDef()
+    public static final ConfigDef FIELD_DOC = new ConfigDef()
             .define(FIELD_CONFIG, ConfigDef.Type.STRING, FIELD_DEFAULT, ConfigDef.Importance.LOW,
-                    "The field containing the timestamp, or empty if the entire value is a timestamp")
+                    "The field containing the timestamp,for example: ts_ms is a field, whose entire value is just the long number value and not like a struct. So any field that contains just a value and not struct type value, and in our case we would only have one such field in debezium, ts_ms.")
             .define(TARGET_TYPE_CONFIG, ConfigDef.Type.STRING, ConfigDef.Importance.LOW,
                     "The desired timestamp representation: string, unix, Date, Time, or Timestamp")
             .define(TIMESTAMP_FORMAT_CONFIG, ConfigDef.Type.STRING, TIMESTAMP_FORMAT_DEFAULT, ConfigDef.Importance.LOW,
-                    "A SimpleDateFormat-compatible format for the timestamp. Used to generate the output when type=string "
-                            + "or used to parse the input if the input is a string.")
+                    "A SimpleDateFormat-compatible format for the timestamp. Used to generate the output when type=string or used to parse the input if the input is a string.")
             .define(DATE_FORMAT_CONFIG, ConfigDef.Type.STRING, DATE_FORMAT_DEFAULT, ConfigDef.Importance.LOW,
-                    "A SimpleDateFormat-compatible format for the date. Used to generate the output when type=string "
-                            + "or used to parse the input if the input is a string.")
-            .define(FIELD_TYPE_CONFIG, ConfigDef.Type.STRING, FIELD_TYPE_DEFAULT, ConfigDef.Importance.LOW, "is a comma seperated string, providing an option to add multiple converters.\n" +
+                    "A SimpleDateFormat-compatible format for the date. Used to generate the output when type=string or used to parse the input if the input is a string.")
+            .define(FIELD_TYPE_CONFIG, ConfigDef.Type.STRING, FIELD_TYPE_DEFAULT, ConfigDef.Importance.LOW, "is a comma-seperated string, providing an option to add multiple converters.\n" +
                     "<Type of Timestamp Object> -> <To Target type>\n" +
                     "can add multiple type converters as below," +
                     " <Type of Timestamp Object> -> <To Target type>,<Type of Timestamp Object> -> <To Target type>")
@@ -86,7 +110,7 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
     private static final String TYPE_FLOAT32 = "FLOAT32";
     private static final String TYPE_FLOAT64 = "FLOAT64";
     private static final String TYPE_BOOLEAN = "BOOLEAN";
-    private static final String STRING_TYPE = "STRING";
+    private static final String TYPE_STRING_UPPERCASE = "STRING";
     private static final String TYPE_BYTES = "BYTES";
     private static final String TYPE_STRUCT = "STRUCT";
 
@@ -100,11 +124,31 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
 
     private static final TimeZone UTC = TimeZone.getTimeZone("UTC");
 
-    private static final Map<String, TimestampTranslator> TRANSLATORS = new HashMap<>();
-    private static final Map<String, OptionalTypeFieldSchema> OPTIONAL_TRANSLATORS = new HashMap<>();
+    private static interface Translator {
+        /**
+         * Convert from the type-specific format to the universal java.util.Date format
+         */
+        Date toRaw(TimestampConverter.Config config, Object orig);
+
+        /**
+         * Get the schema for this format.
+         */
+        Schema typeSchema();
+
+        /**
+         * Convert from the universal java.util.Date format to the type-specific format
+         */
+        Object toType(TimestampConverter.Config config, Date orig, String format);
+
+        Schema optionalSchema();
+    }
+
+
+    private static final Map<String, Translator> TRANSLATORS = new ConcurrentHashMap<>();
+    private static final Map<String, Schema> OPTIONAL_TRANSLATORS = new ConcurrentHashMap<>();
 
     static {
-        TRANSLATORS.put(TYPE_STRING, new TimestampTranslator() {
+        TRANSLATORS.put(TYPE_STRING, new Translator() {
             @Override
             public Date toRaw(Config config, Object orig) {
                 if (!(orig instanceof String))
@@ -139,7 +183,7 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
             }
         });
 
-        TRANSLATORS.put(TYPE_UNIX, new TimestampTranslator() {
+        TRANSLATORS.put(TYPE_UNIX, new Translator() {
             @Override
             public Date toRaw(Config config, Object orig) {
                 if (!(orig instanceof Long))
@@ -163,7 +207,7 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
             }
         });
 
-        TRANSLATORS.put(TYPE_DATE, new TimestampTranslator() {
+        TRANSLATORS.put(TYPE_DATE, new Translator() {
             @Override
             public Date toRaw(Config config, Object orig) {
                 if (!(orig instanceof Date))
@@ -196,7 +240,7 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
             }
         });
 
-        TRANSLATORS.put(TYPE_TIME, new TimestampTranslator() {
+        TRANSLATORS.put(TYPE_TIME, new Translator() {
             @Override
             public Date toRaw(Config config, Object orig) {
                 if (!(orig instanceof Date))
@@ -231,7 +275,7 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
             }
         });
 
-        TRANSLATORS.put(TYPE_TIMESTAMP, new TimestampTranslator() {
+        TRANSLATORS.put(TYPE_TIMESTAMP, new Translator() {
             @Override
             public Date toRaw(Config config, Object orig) {
                 if (!(orig instanceof Date))
@@ -257,7 +301,7 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
             }
         });
 
-        TRANSLATORS.put(TYPE_EPCOH_DATE, new TimestampTranslator() {
+        TRANSLATORS.put(TYPE_EPCOH_DATE, new Translator() {
             @Override
             public Date toRaw(Config config, Object orig) {
                 return Date.from(java.time.LocalDate.ofEpochDay((Integer) orig).atStartOfDay(ZoneId.systemDefault()).toInstant());
@@ -289,56 +333,45 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
             }
         });
 
-        OPTIONAL_TRANSLATORS.put(TYPE_INT64, () -> {
-            return Schema.OPTIONAL_INT64_SCHEMA.schema();
-        });
 
-        OPTIONAL_TRANSLATORS.put(TYPE_INT32, () -> {
-            return Schema.OPTIONAL_INT32_SCHEMA.schema();
-        });
+        OPTIONAL_TRANSLATORS.put(TYPE_INT64, Schema.OPTIONAL_INT64_SCHEMA.schema());
 
-        OPTIONAL_TRANSLATORS.put(TYPE_INT16, () -> {
-            return Schema.OPTIONAL_INT16_SCHEMA.schema();
-        });
+        OPTIONAL_TRANSLATORS.put(TYPE_INT32, Schema.OPTIONAL_INT32_SCHEMA.schema());
 
-        OPTIONAL_TRANSLATORS.put(TYPE_INT8, () -> {
-            return Schema.OPTIONAL_INT8_SCHEMA.schema();
-        });
+        OPTIONAL_TRANSLATORS.put(TYPE_INT16, Schema.OPTIONAL_INT16_SCHEMA.schema());
 
-        OPTIONAL_TRANSLATORS.put(TYPE_FLOAT64, () -> {
-            return Schema.OPTIONAL_FLOAT64_SCHEMA.schema();
-        });
+        OPTIONAL_TRANSLATORS.put(TYPE_INT8, Schema.OPTIONAL_INT8_SCHEMA.schema());
 
-        OPTIONAL_TRANSLATORS.put(TYPE_FLOAT32, () -> {
-            return Schema.OPTIONAL_FLOAT32_SCHEMA.schema();
-        });
+        OPTIONAL_TRANSLATORS.put(TYPE_FLOAT64, Schema.OPTIONAL_FLOAT64_SCHEMA.schema());
 
-        OPTIONAL_TRANSLATORS.put(TYPE_BOOLEAN, () -> {
-            return Schema.OPTIONAL_BOOLEAN_SCHEMA.schema();
-        });
+        OPTIONAL_TRANSLATORS.put(TYPE_FLOAT32, Schema.OPTIONAL_FLOAT32_SCHEMA.schema());
 
-        OPTIONAL_TRANSLATORS.put(STRING_TYPE, () -> {
-            return Schema.OPTIONAL_STRING_SCHEMA.schema();
-        });
+        OPTIONAL_TRANSLATORS.put(TYPE_BOOLEAN, Schema.OPTIONAL_BOOLEAN_SCHEMA.schema());
 
-        OPTIONAL_TRANSLATORS.put(TYPE_BYTES, () -> {
-            return Schema.OPTIONAL_BYTES_SCHEMA.schema();
-        });
+        OPTIONAL_TRANSLATORS.put(TYPE_STRING_UPPERCASE, Schema.OPTIONAL_STRING_SCHEMA.schema());
 
-        OPTIONAL_TRANSLATORS.put(TYPE_STRUCT, () -> {
-            return SchemaBuilder.type(Schema.Type.STRUCT).optional().build().schema();
-        });
+        OPTIONAL_TRANSLATORS.put(TYPE_BYTES, Schema.OPTIONAL_BYTES_SCHEMA.schema());
+
+        OPTIONAL_TRANSLATORS.put(TYPE_STRUCT, SchemaBuilder.type(Schema.Type.STRUCT).optional().build().schema());
 
     }
 
 
-    public static Boolean containsField(String[] field_type, String field_name) {
+    protected static Boolean containsField(String[] field_type, String field_name) {
         return Stream.of(field_type).anyMatch(f -> f.equals(field_name));
     }
 
     // This is a bit unusual, but allows the transformation config to be passed to static anonymous classes to customize
     // their behavior
     public static class Config {
+
+        public final String field;
+        public final String type;
+        public final SimpleDateFormat format;
+        public final SimpleDateFormat dateFormat;
+        public final String[] field_type;
+        public final String[] struct_field;
+
         Config(String field, String type, SimpleDateFormat format, SimpleDateFormat dateFormat, String[] field_type, String[] struct_field) {
             this.field = field;
             this.type = type;
@@ -347,36 +380,37 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
             this.field_type = field_type;
             this.struct_field = struct_field;
         }
-
-        String field;
-        String type;
-        SimpleDateFormat format;
-        SimpleDateFormat dateFormat;
-        String[] field_type;
-        String[] struct_field;
     }
 
     private Config config;
-    private Cache<Schema, Schema> schemaUpdateCache;
+    //private Cache<Schema, Schema> schemaUpdateCache;
     private static final Map<String, String> TypeConverters = new HashMap<>();
+    private static final Map<String, String> FieldConversions = new ConcurrentHashMap<>();
 
     @Override
     public void configure(Map<String, ?> configs) {
-        final SimpleConfig simpleConfig = new SimpleConfig(CONFIG_DEF, configs);
-        final String field = simpleConfig.getString(FIELD_CONFIG);
+        final SimpleConfig simpleConfig = new SimpleConfig(FIELD_DOC, configs);
+        final String field[] = simpleConfig.getString(FIELD_CONFIG).split(",");
         final String type = simpleConfig.getString(TARGET_TYPE_CONFIG);
         final String[] field_type = simpleConfig.getString(FIELD_TYPE_CONFIG).split(",");
         final String[] struct_field = simpleConfig.getString(STRUCT_FIELD_NAME_CONFIG).split(",");
         String[] structTypeList = new String[]{type};
         String formatPatternTimestamp = simpleConfig.getString(TIMESTAMP_FORMAT_CONFIG);
         String formatPatternDate = simpleConfig.getString(DATE_FORMAT_CONFIG);
-        schemaUpdateCache = new SynchronizedCache<>(new LRUCache<Schema, Schema>(16));
+        //schemaUpdateCache = new SynchronizedCache<>(new LRUCache<Schema, Schema>(16));
 
         if (!field_type[0].equals(FIELD_TYPE_DEFAULT)) {
             for (String typeMatch : field_type) {
                 TypeConverters.put(typeMatch.split("->")[0], typeMatch.split("->")[1]);
             }
             structTypeList = Arrays.copyOf(TypeConverters.values().toArray(), TypeConverters.values().toArray().length, String[].class);
+        }
+
+        //Adding elements to FieldConversions, to use them later for finding the right field and change the type accordingly.
+        if (!field[0].equals(FIELD_DEFAULT)) {
+            for (String fieldConversion : field) {
+                FieldConversions.put(fieldConversion.split("->")[0], fieldConversion.split("->")[1]);
+            }
         }
 
         for (String typeCheck : structTypeList) {
@@ -426,14 +460,14 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
 
     @Override
     public ConfigDef config() {
-        return CONFIG_DEF;
+        return FIELD_DOC;
     }
 
     @Override
     public void close() {
     }
 
-    public static class Key<R extends ConnectRecord<R>> extends DebeziumTimestampConverter<R> {
+    public static class Key<R extends ConnectRecord<R>> extends TimestampConverter<R> {
         @Override
         protected Schema operatingSchema(R record) {
             return record.keySchema();
@@ -450,7 +484,7 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
         }
     }
 
-    public static class Value<R extends ConnectRecord<R>> extends DebeziumTimestampConverter<R> {
+    public static class Value<R extends ConnectRecord<R>> extends TimestampConverter<R> {
         @Override
         protected Schema operatingSchema(R record) {
             return record.valueSchema();
@@ -481,7 +515,7 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
      * @param field the input nested Struct field.
      * @param value the input nested Struct field value.
      **/
-    private SchemaBuilder NestedStructSchemaUpdate(Field field, Struct value) {
+    private SchemaBuilder schemaForNestedStruct(Field field, Struct value) {
         SchemaBuilder builder = SchemaUtil.copySchemaBasics(field.schema(), SchemaBuilder.struct());
         for (Field structField : field.schema().fields()) {
             String structFieldSchemaName = structField.schema().name();
@@ -494,7 +528,7 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
                 }
             } else {
                 if (nestedStructField == null || nestedStructField.equals("")) {
-                    builder.field(structField.name(), OPTIONAL_TRANSLATORS.get(structField.schema().type().toString()).optionalSchemaNonTimestamp());
+                    builder.field(structField.name(), OPTIONAL_TRANSLATORS.get(structField.schema().type().toString()));
                 } else {
                     builder.field(structField.name(), structField.schema());
                 }
@@ -511,7 +545,7 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
      * @param value               the input nested Struct field value.
      * @param nestedUpdatedSchema updated field schema with target formats.
      */
-    private Struct NestedStructFieldValueUpdate(Field field, Struct value, Field nestedUpdatedSchema) {
+    private Struct valueForNestedStruct(Field field, Struct value, Field nestedUpdatedSchema) {
         Struct updatedNestedStructValue = new Struct(nestedUpdatedSchema.schema());
         for (Field nestedField : ((Struct) value.get(field)).schema().fields()) { //try to convert ((Struct) value.get(field)).get(nestedField) into a single field rather than computing every single time
             final Object updatedNestedFieldValue;
@@ -538,8 +572,9 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
             return newRecord(record, updatedSchema, convertTimestamp(value, timestampTypeFromSchema(schema), (Field) value));
         } else {
             final Struct value = requireStruct(operatingValue(record), PURPOSE);
-            Schema updatedSchema = schemaUpdateCache.get(value.schema());
-            if (updatedSchema == null) {
+            Schema updatedSchema;
+            //Schema updatedSchema = schemaUpdateCache.get(value.schema());
+            //if (updatedSchema == null) {
                 SchemaBuilder builder = SchemaUtil.copySchemaBasics(schema, SchemaBuilder.struct());
                 for (Field field : schema.fields()) {
                     if (value.get(field) == null || value.get(field).equals("")) {
@@ -550,17 +585,17 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
                     if ((!(config.field_type.length == 0) && !(config.struct_field.length == 0)
                             && containsField(config.struct_field, field.name())
                             && value.get(field) != null)) {
-                        /**
-                         (FieldType) is not empty, which confirms that transformation is to be made to Struct type, which has nested field of columntype.
-                         (Nested struct column type change.)
-                         */
-                        SchemaBuilder nestedStructBuilder = NestedStructSchemaUpdate(field, value);
+
+                         //(FieldType) is not empty, which confirms that transformation is to be made to Struct type, which has nested field of columntype.
+                         //(Nested struct column type change.)
+
+                        SchemaBuilder nestedStructBuilder = schemaForNestedStruct(field, value);
                         builder.field(field.name(), nestedStructBuilder.schema());
                     } else if (field.name().equals(config.field)) {
-                        /**
-                         if config field alone is provided, it implies that it is not nested struct and changes the field type accordingly
-                         (Field change on non nested data.)
-                         */
+
+                         //if config field alone is provided, it implies that it is not nested struct and changes the field type accordingly
+                         //(Field change on non nested data.)
+
                         builder.field(field.name(), TRANSLATORS.get(config.type).typeSchema());
                     } else {
                         builder.field(field.name(), field.schema());
@@ -574,7 +609,7 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
                 }
 
                 updatedSchema = builder.build();
-            }
+            //}
 
             Struct updatedValue = applyValueWithSchema(value, updatedSchema);
             return newRecord(record, updatedSchema, updatedValue);
@@ -593,12 +628,12 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
             if ((!(config.field_type.length == 0) && !(config.struct_field.length == 0)
                     && containsField(config.struct_field, field.name())
                     && value.get(field) != null)) {
-                /**
-                 (FieldType) is not empty, which confirms that transformation is to be made to Struct type, which has nested field of columntype.
-                 (Nested struct column type change.)
-                 */
+
+                 //(FieldType) is not empty, which confirms that transformation is to be made to Struct type, which has nested field of columntype.
+                 //(Nested struct column type change.)
+
                 if ((field.name().equals(config.struct_field)) || containsField(config.struct_field, field.name())) { //If the struct_field name matches, we parse the nested structure and update with the new value with config.field_type converted timestamp.
-                    updatedFieldValue = NestedStructFieldValueUpdate(field, value, updatedSchema.field(field.name()));
+                    updatedFieldValue = valueForNestedStruct(field, value, updatedSchema.field(field.name()));
                 } else { //If not config.struct_field, we leave the field value as it is.
                     updatedFieldValue = value.get(field);
                 }
@@ -669,12 +704,12 @@ public abstract class DebeziumTimestampConverter<R extends ConnectRecord<R>> imp
             timestampFormat = inferTimestampType(timestamp);
         }
 
-        TimestampTranslator sourceTranslator = TRANSLATORS.get(timestampFormat);
+        Translator sourceTranslator = TRANSLATORS.get(timestampFormat);
         if (sourceTranslator == null) {
             throw new ConnectException("Unsupported timestamp type: " + timestampFormat);
         }
         Date rawTimestamp = sourceTranslator.toRaw(config, timestamp);
-        TimestampTranslator targetTranslator;
+        Translator targetTranslator;
         if (originalType.name().equals(config.field)) {
             targetTranslator = TRANSLATORS.get(config.type);
         } else {
