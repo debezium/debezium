@@ -15,6 +15,7 @@ Gunnar Morling
 Horia Chiorean
 Jiri Pechanec
 Jure Kajzer
+MaoXiang Pan
 Mario Mueller
 Matteo Capitanio
 Omar Al-Safi
