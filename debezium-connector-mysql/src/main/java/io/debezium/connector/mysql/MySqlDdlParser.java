@@ -121,7 +121,7 @@ public class MySqlDdlParser extends DdlParser {
         dataTypes.register(Types.BLOB, "MEDIUMTEXT BINARY");
         dataTypes.register(Types.BLOB, "LONGTEXT BINARY");
         dataTypes.register(Types.VARCHAR, "TINYTEXT");
-        dataTypes.register(Types.VARCHAR, "TEXT");
+        dataTypes.register(Types.VARCHAR, "TEXT[(L)]");
         dataTypes.register(Types.VARCHAR, "MEDIUMTEXT");
         dataTypes.register(Types.VARCHAR, "LONGTEXT");
         dataTypes.register(Types.CHAR, "ENUM(...)");
