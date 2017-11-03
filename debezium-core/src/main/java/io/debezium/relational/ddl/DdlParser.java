@@ -747,7 +747,7 @@ public class DdlParser {
     protected Object parseNumericLiteral(Marker start, boolean signed) {
         StringBuilder sb = new StringBuilder();
         boolean decimal = false;
-        if (signed && tokens.matches("+", "-")) {
+        if (signed && tokens.matchesAnyOf("+", "-")) {
             sb.append(tokens.consumeAnyOf("+", "-"));
         }
         if (!tokens.canConsume('.')) {
