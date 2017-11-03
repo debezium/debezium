@@ -1137,6 +1137,21 @@ public class MySqlDdlParserTest {
         assertColumn(mytable, "ghi", "VARCHAR", Types.VARCHAR, 255, -1, false, false, false);
     }
 
+      @Test
+      @FixFor("DBZ-428")
+      public void shouldParseCreateTableWithTextType() {
+          String ddl = "CREATE TABLE DBZ428 ("
+                        + "limtext TEXT(20), "
+                        + "unltext TEXT);";
+
+          parser.parse(ddl, tables);
+          assertThat(tables.size()).isEqualTo(1);
+          Table mytable = tables.forTable(new TableId(null, null, "DBZ428"));
+          assertThat(mytable).isNotNull();
+          assertColumn(mytable, "unltext", "TEXT", Types.VARCHAR, -1, -1, true, false, false);
+          assertColumn(mytable, "limtext", "TEXT", Types.VARCHAR, 20, -1, true, false, false);
+      }
+
     @Test
     @FixFor({"DBZ-408", "DBZ-412"})
     public void shouldParseAlterTableStatementWithColumnNamedColumnWithoutColumnWord() {
