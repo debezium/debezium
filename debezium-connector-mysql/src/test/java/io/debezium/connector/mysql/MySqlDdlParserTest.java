@@ -1290,6 +1290,20 @@ public class MySqlDdlParserTest {
         assertColumn(t, "id", "INT", Types.INTEGER, -1, -1, false, false, false);
     }
 
+    @Test
+    @FixFor("DBZ-429")
+    public void parsetTableWithNegativeDefault() {
+        String ddl =
+                "CREATE TABLE t (id INT NOT NULL, myvalue INT DEFAULT -10, PRIMARY KEY (`id`));";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table t = tables.forTable(new TableId(null, null, "t"));
+        assertThat(t).isNotNull();
+        assertThat(t.columnNames()).containsExactly("id", "myvalue");
+        assertThat(t.primaryKeyColumnNames()).hasSize(1);
+        assertColumn(t, "myvalue", "INT", Types.INTEGER, -1, -1, true, false, false);
+    }
+
     protected void assertParseEnumAndSetOptions(String typeExpression, String optionString) {
         List<String> options = MySqlDdlParser.parseSetAndEnumOptions(typeExpression);
         String commaSeperatedOptions = Strings.join(",", options);
