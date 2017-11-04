@@ -72,7 +72,7 @@
         <version.mysql.binlog>0.13.0</version.mysql.binlog>
         <version.mongo.server>3.2.12</version.mongo.server>
         <version.mongo.driver>3.4.2</version.mongo.driver>
-        
+
         <!-- Connectors -->
         <version.com.google.protobuf>2.6.1</version.com.google.protobuf>
 
@@ -171,6 +171,7 @@
                 <groupId>org.apache.kafka</groupId>
                 <artifactId>connect-api</artifactId>
                 <version>${version.kafka}</version>
+                <scope>provided</scope>
             </dependency>
             <dependency>
                 <groupId>org.apache.kafka</groupId>
@@ -186,6 +187,7 @@
                 <groupId>org.apache.kafka</groupId>
                 <artifactId>connect-file</artifactId>
                 <version>${version.kafka}</version>
+                <scope>test</scope>
             </dependency>
 
            <!-- Kafka -->
@@ -193,16 +195,13 @@
                 <groupId>org.apache.kafka</groupId>
                 <artifactId>kafka_${version.kafka.scala}</artifactId>
                 <version>${version.kafka}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.kafka</groupId>
-                <artifactId>kafka-clients</artifactId>
-                <version>${version.kafka}</version>
+                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>org.apache.zookeeper</groupId>
                 <artifactId>zookeeper</artifactId>
                 <version>${version.zookeeper}</version>
+                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>org.apache.kafka</groupId>
@@ -231,13 +230,13 @@
                 <artifactId>postgresql</artifactId>
                 <version>42.0.0</version>
             </dependency>
-           
+
             <!--Make sure this version is compatible with the Protbuf-C version used on the server -->
             <dependency>
                 <groupId>com.google.protobuf</groupId>
                 <artifactId>protobuf-java</artifactId>
                 <version>${version.com.google.protobuf}</version>
-            </dependency> 
+            </dependency>
 
             <!-- MySQL JDBC Driver, Binlog reader, Geometry support -->
             <dependency>
