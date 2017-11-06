@@ -1502,26 +1502,26 @@ public class MySqlDdlParser extends DdlParser {
 
         // Now look for the "END", ignoring intermediate control blocks that also use "END" ...
         while (tokens.hasNext()) {
-            if (tokens.matches("BEGIN")) {
+            if (tokens.matchesWord("BEGIN")) {
                 consumeBeginStatement(tokens.mark());
             }
-            if (tokens.canConsume("IF", "EXISTS")) {
+            if (tokens.canConsumeWords("IF", "EXISTS")) {
                 // Ignore any IF EXISTS phrases ...
-            } else if (tokens.canConsume("CASE", "WHEN")) {
+            } else if (tokens.canConsumeWords("CASE", "WHEN")) {
                 // This block can end with END without suffix
                 expectedPlainEnds++;
-            } else if (tokens.matchesAnyOf("REPEAT", "LOOP", "WHILE")) {
+            } else if (tokens.matchesAnyWordOf("REPEAT", "LOOP", "WHILE")) {
                 // This block can contain label
                 String label = getPrecedingBlockLabel();
                 tokens.consume();
                 labels.addFirst(label); // may be null
-            } else if (tokens.canConsume("END")) {
+            } else if (tokens.canConsumeWord("END")) {
                 if (tokens.matchesAnyOf("REPEAT", "LOOP", "WHILE")) {
                     // Read block label if set
                     tokens.consume();
                     String label = labels.remove();
                     if (label != null) tokens.canConsume(label);
-                } else if (tokens.matchesAnyOf("IF", "CASE")) {
+                } else if (tokens.matchesAnyWordOf("IF", "CASE")) {
                     tokens.consume();
                 } else if (expectedPlainEnds > 0) {
                     // There was a statement that will be ended with plain END
