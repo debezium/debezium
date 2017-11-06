@@ -931,6 +931,16 @@ public class MySqlDdlParserTest {
         assertThat(listener.total()).isEqualTo(2);
     }
 
+    @FixFor("DBZ-437")
+    @Test
+    public void shouldParseStringSameAsKeyword() {
+        parser.parse(readFile("ddl/mysql-dbz-437.ddl"), tables);
+//        Testing.Print.enable();
+        listener.forEach(this::printEvent);
+        assertThat(tables.size()).isEqualTo(0);
+        assertThat(listener.total()).isEqualTo(0);
+    }
+
     @FixFor("DBZ-200")
     @Test
     public void shouldParseStatementForDbz200() {
