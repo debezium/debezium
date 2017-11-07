@@ -186,6 +186,7 @@ If a new version of Docker images is going to be added it is necessary in Docker
 * add a new build for each image with new version
 * remove builds for obsolete versions
 * update `nightly` and `latest` build tags
+* update rules the creates micro tags
 
 ## Close Jira issues
 Close all issues relesed with this version. The affected issues can be found using JQL query
@@ -204,8 +205,10 @@ Then, create a pull request with your changes and wait for a committer to approv
 When the blog post is available, use the [Debezium Twitter account](https://twitter.com/debezium) to announce the release by linking to the blog post.
 
 # Automated Release
+There are few manual steps to be completede before the execution
+* Update [the changelog](#update-the-changelog)
+* Update [configuration](#reconfigure-docker-hub-builds) for Docker Hub builds
+
 To perform release automatically invoke a [Jenkins job](http://ci.hibernate.org/view/Debezium/job/debezium-release/). Two parameters are requested
 * `RELEASE_VERSION` - a version to be released in format x.y.z
 * `DEVELOPMENT_VERSION` - next development version in format x.y.z-SNAPSHOT
-
-When the release is completed then execute the [manual reconfiguration](#reconfigure-docker-hub-builds) for Docker Hub builds.

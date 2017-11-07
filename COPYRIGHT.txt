@@ -15,6 +15,7 @@ Gunnar Morling
 Horia Chiorean
 Jiri Pechanec
 Jure Kajzer
+MaoXiang Pan
 Mario Mueller
 Matteo Capitanio
 Omar Al-Safi
@@ -24,6 +25,7 @@ Ramesh Reddy
 Randall Hauch
 Sanne Grinovero
 Satyajit Vegesna
+Scofield Xu
 Sherafudheen PM
 Stanley Shyiko
 Steven Siahetiong
