@@ -344,6 +344,9 @@ node('Slave') {
             modifyFile('postgres/9.6/Dockerfile') {
                 it.replaceFirst('PLUGIN_VERSION=\\S+', "PLUGIN_VERSION=$VERSION_TAG")
             }
+            modifyFile('postgres/10.0/Dockerfile') {
+                it.replaceFirst('PLUGIN_VERSION=\\S+', "PLUGIN_VERSION=$VERSION_TAG")
+            }
         }
     }
 

@@ -64,7 +64,7 @@ public class UnwrapFromEnvelopeTest {
         Envelope envelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
                 .withRecord(recordSchema)
-                .withSource(null)
+                .withSource(SchemaBuilder.struct().build())
                 .build();
         final Struct before = new Struct(recordSchema);
         before.put("id", (byte)1);
@@ -77,7 +77,7 @@ public class UnwrapFromEnvelopeTest {
         Envelope envelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
                 .withRecord(recordSchema)
-                .withSource(null)
+                .withSource(SchemaBuilder.struct().build())
                 .build();
         final Struct before = new Struct(recordSchema);
         before.put("id", (byte)1);

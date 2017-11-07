@@ -5,6 +5,9 @@
  */
 package io.debezium.jdbc;
 
+import static io.debezium.util.NumberConversions.BYTE_ZERO;
+import static io.debezium.util.NumberConversions.SHORT_FALSE;
+
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -41,6 +44,7 @@ import io.debezium.time.Time;
 import io.debezium.time.Timestamp;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
+import io.debezium.util.NumberConversions;
 
 /**
  * A provider of {@link ValueConverter}s and {@link SchemaBuilder}s for various column types. This implementation is aware
@@ -65,17 +69,6 @@ public class JdbcValueConverters implements ValueConverterProvider {
     public static enum BigIntUnsignedMode {
         PRECISE, LONG;
     }
-
-    private static final Short SHORT_TRUE = new Short((short) 1);
-    private static final Short SHORT_FALSE = new Short((short) 0);
-    private static final Integer INTEGER_TRUE = new Integer(1);
-    private static final Integer INTEGER_FALSE = new Integer(0);
-    private static final Long LONG_TRUE = new Long(1L);
-    private static final Long LONG_FALSE = new Long(0L);
-    private static final Float FLOAT_TRUE = new Float(1.0);
-    private static final Float FLOAT_FALSE = new Float(0.0);
-    private static final Double DOUBLE_TRUE = new Double(1.0d);
-    private static final Double DOUBLE_FALSE = new Double(0.0d);
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     private final ZoneOffset defaultOffset;
@@ -730,7 +723,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
         }
         if (data == null) {
             if (column.isOptional()) return null;
-            data = new byte[0];
+            data = BYTE_ZERO;
         }
         if (data instanceof char[]) {
             data = new String((char[]) data); // convert to string
@@ -801,7 +794,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
         }
         if (data == null) {
             if (column.isOptional()) return null;
-            return 0;
+            return SHORT_FALSE;
         }
         if (data instanceof Short) return data;
         if (data instanceof Number) {
@@ -809,7 +802,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
             return new Short(value.shortValue());
         }
         if (data instanceof Boolean) {
-            return ((Boolean) data).booleanValue() ? SHORT_TRUE : SHORT_FALSE;
+            return NumberConversions.getShort((Boolean) data);
         }
         return handleUnknownData(column, fieldDefn, data);
     }
@@ -837,7 +830,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
             return new Integer(value.intValue());
         }
         if (data instanceof Boolean) {
-            return ((Boolean) data).booleanValue() ? INTEGER_TRUE : INTEGER_FALSE;
+            return NumberConversions.getInteger((Boolean) data);
         }
         return handleUnknownData(column, fieldDefn, data);
     }
@@ -865,7 +858,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
             return new Long(value.longValue());
         }
         if (data instanceof Boolean) {
-            return ((Boolean) data).booleanValue() ? LONG_TRUE : LONG_FALSE;
+            return NumberConversions.getLong((Boolean) data);
         }
         return handleUnknownData(column, fieldDefn, data);
     }
@@ -907,7 +900,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
             return new Double(value.doubleValue());
         }
         if (data instanceof Boolean) {
-            return ((Boolean) data).booleanValue() ? DOUBLE_TRUE : DOUBLE_FALSE;
+            return NumberConversions.getDouble((Boolean) data);
         }
         return handleUnknownData(column, fieldDefn, data);
     }
@@ -936,7 +929,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
             return new Float(value.floatValue());
         }
         if (data instanceof Boolean) {
-            return ((Boolean) data).booleanValue() ? FLOAT_TRUE : FLOAT_FALSE;
+            return NumberConversions.getFloat((Boolean) data);
         }
         return handleUnknownData(column, fieldDefn, data);
     }
@@ -955,14 +948,18 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
-            return new BigDecimal(0);
+            if (column.isOptional()) {
+                return null;
+            }
+            else {
+                return BigDecimal.ZERO;
+            }
         }
         BigDecimal decimal = null;
         if (data instanceof BigDecimal)
             decimal = (BigDecimal) data;
         else if (data instanceof Boolean)
-            decimal = new BigDecimal(((Boolean) data).booleanValue() ? 1 : 0);
+            decimal = NumberConversions.getBigDecimal((Boolean) data);
         else if (data instanceof Short)
             decimal = new BigDecimal(((Short) data).intValue());
         else if (data instanceof Integer)
@@ -993,14 +990,18 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
-            return new BigDecimal(0);
+            if (column.isOptional()) {
+                return null;
+            }
+            else {
+                return BigDecimal.ZERO;
+            }
         }
         BigDecimal decimal = null;
         if (data instanceof BigDecimal)
             decimal = (BigDecimal) data;
         else if (data instanceof Boolean)
-            decimal = new BigDecimal(((Boolean) data).booleanValue() ? 1 : 0);
+            decimal = NumberConversions.getBigDecimal((Boolean) data);
         else if (data instanceof Short)
             decimal = new BigDecimal(((Short) data).intValue());
         else if (data instanceof Integer)

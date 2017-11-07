@@ -1,10 +1,10 @@
-# Job definition to test PostgreSQL connector with wal2json decoder
+# Job definition to test PostgreSQL connector against PostgreSQL 10
 ---
 - job:
     project-type: freestyle
-    name: debezium-postgresql-test-wal2json
-    display-name: PostgreSQL(wal2json) Test
-    description: Executes tests for wal2json decoder
+    name: debezium-postgresql-10-test
+    display-name: PostgreSQL 10.0 Test
+    description: Executes tests for PostgreSQL Connector with PostgreSQL 10.0
     node: Slave
     properties:
       - build-discarder:
@@ -29,11 +29,11 @@
       - timeout:
           timeout: 45
     triggers:
-      - timed: "H 04 * * *"
+      - timed: "H 05 * * *"
     builders:
       - maven-target:
           maven-version: (Default)
-          goals: clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-postgres -am -fae -Dmaven.test.failure.ignore=true -Dpostgres.port=55432 -Pwal2json-decoder
+          goals: clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-postgres -am -fae -Dmaven.test.failure.ignore=true -Dpostgres.port=55432 -Dversion.postgres.server=10.0
     publishers:
       - junit:
           results: "**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml"
