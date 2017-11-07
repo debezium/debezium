@@ -7,8 +7,11 @@ package io.debezium.connector.mysql;
 
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.source.SourceRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A component that blocks doing nothing until the connector task is stopped
@@ -16,41 +19,72 @@ import org.apache.kafka.connect.source.SourceRecord;
  * @author Peter Goransson
  *
  */
-public class BlockingReader extends AbstractReader {
+public class BlockingReader implements Reader {
 
+    protected final Logger logger = LoggerFactory.getLogger(getClass());    
+    private final AtomicReference<Runnable> uponCompletion = new AtomicReference<>();
+    private final AtomicReference<State> state = new AtomicReference<>();
+    
     private final CountDownLatch latch = new CountDownLatch(1);
     
-    public BlockingReader(String name, MySqlTaskContext context) {
-        super(name, context);
-    }
-
-    @Override
-    protected void doStart() {
-        logger.info("Connector has completed all of its work but will continue in the running state. It can be shutdown at any time.");
-    }
-
-    @Override
-    protected void doStop() {
-        try {
-            this.completeSuccessfully(); 
-        }
-        finally {
-            latch.countDown();
-        }
-    }
-
-    @Override
-    protected void doCleanup() {
-        logger.debug("Blocking Reader has completed.");
-    }
+    private final String name;
     
+    public BlockingReader(String name) {
+        this.name = name;
+    }
+
     /**
      * Waits indefinitely until the connector task is shut down
      */
     @Override
     public List<SourceRecord> poll() throws InterruptedException {                
         latch.await();   
-        return super.poll();
+        state.set(State.STOPPING);
+
+        return null;
+    }
+        
+    @Override
+    public State state() {
+        return state.get();
+    }
+    
+    @Override
+    public void uponCompletion(Runnable handler) {
+        assert this.uponCompletion.get() == null;
+        this.uponCompletion.set(handler);        
+    }
+    
+    @Override
+    public void start() {
+        state.set(State.RUNNING);
+        logger.info("Connector has completed all of its work but will continue in the running state. It can be shutdown at any time.");
+    }
+    
+    @Override
+    public void stop() {
+        try {
+            try {
+                state.set(State.STOPPED);
+            }
+            finally {
+                latch.countDown();
+            }            
+                                  
+            // Cleanup Resources
+            Runnable completionHandler = uponCompletion.getAndSet(null); // set to null so that we call it only once
+            if (completionHandler != null) {
+                completionHandler.run();
+            }
+            
+        } finally {
+            logger.info("Blocking Reader has completed.");
+        }
+    }
+
+    @Override
+    public String name() {
+        return name;
     }
 
 }
