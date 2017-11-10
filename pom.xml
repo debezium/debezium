@@ -20,7 +20,7 @@
         <developerConnection>scm:git:git@github.com:debezium/debezium.git</developerConnection>
         <url>https://github.com/debezium/debezium</url>
       <tag>HEAD</tag>
-  </scm>
+    </scm>
     <issueManagement>
         <system>jira</system>
         <url>http://issues.jboss.org/browse/DBZ</url>
@@ -188,6 +188,12 @@
                 <artifactId>connect-file</artifactId>
                 <version>${version.kafka}</version>
                 <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.kafka</groupId>
+                <artifactId>connect-transforms</artifactId>
+                <version>${version.kafka}</version>
+                <scope>provided</scope>
             </dependency>
 
            <!-- Kafka -->
