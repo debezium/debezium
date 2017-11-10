@@ -16,7 +16,6 @@
           <useProjectArtifact>false</useProjectArtifact>
           <excludes>
               <!-- Exclude dependencies of Kafka APIs, since they will be available in the runtime -->
-              <exclude>org.slf4j:*</exclude>
               <exclude>com.fasterxml.jackson.core:jackson-core:*</exclude>
           </excludes>
       </dependencySet>
