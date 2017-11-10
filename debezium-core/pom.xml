@@ -22,12 +22,12 @@
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>connect-transforms</artifactId>
-            <version>RELEASE</version>
         </dependency>
-	    <dependency>
-	        <groupId>com.fasterxml.jackson.core</groupId>
-	        <artifactId>jackson-core</artifactId>
-	    </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+        </dependency>
+
         <!-- Testing -->
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -45,6 +45,7 @@
             <groupId>org.easytesting</groupId>
             <artifactId>fest-assert</artifactId>
         </dependency>
+
         <!-- Used for unit testing with Kafka -->
         <dependency>
             <groupId>org.apache.kafka</groupId>
