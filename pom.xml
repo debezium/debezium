@@ -176,7 +176,6 @@
                 <groupId>org.apache.kafka</groupId>
                 <artifactId>connect-api</artifactId>
                 <version>${version.kafka}</version>
-                <scope>provided</scope>
             </dependency>
             <dependency>
                 <groupId>org.apache.kafka</groupId>
@@ -192,13 +191,11 @@
                 <groupId>org.apache.kafka</groupId>
                 <artifactId>connect-file</artifactId>
                 <version>${version.kafka}</version>
-                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>org.apache.kafka</groupId>
                 <artifactId>connect-transforms</artifactId>
                 <version>${version.kafka}</version>
-                <scope>provided</scope>
             </dependency>
 
            <!-- Kafka -->
@@ -206,32 +203,27 @@
                 <groupId>org.apache.kafka</groupId>
                 <artifactId>kafka_${version.kafka.scala}</artifactId>
                 <version>${version.kafka}</version>
-                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>org.apache.zookeeper</groupId>
                 <artifactId>zookeeper</artifactId>
                 <version>${version.zookeeper}</version>
-                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>org.apache.kafka</groupId>
                 <artifactId>kafka_${version.kafka.scala}</artifactId>
                 <version>${version.kafka}</version>
                 <classifier>test</classifier>
-                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>org.apache.curator</groupId>
                 <artifactId>curator-test</artifactId>
                 <version>${version.curator}</version>
-                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>io.confluent</groupId>
                 <artifactId>kafka-connect-avro-converter</artifactId>
                 <version>${version.confluent.platform}</version>
-                <scope>test</scope>
             </dependency>
 
             <!-- PostgreSQL connector -->
@@ -283,13 +275,11 @@
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-log4j12</artifactId>
                 <version>${version.org.slf4j}</version>
-                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>log4j</groupId>
                 <artifactId>log4j</artifactId>
                 <version>${version.log4j}</version>
-                <scope>test</scope>
             </dependency>
 
             <!-- Test dependencies -->
@@ -297,13 +287,11 @@
                 <groupId>junit</groupId>
                 <artifactId>junit</artifactId>
                 <version>${version.junit}</version>
-                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>org.easytesting</groupId>
                 <artifactId>fest-assert</artifactId>
                 <version>${version.fest}</version>
-                <scope>test</scope>
             </dependency>
 
             <!-- Debezium artifacts -->
@@ -343,21 +331,18 @@
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-core</artifactId>
                 <version>${project.version}</version>
-                <scope>test</scope>
                 <type>test-jar</type>
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-embedded</artifactId>
                 <version>${project.version}</version>
-                <scope>test</scope>
                 <type>test-jar</type>
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-connector-mysql</artifactId>
                 <version>${project.version}</version>
-                <scope>test</scope>
                 <type>test-jar</type>
             </dependency>
 
