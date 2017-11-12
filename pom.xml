@@ -20,7 +20,7 @@
         <developerConnection>scm:git:git@github.com:debezium/debezium.git</developerConnection>
         <url>https://github.com/debezium/debezium</url>
       <tag>HEAD</tag>
-  </scm>
+    </scm>
     <issueManagement>
         <system>jira</system>
         <url>http://issues.jboss.org/browse/DBZ</url>
@@ -72,7 +72,7 @@
         <version.mysql.binlog>0.13.0</version.mysql.binlog>
         <version.mongo.server>3.2.12</version.mongo.server>
         <version.mongo.driver>3.4.2</version.mongo.driver>
-        
+
         <!-- Connectors -->
         <version.com.google.protobuf>2.6.1</version.com.google.protobuf>
 
@@ -187,16 +187,16 @@
                 <artifactId>connect-file</artifactId>
                 <version>${version.kafka}</version>
             </dependency>
+            <dependency>
+                <groupId>org.apache.kafka</groupId>
+                <artifactId>connect-transforms</artifactId>
+                <version>${version.kafka}</version>
+            </dependency>
 
            <!-- Kafka -->
             <dependency>
                 <groupId>org.apache.kafka</groupId>
                 <artifactId>kafka_${version.kafka.scala}</artifactId>
-                <version>${version.kafka}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.kafka</groupId>
-                <artifactId>kafka-clients</artifactId>
                 <version>${version.kafka}</version>
             </dependency>
             <dependency>
@@ -209,19 +209,16 @@
                 <artifactId>kafka_${version.kafka.scala}</artifactId>
                 <version>${version.kafka}</version>
                 <classifier>test</classifier>
-                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>org.apache.curator</groupId>
                 <artifactId>curator-test</artifactId>
                 <version>${version.curator}</version>
-                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>io.confluent</groupId>
                 <artifactId>kafka-connect-avro-converter</artifactId>
                 <version>${version.confluent.platform}</version>
-                <scope>test</scope>
             </dependency>
 
             <!-- PostgreSQL connector -->
@@ -231,13 +228,13 @@
                 <artifactId>postgresql</artifactId>
                 <version>42.0.0</version>
             </dependency>
-           
+
             <!--Make sure this version is compatible with the Protbuf-C version used on the server -->
             <dependency>
                 <groupId>com.google.protobuf</groupId>
                 <artifactId>protobuf-java</artifactId>
                 <version>${version.com.google.protobuf}</version>
-            </dependency> 
+            </dependency>
 
             <!-- MySQL JDBC Driver, Binlog reader, Geometry support -->
             <dependency>
@@ -273,13 +270,11 @@
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-log4j12</artifactId>
                 <version>${version.org.slf4j}</version>
-                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>log4j</groupId>
                 <artifactId>log4j</artifactId>
                 <version>${version.log4j}</version>
-                <scope>test</scope>
             </dependency>
 
             <!-- Test dependencies -->
@@ -287,13 +282,11 @@
                 <groupId>junit</groupId>
                 <artifactId>junit</artifactId>
                 <version>${version.junit}</version>
-                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>org.easytesting</groupId>
                 <artifactId>fest-assert</artifactId>
                 <version>${version.fest}</version>
-                <scope>test</scope>
             </dependency>
 
             <!-- Debezium artifacts -->
@@ -333,21 +326,18 @@
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-core</artifactId>
                 <version>${project.version}</version>
-                <scope>test</scope>
                 <type>test-jar</type>
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-embedded</artifactId>
                 <version>${project.version}</version>
-                <scope>test</scope>
                 <type>test-jar</type>
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-connector-mysql</artifactId>
                 <version>${project.version}</version>
-                <scope>test</scope>
                 <type>test-jar</type>
             </dependency>
 
