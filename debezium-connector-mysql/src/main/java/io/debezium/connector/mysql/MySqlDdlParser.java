@@ -1229,7 +1229,7 @@ public class MySqlDdlParser extends DdlParser {
             }
             tokens.consume(); // column name
             if (!tokens.canConsume("DROP", "DEFAULT")) {
-                tokens.consume("SET", "DEFAULT");
+                tokens.consume("SET");
                 parseDefaultClause(start);
             }
         } else if (tokens.canConsume("CHANGE")) {
