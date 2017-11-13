@@ -13,6 +13,7 @@ Emrul Islam
 Eric S. Kreiseir
 Ewen Cheslack-Postava
 Gunnar Morling
+Henryk Konsek
 Horia Chiorean
 Jiri Pechanec
 Jure Kajzer
