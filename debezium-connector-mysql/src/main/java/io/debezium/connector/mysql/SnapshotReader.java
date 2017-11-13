@@ -491,7 +491,7 @@ public class SnapshotReader extends AbstractReader {
                     source.markLastSnapshot();
                     long stop = clock.currentTimeInMillis();
                     try {
-                        bufferedRecordQueue.flush(this::replaceOffset);
+                        bufferedRecordQueue.close(this::replaceOffset);
                         logger.info("Step {}: scanned {} rows in {} tables in {}",
                                     step, totalRowCount, tableIds.size(), Strings.duration(stop - startScan));
                     } catch (InterruptedException e) {

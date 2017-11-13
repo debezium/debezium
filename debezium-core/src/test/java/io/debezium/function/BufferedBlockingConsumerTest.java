@@ -5,13 +5,13 @@
  */
 package io.debezium.function;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.util.LinkedList;
 import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 /**
  * @author Randall Hauch
@@ -20,18 +20,18 @@ public class BufferedBlockingConsumerTest {
 
     private List<Integer> history;
     private BlockingConsumer<Integer> consumer;
-    
+
 
     @Before
     public void beforeEach() {
         history = new LinkedList<>();
         consumer = history::add;
     }
-    
+
     @Test
     public void shouldMaintainSameOrder() throws InterruptedException {
         BufferedBlockingConsumer<Integer> buffered = BufferedBlockingConsumer.bufferLast(consumer);
-        
+
         // Add several values ...
         buffered.accept(1);
         buffered.accept(2);
@@ -41,10 +41,10 @@ public class BufferedBlockingConsumerTest {
 
         // And verify the history contains all but the last value ...
         assertThat(history).containsExactly(1,2,3,4);
-        
+
         // Flush the last value...
-        buffered.flush();
-        
+        buffered.close(i -> i);
+
         // And verify the history contains the same values ...
         assertThat(history).containsExactly(1,2,3,4,5);
     }
