@@ -8,6 +8,9 @@ package io.debezium.kafka;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.io.File;
+import java.lang.reflect.Field;
+import java.util.Properties;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -194,6 +197,32 @@ public class KafkaClusterTest {
         }
         assertThat(messagesRead.get()).isEqualTo(numMessages);
     }
+
+    @Test
+    public void shouldSetClusterConfigProperty() throws Exception {
+        Properties config = new Properties();
+        config.put("foo", "bar");
+        KafkaCluster kafkaCluster = new KafkaCluster().withKafkaConfiguration(config);
+
+        Field kafkaConfigField = KafkaCluster.class.getDeclaredField("kafkaConfig");
+        kafkaConfigField.setAccessible(true);
+        Properties kafkaConfig = (Properties) kafkaConfigField.get(kafkaCluster);
+        assertThat(kafkaConfig).hasSize(1);
+    }
+
+    @Test
+    public void shouldSetServerConfigProperty() throws Exception {
+        Properties config = new Properties();
+        config.put("foo", "bar");
+        KafkaCluster kafkaCluster = new KafkaCluster().withKafkaConfiguration(config).addBrokers(1);
+
+        Field kafkaServersField = KafkaCluster.class.getDeclaredField("kafkaServers");
+        kafkaServersField.setAccessible(true);
+        ConcurrentMap<Integer, KafkaServer> kafkaServers = (ConcurrentMap<Integer, KafkaServer>) kafkaServersField.get(kafkaCluster);
+        Properties serverConfig = kafkaServers.values().iterator().next().config();
+        assertThat(serverConfig.get("foo")).isEqualTo("bar");
+    }
+
 
     protected void assertValidDataDirectory(File dir) {
         assertThat(dir.exists()).isTrue();
