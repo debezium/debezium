@@ -1294,6 +1294,14 @@ public class MySqlDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-425")
+    public void shouldParseAlterTableAlterDefaultColumnValue() {
+        String ddl = "CREATE TABLE t ( c1 DEC(2) NOT NULL, c2 FIXED(1,0) NOT NULL);";
+        ddl += "ALTER TABLE t ALTER c1 SET DEFAULT 13;";
+        parser.parse(ddl, tables);
+    }
+
+    @Test
     public void parseDdlForDecAndFixed() {
         String ddl = "CREATE TABLE t ( c1 DEC(2) NOT NULL, c2 FIXED(1,0) NOT NULL);";
         parser.parse(ddl, tables);
