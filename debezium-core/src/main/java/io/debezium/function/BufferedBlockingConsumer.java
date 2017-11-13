@@ -41,7 +41,8 @@ public interface BufferedBlockingConsumer<T> extends BlockingConsumer<T> {
      * When another value is then added to the consumer, this buffered consumer will push the prior value into the delegate
      * and buffer the latest.
      * <p>
-     * The resulting consumer is not threadsafe.
+     * The resulting consumer is thread-safe as it can be used by multiple threads in a single
+     * {@link io.debezium.connector.mongodb.Replicator#performInitialSync() Replicator} during initial copy phase.
      * 
      * @param delegate the delegate to which values should be flushed; may not be null
      * @return the blocking consumer that buffers a single value at a time; never null
@@ -51,13 +52,13 @@ public interface BufferedBlockingConsumer<T> extends BlockingConsumer<T> {
             private T last;
 
             @Override
-            public void accept(T t) throws InterruptedException {
+            public synchronized void accept(T t) throws InterruptedException {
                 if (last != null) delegate.accept(last);
                 last = t;
             }
 
             @Override
-            public void flush(Function<T, T> function) throws InterruptedException {
+            public synchronized void flush(Function<T, T> function) throws InterruptedException {
                 if (last != null) {
                     try {
                         delegate.accept(function.apply(last));
