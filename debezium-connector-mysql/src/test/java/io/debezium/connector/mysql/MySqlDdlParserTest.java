@@ -1152,6 +1152,21 @@ public class MySqlDdlParserTest {
           assertColumn(mytable, "limtext", "TEXT", Types.VARCHAR, 20, -1, true, false, false);
       }
 
+      @Test
+      @FixFor("DBZ-439")
+      public void shouldParseCreateTableWithDoublePrecisionKeyword() {
+          String ddl = "CREATE TABLE DBZ439 ("
+                        + "limdouble DOUBLE PRECISION(20, 2),"
+                        + "unldouble DOUBLE PRECISION);";
+
+          parser.parse(ddl, tables);
+          assertThat(tables.size()).isEqualTo(1);
+          Table mytable = tables.forTable(new TableId(null, null, "DBZ439"));
+          assertThat(mytable).isNotNull();
+          assertColumn(mytable, "limdouble", "DOUBLE PRECISION", Types.DOUBLE, 20, 2, true, false, false);
+          assertColumn(mytable, "unldouble", "DOUBLE PRECISION", Types.DOUBLE, -1, -1, true, false, false);
+      }
+
     @Test
     @FixFor({"DBZ-408", "DBZ-412"})
     public void shouldParseAlterTableStatementWithColumnNamedColumnWithoutColumnWord() {
