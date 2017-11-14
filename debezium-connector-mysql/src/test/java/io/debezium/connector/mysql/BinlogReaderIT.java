@@ -253,8 +253,10 @@ public class BinlogReaderIT {
         // Check the records via the store ...
         List<SourceRecord> sourceRecords = store.sourceRecords();
         assertThat(sourceRecords.size()).isEqualTo(1);
-        ZonedDateTime expectedTimestamp = ZonedDateTime.of(LocalDateTime.parse("2014-09-08T17:51:04.780"),
-                                                           ZoneId.systemDefault());
+        // MySQL container is in UTC and the test time is during summer time period
+        ZonedDateTime expectedTimestamp = ZonedDateTime.ofInstant(
+                LocalDateTime.parse("2014-09-08T17:51:04.780").atZone(ZoneId.of("UTC")).toInstant(),
+                ZoneId.systemDefault());
         String expectedTimestampString = expectedTimestamp.format(ZonedTimestamp.FORMATTER);
         SourceRecord sourceRecord = sourceRecords.get(0);
         Struct value = (Struct) sourceRecord.value();

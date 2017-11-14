@@ -7,13 +7,13 @@ package io.debezium.connector.mysql;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.Year;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Map;
@@ -407,8 +407,7 @@ class RowDeserializers {
     protected static Serializable deserializeTimestamp(ByteArrayInputStream inputStream) throws IOException {
         long epochSecond = inputStream.readLong(4);
         int nanoSeconds = 0; // no fractional seconds
-        LocalDateTime localDateTime = LocalDateTime.ofEpochSecond(epochSecond, nanoSeconds, ZoneOffset.UTC);
-        return ZonedDateTime.of(localDateTime, ZoneId.systemDefault());
+        return ZonedDateTime.ofInstant(Instant.ofEpochSecond(epochSecond, nanoSeconds), ZoneId.systemDefault());
     }
 
     /**
@@ -424,8 +423,7 @@ class RowDeserializers {
     protected static Serializable deserializeTimestampV2(int meta, ByteArrayInputStream inputStream) throws IOException {
         long epochSecond = bigEndianLong(inputStream.read(4), 0, 4);
         int nanoSeconds = deserializeFractionalSecondsInNanos(meta, inputStream);
-        LocalDateTime localDateTime = LocalDateTime.ofEpochSecond(epochSecond, nanoSeconds, ZoneOffset.UTC);
-        return ZonedDateTime.of(localDateTime, ZoneId.systemDefault());
+        return ZonedDateTime.ofInstant(Instant.ofEpochSecond(epochSecond, nanoSeconds), ZoneId.systemDefault());
     }
 
     /**
