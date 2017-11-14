@@ -1109,15 +1109,48 @@ public class TokenStream {
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected value as a wildcard.
      * </p>
      * 
-     * @param expected the expected value of the current token token
+     * @param expected the expected value of the current token
      * @return true if the current token did match and was consumed, or false if the current token did not match and therefore was
      *         not consumed
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsume(String expected) throws IllegalStateException {
-        if (!matches(expected)) return false;
+        return canConsume(ANY_TYPE, expected);
+    }
+
+    /**
+     * Attempt to consume this current token if it matches the expected value, and return whether this method was indeed able to
+     * consume the token.
+     * <p>
+     * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected value as a wildcard.
+     * </p>
+     * 
+     * @param type the expected type of the current token
+     * @param expected the expected value of the current token
+     * @return true if the current token did match and was consumed, or false if the current token did not match and therefore was
+     *         not consumed
+     * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
+     */
+    public boolean canConsume(int type, String expected) throws IllegalStateException {
+        if (!(matches(expected) && matches(type))) return false;
         moveToNextToken();
         return true;
+    }
+
+    /**
+     * Attempt to consume this current token if it is {@link BasicTokenizer#WORD} and it matches the expected value,
+     * and return whether this method was indeed able to consume the token.
+     * <p>
+     * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected value as a wildcard.
+     * </p>
+     * 
+     * @param expected the expected value of the current token
+     * @return true if the current token did match and was consumed, or false if the current token did not match and therefore was
+     *         not consumed
+     * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
+     */
+    public boolean canConsumeWord(String expected) throws IllegalStateException {
+        return canConsume(BasicTokenizer.WORD, expected);
     }
 
     /**
@@ -1185,21 +1218,71 @@ public class TokenStream {
     public boolean canConsume(String currentExpected,
                               String... expectedForNextTokens)
             throws IllegalStateException {
+        return canConsume(ANY_TYPE, currentExpected, expectedForNextTokens);
+    }
+
+    /**
+     * Attempt to consume this current token and the next tokens if and only if they match the expected type and values,
+     *  and return whether this method was indeed able to consume all of the supplied tokens.
+     * <p>
+     * This is <i>not</i> the same as calling {@link #canConsume(type String)} for each of the supplied arguments, since this method
+     * ensures that <i>all</i> of the supplied values can be consumed.
+     * </p>
+     * <p>
+     * This method <i>is</i> equivalent to calling the following:
+     * 
+     * <pre>
+     * 
+     * if (tokens.matches(currentExpected, expectedForNextTokens) && tokens.matches(type, type, ...)) {
+     *     tokens.consume(currentExpected, expectedForNextTokens);
+     * }
+     * 
+     * </pre>
+     * 
+     * </p>
+     * <p>
+     * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected values as a wildcard.
+     * </p>
+     * 
+     * @param type the expect type of the tokens
+     * @param currentExpected the expected value of the current token
+     * @param expectedForNextTokens the expected values fo the following tokens
+     * @return true if the current token did match and was consumed, or false if the current token did not match and therefore was
+     *         not consumed
+     * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
+     */
+    public boolean canConsume(int type, String currentExpected, String... expectedForNextTokens)
+            throws IllegalStateException {
         if (completed) return false;
         ListIterator<Token> iter = tokens.listIterator(tokenIterator.previousIndex());
         if (!iter.hasNext()) return false;
         Token token = iter.next();
-        if (currentExpected != ANY_VALUE && !token.matches(currentExpected)) return false;
+        if (currentExpected != ANY_VALUE && !token.matches(type, currentExpected)) return false;
         for (String nextExpected : expectedForNextTokens) {
             if (!iter.hasNext()) return false;
             token = iter.next();
             if (nextExpected == ANY_VALUE) continue;
-            if (!token.matches(nextExpected)) return false;
+            if (!token.matches(type, nextExpected)) return false;
         }
         this.tokenIterator = iter;
         this.currentToken = tokenIterator.hasNext() ? tokenIterator.next() : null;
         this.completed = this.currentToken == null;
         return true;
+    }
+
+    /**
+     * Attempt to consume this current token and the next tokens if and only if they are of {@link BasicTokenizer#WORD} and match the expected values,
+     * and return whether this method was indeed able to consume all of the supplied tokens.
+     * 
+     * @param currentExpected the expected value of the current token
+     * @param expectedForNextTokens the expected values fo the following tokens
+     * @return true if the current token did match and was consumed, or false if the current token did not match and therefore was
+     *         not consumed
+     * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
+     * @see #canConsume(int, String, String...)
+     */
+    public boolean canConsumeWords(String currentExpected, String... expectedForNextTokens) throws IllegalStateException {
+        return canConsume(BasicTokenizer.WORD, currentExpected, expectedForNextTokens);
     }
 
     /**
@@ -1379,12 +1462,41 @@ public class TokenStream {
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used as a wildcard.
      * </p>
      * 
-     * @param expected the expected value of the current token token
+     * @param expected the expected value of the current token
      * @return true if the current token did match, or false if the current token did not match
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean matches(String expected) throws IllegalStateException {
-        return !completed && (expected == ANY_VALUE || currentToken().matches(expected));
+        return matches(ANY_TYPE, expected);
+    }
+
+    /**
+     * Determine if the current token matches the expected type and a value.
+     * <p>
+     * The {@link #ANY_VALUE ANY_VALUE} constant can be used as a wildcard.
+     * </p>
+     * 
+     * @param type the expected type of the curent token
+     * @param expected the expected value of the current token
+     * @return true if the current token did match, or false if the current token did not match
+     * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
+     */
+    public boolean matches(int type, String expected) throws IllegalStateException {
+        return !completed && (expected == ANY_VALUE || currentToken().matches(expected)) && currentToken().matches(type);
+    }
+
+    /**
+     * Determine if the current token is {@link BasicTokenizer#WORD} and matches the expected value.
+     * <p>
+     * The {@link #ANY_VALUE ANY_VALUE} constant can be used as a wildcard.
+     * </p>
+     * 
+     * @param expected the expected value of the current token
+     * @return true if the current token did match, or false if the current token did not match
+     * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
+     */
+    public boolean matchesWord(String expected) throws IllegalStateException {
+        return matches(BasicTokenizer.WORD, expected);
     }
 
     /**
@@ -1545,14 +1657,42 @@ public class TokenStream {
     public boolean matchesAnyOf(String firstOption,
                                 String... additionalOptions)
             throws IllegalStateException {
+        return matchesAnyOf(ANY_TYPE, firstOption, additionalOptions);
+    }
+
+    /**
+     * Determine if the next token matches one of the supplied values of the expected type.
+     * 
+     * @param type the expected type of tokens
+     * @param firstOption the first option for the value of the current token
+     * @param additionalOptions the additional options for the value of the current token
+     * @return true if the current token's value did match one of the supplied options, or false otherwise
+     * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
+     */
+    public boolean matchesAnyOf(int type, String firstOption, String... additionalOptions)
+            throws IllegalStateException {
         if (completed) return false;
         Token current = currentToken();
-        if (current.matches(firstOption)) return true;
+        if (current.matches(type, firstOption)) return true;
         for (String nextOption : additionalOptions) {
-            if (current.matches(nextOption)) return true;
+            if (current.matches(type, nextOption)) return true;
         }
         return false;
     }
+
+    /**
+     * Determine if the next token matches one of the supplied values of the type {@link BasicTokenizer#WORD}
+     * 
+     * @param firstOption the first option for the value of the current token
+     * @param additionalOptions the additional options for the value of the current token
+     * @return true if the current token's value did match one of the supplied options, or false otherwise
+     * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
+     */
+    public boolean matchesAnyWordOf(String firstOption, String... additionalOptions)
+            throws IllegalStateException {
+        return matchesAnyOf(BasicTokenizer.WORD, firstOption, additionalOptions);
+    }
+
 
     /**
      * Determine if the next token matches one of the supplied values.
@@ -2022,6 +2162,17 @@ public class TokenStream {
          * @return true if the token's value matches the supplied value, or false otherwise
          */
         boolean matches(String expected);
+
+        /**
+         * Determine if the token matches the supplied string and is of a requested type.
+         * 
+         * @param expectedType the expected token type
+         * @param expected the expected value
+         * @return true if the token's type and value matches the supplied type and value, or false otherwise
+         */
+        default boolean matches(int expectedType, String expected) {
+            return matches(expectedType) && matches(expected);
+        }
 
         /**
          * Determine if the token matches the supplied character.

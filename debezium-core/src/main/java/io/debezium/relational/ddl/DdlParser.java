@@ -581,7 +581,7 @@ public class DdlParser {
             if (tokens.matches(DdlTokenizer.STATEMENT_KEY)) {
                 break;
             }
-            if (tokens.matches("BEGIN")) {
+            if (tokens.matchesWord("BEGIN")) {
                 consumeBeginStatement(tokens.mark());
             } else if (tokens.matches(DdlTokenizer.STATEMENT_TERMINATOR)) {
                 tokens.consume();
