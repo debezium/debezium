@@ -676,15 +676,19 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
 
     private void assertTimestamp(String c4) {
         // '2014-09-08 17:51:04.777'
+        // MySQL container is in UTC and the test time is during summer time period
+        ZonedDateTime expectedTimestamp = ZonedDateTime.ofInstant(
+                LocalDateTime.parse("2014-09-08T17:51:04.780").atZone(ZoneId.of("UTC")).toInstant(),
+                ZoneId.systemDefault());
         ZoneId defaultZoneId = ZoneId.systemDefault();
         ZonedDateTime c4DateTime = ZonedDateTime.parse(c4, ZonedTimestamp.FORMATTER).withZoneSameInstant(defaultZoneId);
-        assertThat(c4DateTime.getYear()).isEqualTo(2014);
-        assertThat(c4DateTime.getMonth()).isEqualTo(Month.SEPTEMBER);
-        assertThat(c4DateTime.getDayOfMonth()).isEqualTo(8);
-        assertThat(c4DateTime.getHour()).isEqualTo(17);
-        assertThat(c4DateTime.getMinute()).isEqualTo(51);
-        assertThat(c4DateTime.getSecond()).isEqualTo(4);
-        assertThat(c4DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
+        assertThat(c4DateTime.getYear()).isEqualTo(expectedTimestamp.getYear());
+        assertThat(c4DateTime.getMonth()).isEqualTo(expectedTimestamp.getMonth());
+        assertThat(c4DateTime.getDayOfMonth()).isEqualTo(expectedTimestamp.getDayOfMonth());
+        assertThat(c4DateTime.getHour()).isEqualTo(expectedTimestamp.getHour());
+        assertThat(c4DateTime.getMinute()).isEqualTo(expectedTimestamp.getMinute());
+        assertThat(c4DateTime.getSecond()).isEqualTo(expectedTimestamp.getSecond());
+        assertThat(c4DateTime.getNano()).isEqualTo(expectedTimestamp.getNano());
         // We're running the connector in the same timezone as the server, so the timezone in the timestamp
         // should match our current offset ...
         LocalDateTime expectedLocalDateTime = LocalDateTime.parse("2014-09-08T17:51:04.780");
