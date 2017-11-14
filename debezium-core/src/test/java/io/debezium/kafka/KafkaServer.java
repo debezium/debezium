@@ -159,6 +159,8 @@ public class KafkaServer {
         runningConfig.setProperty(KafkaConfig.AutoCreateTopicsEnableProp(), String.valueOf(config.getOrDefault(KafkaConfig.AutoCreateTopicsEnableProp(), Boolean.TRUE)));
         // 1 partition for the __consumer_offsets_ topic should be enough
         runningConfig.setProperty(KafkaConfig.OffsetsTopicPartitionsProp(), Integer.toString(1));
+        // Disable delay during every re-balance
+        runningConfig.setProperty(KafkaConfig.GroupInitialRebalanceDelayMsProp(), Integer.toString(0));
         return runningConfig;
     }
 

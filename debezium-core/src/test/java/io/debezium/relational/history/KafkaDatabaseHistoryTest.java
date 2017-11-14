@@ -87,7 +87,7 @@ public class KafkaDatabaseHistoryTest {
                                             .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
                                             .with(KafkaDatabaseHistory.TOPIC, topicName)
                                             .with(DatabaseHistory.NAME, "my-db-history")
-                                            .with(KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, 1000)
+                                            .with(KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, 500)
                                             // new since 0.10.1.0 - we want a low value because we're running everything locally
                                             // in this test. However, it can't be so low that the broker returns the same
                                             // messages more than once.
