@@ -39,6 +39,7 @@ import io.debezium.relational.ValueConverter;
 import io.debezium.time.MicroDuration;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
+import io.debezium.util.NumberConversions;
 
 /**
  * A provider of {@link ValueConverter}s and {@link SchemaBuilder}s for various Postgres specific column types.
@@ -288,7 +289,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
         if (data == null) {
             if (column.isOptional()) return null;
-            return java.time.Duration.ofMillis(0);
+            return NumberConversions.DOUBLE_FALSE;
         }
         if (data instanceof Number) {
             // we expect to get back from the plugin a double value
