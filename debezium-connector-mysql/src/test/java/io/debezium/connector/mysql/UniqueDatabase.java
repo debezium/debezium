@@ -65,7 +65,7 @@ public class UniqueDatabase {
 
     /**
      * Creates an instance with given Debezium logical name and database name and id suffix same
-     * as another database. This is handy for tests that need multpli databases and can use regex
+     * as another database. This is handy for tests that need multiple databases and can use regex
      * based whitelisting.
 
      * @param serverName - logical Debezium server name 

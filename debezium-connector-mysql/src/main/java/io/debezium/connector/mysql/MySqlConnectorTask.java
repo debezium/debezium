@@ -72,39 +72,19 @@ public final class MySqlConnectorTask extends SourceTask {
             final SourceInfo source = taskContext.source();
             Map<String, ?> offsets = context.offsetStorageReader().offset(taskContext.source().partition());
             if (offsets != null) {
-                // Set the position in our source info ...
-                source.setOffset(offsets);
-                logger.info("Found existing offset: {}", offsets);
-
-                // Before anything else, recover the database history to the specified binlog coordinates ...
-                taskContext.loadHistory(source);
-
-                if (source.isSnapshotInEffect()) {
-                    // The last offset was an incomplete snapshot that we cannot recover from...
-                    if (taskContext.isSnapshotNeverAllowed()) {
-                        // No snapshots are allowed
-                        String msg = "The connector previously stopped while taking a snapshot, but now the connector is configured "
-                                + "to never allow snapshots. Reconfigure the connector to use snapshots initially or when needed.";
-                        throw new ConnectException(msg);
-                    }
-                    // Otherwise, restart a new snapshot ...
-                    startWithSnapshot = true;
-                    logger.info("Prior execution was an incomplete snapshot, so starting new snapshot");
-                } else {
-                    // No snapshot was in effect, so we should just start reading from the binlog ...
-                    startWithSnapshot = false;
-
-                    // But check to see if the server still has those binlog coordinates ...
-                    if (!isBinlogAvailable()) {
-                        if (!taskContext.isSnapshotAllowedWhenNeeded()) {
-                            String msg = "The connector is trying to read binlog starting at " + source + ", but this is no longer "
-                                    + "available on the server. Reconfigure the connector to use a snapshot when needed.";
-                            throw new ConnectException(msg);
-                        }
-                        startWithSnapshot = true;
-                    }
+                switch (taskContext.rewindBinlogMode()) {
+                    case NONE:
+                        startWithSnapshot = useExistingBinlogPosition(source, offsets);
+                        break;
+                    case BEGIN:
+                        source.setBinlogStartPoint("", 0L);
+                        break;
+                    case END:
+                        final MySqlJdbcContext.MasterServerStatus master = taskContext.masterReplicationStatus();
+                        source.setBinlogStartPoint(master.getFilename(), master.getPosition());
+                        source.setCompletedGtidSet(master.getKnownGtid());
+                        break;
                 }
-
             } else {
                 // We have no recorded offsets ...
                 if (taskContext.isSnapshotNeverAllowed()) {
@@ -195,6 +175,43 @@ public final class MySqlConnectorTask extends SourceTask {
         } finally {
             prevLoggingContext.restore();
         }
+    }
+
+    private boolean useExistingBinlogPosition(final SourceInfo source, Map<String, ?> offsets) {
+        boolean startWithSnapshot;
+        // Set the position in our source info ...
+        source.setOffset(offsets);
+        logger.info("Found existing offset: {}", offsets);
+
+        // Before anything else, recover the database history to the specified binlog coordinates ...
+        taskContext.loadHistory(source);
+
+        if (source.isSnapshotInEffect()) {
+            // The last offset was an incomplete snapshot that we cannot recover from...
+            if (taskContext.isSnapshotNeverAllowed()) {
+                // No snapshots are allowed
+                String msg = "The connector previously stopped while taking a snapshot, but now the connector is configured "
+                        + "to never allow snapshots. Reconfigure the connector to use snapshots initially or when needed.";
+                throw new ConnectException(msg);
+            }
+            // Otherwise, restart a new snapshot ...
+            startWithSnapshot = true;
+            logger.info("Prior execution was an incomplete snapshot, so starting new snapshot");
+        } else {
+            // No snapshot was in effect, so we should just start reading from the binlog ...
+            startWithSnapshot = false;
+
+            // But check to see if the server still has those binlog coordinates ...
+            if (!isBinlogAvailable()) {
+                if (!taskContext.isSnapshotAllowedWhenNeeded()) {
+                    String msg = "The connector is trying to read binlog starting at " + source + ", but this is no longer "
+                            + "available on the server. Reconfigure the connector to use a snapshot when needed.";
+                    throw new ConnectException(msg);
+                }
+                startWithSnapshot = true;
+            }
+        }
+        return startWithSnapshot;
     }
 
     @Override
