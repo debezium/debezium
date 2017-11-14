@@ -397,7 +397,10 @@ public class MySqlConnectorConfig {
          * @return the matching option, or null if no match is found
          */
         public static EventDeserializationFailureHandlingMode parse(String value) {
-            if (value == null) return null;
+            if (value == null) {
+                return null;
+            }
+
             value = value.trim();
 
             for (EventDeserializationFailureHandlingMode option : EventDeserializationFailureHandlingMode.values()) {
@@ -777,7 +780,7 @@ public class MySqlConnectorConfig {
                                                                             + "'long' represents values using Java's 'long', which may not offer the precision but will be far easier to use in consumers.");
 
     public static final Field EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE = Field.create("event.deserialization.failure.handling.mode")
-            .withDisplayName("Event deserialization failure Handling")
+            .withDisplayName("Event deserialization failure handling")
             .withEnum(EventDeserializationFailureHandlingMode.class, EventDeserializationFailureHandlingMode.FAIL)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
