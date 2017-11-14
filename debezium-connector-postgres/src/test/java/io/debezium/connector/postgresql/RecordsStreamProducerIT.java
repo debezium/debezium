@@ -26,6 +26,7 @@ import org.junit.rules.TestRule;
 
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
+import io.debezium.doc.FixFor;
 import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.ShouldFailWhen;
 import io.debezium.relational.TableId;
@@ -47,10 +48,12 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Before
     public void before() throws Exception {
         TestHelper.dropAllSchemas();
-        String statements = "CREATE SCHEMA public;" +
-                            "DROP TABLE IF EXISTS test_table;" +
-                            "CREATE TABLE test_table (pk SERIAL, text TEXT, PRIMARY KEY(pk));" +
-                            "INSERT INTO test_table(text) VALUES ('insert');";
+        String statements =
+                "CREATE SCHEMA public;" +
+                "DROP TABLE IF EXISTS test_table;" +
+                "CREATE TABLE test_table (pk SERIAL, text TEXT, PRIMARY KEY(pk));" +
+                "CREATE TABLE table_with_interval (id SERIAL PRIMARY KEY, title VARCHAR(512) NOT NULL, time_limit INTERVAL DEFAULT '60 days'::INTERVAL NOT NULL);" +
+                "INSERT INTO test_table(text) VALUES ('insert');";
         TestHelper.execute(statements);
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
         PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config));
@@ -331,6 +334,19 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         recordsProducer.start(consumer);
 
         assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT, schemasAndValuesForImpreciseNumericDecimalType());
+    }
+
+    @Test
+    @FixFor("DBZ-259")
+    public void shouldProcessIntervalDelete() throws Exception {
+        final String statements =
+                "INSERT INTO table_with_interval VALUES (default, 'Foo', default);" +
+                "INSERT INTO table_with_interval VALUES (default, 'Bar', default);" +
+                "DELETE FROM table_with_interval WHERE id = 1;";
+
+        consumer = testConsumer(3);
+        recordsProducer.start(consumer);
+        executeAndWait(statements);
     }
 
     private void assertInsert(String statement, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {
