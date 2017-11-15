@@ -16,6 +16,9 @@ It currently exists in two versions, one in the main code repo and one on the we
 * https://github.com/debezium/debezium/blob/master/CHANGELOG.md
 * https://github.com/debezium/debezium.github.io/blob/develop/docs/releases.asciidoc
 
+JIRA issues that break backwards compatability for existing consumers, should be marked with the "add-to-upgrade-guide" label.
+Search for them using https://issues.jboss.org/issues/?jql=labels%20%3D%20add-to-upgrade-guide[this query] and describe the implications and required steps for upgrading in the changelog on the website.
+
 ## Start with the correct branch
 
 Make sure that you are on the correct branch that is to be released, and that your local Git repository has all of the most recent commits. For example, to release from the `master` branch on the remote repository named `upstream`:
