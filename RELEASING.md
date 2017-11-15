@@ -17,7 +17,7 @@ It currently exists in two versions, one in the main code repo and one on the we
 * https://github.com/debezium/debezium.github.io/blob/develop/docs/releases.asciidoc
 
 JIRA issues that break backwards compatability for existing consumers, should be marked with the "add-to-upgrade-guide" label.
-Search for them using https://issues.jboss.org/issues/?jql=labels%20%3D%20add-to-upgrade-guide[this query] and describe the implications and required steps for upgrading in the changelog on the website.
+Search for them using [this query](https://issues.jboss.org/issues/?jql=labels%20%3D%20add-to-upgrade-guide) and describe the implications and required steps for upgrading in the changelog on the website.
 
 ## Start with the correct branch
 
