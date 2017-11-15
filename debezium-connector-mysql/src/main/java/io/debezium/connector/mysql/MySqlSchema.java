@@ -83,7 +83,11 @@ public class MySqlSchema extends RelationalDatabaseSchema {
      *          may be null if not needed
      * @param tableIdCaseInsensitive true if table lookup ignores letter case
      */
-    public MySqlSchema(MySqlConnectorConfig configuration, Predicate<String> gtidFilter, boolean tableIdCaseInsensitive, TopicSelector<TableId> topicSelector) {
+    public MySqlSchema(MySqlConnectorConfig configuration,
+                       Predicate<String> gtidFilter,
+                       boolean tableIdCaseInsensitive,
+                       TopicSelector<TableId> topicSelector,
+                       Filters tableFilters) {
         super(
                 configuration,
                 topicSelector,
@@ -97,7 +101,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
 
         Configuration config = configuration.getConfig();
 
-        this.filters = new Filters(config);
+        this.filters = tableFilters;
 
         // Do not remove the prefix from the subset of config properties ...
         String connectorName = config.getString("name", configuration.getLogicalName());

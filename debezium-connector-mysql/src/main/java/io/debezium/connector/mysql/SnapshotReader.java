@@ -692,7 +692,7 @@ public class SnapshotReader extends AbstractReader {
                         )
                         .forcedBeat(source.partition(), source.offset(), this::enqueueRecord);
                     // set the filter in the offset
-                    source.setFilterData(filters);
+                    source.setFilterDataFromConfig(context.config());
                 } finally {
                     // Set the completion flag ...
                     completeSuccessfully();
