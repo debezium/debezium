@@ -87,14 +87,19 @@ public class MySqlSchema {
      *          may be null if not needed
      * @param tableIdCaseInsensitive true if table lookup ignores letter case
      */
-    public MySqlSchema(Configuration config, String serverName, Predicate<String> gtidFilter, boolean tableIdCaseInsensitive, TopicSelector topicSelector) {
-        this.filters = new Filters(config);
+    public MySqlSchema(Configuration config,
+                       String serverName,
+                       Predicate<String> gtidFilter,
+                       boolean tableIdCaseInsensitive,
+                       TopicSelector topicSelector,
+                       Filters tableFilters) {
         this.ddlParser = new MySqlDdlParser(false);
         this.tables = new Tables(tableIdCaseInsensitive);
         this.ddlChanges = new DdlChanges(this.ddlParser.terminator());
         this.ddlParser.addListener(ddlChanges);
         this.topicSelector = topicSelector;
         this.tableIdCaseInsensitive = tableIdCaseInsensitive;
+        this.filters = tableFilters;
 
         // Use MySQL-specific converters and schemas for values ...
         String timePrecisionModeStr = config.getString(MySqlConnectorConfig.TIME_PRECISION_MODE);
