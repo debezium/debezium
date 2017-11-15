@@ -18,6 +18,8 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
 
+import io.debezium.annotation.Immutable;
+import io.debezium.document.Document;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 
@@ -83,6 +85,9 @@ public class BinlogReader extends AbstractReader {
     private volatile Map<String, ?> lastOffset = null;
     private com.github.shyiko.mysql.binlog.GtidSet gtidSet;
 
+    // This reader will attempt to halt once this predicate returns true when given the current offset.
+    private final Predicate<Document> offsetHaltPredicate;
+
     public static class BinlogPosition {
         final String filename;
         final long position;
@@ -137,9 +142,11 @@ public class BinlogReader extends AbstractReader {
      *
      * @param name the name of this reader; may not be null
      * @param context the task context in which this reader is running; may not be null
+     * @param offsetHaltPredicate predicate for halting this reader once a particular offset has been reached; may be null.
      */
-    public BinlogReader(String name, MySqlTaskContext context) {
+    public BinlogReader(String name, MySqlTaskContext context, Predicate<Document> offsetHaltPredicate) {
         super(name, context);
+        this.offsetHaltPredicate = offsetHaltPredicate == null ? new NeverHaltPredicate() : offsetHaltPredicate;
 
         source = context.source();
         recordMakers = context.makeRecord();
@@ -329,6 +336,25 @@ public class BinlogReader extends AbstractReader {
         }
     }
 
+    /**
+     * Halting predicate that always returns false.
+     */
+    @Immutable
+    private static class NeverHaltPredicate implements Predicate<Document> {
+
+        @Override
+        public boolean test(Document fields) {
+            return false;
+        }
+    }
+
+    /**
+     * @return a Document representing the last offset.
+     */
+    public Document getLastOffsetDocument() {
+        return SourceInfo.createDocumentFromOffset(lastOffset);
+    }
+    
     @Override
     protected void doStop() {
         try {
@@ -372,6 +398,10 @@ public class BinlogReader extends AbstractReader {
                     recordCounter = 0;
                     previousOutputMillis += millisSinceLastOutput;
                 }
+            }
+            Document lastOffsetDocument = getLastOffsetDocument();
+            if (offsetHaltPredicate.test(lastOffsetDocument)) {
+                this.stop();
             }
         }
     }

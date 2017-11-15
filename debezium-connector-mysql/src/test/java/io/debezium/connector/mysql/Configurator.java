@@ -16,73 +16,84 @@ import io.debezium.relational.history.FileDatabaseHistory;
  * 
  * @author Randall Hauch
  */
-public class Configurator {
+/*package local*/ class Configurator {
 
     private Configuration.Builder configBuilder = Configuration.create();
 
-    public Configurator with(Field field, String value) {
+    /*package local*/ Configurator with(Field field, String value) {
         configBuilder.with(field, value);
         return this;
     }
 
-    public Configurator with(Field field, boolean value) {
+    /*package local*/ Configurator with(Field field, boolean value) {
         configBuilder.with(field, value);
         return this;
     }
 
-    public Configurator serverName(String serverName) {
+    /*package local*/ Configurator serverName(String serverName) {
         return with(MySqlConnectorConfig.SERVER_NAME, serverName);
     }
 
-    public Configurator includeDatabases(String regexList) {
+    /*package local*/ Configurator includeDatabases(String regexList) {
         return with(MySqlConnectorConfig.DATABASE_WHITELIST, regexList);
     }
 
-    public Configurator excludeDatabases(String regexList) {
+    /*package local*/ Configurator excludeDatabases(String regexList) {
         return with(MySqlConnectorConfig.DATABASE_BLACKLIST, regexList);
     }
 
-    public Configurator includeTables(String regexList) {
+    /*package local*/ Configurator includeTables(String regexList) {
         return with(MySqlConnectorConfig.TABLE_WHITELIST, regexList);
     }
 
-    public Configurator excludeTables(String regexList) {
+    /*package local*/ Configurator excludeTables(String regexList) {
         return with(MySqlConnectorConfig.TABLE_BLACKLIST, regexList);
     }
 
-    public Configurator excludeColumns(String regexList) {
+    /*package local*/ Configurator excludeColumns(String regexList) {
         return with(MySqlConnectorConfig.COLUMN_BLACKLIST, regexList);
     }
 
-    public Configurator truncateColumns(int length, String fullyQualifiedTableNames) {
+    /*package local*/ Configurator truncateColumns(int length, String fullyQualifiedTableNames) {
         return with(MySqlConnectorConfig.TRUNCATE_COLUMN(length), fullyQualifiedTableNames);
     }
 
-    public Configurator maskColumns(int length, String fullyQualifiedTableNames) {
+   /*package local*/ Configurator maskColumns(int length, String fullyQualifiedTableNames) {
         return with(MySqlConnectorConfig.MASK_COLUMN(length), fullyQualifiedTableNames);
     }
 
-    public Configurator excludeBuiltInTables() {
+    /*package local*/ Configurator excludeBuiltInTables() {
         return with(MySqlConnectorConfig.TABLES_IGNORE_BUILTIN, true);
     }
 
-    public Configurator includeBuiltInTables() {
+    /*package local*/ Configurator includeBuiltInTables() {
         return with(MySqlConnectorConfig.TABLES_IGNORE_BUILTIN, false);
     }
 
-    public Configurator storeDatabaseHistoryInFile(Path path) {
+    /*package local*/ Configurator storeDatabaseHistoryInFile(Path path) {
         with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class.getName());
         with(FileDatabaseHistory.FILE_PATH,path.toAbsolutePath().toString());
         return this;
     }
 
-    public Filters createFilters() {
-        return new Filters(configBuilder.build());
+    /*package local*/ Filters createFilters() {
+        return new Filters.Builder(configBuilder.build()).build();
     }
 
-    public MySqlSchema createSchemas() {
+    /*package local*/ MySqlSchema createSchemas() {
         Configuration config = configBuilder.build();
-        return new MySqlSchema(config,config.getString(MySqlConnectorConfig.SERVER_NAME), null);
+        return new MySqlSchema(config,
+                               config.getString(MySqlConnectorConfig.SERVER_NAME),
+                               createFilters(),
+                               null);
+    }
+
+    /*package local*/ MySqlSchema createSchemasWithFilter(Filters filters) {
+        Configuration config = configBuilder.build();
+        return new MySqlSchema(config,
+                               config.getString(MySqlConnectorConfig.SERVER_NAME),
+                               filters,
+                               null);
     }
 
 }

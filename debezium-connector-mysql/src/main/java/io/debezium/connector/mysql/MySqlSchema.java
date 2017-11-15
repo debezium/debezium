@@ -82,8 +82,11 @@ public class MySqlSchema {
      *          returns {@code true} if a GTID source is to be included, or {@code false} if a GTID source is to be excluded;
      *          may be null if not needed
      */
-    public MySqlSchema(Configuration config, String serverName, Predicate<String> gtidFilter) {
-        this.filters = new Filters(config);
+    public MySqlSchema(Configuration config,
+                       String serverName,
+                       Filters tableFilters,
+                       Predicate<String> gtidFilter) {
+        this.filters = tableFilters;
         this.ddlParser = new MySqlDdlParser(false);
         this.tables = new Tables();
         this.ddlChanges = new DdlChanges(this.ddlParser.terminator());
