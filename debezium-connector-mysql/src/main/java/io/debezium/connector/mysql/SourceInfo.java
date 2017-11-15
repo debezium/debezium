@@ -513,7 +513,6 @@ final class SourceInfo extends AbstractSourceInfo {
     }
 
     /**
-<<<<<<< f995976861c6e55baac937a5f404e2db3753d06b
      * Set the filter data for the offset from the given {@link Configuration}
      * @param config the configuration
      */

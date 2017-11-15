@@ -18,6 +18,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
 
+import io.debezium.annotation.Immutable;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.event.Level;
@@ -366,6 +367,21 @@ public class BinlogReader extends AbstractReader {
     }
 
     /**
+<<<<<<< a4103a952ea75b3679cd4460b6fc88bdff855aba
+=======
+     * Halting predicate that always returns false.
+     */
+    @Immutable
+    private static class NeverHaltPredicate implements Predicate<Map<String, ?>> {
+
+        @Override
+        public boolean test(Map<String, ?> offset) {
+            return false;
+        }
+    }
+
+    /**
+>>>>>>> DBZ-389: More flexibility in Snapshot and Binlog Readers
      * @return a copy of the last offset of this reader.
      */
     public Map<String, ?> getLastOffset() {
