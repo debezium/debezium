@@ -182,8 +182,7 @@ public class SourceInfoTest {
                                                          .with(MySqlConnectorConfig.DATABASE_BLACKLIST, databaseBlacklist)
                                                          .with(MySqlConnectorConfig.TABLE_BLACKLIST, tableBlacklist)
                                                          .build();
-        final Filters filters = new Filters(configuration);
-        source.setFilterData(filters);
+        source.setFilterDataFromConfig(configuration);
 
         assertThat(source.hasFilterInfo()).isTrue();
         assertEquals(databaseBlacklist, source.getDatabaseBlacklist());

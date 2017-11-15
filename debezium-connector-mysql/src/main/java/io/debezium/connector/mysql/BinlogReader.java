@@ -18,6 +18,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
 
+import io.debezium.annotation.Immutable;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 
@@ -88,6 +89,9 @@ public class BinlogReader extends AbstractReader {
     private com.github.shyiko.mysql.binlog.GtidSet gtidSet;
     private Heartbeat heartbeat;
 
+    // This reader will attempt to halt once this predicate returns true when given the current offset.
+    private final Predicate<Map<String, ?>> offsetHaltPredicate;
+
     public static class BinlogPosition {
         final String filename;
         final long position;
@@ -142,9 +146,11 @@ public class BinlogReader extends AbstractReader {
      *
      * @param name the name of this reader; may not be null
      * @param context the task context in which this reader is running; may not be null
+     * @param offsetHaltPredicate predicate for halting this reader once a particular offset has been reached; may be null.
      */
-    public BinlogReader(String name, MySqlTaskContext context) {
+    public BinlogReader(String name, MySqlTaskContext context, Predicate<Map<String, ?>> offsetHaltPredicate) {
         super(name, context);
+        this.offsetHaltPredicate = offsetHaltPredicate == null ? new NeverHaltPredicate() : offsetHaltPredicate;
 
         source = context.source();
         recordMakers = context.makeRecord();
@@ -340,6 +346,25 @@ public class BinlogReader extends AbstractReader {
         }
     }
 
+    /**
+     * Halting predicate that always returns false.
+     */
+    @Immutable
+    private static class NeverHaltPredicate implements Predicate<Map<String, ?>> {
+
+        @Override
+        public boolean test(Map<String, ?> offset) {
+            return false;
+        }
+    }
+
+    /**
+     * @return a copy of the last offset of this reader.
+     */
+    public Map<String, ?> getLastOffset() {
+        return new HashMap<>(lastOffset);
+    }
+
     @Override
     protected void doStop() {
         try {
@@ -383,6 +408,9 @@ public class BinlogReader extends AbstractReader {
                     recordCounter = 0;
                     previousOutputMillis += millisSinceLastOutput;
                 }
+            }
+            if (offsetHaltPredicate.test(lastOffset)) {
+                this.stop();
             }
         }
     }

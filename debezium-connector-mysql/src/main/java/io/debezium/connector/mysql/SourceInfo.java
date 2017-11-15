@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Predicate;
 
+import io.debezium.config.Configuration;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -480,14 +481,14 @@ final class SourceInfo extends AbstractSourceInfo {
     }
 
     /**
-     * Set the filter data for the offset from the given {@link Filters}
-     * @param filters the filters
+     * Set the filter data for the offset from the given {@link Configuration}
+     * @param config the configuration
      */
-    public void setFilterData(Filters filters) {
-        this.databaseWhitelist = filters.getDatabaseWhitelist();
-        this.databaseBlacklist = filters.getDatabaseBlacklist();
-        this.tableWhitelist = filters.getTableWhitelist();
-        this.tableBlacklist = filters.getTableBlacklist();
+    public void setFilterDataFromConfig(Configuration config) {
+        this.databaseWhitelist = config.getString(MySqlConnectorConfig.DATABASE_WHITELIST);
+        this.databaseBlacklist = config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST);
+        this.tableWhitelist = config.getString(MySqlConnectorConfig.TABLE_WHITELIST);
+        this.tableBlacklist = config.getString(MySqlConnectorConfig.TABLE_BLACKLIST);
     }
 
     /**
@@ -545,6 +546,14 @@ final class SourceInfo extends AbstractSourceInfo {
             this.tableWhitelist = (String) sourceOffset.get(TABLE_WHITELIST_KEY);
             this.tableBlacklist = (String) sourceOffset.get(TABLE_BLACKLIST_KEY);
         }
+    }
+
+    public static boolean offsetsHaveFilterInfo(Map<String, ?> sourceOffset) {
+        return sourceOffset != null &&
+            sourceOffset.containsKey(DATABASE_BLACKLIST_KEY) ||
+            sourceOffset.containsKey(DATABASE_WHITELIST_KEY) ||
+            sourceOffset.containsKey(TABLE_BLACKLIST_KEY) ||
+            sourceOffset.containsKey(TABLE_WHITELIST_KEY);
     }
 
     private long longOffsetValue(Map<String, ?> values, String key) {
@@ -647,6 +656,24 @@ final class SourceInfo extends AbstractSourceInfo {
             }
         }
         return sb.toString();
+    }
+    
+    /**
+     * Create a {@link Document} from the given offset.
+     *
+     * @param offset the offset to create the document from.
+     * @return a {@link Document} with the offset data.
+     */
+    public static Document createDocumentFromOffset(Map<String, ?> offset) {
+        Document offsetDocument = Document.create();
+        // all of the offset keys represent int, long, or string types, so we  don't need to worry about references
+        // and information changing underneath us.
+
+        for (Map.Entry<String, ?> entry : offset.entrySet()) {
+            offsetDocument.set(entry.getKey(), entry.getValue());
+        }
+
+        return offsetDocument;
     }
 
     /**

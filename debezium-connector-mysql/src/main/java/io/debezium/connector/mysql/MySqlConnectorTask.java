@@ -9,7 +9,11 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -20,6 +24,8 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.util.Collect;
+import io.debezium.util.LoggingContext;
 import io.debezium.util.LoggingContext.PreviousContext;
 
 /**
@@ -61,18 +67,20 @@ public final class MySqlConnectorTask extends SourceTask {
             throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }
 
-        // Create and start the task context ...
-        this.taskContext = new MySqlTaskContext(config);
-        PreviousContext prevLoggingContext = this.taskContext.configureLoggingContext("task");
-        try {
-            this.taskContext.start();
+        final String serverName = config.getString(MySqlConnectorConfig.SERVER_NAME);
+        PreviousContext prevLoggingContext = LoggingContext.forConnector("MySQL", serverName, "task");
 
+        try {
             // Get the offsets for our partition ...
             boolean startWithSnapshot = false;
             boolean snapshotEventsAreInserts = true;
-            final SourceInfo source = taskContext.source();
-            Map<String, ?> offsets = context.offsetStorageReader().offset(taskContext.source().partition());
+            Map<String, String> partition = Collect.hashMapOf(SourceInfo.SERVER_PARTITION_KEY, serverName);
+            Map<String, ?> offsets = context.offsetStorageReader().offset(partition);
+            final SourceInfo source;
             if (offsets != null) {
+                Filters filters = SourceInfo.offsetsHaveFilterInfo(offsets) ? getOldFilters(offsets, config) : getAllFilters(config);
+                this.taskContext = createAndStartTaskContext(config, filters);
+                source = taskContext.source();
                 // Set the position in our source info ...
                 source.setOffset(offsets);
                 logger.info("Found existing offset: {}", offsets);
@@ -129,7 +137,10 @@ public final class MySqlConnectorTask extends SourceTask {
 
             } else {
                 // We have no recorded offsets ...
+                this.taskContext = createAndStartTaskContext(config, getAllFilters(config));
                 taskContext.initializeHistoryStorage();
+                source = taskContext.source();
+
                 if (taskContext.isSnapshotNeverAllowed()) {
                     // We're not allowed to take a snapshot, so instead we have to assume that the binlog contains the
                     // full history of the database.
@@ -166,7 +177,7 @@ public final class MySqlConnectorTask extends SourceTask {
             ChainedReader.Builder chainedReaderBuilder = new ChainedReader.Builder();
 
             // Set up the readers, with a callback to `completeReaders` so that we know when it is finished ...
-            BinlogReader binlogReader = new BinlogReader("binlog", taskContext);
+            BinlogReader binlogReader = new BinlogReader("binlog", taskContext, null);
             if (startWithSnapshot) {
                 // We're supposed to start with a snapshot, so set that up ...
                 SnapshotReader snapshotReader = new SnapshotReader("snapshot", taskContext);
@@ -193,7 +204,7 @@ public final class MySqlConnectorTask extends SourceTask {
                     // 2. this connector previously had no filter information.
                     // either way, we have to assume that the filter information currently in the config accurately reflects
                     // the current state of the connector.
-                    source.setFilterData(new Filters(config));
+                    source.setFilterDataFromConfig(config);
                 }
                 if (!rowBinlogEnabled) {
                     throw new ConnectException(
@@ -229,6 +240,84 @@ public final class MySqlConnectorTask extends SourceTask {
         } finally {
             prevLoggingContext.restore();
         }
+    }
+
+    private static MySqlTaskContext createAndStartTaskContext(Configuration config,
+                                                              Filters filters) {
+        MySqlTaskContext taskContext = new MySqlTaskContext(config, filters);
+        taskContext.start();
+        return taskContext;
+    }
+
+    /**
+     * @return true if new tables appear to have been added to the config, and false otherwise.
+     */
+    private boolean newTablesInConfig() {
+        final String elementSep = "/s*,/s*";
+
+        // take in two stringified lists, and return true if the first list contains elements that are not in the second list
+        BiFunction<String, String, Boolean> hasExclusiveElements = (String a, String b) -> {
+            if (a == null || a.isEmpty()) {
+                return false;
+            } else if (b == null || b.isEmpty()) {
+                return true;
+            }
+            Set<String> bSet = Stream.of(b.split(elementSep)).collect(Collectors.toSet());
+            return !Stream.of(a.split(elementSep)).filter((x) -> !bSet.contains(x)).collect(Collectors.toSet()).isEmpty();
+        };
+
+        final SourceInfo sourceInfo = taskContext.source();
+        final Configuration config = taskContext.config;
+        if (!sourceInfo.hasFilterInfo()) {
+            // if there was previously no filter info, then we either can't evaluate if there are new tables,
+            // or there aren't any new tables because we previously used no filter.
+            return false;
+        }
+        // otherwise, we have filter info
+        // if either whitelist has been added to, then we may have new tables
+
+        if (hasExclusiveElements.apply(config.getString(MySqlConnectorConfig.DATABASE_WHITELIST), sourceInfo.getDatabaseWhitelist())) {
+            return true;
+        }
+        if (hasExclusiveElements.apply(config.getString(MySqlConnectorConfig.TABLE_WHITELIST), sourceInfo.getTableWhitelist())) {
+            return true;
+        }
+        // if either blacklist has been removed from, then we may have new tables
+        if (hasExclusiveElements.apply(sourceInfo.getDatabaseBlacklist(), config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST))) {
+            return true;
+        }
+        if (hasExclusiveElements.apply(sourceInfo.getTableBlacklist(), config.getString(MySqlConnectorConfig.TABLE_BLACKLIST))) {
+            return true;
+        }
+        // otherwise, false.
+        return false;
+    }
+
+    /**
+     * Get the filters representing the tables that have been newly added to the config, but
+     * not those that previously existed in the config.
+     * @return {@link Filters}
+     */
+    private static Filters getNewFilters(Map<String, ?> offsets, Configuration config) {
+        Filters oldFilters = getOldFilters(offsets, config);
+        return new Filters.Builder(config).excludeAllTables(oldFilters).build();
+    }
+
+    /**
+     * Get the filters representing those tables that previously existed in the config, but
+     * not those newly added to the config.
+     * @return {@link Filters}
+     */
+    private static Filters getOldFilters(Map<String, ?> offsets, Configuration config) {
+        return new Filters.Builder(config).setFiltersFromOffsets(offsets).build();
+    }
+
+    /**
+     * Get the filters representing all tables represented by the config.
+     * @return {@link Filters}
+     */
+    private static Filters getAllFilters(Configuration config) {
+        return new Filters.Builder(config).build();
     }
 
     @Override
