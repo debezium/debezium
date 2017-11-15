@@ -22,6 +22,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Map.Entry;
 
+/**
+ * Debezium Mongo Connector generates the CDC records in String format. Sink connectors usually are not able to parse
+ * the string and insert the document as it is represented in the Source. so a user use this SMT to parse the String 
+ * and insert the MongoDB document in the JSON format..
+ * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
+ * @author Sairam Polavarapu
+ */
 public class StringToJSON<R extends ConnectRecord<R>> implements Transformation<R> {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
@@ -38,16 +45,16 @@ public class StringToJSON<R extends ConnectRecord<R>> implements Transformation<
 
         if (newRecord.value() == null) {
             value = BsonDocument.parse(newRecord1.value().toString());
-            } else {
-                value = BsonDocument.parse(newRecord.value().toString());
-            }
+        } else {
+            value = BsonDocument.parse(newRecord.value().toString());
+        }
 
         Set<Entry<String, BsonValue>> keyValues = value.entrySet();
 
         for (Entry<String, BsonValue> keyValuesforSchema : keyValues) {
             MongoDataConverter.addFieldSchema(keyValuesforSchema, schemabuilder);
         }
-        
+
         Schema finalSchema = schemabuilder.build();
         Struct finalStruct = new Struct(finalSchema);
 
@@ -55,8 +62,9 @@ public class StringToJSON<R extends ConnectRecord<R>> implements Transformation<
             MongoDataConverter.convertRecord(keyvalueforStruct, finalSchema, finalStruct);
         }
 
-        return r.newRecord(r.topic(), r.kafkaPartition(), r.keySchema(), r.key(), finalSchema, finalStruct,r.timestamp());
-        }
+        return r.newRecord(r.topic(), r.kafkaPartition(), r.keySchema(), r.key(), finalSchema, finalStruct,
+                r.timestamp());
+    }
 
     @Override
     public ConfigDef config() {
@@ -65,7 +73,7 @@ public class StringToJSON<R extends ConnectRecord<R>> implements Transformation<
 
     public void close() {
     }
-    
+
     @Override
     public void configure(final Map<String, ?> map) {
         final Map<String, String> delegateConfig = new HashMap<>();
