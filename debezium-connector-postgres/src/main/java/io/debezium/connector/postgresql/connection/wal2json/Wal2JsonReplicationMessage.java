@@ -10,11 +10,19 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.postgresql.core.Oid;
+import org.postgresql.geometric.PGbox;
+import org.postgresql.geometric.PGcircle;
+import org.postgresql.geometric.PGline;
+import org.postgresql.geometric.PGlseg;
+import org.postgresql.geometric.PGpath;
 import org.postgresql.geometric.PGpoint;
+import org.postgresql.geometric.PGpolygon;
 import org.postgresql.jdbc.PgArray;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGmoney;
@@ -37,6 +45,10 @@ import io.debezium.util.Strings;
 class Wal2JsonReplicationMessage implements ReplicationMessage {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Wal2JsonReplicationMessage.class);
+    private static final Pattern TYPE_PATTERN = Pattern.compile("^(?<full>(?<base>[^(\\[]+)(?:\\((?<mod>.+)\\))?(?<suffix>.*?))(?<array>\\[\\])?$");
+    private static final Pattern TYPEMOD_PATTERN = Pattern.compile("\\s*,\\s*");
+        // "text"; "character varying(255)"; "numeric(12,3)"; "geometry(MultiPolygon,4326)"; "timestamp (12) with time zone"; "int[]"
+    private static final String[] NO_TYPE_MODIFIERS = {};
 
     private final int txId;
     private final long commitTime;
@@ -139,108 +151,212 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
      * @return the value; may be null
      */
     public Object getValue(String columnName, String columnType, Value rawValue, final PgConnectionSupplier connection) {
-        switch (columnType) {
+        // we support wal2json both before & after commit 0255f2ac, which means we may get old-style type names
+        // (eg. int2, timetz, varchar, numeric, _int4)
+        // or new-style/verbose ones
+        // (eg. smallint; time with time zone; character varying (255); decimal (10,3), integer[])
+
+        Matcher m = TYPE_PATTERN.matcher(columnType);
+        if (!m.matches()) {
+            LOGGER.error("Failed to parse columnType for {} '{}'", columnName, columnType);
+            throw new ConnectException(String.format("Failed to parse columnType '%s' for column %s", columnType, columnName));
+        }
+        String fullType = m.group("full");
+        String baseType = m.group("base").trim();
+        if (!Objects.toString(m.group("suffix"), "").isEmpty()) {
+            baseType = String.join(" ", baseType, m.group("suffix").trim());
+        }
+
+        String[] typeModifiers = NO_TYPE_MODIFIERS;
+        if (m.group("mod") != null) {
+            typeModifiers = TYPEMOD_PATTERN.split(m.group("mod"));  // TODO: use for decimal/etc precision
+        }
+        boolean isArray = (m.group("array") != null);
+
+        if (baseType.startsWith("_")) {
+            // old-style type specifiers use an _ prefix for arrays
+            // e.g. int4[] would be "_int4"
+            baseType = baseType.substring(1);
+            fullType = fullType.substring(1);
+            isArray = true;
+        }
+
+        if (rawValue.isNull()) {
+            // nulls are null
+            return null;
+        }
+
+        if (isArray) {
+            try {
+                final String dataString = rawValue.asString();
+                PgArray arrayData = new PgArray(connection.get(), connection.get().getTypeInfo().getPGArrayType(fullType), dataString);
+                Object deserializedArray = arrayData.getArray();
+                // TODO: what types are these? Shouldn't they pass through this function again?
+                return Arrays.asList((Object[])deserializedArray);
+            }
+            catch (SQLException e) {
+                LOGGER.warn("Unexpected exception trying to process PgArray ({}) column '{}', {}", columnType, columnName, e);
+            }
+            return null;
+        }
+
+        switch (baseType) {
+            // include all types from https://www.postgresql.org/docs/current/static/datatype.html#DATATYPE-TABLE
+            // plus aliases from the shorter names produced by older wal2json
+            case "boolean":
             case "bool":
-                return rawValue.isNotNull() ? rawValue.asBoolean() : null;
-            case "int2":
+                return rawValue.asBoolean();
+
+            case "integer":
+            case "int":
             case "int4":
-                return rawValue.isNotNull() ? rawValue.asInteger() : null;
-            case "int8":
+            case "smallint":
+            case "int2":
+            case "smallserial":
+            case "serial":
+            case "serial2":
+            case "serial4":
             case "oid":
-                return rawValue.isNotNull() ? rawValue.asLong() : null;
+                return rawValue.asInteger();
+
+            case "bigint":
+            case "bigserial":
+            case "int8":
+                return rawValue.asLong();
+
+            case "real":
             case "float4":
-                return rawValue.isNotNull() ? rawValue.asFloat() : null;
+                return rawValue.asFloat();
+
+            case "double precision":
             case "float8":
-                return rawValue.isNotNull() ? rawValue.asDouble() : null;
+                return rawValue.asDouble();
+
             case "numeric":
-                return rawValue.isNotNull() ? rawValue.asDouble() : null;
+            case "decimal":
+                // TODO: When wal2json supports decimal/numeric, return via .asBigDecimal()
+                return rawValue.asDouble();
+
+            case "character":
             case "char":
+            case "character varying":
             case "varchar":
             case "bpchar":
             case "text":
-            case "json":
-            case "jsonb":
-            case "xml":
-            case "uuid":
-            case "bit":
-            case "varbit":
-            case "tstzrange":
-                return rawValue.isNotNull() ? rawValue.asString() : null;
+                return rawValue.asString();
+
             case "date":
-                return rawValue.isNotNull() ? DateTimeFormat.get().date(rawValue.asString()) : null;
-            case "timestamp":
-                return rawValue.isNotNull() ? DateTimeFormat.get().timestamp(rawValue.asString()) : null;
+                return DateTimeFormat.get().date(rawValue.asString());
+
+            case "timestamp with time zone":
             case "timestamptz":
-                return rawValue.isNotNull() ? DateTimeFormat.get().timestampWithTimeZone(rawValue.asString()) : null;
+                return DateTimeFormat.get().timestampWithTimeZone(rawValue.asString());
+
+            case "timestamp":
+            case "timestamp without time zone":
+                return DateTimeFormat.get().timestamp(rawValue.asString());
+
             case "time":
-                return rawValue.isNotNull() ? DateTimeFormat.get().time(rawValue.asString()) : null;
+            case "time without time zone":
+                return DateTimeFormat.get().time(rawValue.asString());
+
+            case "time with time zone":
             case "timetz":
-                return rawValue.isNotNull() ?  DateTimeFormat.get().timeWithTimeZone(rawValue.asString()) : null;
+                return DateTimeFormat.get().timeWithTimeZone(rawValue.asString());
+
             case "bytea":
-            return Strings.hexStringToByteArray(rawValue.asString());
-            case "point":
+                return Strings.hexStringToByteArray(rawValue.asString());
+
+            // these are all PG-specific types and we use the JDBC representations
+            case "box":
                 try {
-                    return rawValue.isNotNull() ? new PGpoint(rawValue.asString()) : null;
+                    return new PGbox(rawValue.asString());
+                } catch (final SQLException e) {
+                    LOGGER.error("Failed to parse point {}, {}", rawValue.asString(), e);
+                    throw new ConnectException(e);
+                }
+            case "circle":
+                try {
+                    return new PGcircle(rawValue.asString());
+                } catch (final SQLException e) {
+                    LOGGER.error("Failed to parse circle {}, {}", rawValue.asString(), e);
+                    throw new ConnectException(e);
+                }
+            case "interval":
+                try {
+                    return new PGInterval(rawValue.asString());
+                } catch (final SQLException e) {
+                    LOGGER.error("Failed to parse point {}, {}", rawValue.asString(), e);
+                    throw new ConnectException(e);
+                }
+            case "line":
+                try {
+                    return new PGline(rawValue.asString());
+                } catch (final SQLException e) {
+                    LOGGER.error("Failed to parse point {}, {}", rawValue.asString(), e);
+                    throw new ConnectException(e);
+                }
+            case "lseg":
+                try {
+                    return new PGlseg(rawValue.asString());
                 } catch (final SQLException e) {
                     LOGGER.error("Failed to parse point {}, {}", rawValue.asString(), e);
                     throw new ConnectException(e);
                 }
             case "money":
                 try {
-                    return rawValue.isNotNull() ? new PGmoney(rawValue.asString()).val : null;
+                    return new PGmoney(rawValue.asString()).val;
                 } catch (final SQLException e) {
                     LOGGER.error("Failed to parse money {}, {}", rawValue.asString(), e);
                     throw new ConnectException(e);
                 }
-            case "interval":
+            case "path":
                 try {
-                    return rawValue.isNotNull() ? new PGInterval(rawValue.asString()) : null;
+                    return new PGpath(rawValue.asString());
                 } catch (final SQLException e) {
                     LOGGER.error("Failed to parse point {}, {}", rawValue.asString(), e);
                     throw new ConnectException(e);
                 }
-            case "_int2":
-            case "_int4":
-            case "_int8":
-            case "_text":
-            case "_numeric":
-            case "_float4":
-            case "_float8":
-            case "_bool":
-            case "_date":
-            case "_time":
-            case "_timetz":
-            case "_timestamp":
-            case "_timestamptz":
-            case "_bytea":
-            case "_varchar":
-            case "_oid":
-            case "_bpchar":
-            case "_money":
-            case "_name":
-            case "_interval":
-            case "_char":
-            case "_varbit":
-            case "_uuid":
-            case "_xml":
-            case "_point":
-            case "_jsonb":
-            case "_json":
-            case "_ref_cursor":
+            case "point":
                 try {
-                    if (rawValue.isNull()) {
-                        return null;
-                    }
-                    final String dataString = rawValue.asString();
-                    PgArray arrayData = new PgArray(connection.get(), Oid.valueOf(columnType.substring(1) + "_array"), dataString);
-                    Object deserializedArray = arrayData.getArray();
-                    return Arrays.asList((Object[])deserializedArray);
+                    return new PGpoint(rawValue.asString());
+                } catch (final SQLException e) {
+                    LOGGER.error("Failed to parse point {}, {}", rawValue.asString(), e);
+                    throw new ConnectException(e);
                 }
-                catch (SQLException e) {
-                    LOGGER.warn("Unexpected exception trying to process PgArray column '{}'", columnName, e);
+            case "polygon":
+                try {
+                    return new PGpolygon(rawValue.asString());
+                } catch (final SQLException e) {
+                    LOGGER.error("Failed to parse point {}, {}", rawValue.asString(), e);
+                    throw new ConnectException(e);
                 }
-                return null;
+
+            // catch-all for other known/builtin PG types
+            // TODO: improve with more specific/useful classes here?
+            case "bit":
+            case "bit varying":
+            case "varbit":
+            case "cidr":
+            case "inet":
+            case "json":
+            case "jsonb":
+            case "macaddr":
+            case "macaddr8":
+            case "pg_lsn":
+            case "tsquery":
+            case "tstzrange":
+            case "tsvector":
+            case "txid_snapshot":
+            case "uuid":
+            case "xml":
+                return rawValue.asString();
+
+            default:
+                break;
         }
+        // this includes things like PostGIS geometries or other custom types.
+        // leave up to the downstream message recipient to deal with.
         LOGGER.warn("processing column '{}' with unknown data type '{}' as byte array", columnName,
                 columnType);
         return rawValue.asBytes();

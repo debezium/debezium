@@ -94,6 +94,9 @@ public abstract class AbstractRecordsProducerTest {
     protected static final String INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT = "INSERT INTO array_table_with_nulls (int_array, bigint_array, text_array) " +
             "VALUES (null, null, null)";
 
+    protected static final String INSERT_CUSTOM_TYPES_STMT = "INSERT INTO custom_table (lt, i) " +
+            "VALUES ('Top.Collections.Pictures.Astronomy.Galaxies', '978-0-393-04002-9')";
+
     protected static final String INSERT_QUOTED_TYPES_STMT = "INSERT INTO \"Quoted_\"\" . Schema\".\"Quoted_\"\" . Table\" (\"Quoted_\"\" . Text_Column\") " +
                                                              "VALUES ('some text')";
 
@@ -155,6 +158,7 @@ public abstract class AbstractRecordsProducerTest {
                              new SchemaAndValueField("u", Uuid.builder().optional().build(), "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"));
     }
 
+
     protected List<SchemaAndValueField> schemaAndValuesForGeomTypes() {
         Schema pointSchema = Point.builder().optional().build();
         return Collections.singletonList(new SchemaAndValueField("p", pointSchema, Point.createValue(pointSchema, 1, 1)));
@@ -183,6 +187,13 @@ public abstract class AbstractRecordsProducerTest {
                             new SchemaAndValueField("bol", Schema.OPTIONAL_BOOLEAN_SCHEMA, false),
                             new SchemaAndValueField("bs", Bits.builder(2).optional().build(), new byte[] { 3, 0 }),  // bitsets get converted from two's complement
                             new SchemaAndValueField("bv", Bits.builder(2).optional().build(), new byte[] { 0, 0 }));
+    }
+
+    protected List<SchemaAndValueField> schemaAndValuesForBinTypesNull() {
+        return Arrays.asList(new SchemaAndValueField("ba", Schema.OPTIONAL_BYTES_SCHEMA, null),
+                             new SchemaAndValueField("bol", Schema.OPTIONAL_BOOLEAN_SCHEMA, null),
+                             new SchemaAndValueField("bs", Bits.builder(2).optional().build(), null),
+                             new SchemaAndValueField("bv", Bits.builder(2).optional().build(), null));
     }
 
     protected List<SchemaAndValueField> schemaAndValuesForDateTimeTypes() {
@@ -224,6 +235,11 @@ public abstract class AbstractRecordsProducerTest {
         );
     }
 
+    protected List<SchemaAndValueField> schemasAndValuesForCustomTypes() {
+        return Arrays.asList(new SchemaAndValueField("lt", Schema.OPTIONAL_STRING_SCHEMA, "Top.Collections.Pictures.Astronomy.Galaxies"),
+                             new SchemaAndValueField("i", Schema.OPTIONAL_STRING_SCHEMA, "978-0-393-04002-9"));
+    }
+
     protected List<SchemaAndValueField> schemasAndValuesForQuotedTypes() {
        return Arrays.asList(new SchemaAndValueField("Quoted_\" . Text_Column", Schema.OPTIONAL_STRING_SCHEMA, "some text"));
     }
@@ -255,6 +271,8 @@ public abstract class AbstractRecordsProducerTest {
                 return schemasAndValuesForArrayTypes();
             case INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT:
                 return schemasAndValuesForArrayTypesWithNullValues();
+            case INSERT_CUSTOM_TYPES_STMT:
+                return schemasAndValuesForCustomTypes();
             case INSERT_QUOTED_TYPES_STMT:
                 return schemasAndValuesForQuotedTypes();
             default:
