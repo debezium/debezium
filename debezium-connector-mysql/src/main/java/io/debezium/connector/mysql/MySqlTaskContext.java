@@ -41,11 +41,11 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
      */
     private final boolean tableIdCaseInsensitive;
 
-    public MySqlTaskContext(Configuration config) {
-        this(config, null);
+    public MySqlTaskContext(Configuration config, Filters filters) {
+        this(config, filters, null);
     }
 
-    public MySqlTaskContext(Configuration config, Boolean tableIdCaseInsensitive) {
+    public MySqlTaskContext(Configuration config, Filters filters, Boolean tableIdCaseInsensitive) {
         super(config);
 
         // Set up the topic selector ...
@@ -68,7 +68,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         }
 
         // Set up the MySQL schema ...
-        this.dbSchema = new MySqlSchema(config, serverName(), this.gtidSourceFilter, this.tableIdCaseInsensitive);
+        this.dbSchema = new MySqlSchema(config, serverName(), this.gtidSourceFilter, this.tableIdCaseInsensitive, filters);
 
         // Set up the record processor ...
         this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector);
