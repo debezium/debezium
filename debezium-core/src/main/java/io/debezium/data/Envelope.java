@@ -96,11 +96,6 @@ public final class Envelope {
     /**
      * Flag that specifies whether the {@link FieldName#OPERATION} field is required within the envelope.
      */
-    public static final int VERSION = 1;
-
-    /**
-     * Flag that specifies whether the {@link FieldName#OPERATION} field is required within the envelope.
-     */
     public static final boolean OPERATION_REQUIRED = true;
 
     /**
@@ -205,7 +200,6 @@ public final class Envelope {
             public Envelope build() {
                 builder.field(FieldName.OPERATION, OPERATION_REQUIRED ? Schema.STRING_SCHEMA : Schema.OPTIONAL_STRING_SCHEMA);
                 builder.field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA);
-                builder.version(VERSION);
                 checkFieldIsDefined(FieldName.OPERATION, OPERATION_REQUIRED);
                 checkFieldIsDefined(FieldName.BEFORE, false);
                 checkFieldIsDefined(FieldName.AFTER, false);
