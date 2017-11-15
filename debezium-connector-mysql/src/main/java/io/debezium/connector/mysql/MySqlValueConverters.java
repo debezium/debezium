@@ -297,6 +297,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
             return new String((byte[]) data, columnCharset);
         }
         if (data instanceof String) {
+
             return data;
         }
         return handleUnknownData(column, fieldDefn, data);

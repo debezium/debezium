@@ -124,7 +124,7 @@ public class MySqlDdlParser extends DdlParser {
         dataTypes.register(Types.VARCHAR, "TINYTEXT");
         dataTypes.register(Types.VARCHAR, "TEXT");
         dataTypes.register(Types.VARCHAR, "MEDIUMTEXT");
-        dataTypes.register(Types.VARCHAR, "LONGTEXT");
+        dataTypes.register(666, "LONGTEXT");
         dataTypes.register(Types.CHAR, "ENUM(...)");
         dataTypes.register(Types.CHAR, "SET(...)");
         dataTypes.register(Types.OTHER, "JSON");
@@ -785,23 +785,35 @@ public class MySqlDdlParser extends DdlParser {
             String dataTypeName = parseDomainName(start);
             if (dataTypeName != null) dataType = DataType.userDefinedType(dataTypeName);
         }
-        if (dataType == null) {
-            // No data type was found
-            parsingFailed(dataTypeStart.position(), errors, "Unable to read the data type");
-            return;
+
+        if(666 == dataType.jdbcType()){
+            column.jdbcType(Types.VARCHAR);
+            column.length(524880000);
+        }else {
+
+            if (dataType == null) {
+                // No data type was found
+                parsingFailed(dataTypeStart.position(), errors, "Unable to read the data type");
+                return;
+            }
+            column.jdbcType(dataType.jdbcType());
+            column.type(dataType.name(), dataType.expression());
+            if ("ENUM".equals(dataType.name())) {
+                column.length(1);
+            } else if ("SET".equals(dataType.name())) {
+                List<String> options = parseSetAndEnumOptions(dataType.expression());
+                // After DBZ-132, it will always be comma seperated
+                column.length(
+                    Math.max(0, options.size() * 2 - 1)); // number of options + number of commas
+            } else {
+                if (dataType.length() > -1)
+                    column.length((int) dataType.length());
+                if (dataType.scale() > -1)
+                    column.scale(dataType.scale());
+            }
         }
-        column.jdbcType(dataType.jdbcType());
-        column.type(dataType.name(), dataType.expression());
-        if ("ENUM".equals(dataType.name())) {
-            column.length(1);
-        } else if ("SET".equals(dataType.name())) {
-            List<String> options = parseSetAndEnumOptions(dataType.expression());
-            // After DBZ-132, it will always be comma seperated
-            column.length(Math.max(0, options.size() * 2 - 1)); // number of options + number of commas
-        } else {
-            if (dataType.length() > -1) column.length((int) dataType.length());
-            if (dataType.scale() > -1) column.scale(dataType.scale());
-        }
+
+
 
         if (Types.NCHAR == dataType.jdbcType() || Types.NVARCHAR == dataType.jdbcType()) {
             // NCHAR and NVARCHAR columns always uses utf8 as charset
