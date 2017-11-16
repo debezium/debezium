@@ -109,6 +109,10 @@ final class SourceInfo {
     public static final String THREAD_KEY = "thread";
     public static final String DB_NAME_KEY = "db";
     public static final String TABLE_NAME_KEY = "table";
+    public static final String DATABASE_WHITELIST_KEY = "database_whitelist";
+    public static final String DATABASE_BLACKLIST_KEY = "database_blacklist";
+    public static final String TABLE_WHITELIST_KEY = "table_whitelist";
+    public static final String TABLE_BLACKLIST_KEY = "table_blacklist";
 
     /**
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition()} and {@link #offset()} information.
@@ -126,6 +130,10 @@ final class SourceInfo {
                                                      .field(THREAD_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                      .field(DB_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(TABLE_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                                                     .field(DATABASE_WHITELIST_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                                                     .field(DATABASE_BLACKLIST_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                                                     .field(TABLE_WHITELIST_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                                                     .field(TABLE_BLACKLIST_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .build();
 
     private String currentGtidSet;
@@ -147,6 +155,10 @@ final class SourceInfo {
     private Map<String, String> sourcePartition;
     private boolean lastSnapshot = true;
     private boolean nextSnapshot = false;
+    private String databaseWhitelist;
+    private String databaseBlacklist;
+    private String tableWhitelist;
+    private String tableBlacklist;
 
     public SourceInfo() {
     }
@@ -262,6 +274,10 @@ final class SourceInfo {
         if (isSnapshotInEffect()) {
             map.put(SNAPSHOT_KEY, true);
         }
+        map.put(DATABASE_WHITELIST_KEY, databaseWhitelist);
+        map.put(DATABASE_BLACKLIST_KEY, databaseBlacklist);
+        map.put(TABLE_WHITELIST_KEY, tableWhitelist);
+        map.put(TABLE_BLACKLIST_KEY, tableBlacklist);
         return map;
     }
 
@@ -321,6 +337,10 @@ final class SourceInfo {
             result.put(DB_NAME_KEY, tableId.catalog());
             result.put(TABLE_NAME_KEY, tableId.table());
         }
+        result.put(DATABASE_WHITELIST_KEY, databaseWhitelist);
+        result.put(DATABASE_BLACKLIST_KEY, databaseBlacklist);
+        result.put(TABLE_WHITELIST_KEY, tableWhitelist);
+        result.put(TABLE_BLACKLIST_KEY, tableBlacklist);
         return result;
     }
 
@@ -457,6 +477,47 @@ final class SourceInfo {
     }
 
     /**
+     * Set the filter data for the offset from the given {@link Filters}
+     * @param filters the filters
+     */
+    public void setFilterData(Filters filters) {
+        this.databaseWhitelist = filters.getDatabaseWhitelist();
+        this.databaseBlacklist = filters.getDatabaseBlacklist();
+        this.tableWhitelist = filters.getTableWhitelist();
+        this.tableBlacklist = filters.getTableBlacklist();
+    }
+
+    /**
+     * @return true if this offset has filter info, false otherwise.
+     */
+    public boolean hasFilterInfo() {
+        /**
+         * There are 2 possible cases for us not having filter info.
+         * 1. The connector does not use a filter. Creating a filter in such a connector could never add any tables.
+         * 2. The initial snapshot occurred in a version of Debezium that did not store the filter information in the
+         *    offsets.
+         */
+        return databaseWhitelist != null || databaseBlacklist != null ||
+               tableWhitelist != null || tableBlacklist != null;
+    }
+
+    public String getDatabaseWhitelist() {
+        return databaseWhitelist;
+    }
+
+    public String getDatabaseBlacklist() {
+        return databaseBlacklist;
+    }
+
+    public String getTableWhitelist() {
+        return tableWhitelist;
+    }
+
+    public String getTableBlacklist() {
+        return tableBlacklist;
+    }
+
+    /**
      * Set the source offset, as read from Kafka Connect. This method does nothing if the supplied map is null.
      * 
      * @param sourceOffset the previously-recorded Kafka Connect source offset
@@ -476,6 +537,10 @@ final class SourceInfo {
             this.restartRowsToSkip = (int) longOffsetValue(sourceOffset, BINLOG_ROW_IN_EVENT_OFFSET_KEY);
             nextSnapshot = booleanOffsetValue(sourceOffset, SNAPSHOT_KEY);
             lastSnapshot = nextSnapshot;
+            this.databaseWhitelist = (String) sourceOffset.get(DATABASE_WHITELIST_KEY);
+            this.databaseBlacklist = (String) sourceOffset.get(DATABASE_BLACKLIST_KEY);
+            this.tableWhitelist = (String) sourceOffset.get(TABLE_WHITELIST_KEY);
+            this.tableBlacklist = (String) sourceOffset.get(TABLE_BLACKLIST_KEY);
         }
     }
 
