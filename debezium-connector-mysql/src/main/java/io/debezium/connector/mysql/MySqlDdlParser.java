@@ -50,6 +50,9 @@ public class MySqlDdlParser extends DdlParser {
      * See http://dev.mysql.com/doc/refman/5.7/en/server-options.html#option_mysqld_character-set-server
      */
     private static final String SERVER_CHARSET_NAME = MySqlSystemVariables.CHARSET_NAME_SERVER;
+    private static final int TEXT_MAX_LENGTH = 65535;
+    private static final int MEDIUMTEXT_MAX_LENGTH = 16777215;
+    private static final int LONGTEXT_MAX_HALF_LENGTH = 2147483647;
 
     private final MySqlSystemVariables systemVariables = new MySqlSystemVariables();
     private final ConcurrentMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
@@ -798,6 +801,12 @@ public class MySqlDdlParser extends DdlParser {
             List<String> options = parseSetAndEnumOptions(dataType.expression());
             // After DBZ-132, it will always be comma seperated
             column.length(Math.max(0, options.size() * 2 - 1)); // number of options + number of commas
+        } else if ("TEXT".equals(dataType.name())) {
+            column.length(TEXT_MAX_LENGTH);
+        } else if ("MEDIUMTEXT".equals(dataType.name())){
+            column.length(MEDIUMTEXT_MAX_LENGTH);
+        } else if ("LONGTEXT".equals(dataType.name())) {
+            column.length(LONGTEXT_MAX_HALF_LENGTH);
         } else {
             if (dataType.length() > -1) column.length((int) dataType.length());
             if (dataType.scale() > -1) column.scale(dataType.scale());
