@@ -812,6 +812,8 @@ public class MySqlDdlParser extends DdlParser {
         if ("MEDIUMTEXT".equals(dataType.name())){
             column.length(1000000);
         } else if ("LONGTEXT".equals(dataType.name())) {
+            column.length(10000000);
+        } else if ("TEXT".equals(dataType.name())) {
             column.length(1000000);
         }
 
