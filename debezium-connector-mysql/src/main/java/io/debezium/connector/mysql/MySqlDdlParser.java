@@ -53,8 +53,6 @@ public class MySqlDdlParser extends DdlParser {
 
     private final MySqlSystemVariables systemVariables = new MySqlSystemVariables();
     private final ConcurrentMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
-    private static final int TYPE_MEDIUMTEXT = 1001;
-    private static final int TYPE_LONGTEXT = 1002;
 
     /**
      * Create a new DDL parser for MySQL that does not include view definitions.
@@ -787,7 +785,6 @@ public class MySqlDdlParser extends DdlParser {
             String dataTypeName = parseDomainName(start);
             if (dataTypeName != null) dataType = DataType.userDefinedType(dataTypeName);
         }
-
         if (dataType == null) {
             // No data type was found
             parsingFailed(dataTypeStart.position(), errors, "Unable to read the data type");
@@ -800,23 +797,19 @@ public class MySqlDdlParser extends DdlParser {
         } else if ("SET".equals(dataType.name())) {
             List<String> options = parseSetAndEnumOptions(dataType.expression());
             // After DBZ-132, it will always be comma seperated
-            column.length(
-                Math.max(0, options.size() * 2 - 1)); // number of options + number of commas
+            column.length(Math.max(0, options.size() * 2 - 1)); // number of options + number of commas
         } else {
-            if (dataType.length() > -1)
-                column.length((int) dataType.length());
-            if (dataType.scale() > -1)
-                column.scale(dataType.scale());
+            if (dataType.length() > -1) column.length((int) dataType.length());
+            if (dataType.scale() > -1) column.scale(dataType.scale());
         }
 
-        if ("MEDIUMTEXT".equals(dataType.name())){
-            column.length(1000000);
+        if ("TEXT".equals(dataType.name())) {
+            column.length(21845);
+        } else if ("MEDIUMTEXT".equals(dataType.name())){
+            column.length(5592405);
         } else if ("LONGTEXT".equals(dataType.name())) {
-            column.length(10000000);
-        } else if ("TEXT".equals(dataType.name())) {
-            column.length(1000000);
+            column.length(715827882);
         }
-
 
         if (Types.NCHAR == dataType.jdbcType() || Types.NVARCHAR == dataType.jdbcType()) {
             // NCHAR and NVARCHAR columns always uses utf8 as charset
