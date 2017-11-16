@@ -7,6 +7,7 @@ Chris Riccomini
 Christian Posta
 David Chen
 David Leibovic
+David Szabo
 Dennis Persson
 Duncan Sands
 Emrul Islam
