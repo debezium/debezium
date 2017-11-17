@@ -52,7 +52,7 @@ import java.util.stream.Collectors;
  *  So, the second option would just convert all the types specified in field.type that are present in Debezium message into its target types, specified in field.type property.
  *
  * 3. Combination of both, in case we would like to convert specific fields into different format, but all others as specified in field.type property.
- * 
+ *
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author Satyajit Vegesna
  */
