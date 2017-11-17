@@ -11,9 +11,6 @@ Note: All the null values for any fields should be made to optional, if not whil
 
 package io.debezium.transforms.time;
 
-import org.apache.kafka.common.cache.Cache;
-import org.apache.kafka.common.cache.LRUCache;
-import org.apache.kafka.common.cache.SynchronizedCache;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.utils.Utils;
@@ -27,13 +24,11 @@ import org.apache.kafka.connect.transforms.util.SimpleConfig;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.*;
 import java.util.Date;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
-import java.util.stream.Stream;
+import java.util.stream.Collectors;
 
 /**
  * Background:
@@ -43,13 +38,22 @@ import java.util.stream.Stream;
  * This Transformation allows us to change the long values of Timestamp/Date format data into Timestamp/Date formatted String.
  * and we do this passing some additional connector configuration parameters like below,
  *
- *      TAKE FROM README.
+ * This transform is based on two different set of properties as shown below,
+ * 1. "transforms":"TimestampConv"
+ *    "transforms.TimestampConv.type":"io.debezium.transforms.time.TimestampConverter$Value"
+ *    "transforms.TimestampConv.fields":"<databasename>.<tablename>.<after/before>.<nestedfield>-><destinationtype> || <databasename>.<tablename>.<field>-><destinationtype>"
+ *    "transforms.TimestampConv.timestamp.format":"yyyy-MM-dd hh:mm:ss"
+ *    "transforms.TimestampConv.date.format":"yyyy-MM-dd"
+ *   So, the first option would start converting all the fields or nestedfields provided in the field property.
  *
+ * 2. "transforms":"TimestampConv"
+ *    "transforms.TimestampConv.type":"io.debezium.transforms.time.TimestampConverter$Value"
+ *    "transforms.TimestampConv.field.type":"io.debezium.time.Timestamp->string,io.debezium.time.Date->string"
+ *  So, the second option would just convert all the types specified in field.type that are present in Debezium message into its target types, specified in field.type property.
  *
- *
+ * 3. Combination of both, in case we would like to convert specific fields into different format, but all others as specified in field.type property.
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
- * @author David Leibovic
- * @author Mario Mueller
+ * @author Satyajit Vegesna
  */
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
@@ -63,16 +67,8 @@ import static org.apache.kafka.connect.transforms.util.Requirements.requireStruc
 
 public abstract class TimestampConverter<R extends ConnectRecord<R>> implements Transformation<R> {
 
-    public static final String OVERVIEW_DOC =
-            "Convert Debezium timestamps between different formats such as Unix epoch, strings, and Connect Date/Timestamp types."
-                    + "Applies to org.apache.kafka.connect.data.Struct fields or individual fields or to the entire value."
-                    + "<p/>Use the concrete transformation type designed for the record key (<code>" + TimestampConverter.Key.class.getName() + "</code>) "
-                    + "or value (<code>" + TimestampConverter.Value.class.getName() + "</code>).";
-
-    public static final String FIELD_CONFIG = "field";
+    public static final String FIELD_CONFIG = "fields";
     private static final String FIELD_DEFAULT = "empty";
-
-    public static final String TARGET_TYPE_CONFIG = "target.type";
 
     public static final String TIMESTAMP_FORMAT_CONFIG = "timestamp.format";
     private static final String TIMESTAMP_FORMAT_DEFAULT = "yyyy-MM-dd HH:mm:ss";
@@ -83,15 +79,10 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
     public static final String FIELD_TYPE_CONFIG = "field.type";
     private static final String FIELD_TYPE_DEFAULT = "empty.value";
 
-    public static final String STRUCT_FIELD_NAME_CONFIG = "struct.field";
-    private static final String STRUCT_FIELD_NAME_DEFAULT = "";
 
-
-    public static final ConfigDef FIELD_DOC = new ConfigDef()
+    private static final ConfigDef FIELD_DOC = new ConfigDef()
             .define(FIELD_CONFIG, ConfigDef.Type.STRING, FIELD_DEFAULT, ConfigDef.Importance.LOW,
                     "The field containing the timestamp,for example: ts_ms is a field, whose entire value is just the long number value and not like a struct. So any field that contains just a value and not struct type value, and in our case we would only have one such field in debezium, ts_ms.")
-            .define(TARGET_TYPE_CONFIG, ConfigDef.Type.STRING, ConfigDef.Importance.LOW,
-                    "The desired timestamp representation: string, unix, Date, Time, or Timestamp")
             .define(TIMESTAMP_FORMAT_CONFIG, ConfigDef.Type.STRING, TIMESTAMP_FORMAT_DEFAULT, ConfigDef.Importance.LOW,
                     "A SimpleDateFormat-compatible format for the timestamp. Used to generate the output when type=string or used to parse the input if the input is a string.")
             .define(DATE_FORMAT_CONFIG, ConfigDef.Type.STRING, DATE_FORMAT_DEFAULT, ConfigDef.Importance.LOW,
@@ -99,8 +90,7 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
             .define(FIELD_TYPE_CONFIG, ConfigDef.Type.STRING, FIELD_TYPE_DEFAULT, ConfigDef.Importance.LOW, "is a comma-seperated string, providing an option to add multiple converters.\n" +
                     "<Type of Timestamp Object> -> <To Target type>\n" +
                     "can add multiple type converters as below," +
-                    " <Type of Timestamp Object> -> <To Target type>,<Type of Timestamp Object> -> <To Target type>")
-            .define(STRUCT_FIELD_NAME_CONFIG, ConfigDef.Type.STRING, STRUCT_FIELD_NAME_DEFAULT, ConfigDef.Importance.LOW, "Field name that is only to be modified in Nested Struct");
+                    " <Type of Timestamp Object> -> <To Target type>,<Type of Timestamp Object> -> <To Target type>");
 
     private static final String PURPOSE = "converting timestamp formats";
     private static final String TYPE_INT64 = "INT64";
@@ -356,48 +346,91 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
 
     }
 
+    /**
+     * Static method to check if a particular field is of STRUCT type or not.
+     *
+     * @return true for struct field and false for others
+     */
+    protected static Boolean isStruct(Field field) {
+        return field.schema().type().getName().equals("struct") ? true : false;
+    }
 
-    protected static Boolean containsField(String[] field_type, String field_name) {
-        return Stream.of(field_type).anyMatch(f -> f.equals(field_name));
+
+    /**
+     * Static method to generate the database.table name from input string.
+     *
+     * @param schemaName
+     * @return database.tablename.
+     */
+
+    protected static String databaseTableString(String schemaName) {
+        return schemaName.substring(schemaName.indexOf(".") + 1).replace(schemaName.substring(schemaName.lastIndexOf(".")), "");
+    }
+
+    /**
+     * * Static method to provide a map containing Key(field) and list of Values(nested fields associated to the field and if field is not a struct/nor has nested fields like ts_ms, then entry in map is created a ts_ms -> [None]).
+     *
+     * @param tableName
+     * @return Map containing key as field and value as list of nested field names.
+     */
+    protected static Map<String, List<String>> getFields(String tableName) {
+        return FieldConversions.get(tableName) != null ? FieldConversions.get(tableName).keySet().stream().collect(Collectors.
+                groupingBy(key -> key.split("\\.")[0], Collectors.mapping(val -> val.split("\\.").length == 2 ? val.split("\\.")[1].trim() : "None", Collectors.toList())
+                )
+        ) : Collections.emptyMap();
+    }
+
+    /**
+     * Static method to sanitize the name of the table from STRUCT schema, example schema.name=SERVERNAME.DATABASENAME.TABLENAME.OTHERS is provided and the method return just the DATABASENAME.TABLENAME.
+     *
+     * @return DATABASENAME.TABLENAME string.
+     */
+    protected static Set<String> getTableNames() {
+        return FieldConversions.keySet();
+    }
+
+    /**
+     * Static method to return the fields that are not nested, for example ts_ms , would search based on the None value that we insert using the getfields methods.
+     */
+    protected static List<String> findFlatFields(String tableName) {
+        List<String> flatFieldsArray = new ArrayList<>();
+        for (Map.Entry<String, List<String>> flatFields : getFields(tableName).entrySet()) {
+            if (flatFields.getValue().size() == 1 && flatFields.getValue().stream().anyMatch(x -> x.equals("None"))) {
+                flatFieldsArray.add(flatFields.getKey());
+            }
+        }
+        return flatFieldsArray;
     }
 
     // This is a bit unusual, but allows the transformation config to be passed to static anonymous classes to customize
     // their behavior
     public static class Config {
 
-        public final String field;
-        public final String type;
+        public final String[] field;
         public final SimpleDateFormat format;
         public final SimpleDateFormat dateFormat;
         public final String[] field_type;
-        public final String[] struct_field;
 
-        Config(String field, String type, SimpleDateFormat format, SimpleDateFormat dateFormat, String[] field_type, String[] struct_field) {
+        Config(String[] field, SimpleDateFormat format, SimpleDateFormat dateFormat, String[] field_type) {
             this.field = field;
-            this.type = type;
             this.format = format;
             this.dateFormat = dateFormat;
             this.field_type = field_type;
-            this.struct_field = struct_field;
         }
     }
 
     private Config config;
-    //private Cache<Schema, Schema> schemaUpdateCache;
     private static final Map<String, String> TypeConverters = new HashMap<>();
-    private static final Map<String, String> FieldConversions = new ConcurrentHashMap<>();
+    private static Map<String, Map<String, String>> FieldConversions = new ConcurrentHashMap<>();
 
     @Override
     public void configure(Map<String, ?> configs) {
         final SimpleConfig simpleConfig = new SimpleConfig(FIELD_DOC, configs);
         final String field[] = simpleConfig.getString(FIELD_CONFIG).split(",");
-        final String type = simpleConfig.getString(TARGET_TYPE_CONFIG);
         final String[] field_type = simpleConfig.getString(FIELD_TYPE_CONFIG).split(",");
-        final String[] struct_field = simpleConfig.getString(STRUCT_FIELD_NAME_CONFIG).split(",");
-        String[] structTypeList = new String[]{type};
+        String[] structTypeList = new String[]{};
         String formatPatternTimestamp = simpleConfig.getString(TIMESTAMP_FORMAT_CONFIG);
         String formatPatternDate = simpleConfig.getString(DATE_FORMAT_CONFIG);
-        //schemaUpdateCache = new SynchronizedCache<>(new LRUCache<Schema, Schema>(16));
 
         if (!field_type[0].equals(FIELD_TYPE_DEFAULT)) {
             for (String typeMatch : field_type) {
@@ -407,10 +440,19 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
         }
 
         //Adding elements to FieldConversions, to use them later for finding the right field and change the type accordingly.
+        //Two things happening here, 1. Getting FieldConversions added with key(tablename) -> value(List(field name->destination type))
         if (!field[0].equals(FIELD_DEFAULT)) {
-            for (String fieldConversion : field) {
-                FieldConversions.put(fieldConversion.split("->")[0], fieldConversion.split("->")[1]);
-            }
+            FieldConversions = Arrays.stream(field).collect(Collectors.
+                    groupingBy(key -> key.split("\\.")[0] + "." + key.split("\\.")[1].trim(),
+                            Collectors.groupingBy(val -> val.replace(val.substring(0, val.indexOf(".", val.indexOf(".") + 1) + 1), "").split("->")[0].trim(),
+                                    Collectors.mapping(destTypes -> destTypes.split("->")[1].trim(), Collectors.joining())
+                            )
+                    ));
+
+            Set<String> destTypes = FieldConversions.values().stream().map(types -> types.values()).flatMap(Collection::stream).collect(Collectors.toSet());
+            Set<String> mySet = new HashSet<String>(Arrays.asList(structTypeList));
+            mySet.addAll(destTypes);
+            structTypeList = Arrays.copyOf(mySet.toArray(), mySet.toArray().length, String[].class);
         }
 
         for (String typeCheck : structTypeList) {
@@ -446,7 +488,7 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
                         + formatPatternDate, e);
             }
         }
-        config = new Config(field, type, format, dateFormat, field_type, struct_field);
+        config = new Config(field, format, dateFormat, field_type);
     }
 
     @Override
@@ -520,11 +562,21 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
         for (Field structField : field.schema().fields()) {
             String structFieldSchemaName = structField.schema().name();
             final Object nestedStructField = ((Struct) value.get(field)).get(structField);
-            if (structFieldSchemaName != null && !structFieldSchemaName.isEmpty() && TypeConverters.containsKey(structFieldSchemaName)) {
+            final Boolean fieldCoversionProvided = getFields(databaseTableString(value.schema().name().toString())).get(field.name()) != null ?
+                    getFields(databaseTableString(value.schema().name().toString())).get(field.name()).contains(structField.name()) : false;
+            //Checks for datatype conversions
+            if (structFieldSchemaName != null && !structFieldSchemaName.isEmpty() && TypeConverters.containsKey(structFieldSchemaName) && !fieldCoversionProvided) {
                 if (nestedStructField == null || nestedStructField.equals("")) {
                     builder.field(structField.name(), TRANSLATORS.get(TypeConverters.get(structFieldSchemaName)).optionalSchema());
                 } else {
                     builder.field(structField.name(), TRANSLATORS.get(TypeConverters.get(structFieldSchemaName)).typeSchema());
+                }
+            } //Checks for field conversions
+            else if (fieldCoversionProvided) {
+                if (nestedStructField == null || nestedStructField.equals("")) {
+                    builder.field(structField.name(), TRANSLATORS.get(FieldConversions.get(databaseTableString(builder.name().toString())).get(field.name().toString() + "." + structField.name().toString())).optionalSchema());
+                } else {
+                    builder.field(structField.name(), TRANSLATORS.get(FieldConversions.get(databaseTableString(builder.name().toString())).get(field.name().toString() + "." + structField.name().toString())).typeSchema());
                 }
             } else {
                 if (nestedStructField == null || nestedStructField.equals("")) {
@@ -547,14 +599,20 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
      */
     private Struct valueForNestedStruct(Field field, Struct value, Field nestedUpdatedSchema) {
         Struct updatedNestedStructValue = new Struct(nestedUpdatedSchema.schema());
+        String tableName = databaseTableString(value.schema().name().toString());
         for (Field nestedField : ((Struct) value.get(field)).schema().fields()) { //try to convert ((Struct) value.get(field)).get(nestedField) into a single field rather than computing every single time
             final Object updatedNestedFieldValue;
             final Object nestedFieldValue = ((Struct) value.get(field)).get(nestedField);
+            final Boolean fieldCoversionProvided = getFields(databaseTableString(value.schema().name().toString())).get(field.name()) != null ?
+                    getFields(databaseTableString(value.schema().name().toString())).get(field.name()).contains(nestedField.name()) : false;
             if (nestedFieldValue == null || nestedFieldValue.equals("")) {
                 continue;
             }
-            if (nestedField.schema().name() != null && !nestedField.schema().name().isEmpty() && TypeConverters.containsKey(nestedField.schema().name()) && (nestedFieldValue != null && !nestedFieldValue.equals(""))) {
-                updatedNestedFieldValue = convertTimestamp(nestedFieldValue, timestampTypeFromSchema(nestedField.schema()), nestedField);
+
+            if (nestedField.schema().name() != null && !nestedField.schema().name().isEmpty() && TypeConverters.containsKey(nestedField.schema().name()) && (nestedFieldValue != null && !nestedFieldValue.equals("")) && !fieldCoversionProvided) {
+                updatedNestedFieldValue = convertTimestamp(nestedFieldValue, timestampTypeFromSchema(nestedField.schema()), nestedField, tableName, field.name() + "." + nestedField.name());
+            } else if (fieldCoversionProvided) {
+                updatedNestedFieldValue = convertTimestamp(nestedFieldValue, timestampTypeFromSchema(nestedField.schema()), nestedField, tableName, field.name() + "." + nestedField.name());
             } else {
                 updatedNestedFieldValue = nestedFieldValue;
             }
@@ -565,59 +623,53 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
 
     private R applyWithSchema(R record) {
         final Schema schema = operatingSchema(record);
-        if (config.field.isEmpty() && config.field_type.length == 0) {
-            Object value = operatingValue(record);
-            // New schema is determined by the requested target timestamp type
-            Schema updatedSchema = TRANSLATORS.get(config.type).typeSchema();
-            return newRecord(record, updatedSchema, convertTimestamp(value, timestampTypeFromSchema(schema), (Field) value));
-        } else {
-            final Struct value = requireStruct(operatingValue(record), PURPOSE);
-            Schema updatedSchema;
-            //Schema updatedSchema = schemaUpdateCache.get(value.schema());
-            //if (updatedSchema == null) {
-                SchemaBuilder builder = SchemaUtil.copySchemaBasics(schema, SchemaBuilder.struct());
-                for (Field field : schema.fields()) {
-                    if (value.get(field) == null || value.get(field).equals("")) {
-                        builder.field(field.name(), field.schema()).optional();
-                        continue;
-                    }
+        final Struct value = requireStruct(operatingValue(record), PURPOSE);
+        Schema updatedSchema;
+        SchemaBuilder builder = SchemaUtil.copySchemaBasics(schema, SchemaBuilder.struct());
+        for (Field field : schema.fields()) {
+            if (value.get(field) == null || value.get(field).equals("")) {
+                builder.field(field.name(), field.schema()).optional();
+                continue;
+            }
 
-                    if ((!(config.field_type.length == 0) && !(config.struct_field.length == 0)
-                            && containsField(config.struct_field, field.name())
-                            && value.get(field) != null)) {
+            if (((!(config.field_type.length == 0) && isStruct(field))
+                    || getFields(databaseTableString(schema.name().toString())).containsValue(field.name()))
+                    && value.get(field) != null) {
 
-                         //(FieldType) is not empty, which confirms that transformation is to be made to Struct type, which has nested field of columntype.
-                         //(Nested struct column type change.)
+                //(FieldType) is not empty, which confirms that transformation is to be made to Struct type, which has nested field of columntype.
+                //(Nested struct column type change.)
 
-                        SchemaBuilder nestedStructBuilder = schemaForNestedStruct(field, value);
-                        builder.field(field.name(), nestedStructBuilder.schema());
-                    } else if (field.name().equals(config.field)) {
+                SchemaBuilder nestedStructBuilder = schemaForNestedStruct(field, value);
+                builder.field(field.name(), nestedStructBuilder.schema());
+            }
+            // Else condition would convert the non struct type, just based on field_type parameter, as the above if considers only nested or struct conversions
+            else if (!(config.field_type.length == 0) && !isStruct(field) && (field.schema().name() != null && !field.schema().name().isEmpty() && TypeConverters.containsKey(field.schema().name()))) {
+                builder.field(field.name(), TRANSLATORS.get(TypeConverters.get(field.name().toString())).typeSchema());
+            } else if (findFlatFields(databaseTableString(schema.name().toString())).contains(field.name().toString())) {
 
-                         //if config field alone is provided, it implies that it is not nested struct and changes the field type accordingly
-                         //(Field change on non nested data.)
+                //We would have to check for the fields that have None, by calling a method findFlatFields, which basically gives us information about the non nested or non struct column conversion details.--new comment
 
-                        builder.field(field.name(), TRANSLATORS.get(config.type).typeSchema());
-                    } else {
-                        builder.field(field.name(), field.schema());
-                    }
-                }
-                if (schema.isOptional())
-                    builder.optional();
-                if (schema.defaultValue() != null) {
-                    Struct updatedDefaultValue = applyValueWithSchema((Struct) schema.defaultValue(), builder);
-                    builder.defaultValue(updatedDefaultValue);
-                }
-
-                updatedSchema = builder.build();
-            //}
-
-            Struct updatedValue = applyValueWithSchema(value, updatedSchema);
-            return newRecord(record, updatedSchema, updatedValue);
+                builder.field(field.name(), TRANSLATORS.get(FieldConversions.get(databaseTableString(schema.name().toString())).get(field.name())).typeSchema());
+            } else {
+                builder.field(field.name(), field.schema());
+            }
         }
+        if (schema.isOptional())
+            builder.optional();
+        if (schema.defaultValue() != null) {
+            Struct updatedDefaultValue = applyValueWithSchema((Struct) schema.defaultValue(), builder);
+            builder.defaultValue(updatedDefaultValue);
+        }
+
+        updatedSchema = builder.build();
+
+        Struct updatedValue = applyValueWithSchema(value, updatedSchema);
+        return newRecord(record, updatedSchema, updatedValue);
     }
 
     private Struct applyValueWithSchema(Struct value, Schema updatedSchema) {
         Struct updatedValue = new Struct(updatedSchema);
+        String tableName = databaseTableString(value.schema().name().toString());
         for (Field field : value.schema().fields()) {
             final Object updatedFieldValue;
 
@@ -625,21 +677,16 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
                 continue;
             }
 
-            if ((!(config.field_type.length == 0) && !(config.struct_field.length == 0)
-                    && containsField(config.struct_field, field.name())
-                    && value.get(field) != null)) {
+            if (((!(config.field_type.length == 0) && isStruct(field))
+                    || getFields(databaseTableString(updatedSchema.name().toString())).containsValue(field.name()))
+                    && value.get(field) != null) {
+                //Convert any fields in the STRUCT field that are of type provided in the field_type parameters.
+                updatedFieldValue = valueForNestedStruct(field, value, updatedSchema.field(field.name()));
 
-                 //(FieldType) is not empty, which confirms that transformation is to be made to Struct type, which has nested field of columntype.
-                 //(Nested struct column type change.)
-
-                if ((field.name().equals(config.struct_field)) || containsField(config.struct_field, field.name())) { //If the struct_field name matches, we parse the nested structure and update with the new value with config.field_type converted timestamp.
-                    updatedFieldValue = valueForNestedStruct(field, value, updatedSchema.field(field.name()));
-                } else { //If not config.struct_field, we leave the field value as it is.
-                    updatedFieldValue = value.get(field);
-                }
-
-            } else if (field.name().equals(config.field)) {
-                updatedFieldValue = convertTimestamp(value.get(field), timestampTypeFromSchema(field.schema()), field);
+            } else if (!(config.field_type.length == 0) && !isStruct(field) && (field.schema().name() != null && !field.schema().name().isEmpty() && TypeConverters.containsKey(field.schema().name()))) {
+                updatedFieldValue = convertTimestamp(value.get(field), timestampTypeFromSchema(field.schema()), field, tableName, field.name());
+            } else if (findFlatFields(databaseTableString(updatedSchema.name().toString())).contains(field.name().toString())) {
+                updatedFieldValue = convertTimestamp(value.get(field), timestampTypeFromSchema(field.schema()), field, tableName, field.name());
             } else {
                 updatedFieldValue = value.get(field);
             }
@@ -699,7 +746,7 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
      * @param timestampFormat the format of the timestamp, or null if the format should be inferred
      * @return the converted timestamp
      */
-    private Object convertTimestamp(Object timestamp, String timestampFormat, Field originalType) {
+    private Object convertTimestamp(Object timestamp, String timestampFormat, Field originalType, String tableName, String field) {
         if (timestampFormat == null) {
             timestampFormat = inferTimestampType(timestamp);
         }
@@ -710,14 +757,18 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
         }
         Date rawTimestamp = sourceTranslator.toRaw(config, timestamp);
         Translator targetTranslator;
-        if (originalType.name().equals(config.field)) {
-            targetTranslator = TRANSLATORS.get(config.type);
-        } else {
-            targetTranslator = TRANSLATORS.get(TypeConverters.get(originalType.schema().name()));
-        }
 
-        if (targetTranslator == null) {
-            throw new ConnectException("Unsupported timestamp type: " + config.type);
+        if (FieldConversions.get(tableName) != null && FieldConversions.get(tableName).containsKey(field)) {
+            if (TRANSLATORS.get(FieldConversions.get(tableName).get(field)) == null){
+                throw new ConnectException("Unsupported timestamp type: " + FieldConversions.get(tableName).get(field));
+            }else {
+                targetTranslator = TRANSLATORS.get(FieldConversions.get(tableName).get(field));
+            }
+        } else {
+            if(TRANSLATORS.get(TypeConverters.get(originalType.schema().name()))==null){
+                throw new ConnectException("Unsupported timestamp type: " + TypeConverters.get(originalType.schema().name()));
+            }
+            targetTranslator = TRANSLATORS.get(TypeConverters.get(originalType.schema().name()));
         }
 
         if (timestampFormat.equals(TYPE_EPCOH_DATE)) {
@@ -728,6 +779,6 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
     }
 
     private Object convertTimestamp(Object timestamp) {
-        return convertTimestamp(timestamp, null, null);
+        return convertTimestamp(timestamp, null, null, null, null);
     }
 }
