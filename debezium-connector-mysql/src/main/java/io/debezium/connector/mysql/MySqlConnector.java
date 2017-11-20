@@ -77,7 +77,6 @@ public class MySqlConnector extends DpSourceConnector {
         config.put("database.password", connectInfo.getSqlPassword());
         config.put("snapshot.mode", "when_needed");
         config.put("database.whitelist", connectInfo.getSqlDatabase());
-
         if (dataSourceBean.getTableWhiteLists() != null && !dataSourceBean.getTableWhiteLists().isEmpty()) {
             List<String> tableSchemalist = new ArrayList<>();
             List<String> tablewhitelist = new ArrayList<>();
