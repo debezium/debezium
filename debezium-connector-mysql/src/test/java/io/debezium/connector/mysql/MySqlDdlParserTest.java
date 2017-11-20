@@ -137,6 +137,7 @@ public class MySqlDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-474")
     public void shouldParseCreateTableStatementWithCollate() {
         String ddl = "CREATE TABLE c1 (pk INT PRIMARY KEY, v1 CHAR(36) NOT NULL COLLATE utf8_unicode_ci);";
         parser.parse(ddl, tables);
