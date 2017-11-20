@@ -5,7 +5,12 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -23,9 +28,11 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
 import org.bson.conversions.Bson;
+import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.CursorType;
 import com.mongodb.ServerAddress;
 import com.mongodb.client.FindIterable;
@@ -35,6 +42,7 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.RecordMakers.RecordsForCollection;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.function.BufferedBlockingConsumer;
@@ -97,16 +105,19 @@ public class Replicator {
     private final Predicate<String> databaseFilter;
     private final Clock clock;
     private ConnectionContext.MongoClient mongoClient;
+    Map<CollectionId, MongoCollection<Document>> collectionsMap=new HashMap<CollectionId, MongoCollection<Document>>();
+    protected final Configuration config;
 
     /**
      * @param context the replication context; may not be null
      * @param replicaSet the replica set to be replicated; may not be null
      * @param recorder the recorder for source record produced by this replicator; may not be null
      */
-    public Replicator(ReplicationContext context, ReplicaSet replicaSet, BlockingConsumer<SourceRecord> recorder) {
+    public Replicator(Configuration configuration,ReplicationContext context, ReplicaSet replicaSet, BlockingConsumer<SourceRecord> recorder) {
         assert context != null;
         assert replicaSet != null;
         assert recorder != null;
+        assert configuration !=null;
         this.context = context;
         this.source = context.source();
         this.replicaSet = replicaSet;
@@ -117,6 +128,7 @@ public class Replicator {
         this.collectionFilter = this.context.collectionFilter();
         this.databaseFilter = this.context.databaseFilter();
         this.clock = this.context.clock();
+        this.config = configuration;
     }
 
     /**
@@ -189,7 +201,7 @@ public class Replicator {
     protected boolean establishConnection() {
         logger.info("Connecting to '{}'", replicaSet);
         mongoClient = context.clientFor(replicaSet, (desc, error) -> {
-            logger.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
+            logger.error("Error while attempting to {}: {}", desc, error.getMessage(), error,error);
         });
         return mongoClient != null;
     }
@@ -383,7 +395,7 @@ public class Replicator {
      * @throws InterruptedException if the thread was interrupted while the copy operation was running
      */
     protected long copyCollection(com.mongodb.MongoClient primary, CollectionId collectionId, long timestamp) throws InterruptedException {
-        RecordsForCollection factory = recordMakers.forCollection(collectionId);
+        RecordsForCollection factory = recordMakers.forCollection(config,collectionId);
         MongoDatabase db = primary.getDatabase(collectionId.dbName());
         MongoCollection<Document> docCollection = db.getCollection(collectionId.name());
         long counter = 0;
@@ -420,6 +432,9 @@ public class Replicator {
         MongoCollection<Document> oplog = primary.getDatabase("local").getCollection("oplog.rs");
         Bson filter = Filters.and(Filters.gt("ts", oplogStart), // start just after our last position
                                   Filters.exists("fromMigrate", false)); // skip internal movements across shards
+        
+      
+    
         FindIterable<Document> results = oplog.find(filter)
                                               .sort(new Document("$natural", 1)) // force forwards collection scan
                                               .oplogReplay(true) // tells Mongo to not rely on indexes
@@ -427,6 +442,13 @@ public class Replicator {
                                               .cursorType(CursorType.TailableAwait); // tail and await new data
         // Read as much of the oplog as we can ...
         ServerAddress primaryAddress = primary.getAddress();
+        mongoClient.collections().forEach(id -> {
+            logger.info(" Collection name : " + id.namespace());
+            if (databaseFilter.test(id.dbName()) && collectionFilter.test(id)) {
+                logger.info(" Connecting to {} for reading updates : " , id.namespace());
+                collectionsMap.put(id,primary.getDatabase(id.dbName()).getCollection(id.name()));
+            }
+        });
         try (MongoCursor<Document> cursor = results.iterator()) {
             while (running.get() && cursor.hasNext()) {
                 if (!handleOplogEvent(primaryAddress, cursor.next())) {
@@ -500,7 +522,18 @@ public class Replicator {
             }
             CollectionId collectionId = new CollectionId(rsName, dbName, collectionName);
             if (collectionFilter.test(collectionId)) {
-                RecordsForCollection factory = recordMakers.forCollection(collectionId);
+                Object o2 = event.get("o2");
+                String objId = o2 != null ? objectIdLiteral(o2) : objectIdLiteralFrom(object);
+                Document fullData=null;
+                if(o2!=null && config.getBoolean(MongoDbConnectorConfig.READ_FULLDATA)) {
+                    fullData= getDocumentById(collectionId, objId);
+                    if(fullData!=null) {
+                        event.append("fullData", fullData);
+                    }else {
+                        logger.warn("Data for update operation in mongodb collection {} for key {} is null",collectionId.namespace(),objId);
+                    }
+                }
+                RecordsForCollection factory = recordMakers.forCollection(config,collectionId);
                 try {
                     factory.recordEvent(event, clock.currentTimeInMillis());
                 } catch (InterruptedException e) {
@@ -510,6 +543,55 @@ public class Replicator {
             }
         }
         return true;
+    }
+    
+    protected String objectIdLiteralFrom(Document obj) {
+        if (obj == null) {
+            return null;
+        }
+        Object id = obj.get("_id");
+        return objectIdLiteral(id);
+    }
+
+    protected String objectIdLiteral(Object id) {
+        if (id == null) {
+            return null;
+        }
+        if (id instanceof ObjectId) {
+            return ((ObjectId) id).toHexString();
+        }
+        if (id instanceof String) {
+            return (String) id;
+        }
+        if (id instanceof Document) {
+            Document doc = (Document)id;
+            if (doc.containsKey("_id") && doc.size() == 1) {
+                // This is an embedded ObjectId ...
+                return objectIdLiteral(doc.get("_id"));
+            }
+            return ((Document) id).toJson();
+        }
+        return id.toString();
+    }
+
+    
+    private Document getDocumentById(CollectionId collectionId, String id) {
+        MongoCollection<Document> collection=collectionsMap.get(collectionId);
+        if(id!=null) {
+            BasicDBObject query = null;
+            if(ObjectId.isValid(id)) {
+                query = new BasicDBObject("_id", new ObjectId(id));
+            }else {
+                query = new BasicDBObject("_id", id);
+            }
+            FindIterable<Document> findIterable = collection.find(query);
+            if (findIterable != null) {
+                return findIterable.first();
+
+            }
+        }
+        return null;
+
     }
 
     /**

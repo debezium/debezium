@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.config.Configuration;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.data.Json;
@@ -71,10 +72,10 @@ public class RecordMakers {
      * @param collectionId the identifier of the collection for which records are to be produced; may not be null
      * @return the table-specific record maker; may be null if the table is not included in the connector
      */
-    public RecordsForCollection forCollection(CollectionId collectionId) {
+    public RecordsForCollection forCollection(Configuration configuration,CollectionId collectionId) {
         return recordMakerByCollectionId.computeIfAbsent(collectionId, id -> {
             String topicName = topicSelector.getTopic(collectionId);
-            return new RecordsForCollection(collectionId, source, topicName, schemaNameValidator, valueTransformer, recorder);
+            return new RecordsForCollection(configuration,collectionId, source, topicName, schemaNameValidator, valueTransformer, recorder);
         });
     }
 
@@ -91,14 +92,16 @@ public class RecordMakers {
         private final Schema valueSchema;
         private final Function<Document, String> valueTransformer;
         private final BlockingConsumer<SourceRecord> recorder;
+        private final Configuration configuration;
 
-        protected RecordsForCollection(CollectionId collectionId, SourceInfo source, String topicName, AvroValidator validator,
+        protected RecordsForCollection(Configuration configuration,CollectionId collectionId, SourceInfo source, String topicName, AvroValidator validator,
                 Function<Document, String> valueTransformer, BlockingConsumer<SourceRecord> recorder) {
             this.sourcePartition = source.partition(collectionId.replicaSetName());
             this.collectionId = collectionId;
             this.replicaSetName = this.collectionId.replicaSetName();
             this.source = source;
             this.topicName = topicName;
+            this.configuration = configuration;
             this.keySchema = SchemaBuilder.struct()
                                           .name(validator.validate(topicName + ".Key"))
                                           .field("_id", Schema.STRING_SCHEMA)
@@ -107,6 +110,7 @@ public class RecordMakers {
                                             .name(validator.validate(topicName + ".Envelope"))
                                             .field(FieldName.AFTER, Json.builder().optional().build())
                                             .field("patch", Json.builder().optional().build())
+                                            .field("fullData", Json.builder().optional().build())
                                             .field(FieldName.SOURCE, source.schema())
                                             .field(FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
                                             .field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
@@ -139,7 +143,7 @@ public class RecordMakers {
             final Struct sourceValue = source.lastOffsetStruct(replicaSetName, id);
             final Map<String, ?> offset = source.lastOffset(replicaSetName);
             String objId = objectIdLiteralFrom(object);
-            return createRecords(sourceValue, offset, Operation.READ, objId, object, timestamp);
+            return createRecords(sourceValue, offset, Operation.READ, objId, object, timestamp,null);
         }
 
         /**
@@ -155,16 +159,17 @@ public class RecordMakers {
             final Struct sourceValue = source.offsetStructForEvent(replicaSetName, oplogEvent);
             final Map<String, ?> offset = source.lastOffset(replicaSetName);
             Document patchObj = oplogEvent.get("o", Document.class);
+            Document fullDataObj = oplogEvent.get("fullData",Document.class);
             // Updates have an 'o2' field, since the updated object in 'o' might not have the ObjectID ...
             Object o2 = oplogEvent.get("o2");
             String objId = o2 != null ? objectIdLiteral(o2) : objectIdLiteralFrom(patchObj);
             assert objId != null;
             Operation operation = operationLiterals.get(oplogEvent.getString("op"));
-            return createRecords(sourceValue, offset, operation, objId, patchObj, timestamp);
+            return createRecords(sourceValue, offset, operation, objId, patchObj, timestamp,fullDataObj);
         }
 
         protected int createRecords(Struct source, Map<String, ?> offset, Operation operation, String objId, Document objectValue,
-                                    long timestamp)
+                                    long timestamp,Document fullObjectValue)
                 throws InterruptedException {
             Integer partition = null;
             Struct key = keyFor(objId);
@@ -180,6 +185,11 @@ public class RecordMakers {
                     // The object is the idempotent patch document ...
                     String patchStr = valueTransformer.apply(objectValue);
                     value.put("patch", patchStr);
+                    if(configuration.getBoolean(MongoDbConnectorConfig.READ_FULLDATA)) {
+                        String fullDataStr = valueTransformer.apply(fullObjectValue);
+                        value.put("fullData", fullDataStr);
+                    }
+                        
                     break;
                 case DELETE:
                     // The delete event has nothing of any use, other than the _id which we already have in our key.

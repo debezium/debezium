@@ -52,7 +52,7 @@ public class RecordMakersTest {
     public void shouldAlwaysFindRecordMakerForCollection() {
         for (int i = 0; i != 100; ++i) {
             CollectionId id = new CollectionId("rs0", "dbA", "c" + i);
-            RecordsForCollection records = recordMakers.forCollection(id);
+            RecordsForCollection records = recordMakers.forCollection(null,id);
             assertThat(records).isNotNull();
             assertThat(records.collectionId()).isSameAs(id);
         }
@@ -69,7 +69,7 @@ public class RecordMakersTest {
                                        .append("ts", ts)
                                        .append("h", new Long(12345678))
                                        .append("op", "i");
-        RecordsForCollection records = recordMakers.forCollection(collectionId);
+        RecordsForCollection records = recordMakers.forCollection(null,collectionId);
         records.recordEvent(event, 1002);
         assertThat(produced.size()).isEqualTo(1);
         SourceRecord record = produced.get(0);
@@ -99,7 +99,7 @@ public class RecordMakersTest {
                                        .append("ts", ts)
                                        .append("h", new Long(12345678))
                                        .append("op", "u");
-        RecordsForCollection records = recordMakers.forCollection(collectionId);
+        RecordsForCollection records = recordMakers.forCollection(null,collectionId);
         records.recordEvent(event, 1002);
         assertThat(produced.size()).isEqualTo(1);
         SourceRecord record = produced.get(0);
@@ -129,7 +129,7 @@ public class RecordMakersTest {
                                        .append("ts", ts)
                                        .append("h", new Long(12345678))
                                        .append("op", "d");
-        RecordsForCollection records = recordMakers.forCollection(collectionId);
+        RecordsForCollection records = recordMakers.forCollection(null,collectionId);
         records.recordEvent(event, 1002);
         assertThat(produced.size()).isEqualTo(2);
 

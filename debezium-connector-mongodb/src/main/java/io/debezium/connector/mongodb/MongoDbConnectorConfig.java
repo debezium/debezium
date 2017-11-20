@@ -209,6 +209,7 @@ public class MongoDbConnectorConfig {
 
     public static final Field KAFKA_URL = Field.create("kafka.url").withDefault("localhost:9092");
     public static final Field READ_FROM_SECONDARY = Field.create("read.from.secondary").withDefault(false);
+    public static final Field READ_FULLDATA = Field.create("read.fulldata").withDefault(false);
 
     public static Field.Set ALL_FIELDS = Field.setOf(USER, PASSWORD, HOSTS, LOGICAL_NAME,
                                                      MAX_COPY_THREADS, MAX_QUEUE_SIZE, MAX_BATCH_SIZE,
@@ -220,15 +221,17 @@ public class MongoDbConnectorConfig {
                                                      COLLECTION_BLACKLIST,
                                                      AUTO_DISCOVER_MEMBERS,
                                                      DATABASE_WHITELIST,
-                                                     DATABASE_BLACKLIST);
+                                                     DATABASE_BLACKLIST,
+                                                     READ_FROM_SECONDARY,
+                                                     READ_FULLDATA);
 
     protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS;
 
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
         Field.group(config, "MongoDB", HOSTS, USER, PASSWORD, LOGICAL_NAME, CONNECT_BACKOFF_INITIAL_DELAY_MS,
-                    CONNECT_BACKOFF_MAX_DELAY_MS, MAX_FAILED_CONNECTIONS, AUTO_DISCOVER_MEMBERS);
-        Field.group(config, "Events", DATABASE_WHITELIST, DATABASE_BLACKLIST, COLLECTION_WHITELIST, COLLECTION_BLACKLIST);
+                    CONNECT_BACKOFF_MAX_DELAY_MS, MAX_FAILED_CONNECTIONS, AUTO_DISCOVER_MEMBERS,READ_FROM_SECONDARY);
+        Field.group(config, "Events", DATABASE_WHITELIST, DATABASE_BLACKLIST, COLLECTION_WHITELIST, COLLECTION_BLACKLIST,READ_FULLDATA);
         Field.group(config, "Connector", MAX_COPY_THREADS, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS);
         return config;
     }

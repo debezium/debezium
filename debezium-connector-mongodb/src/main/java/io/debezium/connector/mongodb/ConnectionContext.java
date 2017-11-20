@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.MongoCredential;
+import com.mongodb.ReadPreference;
 import com.mongodb.ReplicaSetStatus;
 import com.mongodb.ServerAddress;
 
@@ -57,6 +58,9 @@ public class ConnectionContext implements AutoCloseable {
         MongoClients.Builder clientBuilder = MongoClients.create();
         if (username != null || password != null) {
             clientBuilder.withCredential(MongoCredential.createCredential(username, adminDbName, password.toCharArray()));
+        }
+        if(config.getBoolean(MongoDbConnectorConfig.READ_FROM_SECONDARY)) {
+            clientBuilder.options().readPreference(ReadPreference.secondary());
         }
         pool = clientBuilder.build();
 
