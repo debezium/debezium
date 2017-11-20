@@ -7,9 +7,14 @@ package io.debezium.connector.mysql;
 
 import com.datapipeline.base.connector.config.DpTaskConfig;
 import com.datapipeline.base.connector.source.DpSourceConnector;
-import com.datapipeline.base.connector.task.config.MysqlSourceTaskConfig;
+import com.datapipeline.base.connector.topic.DpTopicMetaStorage;
+import com.datapipeline.base.connector.topic.TopicNameFormatter;
+import com.datapipeline.base.utils.JsonConvert;
 import com.datapipeline.clients.DpEnv;
-import com.datapipeline.clients.TopicNameFormatter;
+import com.dp.internal.bean.DataPipelineActiveBean;
+import com.dp.internal.bean.DataSourceBean;
+import com.dp.internal.bean.DataSourceWhiteListBean;
+import com.dp.internal.bean.DpSqlConnectInfoBean;
 
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
@@ -55,26 +60,38 @@ public class MySqlConnector extends DpSourceConnector {
     }
 
     @Override
-    protected Map<String, String> getConfigMap(Map<String, String> props) {
-        MysqlSourceTaskConfig sourceTaskConfig =
-                DpTaskConfig.fromConnectorProps(props, MysqlSourceTaskConfig.class);
-        Map<String, String> config = new HashMap<>(props);
+    protected void buildConfigMap(Map<String, String> config, DpTaskConfig dpTaskConfig) {
+        DataPipelineActiveBean activeBean = dpTaskConfig.getDataPipelineActiveBean();
+        DataSourceBean dataSourceBean =
+                JsonConvert.getObject(activeBean.getDataSource(), DataSourceBean.class);
+        DpSqlConnectInfoBean connectInfo =
+                JsonConvert.getObject(dataSourceBean.getConfig(), DpSqlConnectInfoBean.class);
 
-        String dpTaskId = sourceTaskConfig.getDpTaskId();
+        String dpTaskId = dpTaskConfig.getDpTaskId();
         String serverName = TopicNameFormatter.getNameBody(dpTaskId);
         String schemaChangeTopicName = TopicNameFormatter.getSchemaChangeTopicName(dpTaskId);
 
-        config.put("database.hostname", sourceTaskConfig.getHostName());
-        config.put("database.port", sourceTaskConfig.getPort());
-        config.put("database.user", sourceTaskConfig.getUserName());
-        config.put("database.password", sourceTaskConfig.getPassword());
+        config.put("database.hostname", connectInfo.getSqlHostname());
+        config.put("database.port", String.valueOf(connectInfo.getSqlPort()));
+        config.put("database.user", connectInfo.getSqlUsername());
+        config.put("database.password", connectInfo.getSqlPassword());
         config.put("snapshot.mode", "when_needed");
-        config.put("database.whitelist", sourceTaskConfig.getDbName());
-        if (isNotBlank(sourceTaskConfig.getTableWhitelist())) {
-            config.put("table.whitelist", sourceTaskConfig.getTableWhitelist());
-        }
-        if (isNotBlank(sourceTaskConfig.getTableSchemaMap())) {
-            config.put("table.schema.map", sourceTaskConfig.getTableSchemaMap());
+        config.put("database.whitelist", connectInfo.getSqlDatabase());
+
+        if (dataSourceBean.getTableWhiteLists() != null && !dataSourceBean.getTableWhiteLists().isEmpty()) {
+            List<String> tableSchemalist = new ArrayList<>();
+            List<String> tablewhitelist = new ArrayList<>();
+            for (DataSourceWhiteListBean beans : dataSourceBean.getTableWhiteLists()) {
+                if (isNotBlank(beans.getSchemaNames())) {
+                    tableSchemalist.add(
+                            String.format("%s:[%s]", beans.getSchemaNames(), String.join(",", beans.getTables())));
+                }
+                for (String tableName : beans.getTables()) {
+                    tablewhitelist.add(String.format("%s.%s", connectInfo.getSqlDatabase(), tableName));
+                }
+            }
+            config.put("table.whitelist", String.join(",", tablewhitelist));
+            config.put("table.schema.map", String.join(",", tableSchemalist));
         }
         config.put("topic.generation.mode", "merge");
         config.put("database.server.name", serverName);
@@ -83,7 +100,9 @@ public class MySqlConnector extends DpSourceConnector {
                 new DpEnv().getString(DpEnv.KAFKA_CLUSTER_ADDRESSES, "172.17.0.1:9092"));
         config.put("database.history.kafka.topic", schemaChangeTopicName);
 
-        return config;
+        String namespace = connectInfo.getSqlDatabase();
+        dpTaskConfig.getDpSchemaList().forEach(dpSchemaName ->
+                DpTopicMetaStorage.INSTANCE.register(dpTaskId, namespace, dpSchemaName));
     }
 
     @Override
