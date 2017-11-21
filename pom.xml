@@ -114,8 +114,10 @@
         <module>debezium-core</module>
         <module>debezium-embedded</module>
         <module>debezium-connector-mysql</module>
+        <!--
         <module>debezium-connector-postgres</module>
         <module>debezium-connector-mongodb</module>
+        -->
     </modules>
     <distributionManagement>
         <!--<repository>-->
