@@ -784,7 +784,7 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
                                                                 KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS);
 
     protected static ConfigDef configDef() {
-        ConfigDef config = new ConfigDef();
+        ConfigDef config = baseConfigDef();
         Field.group(config, "MySQL", HOSTNAME, PORT, USER, PASSWORD, SERVER_NAME, SERVER_ID,
                     SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD, SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER);
         Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
