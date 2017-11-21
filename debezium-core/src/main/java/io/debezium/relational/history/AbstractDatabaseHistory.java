@@ -58,7 +58,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     public final void recover(Map<String, ?> source, Map<String, ?> position, Tables schema, DdlParser ddlParser) {
         logger.debug("Recovering DDL history for source partition {} and offset {}", source, position);
         HistoryRecord stopPoint = new HistoryRecord(source, position, null, null);
-        recoverRecords(schema, ddlParser, recovered -> {
+        recoverRecords(recovered -> {
             if (comparator.isAtOrBefore(recovered, stopPoint)) {
                 String ddl = recovered.ddl();
                 if (ddl != null) {
@@ -87,7 +87,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
 
     protected abstract void storeRecord(HistoryRecord record) throws DatabaseHistoryException;
 
-    protected abstract void recoverRecords(Tables schema, DdlParser ddlParser, Consumer<HistoryRecord> records);
+    protected abstract void recoverRecords(Consumer<HistoryRecord> records);
 
     @Override
     public void stop() {
