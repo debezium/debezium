@@ -106,7 +106,7 @@ public class MySqlConnector extends DpSourceConnector {
 
     @Override
     public ConfigDef config() {
-        return MySqlConnectorConfig.configDef();
+        return MySqlConnectorConfig.baseConfigDef();
     }
 
     @Override
