@@ -130,8 +130,18 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(1);
         recordsProducer.start(consumer);
 
-        // Quoted column name
         assertInsert(INSERT_ARRAY_TYPES_STMT, schemasAndValuesForArrayTypes());
+    }
+
+    @Test
+    @FixFor("DBZ-478")
+    public void shouldReceiveChangesForNullInsertsWithArrayTypes() throws Exception {
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer);
+
+        assertInsert(INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT, schemasAndValuesForArrayTypesWithNullValues());
     }
 
     @Test

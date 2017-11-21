@@ -14,6 +14,7 @@ CREATE TABLE text_table (pk SERIAL, j JSON, jb JSONB, x XML, u Uuid, PRIMARY KEY
 CREATE TABLE geom_table (pk SERIAL, p POINT, PRIMARY KEY(pk));
 CREATE TABLE tstzrange_table (pk serial, unbounded_exclusive_range tstzrange, bounded_inclusive_range tstzrange, PRIMARY KEY(pk));
 CREATE TABLE array_table (pk SERIAL, int_array INT[], bigint_array BIGINT[], text_array TEXT[], PRIMARY KEY(pk));
+CREATE TABLE array_table_with_nulls (pk SERIAL, int_array INT[], bigint_array BIGINT[], text_array TEXT[], PRIMARY KEY(pk));
 
 DROP SCHEMA IF EXISTS "Quoted_"" . Schema" CASCADE;
 CREATE SCHEMA "Quoted_"" . Schema";
