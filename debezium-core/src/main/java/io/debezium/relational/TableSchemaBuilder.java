@@ -219,7 +219,6 @@ public class TableSchemaBuilder {
             Field[] fields = fieldsForColumns(schema, columns);
             int numFields = recordIndexes.length;
             ValueConverter[] converters = convertersForColumns(schema, tableId, columns, filter, mappers);
-            AtomicBoolean traceMessage = new AtomicBoolean(true);
             return (row) -> {
                 Struct result = new Struct(schema);
                 for (int i = 0; i != numFields; ++i) {
@@ -238,9 +237,6 @@ public class TableSchemaBuilder {
                             LOGGER.error("Failed to properly convert data value for '{}.{}' of type {} for row {}:",
                                          tableId, col.name(), col.typeName(), row, e);
                         }
-                    } else if (traceMessage.getAndSet(false)) {
-                        Column col = columns.get(i);
-                        LOGGER.trace("Excluding '{}.{}' of type {}", tableId, col.name(), col.typeName());
                     }
                 }
                 return result;
@@ -282,29 +278,49 @@ public class TableSchemaBuilder {
      */
     protected ValueConverter[] convertersForColumns(Schema schema, TableId tableId, List<Column> columns,
                                                     Predicate<ColumnId> filter, ColumnMappers mappers) {
+
         ValueConverter[] converters = new ValueConverter[columns.size()];
-        AtomicInteger i = new AtomicInteger(0);
-        columns.forEach(column -> {
-            Field field = schema.field(column.name());
-            ValueConverter converter = null;
-            if (filter == null || filter.test(new ColumnId(tableId, column.name()))) {
-                ValueConverter valueConverter = createValueConverterFor(column, field);
-                assert valueConverter != null;
-                if (mappers != null) {
-                    ValueConverter mappingConverter = mappers.mappingConverterFor(tableId, column);
-                    if (mappingConverter != null) {
-                        converter = (value) -> {
-                            if (value != null) value = valueConverter.convert(value);
-                            return mappingConverter.convert(value);
-                        };
-                    }
-                }
-                if (converter == null) converter = valueConverter;
-                assert converter != null;
+
+        for (int i = 0; i < columns.size(); i++) {
+            Column column = columns.get(i);
+
+            if (filter != null && !filter.test(new ColumnId(tableId, column.name()))) {
+                continue;
             }
-            converters[i.getAndIncrement()] = converter; // may be null if not included
-        });
+
+            ValueConverter converter = createValueConverterFor(column, schema.field(column.name()));
+            converter = wrapInMappingConverterIfNeeded(mappers, tableId, column, converter);
+
+            if (converter == null) {
+                LOGGER.warn(
+                        "No converter found for column {}.{} of type {}. The column will not be part of change events for that table.",
+                        tableId, column.name(), column.typeName());
+            }
+
+            // may be null if no converter found
+            converters[i] = converter;
+        }
+
         return converters;
+    }
+
+    private ValueConverter wrapInMappingConverterIfNeeded(ColumnMappers mappers, TableId tableId, Column column, ValueConverter converter) {
+        if (mappers == null || converter == null) {
+            return converter;
+        }
+
+        ValueConverter mappingConverter = mappers.mappingConverterFor(tableId, column);
+        if (mappingConverter == null) {
+            return converter;
+        }
+
+        return (value) -> {
+            if (value != null) {
+                value = converter.convert(value);
+            }
+
+            return mappingConverter.convert(value);
+        };
     }
 
     /**
