@@ -1381,6 +1381,19 @@ public class MySqlDdlParserTest {
         assertColumn(t, "myvalue", "INT", Types.INTEGER, -1, -1, true, false, false);
     }
 
+    @Test
+    @FixFor("DBZ-475")
+    public void parsetUserDdlStatements() {
+        String ddl =
+                "CREATE USER 'jeffrey'@'localhost' IDENTIFIED BY 'password';"
+              + "RENAME USER 'jeffrey'@'localhost' TO 'jeff'@'127.0.0.1';"
+              + "DROP USER 'jeffrey'@'localhost';"
+              + "SET PASSWORD FOR 'jeffrey'@'localhost' = 'auth_string';"
+              + "ALTER USER 'jeffrey'@'localhost' IDENTIFIED BY 'new_password' PASSWORD EXPIRE;";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(0);
+    }
+
     protected void assertParseEnumAndSetOptions(String typeExpression, String optionString) {
         List<String> options = MySqlDdlParser.parseSetAndEnumOptions(typeExpression);
         String commaSeperatedOptions = Strings.join(",", options);
