@@ -35,14 +35,12 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.document.DocumentReader;
-import io.debezium.relational.Tables;
-import io.debezium.relational.ddl.DdlParser;
 import io.debezium.util.Collect;
 
 /**
  * A {@link DatabaseHistory} implementation that records schema changes as normal {@link SourceRecord}s on the specified topic,
  * and that recovers the history by establishing a Kafka Consumer re-processing all messages on that topic.
- * 
+ *
  * @author Randall Hauch
  */
 @NotThreadSafe
@@ -121,7 +119,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                                     .withDefault(ConsumerConfig.GROUP_ID_CONFIG, dbHistoryName)
                                     .withDefault(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 1) // get even smallest message
                                     .withDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false)
-                                    .withDefault(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 10000) //readjusted since 0.10.1.0 
+                                    .withDefault(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 10000) //readjusted since 0.10.1.0
                                     .withDefault(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
                                                  OffsetResetStrategy.EARLIEST.toString().toLowerCase())
                                     .withDefault(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
@@ -177,7 +175,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     }
 
     @Override
-    protected void recoverRecords(Tables schema, DdlParser ddlParser, Consumer<HistoryRecord> records) {
+    protected void recoverRecords(Consumer<HistoryRecord> records) {
         try (KafkaConsumer<String, String> historyConsumer = new KafkaConsumer<>(consumerConfig.asProperties());) {
             // Subscribe to the only partition for this topic, and seek to the beginning of that partition ...
             logger.debug("Subscribing to database history topic '{}'", topicName);
@@ -258,7 +256,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         }
         return "Kafka topic";
     }
-    
+
     protected static String consumerConfigPropertyName(String kafkaConsumerPropertyName) {
         return CONSUMER_PREFIX + kafkaConsumerPropertyName;
     }
