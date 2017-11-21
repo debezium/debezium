@@ -1395,7 +1395,7 @@ public class MySqlDdlParser extends DdlParser {
             while (tokens.canConsume(',')) {
                 parseRenameTable(start);
             }
-        } else if (tokens.canConsumeAnyOf("DATABASE", "SCHEMA")) {
+        } else if (tokens.canConsumeAnyOf("DATABASE", "SCHEMA", "USER")) {
             // See https://dev.mysql.com/doc/refman/5.1/en/rename-database.html
             consumeRemainingStatement(start);
         }
