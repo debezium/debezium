@@ -620,11 +620,11 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.USER, "snapper")
                 .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                 .with(MySqlConnectorConfig.SERVER_ID, 28765)
-                .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+                .with(MySqlConnectorConfig.SERVER_NAME, DATABASE.getServerName())
                 .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                .with(MySqlConnectorConfig.DATABASE_WHITELIST, "connector_test")
-                .with(MySqlConnectorConfig.TABLE_WHITELIST, "connector_test.products")
+                .with(MySqlConnectorConfig.DATABASE_WHITELIST, DATABASE.getDatabaseName())
+                .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.getDatabaseName() + ".products")
                 .with(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, "{\"connector_test.products\":\"SELECT * from connector_test.products where id>=108\"}")
                 .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
@@ -640,8 +640,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
         SourceRecords records = consumeRecordsByTopic(6+2); // 6 DDL and 2 insert records
-        assertThat(records.recordsForTopic("myServer").size()).isEqualTo(6);
-        assertThat(records.recordsForTopic("myServer.connector_test.products").size()).isEqualTo(2);
+        assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(6);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("products")).size()).isEqualTo(2);
 
         // Check that all records are valid, can be serialized and deserialized ...
         records.forEach(this::validate);
