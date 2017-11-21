@@ -15,6 +15,7 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -232,7 +233,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
           newDecimal = newDecimal.setScale(column.scale());
         }
         if (isVariableScaleDecimal(column)) {
-            return VariableScaleDecimal.fromLogical(fieldDefn.schema(), (BigDecimal)newDecimal);
+            return VariableScaleDecimal.fromLogical(fieldDefn.schema(), newDecimal);
         }
         return newDecimal;
     }
@@ -409,6 +410,14 @@ public class PostgresValueConverter extends JdbcValueConverters {
     protected Object convertArray(Column column, Field fieldDefn, Object data) {
         if (data == null) {
             data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) {
+                return null;
+            }
+            else {
+                return Collections.emptyList();
+            }
         }
         // RecordStreamProducer and RecordsSnapshotProducer should ensure this arrives as a list
         if (!(data instanceof List)) {

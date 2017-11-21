@@ -91,6 +91,9 @@ public abstract class AbstractRecordsProducerTest {
     protected static final String INSERT_ARRAY_TYPES_STMT = "INSERT INTO array_table (int_array, bigint_array, text_array) " +
                                                              "VALUES ('{1,2,3}', '{1550166368505037572}', '{\"one\",\"two\",\"three\"}')";
 
+    protected static final String INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT = "INSERT INTO array_table_with_nulls (int_array, bigint_array, text_array) " +
+            "VALUES (null, null, null)";
+
     protected static final String INSERT_QUOTED_TYPES_STMT = "INSERT INTO \"Quoted_\"\" . Schema\".\"Quoted_\"\" . Table\" (\"Quoted_\"\" . Text_Column\") " +
                                                              "VALUES ('some text')";
 
@@ -98,7 +101,7 @@ public abstract class AbstractRecordsProducerTest {
                                                                  INSERT_DATE_TIME_TYPES_STMT,
                                                                  INSERT_BIN_TYPES_STMT, INSERT_GEOM_TYPES_STMT, INSERT_TEXT_TYPES_STMT,
                                                                  INSERT_CASH_TYPES_STMT, INSERT_STRING_TYPES_STMT, INSERT_ARRAY_TYPES_STMT,
-                                                                 INSERT_QUOTED_TYPES_STMT));
+                                                                 INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT, INSERT_QUOTED_TYPES_STMT));
 
     protected List<SchemaAndValueField> schemasAndValuesForNumericType() {
         return Arrays.asList(new SchemaAndValueField("si", SchemaBuilder.OPTIONAL_INT16_SCHEMA, (short) 1),
@@ -213,6 +216,14 @@ public abstract class AbstractRecordsProducerTest {
                             );
     }
 
+    protected List<SchemaAndValueField> schemasAndValuesForArrayTypesWithNullValues() {
+        return Arrays.asList(
+                new SchemaAndValueField("int_array", SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(), null),
+                new SchemaAndValueField("bigint_array", SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(), null),
+                new SchemaAndValueField("text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null)
+        );
+    }
+
     protected List<SchemaAndValueField> schemasAndValuesForQuotedTypes() {
        return Arrays.asList(new SchemaAndValueField("Quoted_\" . Text_Column", Schema.OPTIONAL_STRING_SCHEMA, "some text"));
     }
@@ -242,6 +253,8 @@ public abstract class AbstractRecordsProducerTest {
                 return schemasAndValuesForTextTypes();
             case INSERT_ARRAY_TYPES_STMT:
                 return schemasAndValuesForArrayTypes();
+            case INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT:
+                return schemasAndValuesForArrayTypesWithNullValues();
             case INSERT_QUOTED_TYPES_STMT:
                 return schemasAndValuesForQuotedTypes();
             default:
