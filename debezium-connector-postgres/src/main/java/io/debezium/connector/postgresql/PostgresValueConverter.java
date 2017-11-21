@@ -198,6 +198,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.FLOAT8_ARRAY:
             case PgOid.BOOL_ARRAY:
             case PgOid.DATE_ARRAY:
+                return data -> convertArray(column, fieldDefn, data);
+
+            // TODO DBZ-459 implement support for these array types; for now we just fall back to the default, i.e.
+            // having no converter, so to be consistent with the schema definitions above
             case PgOid.TIME_ARRAY:
             case PgOid.TIMETZ_ARRAY:
             case PgOid.TIMESTAMP_ARRAY:
@@ -217,7 +221,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.JSONB_ARRAY:
             case PgOid.JSON_ARRAY:
             case PgOid.REF_CURSOR_ARRAY:
-                return data -> convertArray(column, fieldDefn, data);
+                return super.converter(column, fieldDefn);
             default:
                 return super.converter(column, fieldDefn);
         }
