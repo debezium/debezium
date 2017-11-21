@@ -352,7 +352,7 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
                                               .withType(Type.STRING)
                                               .withWidth(Width.MEDIUM)
                                               .withImportance(Importance.HIGH)
-                                              .withValidation(Field::isRequired)
+//                                              .withValidation(Field::isRequired)
                                               .withDescription("Resolvable hostname or IP address of the MySQL database server.");
 
     public static final Field PORT = Field.create("database.port")
@@ -361,7 +361,7 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
                                           .withWidth(Width.SHORT)
                                           .withDefault(3306)
                                           .withImportance(Importance.HIGH)
-                                          .withValidation(Field::isInteger)
+//                                          .withValidation(Field::isInteger)
                                           .withDescription("Port of the MySQL database server.");
 
     public static final Field USER = Field.create("database.user")
@@ -369,7 +369,7 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
                                           .withType(Type.STRING)
                                           .withWidth(Width.SHORT)
                                           .withImportance(Importance.HIGH)
-                                          .withValidation(Field::isRequired)
+//                                          .withValidation(Field::isRequired)
                                           .withDescription("Name of the MySQL database user to be used when connecting to the database.");
 
     public static final Field PASSWORD = Field.create("database.password")
@@ -377,7 +377,7 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
                                               .withType(Type.PASSWORD)
                                               .withWidth(Width.SHORT)
                                               .withImportance(Importance.HIGH)
-                                              .withValidation(Field::isRequired)
+//                                              .withValidation(Field::isRequired)
                                               .withDescription("Password of the MySQL database user to be used when connecting to the database.");
 
     public static final Field SERVER_NAME = Field.create("database.server.name")
@@ -385,7 +385,7 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
                                                  .withType(Type.STRING)
                                                  .withWidth(Width.MEDIUM)
                                                  .withImportance(Importance.HIGH)
-                                                 .withValidation(Field::isRequired)
+//                                                 .withValidation(Field::isRequired)
                                                  .withDescription("Unique name that identifies the database server and all recorded offsets, and"
                                                          + "that is used as a prefix for all schemas and topics. "
                                                          + "Each distinct MySQL installation should have a separate namespace and monitored by "
@@ -397,7 +397,7 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
                                                .withWidth(Width.LONG)
                                                .withImportance(Importance.HIGH)
                                                .withDefault(MySqlConnectorConfig::randomServerId)
-                                               .withValidation(Field::isRequired, Field::isPositiveLong)
+//                                               .withValidation(Field::isRequired, Field::isPositiveLong)
                                                .withDescription("A numeric ID of this database client, which must be unique across all "
                                                        + "currently-running database processes in the cluster. This connector joins the "
                                                        + "MySQL database cluster as another server (with this unique ID) so it can read "
@@ -452,7 +452,7 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
                                                            .withWidth(Width.SHORT)
                                                            .withImportance(Importance.LOW)
                                                            .withDefault(true)
-                                                           .withValidation(Field::isBoolean)
+//                                                           .withValidation(Field::isBoolean)
                                                            .withDependents(DATABASE_WHITELIST_NAME)
                                                            .withDescription("Flag specifying whether built-in tables should be ignored.");
 
@@ -462,7 +462,7 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
                                                 .withWidth(Width.MEDIUM)
                                                 .withDefault(com.mysql.jdbc.Driver.class.getName())
                                                 .withImportance(Importance.LOW)
-                                                .withValidation(Field::isClassName)
+//                                                .withValidation(Field::isClassName)
                                                 .withDescription("JDBC Driver class name used to connect to the MySQL database server.");
     /**
      * A comma-separated list of regular expressions that match database names to be monitored.
@@ -486,7 +486,7 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
                                                         .withType(Type.STRING)
                                                         .withWidth(Width.LONG)
                                                         .withImportance(Importance.MEDIUM)
-                                                        .withValidation(MySqlConnectorConfig::validateDatabaseBlacklist)
+//                                                        .withValidation(MySqlConnectorConfig::validateDatabaseBlacklist)
                                                         .withInvisibleRecommender()
                                                         .withDescription("");
 
@@ -501,7 +501,7 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
                                                      .withType(Type.LIST)
                                                      .withWidth(Width.LONG)
                                                      .withImportance(Importance.HIGH)
-                                                     .withValidation(Field::isListOfRegex)
+//                                                     .withValidation(Field::isListOfRegex)
                                                      .withRecommender(TABLE_LIST_RECOMMENDER)
                                                      .withDescription("The tables for which changes are to be captured");
 
@@ -510,7 +510,7 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
                                                     .withType(Type.LIST)
                                                     .withWidth(Width.LONG)
                                                     .withImportance(Importance.LOW)
-                                                    .withValidation(Field::isListOfTableSchema)
+//                                                    .withValidation(Field::isListOfTableSchema)
                                                     .withInvisibleRecommender()
                                                     .withDescription("The tables with same schema");
 
@@ -524,7 +524,7 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
                                                      .withType(Type.STRING)
                                                      .withWidth(Width.LONG)
                                                      .withImportance(Importance.MEDIUM)
-                                                     .withValidation(Field::isListOfRegex, MySqlConnectorConfig::validateTableBlacklist)
+//                                                     .withValidation(Field::isListOfRegex, MySqlConnectorConfig::validateTableBlacklist)
                                                      .withInvisibleRecommender();
 
     /**
@@ -537,7 +537,7 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
                                                       .withType(Type.STRING)
                                                       .withWidth(Width.LONG)
                                                       .withImportance(Importance.MEDIUM)
-                                                      .withValidation(MySqlConnectorConfig::validateColumnBlacklist)
+//                                                      .withValidation(MySqlConnectorConfig::validateColumnBlacklist)
                                                       .withDescription("");
 
     /**
@@ -566,7 +566,7 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
                                                           .withType(Type.STRING)
                                                           .withWidth(Width.LONG)
                                                           .withImportance(Importance.MEDIUM)
-                                                          .withValidation(MySqlConnectorConfig::validateGtidSetExcludes)
+//                                                          .withValidation(MySqlConnectorConfig::validateGtidSetExcludes)
                                                           .withInvisibleRecommender()
                                                           .withDescription("The source UUIDs used to exclude GTID ranges when determine the starting position in the MySQL server's binlog.");
 
@@ -593,8 +593,8 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
                                                            .withWidth(Width.SHORT)
                                                            .withImportance(Importance.MEDIUM)
                                                            .withDescription("Maximum time in milliseconds to wait after trying to connect to the database before timing out.")
-                                                           .withDefault(30 * 1000)
-                                                           .withValidation(Field::isPositiveInteger);
+                                                           .withDefault(30 * 1000);
+//                                                           .withValidation(Field::isPositiveInteger);
 
     public static final Field KEEP_ALIVE = Field.create("connect.keep.alive")
                                                 .withDisplayName("Connection Timeout (ms)")
@@ -602,8 +602,8 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
                                                 .withWidth(Width.SHORT)
                                                 .withImportance(Importance.LOW)
                                                 .withDescription("Whether a separate thread should be used to ensure the connection is kept alive.")
-                                                .withDefault(true)
-                                                .withValidation(Field::isBoolean);
+                                                .withDefault(true);
+//                                                .withValidation(Field::isBoolean);
 
     public static final Field MAX_QUEUE_SIZE = Field.create("max.queue.size")
                                                     .withDisplayName("Change event buffer size")
@@ -611,8 +611,8 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
                                                     .withWidth(Width.SHORT)
                                                     .withImportance(Importance.MEDIUM)
                                                     .withDescription("Maximum size of the queue for change events read from the database log but not yet recorded or forwarded. Defaults to 2048, and should always be larger than the maximum batch size.")
-                                                    .withDefault(2048)
-                                                    .withValidation(MySqlConnectorConfig::validateMaxQueueSize);
+                                                    .withDefault(2048);
+//                                                    .withValidation(MySqlConnectorConfig::validateMaxQueueSize);
 
     public static final Field MAX_BATCH_SIZE = Field.create("max.batch.size")
                                                     .withDisplayName("Change event batch size")
@@ -620,8 +620,8 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
                                                     .withWidth(Width.SHORT)
                                                     .withImportance(Importance.MEDIUM)
                                                     .withDescription("Maximum size of each batch of source records. Defaults to 1024.")
-                                                    .withDefault(1024)
-                                                    .withValidation(Field::isPositiveInteger);
+                                                    .withDefault(1024);
+//                                                    .withValidation(Field::isPositiveInteger);
 
     public static final Field POLL_INTERVAL_MS = Field.create("poll.interval.ms")
                                                       .withDisplayName("Poll interval (ms)")
@@ -629,8 +629,8 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
                                                       .withWidth(Width.SHORT)
                                                       .withImportance(Importance.MEDIUM)
                                                       .withDescription("Frequency in milliseconds to wait for new change events to appear after receiving no events. Defaults to 1 second (1000 ms).")
-                                                      .withDefault(TimeUnit.SECONDS.toMillis(1))
-                                                      .withValidation(Field::isPositiveInteger);
+                                                      .withDefault(TimeUnit.SECONDS.toMillis(1));
+//                                                      .withValidation(Field::isPositiveInteger);
 
     public static final Field ROW_COUNT_FOR_STREAMING_RESULT_SETS = Field.create("min.row.count.to.stream.results")
                                                                          .withDisplayName("Stream result set of size")
@@ -640,8 +640,8 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
                                                                          .withDescription("The number of rows a table must contain to stream results rather than pull "
                                                                                  + "all into memory during snapshots. Defaults to 1,000. Use 0 to stream all results "
                                                                                  + "and completely avoid checking the size of each table.")
-                                                                         .withDefault(1_000)
-                                                                         .withValidation(Field::isNonNegativeLong);
+                                                                         .withDefault(1_000);
+//                                                                         .withValidation(Field::isNonNegativeLong);
 
     /**
      * The database history class is hidden in the {@link #configDef()} since that is designed to work with a user interface,
@@ -734,7 +734,7 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
     public static final Field TRUNCATE_COLUMN(int length) {
         if (length <= 0) throw new IllegalArgumentException("The truncation length must be positive");
         return Field.create("column.truncate.to." + length + ".chars")
-                    .withValidation(Field::isInteger)
+//                    .withValidation(Field::isInteger)
                     .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that should "
                             + "be truncated to " + length + " characters.");
     }
@@ -750,7 +750,7 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
     public static final Field MASK_COLUMN(int length) {
         if (length <= 0) throw new IllegalArgumentException("The mask length must be positive");
         return Field.create("column.mask.with." + length + ".chars")
-                    .withValidation(Field::isInteger)
+//                    .withValidation(Field::isInteger)
                     .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that should "
                             + "be masked with " + length + " asterisk ('*') characters.");
     }

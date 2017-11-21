@@ -5,17 +5,17 @@
  */
 package io.debezium.connector.mysql;
 
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
-
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
@@ -23,7 +23,7 @@ import io.debezium.util.LoggingContext.PreviousContext;
 
 /**
  * A Kafka Connect source task reads the MySQL binary log and generate the corresponding data change events.
- * 
+ *
  * @see MySqlConnector
  * @author Randall Hauch
  */
@@ -56,9 +56,9 @@ public final class MySqlConnectorTask extends SourceTask {
 
         // Validate the configuration ...
         final Configuration config = Configuration.from(props);
-        if (!config.validateAndRecord(MySqlConnectorConfig.ALL_FIELDS, logger::error)) {
-            throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
-        }
+//        if (!config.validateAndRecord(MySqlConnectorConfig.ALL_FIELDS, logger::error)) {
+//            throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
+//        }
 
         // Create and start the task context ...
         this.taskContext = new MySqlTaskContext(config);
@@ -149,7 +149,9 @@ public final class MySqlConnectorTask extends SourceTask {
                 // We're supposed to start with a snapshot, so set that up ...
                 SnapshotReader snapshotReader = new SnapshotReader("snapshot", taskContext);
                 snapshotReader.useMinimalBlocking(taskContext.useMinimalSnapshotLocking());
-                if (snapshotEventsAreInserts) snapshotReader.generateInsertEvents();
+                if (snapshotEventsAreInserts) {
+                    snapshotReader.generateInsertEvents();
+                }
                 readers.add(snapshotReader);
 
                 if (taskContext.isInitialSnapshotOnly()) {
@@ -218,8 +220,9 @@ public final class MySqlConnectorTask extends SourceTask {
             try {
                 logger.info("Stopping MySQL connector task");
                 // Stop the readers ...
-                if (readers != null)
-                readers.stop();
+                if (readers != null) {
+                    readers.stop();
+                }
             } finally {
                 prevLoggingContext.restore();
             }
@@ -235,7 +238,9 @@ public final class MySqlConnectorTask extends SourceTask {
         PreviousContext prevLoggingContext = this.taskContext.configureLoggingContext("task");
         try {
             // Flush and stop database history, close all JDBC connections ...
-            if (this.taskContext != null) taskContext.shutdown();
+            if (this.taskContext != null) {
+                taskContext.shutdown();
+            }
         } catch (Throwable e) {
             logger.error("Unexpected error shutting down the database history and/or closing JDBC connections", e);
         } finally {
@@ -248,13 +253,15 @@ public final class MySqlConnectorTask extends SourceTask {
     /**
      * Determine whether the binlog position as set on the {@link MySqlTaskContext#source() SourceInfo} is available in the
      * server.
-     * 
+     *
      * @return {@code true} if the server has the binlog coordinates, or {@code false} otherwise
      */
     protected boolean isBinlogAvailable() {
         String gtidStr = taskContext.source().gtidSet();
         if (gtidStr != null) {
-            if (gtidStr.trim().isEmpty()) return true; // start at beginning ...
+            if (gtidStr.trim().isEmpty()) {
+                return true; // start at beginning ...
+            }
             String availableGtidStr = taskContext.knownGtidSet();
             if (availableGtidStr == null || availableGtidStr.trim().isEmpty()) {
                 // Last offsets had GTIDs but the server does not use them ...
@@ -274,8 +281,12 @@ public final class MySqlConnectorTask extends SourceTask {
         }
 
         String binlogFilename = taskContext.source().binlogFilename();
-        if (binlogFilename == null) return true; // start at current position
-        if (binlogFilename.equals("")) return true; // start at beginning
+        if (binlogFilename == null) {
+            return true; // start at current position
+        }
+        if (binlogFilename.equals("")) {
+            return true; // start at beginning
+        }
 
         // Accumulate the available binlog filenames ...
         List<String> logNames = new ArrayList<>();
@@ -301,7 +312,7 @@ public final class MySqlConnectorTask extends SourceTask {
 
     /**
      * Determine the earliest binlog filename that is still available in the server.
-     * 
+     *
      * @return the name of the earliest binlog filename, or null if there are none.
      */
     protected String earliestBinlogFilename() {
@@ -318,13 +329,15 @@ public final class MySqlConnectorTask extends SourceTask {
             throw new ConnectException("Unexpected error while connecting to MySQL and looking for binary logs: ", e);
         }
 
-        if (logNames.isEmpty()) return null;
+        if (logNames.isEmpty()) {
+            return null;
+        }
         return logNames.get(0);
     }
 
     /**
      * Determine whether the MySQL server has GTIDs enabled.
-     * 
+     *
      * @return {@code false} if the server's {@code gtid_mode} is set and is {@code OFF}, or {@code true} otherwise
      */
     protected boolean isGtidModeEnabled() {
@@ -344,7 +357,7 @@ public final class MySqlConnectorTask extends SourceTask {
 
     /**
      * Determine whether the MySQL server has the row-level binlog enabled.
-     * 
+     *
      * @return {@code true} if the server's {@code binlog_format} is set to {@code ROW}, or {@code false} otherwise
      */
     protected boolean isRowBinlogEnabled() {
