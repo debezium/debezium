@@ -207,6 +207,12 @@ public abstract class AbstractReader implements Reader {
             throw failureException;
         }
 
+        // this reader has been stopped before it reached the success or failed end state, so clean up and abort
+        if (!running.get()) {
+            cleanupResources();
+            throw new InterruptedException( "Reader was stopped while polling" );
+        }
+
         logger.trace("Polling for next batch of records");
         List<SourceRecord> batch = new ArrayList<>(maxBatchSize);
         while (running.get() && (records.drainTo(batch, maxBatchSize) == 0) && !success.get()) {
