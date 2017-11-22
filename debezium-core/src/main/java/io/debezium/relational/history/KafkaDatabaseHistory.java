@@ -7,7 +7,6 @@ package io.debezium.relational.history;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -23,6 +22,7 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
@@ -91,8 +91,12 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     private static final String CONSUMER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "consumer.";
     private static final String PRODUCER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "producer.";
 
+    /**
+     * The one and only partition of the history topic.
+     */
+    private static final Integer PARTITION = 0;
+
     private final DocumentReader reader = DocumentReader.defaultReader();
-    private final Integer partition = 0;
     private String topicName;
     private Configuration consumerConfig;
     private Configuration producerConfig;
@@ -156,7 +160,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         }
         logger.trace("Storing record into database history: {}", record);
         try {
-            ProducerRecord<String, String> produced = new ProducerRecord<>(topicName, partition, null, record.toString());
+            ProducerRecord<String, String> produced = new ProducerRecord<>(topicName, PARTITION, null, record.toString());
             Future<RecordMetadata> future = this.producer.send(produced);
             // Flush and then wait ...
             this.producer.flush();
@@ -181,21 +185,19 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             logger.debug("Subscribing to database history topic '{}'", topicName);
             historyConsumer.subscribe(Collect.arrayListOf(topicName));
 
-            // Explicitly seek to the beginning of all assigned topic partitions ...
-            logger.debug("Seeking Kafka consumer to beginning of all assigned topic partitions");
-            historyConsumer.seekToBeginning(Collections.emptyList());
-
             // Read all messages in the topic ...
             int remainingEmptyPollResults = this.recoveryAttempts;
-            Map<Long, Long> offsetsByPartition = new HashMap<>();
-            while (remainingEmptyPollResults > 0) {
+            long lastProcessedOffset = -1;
+            long endOffset = getEndOffsetOfDbHistoryTopic(historyConsumer);
+
+            // read the topic until the end
+            while (lastProcessedOffset < endOffset - 1 && remainingEmptyPollResults > 0) {
                 ConsumerRecords<String, String> recoveredRecords = historyConsumer.poll(this.pollIntervalMs);
                 int numRecordsProcessed = 0;
+
                 for (ConsumerRecord<String, String> record : recoveredRecords) {
                     try {
-                        Long partition = new Long(record.partition());
-                        Long lastOffset = offsetsByPartition.get(partition);
-                        if (lastOffset == null || lastOffset.longValue() < record.offset()) {
+                        if (lastProcessedOffset < record.offset()) {
                             if (record.value() == null) {
                                 logger.warn("Skipping null database history record. " +
                                         "This is often not an issue, but if it happens repeatedly please check the '{}' topic.", topicName);
@@ -211,7 +213,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                                     logger.trace("Recovered database history: {}", recordObj);
                                 }
                             }
-                            offsetsByPartition.put(partition, new Long(record.offset()));
+                            lastProcessedOffset = record.offset();
                             ++numRecordsProcessed;
                         }
                     } catch (final IOException e) {
@@ -229,6 +231,17 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                     logger.debug("Processed {} records from database history", numRecordsProcessed);
                 }
             }
+        }
+    }
+
+    private long getEndOffsetOfDbHistoryTopic(KafkaConsumer<String, String> historyConsumer) {
+        Map<TopicPartition, Long> offsets = historyConsumer.endOffsets(Collections.singleton(new TopicPartition(topicName, PARTITION)));
+
+        if (offsets.isEmpty()) {
+            return Long.MAX_VALUE;
+        }
+        else {
+            return offsets.entrySet().iterator().next().getValue();
         }
     }
 
@@ -251,7 +264,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     @Override
     public String toString() {
         if (topicName != null) {
-            return "Kakfa topic " + topicName + (partition != null ? (":" + partition) : "")
+            return "Kakfa topic " + topicName + ":" + PARTITION
                     + " using brokers at " + producerConfig.getString(BOOTSTRAP_SERVERS);
         }
         return "Kafka topic";
