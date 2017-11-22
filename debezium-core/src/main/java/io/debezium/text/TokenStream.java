@@ -2604,7 +2604,9 @@ public class TokenStream {
                         while (input.hasNext()) {
                             c = input.next();
                             if (c == '\\' && input.isNext('"')) {
-                                c = input.next(); // consume the ' character since it is escaped
+                                c = input.next(); // consume the " character since it is escaped \"
+                            } else if (c == '"' && input.isNext('"')) {
+                                c = input.next(); // consume the " character since it is escaped ""
                             } else if (c == '"') {
                                 foundClosingQuote = true;
                                 break;
@@ -2625,7 +2627,9 @@ public class TokenStream {
                         while (input.hasNext()) {
                             c = input.next();
                             if (c == '\\' && input.isNext('\'')) {
-                                c = input.next(); // consume the ' character since it is escaped
+                                c = input.next(); // consume the ' character since it is escaped \'
+                            } else if (c == '\'' && input.isNext('\'')) {
+                                    c = input.next(); // consume the ' character since it is escaped ''
                             } else if (c == '\'') {
                                 foundClosingQuote = true;
                                 break;

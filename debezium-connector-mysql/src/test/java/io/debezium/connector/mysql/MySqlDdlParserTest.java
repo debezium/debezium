@@ -1048,6 +1048,15 @@ public class MySqlDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-476")
+    public void shouldParseEscapedEnumOptions() {
+        assertParseEnumAndSetOptions("ENUM('a''','b','c')", "a'',b,c");
+        assertParseEnumAndSetOptions("ENUM('a\\'','b','c')", "a\\',b,c");
+        assertParseEnumAndSetOptions("ENUM(\"a\\\"\",'b','c')", "a\\\",b,c");
+        assertParseEnumAndSetOptions("ENUM(\"a\"\"\",'b','c')", "a\"\",b,c");
+    }
+
+   @Test
     public void shouldParseSetOptions() {
         assertParseEnumAndSetOptions("SET('a','b','c')", "a,b,c");
         assertParseEnumAndSetOptions("SET('a','multi','multi with () paren', 'other')", "a,multi,multi with () paren,other");
@@ -1369,7 +1378,7 @@ public class MySqlDdlParserTest {
 
     @Test
     @FixFor("DBZ-429")
-    public void parsetTableWithNegativeDefault() {
+    public void parseTableWithNegativeDefault() {
         String ddl =
                 "CREATE TABLE t (id INT NOT NULL, myvalue INT DEFAULT -10, PRIMARY KEY (`id`));";
         parser.parse(ddl, tables);
@@ -1383,7 +1392,7 @@ public class MySqlDdlParserTest {
 
     @Test
     @FixFor("DBZ-475")
-    public void parsetUserDdlStatements() {
+    public void parseUserDdlStatements() {
         String ddl =
                 "CREATE USER 'jeffrey'@'localhost' IDENTIFIED BY 'password';"
               + "RENAME USER 'jeffrey'@'localhost' TO 'jeff'@'127.0.0.1';"
