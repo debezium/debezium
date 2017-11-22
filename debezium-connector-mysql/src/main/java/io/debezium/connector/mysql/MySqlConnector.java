@@ -91,7 +91,7 @@ public class MySqlConnector extends DpSourceConnector {
         config.put("database.server.name", serverName);
         config.put(
                 "database.history.kafka.bootstrap.servers",
-                new DpEnv().getString(DpEnv.KAFKA_CLUSTER_ADDRESSES, "172.17.0.1:9092"));
+                new DpEnv().getString(DpEnv.CONNECT_BOOTSTRAP_SERVERS, "172.17.0.1:9092"));
         config.put("database.history.kafka.topic", schemaChangeTopicName);
 
         String namespace = connectInfo.getSqlDatabase();
