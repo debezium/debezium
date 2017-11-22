@@ -13,21 +13,13 @@ import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 
 import java.math.BigDecimal;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
 import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.config.Field.Recommender;
 import io.debezium.config.Field.ValidationOutput;
-import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
-import io.debezium.relational.TableId;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.KafkaDatabaseHistory;
 
@@ -798,60 +790,60 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
         return config;
     }
 
-    protected static class DatabaseRecommender implements Recommender {
-
-        @Override
-        public List<Object> validValues(Field field, Configuration config) {
-            List<Object> databaseNames = new ArrayList<>();
-            try (MySqlJdbcContext jdbcContext = new MySqlJdbcContext(config)) {
-                JdbcConnection mysql = jdbcContext.jdbc();
-                Set<String> dbNames = mysql.readAllCatalogNames();
-                if (config.getBoolean(TABLES_IGNORE_BUILTIN)) {
-                    Filters.withoutBuiltInDatabases(dbNames).forEach(databaseNames::add);
-                } else {
-                    dbNames.forEach(databaseNames::add);
-                }
-            } catch (SQLException e) {
-                // don't do anything ...
-            }
-            return databaseNames;
-        }
-
-        @Override
-        public boolean visible(Field field, Configuration config) {
-            return true;
-        }
-    }
-
-    protected static class TableRecommender implements Recommender {
-
-        @Override
-        public List<Object> validValues(Field field, Configuration config) {
-            // Get the list of allowed databases ...
-            Filters dbFilter = new Filters(config);
-
-            List<Object> results = new ArrayList<>();
-            try (MySqlJdbcContext jdbcContext = new MySqlJdbcContext(config)) {
-                JdbcConnection mysql = jdbcContext.jdbc();
-                String[] tableTypes = new String[] { "TABLE" }; // only show MySQL physical tables
-                Collection<TableId> tableIds = mysql.readAllTableNames(tableTypes);
-                if (config.getBoolean(TABLES_IGNORE_BUILTIN)) {
-                    tableIds = Filters.withoutBuiltIns(tableIds);
-                }
-                tableIds.stream()
-                        .filter(dbFilter.tableInDatabaseFilter())
-                        .map(TableId::toString).forEach(results::add);
-            } catch (SQLException e) {
-                // don't do anything ...
-            }
-            return results;
-        }
-
-        @Override
-        public boolean visible(Field field, Configuration config) {
-            return true;
-        }
-    }
+//    protected static class DatabaseRecommender implements Recommender {
+//
+//        @Override
+//        public List<Object> validValues(Field field, Configuration config) {
+//            List<Object> databaseNames = new ArrayList<>();
+//            try (MySqlJdbcContext jdbcContext = new MySqlJdbcContext(config)) {
+//                JdbcConnection mysql = jdbcContext.jdbc();
+//                Set<String> dbNames = mysql.readAllCatalogNames();
+//                if (config.getBoolean(TABLES_IGNORE_BUILTIN)) {
+//                    Filters.withoutBuiltInDatabases(dbNames).forEach(databaseNames::add);
+//                } else {
+//                    dbNames.forEach(databaseNames::add);
+//                }
+//            } catch (SQLException e) {
+//                // don't do anything ...
+//            }
+//            return databaseNames;
+//        }
+//
+//        @Override
+//        public boolean visible(Field field, Configuration config) {
+//            return true;
+//        }
+//    }
+//
+//    protected static class TableRecommender implements Recommender {
+//
+//        @Override
+//        public List<Object> validValues(Field field, Configuration config) {
+//            // Get the list of allowed databases ...
+//            Filters dbFilter = new Filters(config);
+//
+//            List<Object> results = new ArrayList<>();
+//            try (MySqlJdbcContext jdbcContext = new MySqlJdbcContext(config)) {
+//                JdbcConnection mysql = jdbcContext.jdbc();
+//                String[] tableTypes = new String[] { "TABLE" }; // only show MySQL physical tables
+//                Collection<TableId> tableIds = mysql.readAllTableNames(tableTypes);
+//                if (config.getBoolean(TABLES_IGNORE_BUILTIN)) {
+//                    tableIds = Filters.withoutBuiltIns(tableIds);
+//                }
+//                tableIds.stream()
+//                        .filter(dbFilter.tableInDatabaseFilter())
+//                        .map(TableId::toString).forEach(results::add);
+//            } catch (SQLException e) {
+//                // don't do anything ...
+//            }
+//            return results;
+//        }
+//
+//        @Override
+//        public boolean visible(Field field, Configuration config) {
+//            return true;
+//        }
+//    }
 
     private static int validateMaxQueueSize(Configuration config, Field field, ValidationOutput problems) {
         int maxQueueSize = config.getInteger(field);

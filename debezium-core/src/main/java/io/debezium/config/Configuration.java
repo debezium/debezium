@@ -5,6 +5,10 @@
  */
 package io.debezium.config;
 
+import org.apache.kafka.common.config.ConfigValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -30,10 +34,6 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
-import org.apache.kafka.common.config.ConfigValue;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.config.Field.ValidationOutput;
@@ -1764,9 +1764,9 @@ public interface Configuration {
      */
     default boolean validate(Iterable<Field> fields, ValidationOutput problems) {
         boolean valid = true;
-        for (Field field : fields) {
-            if (!field.validate(this, problems)) valid = false;
-        }
+//        for (Field field : fields) {
+//            if (!field.validate(this, problems)) valid = false;
+//        }
         return valid;
     }
 
@@ -1819,9 +1819,9 @@ public interface Configuration {
         });
 
         // Now validate each top-level field ...
-        fields.forEachTopLevelField(field -> {
-            field.validate(this, fields::fieldWithName, configValuesByFieldName);
-        });
+//        fields.forEachTopLevelField(field -> {
+//            field.validate(this, fields::fieldWithName, configValuesByFieldName);
+//        });
 
         return configValuesByFieldName;
     }

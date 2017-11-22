@@ -5,6 +5,13 @@
  */
 package io.debezium.config;
 
+import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.ConfigDef.Importance;
+import org.apache.kafka.common.config.ConfigDef.Type;
+import org.apache.kafka.common.config.ConfigDef.Width;
+import org.apache.kafka.common.config.ConfigException;
+import org.apache.kafka.common.config.ConfigValue;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -28,27 +35,20 @@ import java.util.stream.Collectors;
 
 import javax.lang.model.SourceVersion;
 
-import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.common.config.ConfigDef.Importance;
-import org.apache.kafka.common.config.ConfigDef.Type;
-import org.apache.kafka.common.config.ConfigDef.Width;
-import org.apache.kafka.common.config.ConfigException;
-import org.apache.kafka.common.config.ConfigValue;
-
 import io.debezium.annotation.Immutable;
 import io.debezium.function.Predicates;
 import io.debezium.util.Strings;
 
 /**
  * An immutable definition of a field that make appear within a {@link Configuration} instance.
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable
 public final class Field {
     /**
      * Create a set of fields.
-     * 
+     *
      * @param fields the fields to include
      * @return the field set; never null
      */
@@ -76,7 +76,7 @@ public final class Field {
             });
             this.fieldsByName = Collections.unmodifiableMap(all);
         }
-        
+
         /**
          * Get the field with the given {Field#name() name}.
          * @param name the name of the field
@@ -93,7 +93,7 @@ public final class Field {
 
         /**
          * Get the fields in this set as an array.
-         * 
+         *
          * @return the array of fields; never null
          */
         public Field[] asArray() {
@@ -102,7 +102,7 @@ public final class Field {
 
         /**
          * Call the supplied function for each of this set's fields that have non-existent dependents.
-         * 
+         *
          * @param consumer the function; may not be null
          */
         public void forEachMissingDependent(Consumer<String> consumer) {
@@ -116,7 +116,7 @@ public final class Field {
         /**
          * Call the supplied function for each of this set's fields that are not included as dependents in other
          * fields.
-         * 
+         *
          * @param consumer the function; may not be null
          */
         public void forEachTopLevelField(Consumer<Field> consumer) {
@@ -129,7 +129,7 @@ public final class Field {
 
         /**
          * Get a new set that contains the fields in this set and those supplied.
-         * 
+         *
          * @param fields the fields to include with this set's fields
          * @return the new set; never null
          */
@@ -144,7 +144,7 @@ public final class Field {
 
         /**
          * Get a new set that contains the fields in this set and those supplied.
-         * 
+         *
          * @param fields the fields to include with this set's fields
          * @return the new set; never null
          */
@@ -164,7 +164,7 @@ public final class Field {
     public static interface ValidationOutput {
         /**
          * Accept a problem with the given value for the field.
-         * 
+         *
          * @param field the field with the value; may not be null
          * @param value the value that is not valid
          * @param problemMessage the message describing the problem; may not be null
@@ -180,7 +180,7 @@ public final class Field {
 
         /**
          * Validate the supplied value for the field, and report any problems to the designated consumer.
-         * 
+         *
          * @param config the configuration containing the field to be validated; may not be null
          * @param field the {@link Field} being validated; never null
          * @param problems the consumer to be called with each problem; never null
@@ -190,7 +190,7 @@ public final class Field {
 
         /**
          * Obtain a new {@link Validator} object that validates using this validator and the supplied validator.
-         * 
+         *
          * @param other the validation function to call after this
          * @return the new validator, or this validator if {@code other} is {@code null} or equal to {@code this}
          */
@@ -210,7 +210,7 @@ public final class Field {
     public static interface Recommender {
         /**
          * Return a set of recommended (and valid) values for the field given the current configuration values.
-         * 
+         *
          * @param field the field for which the recommended values are to be found; may not be null
          * @param config the configuration; may not be null
          * @return the list of valid values
@@ -219,7 +219,7 @@ public final class Field {
 
         /**
          * Set the visibility of the field given the current configuration values.
-         * 
+         *
          * @param field the field; may not be null
          * @param config the configuration; may not be null
          * @return {@code true} if the field is to be visible, or {@code false} otherwise
@@ -229,7 +229,7 @@ public final class Field {
 
     /**
      * Create an immutable {@link Field} instance with the given property name.
-     * 
+     *
      * @param name the name of the field; may not be null
      * @return the field; never null
      */
@@ -239,7 +239,7 @@ public final class Field {
 
     /**
      * Create an immutable {@link Field} instance with the given property name.
-     * 
+     *
      * @param name the name of the field; may not be null
      * @param displayName the display name of the field; may not be null
      * @return the field; never null
@@ -250,7 +250,7 @@ public final class Field {
 
     /**
      * Create an immutable {@link Field} instance with the given property name and description.
-     * 
+     *
      * @param name the name of the field; may not be null
      * @param displayName the display name of the field; may not be null
      * @param description the description
@@ -262,7 +262,7 @@ public final class Field {
 
     /**
      * Create an immutable {@link Field} instance with the given property name, description, and default value.
-     * 
+     *
      * @param name the name of the field; may not be null
      * @param displayName the display name of the field; may not be null
      * @param description the description
@@ -275,7 +275,7 @@ public final class Field {
 
     /**
      * Create an immutable {@link Field} instance with the given property name, description, and default value.
-     * 
+     *
      * @param name the name of the field; may not be null
      * @param displayName the display name of the field; may not be null
      * @param description the description
@@ -288,7 +288,7 @@ public final class Field {
 
     /**
      * Create an immutable {@link Field} instance with the given property name, description, and default value.
-     * 
+     *
      * @param name the name of the field; may not be null
      * @param displayName the display name of the field; may not be null
      * @param description the description
@@ -301,7 +301,7 @@ public final class Field {
 
     /**
      * Create an immutable {@link Field} instance with the given property name, description, and default value.
-     * 
+     *
      * @param name the name of the field; may not be null
      * @param displayName the display name of the field; may not be null
      * @param description the description
@@ -314,7 +314,7 @@ public final class Field {
 
     /**
      * Create an immutable {@link Field} instance with the given property name, description, and default value.
-     * 
+     *
      * @param name the name of the field; may not be null
      * @param displayName the display name of the field; may not be null
      * @param description the description
@@ -327,7 +327,7 @@ public final class Field {
 
     /**
      * Create an immutable {@link Field} instance with the given property name, description, and default value.
-     * 
+     *
      * @param name the name of the field; may not be null
      * @param displayName the display name of the field; may not be null
      * @param description the description
@@ -341,7 +341,7 @@ public final class Field {
 
     /**
      * Create an immutable {@link Field} instance with the given property name, description, and default value.
-     * 
+     *
      * @param name the name of the field; may not be null
      * @param displayName the display name of the field; may not be null
      * @param description the description
@@ -355,7 +355,7 @@ public final class Field {
 
     /**
      * Create an immutable {@link Field} instance with the given property name, description, and default value.
-     * 
+     *
      * @param name the name of the field; may not be null
      * @param displayName the display name of the field; may not be null
      * @param description the description
@@ -369,7 +369,7 @@ public final class Field {
 
     /**
      * Add this field to the given configuration definition.
-     * 
+     *
      * @param configDef the definition of the configuration; may be null if none of the fields are to be added
      * @param groupName the name of the group; may be null
      * @param fields the fields to be added as a group to the definition of the configuration
@@ -429,7 +429,7 @@ public final class Field {
 
     /**
      * Get the name of the field.
-     * 
+     *
      * @return the name; never null
      */
     public String name() {
@@ -438,7 +438,7 @@ public final class Field {
 
     /**
      * Get the default value of the field.
-     * 
+     *
      * @return the default value, or {@code null} if there is no default value
      */
     public Object defaultValue() {
@@ -447,7 +447,7 @@ public final class Field {
 
     /**
      * Get the string representation of the default value of the field.
-     * 
+     *
      * @return the default value, or {@code null} if there is no default value
      */
     public String defaultValueAsString() {
@@ -457,7 +457,7 @@ public final class Field {
 
     /**
      * Get the description of the field.
-     * 
+     *
      * @return the description; never null
      */
     public String description() {
@@ -466,7 +466,7 @@ public final class Field {
 
     /**
      * Get the display name of the field.
-     * 
+     *
      * @return the display name; never null
      */
     public String displayName() {
@@ -475,7 +475,7 @@ public final class Field {
 
     /**
      * Get the width of this field.
-     * 
+     *
      * @return the width; never null
      */
     public Width width() {
@@ -484,7 +484,7 @@ public final class Field {
 
     /**
      * Get the type of this field.
-     * 
+     *
      * @return the type; never null
      */
     public Type type() {
@@ -493,7 +493,7 @@ public final class Field {
 
     /**
      * Get the importance of this field.
-     * 
+     *
      * @return the importance; never null
      */
     public Importance importance() {
@@ -502,7 +502,7 @@ public final class Field {
 
     /**
      * Get the names of the fields that are or may be dependent upon this field.
-     * 
+     *
      * @return the list of dependents; never null but possibly empty
      */
     public List<String> dependents() {
@@ -511,7 +511,7 @@ public final class Field {
 
     /**
      * Get the validator for this field.
-     * 
+     *
      * @return the validator; may be null if there is no validator
      */
     public Validator validator() {
@@ -520,7 +520,7 @@ public final class Field {
 
     /**
      * Get the {@link Recommender} for this field.
-     * 
+     *
      * @return the recommender; may be null if there is no recommender
      */
     public Recommender recommender() {
@@ -529,22 +529,23 @@ public final class Field {
 
     /**
      * Validate the supplied value for this field, and report any problems to the designated consumer.
-     * 
+     *
      * @param config the field values keyed by their name; may not be null
      * @param problems the consumer to be called with each problem; never null
      * @return {@code true} if the value is considered valid, or {@code false} if it is not valid
      */
     public boolean validate(Configuration config, ValidationOutput problems) {
-        Validator typeValidator = validatorForType(type);
-        int errors = 0;
-        if (typeValidator != null) errors += typeValidator.validate(config, this, problems);
-        if (validator != null) errors += validator.validate(config, this, problems);
-        return errors == 0;
+//        Validator typeValidator = validatorForType(type);
+//        int errors = 0;
+//        if (typeValidator != null) errors += typeValidator.validate(config, this, problems);
+//        if (validator != null) errors += validator.validate(config, this, problems);
+//        return errors == 0;
+        return true;
     }
 
     /**
      * Validate this field in the supplied configuration, updating the {@link ConfigValue} for the field with the results.
-     * 
+     *
      * @param config the configuration to be validated; may not be null
      * @param fieldSupplier the supplier for dependent fields by name; may not be null
      * @param results the set of configuration results keyed by field name; may not be null
@@ -575,7 +576,7 @@ public final class Field {
                 value.addErrorMessage(e.getMessage());
             }
         }
-        
+
         // Do the same for any dependents ...
         dependents.forEach(name->{
             Field dependentField = fieldSupplier.apply(name);
@@ -587,7 +588,7 @@ public final class Field {
 
     /**
      * Create and return a new Field instance that is a copy of this field but with the given description.
-     * 
+     *
      * @param description the new description for the new field
      * @return the new field; never null
      */
@@ -598,7 +599,7 @@ public final class Field {
 
     /**
      * Create and return a new Field instance that is a copy of this field but with the given display name.
-     * 
+     *
      * @param displayName the new display name for the field
      * @return the new field; never null
      */
@@ -609,7 +610,7 @@ public final class Field {
 
     /**
      * Create and return a new Field instance that is a copy of this field but with the given width.
-     * 
+     *
      * @param width the new width for the field
      * @return the new field; never null
      */
@@ -620,7 +621,7 @@ public final class Field {
 
     /**
      * Create and return a new Field instance that is a copy of this field but with the given type.
-     * 
+     *
      * @param type the new type for the field
      * @return the new field; never null
      */
@@ -634,7 +635,7 @@ public final class Field {
      * {@link org.apache.kafka.connect.data.Schema.Type#STRING}, a {@link #withRecommender(Recommender) recommender}
      * that returns a list of {@link Enum#name() Enum names} as valid values, and a validator that verifies values are valid
      * enumeration names.
-     * 
+     *
      * @param enumType the enumeration type for the field
      * @return the new field; never null
      */
@@ -647,7 +648,7 @@ public final class Field {
      * {@link org.apache.kafka.connect.data.Schema.Type#STRING}, a {@link #withRecommender(Recommender) recommender}
      * that returns a list of {@link Enum#name() Enum names} as valid values, and a validator that verifies values are valid
      * enumeration names.
-     * 
+     *
      * @param enumType the enumeration type for the field
      * @param defaultOption the default enumeration value; may be null
      * @return the new field; never null
@@ -663,7 +664,7 @@ public final class Field {
 
     /**
      * Create and return a new Field instance that is a copy of this field but with the given importance.
-     * 
+     *
      * @param importance the new importance for the field
      * @return the new field; never null
      */
@@ -674,7 +675,7 @@ public final class Field {
 
     /**
      * Create and return a new Field instance that is a copy of this field but with the given display name.
-     * 
+     *
      * @param dependents the names of the fields that depend on this field
      * @return the new field; never null
      */
@@ -685,7 +686,7 @@ public final class Field {
 
     /**
      * Create and return a new Field instance that is a copy of this field but with the given default value.
-     * 
+     *
      * @param defaultValue the new default value for the new field
      * @return the new field; never null
      */
@@ -696,7 +697,7 @@ public final class Field {
 
     /**
      * Create and return a new Field instance that is a copy of this field but with the given default value.
-     * 
+     *
      * @param defaultValue the new default value for the new field
      * @return the new field; never null
      */
@@ -707,7 +708,7 @@ public final class Field {
 
     /**
      * Create and return a new Field instance that is a copy of this field but with the given default value.
-     * 
+     *
      * @param defaultValue the new default value for the new field
      * @return the new field; never null
      */
@@ -718,7 +719,7 @@ public final class Field {
 
     /**
      * Create and return a new Field instance that is a copy of this field but with the given default value.
-     * 
+     *
      * @param defaultValue the new default value for the new field
      * @return the new field; never null
      */
@@ -729,7 +730,7 @@ public final class Field {
 
     /**
      * Create and return a new Field instance that is a copy of this field but with the given default value.
-     * 
+     *
      * @param defaultValueGenerator the supplier for the new default value for the new field, called whenever a default value
      *            is needed
      * @return the new field; never null
@@ -741,7 +742,7 @@ public final class Field {
 
     /**
      * Create and return a new Field instance that is a copy of this field but with the given default value.
-     * 
+     *
      * @param defaultValueGenerator the supplier for the new default value for the new field, called whenever a default value
      *            is needed
      * @return the new field; never null
@@ -753,7 +754,7 @@ public final class Field {
 
     /**
      * Create and return a new Field instance that is a copy of this field but with the given default value.
-     * 
+     *
      * @param defaultValueGenerator the supplier for the new default value for the new field, called whenever a default value
      *            is needed
      * @return the new field; never null
@@ -765,7 +766,7 @@ public final class Field {
 
     /**
      * Create and return a new Field instance that is a copy of this field but with the given recommender.
-     * 
+     *
      * @param recommender the recommender; may be null
      * @return the new field; never null
      */
@@ -773,14 +774,14 @@ public final class Field {
         return new Field(name(), displayName(), type(), width, description(), importance(), dependents,
                 defaultValueGenerator, validator, recommender);
     }
-    
+
     public Field withInvisibleRecommender() {
         return withRecommender(new InvisibleRecommender());
     }
 
     /**
      * Create and return a new Field instance that is a copy of this field but that uses no validation.
-     * 
+     *
      * @return the new field; never null
      */
     public Field withNoValidation() {
@@ -791,7 +792,7 @@ public final class Field {
     /**
      * Create and return a new Field instance that is a copy of this field but that in addition to {@link #validator() existing
      * validation} the supplied validation function(s) are also used.
-     * 
+     *
      * @param validators the additional validation function(s); may be null
      * @return the new field; never null
      */
@@ -848,7 +849,7 @@ public final class Field {
 
         /**
          * A validator that checks both the upper and lower bound.
-         * 
+         *
          * @param min the minimum acceptable value; may not be null
          * @param max the maximum acceptable value; may not be null
          * @return the validator; never null
