@@ -228,6 +228,9 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
             case "_json":
             case "_ref_cursor":
                 try {
+                    if (rawValue.isNull()) {
+                        return null;
+                    }
                     final String dataString = rawValue.asString();
                     PgArray arrayData = new PgArray(connection.get(), Oid.valueOf(columnType.substring(1) + "_array"), dataString);
                     Object deserializedArray = arrayData.getArray();
