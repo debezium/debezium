@@ -344,8 +344,8 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
     private static final String TABLE_IGNORE_BUILTIN_NAME = "table.ignore.builtin";
     private static final String TABLE_SCHEMA_NAME = "table.schema.map";
-    private static final TableRecommender TABLE_LIST_RECOMMENDER = new TableRecommender();
-    private static final DatabaseRecommender DATABASE_LIST_RECOMMENDER = new DatabaseRecommender();
+//    private static final TableRecommender TABLE_LIST_RECOMMENDER = new TableRecommender();
+//    private static final DatabaseRecommender DATABASE_LIST_RECOMMENDER = new DatabaseRecommender();
 
     public static final Field HOSTNAME = Field.create("database.hostname")
                                               .withDisplayName("Hostname")
@@ -473,7 +473,7 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
                                                         .withType(Type.LIST)
                                                         .withWidth(Width.LONG)
                                                         .withImportance(Importance.HIGH)
-                                                        .withRecommender(DATABASE_LIST_RECOMMENDER)
+//                                                        .withRecommender(DATABASE_LIST_RECOMMENDER)
                                                         .withDependents(TABLE_WHITELIST_NAME)
                                                         .withDescription("The databases for which changes are to be captured");
 
@@ -502,7 +502,7 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
                                                      .withWidth(Width.LONG)
                                                      .withImportance(Importance.HIGH)
 //                                                     .withValidation(Field::isListOfRegex)
-                                                     .withRecommender(TABLE_LIST_RECOMMENDER)
+//                                                     .withRecommender(TABLE_LIST_RECOMMENDER)
                                                      .withDescription("The tables for which changes are to be captured");
 
     public static final Field TABLE_SCHEMA = Field.create(TABLE_SCHEMA_NAME)
@@ -551,7 +551,7 @@ public class MySqlConnectorConfig extends SourceConnectorBaseConfig {
                                                           .withType(Type.LIST)
                                                           .withWidth(Width.LONG)
                                                           .withImportance(Importance.HIGH)
-                                                          .withRecommender(DATABASE_LIST_RECOMMENDER)
+//                                                          .withRecommender(DATABASE_LIST_RECOMMENDER)
                                                           .withDependents(TABLE_WHITELIST_NAME)
                                                           .withDescription("The source UUIDs used to include GTID ranges when determine the starting position in the MySQL server's binlog.");
 
