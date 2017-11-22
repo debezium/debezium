@@ -7,7 +7,6 @@ package io.debezium.connector.mysql;
 
 import com.datapipeline.base.connector.config.DpTaskConfig;
 import com.datapipeline.base.connector.source.DpSourceConnector;
-import com.datapipeline.base.connector.topic.DpTopicMetaStorage;
 import com.datapipeline.base.connector.topic.TopicNameFormatter;
 import com.datapipeline.base.utils.JsonConvert;
 import com.datapipeline.clients.DpEnv;
@@ -93,10 +92,6 @@ public class MySqlConnector extends DpSourceConnector {
                 "database.history.kafka.bootstrap.servers",
                 new DpEnv().getString(DpEnv.CONNECT_BOOTSTRAP_SERVERS, "172.17.0.1:9092"));
         config.put("database.history.kafka.topic", schemaChangeTopicName);
-
-        String namespace = connectInfo.getSqlDatabase();
-        dpTaskConfig.getDpSchemaList().forEach(dpSchemaName ->
-                DpTopicMetaStorage.INSTANCE.register(dpTaskId, namespace, dpSchemaName));
     }
 
     @Override
