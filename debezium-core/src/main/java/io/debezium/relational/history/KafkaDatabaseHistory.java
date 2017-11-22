@@ -82,7 +82,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                                                             .withImportance(Importance.LOW)
                                                             .withDescription("The number of attempts in a row that no data are returned from Kafka before recover completes. "
                                                                     + "The maximum amount of time to wait after receiving no data is (recovery.attempts) x (recovery.poll.interval.ms).")
-                                                            .withDefault(4)
+                                                            .withDefault(100)
                                                             .withValidation(Field::isInteger);
 
     public static Field.Set ALL_FIELDS = Field.setOf(TOPIC, BOOTSTRAP_SERVERS, DatabaseHistory.NAME,
@@ -101,7 +101,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     private Configuration consumerConfig;
     private Configuration producerConfig;
     private volatile KafkaProducer<String, String> producer;
-    private int recoveryAttempts = -1;
+    private int maxRecoveryAttempts;
     private int pollIntervalMs = -1;
 
     @Override
@@ -112,7 +112,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         }
         this.topicName = config.getString(TOPIC);
         this.pollIntervalMs = config.getInteger(RECOVERY_POLL_INTERVAL_MS);
-        this.recoveryAttempts = config.getInteger(RECOVERY_POLL_ATTEMPTS);
+        this.maxRecoveryAttempts = config.getInteger(RECOVERY_POLL_ATTEMPTS);
 
         String bootstrapServers = config.getString(BOOTSTRAP_SERVERS);
         // Copy the relevant portions of the configuration and add useful defaults ...
@@ -186,12 +186,19 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             historyConsumer.subscribe(Collect.arrayListOf(topicName));
 
             // Read all messages in the topic ...
-            int remainingEmptyPollResults = this.recoveryAttempts;
             long lastProcessedOffset = -1;
-            long endOffset = getEndOffsetOfDbHistoryTopic(historyConsumer);
+            Long endOffset = null;
+            int recoveryAttempts = 0;
 
             // read the topic until the end
-            while (lastProcessedOffset < endOffset - 1 && remainingEmptyPollResults > 0) {
+            do {
+                if (recoveryAttempts > maxRecoveryAttempts) {
+                    throw new IllegalStateException("The database history couldn't be recovered. Consider to increase the value for " + RECOVERY_POLL_INTERVAL_MS.name());
+                }
+
+                endOffset = getEndOffsetOfDbHistoryTopic(endOffset, historyConsumer);
+                logger.debug("End offset of database history topic is {}", endOffset);
+
                 ConsumerRecords<String, String> recoveredRecords = historyConsumer.poll(this.pollIntervalMs);
                 int numRecordsProcessed = 0;
 
@@ -224,25 +231,31 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                     }
                 }
                 if (numRecordsProcessed == 0) {
-                    --remainingEmptyPollResults;
-                    logger.debug("No new records found in the database history; will retry {} more times", remainingEmptyPollResults);
+                    logger.debug("No new records found in the database history; will retry");
                 } else {
-                    remainingEmptyPollResults = this.recoveryAttempts;
                     logger.debug("Processed {} records from database history", numRecordsProcessed);
                 }
+
+                recoveryAttempts++;
             }
+            while (lastProcessedOffset < endOffset - 1);
         }
     }
 
-    private long getEndOffsetOfDbHistoryTopic(KafkaConsumer<String, String> historyConsumer) {
+    private Long getEndOffsetOfDbHistoryTopic(Long previousEndOffset, KafkaConsumer<String, String> historyConsumer) {
         Map<TopicPartition, Long> offsets = historyConsumer.endOffsets(Collections.singleton(new TopicPartition(topicName, PARTITION)));
+        Long endOffset = offsets.entrySet().iterator().next().getValue();
 
-        if (offsets.isEmpty()) {
-            return Long.MAX_VALUE;
+        // The end offset should never change during recovery; doing this check here just as - a rather weak - attempt
+        // to spot other connectors that share the same history topic accidentally
+        if(previousEndOffset != null && !previousEndOffset.equals(endOffset)) {
+            throw new IllegalStateException("Detected changed end offset of database history topic (previous: "
+                    + previousEndOffset + ", current: " + endOffset
+                    + "). Make sure that the same history topic isn't shared by multiple connector instances."
+            );
         }
-        else {
-            return offsets.entrySet().iterator().next().getValue();
-        }
+
+        return endOffset;
     }
 
     @Override
