@@ -605,7 +605,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldUseSpecificSelectStatementDuringSnapshotting() throws SQLException, InterruptedException {
+    public void shouldUseOverriddenSelectStatementDuringSnapshotting() throws SQLException, InterruptedException {
         String masterPort = System.getProperty("database.port");
         String replicaPort = System.getProperty("database.replica.port");
         boolean replicaIsMaster = masterPort.equals(replicaPort);
@@ -625,7 +625,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_WHITELIST, DATABASE.getDatabaseName())
                 .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.getDatabaseName() + ".products")
-                .with(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, "{\"connector_test.products\":\"SELECT * from connector_test.products where id>=108\"}")
+                .with(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, DATABASE.getDatabaseName()+".products")
+                .with(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE+"."+DATABASE.getDatabaseName()+".products", String.format("SELECT * from %s.products where id>=108 order by id", DATABASE.getDatabaseName()))
                 .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
@@ -642,6 +643,63 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         SourceRecords records = consumeRecordsByTopic(6+2); // 6 DDL and 2 insert records
         assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(6);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("products")).size()).isEqualTo(2);
+
+        //check that only the expected records are retrieved, in-order
+        assertThat( ((Struct) records.recordsForTopic(DATABASE.topicForTable("products")).get(0).key()).getInt32("id")).isEqualTo(108);
+        assertThat( ((Struct) records.recordsForTopic(DATABASE.topicForTable("products")).get(1).key()).getInt32("id")).isEqualTo(109);
+
+        // Check that all records are valid, can be serialized and deserialized ...
+        records.forEach(this::validate);
+    }
+
+    @Test
+    public void shouldUseMultipleOverriddenSelectStatementsDuringSnapshotting() throws SQLException, InterruptedException {
+        String masterPort = System.getProperty("database.port");
+        String replicaPort = System.getProperty("database.replica.port");
+        boolean replicaIsMaster = masterPort.equals(replicaPort);
+        if (!replicaIsMaster) {
+            // Give time for the replica to catch up to the master ...
+            Thread.sleep(5000L);
+        }
+
+        String tables=String.format("%s.products,%s.products_on_hand", DATABASE.getDatabaseName(), DATABASE.getDatabaseName());
+        config = Configuration.create()
+                .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname"))
+                .with(MySqlConnectorConfig.PORT, System.getProperty("database.replica.port"))
+                .with(MySqlConnectorConfig.USER, "snapper")
+                .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
+                .with(MySqlConnectorConfig.SERVER_ID, 28765)
+                .with(MySqlConnectorConfig.SERVER_NAME, DATABASE.getServerName())
+                .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
+                .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MySqlConnectorConfig.DATABASE_WHITELIST, DATABASE.getDatabaseName())
+                .with(MySqlConnectorConfig.TABLE_WHITELIST, tables)
+                .with(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, tables)
+                .with(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE+"."+DATABASE.getDatabaseName()+".products", String.format("SELECT * from %s.products where id>=108 order by id", DATABASE.getDatabaseName()))
+                .with(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE+"."+DATABASE.getDatabaseName()+".products_on_hand", String.format("SELECT * from %s.products_on_hand where product_id>=108 order by product_id", DATABASE.getDatabaseName()))
+                .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        Testing.Print.enable();
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        SourceRecords records = consumeRecordsByTopic(8+4); // 8 DDL and 4 insert records
+        assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(8);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("products")).size()).isEqualTo(2);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("products_on_hand")).size()).isEqualTo(2);
+
+        //check that only the expected records are retrieved, in-order
+        assertThat( ((Struct) records.recordsForTopic(DATABASE.topicForTable("products")).get(0).key()).getInt32("id")).isEqualTo(108);
+        assertThat( ((Struct) records.recordsForTopic(DATABASE.topicForTable("products")).get(1).key()).getInt32("id")).isEqualTo(109);
+        assertThat( ((Struct) records.recordsForTopic(DATABASE.topicForTable("products_on_hand")).get(0).key()).getInt32("product_id")).isEqualTo(108);
+        assertThat( ((Struct) records.recordsForTopic(DATABASE.topicForTable("products_on_hand")).get(1).key()).getInt32("product_id")).isEqualTo(109);
 
         // Check that all records are valid, can be serialized and deserialized ...
         records.forEach(this::validate);
