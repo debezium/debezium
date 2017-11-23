@@ -5,11 +5,9 @@
  */
 package io.debezium.connector.mysql;
 
-import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Schema;
@@ -19,14 +17,13 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
-import io.debezium.connector.mysql.MySqlConnectorConfig.DecimalHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.BigIntUnsignedHandlingMode;
+import io.debezium.connector.mysql.MySqlConnectorConfig.DecimalHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.TemporalPrecisionMode;
 import io.debezium.connector.mysql.MySqlSystemVariables.Scope;
 import io.debezium.document.Document;
-import io.debezium.jdbc.JdbcConnection;
-import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
+import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
@@ -55,7 +52,7 @@ import io.debezium.util.Collect;
  * caller is able to supply a {@link DatabaseStatementStringConsumer consumer function} that will be called with the DDL
  * statements and the database to which they apply, grouped by database names. However, these will only be called based when the
  * databases are included by the database filters defined in the {@link MySqlConnectorConfig MySQL connector configuration}.
- * 
+ *
  * @author Randall Hauch
  */
 @NotThreadSafe
@@ -78,7 +75,7 @@ public class MySqlSchema {
 
     /**
      * Create a schema component given the supplied {@link MySqlConnectorConfig MySQL connector configuration}.
-     * 
+     *
      * @param config the connector configuration, which is presumed to be valid
      * @param serverName the name of the server
      * @param gtidFilter the predicate function that should be applied to GTID sets in database history, and which
@@ -126,7 +123,7 @@ public class MySqlSchema {
                                               .edit()
                                               .withDefault(DatabaseHistory.NAME, connectorName + "-dbhistory")
                                               .build();
-        
+
         // Set up a history record comparator that uses the GTID filter ...
         this.historyComparator = new HistoryRecordComparator() {
             @Override
@@ -159,7 +156,7 @@ public class MySqlSchema {
 
     /**
      * Get the {@link Filters database and table filters} defined by the configuration.
-     * 
+     *
      * @return the filters; never null
      */
     public Filters filters() {
@@ -170,7 +167,7 @@ public class MySqlSchema {
      * Get all of the table definitions for all database tables as defined by
      * {@link #applyDdl(SourceInfo, String, String, DatabaseStatementStringConsumer) applied DDL statements}, excluding those
      * that have been excluded by the {@link #filters() filters}.
-     * 
+     *
      * @return the table definitions; never null
      */
     public Tables tables() {
@@ -180,7 +177,7 @@ public class MySqlSchema {
     /**
      * Get the {@link TableSchema Schema information} for the table with the given identifier, if that table exists and is
      * included by the {@link #filters() filter}.
-     * 
+     *
      * @param id the fully-qualified table identifier; may be null
      * @return the current table definition, or null if there is no table with the given identifier, if the identifier is null,
      *         or if the table has been excluded by the filters
@@ -195,7 +192,7 @@ public class MySqlSchema {
      * <p>
      * Note that the {@link Schema} will not contain any columns that have been {@link MySqlConnectorConfig#COLUMN_BLACKLIST
      * filtered out}.
-     * 
+     *
      * @param id the fully-qualified table identifier; may be null
      * @return the schema information, or null if there is no table with the given identifier, if the identifier is null,
      *         or if the table has been excluded by the filters
@@ -206,7 +203,7 @@ public class MySqlSchema {
 
     /**
      * Get the information about where the DDL statement history is recorded.
-     * 
+     *
      * @return the history description; never null
      */
     public String historyLocation() {
@@ -215,7 +212,7 @@ public class MySqlSchema {
 
     /**
      * Set the system variables on the DDL parser.
-     * 
+     *
      * @param variables the system variables; may not be null but may be empty
      */
     public void setSystemVariables(Map<String, String> variables) {
@@ -226,78 +223,11 @@ public class MySqlSchema {
 
     /**
      * Get the system variables as known by the DDL parser.
-     * 
+     *
      * @return the system variables; never null
      */
     public MySqlSystemVariables systemVariables() {
         return ddlParser.systemVariables();
-    }
-
-    /**
-     * Load the schema for the databases using JDBC database metadata. If there are changes relative to any
-     * table definitions that existed when this method is called, those changes are recorded in the database history
-     * and the {@link #schemaFor(TableId) schemas} for the affected tables are updated.
-     * 
-     * @param jdbc the JDBC connection; may not be null
-     * @param source the source information that should be recorded with the history; may not be null
-     * @throws SQLException if there is a failure reading the JDBC database metadata
-     */
-    public void loadFromDatabase(JdbcConnection jdbc, SourceInfo source) throws SQLException {
-        changeTablesAndRecordInHistory(source, () -> {
-            jdbc.readSchema(tables(), null, null, filters.tableNameFilter(), null, true);
-            return null;
-        });
-    }
-
-    /**
-     * Apply the given function to change or alter the current set of table definitions, and record the new state of the table
-     * definitions in the database history by dropping tables that were removed and dropping and re-creating tables that were
-     * changed.
-     * <p>
-     * This method is written this way so that the complex logic can be easily tested without actually requiring a database.
-     * 
-     * @param source the source information that should be recorded with the history; may not be null
-     * @param changeFunction the function that changes the table definitions and returns {@code true} if at least one table
-     *            definition was modified in some way; may not be null
-     * @throws SQLException if there is a failure reading the JDBC database metadata
-     */
-    protected void changeTablesAndRecordInHistory(SourceInfo source, Callable<Void> changeFunction) throws SQLException {
-        StringBuilder ddl = new StringBuilder();
-
-        // Drain from the table definitions any existing changes so we can track what changes were made ...
-        tables().drainChanges();
-
-        // Make a copy of the table definitions in case something goes wrong ...
-        Tables copy = tables().clone();
-
-        // Now apply the changes ...
-        try {
-            changeFunction.call();
-        } catch (Exception e) {
-            this.tables = copy;
-            if (e instanceof SQLException) throw (SQLException) e;
-            this.logger.error("Unexpected error whle changing model of MySQL schemas: {}", e.getMessage(), e);
-        }
-
-        // At least one table has changed or was removed, so first refresh the Kafka Connect schemas ...
-        refreshSchemas();
-
-        // For each table definition that changed, record a DROP TABLE and CREATE TABLE to the history ...
-        tables().drainChanges().forEach(changedTableId -> {
-            Table table = tables().forTable(changedTableId);
-            appendDropTableStatement(ddl, table.id());
-            if (table != null) {
-                // The table definition was found, so recreate it ...
-                appendCreateTableStatement(ddl, table);
-            }
-        });
-
-        // Finally record the DDL statements into the history ...
-        try {
-            dbHistory.record(source.partition(), source.offset(), "", tables(), ddl.toString());
-        } catch (Throwable e) {
-            throw new ConnectException("Error recording the DDL statement in the database history " + dbHistory + ": " + ddl, e);
-        }
     }
 
     protected void appendDropTableStatement(StringBuilder sb, TableId tableId) {
@@ -311,7 +241,7 @@ public class MySqlSchema {
     /**
      * Load the database schema information using the previously-recorded history, and stop reading the history when the
      * the history reaches the supplied starting point.
-     * 
+     *
      * @param startingPoint the source information with the current {@link SourceInfo#partition()} and {@link SourceInfo#offset()
      *            offset} at which the database schemas are to reflect; may not be null
      */
@@ -340,7 +270,7 @@ public class MySqlSchema {
      * <p>
      * Typically DDL statements are applied using a connection to a single database, and unless the statements use fully-qualified
      * names, the DDL statements apply to this database.
-     * 
+     *
      * @param source the current {@link SourceInfo#partition()} and {@link SourceInfo#offset() offset} at which these changes are
      *            found; may not be null
      * @param databaseName the name of the default database under which these statements are applied; may not be null
