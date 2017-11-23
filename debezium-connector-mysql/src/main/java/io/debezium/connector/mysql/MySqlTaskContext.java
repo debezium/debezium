@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.mysql;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -14,8 +13,6 @@ import java.util.function.Predicate;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.function.Predicates;
@@ -40,7 +37,6 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     private final Predicate<String> gtidSourceFilter;
     private final Predicate<String> ddlFilter;
     private final Clock clock = Clock.system();
-    private final ObjectMapper jsonObjectMapper = new ObjectMapper();
     private Map<String, String> snapshotSelectOverridesByTable;
 
     public MySqlTaskContext(Configuration config) {
@@ -222,15 +218,11 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     public Optional<String> getSnapshotSelectOverride(String tableId) {
         if (snapshotSelectOverridesByTable == null) {
             snapshotSelectOverridesByTable = new HashMap<>();
-            String overridesInJson = config.getString(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, ()->null);
-            if (overridesInJson != null) {
-                TypeReference<HashMap<String, String>> typeRef = new TypeReference<HashMap<String, String>>() {};
-                try {
-                    snapshotSelectOverridesByTable = jsonObjectMapper.readValue(overridesInJson, typeRef);
-                } catch (IOException ioe) {
-                    logger.warn(String.format("Failed to parse value of %s as JSON. Value is: %s",
-                            MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
-                            overridesInJson));
+            String tableList = config.getString(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, () -> null);
+            if (tableList != null) {
+                for (String table : tableList.split(",")) {
+                    String overrideKey = MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table;
+                    snapshotSelectOverridesByTable.put(table, config.getString(overrideKey));
                 }
             }
         }
