@@ -3,6 +3,7 @@
 -- Generate a number of tables to cover as many of the PG types as possible
 DROP SCHEMA IF EXISTS public CASCADE;
 CREATE SCHEMA public;
+-- load contrib extensions for testing non-builtin types
 CREATE EXTENSION IF NOT EXISTS ltree SCHEMA public;
 CREATE EXTENSION IF NOT EXISTS isn SCHEMA public;
 
@@ -18,7 +19,7 @@ CREATE TABLE geom_table (pk SERIAL, p POINT, PRIMARY KEY(pk));
 CREATE TABLE tstzrange_table (pk serial, unbounded_exclusive_range tstzrange, bounded_inclusive_range tstzrange, PRIMARY KEY(pk));
 CREATE TABLE array_table (pk SERIAL, int_array INT[], bigint_array BIGINT[], text_array TEXT[], PRIMARY KEY(pk));
 CREATE TABLE array_table_with_nulls (pk SERIAL, int_array INT[], bigint_array BIGINT[], text_array TEXT[], PRIMARY KEY(pk));
-CREATE TABLE custom_table (pk serial, lt ltree, i isbn, PRIMARY KEY(pk));
+CREATE TABLE custom_table (pk serial, lt ltree, i isbn, n TEXT, PRIMARY KEY(pk));
 
 DROP SCHEMA IF EXISTS "Quoted_"" . Schema" CASCADE;
 CREATE SCHEMA "Quoted_"" . Schema";

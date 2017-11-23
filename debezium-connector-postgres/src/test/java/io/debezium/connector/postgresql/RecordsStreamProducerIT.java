@@ -109,13 +109,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer.expects(1);
         assertInsert(INSERT_TSTZRANGE_TYPES_STMT, schemaAndValuesForTstzRangeTypes());
 
-        // custom types
+        // custom types + null value
         consumer.expects(1);
         assertInsert(INSERT_CUSTOM_TYPES_STMT, schemasAndValuesForCustomTypes());
-
-        // null data
-        consumer.expects(1);
-        assertInsert(INSERT_BIN_TYPES_STMT, schemaAndValuesForBinTypesNull());
     }
 
     @Test
