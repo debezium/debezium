@@ -151,6 +151,11 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
      * @return the value; may be null
      */
     public Object getValue(String columnName, String columnType, Value rawValue, final PgConnectionSupplier connection) {
+        if (rawValue.isNull()) {
+            // nulls are null
+            return null;
+        }
+
         // we support wal2json both before & after commit 0255f2ac, which means we may get old-style type names
         // (eg. int2, timetz, varchar, numeric, _int4)
         // or new-style/verbose ones
@@ -179,11 +184,6 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
             baseType = baseType.substring(1);
             fullType = fullType.substring(1);
             isArray = true;
-        }
-
-        if (rawValue.isNull()) {
-            // nulls are null
-            return null;
         }
 
         if (isArray) {
@@ -234,7 +234,7 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
 
             case "numeric":
             case "decimal":
-                // TODO: When wal2json supports decimal/numeric, return via .asBigDecimal()
+                // TODO: Support for Decimal/Numeric types with correct scale+precision
                 return rawValue.asDouble();
 
             case "character":
@@ -350,8 +350,7 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
             case "txid_snapshot":
             case "uuid":
             case "xml":
-                return rawValue.asString();
-
+            // catch-all for unknown (extension module/custom) types
             default:
                 break;
         }
@@ -359,6 +358,6 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
         // leave up to the downstream message recipient to deal with.
         LOGGER.warn("processing column '{}' with unknown data type '{}' as byte array", columnName,
                 columnType);
-        return rawValue.asBytes();
+        return rawValue.asString();
     }
 }

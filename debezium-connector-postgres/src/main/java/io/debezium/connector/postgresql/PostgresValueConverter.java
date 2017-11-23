@@ -87,6 +87,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.OID:
                 return SchemaBuilder.int64();
             case PgOid.JSONB_JDBC_OID:
+            case PgOid.JSONB_OID:
             case PgOid.JSON:
                 return Json.builder();
             case PgOid.TSTZRANGE_OID:
@@ -142,6 +143,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 // These array types still need to be implemented.  The superclass won't handle them so
                 // we return null here until we can code schema implementations for them.
                 return null;
+            case PgOid.UNSPECIFIED:
+                return SchemaBuilder.bytes();
+
             default:
                 return super.schemaBuilder(column);
         }
@@ -174,6 +178,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.OID:
                 return data -> convertBigInt(column, fieldDefn, data);
             case PgOid.JSONB_JDBC_OID:
+            case PgOid.JSONB_OID:
             case PgOid.UUID:
             case PgOid.TSTZRANGE_OID:
             case PgOid.JSON:
@@ -222,6 +227,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.JSON_ARRAY:
             case PgOid.REF_CURSOR_ARRAY:
                 return super.converter(column, fieldDefn);
+
+            case PgOid.UNSPECIFIED:
+                return data -> convertBinary(column, fieldDefn, data);
+
             default:
                 return super.converter(column, fieldDefn);
         }

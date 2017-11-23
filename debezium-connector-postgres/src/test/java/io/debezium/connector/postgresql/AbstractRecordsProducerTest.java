@@ -94,8 +94,8 @@ public abstract class AbstractRecordsProducerTest {
     protected static final String INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT = "INSERT INTO array_table_with_nulls (int_array, bigint_array, text_array) " +
             "VALUES (null, null, null)";
 
-    protected static final String INSERT_CUSTOM_TYPES_STMT = "INSERT INTO custom_table (lt, i) " +
-            "VALUES ('Top.Collections.Pictures.Astronomy.Galaxies', '978-0-393-04002-9')";
+    protected static final String INSERT_CUSTOM_TYPES_STMT = "INSERT INTO custom_table (lt, i, n) " +
+            "VALUES ('Top.Collections.Pictures.Astronomy.Galaxies', '978-0-393-04002-9', NULL)";
 
     protected static final String INSERT_QUOTED_TYPES_STMT = "INSERT INTO \"Quoted_\"\" . Schema\".\"Quoted_\"\" . Table\" (\"Quoted_\"\" . Text_Column\") " +
                                                              "VALUES ('some text')";
@@ -189,13 +189,6 @@ public abstract class AbstractRecordsProducerTest {
                             new SchemaAndValueField("bv", Bits.builder(2).optional().build(), new byte[] { 0, 0 }));
     }
 
-    protected List<SchemaAndValueField> schemaAndValuesForBinTypesNull() {
-        return Arrays.asList(new SchemaAndValueField("ba", Schema.OPTIONAL_BYTES_SCHEMA, null),
-                             new SchemaAndValueField("bol", Schema.OPTIONAL_BOOLEAN_SCHEMA, null),
-                             new SchemaAndValueField("bs", Bits.builder(2).optional().build(), null),
-                             new SchemaAndValueField("bv", Bits.builder(2).optional().build(), null));
-    }
-
     protected List<SchemaAndValueField> schemaAndValuesForDateTimeTypes() {
         long expectedTs = NanoTimestamp.toEpochNanos(LocalDateTime.parse("2016-11-04T13:51:30"), null);
         String expectedTz = "2016-11-04T11:51:30Z"; //timestamp is stored with TZ, should be read back with UTC
@@ -236,8 +229,9 @@ public abstract class AbstractRecordsProducerTest {
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForCustomTypes() {
-        return Arrays.asList(new SchemaAndValueField("lt", Schema.OPTIONAL_STRING_SCHEMA, "Top.Collections.Pictures.Astronomy.Galaxies"),
-                             new SchemaAndValueField("i", Schema.OPTIONAL_STRING_SCHEMA, "978-0-393-04002-9"));
+        return Arrays.asList(new SchemaAndValueField("lt", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap("Top.Collections.Pictures.Astronomy.Galaxies".getBytes())),
+                             new SchemaAndValueField("i", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap("0-393-04002-X".getBytes())),
+                             new SchemaAndValueField("n", Schema.OPTIONAL_STRING_SCHEMA, null));
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForQuotedTypes() {
