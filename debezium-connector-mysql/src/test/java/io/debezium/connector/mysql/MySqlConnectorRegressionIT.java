@@ -212,8 +212,13 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 // '0000-00-00 00:00:00.00'
                 String c4 = after.getString("c4"); // timestamp
                 OffsetDateTime c4DateTime = OffsetDateTime.parse(c4, ZonedTimestamp.FORMATTER);
-                // In case the timestamp string not in our timezone, convert to ours so we can compare ...
-                c4DateTime = c4DateTime.withOffsetSameInstant(OffsetDateTime.now().getOffset());
+
+                // We're running the connector in the same timezone as the server, so the timezone in the timestamp
+                // should match our current offset ...
+                assertThat(c4DateTime.getOffset()).isEqualTo(OffsetDateTime.now().getOffset());
+
+                // In case the timestamp string not in our timezone, convert to UTC so we can compare ...
+                c4DateTime = c4DateTime.withOffsetSameInstant(ZoneOffset.of("Z"));
                 assertThat(c4DateTime.getYear()).isEqualTo(1970);
                 assertThat(c4DateTime.getMonth()).isEqualTo(Month.JANUARY);
                 assertThat(c4DateTime.getDayOfMonth()).isEqualTo(1);
@@ -222,9 +227,6 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c4DateTime.getMinute()).isEqualTo(0);
                 assertThat(c4DateTime.getSecond()).isEqualTo(0);
                 assertThat(c4DateTime.getNano()).isEqualTo(0);
-                // We're running the connector in the same timezone as the server, so the timezone in the timestamp
-                // should match our current offset ...
-                assertThat(c4DateTime.getOffset()).isEqualTo(OffsetDateTime.now().getOffset());
             } else if (record.topic().endsWith("dbz_123_bitvaluetest")) {
                 // All row events should have the same values ...
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
@@ -411,8 +413,13 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 // '0000-00-00 00:00:00.00'
                 String c4 = after.getString("c4"); // MySQL timestamp, so always ZonedTimestamp
                 OffsetDateTime c4DateTime = OffsetDateTime.parse(c4, ZonedTimestamp.FORMATTER);
-                // In case the timestamp string not in our timezone, convert to ours so we can compare ...
-                c4DateTime = c4DateTime.withOffsetSameInstant(OffsetDateTime.now().getOffset());
+
+                // We're running the connector in the same timezone as the server, so the timezone in the timestamp
+                // should match our current offset ...
+                assertThat(c4DateTime.getOffset()).isEqualTo(OffsetDateTime.now().getOffset());
+
+                // In case the timestamp string not in our timezone, convert to UTC so we can compare ...
+                c4DateTime = c4DateTime.withOffsetSameInstant(ZoneOffset.of("Z"));
                 assertThat(c4DateTime.getYear()).isEqualTo(1970);
                 assertThat(c4DateTime.getMonth()).isEqualTo(Month.JANUARY);
                 assertThat(c4DateTime.getDayOfMonth()).isEqualTo(1);
@@ -421,9 +428,6 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c4DateTime.getMinute()).isEqualTo(0);
                 assertThat(c4DateTime.getSecond()).isEqualTo(0);
                 assertThat(c4DateTime.getNano()).isEqualTo(0);
-                // We're running the connector in the same timezone as the server, so the timezone in the timestamp
-                // should match our current offset ...
-                assertThat(c4DateTime.getOffset()).isEqualTo(OffsetDateTime.now().getOffset());
             } else if (record.topic().endsWith("dbz_123_bitvaluetest")) {
                 // All row events should have the same values ...
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
