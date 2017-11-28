@@ -130,6 +130,18 @@ public class PostgresSchema {
     }
 
     /**
+     * Refreshes the schema content with a table constructed externally
+     * 
+     * @param table constructed externally - typically from decoder metadata
+     */
+    protected void refresh(Table table) {
+        // overwrite (add or update) or views of the tables
+        tables.overwriteTable(table);
+        // and refresh the schema
+        refreshSchema(table.id());
+    }
+
+    /**
      * Get the {@link Filters database and table filters} defined by the configuration.
      *
      * @return the filters; never null
@@ -162,11 +174,11 @@ public class PostgresSchema {
         return !filters.tableFilter().test(id);
     }
 
-    protected boolean isType(String localTypeName, int jdbcType) {
-        return typeInfo != null && Integer.compare(jdbcType, columnTypeNameToPgOid(localTypeName)) == 0;
+    protected boolean isJDBCType(String localTypeName, int jdbcType) {
+        return typeInfo != null && Integer.compare(jdbcType, columnTypeNameToJDBCTypeId(localTypeName)) == 0;
     }
 
-    protected int columnTypeNameToPgOid(String localTypeName) {
+    protected int columnTypeNameToJDBCTypeId(String localTypeName) {
         return typeInfo.get(localTypeName);
     }
 

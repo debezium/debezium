@@ -5,6 +5,8 @@
  */
 package io.debezium.relational;
 
+import java.sql.Types;
+
 import io.debezium.util.Strings;
 
 final class ColumnImpl implements Column, Comparable<Column> {
@@ -149,10 +151,10 @@ final class ColumnImpl implements Column, Comparable<Column> {
         if (generated) sb.append(" GENERATED");
         return sb.toString();
     }
-    
+
     @Override
     public ColumnEditor edit()  {
-        return Column.editor()
+        final ColumnEditor editor = Column.editor()
                 .name(name())
                 .type(typeName(), typeExpression())
                 .jdbcType(jdbcType())
@@ -163,6 +165,9 @@ final class ColumnImpl implements Column, Comparable<Column> {
                 .optional(isOptional())
                 .autoIncremented(isAutoIncremented())
                 .generated(isGenerated());
-}
-
+        if (jdbcType() == Types.ARRAY) {
+            editor.componentType(componentType());
+        }
+        return editor;
+    }
 }

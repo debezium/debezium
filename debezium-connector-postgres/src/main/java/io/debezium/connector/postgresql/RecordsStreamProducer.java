@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -15,6 +16,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -29,6 +31,7 @@ import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.connector.postgresql.connection.ReplicationStream;
 import io.debezium.data.Envelope;
 import io.debezium.relational.Column;
+import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
@@ -97,6 +100,7 @@ public class RecordsStreamProducer extends RecordsProducer {
 
             // refresh the schema so we have a latest view of the DB tables
             taskContext.refreshSchema(true);
+
             // the new thread will inherit it's parent MDC
             executorService.submit(() -> streamChanges(recordConsumer));
         } catch (Throwable t) {
@@ -123,7 +127,7 @@ public class RecordsStreamProducer extends RecordsProducer {
                 }
                 taskContext.failTask(e);
                 throw new ConnectException(e);
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 logger.error("unexpected exception while streaming logical changes", e);
                 taskContext.failTask(e);
                 throw new ConnectException(e);
@@ -232,18 +236,18 @@ public class RecordsStreamProducer extends RecordsProducer {
         ReplicationMessage.Operation operation = message.getOperation();
         switch (operation) {
             case INSERT: {
-                Object[] row = columnValues(message.getNewTupleList(), tableId, true);
+                Object[] row = columnValues(message.getNewTupleList(), tableId, true, message.hasMetadata());
                 generateCreateRecord(tableId, row, consumer);
                 break;
             }
             case UPDATE: {
-                Object[] newRow = columnValues(message.getNewTupleList(), tableId, true);
-                Object[] oldRow = columnValues(message.getOldTupleList(), tableId, true);
+                Object[] newRow = columnValues(message.getNewTupleList(), tableId, true, message.hasMetadata());
+                Object[] oldRow = columnValues(message.getOldTupleList(), tableId, false, message.hasMetadata());
                 generateUpdateRecord(tableId, oldRow, newRow, consumer);
                 break;
             }
             case DELETE: {
-                Object[] row = columnValues(message.getOldTupleList(), tableId, false);
+                Object[] row = columnValues(message.getOldTupleList(), tableId, false, message.hasMetadata());
                 generateDeleteRecord(tableId, row, consumer);
                 break;
             }
@@ -376,7 +380,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         recordConsumer.accept(record);
     }
 
-    private Object[] columnValues(List<ReplicationMessage.Column> messageList, TableId tableId, boolean refreshSchemaIfChanged)
+    private Object[] columnValues(List<ReplicationMessage.Column> messageList, TableId tableId, boolean refreshSchemaIfChanged, boolean metadataInMessage)
             throws SQLException {
         if (messageList == null || messageList.isEmpty()) {
             return null;
@@ -385,11 +389,16 @@ public class RecordsStreamProducer extends RecordsProducer {
         assert table != null;
 
         // check if we need to refresh our local schema due to DB schema changes for this table
-        if (refreshSchemaIfChanged && schemaChanged(messageList, table)) {
+        if (refreshSchemaIfChanged && schemaChanged(messageList, table, metadataInMessage)) {
             try (final PostgresConnection connection = taskContext.createConnection()) {
+                // Refresh the schema so we get information about primary keys
                 schema().refresh(connection, tableId);
+                // Update the schema with metadata coming from decoder message
+                if (metadataInMessage) {
+                    schema().refresh(tableFromFromMessage(messageList, schema().tableFor(tableId)));
+                }
+                table = schema().tableFor(tableId);
             }
-            table = schema().tableFor(tableId);
         }
 
         // based on the schema columns, create the values on the same position as the columns
@@ -406,7 +415,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         return values;
     }
 
-    private boolean schemaChanged(List<ReplicationMessage.Column> messageList, Table table) {
+    private boolean schemaChanged(List<ReplicationMessage.Column> messageList, Table table, boolean metadataInMessage) {
         List<String> columnNames = table.columnNames();
         int messagesCount = messageList.size();
         if (columnNames.size() != messagesCount) {
@@ -423,10 +432,14 @@ public class RecordsStreamProducer extends RecordsProducer {
             if (column == null) {
                 logger.debug("found new column '{}' present in the server message which is not part of the table metadata; refreshing table schema", columnName);
                 return true;
-            } else if (!schema().isType(column.typeName(), column.jdbcType())) {
-                logger.debug("detected new type for column '{}', old type was '{}', new type is '{}'; refreshing table schema", columnName, column.jdbcType(),
-                            message.getType());
-                return true;
+            } else {
+                final int localType = column.jdbcType();
+                final int incomingType = metadataInMessage ? typeNameToJDBCType(message) : message.getType();
+                if (localType != incomingType) {
+                    logger.debug("detected new type for column '{}', old type was '{}', new type is '{}'; refreshing table schema", columnName, column.jdbcType(),
+                                message.getType());
+                    return true;
+                }
             }
             return false;
         }).findFirst().isPresent();
@@ -462,5 +475,35 @@ public class RecordsStreamProducer extends RecordsProducer {
             typeResolverConnection = (PgConnection)taskContext.createConnection().connection();
         }
         return typeResolverConnection;
+    }
+
+    private Table tableFromFromMessage(List<ReplicationMessage.Column> messageList, Table table) {
+        return table.edit()
+            .setColumns(messageList.stream()
+                .map(column -> {
+                    final ColumnEditor columnEditor = Column.editor()
+                            .name(column.getName())
+                            .jdbcType(column.getType() == Types.ARRAY ? Types.ARRAY : typeNameToJDBCType(column))
+                            .type(column.getTypeName())
+                            .optional(column.isOptional());
+                    PgOid.reconcileJdbcOidTypeConstraints(column, columnEditor);
+                    if (column.getType() == Types.ARRAY) {
+                        columnEditor.componentType(column.getArrayElementOidType());
+                    }
+                    if (column.getTypeModifiers().length > 0) {
+                        columnEditor.length(column.getTypeModifiers()[0]);
+                    }
+                    if (column.getTypeModifiers().length > 1) {
+                        columnEditor.scale(column.getTypeModifiers()[1]);
+                    }
+                    return columnEditor.create();
+                })
+                .collect(Collectors.toList())
+            )
+            .setPrimaryKeyNames(table.filterColumnNames(c -> table.isPrimaryKeyColumn(c.name()))).create();
+    }
+
+    private int typeNameToJDBCType(final ReplicationMessage.Column column) {
+        return taskContext.schema().columnTypeNameToJDBCTypeId(column.getTypeName());
     }
 }

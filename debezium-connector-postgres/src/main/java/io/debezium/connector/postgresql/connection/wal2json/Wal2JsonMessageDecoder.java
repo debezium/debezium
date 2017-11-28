@@ -63,6 +63,7 @@ public class Wal2JsonMessageDecoder implements MessageDecoder {
             .withSlotOption("pretty-print", 1)
             .withSlotOption("write-in-chunks", 0)
             .withSlotOption("include-xids", 1)
-            .withSlotOption("include-timestamp", 1);
+            .withSlotOption("include-timestamp", 1)
+            .withSlotOption("include-not-null", "true");
     }
 }

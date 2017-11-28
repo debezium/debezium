@@ -35,8 +35,12 @@ public interface ReplicationMessage {
      */
     public interface Column {
         String getName();
-        Object getType();
+        int getType();
+        int getArrayElementOidType();
+        String getTypeName();
         Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes);
+        int[] getTypeModifiers();
+        boolean isOptional();
     }
 
     /**
@@ -68,4 +72,9 @@ public interface ReplicationMessage {
      * @return Set of new values of table columns, null for DELETE
      */
     public List<Column> getNewTupleList();
+
+    /**
+     * @return true if type metadata are passed as a part of message
+     */
+    boolean hasMetadata();
 }
