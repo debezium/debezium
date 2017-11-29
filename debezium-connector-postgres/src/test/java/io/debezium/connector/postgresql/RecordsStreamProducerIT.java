@@ -112,6 +112,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     @ShouldFailWhen(DecoderDifferences.AreQuotedIdentifiersUnsupported.class)
+    // TODO DBZ-493
     public void shouldReceiveChangesForInsertsWithQuotedNames() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
