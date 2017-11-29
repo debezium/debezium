@@ -26,6 +26,7 @@ import io.debezium.connector.postgresql.connection.pgproto.PgProtoMessageDecoder
 import io.debezium.connector.postgresql.connection.wal2json.Wal2JsonMessageDecoder;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
+import io.debezium.jdbc.TemporalPrecisionMode;
 
 /**
  * The configuration properties for the {@link PostgresConnector}
@@ -35,66 +36,9 @@ import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 public class PostgresConnectorConfig {
 
     /**
-     * The set of predefined TemporalPrecisionMode options or aliases.
-     */
-    public enum TemporalPrecisionMode implements EnumeratedValue {
-
-        /**
-         * Represent time and date values based upon the resolution in the database, using {@link io.debezium.time} semantic
-         * types.
-         */
-        ADAPTIVE("adaptive"),
-
-        /**
-         * Represent time and date values using Kafka Connect {@link org.apache.kafka.connect.data} logical types, which always
-         * have millisecond precision.
-         */
-        CONNECT("connect");
-
-        private final String value;
-
-        TemporalPrecisionMode(String value) {
-            this.value = value;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @return the matching option, or null if no match is found
-         */
-        public static TemporalPrecisionMode parse(String value) {
-            if (value == null) return null;
-            value = value.trim();
-            for (TemporalPrecisionMode option : TemporalPrecisionMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) return option;
-            }
-            return null;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @param defaultValue the default value; may be null
-         * @return the matching option, or null if no match is found and the non-null default is invalid
-         */
-        public static TemporalPrecisionMode parse(String value, String defaultValue) {
-            TemporalPrecisionMode mode = parse(value);
-            if (mode == null && defaultValue != null) mode = parse(defaultValue);
-            return mode;
-        }
-    }
-
-    /**
      * The set of predefined DecimalHandlingMode options or aliases.
      */
-    public static enum DecimalHandlingMode implements EnumeratedValue {
+    public enum DecimalHandlingMode implements EnumeratedValue {
         /**
          * Represent {@code DECIMAL} and {@code NUMERIC} values as precise {@link BigDecimal} values, which are
          * represented in change events in a binary form. This is precise but difficult to use.
@@ -653,6 +597,7 @@ public class PostgresConnectorConfig {
                                                          .withImportance(Importance.MEDIUM)
                                                          .withDescription("Time, date, and timestamps can be represented with different kinds of precisions, including:"
                                                                  + "'adaptive' (the default) bases the precision of time, date, and timestamp values on the database column's precision; "
+                                                                 + "'adaptive_time_microseconds' like 'adaptive' mode, but TIME fields always use microseconds precision;"
                                                                  + "'connect' always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
                                                                  + "which uses millisecond precision regardless of the database columns' precision .");
 
@@ -697,7 +642,7 @@ public class PostgresConnectorConfig {
 
     private final Configuration config;
     private final String serverName;
-    private final boolean adaptiveTimePrecision;
+    private final TemporalPrecisionMode temporalPrecisionMode;
     private final DecimalMode decimalHandlingMode;
     private final SnapshotMode snapshotMode;
 
@@ -708,8 +653,7 @@ public class PostgresConnectorConfig {
             serverName = hostname() + ":" + port() + "/" + databaseName();
         }
         this.serverName = serverName;
-        TemporalPrecisionMode timePrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
-        this.adaptiveTimePrecision = TemporalPrecisionMode.ADAPTIVE == timePrecisionMode;
+        this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
         String decimalHandlingModeStr = config.getString(PostgresConnectorConfig.DECIMAL_HANDLING_MODE);
         DecimalHandlingMode decimalHandlingMode = DecimalHandlingMode.parse(decimalHandlingModeStr);
         this.decimalHandlingMode = decimalHandlingMode.asDecimalMode();
@@ -756,8 +700,8 @@ public class PostgresConnectorConfig {
         return config.getLong(POLL_INTERVAL_MS);
     }
 
-    protected boolean adaptiveTimePrecision() {
-        return adaptiveTimePrecision;
+    protected TemporalPrecisionMode temporalPrecisionMode() {
+        return temporalPrecisionMode;
     }
 
     protected DecimalMode decimalHandlingMode() {

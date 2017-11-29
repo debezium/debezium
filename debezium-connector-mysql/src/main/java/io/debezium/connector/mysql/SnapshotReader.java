@@ -5,11 +5,16 @@
  */
 package io.debezium.connector.mysql;
 
+import java.io.UnsupportedEncodingException;
+import java.sql.Blob;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -19,6 +24,8 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -29,6 +36,7 @@ import io.debezium.function.BufferedBlockingConsumer;
 import io.debezium.function.Predicates;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcConnection.StatementFactory;
+import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
@@ -36,10 +44,15 @@ import io.debezium.util.Strings;
 
 /**
  * A component that performs a snapshot of a MySQL server, and records the schema changes in {@link MySqlSchema}.
- * 
+ *
  * @author Randall Hauch
  */
 public class SnapshotReader extends AbstractReader {
+
+    /**
+     * Used to parse values of TIME columns. Format: 000:00:00.000000.
+     */
+    private static final Pattern TIME_FIELD_PATTERN = Pattern.compile("(\\-?[0-9]*):([0-9]*):([0-9]*)(\\.([0-9]*))?");
 
     private boolean minimalBlocking = true;
     private final boolean includeData;
@@ -49,7 +62,7 @@ public class SnapshotReader extends AbstractReader {
 
     /**
      * Create a snapshot reader.
-     * 
+     *
      * @param name the name of this reader; may not be null
      * @param context the task context in which this reader is running; may not be null
      */
@@ -65,7 +78,7 @@ public class SnapshotReader extends AbstractReader {
      * releasing the read lock as early as possible. Although the snapshot process should obtain a consistent snapshot even
      * when releasing the lock as early as possible, it may be desirable to explicitly hold onto the read lock until execution
      * completes. In such cases, holding onto the lock will prevent all updates to the database during the snapshot process.
-     * 
+     *
      * @param minimalBlocking {@code true} if the lock is to be released as early as possible, or {@code false} if the lock
      *            is to be held for the entire {@link #execute() execution}
      * @return this object for method chaining; never null
@@ -78,7 +91,7 @@ public class SnapshotReader extends AbstractReader {
     /**
      * Set this reader's {@link #execute() execution} to produce a {@link io.debezium.data.Envelope.Operation#READ} event for each
      * row.
-     * 
+     *
      * @return this object for method chaining; never null
      */
     public SnapshotReader generateReadEvents() {
@@ -89,7 +102,7 @@ public class SnapshotReader extends AbstractReader {
     /**
      * Set this reader's {@link #execute() execution} to produce a {@link io.debezium.data.Envelope.Operation#CREATE} event for
      * each row.
-     * 
+     *
      * @return this object for method chaining; never null
      */
     public SnapshotReader generateInsertEvents() {
@@ -126,6 +139,68 @@ public class SnapshotReader extends AbstractReader {
         } finally {
             metrics.unregister(logger);
         }
+    }
+
+    protected Object readField(ResultSet rs, int fieldNo, Column actualColumn) throws SQLException {
+        if(actualColumn.jdbcType() == Types.TIME) {
+            return readTimeField(rs, fieldNo);
+        }
+        else {
+            return rs.getObject(fieldNo);
+        }
+    }
+
+    /**
+     * As MySQL connector/J implementation is broken for MySQL type "TIME" we have to use a binary-ish workaround
+     *
+     * @see https://issues.jboss.org/browse/DBZ-342
+     */
+    private Object readTimeField(ResultSet rs, int fieldNo) throws SQLException {
+        Blob b = rs.getBlob(fieldNo);
+        String timeString;
+
+        try {
+            timeString = new String(b.getBytes(1, (int) (b.length())), "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            logger.error("Could not read MySQL TIME value as UTF-8");
+            throw new RuntimeException(e);
+        }
+
+        Matcher matcher = TIME_FIELD_PATTERN.matcher(timeString);
+        if (!matcher.matches()) {
+            throw new RuntimeException("Unexpected format for TIME column: " + timeString);
+        }
+
+        long hours = Long.parseLong(matcher.group(1));
+        long minutes = Long.parseLong(matcher.group(2));
+        long seconds = Long.parseLong(matcher.group(3));
+        long nanoSeconds = 0;
+        String microSecondsString = matcher.group(5);
+        if (microSecondsString != null) {
+            nanoSeconds = Long.parseLong(rightPad(microSecondsString, 9, '0'));
+        }
+
+        if (hours >= 0) {
+            return Duration.ofHours(hours)
+                    .plusMinutes(minutes)
+                    .plusSeconds(seconds)
+                    .plusNanos(nanoSeconds);
+        }
+        else {
+            return Duration.ofHours(hours)
+                    .minusMinutes(minutes)
+                    .minusSeconds(seconds)
+                    .minusNanos(nanoSeconds);
+        }
+    }
+
+    private String rightPad(String input, int length, char c) {
+        char[] padded = new char[length];
+
+        System.arraycopy(input.toCharArray(), 0, padded, 0, input.length());
+        Arrays.fill(padded, input.length(), length, c);
+
+        return new String(padded);
     }
 
     /**
@@ -446,7 +521,8 @@ public class SnapshotReader extends AbstractReader {
                                         final Object[] row = new Object[numColumns];
                                         while (rs.next()) {
                                             for (int i = 0, j = 1; i != numColumns; ++i, ++j) {
-                                                row[i] = rs.getObject(j);
+                                                Column actualColumn = table.columns().get(i);
+                                                row[i] = readField(rs, j, actualColumn);
                                             }
                                             recorder.recordRow(recordMaker, row, ts); // has no row number!
                                             ++rowNum;
@@ -529,7 +605,7 @@ public class SnapshotReader extends AbstractReader {
                     mysql.execute(sql.get());
                     metrics.completeSnapshot();
                 }
-                
+
                 // -------
                 // STEP 10
                 // -------
@@ -630,7 +706,7 @@ public class SnapshotReader extends AbstractReader {
      * technique</a> for MySQL by creating the JDBC {@link Statement} with {@link ResultSet#TYPE_FORWARD_ONLY forward-only} cursor
      * and {@link ResultSet#CONCUR_READ_ONLY read-only concurrency} flags, and with a {@link Integer#MIN_VALUE minimum value}
      * {@link Statement#setFetchSize(int) fetch size hint}.
-     * 
+     *
      * @param connection the JDBC connection; may not be null
      * @return the statement; never null
      * @throws SQLException if there is a problem creating the statement
@@ -685,7 +761,7 @@ public class SnapshotReader extends AbstractReader {
     /**
      * Utility method to replace the offset in the given record with the latest. This is used on the last record produced
      * during the snapshot.
-     * 
+     *
      * @param record the record
      * @return the updated record
      */

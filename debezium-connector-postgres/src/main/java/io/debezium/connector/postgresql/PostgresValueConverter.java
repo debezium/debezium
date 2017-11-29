@@ -35,6 +35,7 @@ import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.geometry.Point;
 import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
 import io.debezium.time.MicroDuration;
@@ -64,8 +65,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
      */
     private static final int VARIABLE_SCALE_DECIMAL_LENGTH = 131089;
 
-    protected PostgresValueConverter(DecimalMode decimalMode, boolean adaptiveTimePrecision, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode) {
-        super(decimalMode, adaptiveTimePrecision, defaultOffset, null, bigIntUnsignedMode);
+    protected PostgresValueConverter(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode) {
+        super(decimalMode, temporalPrecisionMode, defaultOffset, null, bigIntUnsignedMode);
     }
 
     @Override
@@ -117,7 +118,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.BOOL_ARRAY:
                 return SchemaBuilder.array(SchemaBuilder.OPTIONAL_BOOLEAN_SCHEMA);
             case PgOid.DATE_ARRAY:
-                if (adaptiveTimePrecision) {
+                if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
                     return SchemaBuilder.array(io.debezium.time.Date.builder().optional().build());
                 }
                 return SchemaBuilder.array(org.apache.kafka.connect.data.Date.builder().optional().build());

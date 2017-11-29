@@ -5,6 +5,7 @@
  */
 package io.debezium.time;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -91,6 +92,14 @@ final class Conversions {
                                 date.getMinutes(),
                                 date.getSeconds(),
                                 nanosOfSecond);
+        }
+        if (obj instanceof Duration) {
+            Long value = ((Duration) obj).toNanos();
+            if (value >= 0 && value <= NANOSECONDS_PER_DAY) {
+                return LocalTime.ofNanoOfDay(value);
+            } else {
+                throw new IllegalArgumentException("Time values must use number of milliseconds greater than 0 and less than 86400000000000");
+            }
         }
         if ( obj instanceof Long) {
             // Assume the value is the epoch day number
