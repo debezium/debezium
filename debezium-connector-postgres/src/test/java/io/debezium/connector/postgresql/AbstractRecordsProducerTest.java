@@ -94,9 +94,6 @@ public abstract class AbstractRecordsProducerTest {
     protected static final String INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT = "INSERT INTO array_table_with_nulls (int_array, bigint_array, text_array) " +
             "VALUES (null, null, null)";
 
-    protected static final String INSERT_CUSTOM_TYPES_STMT = "INSERT INTO custom_table (lt, i, n) " +
-            "VALUES ('Top.Collections.Pictures.Astronomy.Galaxies', '978-0-393-04002-9', NULL)";
-
     protected static final String INSERT_QUOTED_TYPES_STMT = "INSERT INTO \"Quoted_\"\" . Schema\".\"Quoted_\"\" . Table\" (\"Quoted_\"\" . Text_Column\") " +
                                                              "VALUES ('some text')";
 
@@ -228,12 +225,6 @@ public abstract class AbstractRecordsProducerTest {
         );
     }
 
-    protected List<SchemaAndValueField> schemasAndValuesForCustomTypes() {
-        return Arrays.asList(new SchemaAndValueField("lt", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap("Top.Collections.Pictures.Astronomy.Galaxies".getBytes())),
-                             new SchemaAndValueField("i", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap("0-393-04002-X".getBytes())),
-                             new SchemaAndValueField("n", Schema.OPTIONAL_STRING_SCHEMA, null));
-    }
-
     protected List<SchemaAndValueField> schemasAndValuesForQuotedTypes() {
        return Arrays.asList(new SchemaAndValueField("Quoted_\" . Text_Column", Schema.OPTIONAL_STRING_SCHEMA, "some text"));
     }
@@ -265,8 +256,6 @@ public abstract class AbstractRecordsProducerTest {
                 return schemasAndValuesForArrayTypes();
             case INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT:
                 return schemasAndValuesForArrayTypesWithNullValues();
-            case INSERT_CUSTOM_TYPES_STMT:
-                return schemasAndValuesForCustomTypes();
             case INSERT_QUOTED_TYPES_STMT:
                 return schemasAndValuesForQuotedTypes();
             default:
