@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mongodb;
+package io.debezium.connector.mongodb.transforms;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,8 +16,14 @@ import org.bson.BsonValue;
 
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
-
 import org.apache.kafka.connect.data.Schema;
+
+/**
+ * MongoDataConverter handles translating MongoDB strings to Kafka Connect schemas and row data to Kafka
+ * Connect records.
+ * @author Sairam Polavarapu
+ */
+ 
 
 public class MongoDataConverter {
     static SchemaBuilder builder = SchemaBuilder.struct();
