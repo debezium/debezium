@@ -385,7 +385,9 @@ public class PostgresConnectorConfig {
                                               .withEnum(LogicalDecoder.class, LogicalDecoder.DECODERBUFS)
                                               .withWidth(Width.MEDIUM)
                                               .withImportance(Importance.MEDIUM)
-                                              .withDescription("The name of the Postgres logical decoding plugin installed on the server. Defaults to '"+ LogicalDecoder.DECODERBUFS.getValue() + "'");
+                                              .withDescription("The name of the Postgres logical decoding plugin installed on the server. " +
+                                                      "Supported values are '"+ LogicalDecoder.DECODERBUFS.getValue() + "' and '"+ LogicalDecoder.WAL2JSON.getValue() + "'. " +
+                                                      "Defaults to '"+ LogicalDecoder.DECODERBUFS.getValue() + "'.");
 
     public static final Field SLOT_NAME = Field.create("slot.name")
                                               .withDisplayName("Slot")

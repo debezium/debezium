@@ -46,9 +46,6 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Wal2JsonReplicationMessage.class);
     private static final Pattern TYPE_PATTERN = Pattern.compile("^(?<full>(?<base>[^(\\[]+)(?:\\((?<mod>.+)\\))?(?<suffix>.*?))(?<array>\\[\\])?$");
-    private static final Pattern TYPEMOD_PATTERN = Pattern.compile("\\s*,\\s*");
-        // "text"; "character varying(255)"; "numeric(12,3)"; "geometry(MultiPolygon,4326)"; "timestamp (12) with time zone"; "int[]"
-    private static final String[] NO_TYPE_MODIFIERS = {};
 
     private final int txId;
     private final long commitTime;
@@ -172,10 +169,6 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
             baseType = String.join(" ", baseType, m.group("suffix").trim());
         }
 
-        String[] typeModifiers = NO_TYPE_MODIFIERS;
-        if (m.group("mod") != null) {
-            typeModifiers = TYPEMOD_PATTERN.split(m.group("mod"));  // TODO: use for decimal/etc precision
-        }
         boolean isArray = (m.group("array") != null);
 
         if (baseType.startsWith("_")) {
@@ -268,6 +261,8 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
                 return Strings.hexStringToByteArray(rawValue.asString());
 
             // these are all PG-specific types and we use the JDBC representations
+            // note that, with the exception of point, no converters for these types are implemented yet,
+            // i.e. those values won't actually be propagated to the outbound message until that's the case
             case "box":
                 try {
                     return new PGbox(rawValue.asString());
