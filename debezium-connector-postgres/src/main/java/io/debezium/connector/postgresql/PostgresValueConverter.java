@@ -87,6 +87,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.OID:
                 return SchemaBuilder.int64();
             case PgOid.JSONB_JDBC_OID:
+            case PgOid.JSONB_OID:
             case PgOid.JSON:
                 return Json.builder();
             case PgOid.TSTZRANGE_OID:
@@ -174,6 +175,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.OID:
                 return data -> convertBigInt(column, fieldDefn, data);
             case PgOid.JSONB_JDBC_OID:
+            case PgOid.JSONB_OID:
             case PgOid.UUID:
             case PgOid.TSTZRANGE_OID:
             case PgOid.JSON:

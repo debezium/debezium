@@ -79,7 +79,7 @@ Using Docker has several advantages:
 1. All builds are consistent. When multiple developers each build the same codebase, they should see exactly the same results -- as long as they're using the same or equivalent JDK, Maven, and Docker versions. That's because the containers will be running the same versions of the services on the same operating systems. Plus, all of the tests are designed to connect to the systems running in the containers, so nobody has to fiddle with connection properties or custom configurations specific to their local environments.
 1. No need to clean up the services, even if those services modify and store data locally. Docker *images* are cached, so building them reusing them to start containers is fast and consistent. However, Docker *containers* are never reused: they always start in their pristine initial state, and are discarded when they are shutdown. Integration tests rely upon containers, and so cleanup is handled automatically.
 
-### Configure your docker environment
+### Configure your Docker environment
 
 The Docker Maven Plugin will resolve the docker host by checking the following environment variables:
 
@@ -102,11 +102,21 @@ Then build the code using Maven:
 
 The build starts and uses several Docker containers for different DBMSes. Note that if Docker is not running or configured, you'll likely get an arcane error -- if this is the case, always verify that Docker is running, perhaps by using `docker ps` to list the running containers.
 
-### Don't have docker running locally for builds?
+### Don't have Docker running locally for builds?
 
 You can skip the integration tests and docker-builds with the following command:
 
     $ mvn clean install -DskipITs
+
+### Running tests of the Postgres connector using the wal2json logical decoding plug-in
+
+The Postgres connector supports two logical decoding plug-ins for streaming changes from the DB server to the connector: decoderbufs (the default) and wal2json.
+To run the integration tests of the PG connector using wal2json, enable the "wal2json-decoder" build profile:
+
+    $ mvn clean install -pl :debezium-connector-postgres -Pwal2json-decoder
+
+A few tests currently don't pass when using the wal2json plug-in.
+Look for references to the types defined in `io.debezium.connector.postgresql.DecoderDifferences` to find these tests.
 
 ## Contributing
 

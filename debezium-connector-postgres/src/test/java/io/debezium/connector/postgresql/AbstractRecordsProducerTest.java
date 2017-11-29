@@ -155,6 +155,7 @@ public abstract class AbstractRecordsProducerTest {
                              new SchemaAndValueField("u", Uuid.builder().optional().build(), "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"));
     }
 
+
     protected List<SchemaAndValueField> schemaAndValuesForGeomTypes() {
         Schema pointSchema = Point.builder().optional().build();
         return Collections.singletonList(new SchemaAndValueField("p", pointSchema, Point.createValue(pointSchema, 1, 1)));
