@@ -332,32 +332,30 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
                     throw new ConnectException(e);
                 }
 
-            // catch-all for other known/builtin PG types
-            // TODO: improve with more specific/useful classes here?
             case "bit":
             case "bit varying":
             case "varbit":
-            case "cidr":
-            case "inet":
             case "json":
             case "jsonb":
+            case "xml":
+            case "uuid":
+            case "tstzrange":
+                return rawValue.asString();
+            // catch-all for other known/builtin PG types
+            // TODO: improve with more specific/useful classes here?
+            case "cidr":
+            case "inet":
             case "macaddr":
             case "macaddr8":
             case "pg_lsn":
             case "tsquery":
-            case "tstzrange":
             case "tsvector":
             case "txid_snapshot":
-            case "uuid":
-            case "xml":
             // catch-all for unknown (extension module/custom) types
             default:
                 break;
         }
-        // this includes things like PostGIS geometries or other custom types.
-        // leave up to the downstream message recipient to deal with.
-        LOGGER.warn("processing column '{}' with unknown data type '{}' as byte array", columnName,
-                columnType);
-        return rawValue.asString();
+
+        return null;
     }
 }

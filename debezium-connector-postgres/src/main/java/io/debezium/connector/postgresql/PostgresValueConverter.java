@@ -143,9 +143,6 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 // These array types still need to be implemented.  The superclass won't handle them so
                 // we return null here until we can code schema implementations for them.
                 return null;
-            case PgOid.UNSPECIFIED:
-                return SchemaBuilder.bytes();
-
             default:
                 return super.schemaBuilder(column);
         }
@@ -227,10 +224,6 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.JSON_ARRAY:
             case PgOid.REF_CURSOR_ARRAY:
                 return super.converter(column, fieldDefn);
-
-            case PgOid.UNSPECIFIED:
-                return data -> convertBinary(column, fieldDefn, data);
-
             default:
                 return super.converter(column, fieldDefn);
         }
