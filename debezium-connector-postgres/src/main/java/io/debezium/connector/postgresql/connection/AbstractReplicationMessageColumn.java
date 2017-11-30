@@ -33,12 +33,35 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
         private static final Pattern TYPEMOD_PATTERN = Pattern.compile("\\s*,\\s*");
             // "text"; "character varying(255)"; "numeric(12,3)"; "geometry(MultiPolygon,4326)"; "timestamp (12) with time zone"; "int[]"
 
-        private String baseType;
-        private String fullType;
-        private int[] typeModifiers;
-        private boolean isArray;
-        private String normalizedTypeName;
-        private boolean optional;
+        /**
+         * The basic name of the type without constraints
+         */
+        private final String baseType;
+
+        /**
+         * The full name of the type including the constraints
+         */
+        private final String fullType;
+
+        /**
+         * The type constraints converted to their integer value
+         */
+        private final int[] typeModifiers;
+
+        /**
+         * True if the type is array
+         */
+        private final boolean isArray;
+
+        /**
+         * The shortened name of the type how would be reported by JDBC
+         */
+        private final String normalizedTypeName;
+
+        /**
+         * True if the type has not <code>NOT NULL</code> constraint
+         */
+        private final boolean optional;
 
         public TypeMetadata(String columnName, String typeWithModifiers, boolean optional) {
             this.optional = optional;
@@ -47,12 +70,12 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
                 LOGGER.error("Failed to parse columnType for {} '{}'", columnName, typeWithModifiers);
                 throw new ConnectException(String.format("Failed to parse columnType '%s' for column %s", typeWithModifiers, columnName));
             }
-            fullType = m.group("full");
-            baseType = m.group("base").trim();
+            String fullType = m.group("full");
+            String baseType = m.group("base").trim();
             if (!Objects.toString(m.group("suffix"), "").isEmpty()) {
                 baseType = String.join(" ", baseType, m.group("suffix").trim());
             }
-            typeModifiers = EMPTY_TYPE_MODIFIERS;
+            int[] typeModifiers = EMPTY_TYPE_MODIFIERS;
             if (m.group("mod") != null) {
                 final String[] typeModifiersStr = TYPEMOD_PATTERN.split(m.group("mod"));
                 typeModifiers = new int[typeModifiersStr.length];
@@ -65,7 +88,7 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
                     }
                 }
             }
-            isArray = (m.group("array") != null);
+            boolean isArray = (m.group("array") != null);
 
             if (baseType.startsWith("_")) {
                 // old-style type specifiers use an _ prefix for arrays
@@ -74,11 +97,16 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
                 fullType = fullType.substring(1);
                 isArray = true;
             }
-            normalizedTypeName = PgOid.normalizeTypeName(baseType);
+            String normalizedTypeName = PgOid.normalizeTypeName(baseType);
 
             if (isArray) {
                 normalizedTypeName = "_" + normalizedTypeName;
             }
+            this.baseType = baseType;
+            this.fullType = fullType;
+            this.normalizedTypeName = normalizedTypeName;
+            this.typeModifiers = typeModifiers;
+            this.isArray = isArray;
         }
 
         public String getBaseType() {
@@ -106,12 +134,11 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
         }
     }
 
-
-    private String columnName;
-    private String typeWithModifiers;
-    private boolean optional;
+    private final String columnName;
+    private final String typeWithModifiers;
+    private final boolean optional;
     private TypeMetadata typeMetadata;
-    private boolean hasMetadata;
+    private final boolean hasMetadata;
 
     public AbstractReplicationMessageColumn(String columnName, String typeWithModifiers, boolean optional, ReplicationMessage message) {
         super();

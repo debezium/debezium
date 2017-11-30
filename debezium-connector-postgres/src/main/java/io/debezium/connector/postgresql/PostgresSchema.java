@@ -174,11 +174,11 @@ public class PostgresSchema {
         return !filters.tableFilter().test(id);
     }
 
-    protected boolean isJDBCType(String localTypeName, int jdbcType) {
-        return typeInfo != null && Integer.compare(jdbcType, columnTypeNameToJDBCTypeId(localTypeName)) == 0;
+    protected boolean isJdbcType(String localTypeName, int jdbcType) {
+        return typeInfo != null && columnTypeNameToJdbcTypeId(localTypeName) == jdbcType;
     }
 
-    protected int columnTypeNameToJDBCTypeId(String localTypeName) {
+    protected int columnTypeNameToJdbcTypeId(String localTypeName) {
         return typeInfo.get(localTypeName);
     }
 

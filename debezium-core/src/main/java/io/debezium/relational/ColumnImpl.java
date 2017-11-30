@@ -153,7 +153,7 @@ final class ColumnImpl implements Column, Comparable<Column> {
     }
 
     @Override
-    public ColumnEditor edit()  {
+    public ColumnEditor edit() {
         final ColumnEditor editor = Column.editor()
                 .name(name())
                 .type(typeName(), typeExpression())
