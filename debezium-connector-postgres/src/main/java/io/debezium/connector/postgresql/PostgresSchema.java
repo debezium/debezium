@@ -61,7 +61,7 @@ public class PostgresSchema {
         this.filters = new Filters(config);
         this.tables = new Tables();
 
-        PostgresValueConverter valueConverter = new PostgresValueConverter(config.decimalHandlingMode(), config.adaptiveTimePrecision(),
+        PostgresValueConverter valueConverter = new PostgresValueConverter(config.decimalHandlingMode(), config.temporalPrecisionMode(),
                 ZoneOffset.UTC, null);
         this.schemaNameValidator = AvroValidator.create(LOGGER)::validate;
         this.schemaBuilder = new TableSchemaBuilder(valueConverter, this.schemaNameValidator);

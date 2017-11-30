@@ -145,3 +145,13 @@ CREATE TABLE dbz_195_numvalues (
 INSERT INTO dbz_195_numvalues VALUES (default,0);
 INSERT INTO dbz_195_numvalues VALUES (default,-2147483648);
 INSERT INTO dbz_195_numvalues VALUES (default,2147483647);
+
+-- DBZ-342 handle TIME values that exceed the value range of java.sql.Time
+CREATE TABLE dbz_342_timetest (
+  c1 TIME(2),
+  c2 TIME(0),
+  c3 TIME(3),
+  c4 TIME(3),
+  c5 TIME(6)
+);
+INSERT INTO dbz_342_timetest VALUES ('517:51:04.777', '-13:14:50', '-733:00:00.0011', '-1:59:59.0011', '-838:59:58.999999');

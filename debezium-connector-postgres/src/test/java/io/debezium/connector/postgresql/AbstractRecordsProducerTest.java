@@ -52,6 +52,7 @@ import io.debezium.data.geometry.Point;
 import io.debezium.relational.TableId;
 import io.debezium.time.Date;
 import io.debezium.time.MicroDuration;
+import io.debezium.time.MicroTime;
 import io.debezium.time.NanoTime;
 import io.debezium.time.NanoTimestamp;
 import io.debezium.time.ZonedTime;
@@ -91,6 +92,9 @@ public abstract class AbstractRecordsProducerTest {
     protected static final String INSERT_ARRAY_TYPES_STMT = "INSERT INTO array_table (int_array, bigint_array, text_array) " +
                                                              "VALUES ('{1,2,3}', '{1550166368505037572}', '{\"one\",\"two\",\"three\"}')";
 
+    protected static final String INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT = "INSERT INTO array_table_with_nulls (int_array, bigint_array, text_array) " +
+            "VALUES (null, null, null)";
+
     protected static final String INSERT_QUOTED_TYPES_STMT = "INSERT INTO \"Quoted_\"\" . Schema\".\"Quoted_\"\" . Table\" (\"Quoted_\"\" . Text_Column\") " +
                                                              "VALUES ('some text')";
 
@@ -98,7 +102,7 @@ public abstract class AbstractRecordsProducerTest {
                                                                  INSERT_DATE_TIME_TYPES_STMT,
                                                                  INSERT_BIN_TYPES_STMT, INSERT_GEOM_TYPES_STMT, INSERT_TEXT_TYPES_STMT,
                                                                  INSERT_CASH_TYPES_STMT, INSERT_STRING_TYPES_STMT, INSERT_ARRAY_TYPES_STMT,
-                                                                 INSERT_QUOTED_TYPES_STMT));
+                                                                 INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT, INSERT_QUOTED_TYPES_STMT));
 
     protected List<SchemaAndValueField> schemasAndValuesForNumericType() {
         return Arrays.asList(new SchemaAndValueField("si", SchemaBuilder.OPTIONAL_INT16_SCHEMA, (short) 1),
@@ -152,6 +156,7 @@ public abstract class AbstractRecordsProducerTest {
                              new SchemaAndValueField("u", Uuid.builder().optional().build(), "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"));
     }
 
+
     protected List<SchemaAndValueField> schemaAndValuesForGeomTypes() {
         Schema pointSchema = Point.builder().optional().build();
         return Collections.singletonList(new SchemaAndValueField("p", pointSchema, Point.createValue(pointSchema, 1, 1)));
@@ -198,6 +203,22 @@ public abstract class AbstractRecordsProducerTest {
                              new SchemaAndValueField("it", MicroDuration.builder().optional().build(), interval));
     }
 
+    protected List<SchemaAndValueField> schemaAndValuesForDateTimeTypesAdaptiveTimeMicroseconds() {
+        long expectedTs = NanoTimestamp.toEpochNanos(LocalDateTime.parse("2016-11-04T13:51:30"), null);
+        String expectedTz = "2016-11-04T11:51:30Z"; //timestamp is stored with TZ, should be read back with UTC
+        int expectedDate = Date.toEpochDay(LocalDate.parse("2016-11-04"), null);
+        long expectedTi = LocalTime.parse("13:51:30").toNanoOfDay() / 1_000;
+        String expectedTtz = "11:51:30Z";  //time is stored with TZ, should be read back at GMT
+        double interval = MicroDuration.durationMicros(1, 2, 3, 4, 5, 0, PostgresValueConverter.DAYS_PER_MONTH_AVG);
+
+        return Arrays.asList(new SchemaAndValueField("ts", NanoTimestamp.builder().optional().build(), expectedTs),
+                new SchemaAndValueField("tz", ZonedTimestamp.builder().optional().build(), expectedTz),
+                new SchemaAndValueField("date", Date.builder().optional().build(), expectedDate),
+                new SchemaAndValueField("ti", MicroTime.builder().optional().build(), expectedTi),
+                new SchemaAndValueField("ttz", ZonedTime.builder().optional().build(), expectedTtz),
+                new SchemaAndValueField("it", MicroDuration.builder().optional().build(), interval));
+    }
+
     protected List<SchemaAndValueField> schemaAndValuesForMoneyTypes() {
         return Collections.singletonList(new SchemaAndValueField("csh", Decimal.builder(0).optional().build(),
                                                                  BigDecimal.valueOf(1234.11d)));
@@ -213,6 +234,14 @@ public abstract class AbstractRecordsProducerTest {
                             );
     }
 
+    protected List<SchemaAndValueField> schemasAndValuesForArrayTypesWithNullValues() {
+        return Arrays.asList(
+                new SchemaAndValueField("int_array", SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(), null),
+                new SchemaAndValueField("bigint_array", SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(), null),
+                new SchemaAndValueField("text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null)
+        );
+    }
+
     protected List<SchemaAndValueField> schemasAndValuesForQuotedTypes() {
        return Arrays.asList(new SchemaAndValueField("Quoted_\" . Text_Column", Schema.OPTIONAL_STRING_SCHEMA, "some text"));
     }
@@ -220,6 +249,18 @@ public abstract class AbstractRecordsProducerTest {
     protected Map<String, List<SchemaAndValueField>> schemaAndValuesByTableName() {
         return ALL_STMTS.stream().collect(Collectors.toMap(AbstractRecordsProducerTest::tableNameFromInsertStmt,
                                                            this::schemasAndValuesForTable));
+    }
+
+    protected Map<String, List<SchemaAndValueField>> schemaAndValuesByTableNameAdaptiveTimeMicroseconds() {
+        return ALL_STMTS.stream().collect(Collectors.toMap(AbstractRecordsProducerTest::tableNameFromInsertStmt,
+                this::schemasAndValuesForTableAdaptiveTimeMicroseconds));
+    }
+
+    protected List<SchemaAndValueField> schemasAndValuesForTableAdaptiveTimeMicroseconds(String insertTableStatement) {
+        if (insertTableStatement.equals(INSERT_DATE_TIME_TYPES_STMT)) {
+            return schemaAndValuesForDateTimeTypesAdaptiveTimeMicroseconds();
+        }
+        return schemasAndValuesForTable(insertTableStatement);
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForTable(String insertTableStatement) {
@@ -242,6 +283,8 @@ public abstract class AbstractRecordsProducerTest {
                 return schemasAndValuesForTextTypes();
             case INSERT_ARRAY_TYPES_STMT:
                 return schemasAndValuesForArrayTypes();
+            case INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT:
+                return schemasAndValuesForArrayTypesWithNullValues();
             case INSERT_QUOTED_TYPES_STMT:
                 return schemasAndValuesForQuotedTypes();
             default:

@@ -62,17 +62,18 @@ import io.debezium.util.NumberConversions;
 @Immutable
 public class JdbcValueConverters implements ValueConverterProvider {
 
-    public static enum DecimalMode {
+    public enum DecimalMode {
         PRECISE, DOUBLE;
     }
 
-    public static enum BigIntUnsignedMode {
+    public enum BigIntUnsignedMode {
         PRECISE, LONG;
     }
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     private final ZoneOffset defaultOffset;
-    protected final boolean adaptiveTimePrecision;
+    protected final boolean adaptiveTimePrecisionMode;
+    protected final boolean adaptiveTimeMicrosecondsPrecisionMode;
     protected final DecimalMode decimalMode;
     private final TemporalAdjuster adjuster;
     protected final BigIntUnsignedMode bigIntUnsignedMode;
@@ -83,7 +84,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * columns.
      */
     public JdbcValueConverters() {
-        this(null, true, ZoneOffset.UTC, null, null);
+        this(null, TemporalPrecisionMode.ADAPTIVE, ZoneOffset.UTC, null, null);
     }
 
     /**
@@ -93,9 +94,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      *
      * @param decimalMode how {@code DECIMAL} and {@code NUMERIC} values should be treated; may be null if
      *            {@link DecimalMode#PRECISE} is to be used
-     * @param adaptiveTimePrecision {@code true} if the time, date, and timestamp values should be based upon the precision of the
-     *            database columns using {@link io.debezium.time} semantic types, or {@code false} if they should be fixed to
-     *            millisecond precision using Kafka Connect {@link org.apache.kafka.connect.data} logical types.
+     * @param temporalPrecisionMode temporal precision mode based on {@link io.debezium.jdbc.TemporalPrecisionMode}
      * @param defaultOffset the zone offset that is to be used when converting non-timezone related values to values that do
      *            have timezones; may be null if UTC is to be used
      * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
@@ -103,10 +102,11 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param bigIntUnsignedMode how {@code BIGINT UNSIGNED} values should be treated; may be null if
      *            {@link BigIntUnsignedMode#PRECISE} is to be used
      */
-    public JdbcValueConverters(DecimalMode decimalMode, boolean adaptiveTimePrecision, ZoneOffset defaultOffset,
+    public JdbcValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset,
                                TemporalAdjuster adjuster, BigIntUnsignedMode bigIntUnsignedMode) {
         this.defaultOffset = defaultOffset != null ? defaultOffset : ZoneOffset.UTC;
-        this.adaptiveTimePrecision = adaptiveTimePrecision;
+        this.adaptiveTimePrecisionMode = temporalPrecisionMode.equals(TemporalPrecisionMode.ADAPTIVE);
+        this.adaptiveTimeMicrosecondsPrecisionMode = temporalPrecisionMode.equals(TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS);
         this.decimalMode = decimalMode != null ? decimalMode : DecimalMode.PRECISE;
         this.adjuster = adjuster;
         this.bigIntUnsignedMode = bigIntUnsignedMode != null ? bigIntUnsignedMode : BigIntUnsignedMode.PRECISE;
@@ -189,20 +189,23 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 return Xml.builder();
             // Date and time values
             case Types.DATE:
-                if (adaptiveTimePrecision) {
+                if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
                     return Date.builder();
                 }
                 return org.apache.kafka.connect.data.Date.builder();
             case Types.TIME:
-                if (adaptiveTimePrecision) {
+                if(adaptiveTimeMicrosecondsPrecisionMode) {
+                    return MicroTime.builder();
+                }
+                if (adaptiveTimePrecisionMode) {
                     if (column.length() <= 3) return Time.builder();
                     if (column.length() <= 6) return MicroTime.builder();
                     return NanoTime.builder();
                 }
                 return org.apache.kafka.connect.data.Time.builder();
             case Types.TIMESTAMP:
-                if (adaptiveTimePrecision) {
-                    if (column.length() <= 3 || !adaptiveTimePrecision) return Timestamp.builder();
+                if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
+                    if (column.length() <= 3) return Timestamp.builder();
                     if (column.length() <= 6) return MicroTimestamp.builder();
                     return NanoTimestamp.builder();
                 }
@@ -296,21 +299,24 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
             // Date and time values
             case Types.DATE:
-                if (adaptiveTimePrecision) {
+                if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
                     return (data) -> convertDateToEpochDays(column, fieldDefn, data);
                 }
                 return (data) -> convertDateToEpochDaysAsDate(column, fieldDefn, data);
             case Types.TIME:
-                if (adaptiveTimePrecision) {
-                    if (column.length() <= 3) return (data) -> convertTimeToMillisPastMidnight(column, fieldDefn, data);
-                    if (column.length() <= 6) return (data) -> convertTimeToMicrosPastMidnight(column, fieldDefn, data);
+                if(adaptiveTimeMicrosecondsPrecisionMode) {
+                    return data -> convertTimeToMicrosPastMidnight(column, fieldDefn, data);
+                }
+                if (adaptiveTimePrecisionMode) {
+                    if (column.length() <= 3) return data -> convertTimeToMillisPastMidnight(column, fieldDefn, data);
+                    if (column.length() <= 6) return data -> convertTimeToMicrosPastMidnight(column, fieldDefn, data);
                     return (data) -> convertTimeToNanosPastMidnight(column, fieldDefn, data);
                 }
                 return (data) -> convertTimeToMillisPastMidnightAsDate(column, fieldDefn, data);
             case Types.TIMESTAMP:
-                if (adaptiveTimePrecision) {
-                    if (column.length() <= 3) return (data) -> convertTimestampToEpochMillis(column, fieldDefn, data);
-                    if (column.length() <= 6) return (data) -> convertTimestampToEpochMicros(column, fieldDefn, data);
+                if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
+                    if (column.length() <= 3) return data -> convertTimestampToEpochMillis(column, fieldDefn, data);
+                    if (column.length() <= 6) return data -> convertTimestampToEpochMicros(column, fieldDefn, data);
                     return (data) -> convertTimestampToEpochNanos(column, fieldDefn, data);
                 }
                 return (data) -> convertTimestampToEpochMillisAsDate(column, fieldDefn, data);

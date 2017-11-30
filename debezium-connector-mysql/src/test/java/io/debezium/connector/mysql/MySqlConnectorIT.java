@@ -264,7 +264,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        SourceRecords records = consumeRecordsByTopic(5 + 9 + 9 + 4 + 11 + 1); // 11 schema change records + 1 SET statement
+        SourceRecords records = consumeRecordsByTopic(5 + 9 + 9 + 4 + 11 + 1 + 2); // 11 schema change records + 1 SET statement
         assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(12);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("products")).size()).isEqualTo(9);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("products_on_hand")).size()).isEqualTo(9);
@@ -696,12 +696,12 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         // Consume the first records due to startup and initialization of the database ...
         // Testing.Print.enable();
-        SourceRecords records = consumeRecordsByTopic(9 + 9 + 4 + 5);
+        SourceRecords records = consumeRecordsByTopic(9 + 9 + 4 + 5 + 1);
         assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("products")).size()).isEqualTo(9);
         assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("products_on_hand")).size()).isEqualTo(9);
         assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("customers")).size()).isEqualTo(4);
         assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("orders")).size()).isEqualTo(5);
-        assertThat(records.topics().size()).isEqualTo(4);
+        assertThat(records.topics().size()).isEqualTo(5);
 
         // Check that all records are valid, can be serialized and deserialized ...
         records.forEach(this::validate);

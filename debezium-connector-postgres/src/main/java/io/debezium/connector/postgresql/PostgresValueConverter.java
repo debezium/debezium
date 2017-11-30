@@ -15,6 +15,7 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -34,6 +35,7 @@ import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.geometry.Point;
 import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
 import io.debezium.time.MicroDuration;
@@ -63,8 +65,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
      */
     private static final int VARIABLE_SCALE_DECIMAL_LENGTH = 131089;
 
-    protected PostgresValueConverter(DecimalMode decimalMode, boolean adaptiveTimePrecision, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode) {
-        super(decimalMode, adaptiveTimePrecision, defaultOffset, null, bigIntUnsignedMode);
+    protected PostgresValueConverter(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode) {
+        super(decimalMode, temporalPrecisionMode, defaultOffset, null, bigIntUnsignedMode);
     }
 
     @Override
@@ -86,6 +88,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.OID:
                 return SchemaBuilder.int64();
             case PgOid.JSONB_JDBC_OID:
+            case PgOid.JSONB_OID:
             case PgOid.JSON:
                 return Json.builder();
             case PgOid.TSTZRANGE_OID:
@@ -115,7 +118,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.BOOL_ARRAY:
                 return SchemaBuilder.array(SchemaBuilder.OPTIONAL_BOOLEAN_SCHEMA);
             case PgOid.DATE_ARRAY:
-                if (adaptiveTimePrecision) {
+                if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
                     return SchemaBuilder.array(io.debezium.time.Date.builder().optional().build());
                 }
                 return SchemaBuilder.array(org.apache.kafka.connect.data.Date.builder().optional().build());
@@ -173,6 +176,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.OID:
                 return data -> convertBigInt(column, fieldDefn, data);
             case PgOid.JSONB_JDBC_OID:
+            case PgOid.JSONB_OID:
             case PgOid.UUID:
             case PgOid.TSTZRANGE_OID:
             case PgOid.JSON:
@@ -197,6 +201,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.FLOAT8_ARRAY:
             case PgOid.BOOL_ARRAY:
             case PgOid.DATE_ARRAY:
+                return data -> convertArray(column, fieldDefn, data);
+
+            // TODO DBZ-459 implement support for these array types; for now we just fall back to the default, i.e.
+            // having no converter, so to be consistent with the schema definitions above
             case PgOid.TIME_ARRAY:
             case PgOid.TIMETZ_ARRAY:
             case PgOid.TIMESTAMP_ARRAY:
@@ -216,7 +224,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.JSONB_ARRAY:
             case PgOid.JSON_ARRAY:
             case PgOid.REF_CURSOR_ARRAY:
-                return data -> convertArray(column, fieldDefn, data);
+                return super.converter(column, fieldDefn);
             default:
                 return super.converter(column, fieldDefn);
         }
@@ -232,7 +240,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
           newDecimal = newDecimal.setScale(column.scale());
         }
         if (isVariableScaleDecimal(column)) {
-            return VariableScaleDecimal.fromLogical(fieldDefn.schema(), (BigDecimal)newDecimal);
+            return VariableScaleDecimal.fromLogical(fieldDefn.schema(), newDecimal);
         }
         return newDecimal;
     }
@@ -409,6 +417,14 @@ public class PostgresValueConverter extends JdbcValueConverters {
     protected Object convertArray(Column column, Field fieldDefn, Object data) {
         if (data == null) {
             data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) {
+                return null;
+            }
+            else {
+                return Collections.emptyList();
+            }
         }
         // RecordStreamProducer and RecordsSnapshotProducer should ensure this arrives as a list
         if (!(data instanceof List)) {

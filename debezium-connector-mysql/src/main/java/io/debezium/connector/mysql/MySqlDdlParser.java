@@ -853,7 +853,7 @@ public class MySqlDdlParser extends DdlParser {
             tokens.canConsume("KEY");
         } else {
             while (tokens.matchesAnyOf("NOT", "NULL", "DEFAULT", "AUTO_INCREMENT", "UNIQUE", "PRIMARY", "KEY", "COMMENT",
-                                       "REFERENCES", "COLUMN_FORMAT", "ON")) {
+                                       "REFERENCES", "COLUMN_FORMAT", "ON", "COLLATE")) {
                 // Nullability ...
                 if (tokens.canConsume("NOT", "NULL")) {
                     column.optional(false);
@@ -895,6 +895,9 @@ public class MySqlDdlParser extends DdlParser {
                 }
                 if (tokens.matches("REFERENCES")) {
                     parseReferenceDefinition(start);
+                }
+                if (tokens.canConsume("COLLATE")) {
+                    tokens.consume(); // name of collation
                 }
             }
         }
@@ -1392,7 +1395,7 @@ public class MySqlDdlParser extends DdlParser {
             while (tokens.canConsume(',')) {
                 parseRenameTable(start);
             }
-        } else if (tokens.canConsumeAnyOf("DATABASE", "SCHEMA")) {
+        } else if (tokens.canConsumeAnyOf("DATABASE", "SCHEMA", "USER")) {
             // See https://dev.mysql.com/doc/refman/5.1/en/rename-database.html
             consumeRemainingStatement(start);
         }

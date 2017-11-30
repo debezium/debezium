@@ -3,10 +3,13 @@
 The Debezium project uses Maven for its build system, relying up on the _release_ plugin to most of the work. This document describes the steps required to perform a release.
 
 ## Verify Jira issues
-All issues planned for this release must be resolved. If not they have to either be re-planned to another release or rejected. Use JQL query to find offending issues
+
+All issues planned for this release must be resolved. If not, they have to either be re-planned to another release or rejected. Use JQL query to find offending issues
 ```
 project=DBZ AND fixVersion=<VERSION> AND status NOT IN ('Resolved', 'Closed')
 ```
+
+Also make sure that each issue is assigned to a component ("mysql-connector" etc.).
 
 ## Update the changelog
 

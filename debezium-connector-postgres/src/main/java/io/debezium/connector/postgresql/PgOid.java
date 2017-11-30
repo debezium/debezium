@@ -40,15 +40,22 @@ public final class PgOid extends Oid {
         String typeName = column.typeName();
         if (typeName.toUpperCase().equals("TSTZRANGE")) {
             return TSTZRANGE_OID;
-        }
-        else if (column.jdbcType() == Types.ARRAY) {
+        } else if (typeName.toUpperCase().equals("SMALLSERIAL")) {
+            return PgOid.INT2;
+        } else if (typeName.toUpperCase().equals("SERIAL")) {
+            return PgOid.INT4;
+        } else if (typeName.toUpperCase().equals("BIGSERIAL")) {
+            return PgOid.INT8;
+        } else if (typeName.toUpperCase().equals("JSONB")) {
+            return PgOid.JSONB_OID;
+        } else if (column.jdbcType() == Types.ARRAY) {
             return column.componentType();
         }
         try {
             return Oid.valueOf(typeName);
         } catch (PSQLException e) {
             // not known by the driver PG driver
-            return column.jdbcType();
+            return Oid.UNSPECIFIED;
         }
     }
 }

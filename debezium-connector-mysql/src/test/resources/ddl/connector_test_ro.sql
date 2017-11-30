@@ -79,3 +79,13 @@ INSERT INTO ids VALUES(1);
 INSERT INTO ids2 VALUES(1);
 DROP TEMPORARY TABLE ids;
 DROP TEMPORARY TABLE ids2;
+
+-- DBZ-342 handle TIME values that exceed the value range of java.sql.Time
+CREATE TABLE dbz_342_timetest (
+  c1 TIME(2) PRIMARY KEY,
+  c2 TIME(0),
+  c3 TIME(3),
+  c4 TIME(3),
+  c5 TIME(6)
+);
+INSERT INTO dbz_342_timetest VALUES ('517:51:04.777', '-13:14:50', '-733:00:00.0011', '-1:59:59.0011', '-838:59:58.999999');

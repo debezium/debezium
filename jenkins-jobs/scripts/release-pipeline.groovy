@@ -112,6 +112,14 @@ def unresolvedIssuesFromJira() {
 }
 
 @NonCPS
+def issuesWithoutComponentsFromJira() {
+    jiraGET('search', [
+        'jql': "project=$JIRA_PROJECT AND fixVersion=$JIRA_VERSION AND component IS EMPTY",
+        'fields': 'key'
+    ]).issues.collect { it.key }
+}
+
+@NonCPS
 def closeJiraIssues() {
     def resolvedIssues = jiraGET('search', [
         'jql': "project=$JIRA_PROJECT AND fixVersion=$JIRA_VERSION AND status='Resolved'",
@@ -163,8 +171,12 @@ node('Slave') {
 
     stage ('Check Jira') {
         unresolvedIssues = unresolvedIssuesFromJira()
+        issuesWithoutComponents = issuesWithoutComponentsFromJira()
         if (unresolvedIssues) {
             error "Error, issues ${unresolvedIssues.toString()} must be resolved"
+        }
+        if (issuesWithoutComponents) {
+            error "Error, issues ${issuesWithoutComponents.toString()} must have component set"
         }
     }
 

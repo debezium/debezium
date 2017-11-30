@@ -93,7 +93,7 @@ public class KafkaServer {
      */
     protected void populateDefaultConfiguration(Properties props) {
         config.setProperty(KafkaConfig.NumPartitionsProp(), String.valueOf(1));
-        config.setProperty(KafkaConfig.LogFlushIntervalMessagesProp(), String.valueOf(1));
+        config.setProperty(KafkaConfig.LogFlushIntervalMessagesProp(), String.valueOf(Long.MAX_VALUE));
     }
 
     /**

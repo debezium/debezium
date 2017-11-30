@@ -6,6 +6,7 @@
 
 package io.debezium.connector.postgresql;
 
+import java.sql.Array;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -253,9 +254,13 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         try {
             int jdbcSqlType = metaData.getColumnType(colIdx);
             if ( jdbcSqlType == Types.ARRAY) {
-                Object array = rs.getArray(colIdx).getArray();
-                if ( array == null ) return false;
-                return Arrays.asList((Object[])array);
+                Array array = rs.getArray(colIdx);
+
+                if (array == null) {
+                    return null;
+                }
+
+                return Arrays.asList((Object[])array.getArray());
             }
             String columnTypeName = metaData.getColumnTypeName(colIdx);
             int colOid = PgOid.valueOf(columnTypeName);

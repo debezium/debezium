@@ -21,6 +21,7 @@ import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.KafkaDatabaseHistory;
 
@@ -30,65 +31,9 @@ import io.debezium.relational.history.KafkaDatabaseHistory;
 public class MySqlConnectorConfig {
 
     /**
-     * The set of predefined TemporalPrecisionMode options or aliases.
-     */
-    public static enum TemporalPrecisionMode implements EnumeratedValue {
-        /**
-         * Represent time and date values based upon the resolution in the database, using {@link io.debezium.time} semantic
-         * types.
-         */
-        ADAPTIVE("adaptive"),
-
-        /**
-         * Represent time and date values using Kafka Connect {@link org.apache.kafka.connect.data} logical types, which always
-         * have millisecond precision.
-         */
-        CONNECT("connect");
-
-        private final String value;
-
-        private TemporalPrecisionMode(String value) {
-            this.value = value;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @return the matching option, or null if no match is found
-         */
-        public static TemporalPrecisionMode parse(String value) {
-            if (value == null) return null;
-            value = value.trim();
-            for (TemporalPrecisionMode option : TemporalPrecisionMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) return option;
-            }
-            return null;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @param defaultValue the default value; may be null
-         * @return the matching option, or null if no match is found and the non-null default is invalid
-         */
-        public static TemporalPrecisionMode parse(String value, String defaultValue) {
-            TemporalPrecisionMode mode = parse(value);
-            if (mode == null && defaultValue != null) mode = parse(defaultValue);
-            return mode;
-        }
-    }
-
-    /**
      * The set of predefined DecimalHandlingMode options or aliases.
      */
-    public static enum DecimalHandlingMode implements EnumeratedValue {
+    public enum DecimalHandlingMode implements EnumeratedValue {
         /**
          * Represent {@code DECIMAL} and {@code NUMERIC} values as precise {@link BigDecimal} values, which are
          * represented in change events in a binary form. This is precise but difficult to use.
@@ -753,13 +698,14 @@ public class MySqlConnectorConfig {
 
     public static final Field TIME_PRECISION_MODE = Field.create("time.precision.mode")
                                                          .withDisplayName("Time Precision")
-                                                         .withEnum(TemporalPrecisionMode.class, TemporalPrecisionMode.ADAPTIVE)
+                                                         .withEnum(TemporalPrecisionMode.class, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS)
                                                          .withWidth(Width.SHORT)
                                                          .withImportance(Importance.MEDIUM)
                                                          .withDescription("Time, date, and timestamps can be represented with different kinds of precisions, including:"
-                                                                 + "'adaptive' (the default) bases the precision of time, date, and timestamp values on the database column's precision; "
+                                                                 + "'adaptive_time_microseconds' (the default) like 'adaptive' mode, but TIME fields always use microseconds precision;"
+                                                                 + "'adaptive' (deprecated) bases the precision of time, date, and timestamp values on the database column's precision; "
                                                                  + "'connect' always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
-                                                                 + "which uses millisecond precision regardless of the database columns' precision .");
+                                                                 + "which uses millisecond precision regardless of the database columns' precision.");
 
     public static final Field DECIMAL_HANDLING_MODE = Field.create("decimal.handling.mode")
                                                            .withDisplayName("Decimal Handling")
