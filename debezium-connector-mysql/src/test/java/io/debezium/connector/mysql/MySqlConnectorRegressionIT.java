@@ -23,6 +23,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAdjuster;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
@@ -224,8 +225,12 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 OffsetDateTime c4DateTime = OffsetDateTime.parse(c4, ZonedTimestamp.FORMATTER);
 
                 // We're running the connector in the same timezone as the server, so the timezone in the timestamp
-                // should match our current offset ...
-                assertThat(c4DateTime.getOffset()).isEqualTo(OffsetDateTime.now().getOffset());
+                // should match our current TZ's offset at the given time...
+                ZoneOffset expectedOffset = ZonedDateTime.of(
+                        LocalDate.of(1970, 1, 1).atTime(0, 0),
+                        TimeZone.getDefault().toZoneId()
+                ).getOffset();
+                assertThat(c4DateTime.getOffset()).isEqualTo(expectedOffset);
 
                 // In case the timestamp string not in our timezone, convert to UTC so we can compare ...
                 c4DateTime = c4DateTime.withOffsetSameInstant(ZoneOffset.of("Z"));
@@ -480,8 +485,12 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 OffsetDateTime c4DateTime = OffsetDateTime.parse(c4, ZonedTimestamp.FORMATTER);
 
                 // We're running the connector in the same timezone as the server, so the timezone in the timestamp
-                // should match our current offset ...
-                assertThat(c4DateTime.getOffset()).isEqualTo(OffsetDateTime.now().getOffset());
+                // should match our TZ's offset at the given time...
+                ZoneOffset expectedOffset = ZonedDateTime.of(
+                        LocalDate.of(1970, 1, 1).atTime(0, 0),
+                        TimeZone.getDefault().toZoneId()
+                ).getOffset();
+                assertThat(c4DateTime.getOffset()).isEqualTo(expectedOffset);
 
                 // In case the timestamp string not in our timezone, convert to UTC so we can compare ...
                 c4DateTime = c4DateTime.withOffsetSameInstant(ZoneOffset.of("Z"));
@@ -642,9 +651,15 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
 
                 // '2014-09-08 17:51:04.777'
                 String c4 = after.getString("c4"); // timestamp
+
+                ZoneOffset localOffset = ZonedDateTime.of(
+                        LocalDate.of(2014, 9, 8).atTime(0, 0),
+                        TimeZone.getDefault().toZoneId()
+                ).getOffset();
+
                 OffsetDateTime c4DateTime = OffsetDateTime.parse(c4, ZonedTimestamp.FORMATTER);
                 // In case the timestamp string not in our timezone, convert to ours so we can compare ...
-                c4DateTime = c4DateTime.withOffsetSameInstant(OffsetDateTime.now().getOffset());
+                c4DateTime = c4DateTime.withOffsetSameInstant(localOffset);
                 assertThat(c4DateTime.getYear()).isEqualTo(2014);
                 assertThat(c4DateTime.getMonth()).isEqualTo(Month.SEPTEMBER);
                 assertThat(c4DateTime.getDayOfMonth()).isEqualTo(8);
@@ -653,9 +668,6 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c4DateTime.getMinute()).isEqualTo(51);
                 assertThat(c4DateTime.getSecond()).isEqualTo(4);
                 assertThat(c4DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
-                // We're running the connector in the same timezone as the server, so the timezone in the timestamp
-                // should match our current offset ...
-                assertThat(c4DateTime.getOffset()).isEqualTo(OffsetDateTime.now().getOffset());
             } else if (record.topic().endsWith("dbz_123_bitvaluetest")) {
                 // All row events should have the same values ...
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
