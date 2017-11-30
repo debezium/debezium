@@ -376,22 +376,22 @@ public class RecordsStreamProducer extends RecordsProducer {
         recordConsumer.accept(record);
     }
 
-    private Object[] columnValues(List<ReplicationMessage.Column> messageList, TableId tableId, boolean refreshSchemaIfChanged, boolean metadataInMessage)
+    private Object[] columnValues(List<ReplicationMessage.Column> columns, TableId tableId, boolean refreshSchemaIfChanged, boolean metadataInMessage)
             throws SQLException {
-        if (messageList == null || messageList.isEmpty()) {
+        if (columns == null || columns.isEmpty()) {
             return null;
         }
         Table table = schema().tableFor(tableId);
         assert table != null;
 
         // check if we need to refresh our local schema due to DB schema changes for this table
-        if (refreshSchemaIfChanged && schemaChanged(messageList, table, metadataInMessage)) {
+        if (refreshSchemaIfChanged && schemaChanged(columns, table, metadataInMessage)) {
             try (final PostgresConnection connection = taskContext.createConnection()) {
                 // Refresh the schema so we get information about primary keys
                 schema().refresh(connection, tableId);
                 // Update the schema with metadata coming from decoder message
                 if (metadataInMessage) {
-                    schema().refresh(tableFromFromMessage(messageList, schema().tableFor(tableId)));
+                    schema().refresh(tableFromFromMessage(columns, schema().tableFor(tableId)));
                 }
                 table = schema().tableFor(tableId);
             }
@@ -400,8 +400,8 @@ public class RecordsStreamProducer extends RecordsProducer {
         // based on the schema columns, create the values on the same position as the columns
         List<String> columnNames = table.columnNames();
         // JSON does not deliver a list of all columns for REPLICA IDENTITY DEFAULT
-        Object[] values = new Object[messageList.size() < columnNames.size() ? columnNames.size() : messageList.size()];
-        messageList.forEach(message -> {
+        Object[] values = new Object[columns.size() < columnNames.size() ? columnNames.size() : columns.size()];
+        columns.forEach(message -> {
             //DBZ-298 Quoted column names will be sent like that in messages, but stored unquoted in the column names
             String columnName = Strings.unquoteIdentifierPart(message.getName());
             int position = columnNames.indexOf(columnName);
@@ -411,9 +411,9 @@ public class RecordsStreamProducer extends RecordsProducer {
         return values;
     }
 
-    private boolean schemaChanged(List<ReplicationMessage.Column> messageList, Table table, boolean metadataInMessage) {
+    private boolean schemaChanged(List<ReplicationMessage.Column> columns, Table table, boolean metadataInMessage) {
         List<String> columnNames = table.columnNames();
-        int messagesCount = messageList.size();
+        int messagesCount = columns.size();
         if (columnNames.size() != messagesCount) {
             // the table metadata has less or more columns than the event, which means the table structure has changed,
             // so we need to trigger a refresh...
@@ -422,7 +422,7 @@ public class RecordsStreamProducer extends RecordsProducer {
 
         // go through the list of columns from the message to figure out if any of them are new or have changed their type based
         // on what we have in the table metadata....
-        return messageList.stream().filter(message -> {
+        return columns.stream().filter(message -> {
             String columnName = message.getName();
             Column column = table.columnWithName(columnName);
             if (column == null) {
@@ -473,9 +473,9 @@ public class RecordsStreamProducer extends RecordsProducer {
         return typeResolverConnection;
     }
 
-    private Table tableFromFromMessage(List<ReplicationMessage.Column> messageList, Table table) {
+    private Table tableFromFromMessage(List<ReplicationMessage.Column> columns, Table table) {
         return table.edit()
-            .setColumns(messageList.stream()
+            .setColumns(columns.stream()
                 .map(column -> {
                     final ColumnEditor columnEditor = Column.editor()
                             .name(column.getName())
@@ -500,6 +500,6 @@ public class RecordsStreamProducer extends RecordsProducer {
     }
 
     private int typeNameToJDBCType(final ReplicationMessage.Column column) {
-        return taskContext.schema().columnTypeNameToJDBCTypeId(column.getTypeName());
+        return taskContext.schema().columnTypeNameToJdbcTypeId(column.getTypeName());
     }
 }

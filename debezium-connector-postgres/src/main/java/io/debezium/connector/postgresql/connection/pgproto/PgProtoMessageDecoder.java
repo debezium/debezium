@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.Arrays;
 
+import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,15 +47,18 @@ public class PgProtoMessageDecoder implements MessageDecoder {
             final byte[] content = Arrays.copyOfRange(source, buffer.arrayOffset(), source.length);
             final RowMessage message = PgProto.RowMessage.parseFrom(content);
             if (!message.getNewTypeinfoList().isEmpty() && message.getNewTupleCount() != message.getNewTypeinfoCount()) {
-                LOGGER.warn("Message from transaction {} has {} data columns but only {} of type info",
+                LOGGER.error("Message from transaction {} has {} data columns but only {} of type info",
                         message.getTransactionId(),
                         message.getNewTupleCount(),
                         message.getNewTypeinfoCount());
-                return;
+                throw new ConnectException(String.format("Message from transaction {} has {} data columns but only {} of type info",
+                        message.getTransactionId(),
+                        message.getNewTupleCount(),
+                        message.getNewTypeinfoCount()));
             }
             processor.process(new PgProtoReplicationMessage(message));
         } catch (InvalidProtocolBufferException e) {
-            throw new RuntimeException(e);
+            throw new ConnectException(e);
         }
     }
 
