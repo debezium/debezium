@@ -13,6 +13,7 @@ import static org.junit.Assert.fail;
 import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -22,7 +23,6 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAdjuster;
-import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
@@ -795,6 +795,47 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(decimalValue).isInstanceOf(Double.class);
                 Double doubleValue = (Double) decimalValue;
                 assertThat(doubleValue).isEqualTo(12345.67, Delta.delta(0.01));
+            }
+        });
+    }
+
+    @Test
+    @FixFor("DBZ-342")
+    public void shouldReturnTimeColumnsAsMilliSecondsInAdaptivePrecisionMode() throws SQLException, InterruptedException {
+        // Use the DB configuration to define the connector's configuration ...
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
+                .with(MySqlConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ADAPTIVE)
+                .build();
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        // Testing.Debug.enable();
+        int numCreateDatabase = 1;
+        int numCreateTables = 11;
+        int numDataRecords = 20;
+        int numCreateDefiner = 1;
+        SourceRecords records =
+            consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords + numCreateDefiner);
+        stopConnector();
+        assertThat(records).isNotNull();
+        assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(numCreateDatabase + numCreateTables + numCreateDefiner);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_85_fractest")).size()).isEqualTo(1);
+
+        records.forEach(this::validate);
+        records.forEach(record -> {
+            Struct value = (Struct) record.value();
+            if (record.topic().endsWith("dbz_85_fractest")) {
+                Struct after = value.getStruct(Envelope.FieldName.AFTER);
+                // c2 TIME(2),
+                // { "c2" : "17:51:04.777" }
+                Integer c2 = after.getInt32("c2");
+                long expectedMillis = Duration.ofHours(17).plusMinutes(51).plusSeconds(4).plusMillis(780).toMillis();
+                assertThat(c2).isEqualTo((int)expectedMillis);
             }
         });
     }
