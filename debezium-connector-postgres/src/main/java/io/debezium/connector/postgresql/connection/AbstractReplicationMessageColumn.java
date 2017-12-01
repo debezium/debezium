@@ -140,12 +140,12 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
     private TypeMetadata typeMetadata;
     private final boolean hasMetadata;
 
-    public AbstractReplicationMessageColumn(String columnName, String typeWithModifiers, boolean optional, ReplicationMessage message) {
+    public AbstractReplicationMessageColumn(String columnName, String typeWithModifiers, boolean optional, boolean hasMetadata) {
         super();
         this.columnName = columnName;
         this.typeWithModifiers = typeWithModifiers;
         this.optional = optional;
-        this.hasMetadata = message.hasMetadata();
+        this.hasMetadata = hasMetadata;
     }
 
     private void initMetadata() {

@@ -95,7 +95,7 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                     final PgProto.DatumMessage datum = messageList.get(index);
                     final Optional<PgProto.TypeInfo> typeInfo = Optional.ofNullable(hasMetadata() && typeInfoList != null ? typeInfoList.get(index) : null);
                     final String columnName = Strings.unquoteIdentifierPart(datum.getColumnName());
-                    return new AbstractReplicationMessageColumn(columnName, typeInfo.map(PgProto.TypeInfo::getModifier).orElse(null), typeInfo.map(PgProto.TypeInfo::getValueOptional).orElse(Boolean.FALSE), PgProtoReplicationMessage.this) {
+                    return new AbstractReplicationMessageColumn(columnName, typeInfo.map(PgProto.TypeInfo::getModifier).orElse(null), typeInfo.map(PgProto.TypeInfo::getValueOptional).orElse(Boolean.FALSE), hasMetadata()) {
 
                         @Override
                         public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {

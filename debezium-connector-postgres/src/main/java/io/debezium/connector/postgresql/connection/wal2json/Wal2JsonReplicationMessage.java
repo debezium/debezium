@@ -48,11 +48,13 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
     private final int txId;
     private final long commitTime;
     private final Document rawMessage;
+    private final boolean hasMetadata;
 
-    public Wal2JsonReplicationMessage(final int txId, final long commitTime, final Document rawMessage) {
+    public Wal2JsonReplicationMessage(final int txId, final long commitTime, final Document rawMessage, final boolean hasMetadata) {
         this.txId = txId;
         this.commitTime = commitTime;
         this.rawMessage = rawMessage;
+        this.hasMetadata = hasMetadata;
     }
 
     @Override
@@ -98,7 +100,7 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
 
     @Override
     public boolean hasMetadata() {
-        return true;
+        return hasMetadata;
     }
 
     private List<ReplicationMessage.Column> transform(final Document data, final String nameField, final String typeField, final String valueField, final String optionalsField) {
@@ -119,7 +121,7 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
             boolean columnOptional = columnOptionals != null ? columnOptionals.get(i).asBoolean() : false;
             Value rawValue = columnValues.get(i);
 
-            columns.add(new AbstractReplicationMessageColumn(columnName, columnType, columnOptional, Wal2JsonReplicationMessage.this) {
+            columns.add(new AbstractReplicationMessageColumn(columnName, columnType, columnOptional, true) {
 
                 @Override
                 public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {

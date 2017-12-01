@@ -12,11 +12,13 @@ import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 
 import org.postgresql.PGConnection;
 import org.postgresql.replication.LogSequenceNumber;
 import org.postgresql.replication.PGReplicationStream;
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
+import org.postgresql.util.PSQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -149,20 +151,21 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     private ReplicationStream createReplicationStream(final LogSequenceNumber lsn) throws SQLException {
-        assert lsn != null;
-        ChainedLogicalStreamBuilder streamBuilder = pgConnection()
-                .getReplicationAPI()
-                .replicationStream()
-                .logical()
-                .withSlotName(slotName)
-                .withStartPosition(lsn);
-        streamBuilder = messageDecoder.options(streamBuilder);
-
-        if (statusUpdateIntervalMillis != null && statusUpdateIntervalMillis > 0) {
-            streamBuilder.withStatusInterval(statusUpdateIntervalMillis, TimeUnit.MILLISECONDS);
+        PGReplicationStream s;
+        try {
+            s = startPgReplicationStream(lsn, messageDecoder::optionsWithMetadata);
+            messageDecoder.canHaveMetadata(true);
+        } catch (PSQLException e) {
+            if (e.getMessage().matches("(?s)ERROR: option .* is unknown.*")) {
+                // It is possible we are connecting to an old wal2json plug-in
+                LOGGER.warn("Could not register for streaming with metadata in messages, falling back to messages without metadata");
+                s = startPgReplicationStream(lsn, messageDecoder::optionsWithoutMetadata);
+                messageDecoder.canHaveMetadata(false);
+            } else {
+                throw e;
+            }
         }
-
-        PGReplicationStream stream = streamBuilder.start();
+        final PGReplicationStream stream = s;
         final long lsnLong = lsn.asLong();
         return new ReplicationStream() {
             private static final int CHECK_WARNINGS_AFTER_COUNT = 100;
@@ -228,6 +231,30 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 }
             }
         };
+    }
+
+    private PGReplicationStream startPgReplicationStream(final LogSequenceNumber lsn, Function<ChainedLogicalStreamBuilder, ChainedLogicalStreamBuilder> configurator) throws SQLException {
+        assert lsn != null;
+        ChainedLogicalStreamBuilder streamBuilder = pgConnection()
+                .getReplicationAPI()
+                .replicationStream()
+                .logical()
+                .withSlotName(slotName)
+                .withStartPosition(lsn);
+        streamBuilder = configurator.apply(streamBuilder);
+
+        if (statusUpdateIntervalMillis != null && statusUpdateIntervalMillis > 0) {
+            streamBuilder.withStatusInterval(statusUpdateIntervalMillis, TimeUnit.MILLISECONDS);
+        }
+
+        PGReplicationStream stream = streamBuilder.start();
+        // Needed by tests when connections are opened and closed in a fast sequence
+        try {
+            Thread.sleep(10);
+        } catch (Exception e) {
+        }
+        stream.forceUpdateStatus();
+        return stream;
     }
 
     @Override

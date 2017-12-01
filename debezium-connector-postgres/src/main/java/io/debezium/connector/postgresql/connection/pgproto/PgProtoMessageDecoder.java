@@ -63,7 +63,12 @@ public class PgProtoMessageDecoder implements MessageDecoder {
     }
 
     @Override
-    public ChainedLogicalStreamBuilder options(ChainedLogicalStreamBuilder builder) {
+    public ChainedLogicalStreamBuilder optionsWithMetadata(ChainedLogicalStreamBuilder builder) {
+        return builder;
+    }
+
+    @Override
+    public ChainedLogicalStreamBuilder optionsWithoutMetadata(ChainedLogicalStreamBuilder builder) {
         return builder;
     }
 }
