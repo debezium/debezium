@@ -205,7 +205,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
             } else if (record.topic().endsWith("dbz_228_mediumint_unsigned")) {
                 assertMediumUnsigned(value);
             } else if (record.topic().endsWith("dbz_228_bigint_unsigned")) {
-                assertBigintUnsignedPrecise(value);
+                assertBigintUnsignedLong(value);
             }
         });
     }
