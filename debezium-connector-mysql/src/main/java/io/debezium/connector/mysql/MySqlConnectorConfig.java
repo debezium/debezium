@@ -718,12 +718,12 @@ public class MySqlConnectorConfig {
 
     public static final Field BIGINT_UNSIGNED_HANDLING_MODE = Field.create("bigint.unsigned.handling.mode")
                                                            .withDisplayName("BIGINT UNSIGNED Handling")
-                                                           .withEnum(BigIntUnsignedHandlingMode.class, BigIntUnsignedHandlingMode.PRECISE)
+                                                           .withEnum(BigIntUnsignedHandlingMode.class, BigIntUnsignedHandlingMode.LONG)
                                                            .withWidth(Width.SHORT)
                                                            .withImportance(Importance.MEDIUM)
                                                            .withDescription("Specify how BIGINT UNSIGNED columns should be represented in change events, including:"
-                                                                            + "'precise' (the default) uses java.math.BigDecimal to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; "
-                                                                            + "'long' represents values using Java's 'long', which may not offer the precision but will be far easier to use in consumers.");
+                                                                            + "'precise' uses java.math.BigDecimal to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; "
+                                                                            + "'long' (the default) represents values using Java's 'long', which may not offer the precision but will be far easier to use in consumers.");
 
     public static final Field EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE = Field.create("event.deserialization.failure.handling.mode")
             .withDisplayName("Event deserialization failure handling")
