@@ -7,6 +7,10 @@ package io.debezium.connector.mysql;
 
 import com.datapipeline.clients.DpAES;
 
+import org.apache.kafka.connect.errors.ConnectException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -16,26 +20,21 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.apache.kafka.connect.errors.ConnectException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.jdbc.JdbcConnection.ConnectionFactory;
 import io.debezium.util.Strings;
 
 /**
  * A context for a JDBC connection to MySQL.
- * 
+ *
  * @author Randall Hauch
  */
 public class MySqlJdbcContext implements AutoCloseable {
 
     protected static final String MYSQL_CONNECTION_URL = "jdbc:mysql://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false&useSSL=${useSSL}&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=convertToNull";
-    protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(MYSQL_CONNECTION_URL);
+//    protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(MYSQL_CONNECTION_URL);
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     protected final Configuration config;
@@ -146,7 +145,7 @@ public class MySqlJdbcContext implements AutoCloseable {
     /**
      * Determine if the current user has the named privilege. Note that if the user has the "ALL" privilege this method
      * returns {@code true}.
-     * 
+     *
      * @param grantName the name of the MySQL privilege; may not be null
      * @return {@code true} if the user has the named privilege, or {@code false} otherwise
      */
@@ -176,7 +175,7 @@ public class MySqlJdbcContext implements AutoCloseable {
 
     /**
      * Read the MySQL charset-related system variables.
-     * 
+     *
      * @param sql the reference that should be set to the SQL statement; may be null if not needed
      * @return the system variables that are related to server character sets; never null
      */
@@ -207,7 +206,7 @@ public class MySqlJdbcContext implements AutoCloseable {
 
     /**
      * Read the MySQL system variables.
-     * 
+     *
      * @param sql the reference that should be set to the SQL statement; may be null if not needed
      * @return the system variables that are related to server character sets; never null
      */
