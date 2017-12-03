@@ -81,13 +81,13 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
                 typeModifiers = new int[typeModifiersStr.length];
                 for (int i = 0; i < typeModifiersStr.length; i++) {
                     try {
-                    typeModifiers[i] = Integer.parseInt(typeModifiersStr[i]);
+                        typeModifiers[i] = Integer.parseInt(typeModifiersStr[i]);
                     } catch (NumberFormatException e) {
                         throw new ConnectException(String.format("Failed to parse type modifier '%s' for column %s", typeModifiersStr[i], columnName));
                     }
                 }
             }
-            boolean isArray = (m.group("array") != null);
+            boolean isArray = m.group("array") != null;
 
             if (baseType.startsWith("_")) {
                 // old-style type specifiers use an _ prefix for arrays
@@ -202,7 +202,6 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
      */
     @Override
     public boolean isOptional() {
-        assert hasMetadata : "Metadata not available";
         return optional;
     }
 
