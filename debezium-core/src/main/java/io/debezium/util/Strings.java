@@ -26,6 +26,11 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.text.ParsingException;
+import io.debezium.text.TokenStream;
+import io.debezium.text.TokenStream.CharacterStream;
+import io.debezium.text.TokenStream.Tokenizer;
+import io.debezium.text.TokenStream.Tokens;
 
 /**
  * String-related utility methods.
@@ -81,19 +86,19 @@ public final class Strings {
      * Generate the set of regular expression {@link Pattern}s that are specified in the string containing comma-separated
      * regular expressions.
      *
-     * @param input the input string with comma-separated regular expressions
+     * @param input the input string with comma-separated regular expressions. Comma can be escaped with backslash.
      * @return the list of regular expression {@link Pattern}s included in the list; never null
      * @throws PatternSyntaxException if the input includes an invalid regular expression
      */
     public static Set<Pattern> listOfRegex(String input) {
-        return listOf(input, ',', Pattern::compile);
+        return listOf(input, RegExSplitter::split, Pattern::compile);
     }
 
     /**
      * Generate the set of regular expression {@link Pattern}s that are specified in the string containing comma-separated
      * regular expressions.
      *
-     * @param input the input string with comma-separated regular expressions
+     * @param input the input string with comma-separated regular expressions. . Comma can be escaped with backslash.
      * @param regexFlags the flags for {@link Pattern#compile(String, int) compiling regular expressions}
      * @return the list of regular expression {@link Pattern}s included in the list; never null
      * @throws PatternSyntaxException if the input includes an invalid regular expression
@@ -101,7 +106,7 @@ public final class Strings {
      *             match flags are set in {@code regexFlags}
      */
     public static Set<Pattern> listOfRegex(String input, int regexFlags) {
-        return listOf(input, ',', (str) -> Pattern.compile(str, regexFlags));
+        return listOf(input, RegExSplitter::split, (str) -> Pattern.compile(str, regexFlags));
     }
 
     /**
@@ -853,5 +858,49 @@ public final class Strings {
     }
 
     private Strings() {
+    }
+
+    /**
+     * A tokenization class used to split a comma-separated list of regular expressions.
+     * If a comma is part of expression then it can be prepended with <code>'\'</code> so
+     * it will not act as a separator.
+     */
+    private static class RegExSplitter implements Tokenizer {
+
+        public static String[] split(String identifier) {
+            TokenStream stream = new TokenStream(identifier, new RegExSplitter(), true);
+            stream.start();
+
+            List<String> parts = new ArrayList<>();
+
+            while(stream.hasNext()) {
+                final String part = stream.consume();
+                if (part.length() == 0) {
+                    continue;
+                }
+                parts.add(part.replace("\\,", ","));
+            }
+
+            return parts.toArray(new String[parts.size()]);
+        }
+
+        @Override
+        public void tokenize(CharacterStream input, Tokens tokens) throws ParsingException {
+            int tokenStart = 0;
+            while (input.hasNext()) {
+                char c = input.next();
+                // Escape sequence
+                if (c == '\\') {
+                    if (!input.hasNext()) {
+                        throw new ParsingException(input.position(input.index()), "Unterminated escape sequence at the end of the string");
+                    }
+                    input.next();
+                } else if (c == ',') {
+                    tokens.addToken(input.position(tokenStart), tokenStart, input.index());
+                    tokenStart = input.index() + 1;
+                }
+            }
+            tokens.addToken(input.position(tokenStart), tokenStart, input.index() + 1);
+        }
     }
 }
