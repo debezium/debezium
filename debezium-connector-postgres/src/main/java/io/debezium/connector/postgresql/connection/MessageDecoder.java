@@ -56,6 +56,6 @@ public interface MessageDecoder {
      * @param flag - <code>true</code> if messages CAN contain type metadata,
      * <code>false</code> if messages must not contain type metadata 
      */
-    default void canHaveMetadata(boolean flag) {
+    default void setMayContainMetadata(boolean flag) {
     }
 }
