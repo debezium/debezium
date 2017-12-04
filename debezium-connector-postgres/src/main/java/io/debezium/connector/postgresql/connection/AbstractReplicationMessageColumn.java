@@ -83,7 +83,6 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
                     try {
                     typeModifiers[i] = Integer.parseInt(typeModifiersStr[i]);
                     } catch (NumberFormatException e) {
-                        LOGGER.error("Failed to parse type modifier for {} '{}'", columnName, typeModifiersStr[i]);
                         throw new ConnectException(String.format("Failed to parse type modifier '%s' for column %s", typeModifiersStr[i], columnName));
                     }
                 }

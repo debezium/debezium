@@ -26,6 +26,7 @@ import org.postgresql.util.PGmoney;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.postgresql.PgOid;
 import io.debezium.connector.postgresql.PostgresValueConverter;
 import io.debezium.connector.postgresql.RecordsStreamProducer.PgConnectionSupplier;
 import io.debezium.connector.postgresql.connection.AbstractReplicationMessageColumn;
@@ -130,7 +131,9 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
 
                 @Override
                 protected int getOidType() {
-                    return 0;
+                    return getTypeMetadata().isArray() ?
+                            PgOid.typeNameToOid(getTypeMetadata().getNormalizedTypeName().substring(1)) :
+                            PgOid.typeNameToOid(getTypeMetadata().getNormalizedTypeName());
                 }
             });
         }

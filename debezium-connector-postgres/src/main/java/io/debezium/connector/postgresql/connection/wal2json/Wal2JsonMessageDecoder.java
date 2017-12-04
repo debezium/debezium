@@ -74,7 +74,7 @@ public class Wal2JsonMessageDecoder implements MessageDecoder {
     }
 
     @Override
-    public void canHaveMetadata(boolean flag) {
+    public void setMayContainMetadata(boolean flag) {
         canHaveMetadata = flag;
     }
 }

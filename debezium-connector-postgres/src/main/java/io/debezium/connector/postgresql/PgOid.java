@@ -58,8 +58,13 @@ public final class PgOid extends Oid {
     }
 
     protected static int jdbcColumnToOid(Column column) {
-        String typeName = column.typeName();
+        if (column.jdbcType() == Types.ARRAY) {
+            return column.componentType();
+        }
+        return typeNameToOid(column.typeName());
+    }
 
+    public static int typeNameToOid(String typeName) {
         if (typeName.toUpperCase().equals("TSTZRANGE")) {
             return TSTZRANGE_OID;
         } else if (typeName.toUpperCase().equals("SMALLSERIAL")) {
@@ -70,8 +75,6 @@ public final class PgOid extends Oid {
             return PgOid.INT8;
         } else if (typeName.toUpperCase().equals("JSONB")) {
             return PgOid.JSONB_OID;
-        } else if (column.jdbcType() == Types.ARRAY) {
-            return column.componentType();
         }
         try {
             return Oid.valueOf(typeName);
