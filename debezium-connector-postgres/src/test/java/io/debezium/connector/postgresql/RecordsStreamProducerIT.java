@@ -359,6 +359,13 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statements);
     }
 
+    @Test
+    @FixFor("DBZ-501")
+    public void shouldNotStartAfterStop() throws Exception {
+        recordsProducer.stop();
+        recordsProducer.start(consumer);
+    }
+
     private void assertInsert(String statement, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {
         TableId table = tableIdFromInsertStmt(statement);
         String expectedTopicName = table.schema() + "." + table.table();

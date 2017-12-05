@@ -76,9 +76,13 @@ public class RecordsStreamProducer extends RecordsProducer {
     }
 
     @Override
-    protected void start(Consumer<SourceRecord> recordConsumer)  {
+    protected synchronized void start(Consumer<SourceRecord> recordConsumer)  {
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
+            if (executorService.isShutdown()) {
+                logger.info("Streaming will not start, stop already requested");
+                return;
+            }
             if (sourceInfo.hasLastKnownPosition()) {
                 // start streaming from the last recorded position in the offset
                 Long lsn = sourceInfo.lsn();
