@@ -36,7 +36,7 @@ public interface ReplicationMessage {
     public interface Column {
         String getName();
         Object getType();
-        Object getValue(final PgConnectionSupplier connection);
+        Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes);
     }
 
     /**

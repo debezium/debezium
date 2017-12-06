@@ -397,7 +397,7 @@ public class RecordsStreamProducer extends RecordsProducer {
             String columnName = Strings.unquoteIdentifierPart(message.getName());
             int position = columnNames.indexOf(columnName);
             assert position >= 0;
-            values[position] = message.getValue(this::typeResolverConnection);
+            values[position] = message.getValue(this::typeResolverConnection, taskContext.config().includeUnknownDatatypes());
         });
         return values;
     }

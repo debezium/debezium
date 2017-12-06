@@ -85,8 +85,8 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                 .map(datum -> new ReplicationMessage.Column() {
 
                     @Override
-                    public Object getValue(PgConnectionSupplier connection) {
-                        return PgProtoReplicationMessage.this.getValue(datum, connection);
+                    public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
+                        return PgProtoReplicationMessage.this.getValue(datum, connection, includeUnknownDatatypes);
                     }
 
                     @Override
@@ -113,7 +113,7 @@ class PgProtoReplicationMessage implements ReplicationMessage {
      * @param a supplier to get a connection to Postgres instance for array handling
      * @return the value; may be null
      */
-    public Object getValue(PgProto.DatumMessage datumMessage, PgConnectionSupplier connection) {
+    public Object getValue(PgProto.DatumMessage datumMessage, PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
         int columnType = (int) datumMessage.getColumnType();
         switch (columnType) {
             case PgOid.BOOL:
@@ -219,9 +219,12 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                     LOGGER.warn("Unexpected exception trying to process PgArray column '{}'", datumMessage.getColumnName(), e);
                 }
                 return null;
-            default: {
+            default:
+                // unknown datatype is sent by decoder as binary value
+                if (includeUnknownDatatypes && datumMessage.hasDatumBytes()) {
+                    return datumMessage.getDatumBytes().toByteArray();
+                }
                 return null;
-            }
         }
     }
 }
