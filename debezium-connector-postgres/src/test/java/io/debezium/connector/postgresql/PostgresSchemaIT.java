@@ -52,7 +52,8 @@ public class PostgresSchemaIT {
     private static final String[] TEST_TABLES = new String[] { "public.numeric_table", "public.numeric_decimal_table", "public.string_table",
                                                                "public.cash_table","public.bitbin_table",
                                                                "public.time_table", "public.text_table", "public.geom_table", "public.tstzrange_table",
-                                                               "public.array_table", "\"Quoted_\"\" . Schema\".\"Quoted_\"\" . Table\""
+                                                               "public.array_table", "\"Quoted_\"\" . Schema\".\"Quoted_\"\" . Table\"",
+                                                               "public.custom_table"
                                                              };
 
     private PostgresSchema schema;
@@ -103,6 +104,21 @@ public class PostgresSchemaIT {
                               SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
             assertTableSchema("\"Quoted_\"\" . Schema\".\"Quoted_\"\" . Table\"", "\"Quoted_\"\" . Text_Column\"",
                               Schema.OPTIONAL_STRING_SCHEMA);
+
+            TableSchema tableSchema = schemaFor("public.custom_table");
+            assertThat(tableSchema.valueSchema().field("lt")).isNull();
+        }
+    }
+
+    @Test
+    public void shouldLoadSchemaForExtensionPostgresTypes() throws Exception {
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        schema = new PostgresSchema(new PostgresConnectorConfig(TestHelper.defaultConfig().with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true).build()));
+        try (PostgresConnection connection = TestHelper.create()) {
+            schema.refresh(connection, false);
+            assertTablesIncluded(TEST_TABLES);
+            assertTableSchema("public.custom_table", "lt, i",
+                    Schema.OPTIONAL_BYTES_SCHEMA, Schema.OPTIONAL_BYTES_SCHEMA);
         }
     }
 
