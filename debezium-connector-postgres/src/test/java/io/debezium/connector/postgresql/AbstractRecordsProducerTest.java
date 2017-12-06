@@ -403,7 +403,7 @@ public abstract class AbstractRecordsProducerTest {
             Schema schema = content.schema();
             Field field = schema.field(fieldName);
             assertNotNull(fieldName + " not found in schema " + schema, field);
-            assertEquals("Schema for " + field + " does not match the actual value", this.schema, field.schema());
+            assertEquals("Schema for " + field.name() + " does not match the actual value", this.schema, field.schema());
         }
     }
 

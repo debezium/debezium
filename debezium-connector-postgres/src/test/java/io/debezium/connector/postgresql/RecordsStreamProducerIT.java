@@ -251,6 +251,30 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statements);
         updatedRecord = consumer.remove();
         VerifyRecord.isValidUpdate(updatedRecord, PK_FIELD, 1);
+
+        // change a column type
+        statements = "ALTER TABLE test_table ADD COLUMN modtype INTEGER;" +
+                "INSERT INTO test_table (pk,modtype) VALUES (2,1);";
+
+        consumer.expects(1);
+        executeAndWait(statements);
+        updatedRecord = consumer.remove();
+
+        VerifyRecord.isValidInsert(updatedRecord, PK_FIELD, 2);
+        assertRecordSchemaAndValues(
+                Collections.singletonList(new SchemaAndValueField("modtype", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 1)), updatedRecord, Envelope.FieldName.AFTER);
+
+        statements = "ALTER TABLE test_table ALTER COLUMN modtype TYPE SMALLINT;"
+                + "UPDATE test_table SET modtype = 2 WHERE pk = 2;";
+
+        consumer.expects(1);
+        executeAndWait(statements);
+        updatedRecord = consumer.remove();
+        VerifyRecord.isValidUpdate(updatedRecord, PK_FIELD, 2);
+        assertRecordSchemaAndValues(
+                Collections.singletonList(new SchemaAndValueField("modtype", SchemaBuilder.OPTIONAL_INT16_SCHEMA, (short)1)), updatedRecord, Envelope.FieldName.BEFORE);
+        assertRecordSchemaAndValues(
+                Collections.singletonList(new SchemaAndValueField("modtype", SchemaBuilder.OPTIONAL_INT16_SCHEMA, (short)2)), updatedRecord, Envelope.FieldName.AFTER);
     }
 
     @Test
@@ -354,7 +378,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 "INSERT INTO table_with_interval VALUES (default, 'Bar', default);" +
                 "DELETE FROM table_with_interval WHERE id = 1;";
 
-        consumer = testConsumer(3);
+        consumer = testConsumer(4);
         recordsProducer.start(consumer);
         executeAndWait(statements);
     }

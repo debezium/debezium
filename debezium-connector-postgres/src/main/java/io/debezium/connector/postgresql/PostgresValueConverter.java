@@ -434,6 +434,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     private boolean isVariableScaleDecimal(final Column column) {
-        return column.scale() == 0 && column.length() == VARIABLE_SCALE_DECIMAL_LENGTH;
+        return (column.scale() == 0 && column.length() == VARIABLE_SCALE_DECIMAL_LENGTH)
+                || (column.scale() == -1 && column.length() == -1);
     }
 }
