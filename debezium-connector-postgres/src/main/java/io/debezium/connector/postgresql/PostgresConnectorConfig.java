@@ -626,6 +626,16 @@ public class PostgresConnectorConfig {
             .withDescription("Enable or disable TCP keep-alive probe to avoid dropping TCP connection")
             .withValidation(Field::isBoolean);
 
+    public static final Field INCLUDE_UNKNOWN_DATATYPES = Field.create("include.unknown.datatypes")
+            .withDisplayName("Include unknown datatypes")
+            .withType(Type.BOOLEAN)
+            .withDefault(false)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Specify whether the fields of data type not supported by Debezium should be processed:"
+                    + "'false' (the default) omits the fields; "
+                    + "'true' converts the field into an implementation dependent binary representation.");
+
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
@@ -638,7 +648,7 @@ public class PostgresConnectorConfig {
                                                      TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                                                      SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD,
                                                      SSL_ROOT_CERT, SSL_CLIENT_KEY, SNAPSHOT_LOCK_TIMEOUT_MS, ROWS_FETCH_SIZE, SSL_SOCKET_FACTORY,
-                                                     STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE);
+                                                     STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, INCLUDE_UNKNOWN_DATATYPES);
 
     private final Configuration config;
     private final String serverName;
@@ -706,6 +716,10 @@ public class PostgresConnectorConfig {
 
     protected DecimalMode decimalHandlingMode() {
         return decimalHandlingMode;
+    }
+
+    protected boolean includeUnknownDatatypes() {
+        return config.getBoolean(INCLUDE_UNKNOWN_DATATYPES);
     }
 
     protected Configuration jdbcConfig() {
@@ -776,7 +790,7 @@ public class PostgresConnectorConfig {
                     USER, PASSWORD, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD, SSL_ROOT_CERT, SSL_CLIENT_KEY,
                     DROP_SLOT_ON_STOP, SSL_SOCKET_FACTORY, STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE);
         Field.group(config, "Events", SCHEMA_WHITELIST, SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
-                    COLUMN_BLACKLIST);
+                    COLUMN_BLACKLIST, INCLUDE_UNKNOWN_DATATYPES);
         Field.group(config, "Connector", TOPIC_SELECTION_STRATEGY, POLL_INTERVAL_MS, MAX_BATCH_SIZE, MAX_QUEUE_SIZE,
                     SNAPSHOT_MODE, SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, ROWS_FETCH_SIZE);
         return config;

@@ -117,8 +117,8 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
             columns.add(new ReplicationMessage.Column() {
 
                 @Override
-                public Object getValue(PgConnectionSupplier connection) {
-                    return Wal2JsonReplicationMessage.this.getValue(columnName, columnType, rawValue, connection);
+                public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
+                    return Wal2JsonReplicationMessage.this.getValue(columnName, columnType, rawValue, connection, includeUnknownDatatypes);
                 }
 
                 @Override
@@ -147,7 +147,7 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
      *
      * @return the value; may be null
      */
-    public Object getValue(String columnName, String columnType, Value rawValue, final PgConnectionSupplier connection) {
+    public Object getValue(String columnName, String columnType, Value rawValue, final PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
         if (rawValue.isNull()) {
             // nulls are null
             return null;
@@ -351,6 +351,13 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
                 break;
         }
 
+        if (includeUnknownDatatypes) {
+            // this includes things like PostGIS geometries or other custom types.
+            // leave up to the downstream message recipient to deal with.
+            LOGGER.debug("processing column '{}' with unknown data type '{}' as byte array", columnName,
+                    columnType);
+            return rawValue.asString();
+        }
         return null;
     }
 }

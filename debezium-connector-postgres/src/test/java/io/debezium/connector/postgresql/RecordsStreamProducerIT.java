@@ -55,7 +55,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 "CREATE TABLE table_with_interval (id SERIAL PRIMARY KEY, title VARCHAR(512) NOT NULL, time_limit INTERVAL DEFAULT '60 days'::INTERVAL NOT NULL);" +
                 "INSERT INTO test_table(text) VALUES ('insert');";
         TestHelper.execute(statements);
-        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true).build());
         PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config));
         recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.serverName()));
     }
@@ -108,6 +108,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // timezone range types
         consumer.expects(1);
         assertInsert(INSERT_TSTZRANGE_TYPES_STMT, schemaAndValuesForTstzRangeTypes());
+
+        // custom types + null value
+        consumer.expects(1);
+        assertInsert(INSERT_CUSTOM_TYPES_STMT, schemasAndValuesForCustomTypes());
     }
 
     @Test

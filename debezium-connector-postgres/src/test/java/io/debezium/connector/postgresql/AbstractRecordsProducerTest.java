@@ -98,6 +98,9 @@ public abstract class AbstractRecordsProducerTest {
     protected static final String INSERT_QUOTED_TYPES_STMT = "INSERT INTO \"Quoted_\"\" . Schema\".\"Quoted_\"\" . Table\" (\"Quoted_\"\" . Text_Column\") " +
                                                              "VALUES ('some text')";
 
+    protected static final String INSERT_CUSTOM_TYPES_STMT = "INSERT INTO custom_table (lt, i, n) " +
+            "VALUES ('Top.Collections.Pictures.Astronomy.Galaxies', '978-0-393-04002-9', NULL)";
+
     protected static final Set<String> ALL_STMTS = new HashSet<>(Arrays.asList(INSERT_NUMERIC_TYPES_STMT, INSERT_NUMERIC_DECIMAL_TYPES_STMT,
                                                                  INSERT_DATE_TIME_TYPES_STMT,
                                                                  INSERT_BIN_TYPES_STMT, INSERT_GEOM_TYPES_STMT, INSERT_TEXT_TYPES_STMT,
@@ -263,7 +266,12 @@ public abstract class AbstractRecordsProducerTest {
         return schemasAndValuesForTable(insertTableStatement);
     }
 
-    protected List<SchemaAndValueField> schemasAndValuesForTable(String insertTableStatement) {
+    protected List<SchemaAndValueField> schemasAndValuesForCustomTypes() {
+        return Arrays.asList(new SchemaAndValueField("lt", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap("Top.Collections.Pictures.Astronomy.Galaxies".getBytes())),
+                             new SchemaAndValueField("i", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap("0-393-04002-X".getBytes())),
+                             new SchemaAndValueField("n", Schema.OPTIONAL_STRING_SCHEMA, null));
+
+    }protected List<SchemaAndValueField> schemasAndValuesForTable(String insertTableStatement) {
         switch (insertTableStatement) {
             case INSERT_NUMERIC_TYPES_STMT:
                 return schemasAndValuesForNumericType();
@@ -285,6 +293,8 @@ public abstract class AbstractRecordsProducerTest {
                 return schemasAndValuesForArrayTypes();
             case INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT:
                 return schemasAndValuesForArrayTypesWithNullValues();
+            case INSERT_CUSTOM_TYPES_STMT:
+                return schemasAndValuesForCustomTypes();
             case INSERT_QUOTED_TYPES_STMT:
                 return schemasAndValuesForQuotedTypes();
             default:
