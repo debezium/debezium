@@ -125,7 +125,7 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
     protected synchronized void recoverRecords(Consumer<HistoryRecord> records) {
         lock.write(() -> {
             try {
-                if (Files.exists(path)) {
+                if (exists()) {
                     for (String line : Files.readAllLines(path, UTF8)) {
                         if (line != null && !line.isEmpty()) {
                             records.accept(new HistoryRecord(reader.read(line)));
@@ -136,6 +136,11 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
                 logger.error("Failed to add recover records from history at {}", path, e);
             }
         });
+    }
+    
+    @Override
+    public boolean exists() {
+        return Files.exists(path);
     }
 
     @Override
