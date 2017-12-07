@@ -257,7 +257,16 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
 
         return endOffset;
     }
-
+    
+    @Override
+    public boolean exists() {
+        boolean exists = false;
+        try (KafkaConsumer<String, String> historyConsumer = new KafkaConsumer<>(consumerConfig.asProperties());) {
+            exists = historyConsumer.listTopics().keySet().contains(topicName);
+        }
+        return exists;
+    }
+    
     @Override
     public synchronized void stop() {
         try {
