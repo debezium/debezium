@@ -9,10 +9,13 @@ import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.nio.file.Path;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
@@ -106,7 +109,7 @@ public class SnapshotReaderIT {
         assertThat(schemaChanges.recordCount()).isEqualTo(0);
 
         // Check the records via the store ...
-        assertThat(store.collectionCount()).isEqualTo(4);
+        assertThat(store.collectionCount()).isEqualTo(5);
         Collection products = store.collection(DATABASE.getDatabaseName(), "products");
         assertThat(products.numberOfCreates()).isEqualTo(9);
         assertThat(products.numberOfUpdates()).isEqualTo(0);
@@ -142,6 +145,25 @@ public class SnapshotReaderIT {
         assertThat(orders.numberOfTombstones()).isEqualTo(0);
         assertThat(orders.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(orders.numberOfValueSchemaChanges()).isEqualTo(1);
+
+        Collection timetest = store.collection(DATABASE.getDatabaseName(), "dbz_342_timetest");
+        assertThat(timetest.numberOfCreates()).isEqualTo(1);
+        assertThat(timetest.numberOfUpdates()).isEqualTo(0);
+        assertThat(timetest.numberOfDeletes()).isEqualTo(0);
+        assertThat(timetest.numberOfReads()).isEqualTo(0);
+        assertThat(timetest.numberOfTombstones()).isEqualTo(0);
+        assertThat(timetest.numberOfKeySchemaChanges()).isEqualTo(1);
+        assertThat(timetest.numberOfValueSchemaChanges()).isEqualTo(1);
+        final List<Struct> timerecords = new ArrayList<>();
+        timetest.forEach(val -> {
+            timerecords.add(((Struct) val.value()).getStruct("after"));
+        });
+        Struct after = timerecords.get(0);
+        assertThat(after.get("c1")).isEqualTo(toMicroSeconds("PT517H51M04.78S"));
+        assertThat(after.get("c2")).isEqualTo(toMicroSeconds("-PT13H14M50S"));
+        assertThat(after.get("c3")).isEqualTo(toMicroSeconds("-PT733H0M0.001S"));
+        assertThat(after.get("c4")).isEqualTo(toMicroSeconds("-PT1H59M59.001S"));
+        assertThat(after.get("c5")).isEqualTo(toMicroSeconds("-PT838H59M58.999999S"));
 
         // Make sure the snapshot completed ...
         if (completed.await(10, TimeUnit.SECONDS)) {
@@ -185,7 +207,7 @@ public class SnapshotReaderIT {
 
         // Check the records via the store ...
         assertThat(store.databases()).containsOnly(DATABASE.getDatabaseName(), OTHER_DATABASE.getDatabaseName()); // 2 databases
-        assertThat(store.collectionCount()).isEqualTo(8); // 2 databases
+        assertThat(store.collectionCount()).isEqualTo(9); // 2 databases
 
         Collection products = store.collection(DATABASE.getDatabaseName(), "products");
         assertThat(products.numberOfCreates()).isEqualTo(0);
@@ -222,6 +244,25 @@ public class SnapshotReaderIT {
         assertThat(orders.numberOfTombstones()).isEqualTo(0);
         assertThat(orders.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(orders.numberOfValueSchemaChanges()).isEqualTo(1);
+
+        Collection timetest = store.collection(DATABASE.getDatabaseName(), "dbz_342_timetest");
+        assertThat(timetest.numberOfCreates()).isEqualTo(0);
+        assertThat(timetest.numberOfUpdates()).isEqualTo(0);
+        assertThat(timetest.numberOfDeletes()).isEqualTo(0);
+        assertThat(timetest.numberOfReads()).isEqualTo(1);
+        assertThat(timetest.numberOfTombstones()).isEqualTo(0);
+        assertThat(timetest.numberOfKeySchemaChanges()).isEqualTo(1);
+        assertThat(timetest.numberOfValueSchemaChanges()).isEqualTo(1);
+        final List<Struct> timerecords = new ArrayList<>();
+        timetest.forEach(val -> {
+            timerecords.add(((Struct) val.value()).getStruct("after"));
+        });
+        Struct after = timerecords.get(0);
+        assertThat(after.get("c1")).isEqualTo(toMicroSeconds("PT517H51M04.78S"));
+        assertThat(after.get("c2")).isEqualTo(toMicroSeconds("-PT13H14M50S"));
+        assertThat(after.get("c3")).isEqualTo(toMicroSeconds("-PT733H0M0.001S"));
+        assertThat(after.get("c4")).isEqualTo(toMicroSeconds("-PT1H59M59.001S"));
+        assertThat(after.get("c5")).isEqualTo(toMicroSeconds("-PT838H59M58.999999S"));
 
         // Make sure the snapshot completed ...
         if (completed.await(10, TimeUnit.SECONDS)) {
@@ -261,12 +302,12 @@ public class SnapshotReaderIT {
         assertThat(records).isNull();
 
         // There should be 11 schema changes plus 1 SET statement ...
-        assertThat(schemaChanges.recordCount()).isEqualTo(12);
+        assertThat(schemaChanges.recordCount()).isEqualTo(14);
         assertThat(schemaChanges.databaseCount()).isEqualTo(2);
         assertThat(schemaChanges.databases()).containsOnly(DATABASE.getDatabaseName(), "");
 
         // Check the records via the store ...
-        assertThat(store.collectionCount()).isEqualTo(4);
+        assertThat(store.collectionCount()).isEqualTo(5);
         Collection products = store.collection(DATABASE.getDatabaseName(), "products");
         assertThat(products.numberOfCreates()).isEqualTo(9);
         assertThat(products.numberOfUpdates()).isEqualTo(0);
@@ -302,6 +343,25 @@ public class SnapshotReaderIT {
         assertThat(orders.numberOfTombstones()).isEqualTo(0);
         assertThat(orders.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(orders.numberOfValueSchemaChanges()).isEqualTo(1);
+
+        Collection timetest = store.collection(DATABASE.getDatabaseName(), "dbz_342_timetest");
+        assertThat(timetest.numberOfCreates()).isEqualTo(1);
+        assertThat(timetest.numberOfUpdates()).isEqualTo(0);
+        assertThat(timetest.numberOfDeletes()).isEqualTo(0);
+        assertThat(timetest.numberOfReads()).isEqualTo(0);
+        assertThat(timetest.numberOfTombstones()).isEqualTo(0);
+        assertThat(timetest.numberOfKeySchemaChanges()).isEqualTo(1);
+        assertThat(timetest.numberOfValueSchemaChanges()).isEqualTo(1);
+        final List<Struct> timerecords = new ArrayList<>();
+        timetest.forEach(val -> {
+            timerecords.add(((Struct) val.value()).getStruct("after"));
+        });
+        Struct after = timerecords.get(0);
+        assertThat(after.get("c1")).isEqualTo(toMicroSeconds("PT517H51M04.78S"));
+        assertThat(after.get("c2")).isEqualTo(toMicroSeconds("-PT13H14M50S"));
+        assertThat(after.get("c3")).isEqualTo(toMicroSeconds("-PT733H0M0.001S"));
+        assertThat(after.get("c4")).isEqualTo(toMicroSeconds("-PT1H59M59.001S"));
+        assertThat(after.get("c5")).isEqualTo(toMicroSeconds("-PT838H59M58.999999S"));
 
         // Make sure the snapshot completed ...
         if (completed.await(10, TimeUnit.SECONDS)) {
@@ -353,5 +413,9 @@ public class SnapshotReaderIT {
         } else {
             fail("failed to complete the snapshot within 10 seconds");
         }
+    }
+
+    private long toMicroSeconds(String duration) {
+        return Duration.parse(duration).toNanos() / 1_000;
     }
 }

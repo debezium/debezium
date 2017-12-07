@@ -29,7 +29,7 @@
       - timeout:
           timeout: 45
     triggers:
-      - timed: "H 05 * * *"
+      - timed: "H 04 * * *"
     builders:
       - maven-target:
           maven-version: (Default)

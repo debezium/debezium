@@ -341,7 +341,7 @@ public class JdbcConnection implements AutoCloseable {
      * @see #execute(Operations)
      */
     public JdbcConnection query(String query, ResultSetConsumer resultConsumer) throws SQLException {
-        return query(query,conn->conn.createStatement(),resultConsumer);
+        return query(query, Connection::createStatement, resultConsumer);
     }
 
     /**

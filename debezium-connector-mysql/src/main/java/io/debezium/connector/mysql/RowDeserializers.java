@@ -15,6 +15,7 @@ import java.time.OffsetDateTime;
 import java.time.Year;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.Duration;
 import java.util.Calendar;
 import java.util.Map;
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
@@ -231,6 +232,9 @@ class RowDeserializers {
         }
     }
 
+    private static final int MASK_10_BITS = (1 << 10) - 1;
+    private static final int MASK_6_BITS = (1 << 6) - 1;
+
     /**
      * Converts a MySQL string to a {@code byte[]}.
      * 
@@ -282,7 +286,7 @@ class RowDeserializers {
     }
 
     /**
-     * Converts a MySQL {@code TIME} value <em>without fractional seconds</em> to a {@link LocalTime}.
+     * Converts a MySQL {@code TIME} value <em>without fractional seconds</em> to a {@link java.time.Duration}.
      * 
      * @param inputStream the binary stream containing the raw binlog event data for the value
      * @return the {@link LocalTime} object
@@ -295,16 +299,15 @@ class RowDeserializers {
         int hours = split[2];
         int minutes = split[1];
         int seconds = split[0];
-        int nanoOfSecond = 0; // This version does not support fractional seconds
-        return LocalTime.of(hours, minutes, seconds, nanoOfSecond);
+        return Duration.ofHours(hours).plusMinutes(minutes).plusSeconds(seconds);
     }
 
     /**
-     * Converts a MySQL {@code TIME} value <em>with fractional seconds</em> to a {@link LocalTime}.
+     * Converts a MySQL {@code TIME} value <em>with fractional seconds</em> to a {@link java.time.Duration}.
      * 
      * @param meta the {@code meta} value containing the fractional second precision, or {@code fsp}
      * @param inputStream the binary stream containing the raw binlog event data for the value
-     * @return the {@link LocalTime} object
+     * @return the {@link java.time.Duration} object
      * @throws IOException if there is an error reading from the binlog event data
      */
     protected static Serializable deserializeTimeV2(int meta, ByteArrayInputStream inputStream) throws IOException {
@@ -322,11 +325,31 @@ class RowDeserializers {
          * + fractional-seconds storage (size depends on meta)
          */
         long time = bigEndianLong(inputStream.read(3), 0, 3);
-        int hour = bitSlice(time, 2, 10, 24);
-        int minute = bitSlice(time, 12, 6, 24);
-        int second = bitSlice(time, 18, 6, 24);
-        int nanoSeconds = deserializeFractionalSecondsInNanos(meta, inputStream);
-        return LocalTime.of(hour, minute, second, nanoSeconds);
+        boolean is_negative = bitSlice(time, 0, 1, 24) == 0;
+        int hours = bitSlice(time, 2, 10, 24);
+        int minutes = bitSlice(time, 12, 6, 24);
+        int seconds = bitSlice(time, 18, 6, 24);
+        int nanoSeconds;
+        if (is_negative) { // mysql binary arithmetic for negative encoded values
+            hours = ~hours & MASK_10_BITS;
+            hours = hours & ~(1 << 10); // unset sign bit
+            minutes = ~minutes & MASK_6_BITS;
+            minutes = minutes & ~(1 << 6); // unset sign bit
+            seconds = ~seconds & MASK_6_BITS;
+            seconds = seconds & ~(1 << 6); // unset sign bit
+            nanoSeconds = deserializeFractionalSecondsInNanosNegative(meta, inputStream);
+            if (nanoSeconds == 0  && seconds < 59) { // weird java Duration behavior
+                ++seconds;
+            }
+            hours = -hours;
+            minutes = -minutes;
+            seconds = -seconds;
+            nanoSeconds = -nanoSeconds;
+        }
+        else {
+            nanoSeconds = deserializeFractionalSecondsInNanos(meta, inputStream);
+        }
+        return Duration.ofHours(hours).plusMinutes(minutes).plusSeconds(seconds).plusNanos(nanoSeconds);
     }
 
     /**
@@ -334,7 +357,7 @@ class RowDeserializers {
      * <p>
      * This method treats all <a href="http://dev.mysql.com/doc/refman/5.7/en/date-and-time-types.html">zero values</a>
      * for {@code DATETIME} columns as NULL, since they cannot be accurately represented as valid {@link LocalDateTime} objects.
-     * 
+     *
      * @param inputStream the binary stream containing the raw binlog event data for the value
      * @return the {@link LocalDateTime} object
      * @throws IOException if there is an error reading from the binlog event data
@@ -515,12 +538,56 @@ class RowDeserializers {
      */
     protected static int deserializeFractionalSecondsInNanos(int fsp, ByteArrayInputStream inputStream) throws IOException {
         // Calculate the number of bytes to read, which is
+        // '1' when fsp=(1,2) -- 7
+        // '2' when fsp=(3,4) and -- 12
+        // '3' when fsp=(5,6)  -- 21
+        int length = (fsp + 1) / 2;
+        if (length > 0) {
+            long fraction = bigEndianLong(inputStream.read(length), 0, length);
+            // Convert the fractional value (which has extra trailing digit for fsp=1,3, and 5) to nanoseconds ...
+            return (int) (fraction / (0.0000001 * Math.pow(100, length - 1)));
+        }
+        return 0;
+    }
+
+    /**
+     * Read the binary input stream to obtain the number of nanoseconds given the <em>fractional seconds precision</em>, or
+     * <em>fsp</em>.
+     * <p>
+     * We can't use/access the {@code deserializeFractionalSeconds} method in the {@link AbstractRowsEventDataDeserializer} class,
+     * so we replicate it here with modifications to support nanoseconds rather than microseconds and negative values.
+     * Note the original is licensed under the same Apache Software License 2.0 as Debezium.
+     *
+     * @param fsp the fractional seconds precision describing the number of digits precision used to store the fractional seconds
+     *            (e.g., 1 for storing tenths of a second, 2 for storing hundredths, 3 for storing milliseconds, etc.)
+     * @param inputStream the binary data stream
+     * @return the number of nanoseconds
+     * @throws IOException if there is an error reading from the binlog event data
+     */
+    protected static int deserializeFractionalSecondsInNanosNegative(int fsp, ByteArrayInputStream inputStream) throws IOException {
+        // Calculate the number of bytes to read, which is
         // '1' when fsp=(1,2)
         // '2' when fsp=(3,4) and
         // '3' when fsp=(5,6)
         int length = (fsp + 1) / 2;
         if (length > 0) {
             long fraction = bigEndianLong(inputStream.read(length), 0, length);
+            int maskBits = 0;
+            switch (length) { // mask bits according to field precision
+                case 1:
+                    maskBits = 8;
+                    break;
+                case 2:
+                    maskBits = 15;
+                    break;
+                case 3:
+                    maskBits = 20;
+                    break;
+                default:
+                    break;
+            }
+            fraction = ~fraction & ((1 << maskBits) - 1) ;
+            fraction = (fraction & ~(1 << maskBits)) + 1; // unset sign bit
             // Convert the fractional value (which has extra trailing digit for fsp=1,3, and 5) to nanoseconds ...
             return (int) (fraction / (0.0000001 * Math.pow(100, length - 1)));
         }

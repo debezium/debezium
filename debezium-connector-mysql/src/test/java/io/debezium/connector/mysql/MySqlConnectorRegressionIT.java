@@ -6,11 +6,14 @@
 package io.debezium.connector.mysql;
 
 import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -20,6 +23,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAdjuster;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
@@ -31,10 +35,10 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.DecimalHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
-import io.debezium.connector.mysql.MySqlConnectorConfig.TemporalPrecisionMode;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Testing;
 
@@ -84,12 +88,15 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Testing.Debug.enable();
         int numCreateDatabase = 1;
-        int numCreateTables = 9;
-        int numDataRecords = 16;
-        SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords);
+        int numCreateTables = 11;
+        int numDataRecords = 20;
+        int numCreateDefiner = 1;
+        SourceRecords records =
+            consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords + numCreateDefiner);
         stopConnector();
         assertThat(records).isNotNull();
-        assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(numCreateDatabase + numCreateTables);
+        assertThat(records.recordsForTopic(DATABASE.getServerName()).size())
+            .isEqualTo(numCreateDatabase + numCreateTables + numCreateDefiner);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("t1464075356413_testtable6")).size()).isEqualTo(1);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz84_integer_types_table")).size()).isEqualTo(1);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_85_fractest")).size()).isEqualTo(1);
@@ -99,9 +106,11 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_123_bitvaluetest")).size()).isEqualTo(2);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_104_customers")).size()).isEqualTo(4);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_147_decimalvalues")).size()).isEqualTo(1);
-        assertThat(records.topics().size()).isEqualTo(1 + numCreateTables);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_342_timetest")).size()).isEqualTo(1);
+        assertThat(records.topics().size()).isEqualTo(numCreateTables + 1);
         assertThat(records.databaseNames().size()).isEqualTo(1);
-        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(numCreateDatabase + numCreateTables);
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size())
+            .isEqualTo(numCreateDatabase + numCreateTables + numCreateDefiner);
         assertThat(records.ddlRecordsForDatabase("connector_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
         records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).forEach(this::print);
@@ -135,7 +144,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 // c3 DATETIME(2),
                 // c4 TIMESTAMP(2)
                 //
-                // {"c1" : "16321", "c2" : "64264780", "c3" : "1410198664780", "c4" : "2014-09-08T17:51:04.78-05:00"}
+                // {"c1" : "16321", "c2" : "17:51:04.777", "c3" : "1410198664780", "c4" : "2014-09-08T17:51:04.78-05:00"}
 
                 // '2014-09-08'
                 Integer c1 = after.getInt32("c1"); // epoch days
@@ -146,13 +155,14 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(io.debezium.time.Date.toEpochDay(c1Date, ADJUSTER)).isEqualTo(c1);
 
                 // '17:51:04.777'
-                Integer c2 = after.getInt32("c2"); // milliseconds past midnight
-                LocalTime c2Time = LocalTime.ofNanoOfDay(TimeUnit.MILLISECONDS.toNanos(c2));
-                assertThat(c2Time.getHour()).isEqualTo(17);
-                assertThat(c2Time.getMinute()).isEqualTo(51);
-                assertThat(c2Time.getSecond()).isEqualTo(4);
-                assertThat(c2Time.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
-                assertThat(io.debezium.time.Time.toMilliOfDay(c2Time, ADJUSTER)).isEqualTo(c2);
+                Long c2 = after.getInt64("c2");
+                Duration c2Time = Duration.ofNanos(c2 * 1_000);
+                assertThat(c2Time.toHours()).isEqualTo(17);
+                assertThat(c2Time.toMinutes()).isEqualTo(1071);
+                assertThat(c2Time.getSeconds()).isEqualTo(64264);
+                assertThat(c2Time.getNano()).isEqualTo(780000000);
+                assertThat(c2Time.toNanos()).isEqualTo(64264780000000L);
+                assertThat(c2Time).isEqualTo(Duration.ofHours(17).plusMinutes(51).plusSeconds(4).plusMillis(780));
 
                 // '2014-09-08 17:51:04.777'
                 Long c3 = after.getInt64("c3"); // epoch millis
@@ -199,21 +209,31 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(after.getInt32("c1")).isNull(); // epoch days
 
                 // '00:00:00.000'
-                Integer c2 = after.getInt32("c2"); // milliseconds past midnight
-                LocalTime c2Time = LocalTime.ofNanoOfDay(TimeUnit.MILLISECONDS.toNanos(c2));
-                assertThat(c2Time.getHour()).isEqualTo(0);
-                assertThat(c2Time.getMinute() == 0 || c2Time.getMinute() == 1).isTrue();
-                assertThat(c2Time.getSecond()).isEqualTo(0);
+                Long c2 = after.getInt64("c2");
+                Duration c2Time = Duration.ofNanos(c2 * 1_000);
+                assertThat(c2Time.toHours()).isEqualTo(0);
+                assertThat(c2Time.toMinutes() == 1 || c2Time.toMinutes() == 0).isTrue();
+                assertThat(c2Time.getSeconds() == 0 || c2Time.getSeconds() == 60).isTrue();
                 assertThat(c2Time.getNano()).isEqualTo(0);
-                assertThat(io.debezium.time.Time.toMilliOfDay(c2Time, ADJUSTER)).isEqualTo(c2);
+                assertThat(c2Time.toNanos() == 0 || c2Time.toNanos() == 60000000000L).isTrue();
+                assertThat(c2Time.equals(Duration.ofSeconds(0)) || c2Time.equals(Duration.ofMinutes(1))).isTrue();
 
                 assertThat(after.getInt64("c3")).isNull(); // epoch millis
 
                 // '0000-00-00 00:00:00.00'
                 String c4 = after.getString("c4"); // timestamp
                 OffsetDateTime c4DateTime = OffsetDateTime.parse(c4, ZonedTimestamp.FORMATTER);
-                // In case the timestamp string not in our timezone, convert to ours so we can compare ...
-                c4DateTime = c4DateTime.withOffsetSameInstant(OffsetDateTime.now().getOffset());
+
+                // We're running the connector in the same timezone as the server, so the timezone in the timestamp
+                // should match our current TZ's offset at the given time...
+                ZoneOffset expectedOffset = ZonedDateTime.of(
+                        LocalDate.of(1970, 1, 1).atTime(0, 0),
+                        TimeZone.getDefault().toZoneId()
+                ).getOffset();
+                assertThat(c4DateTime.getOffset()).isEqualTo(expectedOffset);
+
+                // In case the timestamp string not in our timezone, convert to UTC so we can compare ...
+                c4DateTime = c4DateTime.withOffsetSameInstant(ZoneOffset.of("Z"));
                 assertThat(c4DateTime.getYear()).isEqualTo(1970);
                 assertThat(c4DateTime.getMonth()).isEqualTo(Month.JANUARY);
                 assertThat(c4DateTime.getDayOfMonth()).isEqualTo(1);
@@ -222,9 +242,6 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c4DateTime.getMinute()).isEqualTo(0);
                 assertThat(c4DateTime.getSecond()).isEqualTo(0);
                 assertThat(c4DateTime.getNano()).isEqualTo(0);
-                // We're running the connector in the same timezone as the server, so the timezone in the timestamp
-                // should match our current offset ...
-                assertThat(c4DateTime.getOffset()).isEqualTo(OffsetDateTime.now().getOffset());
             } else if (record.topic().endsWith("dbz_123_bitvaluetest")) {
                 // All row events should have the same values ...
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
@@ -260,6 +277,57 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(decimalValue).isInstanceOf(BigDecimal.class);
                 BigDecimal bigValue = (BigDecimal) decimalValue;
                 assertThat(bigValue.doubleValue()).isEqualTo(12345.67, Delta.delta(0.01));
+            } else if (record.topic().endsWith("dbz_342_timetest")) {
+                Struct after = value.getStruct(Envelope.FieldName.AFTER);
+
+                // '517:51:04.777'
+                long c1 = after.getInt64("c1");
+                Duration c1Time = Duration.ofNanos(c1 * 1_000);
+                Duration c1ExpectedTime = toDuration("PT517H51M4.78S");
+                assertEquals(c1ExpectedTime, c1Time);
+                assertEquals(c1ExpectedTime.toNanos(), c1Time.toNanos());
+                assertThat(c1Time.toNanos()).isEqualTo(1864264780000000L);
+                assertThat(c1Time).isEqualTo(Duration.ofHours(517).plusMinutes(51).plusSeconds(4).plusMillis(780));
+
+                // '-13:14:50'
+                long c2 = after.getInt64("c2");
+                Duration c2Time = Duration.ofNanos(c2 * 1_000);
+                Duration c2ExpectedTime = toDuration("-PT13H14M50S");
+                assertEquals(c2ExpectedTime, c2Time);
+                assertEquals(c2ExpectedTime.toNanos(), c2Time.toNanos());
+                assertThat(c2Time.toNanos()).isEqualTo(-47690000000000L);
+                assertTrue(c2Time.isNegative());
+                assertThat(c2Time).isEqualTo(Duration.ofHours(-13).minusMinutes(14).minusSeconds(50));
+
+                // '-733:00:00.0011'
+                long c3 = after.getInt64("c3");
+                Duration c3Time = Duration.ofNanos(c3 * 1_000);
+                Duration c3ExpectedTime = toDuration("-PT733H0M0.001S");
+                assertEquals(c3ExpectedTime, c3Time);
+                assertEquals(c3ExpectedTime.toNanos(), c3Time.toNanos());
+                assertThat(c3Time.toNanos()).isEqualTo(-2638800001000000L);
+                assertTrue(c3Time.isNegative());
+                assertThat(c3Time).isEqualTo(Duration.ofHours(-733).minusMillis(1));
+
+                // '-1:59:59.0011'
+                long c4 = after.getInt64("c4");
+                Duration c4Time = Duration.ofNanos(c4 * 1_000);
+                Duration c4ExpectedTime = toDuration("-PT1H59M59.001S");
+                assertEquals(c4ExpectedTime, c4Time);
+                assertEquals(c4ExpectedTime.toNanos(), c4Time.toNanos());
+                assertThat(c4Time.toNanos()).isEqualTo(-7199001000000L);
+                assertTrue(c4Time.isNegative());
+                assertThat(c4Time).isEqualTo(Duration.ofHours(-1).minusMinutes(59).minusSeconds(59).minusMillis(1));
+
+                // '-838:59:58.999999'
+                long c5 = after.getInt64("c5");
+                Duration c5Time = Duration.ofNanos(c5 * 1_000);
+                Duration c5ExpectedTime = toDuration("-PT838H59M58.999999S");
+                assertEquals(c5ExpectedTime, c5Time);
+                assertEquals(c5ExpectedTime.toNanos(), c5Time.toNanos());
+                assertThat(c5Time.toNanos()).isEqualTo(-3020398999999000L);
+                assertTrue(c5Time.isNegative());
+                assertThat(c5Time).isEqualTo(Duration.ofHours(-838).minusMinutes(59).minusSeconds(58).minusNanos(999999000));
             }
         });
     }
@@ -282,12 +350,15 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Testing.Debug.enable();
         int numCreateDatabase = 1;
-        int numCreateTables = 9;
-        int numDataRecords = 16;
-        SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords);
+        int numCreateTables = 11;
+        int numDataRecords = 20;
+        int numCreateDefiner = 1;
+        SourceRecords records =
+                consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords + numCreateDefiner);
         stopConnector();
         assertThat(records).isNotNull();
-        assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(numCreateDatabase + numCreateTables);
+        assertThat(records.recordsForTopic(DATABASE.getServerName()).size())
+            .isEqualTo(numCreateDatabase + numCreateTables + numCreateDefiner);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("t1464075356413_testtable6")).size()).isEqualTo(1);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz84_integer_types_table")).size()).isEqualTo(1);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_85_fractest")).size()).isEqualTo(1);
@@ -299,7 +370,8 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_147_decimalvalues")).size()).isEqualTo(1);
         assertThat(records.topics().size()).isEqualTo(1 + numCreateTables);
         assertThat(records.databaseNames().size()).isEqualTo(1);
-        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(numCreateDatabase + numCreateTables);
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size())
+            .isEqualTo(numCreateDatabase + numCreateTables + numCreateDefiner);
         assertThat(records.ddlRecordsForDatabase("connector_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
         records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).forEach(this::print);
@@ -411,8 +483,17 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 // '0000-00-00 00:00:00.00'
                 String c4 = after.getString("c4"); // MySQL timestamp, so always ZonedTimestamp
                 OffsetDateTime c4DateTime = OffsetDateTime.parse(c4, ZonedTimestamp.FORMATTER);
-                // In case the timestamp string not in our timezone, convert to ours so we can compare ...
-                c4DateTime = c4DateTime.withOffsetSameInstant(OffsetDateTime.now().getOffset());
+
+                // We're running the connector in the same timezone as the server, so the timezone in the timestamp
+                // should match our TZ's offset at the given time...
+                ZoneOffset expectedOffset = ZonedDateTime.of(
+                        LocalDate.of(1970, 1, 1).atTime(0, 0),
+                        TimeZone.getDefault().toZoneId()
+                ).getOffset();
+                assertThat(c4DateTime.getOffset()).isEqualTo(expectedOffset);
+
+                // In case the timestamp string not in our timezone, convert to UTC so we can compare ...
+                c4DateTime = c4DateTime.withOffsetSameInstant(ZoneOffset.of("Z"));
                 assertThat(c4DateTime.getYear()).isEqualTo(1970);
                 assertThat(c4DateTime.getMonth()).isEqualTo(Month.JANUARY);
                 assertThat(c4DateTime.getDayOfMonth()).isEqualTo(1);
@@ -421,9 +502,6 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c4DateTime.getMinute()).isEqualTo(0);
                 assertThat(c4DateTime.getSecond()).isEqualTo(0);
                 assertThat(c4DateTime.getNano()).isEqualTo(0);
-                // We're running the connector in the same timezone as the server, so the timezone in the timestamp
-                // should match our current offset ...
-                assertThat(c4DateTime.getOffset()).isEqualTo(OffsetDateTime.now().getOffset());
             } else if (record.topic().endsWith("dbz_123_bitvaluetest")) {
                 // All row events should have the same values ...
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
@@ -474,14 +552,18 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
         // Testing.Debug.enable();
-        int numTables = 10;
-        int numDataRecords = 19;
+        int numCreateDatabase = 1;
+        int numTables = 11;
+        int numDataRecords = 20;
         int numDdlRecords = numTables * 2 + 3; // for each table (1 drop + 1 create) + for each db (1 create + 1 drop + 1 use)
+        int numCreateDefiner = 1;
         int numSetVariables = 1;
-        SourceRecords records = consumeRecordsByTopic(numDdlRecords + numSetVariables + numDataRecords);
+        SourceRecords records =
+            consumeRecordsByTopic(numDdlRecords + numSetVariables + numDataRecords + numCreateDefiner + numCreateDatabase);
         stopConnector();
         assertThat(records).isNotNull();
-        assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(numDdlRecords + numSetVariables);
+        assertThat(records.recordsForTopic(DATABASE.getServerName()).size())
+            .isEqualTo(numDdlRecords + numSetVariables);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("t1464075356413_testtable6")).size()).isEqualTo(1);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz84_integer_types_table")).size()).isEqualTo(1);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_85_fractest")).size()).isEqualTo(1);
@@ -492,6 +574,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_104_customers")).size()).isEqualTo(4);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_147_decimalvalues")).size()).isEqualTo(1);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_195_numvalues")).size()).isEqualTo(3);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_342_timetest")).size()).isEqualTo(1);
         assertThat(records.topics().size()).isEqualTo(numTables + 1);
         assertThat(records.databaseNames().size()).isEqualTo(2);
         assertThat(records.databaseNames()).containsOnly(DATABASE.getDatabaseName(), "");
@@ -530,7 +613,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 // c3 DATETIME(2),
                 // c4 TIMESTAMP(2)
                 //
-                // {"c1" : "16321", "c2" : "64264780", "c3" : "1410198664780", "c4" : "2014-09-08T17:51:04.78-05:00"}
+                // {"c1" : "16321", "c2" : "17:51:04.777", "c3" : "1410198664780", "c4" : "2014-09-08T17:51:04.78-05:00"}
 
                 // '2014-09-08'
                 Integer c1 = after.getInt32("c1"); // epoch days
@@ -541,14 +624,14 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(io.debezium.time.Date.toEpochDay(c1Date, ADJUSTER)).isEqualTo(c1);
 
                 // '17:51:04.777'
-                Integer c2 = after.getInt32("c2"); // milliseconds past midnight
-                LocalTime c2Time = LocalTime.ofNanoOfDay(TimeUnit.MILLISECONDS.toNanos(c2));
-                assertThat(c2Time.getHour()).isEqualTo(17);
-                assertThat(c2Time.getMinute()).isEqualTo(51);
-                assertThat(c2Time.getSecond()).isEqualTo(4);
-                assertThat(c2Time.getNano()).isEqualTo(0); // What!?!? The MySQL Connect/J driver indeed returns 0 for fractional
-                                                           // part
-                assertThat(io.debezium.time.Time.toMilliOfDay(c2Time, ADJUSTER)).isEqualTo(c2);
+                Long c2 = after.getInt64("c2");
+                Duration c2Time = Duration.ofNanos(c2 * 1_000);
+                assertThat(c2Time.toHours()).isEqualTo(17);
+                assertThat(c2Time.toMinutes()).isEqualTo(1071);
+                assertThat(c2Time.getSeconds()).isEqualTo(64264);
+                assertThat(c2Time.getNano()).isEqualTo(780000000);
+                assertThat(c2Time.toNanos()).isEqualTo(64264780000000L);
+                assertThat(c2Time).isEqualTo(Duration.ofHours(17).plusMinutes(51).plusSeconds(4).plusMillis(780));
 
                 // '2014-09-08 17:51:04.777'
                 Long c3 = after.getInt64("c3"); // epoch millis
@@ -568,9 +651,15 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
 
                 // '2014-09-08 17:51:04.777'
                 String c4 = after.getString("c4"); // timestamp
+
+                ZoneOffset localOffset = ZonedDateTime.of(
+                        LocalDate.of(2014, 9, 8).atTime(0, 0),
+                        TimeZone.getDefault().toZoneId()
+                ).getOffset();
+
                 OffsetDateTime c4DateTime = OffsetDateTime.parse(c4, ZonedTimestamp.FORMATTER);
                 // In case the timestamp string not in our timezone, convert to ours so we can compare ...
-                c4DateTime = c4DateTime.withOffsetSameInstant(OffsetDateTime.now().getOffset());
+                c4DateTime = c4DateTime.withOffsetSameInstant(localOffset);
                 assertThat(c4DateTime.getYear()).isEqualTo(2014);
                 assertThat(c4DateTime.getMonth()).isEqualTo(Month.SEPTEMBER);
                 assertThat(c4DateTime.getDayOfMonth()).isEqualTo(8);
@@ -579,9 +668,6 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c4DateTime.getMinute()).isEqualTo(51);
                 assertThat(c4DateTime.getSecond()).isEqualTo(4);
                 assertThat(c4DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
-                // We're running the connector in the same timezone as the server, so the timezone in the timestamp
-                // should match our current offset ...
-                assertThat(c4DateTime.getOffset()).isEqualTo(OffsetDateTime.now().getOffset());
             } else if (record.topic().endsWith("dbz_123_bitvaluetest")) {
                 // All row events should have the same values ...
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
@@ -629,6 +715,57 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 } else {
                     assertThat(intValue.intValue()).isEqualTo(0);
                 }
+            }  else if (record.topic().endsWith("dbz_342_timetest")) {
+                Struct after = value.getStruct(Envelope.FieldName.AFTER);
+
+                // '517:51:04.777'
+                long c1 = after.getInt64("c1");
+                Duration c1Time = Duration.ofNanos(c1 * 1_000);
+                Duration c1ExpectedTime = toDuration("PT517H51M4.78S");
+                assertEquals(c1ExpectedTime, c1Time);
+                assertEquals(c1ExpectedTime.toNanos(), c1Time.toNanos());
+                assertThat(c1Time.toNanos()).isEqualTo(1864264780000000L);
+                assertThat(c1Time).isEqualTo(Duration.ofHours(517).plusMinutes(51).plusSeconds(4).plusMillis(780));
+
+                // '-13:14:50'
+                long c2 = after.getInt64("c2");
+                Duration c2Time = Duration.ofNanos(c2 * 1_000);
+                Duration c2ExpectedTime = toDuration("-PT13H14M50S");
+                assertEquals(c2ExpectedTime, c2Time);
+                assertEquals(c2ExpectedTime.toNanos(), c2Time.toNanos());
+                assertThat(c2Time.toNanos()).isEqualTo(-47690000000000L);
+                assertTrue(c2Time.isNegative());
+                assertThat(c2Time).isEqualTo(Duration.ofHours(-13).minusMinutes(14).minusSeconds(50));
+
+                // '-733:00:00.0011'
+                long c3 = after.getInt64("c3");
+                Duration c3Time = Duration.ofNanos(c3 * 1_000);
+                Duration c3ExpectedTime = toDuration("-PT733H0M0.001S");
+                assertEquals(c3ExpectedTime, c3Time);
+                assertEquals(c3ExpectedTime.toNanos(), c3Time.toNanos());
+                assertThat(c3Time.toNanos()).isEqualTo(-2638800001000000L);
+                assertTrue(c3Time.isNegative());
+                assertThat(c3Time).isEqualTo(Duration.ofHours(-733).minusMillis(1));
+
+                // '-1:59:59.0011'
+                long c4 = after.getInt64("c4");
+                Duration c4Time = Duration.ofNanos(c4 * 1_000);
+                Duration c4ExpectedTime = toDuration("-PT1H59M59.001S");
+                assertEquals(c4ExpectedTime, c4Time);
+                assertEquals(c4ExpectedTime.toNanos(), c4Time.toNanos());
+                assertThat(c4Time.toNanos()).isEqualTo(-7199001000000L);
+                assertTrue(c4Time.isNegative());
+                assertThat(c4Time).isEqualTo(Duration.ofHours(-1).minusMinutes(59).minusSeconds(59).minusMillis(1));
+
+                // '-838:59:58.999999'
+                long c5 = after.getInt64("c5");
+                Duration c5Time = Duration.ofNanos(c5 * 1_000);
+                Duration c5ExpectedTime = toDuration("-PT838H59M58.999999S");
+                assertEquals(c5ExpectedTime, c5Time);
+                assertEquals(c5ExpectedTime.toNanos(), c5Time.toNanos());
+                assertThat(c5Time.toNanos()).isEqualTo(-3020398999999000L);
+                assertTrue(c5Time.isNegative());
+                assertThat(c5Time).isEqualTo(Duration.ofHours(-838).minusMinutes(59).minusSeconds(58).minusNanos(999999000));
             }
         });
     }
@@ -674,6 +811,47 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         });
     }
 
+    @Test
+    @FixFor("DBZ-342")
+    public void shouldReturnTimeColumnsAsMilliSecondsInAdaptivePrecisionMode() throws SQLException, InterruptedException {
+        // Use the DB configuration to define the connector's configuration ...
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
+                .with(MySqlConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ADAPTIVE)
+                .build();
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        // Testing.Debug.enable();
+        int numCreateDatabase = 1;
+        int numCreateTables = 11;
+        int numDataRecords = 20;
+        int numCreateDefiner = 1;
+        SourceRecords records =
+            consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords + numCreateDefiner);
+        stopConnector();
+        assertThat(records).isNotNull();
+        assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(numCreateDatabase + numCreateTables + numCreateDefiner);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_85_fractest")).size()).isEqualTo(1);
+
+        records.forEach(this::validate);
+        records.forEach(record -> {
+            Struct value = (Struct) record.value();
+            if (record.topic().endsWith("dbz_85_fractest")) {
+                Struct after = value.getStruct(Envelope.FieldName.AFTER);
+                // c2 TIME(2),
+                // { "c2" : "17:51:04.777" }
+                Integer c2 = after.getInt32("c2");
+                long expectedMillis = Duration.ofHours(17).plusMinutes(51).plusSeconds(4).plusMillis(780).toMillis();
+                assertThat(c2).isEqualTo((int)expectedMillis);
+            }
+        });
+    }
+
     private void assertTimestamp(String c4) {
         // '2014-09-08 17:51:04.777'
         // MySQL container is in UTC and the test time is during summer time period
@@ -694,5 +872,9 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         LocalDateTime expectedLocalDateTime = LocalDateTime.parse("2014-09-08T17:51:04.780");
         ZoneOffset expectedOffset = defaultZoneId.getRules().getOffset(expectedLocalDateTime);
         assertThat(c4DateTime.getOffset()).isEqualTo(expectedOffset);
+    }
+
+    private Duration toDuration(String duration) {
+        return Duration.parse(duration);
     }
 }

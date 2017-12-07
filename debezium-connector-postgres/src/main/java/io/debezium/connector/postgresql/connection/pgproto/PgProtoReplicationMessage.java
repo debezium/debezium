@@ -220,9 +220,7 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                 }
                 return null;
             default: {
-                LOGGER.warn("processing column '{}' with unknown data type '{}' as byte array", datumMessage.getColumnName(),
-                            datumMessage.getColumnType());
-                return datumMessage.hasDatumBytes()? datumMessage.getDatumBytes().toByteArray() : null;
+                return null;
             }
         }
     }

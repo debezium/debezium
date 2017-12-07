@@ -18,6 +18,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import io.debezium.doc.FixFor;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
@@ -151,5 +153,37 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         List<SchemaAndValueField> expectedValuesAndSchemasForTable = expectedValuesByTableName.get(tableName);
         assertNotNull("No expected values for " + tableName + " found", expectedValuesAndSchemasForTable);
         assertRecordSchemaAndValues(expectedValuesAndSchemasForTable, record, Envelope.FieldName.AFTER);
+    }
+
+    @Test
+    @FixFor("DBZ-342")
+    public void shouldGenerateSnapshotsForDefaultDatatypesAdpativeMicroseconds() throws Exception {
+        PostgresConnectorConfig config = new PostgresConnectorConfig(
+                TestHelper.defaultConfig()
+                        .with(PostgresConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS)
+                        .build());
+        context = new PostgresTaskContext(config, new PostgresSchema(config));
+
+        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER), false);
+
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestConsumer consumer = testConsumer(ALL_STMTS.size());
+
+        //insert data for each of different supported types
+        String statementsBuilder = ALL_STMTS.stream().collect(Collectors.joining(";" + System.lineSeparator())) + ";";
+        TestHelper.execute(statementsBuilder);
+
+        //then start the producer and validate all records are there
+        snapshotProducer.start(consumer);
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+
+        Map<String, List<SchemaAndValueField>> expectedValuesByTableName = super.schemaAndValuesByTableNameAdaptiveTimeMicroseconds();
+        consumer.process(record -> assertReadRecord(record, expectedValuesByTableName));
+
+        // check the offset information for each record
+        while (!consumer.isEmpty()) {
+            SourceRecord record = consumer.remove();
+            assertRecordOffset(record, true, consumer.isEmpty());
+        }
     }
 }

@@ -108,11 +108,11 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // timezone range types
         consumer.expects(1);
         assertInsert(INSERT_TSTZRANGE_TYPES_STMT, schemaAndValuesForTstzRangeTypes());
-
     }
 
     @Test
     @ShouldFailWhen(DecoderDifferences.AreQuotedIdentifiersUnsupported.class)
+    // TODO DBZ-493
     public void shouldReceiveChangesForInsertsWithQuotedNames() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
@@ -357,6 +357,13 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(3);
         recordsProducer.start(consumer);
         executeAndWait(statements);
+    }
+
+    @Test
+    @FixFor("DBZ-501")
+    public void shouldNotStartAfterStop() throws Exception {
+        recordsProducer.stop();
+        recordsProducer.start(consumer);
     }
 
     private void assertInsert(String statement, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {
