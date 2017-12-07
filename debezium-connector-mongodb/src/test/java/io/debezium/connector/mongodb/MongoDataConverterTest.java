@@ -5,10 +5,11 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Map.Entry;
+import java.util.Scanner;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -23,8 +24,7 @@ public class MongoDataConverterTest {
 
     public MongoDataConverterTest() throws IOException {
 }
-    ClassLoader classLoader = getClass().getClassLoader();
-    String record = IOUtils.toString(classLoader.getResourceAsStream("restaurants6.json"));
+    String record = getFile("restaurants6.json");
     BsonDocument val = BsonDocument.parse(record);
     SchemaBuilder builder = SchemaBuilder.struct();
 
@@ -50,8 +50,24 @@ public class MongoDataConverterTest {
             MongoDataConverter.addFieldSchema(entry, builder);
         }
         Schema finalSchema = builder.build();
-        Schema docArray = SchemaBuilder.struct().field("date", Schema.INT64_SCHEMA).field("grade", Schema.STRING_SCHEMA).field("score", Schema.INT32_SCHEMA).build();
-        Assert.assertEquals(finalSchema, SchemaBuilder.struct().field("address", SchemaBuilder.struct().field("building", Schema.STRING_SCHEMA).field("coord", SchemaBuilder.array(Schema.FLOAT64_SCHEMA).build()).field("street", Schema.STRING_SCHEMA).field("zipcode", Schema.STRING_SCHEMA).build())
-                .field("borough", Schema.STRING_SCHEMA).field("cuisine", Schema.STRING_SCHEMA).field("grades", SchemaBuilder.array(docArray).build()).field("name", Schema.STRING_SCHEMA).field("restaurant_id", Schema.STRING_SCHEMA).build());
+        Schema docArray = SchemaBuilder.struct().field("date", Schema.OPTIONAL_INT64_SCHEMA).field("grade", Schema.OPTIONAL_STRING_SCHEMA).field("score", Schema.OPTIONAL_INT32_SCHEMA).build();
+        Assert.assertEquals(finalSchema, SchemaBuilder.struct().field("address", SchemaBuilder.struct().field("building", Schema.OPTIONAL_STRING_SCHEMA).field("coord", SchemaBuilder.array(Schema.OPTIONAL_FLOAT64_SCHEMA).build()).field("street", Schema.OPTIONAL_STRING_SCHEMA).field("zipcode", Schema.OPTIONAL_STRING_SCHEMA).build())
+                .field("borough", Schema.OPTIONAL_STRING_SCHEMA).field("cuisine", Schema.OPTIONAL_STRING_SCHEMA).field("grades", SchemaBuilder.array(docArray).build()).field("name", Schema.OPTIONAL_STRING_SCHEMA).field("restaurant_id", Schema.OPTIONAL_STRING_SCHEMA).build());
     }
+    
+    private String getFile(String fileName) {
+        StringBuilder result = new StringBuilder("");
+        ClassLoader classLoader = getClass().getClassLoader();
+        File file = new File(classLoader.getResource(fileName).getFile());
+        try (Scanner scanner = new Scanner(file)) {
+            while (scanner.hasNextLine()) {
+                String line = scanner.nextLine();
+                result.append(line).append("\n");
+            }
+            scanner.close();
+        } catch (IOException e) {
+               e.printStackTrace();
+        }
+        return result.toString();
+      }
 }

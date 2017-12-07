@@ -23,12 +23,10 @@ import org.apache.kafka.connect.data.Schema;
  * Connect records.
  * @author Sairam Polavarapu
  */
- 
-
 public class MongoDataConverter {
     static SchemaBuilder builder = SchemaBuilder.struct();
 
-    private static final Logger log = LoggerFactory.getLogger(MongoDataConverter.class);
+    private static final Logger LOG = LoggerFactory.getLogger(MongoDataConverter.class);
 
     public static Struct convertRecord(Entry<String, BsonValue> keyvalueforStruct, Schema schema, Struct struct) {
         convertFieldValue(keyvalueforStruct, struct, schema);
@@ -87,8 +85,8 @@ public class MongoDataConverter {
             jsStruct.put("code", keyvalueforStruct.getValue().asJavaScriptWithScope().getCode());
             BsonDocument jwsDoc = keyvalueforStruct.getValue().asJavaScriptWithScope().getScope().asDocument();
 
-            for (Entry<String, BsonValue> entry4 : jwsDoc.entrySet()) {
-                convertFieldValue(entry4, jsScopeStruct, schema.field(keyvalueforStruct.getKey()).schema());
+            for (Entry<String, BsonValue> jwsDocKey : jwsDoc.entrySet()) {
+                convertFieldValue(jwsDocKey, jsScopeStruct, schema.field(keyvalueforStruct.getKey()).schema());
             }
 
             jsStruct.put("scope", jsScopeStruct);
@@ -113,10 +111,10 @@ public class MongoDataConverter {
         case DOCUMENT:
             Schema documentSchema = schema.field(keyvalueforStruct.getKey()).schema();
             Struct documentStruct = new Struct(documentSchema);
-            BsonDocument doc = keyvalueforStruct.getValue().asDocument();
+            BsonDocument docs = keyvalueforStruct.getValue().asDocument();
 
-            for (Entry<String, BsonValue> entry4 : doc.entrySet()) {
-                convertFieldValue(entry4, documentStruct, documentSchema);
+            for (Entry<String, BsonValue> doc : docs.entrySet()) {
+                convertFieldValue(doc, documentStruct, documentSchema);
             }
 
             colValue = documentStruct;
@@ -198,46 +196,46 @@ public class MongoDataConverter {
         switch (type) {
 
         case NULL:
-            log.warn("Data type {} not currently supported", type);
+            LOG.warn("Data type {} not currently supported", type);
             break;
 
         case STRING:
         case JAVASCRIPT:
         case OBJECT_ID:
         case DECIMAL128:
-            builder.field(key, Schema.STRING_SCHEMA);
+            builder.field(key, Schema.OPTIONAL_STRING_SCHEMA);
             break;
 
         case DOUBLE:
-            builder.field(key, Schema.FLOAT64_SCHEMA);
+            builder.field(key, Schema.OPTIONAL_FLOAT64_SCHEMA);
             break;
 
         case BINARY:
-            builder.field(key, Schema.BYTES_SCHEMA);
+            builder.field(key, Schema.OPTIONAL_BYTES_SCHEMA);
             break;
 
         case INT32:
         case TIMESTAMP:
-            builder.field(key, Schema.INT32_SCHEMA);
+            builder.field(key, Schema.OPTIONAL_INT32_SCHEMA);
             break;
 
         case INT64:
         case DATE_TIME:
-            builder.field(key, Schema.INT64_SCHEMA);
+            builder.field(key, Schema.OPTIONAL_INT64_SCHEMA);
             break;
 
         case BOOLEAN:
-            builder.field(key, Schema.BOOLEAN_SCHEMA);
+            builder.field(key, Schema.OPTIONAL_BOOLEAN_SCHEMA);
             break;
 
         case JAVASCRIPT_WITH_SCOPE:
             SchemaBuilder jswithscope = SchemaBuilder.struct();
-            jswithscope.field("code", Schema.STRING_SCHEMA);
+            jswithscope.field("code", Schema.OPTIONAL_STRING_SCHEMA);
             SchemaBuilder scope = SchemaBuilder.struct();
             BsonDocument jwsDocument = keyValuesforSchema.getValue().asJavaScriptWithScope().getScope().asDocument();
 
-            for (Entry<String, BsonValue> entry4 : jwsDocument.entrySet()) {
-                addFieldSchema(entry4, scope);
+            for (Entry<String, BsonValue> jwsDocumentKey : jwsDocument.entrySet()) {
+                addFieldSchema(jwsDocumentKey, scope);
             }
 
             Schema scopeBuild = scope.build();
@@ -247,24 +245,24 @@ public class MongoDataConverter {
 
         case REGULAR_EXPRESSION:
             SchemaBuilder regexwop = SchemaBuilder.struct();
-            regexwop.field("regex", Schema.STRING_SCHEMA);
-            regexwop.field("options", Schema.STRING_SCHEMA);
+            regexwop.field("regex", Schema.OPTIONAL_STRING_SCHEMA);
+            regexwop.field("options", Schema.OPTIONAL_STRING_SCHEMA);
             builder.field(key, regexwop.build());
             break;
 
         case DOCUMENT:
             SchemaBuilder builderDoc = SchemaBuilder.struct();
-            BsonDocument doc = keyValuesforSchema.getValue().asDocument();
+            BsonDocument docs = keyValuesforSchema.getValue().asDocument();
 
-            for (Entry<String, BsonValue> entry4 : doc.entrySet()) {
-                addFieldSchema(entry4, builderDoc);
+            for (Entry<String, BsonValue> doc : docs.entrySet()) {
+                addFieldSchema(doc, builderDoc);
             }
             builder.field(key, builderDoc.build());
             break;
 
         case ARRAY:
             if (keyValuesforSchema.getValue().asArray().isEmpty()) {
-                builder.field(key, SchemaBuilder.array(Schema.STRING_SCHEMA).build());
+                builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).build());
                 break;
             }
 
@@ -274,42 +272,42 @@ public class MongoDataConverter {
                 switch (valueType) {
 
                 case NULL:
-                    log.warn("Data type {} not currently supported", valueType);
+                    LOG.warn("Data type {} not currently supported", valueType);
                     break;
 
                 case STRING:
                 case JAVASCRIPT:
                 case OBJECT_ID:
                 case DECIMAL128:
-                    builder.field(key, SchemaBuilder.array(Schema.STRING_SCHEMA).build());
+                    builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).build());
                     break;
                 case DOUBLE:
-                    builder.field(key, SchemaBuilder.array(Schema.FLOAT64_SCHEMA).build());
+                    builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_FLOAT64_SCHEMA).build());
                     break;
                 case BINARY:
-                    builder.field(key, SchemaBuilder.array(Schema.BYTES_SCHEMA).build());
+                    builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_BYTES_SCHEMA).build());
                     break;
 
                 case INT32:
                 case TIMESTAMP:
-                    builder.field(key, SchemaBuilder.array(Schema.INT32_SCHEMA).build());
+                    builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).build());
                     break;
 
                 case INT64:
                 case DATE_TIME:
-                    builder.field(key, SchemaBuilder.array(Schema.INT64_SCHEMA).build());
+                    builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).build());
                     break;
 
                 case BOOLEAN:
-                    builder.field(key, SchemaBuilder.array(Schema.BOOLEAN_SCHEMA).build());
+                    builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_BOOLEAN_SCHEMA).build());
                     break;
 
                 case DOCUMENT:
                     SchemaBuilder documentSchemaBuilder = SchemaBuilder.struct();
-                    BsonDocument arrayDoc = keyValuesforSchema.getValue().asArray().get(0).asDocument();
+                    BsonDocument arrayDocs = keyValuesforSchema.getValue().asArray().get(0).asDocument();
 
-                    for (Entry<String, BsonValue> entry3 : arrayDoc.entrySet()) {
-                        addFieldSchema(entry3, documentSchemaBuilder);
+                    for (Entry<String, BsonValue> arrayDoc : arrayDocs.entrySet()) {
+                        addFieldSchema(arrayDoc, documentSchemaBuilder);
                     }
                     Schema build = documentSchemaBuilder.build();
                     builder.field(key, SchemaBuilder.array(build).build());
