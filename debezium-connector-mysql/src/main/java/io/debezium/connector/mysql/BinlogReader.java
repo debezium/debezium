@@ -236,6 +236,10 @@ public class BinlogReader extends AbstractReader {
                 context.serverName(), () -> OffsetPosition.build(source.partition(), source.offset()));
     }
 
+    public BinlogReader(String name, MySqlTaskContext context) {
+        this(name, context, null);
+    }
+
     @Override
     protected void doInitialize() {
         metrics.register(context, logger);
