@@ -87,10 +87,10 @@ public final class Strings {
      * regular expressions.
      *
      * @param input the input string with comma-separated regular expressions. Comma can be escaped with backslash.
-     * @return the list of regular expression {@link Pattern}s included in the list; never null
+     * @return the set of regular expression {@link Pattern}s included within the given string; never null
      * @throws PatternSyntaxException if the input includes an invalid regular expression
      */
-    public static Set<Pattern> listOfRegex(String input) {
+    public static Set<Pattern> setOfRegex(String input) {
         return listOf(input, RegExSplitter::split, Pattern::compile);
     }
 
@@ -98,7 +98,7 @@ public final class Strings {
      * Generate the set of regular expression {@link Pattern}s that are specified in the string containing comma-separated
      * regular expressions.
      *
-     * @param input the input string with comma-separated regular expressions. . Comma can be escaped with backslash.
+     * @param input the input string with comma-separated regular expressions. Comma can be escaped with backslash.
      * @param regexFlags the flags for {@link Pattern#compile(String, int) compiling regular expressions}
      * @return the list of regular expression {@link Pattern}s included in the list; never null
      * @throws PatternSyntaxException if the input includes an invalid regular expression
