@@ -238,6 +238,10 @@ public class BinlogReader extends AbstractReader {
                 context.getConnectorConfig().getLogicalName());
     }
 
+    public BinlogReader(String name, MySqlTaskContext context) {
+        this(name, context, null);
+    }
+
     @Override
     protected void doInitialize() {
         metrics.register(context, logger);
