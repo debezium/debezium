@@ -70,12 +70,12 @@ public class StringToJSON<R extends ConnectRecord<R>> implements Transformation<
             }
 
             value = BsonDocument.parse(patchEventWKey.toString());
-            BsonDocument doc = new BsonDocument().append("_id", value.get("_id"));
+            BsonDocument doc = new BsonDocument().append("id", value.get("_id"));
             Key = BsonDocument.parse(doc.toString());
             
         } else {
             value = BsonDocument.parse(afterRecord.value().toString());
-            BsonDocument doc = new BsonDocument().append("_id", value.get("_id"));
+            BsonDocument doc = new BsonDocument().append("id", value.get("_id"));
             Key = BsonDocument.parse(doc.toString());
         }
 
@@ -138,7 +138,7 @@ public class StringToJSON<R extends ConnectRecord<R>> implements Transformation<
         final Map<String, String> patchExtractorConfig = new HashMap<>();
         patchExtractorConfig.put("field", "patch");
         final Map<String, String> keyExtractorConfig = new HashMap<>();
-        keyExtractorConfig.put("field", "_id");
+        keyExtractorConfig.put("field", "id");
         afterExtractor.configure(afterExtractorConfig);
         patchExtractor.configure(patchExtractorConfig);
         keyExtractor.configure(keyExtractorConfig);
