@@ -51,11 +51,9 @@ public interface MessageDecoder {
     ChainedLogicalStreamBuilder optionsWithoutMetadata(final ChainedLogicalStreamBuilder builder);
 
     /**
-     * Signals to MessageDecoder that the plug-in may or must not contain type metadata.
-     * 
-     * @param flag - <code>true</code> if messages CAN contain type metadata,
-     * <code>false</code> if messages must not contain type metadata 
+     * Signals to this decoder whether messages contain type metadata or not.
      */
-    default void setMayContainMetadata(boolean flag) {
+    // TODO DBZ-508 Remove once we only support LD plug-ins always sending the metadata
+    default void setContainsMetadata(boolean flag) {
     }
 }

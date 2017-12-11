@@ -34,7 +34,7 @@ public class Wal2JsonMessageDecoder implements MessageDecoder {
     private static final  Logger LOGGER = LoggerFactory.getLogger(Wal2JsonMessageDecoder.class);
 
     private final DateTimeFormat dateTime = DateTimeFormat.get();
-    private boolean canHaveMetadata = true;
+    private boolean containsMetadata = false;
 
     @Override
     public void processMessage(ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException {
@@ -51,7 +51,7 @@ public class Wal2JsonMessageDecoder implements MessageDecoder {
             final long commitTime = dateTime.systemTimestamp(timestamp);
             final Array changes = message.getArray("change");
             for (Array.Entry e: changes) {
-                processor.process(new Wal2JsonReplicationMessage(txId, commitTime, e.getValue().asDocument(), canHaveMetadata));
+                processor.process(new Wal2JsonReplicationMessage(txId, commitTime, e.getValue().asDocument(), containsMetadata));
             }
         } catch (final IOException e) {
             throw new ConnectException(e);
@@ -74,7 +74,7 @@ public class Wal2JsonMessageDecoder implements MessageDecoder {
     }
 
     @Override
-    public void setMayContainMetadata(boolean flag) {
-        canHaveMetadata = flag;
+    public void setContainsMetadata(boolean containsMetadata) {
+        this.containsMetadata = containsMetadata;
     }
 }

@@ -154,13 +154,13 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         PGReplicationStream s;
         try {
             s = startPgReplicationStream(lsn, messageDecoder::optionsWithMetadata);
-            messageDecoder.setMayContainMetadata(true);
+            messageDecoder.setContainsMetadata(true);
         } catch (PSQLException e) {
             if (e.getMessage().matches("(?s)ERROR: option .* is unknown.*")) {
                 // It is possible we are connecting to an old wal2json plug-in
                 LOGGER.warn("Could not register for streaming with metadata in messages, falling back to messages without metadata");
                 s = startPgReplicationStream(lsn, messageDecoder::optionsWithoutMetadata);
-                messageDecoder.setMayContainMetadata(false);
+                messageDecoder.setContainsMetadata(false);
             } else {
                 throw e;
             }
