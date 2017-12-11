@@ -490,11 +490,11 @@ public class RecordsStreamProducer extends RecordsProducer {
                     if (column.getType() == Types.ARRAY) {
                         columnEditor.componentType(column.getArrayElementOidType());
                     }
-                    if (column.getTypeModifiers().length > 0) {
-                        columnEditor.length(column.getTypeModifiers()[0]);
+                    if (column.getLength().isPresent()) {
+                        columnEditor.length(column.getLength().getAsInt());
                     }
-                    if (column.getTypeModifiers().length > 1) {
-                        columnEditor.scale(column.getTypeModifiers()[1]);
+                    if (column.getScale().isPresent()) {
+                        columnEditor.scale(column.getScale().getAsInt());
                     }
                     return columnEditor.create();
                 })

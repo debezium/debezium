@@ -7,6 +7,7 @@ package io.debezium.connector.postgresql.connection;
 
 import java.sql.Types;
 import java.util.Objects;
+import java.util.OptionalInt;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -19,7 +20,7 @@ import io.debezium.connector.postgresql.PgOid;
 /**
  * Extracts type information from replication messages and associates them with each column.
  * The metadata are parsed lazily.
- * 
+ *
  * @author Jiri Pechanec
  *
  */
@@ -44,9 +45,14 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
         private final String fullType;
 
         /**
-         * The type constraints converted to their integer value
+         * Length of the type, if present
          */
-        private final int[] typeModifiers;
+        private Integer length;
+
+        /**
+         * Scale of the type, if present
+         */
+        private Integer scale;
 
         /**
          * True if the type is array
@@ -104,7 +110,14 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
             this.baseType = baseType;
             this.fullType = fullType;
             this.normalizedTypeName = normalizedTypeName;
-            this.typeModifiers = typeModifiers;
+
+            if (typeModifiers.length > 0) {
+                this.length = typeModifiers[0];
+            }
+            if (typeModifiers.length > 1) {
+                this.scale = typeModifiers[1];
+            }
+
             this.isArray = isArray;
         }
 
@@ -116,8 +129,12 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
             return fullType;
         }
 
-        public int[] getTypeModifiers() {
-            return typeModifiers;
+        public OptionalInt getLength() {
+            return length != null ? OptionalInt.of(length) : OptionalInt.empty();
+        }
+
+        public OptionalInt getScale() {
+            return scale != null ? OptionalInt.of(scale) : OptionalInt.empty();
         }
 
         public boolean isArray() {
@@ -189,12 +206,21 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
     }
 
     /**
-     * @return the type modifiers associated with type
+     * @return the length of the type
      */
     @Override
-    public int[] getTypeModifiers() {
+    public OptionalInt getLength() {
         initMetadata();
-        return typeMetadata.getTypeModifiers();
+        return typeMetadata.getLength();
+    }
+
+    /**
+     * @return the scale of the type
+     */
+    @Override
+    public OptionalInt getScale() {
+        initMetadata();
+        return typeMetadata.getScale();
     }
 
     /**

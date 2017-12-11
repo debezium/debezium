@@ -7,6 +7,7 @@
 package io.debezium.connector.postgresql.connection;
 
 import java.util.List;
+import java.util.OptionalInt;
 
 import io.debezium.connector.postgresql.RecordsStreamProducer.PgConnectionSupplier;
 
@@ -39,7 +40,8 @@ public interface ReplicationMessage {
         int getArrayElementOidType();
         String getTypeName();
         Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes);
-        int[] getTypeModifiers();
+        OptionalInt getLength();
+        OptionalInt getScale();
         boolean isOptional();
     }
 

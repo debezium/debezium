@@ -248,6 +248,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
 
         PGReplicationStream stream = streamBuilder.start();
+
+        // TODO DBZ-508 get rid of this
         // Needed by tests when connections are opened and closed in a fast sequence
         try {
             Thread.sleep(10);
