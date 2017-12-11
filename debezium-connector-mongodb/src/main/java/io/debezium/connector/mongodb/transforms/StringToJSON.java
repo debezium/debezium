@@ -31,7 +31,7 @@ import java.util.Map.Entry;
  * the string and insert the document as it is represented in the Source. so a user use this SMT to parse the String 
  * and insert the MongoDB document in the JSON format..
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
- * @author Sairam Polavarapu
+ * @author Sairam Polavarapu.
  */
 public class StringToJSON<R extends ConnectRecord<R>> implements Transformation<R> {
 
