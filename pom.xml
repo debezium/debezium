@@ -83,6 +83,7 @@
         <version.junit>4.12</version.junit>
         <version.fest>1.4</version.fest>
         <version.jmh>1.21</version.jmh>
+        <version.mockito>2.13.0</version.mockito>
 
         <!-- Maven Plugins -->
         <version.resources.plugin>2.7</version.resources.plugin>
@@ -309,6 +310,11 @@
                 <groupId>org.openjdk.jmh</groupId>
                 <artifactId>jmh-generator-annprocess</artifactId>
                 <version>${version.jmh}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mockito</groupId>
+                <artifactId>mockito-core</artifactId>
+                <version>${version.mockito}</version>
             </dependency>
 
             <!-- Debezium artifacts -->
