@@ -7,6 +7,7 @@
 package io.debezium.connector.postgresql;
 
 import java.sql.Types;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -37,21 +38,26 @@ public final class PgOid extends Oid {
 
     public static final int TSTZRANGE_OID = 3910;
 
-    private static final Map<String, String> LONG_TYPE_NAMES = new HashMap<>();
-    static {
-        LONG_TYPE_NAMES.put("bigint", "int8");
-        LONG_TYPE_NAMES.put("bit varying", "varbit");
-        LONG_TYPE_NAMES.put("boolean", "bool");
-        LONG_TYPE_NAMES.put("character", "bpchar");
-        LONG_TYPE_NAMES.put("character varying", "varchar");
-        LONG_TYPE_NAMES.put("double precision", "float8");
-        LONG_TYPE_NAMES.put("integer", "int4");
-        LONG_TYPE_NAMES.put("real", "float4");
-        LONG_TYPE_NAMES.put("smallint", "int2");
-        LONG_TYPE_NAMES.put("timestamp without time zone", "timestamp");
-        LONG_TYPE_NAMES.put("timestamp with time zone", "timestamptz");
-        LONG_TYPE_NAMES.put("time without time zone", "time");
-        LONG_TYPE_NAMES.put("time with time zone", "timetz");
+    private static final Map<String, String> LONG_TYPE_NAMES = Collections.unmodifiableMap(getLongTypeNames());
+
+    private static Map<String, String> getLongTypeNames() {
+        Map<String, String> longTypeNames = new HashMap<>();
+
+        longTypeNames.put("bigint", "int8");
+        longTypeNames.put("bit varying", "varbit");
+        longTypeNames.put("boolean", "bool");
+        longTypeNames.put("character", "bpchar");
+        longTypeNames.put("character varying", "varchar");
+        longTypeNames.put("double precision", "float8");
+        longTypeNames.put("integer", "int4");
+        longTypeNames.put("real", "float4");
+        longTypeNames.put("smallint", "int2");
+        longTypeNames.put("timestamp without time zone", "timestamp");
+        longTypeNames.put("timestamp with time zone", "timestamptz");
+        longTypeNames.put("time without time zone", "time");
+        longTypeNames.put("time with time zone", "timetz");
+
+        return longTypeNames;
     }
 
     private PgOid() {
@@ -87,8 +93,8 @@ public final class PgOid extends Oid {
     /**
      * Converts a type name in long (readable) format like <code>boolean</code> to s standard
      * data type name like <code>bool</code>.
-     * 
-     * @param typeName - a type name in long format 
+     *
+     * @param typeName - a type name in long format
      * @return - the type name in standardized format
      */
     public static String normalizeTypeName(String typeName) {
@@ -97,8 +103,8 @@ public final class PgOid extends Oid {
 
     /**
      * JDBC metadata are different for some of the unbounded types from those coming via decoder.
-     * This method sets the type constraints to the values provided by JDBC metadata. 
-     * 
+     * This method sets the type constraints to the values provided by JDBC metadata.
+     *
      * @param column - a column coming from decoder
      * @param columnEditor - the JDBC counterpart of the column
      */
