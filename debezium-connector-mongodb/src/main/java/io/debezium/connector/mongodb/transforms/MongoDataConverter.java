@@ -8,23 +8,23 @@ package io.debezium.connector.mongodb.transforms;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
+
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.bson.BsonDocument;
 import org.bson.BsonType;
 import org.bson.BsonValue;
-
-import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
-import org.apache.kafka.connect.data.Schema;
+import org.slf4j.LoggerFactory;
 
 /**
  * MongoDataConverter handles translating MongoDB strings to Kafka Connect schemas and row data to Kafka
  * Connect records.
+ *
  * @author Sairam Polavarapu
  */
 public class MongoDataConverter {
-    static SchemaBuilder builder = SchemaBuilder.struct();
 
     private static final Logger LOG = LoggerFactory.getLogger(MongoDataConverter.class);
 
@@ -189,7 +189,6 @@ public class MongoDataConverter {
     }
 
     public static void addFieldSchema(Entry<String, BsonValue> keyValuesforSchema, SchemaBuilder builder) {
-
         String key = keyValuesforSchema.getKey();
         BsonType type = keyValuesforSchema.getValue().getBsonType();
 
