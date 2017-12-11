@@ -30,19 +30,32 @@ public interface ReplicationMessage {
     }
 
     /**
-     *
      * A representation of column value delivered as a part of replication message
-     *
      */
     public interface Column {
         String getName();
-        int getType();
-        int getArrayElementOidType();
-        String getTypeName();
-        Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes);
+        int getOidType();
+
+        /**
+         * Returns the type of array elements if this column is of an array type. May
+         * only be called after checking {@link ReplicationMessage#hasMetadata()}.
+         */
+        int getComponentOidType();
+
+        /**
+         * Returns additional metadata about this column's type. May only be called
+         * after checking {@link ReplicationMessage#hasMetadata()}.
+         */
+        ColumnTypeMetadata getTypeMetadata();
+        Object getValue(final PgConnectionSupplier connection, boolean includeUnknownDatatypes);
+        boolean isOptional();
+    }
+
+    public interface ColumnTypeMetadata {
+        String getName();
         OptionalInt getLength();
         OptionalInt getScale();
-        boolean isOptional();
+        boolean isArray();
     }
 
     /**

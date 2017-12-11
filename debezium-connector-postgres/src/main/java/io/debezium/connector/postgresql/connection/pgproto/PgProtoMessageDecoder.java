@@ -11,8 +11,6 @@ import java.util.Arrays;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 
@@ -24,17 +22,11 @@ import io.debezium.connector.postgresql.proto.PgProto.RowMessage;
 /**
  * ProtoBuf deserialization of message sent by <a href="https://github.com/debezium/postgres-decoderbufs">Postgres Decoderbufs</>.
  * Only one message is delivered for processing.
- * 
+ *
  * @author Jiri Pechanec
  *
  */
 public class PgProtoMessageDecoder implements MessageDecoder {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(PgProtoMessageDecoder.class);
-
-    public PgProtoMessageDecoder() {
-        super();
-    }
 
     @Override
     public void processMessage(final ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException {

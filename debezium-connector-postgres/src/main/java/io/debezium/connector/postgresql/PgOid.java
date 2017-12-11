@@ -105,12 +105,12 @@ public final class PgOid extends Oid {
      * JDBC metadata are different for some of the unbounded types from those coming via decoder.
      * This method sets the type constraints to the values provided by JDBC metadata.
      *
-     * @param column - a column coming from decoder
-     * @param columnEditor - the JDBC counterpart of the column
+     * @param columnTypeMetadata column type metadata coming from decoder
+     * @param columnEditor the JDBC counterpart of the column
      */
-    public static void reconcileJdbcOidTypeConstraints(final ReplicationMessage.Column column,
+    public static void reconcileJdbcOidTypeConstraints(ReplicationMessage.ColumnTypeMetadata columnTypeMetadata,
             final ColumnEditor columnEditor) {
-        switch (column.getTypeName()) {
+        switch (columnTypeMetadata.getName()) {
             case "money":
                 // JDBC returns scale 0 but decoder plugin returns -1 (unscaled)
                 columnEditor.scale(0);

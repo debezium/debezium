@@ -30,7 +30,7 @@ import io.debezium.connector.postgresql.PgOid;
 import io.debezium.connector.postgresql.PostgresValueConverter;
 import io.debezium.connector.postgresql.RecordsStreamProducer.PgConnectionSupplier;
 import io.debezium.connector.postgresql.connection.AbstractReplicationMessageColumn;
-import io.debezium.connector.postgresql.connection.AbstractReplicationMessageColumn.TypeMetadata;
+import io.debezium.connector.postgresql.connection.AbstractReplicationMessageColumn.TypeMetadataImpl;
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.document.Array;
 import io.debezium.document.Document;
@@ -130,10 +130,10 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
                 }
 
                 @Override
-                protected int getOidType() {
+                public int doGetOidType() {
                     return getTypeMetadata().isArray() ?
-                            PgOid.typeNameToOid(getTypeMetadata().getNormalizedTypeName().substring(1)) :
-                            PgOid.typeNameToOid(getTypeMetadata().getNormalizedTypeName());
+                            PgOid.typeNameToOid(getTypeMetadata().getName().substring(1)) :
+                            PgOid.typeNameToOid(getTypeMetadata().getName());
                 }
             });
         }
@@ -152,7 +152,7 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
      *
      * @return the value; may be null
      */
-    public Object getValue(String columnName, TypeMetadata typeMetadata, Value rawValue, final PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
+    public Object getValue(String columnName, TypeMetadataImpl typeMetadata, Value rawValue, final PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
         if (rawValue.isNull()) {
             // nulls are null
             return null;

@@ -434,10 +434,10 @@ public class RecordsStreamProducer extends RecordsProducer {
                 return true;
             } else {
                 final int localType = column.jdbcType();
-                final int incomingType = metadataInMessage ? typeNameToJDBCType(message) : message.getType();
+                final int incomingType = metadataInMessage ? typeNameToJdbcType(message.getTypeMetadata()) : message.getOidType();
                 if (localType != incomingType) {
                     logger.debug("detected new type for column '{}', old type was '{}', new type is '{}'; refreshing table schema", columnName, column.jdbcType(),
-                                message.getType());
+                                message.getOidType());
                     return true;
                 }
             }
@@ -483,18 +483,18 @@ public class RecordsStreamProducer extends RecordsProducer {
                 .map(column -> {
                     final ColumnEditor columnEditor = Column.editor()
                             .name(column.getName())
-                            .jdbcType(column.getType() == Types.ARRAY ? Types.ARRAY : typeNameToJDBCType(column))
-                            .type(column.getTypeName())
+                            .jdbcType(column.getOidType() == Types.ARRAY ? Types.ARRAY : typeNameToJdbcType(column.getTypeMetadata()))
+                            .type(column.getTypeMetadata().getName())
                             .optional(column.isOptional());
-                    PgOid.reconcileJdbcOidTypeConstraints(column, columnEditor);
-                    if (column.getType() == Types.ARRAY) {
-                        columnEditor.componentType(column.getArrayElementOidType());
+                    PgOid.reconcileJdbcOidTypeConstraints(column.getTypeMetadata(), columnEditor);
+                    if (column.getOidType() == Types.ARRAY) {
+                        columnEditor.componentType(column.getComponentOidType());
                     }
-                    if (column.getLength().isPresent()) {
-                        columnEditor.length(column.getLength().getAsInt());
+                    if (column.getTypeMetadata().getLength().isPresent()) {
+                        columnEditor.length(column.getTypeMetadata().getLength().getAsInt());
                     }
-                    if (column.getScale().isPresent()) {
-                        columnEditor.scale(column.getScale().getAsInt());
+                    if (column.getTypeMetadata().getScale().isPresent()) {
+                        columnEditor.scale(column.getTypeMetadata().getScale().getAsInt());
                     }
                     return columnEditor.create();
                 })
@@ -503,7 +503,7 @@ public class RecordsStreamProducer extends RecordsProducer {
             .setPrimaryKeyNames(table.filterColumnNames(c -> table.isPrimaryKeyColumn(c.name()))).create();
     }
 
-    private int typeNameToJDBCType(final ReplicationMessage.Column column) {
-        return taskContext.schema().columnTypeNameToJdbcTypeId(column.getTypeName());
+    private int typeNameToJdbcType(final ReplicationMessage.ColumnTypeMetadata columnTypeMetadata) {
+        return taskContext.schema().columnTypeNameToJdbcTypeId(columnTypeMetadata.getName());
     }
 }

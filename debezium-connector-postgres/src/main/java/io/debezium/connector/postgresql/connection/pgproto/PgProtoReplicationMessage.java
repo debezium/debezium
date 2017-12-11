@@ -103,7 +103,7 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                         }
 
                         @Override
-                        protected int getOidType() {
+                        public int doGetOidType() {
                             return (int)datum.getColumnType();
                         };
                     };

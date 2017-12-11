@@ -26,8 +26,9 @@ import io.debezium.connector.postgresql.PgOid;
  */
 public abstract class AbstractReplicationMessageColumn implements ReplicationMessage.Column {
 
-    public static class TypeMetadata {
-        private static final Logger LOGGER = LoggerFactory.getLogger(TypeMetadata.class);
+    public static class TypeMetadataImpl implements ReplicationMessage.ColumnTypeMetadata {
+
+        private static final Logger LOGGER = LoggerFactory.getLogger(TypeMetadataImpl.class);
 
         private static final int[] EMPTY_TYPE_MODIFIERS = {};
         private static final Pattern TYPE_PATTERN = Pattern.compile("^(?<full>(?<base>[^(\\[]+)(?:\\((?<mod>.+)\\))?(?<suffix>.*?))(?<array>\\[\\])?$");
@@ -69,7 +70,7 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
          */
         private final boolean optional;
 
-        public TypeMetadata(String columnName, String typeWithModifiers, boolean optional) {
+        public TypeMetadataImpl(String columnName, String typeWithModifiers, boolean optional) {
             this.optional = optional;
             Matcher m = TYPE_PATTERN.matcher(typeWithModifiers);
             if (!m.matches()) {
@@ -129,19 +130,23 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
             return fullType;
         }
 
+        @Override
         public OptionalInt getLength() {
             return length != null ? OptionalInt.of(length) : OptionalInt.empty();
         }
 
+        @Override
         public OptionalInt getScale() {
             return scale != null ? OptionalInt.of(scale) : OptionalInt.empty();
         }
 
+        @Override
         public boolean isArray() {
             return isArray;
         }
 
-        public String getNormalizedTypeName() {
+        @Override
+        public String getName() {
             return normalizedTypeName;
         }
 
@@ -153,7 +158,7 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
     private final String columnName;
     private final String typeWithModifiers;
     private final boolean optional;
-    private TypeMetadata typeMetadata;
+    private TypeMetadataImpl typeMetadata;
     private final boolean hasMetadata;
 
     public AbstractReplicationMessageColumn(String columnName, String typeWithModifiers, boolean optional, boolean hasMetadata) {
@@ -166,61 +171,34 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
 
     private void initMetadata() {
         assert hasMetadata : "Metadata not available";
-        typeMetadata = new TypeMetadata(columnName, typeWithModifiers, optional);
+        typeMetadata = new TypeMetadataImpl(columnName, typeWithModifiers, optional);
     }
 
     /**
-     * @return OID value of the type
+     * @return OID value of the type; if this is an array column, {@link Types#ARRAY}} will be returned.
      */
     @Override
-    public int getType() {
+    public int getOidType() {
         if (hasMetadata) {
             initMetadata();
-            return typeMetadata.isArray() ? Types.ARRAY : getOidType();
+            return typeMetadata.isArray() ? Types.ARRAY : doGetOidType();
         }
-        return getOidType();
+        return doGetOidType();
     }
 
     /**
      * @return OID type of elements for arrays
      */
     @Override
-    public int getArrayElementOidType() {
+    public int getComponentOidType() {
         initMetadata();
         assert typeMetadata.isArray();
-        return getOidType();
-    }
-
-    /**
-     * @return the type of the field in format as used in JDBC driver
-     */
-    @Override
-    public String getTypeName() {
-        initMetadata();
-        return typeMetadata.getNormalizedTypeName();
+        return doGetOidType();
     }
 
     @Override
     public String getName() {
         return columnName;
-    }
-
-    /**
-     * @return the length of the type
-     */
-    @Override
-    public OptionalInt getLength() {
-        initMetadata();
-        return typeMetadata.getLength();
-    }
-
-    /**
-     * @return the scale of the type
-     */
-    @Override
-    public OptionalInt getScale() {
-        initMetadata();
-        return typeMetadata.getScale();
     }
 
     /**
@@ -231,9 +209,10 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
         return optional;
     }
 
-    protected abstract int getOidType();
+    protected abstract int doGetOidType();
 
-    protected TypeMetadata getTypeMetadata() {
+    @Override
+    public TypeMetadataImpl getTypeMetadata() {
         initMetadata();
         return typeMetadata;
     }
