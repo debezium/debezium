@@ -662,7 +662,7 @@ public class MySqlConnectorConfig {
                                                                    .withDescription("The size of a look-ahead buffer used by the  binlog reader to decide whether"
                                                                            + "the transaction in progress is going to be committed or rolled back. "
                                                                            + "Defaults to " + DEFAULT_BINLOG_BUFFER_SIZE + ". Use 0 to disable look-ahead buffering.")
-                                                                   .withDefault(DEFAULT_BINLOG_BUFFER_SIZE)
+                                                                   .withDefault(0)
                                                                    .withValidation(Field::isNonNegativeInteger);
 
     /**
