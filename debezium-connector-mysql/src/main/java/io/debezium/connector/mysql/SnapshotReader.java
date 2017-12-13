@@ -15,6 +15,7 @@ import java.sql.Types;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -511,10 +512,13 @@ public class SnapshotReader extends AbstractReader {
                             // Scan the rows in the table ...
                             long start = clock.currentTimeInMillis();
                             logger.info("Step {}: - scanning table '{}' ({} of {} tables)", step, tableId, ++counter, tableIds.size());
-                            String selectStatement = context.getSnapshotSelectOverride(tableId.toString())
-                                    .orElse("SELECT * FROM " + quote(tableId));
+
+                            Map<TableId, String> selectOverrides = getSnapshotSelectOverridesByTable();
+
+                            String selectStatement = selectOverrides.getOrDefault(tableId, "SELECT * FROM " + quote(tableId));
                             logger.info("For table '{}' using select statement: '{}'", tableId, selectStatement);
                             sql.set(selectStatement);
+
                             try {
                                 int stepNum = step;
                                 mysql.query(sql.get(), statementFactory, rs -> {
@@ -809,6 +813,28 @@ public class SnapshotReader extends AbstractReader {
 
     protected void recordRowAsInsert(RecordsForTable recordMaker, Object[] row, long ts) throws InterruptedException {
         recordMaker.create(row, ts);
+    }
+
+    /**
+     * Returns any SELECT overrides, if present.
+     */
+    private Map<TableId, String> getSnapshotSelectOverridesByTable() {
+        String tableList = context.getSnapshotSelectOverrides();
+
+        if (tableList == null) {
+            return Collections.emptyMap();
+        }
+
+        Map<TableId, String> snapshotSelectOverridesByTable = new HashMap<>();
+
+        for (String table : tableList.split(",")) {
+            snapshotSelectOverridesByTable.put(
+                TableId.parse(table),
+                context.config.getString(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table)
+            );
+        }
+
+        return snapshotSelectOverridesByTable;
     }
 
     protected static interface RecordRecorder {
