@@ -7,6 +7,7 @@
 package io.debezium.connector.postgresql.connection;
 
 import java.util.List;
+import java.util.OptionalInt;
 
 import io.debezium.connector.postgresql.RecordsStreamProducer.PgConnectionSupplier;
 
@@ -29,14 +30,32 @@ public interface ReplicationMessage {
     }
 
     /**
-     *
      * A representation of column value delivered as a part of replication message
-     *
      */
     public interface Column {
         String getName();
-        Object getType();
-        Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes);
+        int getOidType();
+
+        /**
+         * Returns the type of array elements if this column is of an array type. May
+         * only be called after checking {@link ReplicationMessage#hasMetadata()}.
+         */
+        int getComponentOidType();
+
+        /**
+         * Returns additional metadata about this column's type. May only be called
+         * after checking {@link ReplicationMessage#hasMetadata()}.
+         */
+        ColumnTypeMetadata getTypeMetadata();
+        Object getValue(final PgConnectionSupplier connection, boolean includeUnknownDatatypes);
+        boolean isOptional();
+    }
+
+    public interface ColumnTypeMetadata {
+        String getName();
+        OptionalInt getLength();
+        OptionalInt getScale();
+        boolean isArray();
     }
 
     /**
@@ -68,4 +87,9 @@ public interface ReplicationMessage {
      * @return Set of new values of table columns, null for DELETE
      */
     public List<Column> getNewTupleList();
+
+    /**
+     * @return true if type metadata are passed as a part of message
+     */
+    boolean hasMetadata();
 }

@@ -11,8 +11,10 @@ import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.apache.kafka.connect.data.Field;
 import org.postgresql.geometric.PGpoint;
@@ -23,8 +25,10 @@ import org.slf4j.LoggerFactory;
 import io.debezium.connector.postgresql.PgOid;
 import io.debezium.connector.postgresql.PostgresValueConverter;
 import io.debezium.connector.postgresql.RecordsStreamProducer.PgConnectionSupplier;
+import io.debezium.connector.postgresql.connection.AbstractReplicationMessageColumn;
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.connector.postgresql.proto.PgProto;
+import io.debezium.util.Strings;
 
 /**
  * Replication message representing message sent by <a href="https://github.com/debezium/postgres-decoderbufs">Postgres Decoderbufs</>
@@ -72,33 +76,38 @@ class PgProtoReplicationMessage implements ReplicationMessage {
 
     @Override
     public List<ReplicationMessage.Column> getOldTupleList() {
-        return transform(rawMessage.getOldTupleList());
+        return transform(rawMessage.getOldTupleList(), null);
     }
 
     @Override
     public List<ReplicationMessage.Column> getNewTupleList() {
-        return transform(rawMessage.getNewTupleList());
+        return transform(rawMessage.getNewTupleList(), rawMessage.getNewTypeinfoList());
     }
 
-    private List<ReplicationMessage.Column> transform(List<PgProto.DatumMessage> messageList) {
-        return messageList.stream()
-                .map(datum -> new ReplicationMessage.Column() {
+    @Override
+    public boolean hasMetadata() {
+        return !(rawMessage.getNewTypeinfoList() == null || rawMessage.getNewTypeinfoList().isEmpty());
+    }
 
-                    @Override
-                    public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
-                        return PgProtoReplicationMessage.this.getValue(datum, connection, includeUnknownDatatypes);
-                    }
+    private List<ReplicationMessage.Column> transform(List<PgProto.DatumMessage> messageList, List<PgProto.TypeInfo> typeInfoList) {
+        return IntStream.range(0, messageList.size())
+                .mapToObj(index -> {
+                    final PgProto.DatumMessage datum = messageList.get(index);
+                    final Optional<PgProto.TypeInfo> typeInfo = Optional.ofNullable(hasMetadata() && typeInfoList != null ? typeInfoList.get(index) : null);
+                    final String columnName = Strings.unquoteIdentifierPart(datum.getColumnName());
+                    return new AbstractReplicationMessageColumn(columnName, typeInfo.map(PgProto.TypeInfo::getModifier).orElse(null), typeInfo.map(PgProto.TypeInfo::getValueOptional).orElse(Boolean.FALSE), hasMetadata()) {
 
-                    @Override
-                    public Object getType() {
-                        return datum.getColumnType();
-                    }
+                        @Override
+                        public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
+                            return PgProtoReplicationMessage.this.getValue(datum, connection, includeUnknownDatatypes);
+                        }
 
-                    @Override
-                    public String getName() {
-                        return datum.getColumnName();
-                    }
-                })
+                        @Override
+                        public int doGetOidType() {
+                            return (int)datum.getColumnType();
+                        };
+                    };
+                   })
                 .collect(Collectors.toList());
     }
 
