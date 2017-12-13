@@ -83,6 +83,55 @@ public class BinlogReader extends AbstractReader {
     private volatile Map<String, ?> lastOffset = null;
     private com.github.shyiko.mysql.binlog.GtidSet gtidSet;
 
+    public static class BinlogPosition {
+        final String filename;
+        final long position;
+
+        public BinlogPosition(String filename, long position) {
+            assert filename != null;
+
+            this.filename = filename;
+            this.position = position;
+        }
+
+        public String getFilename() {
+            return filename;
+        }
+        public long getPosition() {
+            return position;
+        }
+
+        @Override
+        public String toString() {
+            return filename + "/" + position;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + filename.hashCode();
+            result = prime * result + (int) (position ^ (position >>> 32));
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj)
+                return true;
+            if (obj == null)
+                return false;
+            if (getClass() != obj.getClass())
+                return false;
+            BinlogPosition other = (BinlogPosition) obj;
+            if (!filename.equals(other.filename))
+                return false;
+            if (position != other.position)
+                return false;
+            return true;
+        }
+    }
+
     /**
      * Create a binlog reader.
      *
@@ -106,7 +155,10 @@ public class BinlogReader extends AbstractReader {
         client.setServerId(context.serverId());
         client.setSSLMode(sslModeFor(context.sslMode()));
         client.setKeepAlive(context.config().getBoolean(MySqlConnectorConfig.KEEP_ALIVE));
-        client.registerEventListener(this::handleEvent);
+        client.registerEventListener(context.bufferSizeForBinlogReader() == 0
+                ? this::handleEvent
+                : (new EventBuffer(context.bufferSizeForBinlogReader(), this))::add);
+
         client.registerLifecycleListener(new ReaderThreadLifecycleListener());
         if (logger.isDebugEnabled()) client.registerEventListener(this::logEvent);
 
@@ -263,6 +315,20 @@ public class BinlogReader extends AbstractReader {
         }
     }
 
+    protected void rewindBinaryLogClient(BinlogPosition position) {
+        try {
+            if (isRunning()) {
+                logger.debug("Rewinding binlog to position {}", position);
+                client.disconnect();
+                client.setBinlogFilename(position.getFilename());
+                client.setBinlogPosition(position.getPosition());
+                client.connect();
+            }
+        } catch (IOException e) {
+            logger.error("Unexpected error when re-connecting to the MySQL binary log reader", e);
+        }
+    }
+
     @Override
     protected void doStop() {
         try {
@@ -372,6 +438,7 @@ public class BinlogReader extends AbstractReader {
             logger.info("Stopped processing binlog events due to thread interruption");
         }
     }
+
 
     @SuppressWarnings("unchecked")
     protected <T extends EventData> T unwrapData(Event event) {
@@ -527,6 +594,11 @@ public class BinlogReader extends AbstractReader {
         if (context.ddlFilter().test(sql)) {
             logger.debug("DDL '{}' was filtered out of processing", sql);
             return;
+        }
+        if (sql.equalsIgnoreCase("ROLLBACK")) {
+            // We have hit a ROLLBACK which is not supported
+            logger.warn("Rollback support is not enabled, the connector will fail. Please check '{}' to see how to enable it",
+                    MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER.name());
         }
         context.dbSchema().applyDdl(context.source(), command.getDatabase(), command.getSql(), (dbName, statements) -> {
             if (recordSchemaChangesInSourceRecords && recordMakers.schemaChanges(dbName, statements, super::enqueueRecord) > 0) {
@@ -794,5 +866,17 @@ public class BinlogReader extends AbstractReader {
                 lastOffset,
                 client == null ? "N/A" : client.getBinlogFilename() + "/" + client.getBinlogPosition()
         );
+    }
+
+    protected BinlogReaderMetrics getMetrics() {
+        return metrics;
+    }
+
+    protected BinaryLogClient getBinlogClient() {
+        return client;
+    }
+
+    public BinlogPosition getCurrentBinlogPosition() {
+        return new BinlogPosition(client.getBinlogFilename(), client.getBinlogPosition());
     }
 }

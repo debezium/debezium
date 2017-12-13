@@ -360,6 +360,14 @@ public class MySqlConnectorConfig {
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
     private static final String TABLE_IGNORE_BUILTIN_NAME = "table.ignore.builtin";
 
+    /**
+     * Default size of the binlog buffer used for examining transactions and
+     * deciding whether to propagate them or not. A size of 0 disables the buffer,
+     * all events will be passed on directly as they are passed by the binlog
+     * client.
+     */
+    private static final int DEFAULT_BINLOG_BUFFER_SIZE = 0;
+
     public static final Field HOSTNAME = Field.create("database.hostname")
                                               .withDisplayName("Hostname")
                                               .withType(Type.STRING)
@@ -644,6 +652,18 @@ public class MySqlConnectorConfig {
                                                                          .withDefault(1_000)
                                                                          .withValidation(Field::isNonNegativeLong);
 
+    public static final Field BUFFER_SIZE_FOR_BINLOG_READER = Field.create("binlog.buffer.size")
+                                                                   .withDisplayName("Binlog reader buffer size")
+                                                                   .withType(Type.INT)
+                                                                   .withWidth(Width.MEDIUM)
+                                                                   .withImportance(Importance.MEDIUM)
+                                                                   .withDescription("The size of a look-ahead buffer used by the  binlog reader to decide whether "
+                                                                           + "the transaction in progress is going to be committed or rolled back. "
+                                                                           + "Use 0 to disable look-ahead buffering. "
+                                                                           + "Defaults to " + DEFAULT_BINLOG_BUFFER_SIZE + " (i.e. buffering is disabled).")
+                                                                   .withDefault(DEFAULT_BINLOG_BUFFER_SIZE)
+                                                                   .withValidation(Field::isNonNegativeInteger);
+
     /**
      * The database history class is hidden in the {@link #configDef()} since that is designed to work with a user interface,
      * and in these situations using Kafka is the only way to go.
@@ -783,7 +803,7 @@ public class MySqlConnectorConfig {
                                                      SERVER_NAME,
                                                      CONNECTION_TIMEOUT_MS, KEEP_ALIVE,
                                                      MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
-                                                     DATABASE_HISTORY, INCLUDE_SCHEMA_CHANGES,
+                                                     BUFFER_SIZE_FOR_BINLOG_READER, DATABASE_HISTORY, INCLUDE_SCHEMA_CHANGES,
                                                      TABLE_WHITELIST, TABLE_BLACKLIST, TABLES_IGNORE_BUILTIN,
                                                      DATABASE_WHITELIST, DATABASE_BLACKLIST,
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING,
@@ -818,7 +838,7 @@ public class MySqlConnectorConfig {
                     DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, DatabaseHistory.DDL_FILTER);
         Field.group(config, "Events", INCLUDE_SCHEMA_CHANGES, TABLES_IGNORE_BUILTIN, DATABASE_WHITELIST, TABLE_WHITELIST,
                     COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST,
-                    GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS,
+                    GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS, BUFFER_SIZE_FOR_BINLOG_READER,
                     EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
                     SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
