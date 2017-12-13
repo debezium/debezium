@@ -19,25 +19,30 @@ import io.debezium.connector.mysql.BinlogReader.BinlogPosition;
 
 /**
  * This class represents a look-ahead buffer that allows Debezium to accumulate binlog events and decide
- * if the last event in transaction is either {@code ROLLBACK} or {@code COMMIT}. The incoming evets are either
+ * if the last event in transaction is either {@code ROLLBACK} or {@code COMMIT}. The incoming events are either
  * supposed to be in transaction or out-of-transaction. When out-of-transaction they are sent directly into
  * the destination handler. When in transaction the event goes through the buffering.
- * 
+ * <p>
+ * The reason for the buffering is that the binlog contains rolled back transactions in some cases. E.g. that's
+ * the case when a temporary table is dropped (see DBZ-390). For rolled back transactions we may not propagate
+ * any of the contained events, hence the buffering is applied.
+ * <p>
  * The transaction start is identified by a {@code BEGIN} event. Transaction is ended either by {@code COMMIT}
  * event or by {@code XID} an event.
- * 
- * If there are more events that can fit to the buffer then
+ * <p>
+ * If there are more events that can fit to the buffer then:
  * <ul>
  *     <li>Binlog position is recorded for the first event not fitting into the buffer</li>
  *     <li>Binlog position is recorded for the commit event</li>
  *     <li>Buffer content is sent to the final handler</li>
  *     <li>Binlog position is rewound and all events between the above recorded positions are sent to the final handler</li>
  * </ul>
- * 
+ *
  * @author Jiri Pechanec
  *
  */
 class EventBuffer {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(EventBuffer.class);
 
     private final int capacity;
@@ -51,7 +56,7 @@ class EventBuffer {
     private BinlogPosition largeTxNotBufferedPosition;
 
     /**
-     * Contains the position of the last event in belonging to the transaction that has not fit into
+     * Contains the position of the last event belonging to the transaction that has not fit into
      * the buffer.
      */
     private BinlogPosition forwardTillPosition;
@@ -67,10 +72,18 @@ class EventBuffer {
      * @param event to be stored in the buffer
      */
     public void add(Event event) {
-        if (event == null) return;
-        if (isReplayingEventsNotFittedInBuffer(event)) {
+        if (event == null) {
             return;
         }
+
+        // we're reprocessing events of the current TX between the position where the
+        // buffer was full and the end of the TX; in this case there's nothing to do
+        // besides directly emitting the events
+        if (isReplayingEventsBeyondBufferCapacity()) {
+            reader.handleEvent(event);
+            return;
+        }
+
         if (event.getHeader().getEventType() == EventType.QUERY) {
             QueryEventData command = reader.unwrapData(event);
             LOGGER.debug("Received query command: {}", event);
@@ -92,17 +105,13 @@ class EventBuffer {
     }
 
     /**
-     * Process the event if we are replaying TX events from binlog that has not fit into the buffer.
-     *
-     * @param event
-     * @return true if event was handled
+     * Whether we are replaying TX events from binlog that have not fit into the buffer before
      */
-    private boolean isReplayingEventsNotFittedInBuffer(Event event) {
+    private boolean isReplayingEventsBeyondBufferCapacity() {
         if (forwardTillPosition != null) {
             if (forwardTillPosition.equals(reader.getCurrentBinlogPosition())) {
                 forwardTillPosition = null;
             }
-            reader.handleEvent(event);
             return true;
         }
         return false;
@@ -160,7 +169,7 @@ class EventBuffer {
     /**
      * Sends all events from the buffer int a final handler. For large transactions it executes rewind
      * of binlog reader back to the first event that was not stored in the buffer.
-     * 
+     *
      * @param wellFormed
      * @param event
      */

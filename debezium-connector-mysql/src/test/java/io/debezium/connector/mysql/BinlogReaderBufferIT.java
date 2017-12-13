@@ -10,7 +10,6 @@ import static org.fest.assertions.Assertions.assertThat;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Savepoint;
 import java.sql.Statement;
 
 import org.apache.kafka.connect.data.Struct;
@@ -163,7 +162,7 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
                 connection.setAutoCommit(false);
                 final Statement statement = jdbc.createStatement();
                 statement.executeUpdate("INSERT INTO customers VALUES(default, 'first', 'first', 'first')");
-                final Savepoint savepoint = jdbc.setSavepoint();
+                jdbc.setSavepoint();
                 statement.executeUpdate("INSERT INTO customers VALUES(default, 'second', 'second', 'second')");
                 jdbc.commit();
                 connection.query("SELECT * FROM customers", rs -> {
@@ -239,7 +238,7 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
 
             // All records should be present only once
             records = consumeRecordsByTopic(numRecords);
-            int recordIndex = 0; 
+            int recordIndex = 0;
             for (SourceRecord r: records.allRecordsInOrder()) {
                 Struct envelope = (Struct)r.value();
                 assertThat(envelope.getString("op")).isEqualTo(("c"));

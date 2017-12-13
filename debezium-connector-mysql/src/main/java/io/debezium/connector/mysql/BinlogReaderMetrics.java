@@ -18,7 +18,7 @@ class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
     private final BinaryLogClient client;
     private final BinaryLogClientStatistics stats;
 
-    private final AtomicLong numberOfCommitedTransactions = new AtomicLong();
+    private final AtomicLong numberOfCommittedTransactions = new AtomicLong();
     private final AtomicLong numberOfRolledBackTransactions = new AtomicLong();
     private final AtomicLong numberOfNotWellFormedTransactions = new AtomicLong();
     private final AtomicLong numberOfLargeTransactions = new AtomicLong();
@@ -82,15 +82,15 @@ class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
     @Override
     public void reset() {
         this.stats.reset();
-        numberOfCommitedTransactions.set(0);
+        numberOfCommittedTransactions.set(0);
         numberOfRolledBackTransactions.set(0);
         numberOfNotWellFormedTransactions.set(0);
         numberOfLargeTransactions.set(0);
     }
 
     @Override
-    public long getNumberOfCommitedTransactions() {
-        return numberOfCommitedTransactions.get();
+    public long getNumberOfCommittedTransactions() {
+        return numberOfCommittedTransactions.get();
     }
 
     @Override
@@ -109,7 +109,7 @@ class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
     }
 
     public void onCommittedTransaction() {
-        numberOfCommitedTransactions.incrementAndGet();
+        numberOfCommittedTransactions.incrementAndGet();
     }
 
     public void onRolledBackTransaction() {
