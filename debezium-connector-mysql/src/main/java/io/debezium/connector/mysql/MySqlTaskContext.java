@@ -5,7 +5,9 @@
  */
 package io.debezium.connector.mysql;
 
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Predicate;
 
 import javax.management.MalformedObjectNameException;
@@ -35,6 +37,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     private final Predicate<String> gtidSourceFilter;
     private final Predicate<String> ddlFilter;
     private final Clock clock = Clock.system();
+    private Map<String, String> snapshotSelectOverridesByTable;
 
     public MySqlTaskContext(Configuration config) {
         super(config);
@@ -193,6 +196,20 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
 
     public boolean useMinimalSnapshotLocking() {
         return config.getBoolean(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING);
+    }
+
+    public Optional<String> getSnapshotSelectOverride(String tableId) {
+        if (snapshotSelectOverridesByTable == null) {
+            snapshotSelectOverridesByTable = new HashMap<>();
+            String tableList = config.getString(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, () -> null);
+            if (tableList != null) {
+                for (String table : tableList.split(",")) {
+                    String overrideKey = MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table;
+                    snapshotSelectOverridesByTable.put(table, config.getString(overrideKey));
+                }
+            }
+        }
+        return Optional.ofNullable(snapshotSelectOverridesByTable.get(tableId));
     }
 
     @Override
