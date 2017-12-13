@@ -80,6 +80,7 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.DATABASE_WHITELIST, DATABASE.getDatabaseName())
                               .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                               .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                              .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000)
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                               .build();
 
@@ -113,8 +114,10 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
 
             // The rolled-back transaction should be skipped
             Thread.sleep(5000);
-            records = consumeRecordsByTopic(0);
-            assertThat(records.topics().size()).isEqualTo(0);
+
+            // Try to read records and verify that there is none
+            assertNoRecordsToConsume();
+            assertEngineIsRunning();
 
             Testing.print("*** Done with rollback TX");
         }
