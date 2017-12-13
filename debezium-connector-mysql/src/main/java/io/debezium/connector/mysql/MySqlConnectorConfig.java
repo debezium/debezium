@@ -368,7 +368,13 @@ public class MySqlConnectorConfig {
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
     private static final String TABLE_IGNORE_BUILTIN_NAME = "table.ignore.builtin";
 
-    private static final int DEFAULT_BINLOG_BUFFER_SIZE = 10_000;
+    /**
+     * Default size of the binlog buffer used for examining transactions and
+     * deciding whether to propagate them or not. A size of 0 disables the buffer,
+     * all events will be passed on directly as they are passed by the binlog
+     * client.
+     */
+    private static final int DEFAULT_BINLOG_BUFFER_SIZE = 0;
 
     public static final Field HOSTNAME = Field.create("database.hostname")
                                               .withDisplayName("Hostname")
@@ -659,10 +665,11 @@ public class MySqlConnectorConfig {
                                                                    .withType(Type.INT)
                                                                    .withWidth(Width.MEDIUM)
                                                                    .withImportance(Importance.MEDIUM)
-                                                                   .withDescription("The size of a look-ahead buffer used by the  binlog reader to decide whether"
+                                                                   .withDescription("The size of a look-ahead buffer used by the  binlog reader to decide whether "
                                                                            + "the transaction in progress is going to be committed or rolled back. "
-                                                                           + "Defaults to " + DEFAULT_BINLOG_BUFFER_SIZE + ". Use 0 to disable look-ahead buffering.")
-                                                                   .withDefault(0)
+                                                                           + "Use 0 to disable look-ahead buffering. "
+                                                                           + "Defaults to " + DEFAULT_BINLOG_BUFFER_SIZE + " (i.e. buffering is disabled).")
+                                                                   .withDefault(DEFAULT_BINLOG_BUFFER_SIZE)
                                                                    .withValidation(Field::isNonNegativeInteger);
 
     /**
