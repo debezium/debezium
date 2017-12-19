@@ -294,6 +294,22 @@ public class PostgresConnectorConfig {
             public MessageDecoder messageDecoder() {
                 return new Wal2JsonMessageDecoder();
             }
+        },
+        WAL2JSON_RDS("wal2json_rds") {
+            @Override
+            public MessageDecoder messageDecoder() {
+                return new Wal2JsonMessageDecoder();
+            }
+
+            @Override
+            public boolean forceRds() {
+                return true;
+            }
+
+            @Override
+            public String getPostgresPluginName() {
+                return "wal2json";
+            }
         };
 
         private final String decoderName;
@@ -304,6 +320,10 @@ public class PostgresConnectorConfig {
 
         public abstract MessageDecoder messageDecoder();
 
+        public boolean forceRds() {
+            return false;
+        }
+
         public static LogicalDecoder parse(String s) {
             return valueOf(s.trim().toUpperCase());
         }
@@ -311,6 +331,10 @@ public class PostgresConnectorConfig {
         @Override
         public String getValue() {
             return decoderName;
+        }
+
+        public String getPostgresPluginName() {
+            return getValue();
         }
     }
 
