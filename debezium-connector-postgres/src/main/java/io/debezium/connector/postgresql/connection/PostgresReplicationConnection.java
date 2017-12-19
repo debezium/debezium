@@ -77,9 +77,10 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     protected void initReplicationSlot() throws SQLException {
+        final String postgresPluginName = plugin.getPostgresPluginName();
         ServerInfo.ReplicationSlot slotInfo;
         try (PostgresConnection connection = new PostgresConnection(originalConfig)) {
-            slotInfo = connection.readReplicationSlotInfo(slotName, plugin.getValue());
+            slotInfo = connection.readReplicationSlotInfo(slotName, postgresPluginName);
         }
 
         boolean shouldCreateSlot = ServerInfo.ReplicationSlot.INVALID == slotInfo;
@@ -91,13 +92,13 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                               .createReplicationSlot()
                               .logical()
                               .withSlotName(slotName)
-                              .withOutputPlugin(plugin.getValue())
+                              .withOutputPlugin(postgresPluginName)
                               .make();
             } else if (slotInfo.active()) {
                 LOGGER.error(
                         "A logical replication slot named '{}' for plugin '{}' and database '{}' is already active on the server." +
                         "You cannot have multiple slots with the same name active for the same database",
-                        slotName, plugin.getValue(), database());
+                        slotName, postgresPluginName, database());
                 throw new IllegalStateException();
             }
 
@@ -153,8 +154,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private ReplicationStream createReplicationStream(final LogSequenceNumber lsn) throws SQLException {
         PGReplicationStream s;
         try {
-            s = startPgReplicationStream(lsn, messageDecoder::optionsWithMetadata);
-            messageDecoder.setContainsMetadata(true);
+            s = startPgReplicationStream(lsn, plugin.forceRds() ? messageDecoder::optionsWithoutMetadata : messageDecoder::optionsWithMetadata);
+            messageDecoder.setContainsMetadata(plugin.forceRds() ? false : true);
         } catch (PSQLException e) {
             if (e.getMessage().matches("(?s)ERROR: option .* is unknown.*")) {
                 // It is possible we are connecting to an old wal2json plug-in
