@@ -24,7 +24,7 @@ public class DecoderDifferences {
      * @return modified count
      */
     public static int updatesWithoutPK(final int expectedCount, final int updatesWithoutPK) {
-        return TestHelper.decoderPlugin() != PostgresConnectorConfig.LogicalDecoder.WAL2JSON ? expectedCount : expectedCount - updatesWithoutPK;
+        return !wal2Json() ? expectedCount : expectedCount - updatesWithoutPK;
     }
 
     /**
@@ -36,7 +36,12 @@ public class DecoderDifferences {
     public static class AreQuotedIdentifiersUnsupported implements Supplier<Boolean> {
         @Override
         public Boolean get() {
-            return TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.WAL2JSON;
+            return wal2Json();
         }
     }
+
+    private static boolean wal2Json() {
+        return TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.WAL2JSON || TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.WAL2JSON_RDS;
+    }
+
 }
