@@ -385,12 +385,36 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(4);
         recordsProducer.start(consumer);
         executeAndWait(statements);
+
+        final String topicPrefix = "public.table_with_interval";
+        final String topicName = topicName(topicPrefix);
+        final String pk = "id";
+        assertRecordInserted(topicPrefix, pk, 1);
+        assertRecordInserted(topicPrefix, pk, 2);
+
+        // first entry removed
+        SourceRecord record = consumer.remove();
+        assertEquals(topicName, record.topic());
+        VerifyRecord.isValidDelete(record, pk, 1);
+
+        // followed by a tombstone
+        record = consumer.remove();
+        assertEquals(topicName, record.topic());
+        VerifyRecord.isValidTombstone(record, pk, 1);
     }
 
     @Test
     @FixFor("DBZ-501")
     public void shouldNotStartAfterStop() throws Exception {
         recordsProducer.stop();
+        recordsProducer.start(consumer);
+
+        // Need to remove record created in @Before
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true).build());
+        PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config));
+        recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.serverName()));
+
+        consumer = testConsumer(1);
         recordsProducer.start(consumer);
     }
 
