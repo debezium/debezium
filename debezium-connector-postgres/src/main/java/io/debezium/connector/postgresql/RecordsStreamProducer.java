@@ -433,11 +433,11 @@ public class RecordsStreamProducer extends RecordsProducer {
                 logger.debug("found new column '{}' present in the server message which is not part of the table metadata; refreshing table schema", columnName);
                 return true;
             } else {
-                final int localType = column.jdbcType();
+                final int localType = metadataInMessage ? column.jdbcType() : PgOid.typeNameToOid(column.typeName());
                 final int incomingType = metadataInMessage ? typeNameToJdbcType(message.getTypeMetadata()) : message.getOidType();
                 if (localType != incomingType) {
-                    logger.debug("detected new type for column '{}', old type was '{}', new type is '{}'; refreshing table schema", columnName, column.jdbcType(),
-                                message.getOidType());
+                    logger.debug("detected new type for column '{}', old type was '{}', new type is '{}'; refreshing table schema", columnName, localType,
+                                incomingType);
                     return true;
                 }
             }
