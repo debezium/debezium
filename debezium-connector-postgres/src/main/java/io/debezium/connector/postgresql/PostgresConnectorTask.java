@@ -151,7 +151,9 @@ public class PostgresConnectorTask extends SourceTask {
     
     @Override
     public void commit() throws InterruptedException {
-        producer.commit();
+        if (running.get()) {
+            producer.commit();
+        }
     }
     
     @Override
