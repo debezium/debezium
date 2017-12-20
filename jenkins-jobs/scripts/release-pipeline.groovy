@@ -36,7 +36,7 @@ withCredentials([usernamePassword(credentialsId: JIRA_CREDENTIALS_ID, passwordVa
 }
 
 JIRA_PROJECT = 'DBZ'
-JIRA_VERSION = RELEASE_VERSION - '.0'
+JIRA_VERSION = RELEASE_VERSION
 
 JIRA_CLOSE_ISSUE = """
     {

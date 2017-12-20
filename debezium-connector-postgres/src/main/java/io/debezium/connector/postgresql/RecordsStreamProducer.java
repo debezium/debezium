@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -15,6 +16,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -29,6 +31,7 @@ import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.connector.postgresql.connection.ReplicationStream;
 import io.debezium.data.Envelope;
 import io.debezium.relational.Column;
+import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
@@ -97,6 +100,7 @@ public class RecordsStreamProducer extends RecordsProducer {
 
             // refresh the schema so we have a latest view of the DB tables
             taskContext.refreshSchema(true);
+
             // the new thread will inherit it's parent MDC
             executorService.submit(() -> streamChanges(recordConsumer));
         } catch (Throwable t) {
@@ -123,7 +127,7 @@ public class RecordsStreamProducer extends RecordsProducer {
                 }
                 taskContext.failTask(e);
                 throw new ConnectException(e);
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 logger.error("unexpected exception while streaming logical changes", e);
                 taskContext.failTask(e);
                 throw new ConnectException(e);
@@ -232,18 +236,18 @@ public class RecordsStreamProducer extends RecordsProducer {
         ReplicationMessage.Operation operation = message.getOperation();
         switch (operation) {
             case INSERT: {
-                Object[] row = columnValues(message.getNewTupleList(), tableId, true);
+                Object[] row = columnValues(message.getNewTupleList(), tableId, true, message.hasMetadata());
                 generateCreateRecord(tableId, row, consumer);
                 break;
             }
             case UPDATE: {
-                Object[] newRow = columnValues(message.getNewTupleList(), tableId, true);
-                Object[] oldRow = columnValues(message.getOldTupleList(), tableId, true);
+                Object[] newRow = columnValues(message.getNewTupleList(), tableId, true, message.hasMetadata());
+                Object[] oldRow = columnValues(message.getOldTupleList(), tableId, false, message.hasMetadata());
                 generateUpdateRecord(tableId, oldRow, newRow, consumer);
                 break;
             }
             case DELETE: {
-                Object[] row = columnValues(message.getOldTupleList(), tableId, false);
+                Object[] row = columnValues(message.getOldTupleList(), tableId, false, message.hasMetadata());
                 generateDeleteRecord(tableId, row, consumer);
                 break;
             }
@@ -376,39 +380,44 @@ public class RecordsStreamProducer extends RecordsProducer {
         recordConsumer.accept(record);
     }
 
-    private Object[] columnValues(List<ReplicationMessage.Column> messageList, TableId tableId, boolean refreshSchemaIfChanged)
+    private Object[] columnValues(List<ReplicationMessage.Column> columns, TableId tableId, boolean refreshSchemaIfChanged, boolean metadataInMessage)
             throws SQLException {
-        if (messageList == null || messageList.isEmpty()) {
+        if (columns == null || columns.isEmpty()) {
             return null;
         }
         Table table = schema().tableFor(tableId);
         assert table != null;
 
         // check if we need to refresh our local schema due to DB schema changes for this table
-        if (refreshSchemaIfChanged && schemaChanged(messageList, table)) {
+        if (refreshSchemaIfChanged && schemaChanged(columns, table, metadataInMessage)) {
             try (final PostgresConnection connection = taskContext.createConnection()) {
+                // Refresh the schema so we get information about primary keys
                 schema().refresh(connection, tableId);
+                // Update the schema with metadata coming from decoder message
+                if (metadataInMessage) {
+                    schema().refresh(tableFromFromMessage(columns, schema().tableFor(tableId)));
+                }
+                table = schema().tableFor(tableId);
             }
-            table = schema().tableFor(tableId);
         }
 
         // based on the schema columns, create the values on the same position as the columns
         List<String> columnNames = table.columnNames();
         // JSON does not deliver a list of all columns for REPLICA IDENTITY DEFAULT
-        Object[] values = new Object[messageList.size() < columnNames.size() ? columnNames.size() : messageList.size()];
-        messageList.forEach(message -> {
+        Object[] values = new Object[columns.size() < columnNames.size() ? columnNames.size() : columns.size()];
+        columns.forEach(message -> {
             //DBZ-298 Quoted column names will be sent like that in messages, but stored unquoted in the column names
             String columnName = Strings.unquoteIdentifierPart(message.getName());
             int position = columnNames.indexOf(columnName);
             assert position >= 0;
-            values[position] = message.getValue(this::typeResolverConnection);
+            values[position] = message.getValue(this::typeResolverConnection, taskContext.config().includeUnknownDatatypes());
         });
         return values;
     }
 
-    private boolean schemaChanged(List<ReplicationMessage.Column> messageList, Table table) {
+    private boolean schemaChanged(List<ReplicationMessage.Column> columns, Table table, boolean metadataInMessage) {
         List<String> columnNames = table.columnNames();
-        int messagesCount = messageList.size();
+        int messagesCount = columns.size();
         if (columnNames.size() != messagesCount) {
             // the table metadata has less or more columns than the event, which means the table structure has changed,
             // so we need to trigger a refresh...
@@ -417,16 +426,20 @@ public class RecordsStreamProducer extends RecordsProducer {
 
         // go through the list of columns from the message to figure out if any of them are new or have changed their type based
         // on what we have in the table metadata....
-        return messageList.stream().filter(message -> {
+        return columns.stream().filter(message -> {
             String columnName = message.getName();
             Column column = table.columnWithName(columnName);
             if (column == null) {
                 logger.debug("found new column '{}' present in the server message which is not part of the table metadata; refreshing table schema", columnName);
                 return true;
-            } else if (!schema().isType(column.typeName(), column.jdbcType())) {
-                logger.debug("detected new type for column '{}', old type was '{}', new type is '{}'; refreshing table schema", columnName, column.jdbcType(),
-                            message.getType());
-                return true;
+            } else {
+                final int localType = metadataInMessage ? column.jdbcType() : PgOid.typeNameToOid(column.typeName());
+                final int incomingType = metadataInMessage ? typeNameToJdbcType(message.getTypeMetadata()) : message.getOidType();
+                if (localType != incomingType) {
+                    logger.debug("detected new type for column '{}', old type was '{}', new type is '{}'; refreshing table schema", columnName, localType,
+                                incomingType);
+                    return true;
+                }
             }
             return false;
         }).findFirst().isPresent();
@@ -462,5 +475,35 @@ public class RecordsStreamProducer extends RecordsProducer {
             typeResolverConnection = (PgConnection)taskContext.createConnection().connection();
         }
         return typeResolverConnection;
+    }
+
+    private Table tableFromFromMessage(List<ReplicationMessage.Column> columns, Table table) {
+        return table.edit()
+            .setColumns(columns.stream()
+                .map(column -> {
+                    final ColumnEditor columnEditor = Column.editor()
+                            .name(column.getName())
+                            .jdbcType(column.getOidType() == Types.ARRAY ? Types.ARRAY : typeNameToJdbcType(column.getTypeMetadata()))
+                            .type(column.getTypeMetadata().getName())
+                            .optional(column.isOptional());
+                    PgOid.reconcileJdbcOidTypeConstraints(column.getTypeMetadata(), columnEditor);
+                    if (column.getOidType() == Types.ARRAY) {
+                        columnEditor.componentType(column.getComponentOidType());
+                    }
+                    if (column.getTypeMetadata().getLength().isPresent()) {
+                        columnEditor.length(column.getTypeMetadata().getLength().getAsInt());
+                    }
+                    if (column.getTypeMetadata().getScale().isPresent()) {
+                        columnEditor.scale(column.getTypeMetadata().getScale().getAsInt());
+                    }
+                    return columnEditor.create();
+                })
+                .collect(Collectors.toList())
+            )
+            .setPrimaryKeyNames(table.filterColumnNames(c -> table.isPrimaryKeyColumn(c.name()))).create();
+    }
+
+    private int typeNameToJdbcType(final ReplicationMessage.ColumnTypeMetadata columnTypeMetadata) {
+        return taskContext.schema().columnTypeNameToJdbcTypeId(columnTypeMetadata.getName());
     }
 }

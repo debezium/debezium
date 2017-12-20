@@ -28,7 +28,7 @@ import io.debezium.relational.history.FileDatabaseHistory;
  * in <code>src/test/resources/ddl/&lt;database_name&gt;.sql</code>.
  * The database name is enriched with a unique suffix that guarantees complete isolation between runs
  * <code>&lt;database_name&gt_&lt;suffix&gt</code>
- * 
+ *
  * @author jpechane
  *
  */
@@ -44,7 +44,7 @@ public class UniqueDatabase {
     private final String templateName;
     private final String serverName;
     private Path dbHistoryPath;
-    private String identifier;
+    private final String identifier;
 
     private UniqueDatabase(final String serverName, final String databaseName, final String identifier) {
         this.identifier = identifier;
@@ -55,8 +55,8 @@ public class UniqueDatabase {
 
     /**
      * Creates an instance with given Debezium logical name and database name
-     * 
-     * @param serverName - logical Debezium server name 
+     *
+     * @param serverName - logical Debezium server name
      * @param databaseName - the name of the database (prix)
      */
     public UniqueDatabase(final String serverName, final String databaseName) {
@@ -68,7 +68,7 @@ public class UniqueDatabase {
      * as another database. This is handy for tests that need multpli databases and can use regex
      * based whitelisting.
 
-     * @param serverName - logical Debezium server name 
+     * @param serverName - logical Debezium server name
      * @param databaseName - the name of the database (prix)
      * @param sibling - a database whose unique suffix will be used
      */
@@ -167,7 +167,8 @@ public class UniqueDatabase {
                 .with(MySqlConnectorConfig.SERVER_NAME, getServerName())
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_WHITELIST, getDatabaseName())
-                .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class);
+                .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+                .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000);
         if (dbHistoryPath != null) {
             builder.with(FileDatabaseHistory.FILE_PATH, dbHistoryPath);
         }

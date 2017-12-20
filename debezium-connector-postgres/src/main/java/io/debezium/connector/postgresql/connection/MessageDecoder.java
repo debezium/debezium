@@ -32,10 +32,28 @@ public interface MessageDecoder {
 
     /**
      * Allows MessageDecoder to configure options with which the replication stream is started.
+     * The messages CAN contain type metadata.
      * See PostgreSQL command START_REPLICATION SLOT for more details.
      *
      * @param builder
      * @return the builder instance
      */
-    ChainedLogicalStreamBuilder options(final ChainedLogicalStreamBuilder builder);
+    ChainedLogicalStreamBuilder optionsWithMetadata(final ChainedLogicalStreamBuilder builder);
+
+    /**
+     * Allows MessageDecoder to configure options with which the replication stream is started.
+     * The messages MUST NOT contain type metadata.
+     * See PostgreSQL command START_REPLICATION SLOT for more details.
+     *
+     * @param builder
+     * @return the builder instance
+     */
+    ChainedLogicalStreamBuilder optionsWithoutMetadata(final ChainedLogicalStreamBuilder builder);
+
+    /**
+     * Signals to this decoder whether messages contain type metadata or not.
+     */
+    // TODO DBZ-508 Remove once we only support LD plug-ins always sending the metadata
+    default void setContainsMetadata(boolean flag) {
+    }
 }

@@ -12,11 +12,13 @@ import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 
 import org.postgresql.PGConnection;
 import org.postgresql.replication.LogSequenceNumber;
 import org.postgresql.replication.PGReplicationStream;
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
+import org.postgresql.util.PSQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,9 +77,10 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     protected void initReplicationSlot() throws SQLException {
+        final String postgresPluginName = plugin.getPostgresPluginName();
         ServerInfo.ReplicationSlot slotInfo;
         try (PostgresConnection connection = new PostgresConnection(originalConfig)) {
-            slotInfo = connection.readReplicationSlotInfo(slotName, plugin.getValue());
+            slotInfo = connection.readReplicationSlotInfo(slotName, postgresPluginName);
         }
 
         boolean shouldCreateSlot = ServerInfo.ReplicationSlot.INVALID == slotInfo;
@@ -89,13 +92,13 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                               .createReplicationSlot()
                               .logical()
                               .withSlotName(slotName)
-                              .withOutputPlugin(plugin.getValue())
+                              .withOutputPlugin(postgresPluginName)
                               .make();
             } else if (slotInfo.active()) {
                 LOGGER.error(
                         "A logical replication slot named '{}' for plugin '{}' and database '{}' is already active on the server." +
                         "You cannot have multiple slots with the same name active for the same database",
-                        slotName, plugin.getValue(), database());
+                        slotName, postgresPluginName, database());
                 throw new IllegalStateException();
             }
 
@@ -149,20 +152,21 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     private ReplicationStream createReplicationStream(final LogSequenceNumber lsn) throws SQLException {
-        assert lsn != null;
-        ChainedLogicalStreamBuilder streamBuilder = pgConnection()
-                .getReplicationAPI()
-                .replicationStream()
-                .logical()
-                .withSlotName(slotName)
-                .withStartPosition(lsn);
-        streamBuilder = messageDecoder.options(streamBuilder);
-
-        if (statusUpdateIntervalMillis != null && statusUpdateIntervalMillis > 0) {
-            streamBuilder.withStatusInterval(statusUpdateIntervalMillis, TimeUnit.MILLISECONDS);
+        PGReplicationStream s;
+        try {
+            s = startPgReplicationStream(lsn, plugin.forceRds() ? messageDecoder::optionsWithoutMetadata : messageDecoder::optionsWithMetadata);
+            messageDecoder.setContainsMetadata(plugin.forceRds() ? false : true);
+        } catch (PSQLException e) {
+            if (e.getMessage().matches("(?s)ERROR: option .* is unknown.*")) {
+                // It is possible we are connecting to an old wal2json plug-in
+                LOGGER.warn("Could not register for streaming with metadata in messages, falling back to messages without metadata");
+                s = startPgReplicationStream(lsn, messageDecoder::optionsWithoutMetadata);
+                messageDecoder.setContainsMetadata(false);
+            } else {
+                throw e;
+            }
         }
-
-        PGReplicationStream stream = streamBuilder.start();
+        final PGReplicationStream stream = s;
         final long lsnLong = lsn.asLong();
         return new ReplicationStream() {
             private static final int CHECK_WARNINGS_AFTER_COUNT = 100;
@@ -228,6 +232,32 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 }
             }
         };
+    }
+
+    private PGReplicationStream startPgReplicationStream(final LogSequenceNumber lsn, Function<ChainedLogicalStreamBuilder, ChainedLogicalStreamBuilder> configurator) throws SQLException {
+        assert lsn != null;
+        ChainedLogicalStreamBuilder streamBuilder = pgConnection()
+                .getReplicationAPI()
+                .replicationStream()
+                .logical()
+                .withSlotName(slotName)
+                .withStartPosition(lsn);
+        streamBuilder = configurator.apply(streamBuilder);
+
+        if (statusUpdateIntervalMillis != null && statusUpdateIntervalMillis > 0) {
+            streamBuilder.withStatusInterval(statusUpdateIntervalMillis, TimeUnit.MILLISECONDS);
+        }
+
+        PGReplicationStream stream = streamBuilder.start();
+
+        // TODO DBZ-508 get rid of this
+        // Needed by tests when connections are opened and closed in a fast sequence
+        try {
+            Thread.sleep(10);
+        } catch (Exception e) {
+        }
+        stream.forceUpdateStatus();
+        return stream;
     }
 
     @Override

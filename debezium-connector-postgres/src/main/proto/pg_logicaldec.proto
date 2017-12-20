@@ -30,6 +30,11 @@ message DatumMessage {
     }
 }
 
+message TypeInfo {
+    required string modifier = 1;
+    required bool value_optional = 2;
+}
+
 message RowMessage {
     optional uint32 transaction_id = 1;
     optional uint64 commit_time = 2;
@@ -37,4 +42,5 @@ message RowMessage {
     optional Op op = 4;
     repeated DatumMessage new_tuple = 5;
     repeated DatumMessage old_tuple = 6;
+    repeated TypeInfo new_typeinfo = 7;
 }
