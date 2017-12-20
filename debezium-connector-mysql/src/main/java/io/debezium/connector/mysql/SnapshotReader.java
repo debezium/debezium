@@ -157,6 +157,9 @@ public class SnapshotReader extends AbstractReader {
      */
     private Object readTimeField(ResultSet rs, int fieldNo) throws SQLException {
         Blob b = rs.getBlob(fieldNo);
+        
+        if (b == null) return null;
+        
         String timeString;
 
         try {
