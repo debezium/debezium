@@ -495,7 +495,7 @@ public final class EmbeddedEngine implements Runnable {
      * 
      * @return {@code true} if running, or {@code false} otherwise
      */
-    protected boolean isRunning() {
+    public boolean isRunning() {
         return this.runningThread.get() != null;
     }
 

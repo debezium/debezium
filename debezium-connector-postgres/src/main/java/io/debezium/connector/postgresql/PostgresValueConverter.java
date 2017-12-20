@@ -65,8 +65,15 @@ public class PostgresValueConverter extends JdbcValueConverters {
      */
     private static final int VARIABLE_SCALE_DECIMAL_LENGTH = 131089;
 
-    protected PostgresValueConverter(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode) {
+    /**
+     * {@code true} if fields of data type not know should be handle as opaque binary;
+     * {@code false} if they should be omitted
+     */
+    private final boolean includeUnknownDatatypes;
+
+    protected PostgresValueConverter(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode, boolean includeUnknownDatatypes) {
         super(decimalMode, temporalPrecisionMode, defaultOffset, null, bigIntUnsignedMode);
+        this.includeUnknownDatatypes = includeUnknownDatatypes;
     }
 
     @Override
@@ -144,6 +151,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 // These array types still need to be implemented.  The superclass won't handle them so
                 // we return null here until we can code schema implementations for them.
                 return null;
+            case PgOid.UNSPECIFIED:
+                return includeUnknownDatatypes ? SchemaBuilder.bytes() : super.schemaBuilder(column);
             default:
                 return super.schemaBuilder(column);
         }
@@ -225,6 +234,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.JSON_ARRAY:
             case PgOid.REF_CURSOR_ARRAY:
                 return super.converter(column, fieldDefn);
+            case PgOid.UNSPECIFIED:
+                return includeUnknownDatatypes ? data -> convertBinary(column, fieldDefn, data) : super.converter(column, fieldDefn);
             default:
                 return super.converter(column, fieldDefn);
         }
@@ -434,6 +445,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     private boolean isVariableScaleDecimal(final Column column) {
-        return column.scale() == 0 && column.length() == VARIABLE_SCALE_DECIMAL_LENGTH;
+        return (column.scale() == 0 && column.length() == VARIABLE_SCALE_DECIMAL_LENGTH)
+                || (column.scale() == -1 && column.length() == -1);
     }
 }

@@ -82,7 +82,7 @@ public abstract class AbstractConnectorTest implements Testing {
     protected static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath("file-connector-offsets.txt").toAbsolutePath();
 
     private ExecutorService executor;
-    private EmbeddedEngine engine;
+    protected EmbeddedEngine engine;
     private BlockingQueue<SourceRecord> consumedLines;
     protected long pollTimeoutInMs = TimeUnit.SECONDS.toMillis(5);
     protected final Logger logger = LoggerFactory.getLogger(getClass());
@@ -267,7 +267,7 @@ public abstract class AbstractConnectorTest implements Testing {
             @Override
             public void taskStarted() {
                 // if this is called, it means a task has been started successfully so we can continue
-                latch.countDown();        
+                latch.countDown();
             }
         }; 
         
@@ -622,6 +622,13 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     /**
+     * Assert that there was no exception in engine that would cause its termination.
+     */
+    protected void assertEngineIsRunning() {
+        assertThat(engine.isRunning()).as("Engine should not fail due to an exception").isTrue();
+    }
+
+    /**
      * Validate that a {@link SourceRecord}'s key and value can each be converted to a byte[] and then back to an equivalent
      * {@link SourceRecord}.
      * 
@@ -725,5 +732,4 @@ public abstract class AbstractConnectorTest implements Testing {
             offsetStore.stop();
         }
     }
-
 }

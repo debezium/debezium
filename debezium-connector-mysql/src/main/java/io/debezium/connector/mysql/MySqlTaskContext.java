@@ -179,6 +179,10 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         return config.getLong(MySqlConnectorConfig.ROW_COUNT_FOR_STREAMING_RESULT_SETS);
     }
 
+    public int bufferSizeForBinlogReader() {
+        return config.getInteger(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER);
+    }
+
     public boolean includeSchemaChangeRecords() {
         return config.getBoolean(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES);
     }
@@ -210,6 +214,10 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
 
     public boolean useMinimalSnapshotLocking() {
         return config.getBoolean(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING);
+    }
+
+    public String getSnapshotSelectOverrides() {
+        return config.getString(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
     }
 
     @Override
