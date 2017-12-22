@@ -254,6 +254,13 @@ public class MySqlSchema {
         dbHistory.recover(startingPoint.partition(), startingPoint.offset(), tables, ddlParser);
         refreshSchemas();
     }
+    
+    /**
+     * Return true if the database history entity exists
+     */
+    public boolean historyExists() {
+        return dbHistory.exists();
+    }    
 
     /**
      * Discard any currently-cached schemas and rebuild them using the filters.
