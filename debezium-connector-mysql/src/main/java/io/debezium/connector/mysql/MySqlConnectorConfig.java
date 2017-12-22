@@ -182,6 +182,14 @@ public class MySqlConnectorConfig {
          * from the point in time the snapshot is made (and doesn't care about any state or changes prior to this point).
          */
         SCHEMA_ONLY("schema_only"),
+        
+        /**
+         * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog at the current binlog position.
+         * This can be used for recovery only if the connector has existing offsets and the database.history.kafka.topic does not exist (deleted).
+         * This recovery option should be used with care as it assumes there have been no schema changes since the connector last stopped,
+         * otherwise some events during the gap may be processed with an incorrect schema and corrupted.  
+         */
+        SCHEMA_ONLY_RECOVERY("schema_only_recovery"),
 
         /**
          * Never perform a snapshot and only read the binlog. This assumes the binlog contains all the history of those

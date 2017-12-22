@@ -38,6 +38,11 @@ public final class MemoryDatabaseHistory extends AbstractDatabaseHistory {
     protected void recoverRecords(Consumer<HistoryRecord> records) {
         lock.write(() -> this.records.forEach(records));
     }
+    
+    @Override
+    public boolean exists() {
+        return records != null;
+    }
 
     @Override
     public String toString() {

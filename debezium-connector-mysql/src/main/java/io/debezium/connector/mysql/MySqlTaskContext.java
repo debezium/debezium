@@ -133,6 +133,19 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         }
         recordProcessor.regenerate();
     }
+    
+        
+    /**
+     * Return true if the database history entity exists
+     */
+    public boolean historyExists() {
+        // Read the system variables from the MySQL instance and load them into the DDL parser as defaults ...
+        Map<String, String> variables = readMySqlCharsetSystemVariables(null);
+        dbSchema.setSystemVariables(variables);
+
+        // And then load the history ...
+       return dbSchema.historyExists();
+    }    
 
     public Clock clock() {
         return clock;
@@ -189,6 +202,10 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     public boolean isSchemaOnlySnapshot() {
         return snapshotMode() == SnapshotMode.SCHEMA_ONLY;
     }
+    
+    public boolean isSchemaOnlyRecoverySnapshot() {
+        return snapshotMode() == SnapshotMode.SCHEMA_ONLY_RECOVERY;
+    }    
 
     protected SnapshotMode snapshotMode() {
         String value = config.getString(MySqlConnectorConfig.SNAPSHOT_MODE);
