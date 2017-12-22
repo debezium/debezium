@@ -79,14 +79,21 @@ public final class MySqlConnectorTask extends SourceTask {
                 
                 // First check if db history is available
                 if (!taskContext.historyExists()) {
-                    if (taskContext.isSchemaOnlyRecoverySnapshot()) {
+                    if (taskContext.isSchemaOnlyRecoverySnapshot()) {                    
                         startWithSnapshot = true;
+                        
+                        // But check to see if the server still has those binlog coordinates ...
+                        if (!isBinlogAvailable()) {
+                            String msg = "The connector is trying to read binlog starting at " + source + ", but this is no longer "
+                                    + "available on the server. Reconfigure the connector to use a snapshot when needed.";
+                            throw new ConnectException(msg);
+                        }                     
                         logger.info("The db-history topic is missing but we are in {} snapshot mode. " +
                                     "Attempting to snapshot the current schema and then begin reading the binlog from the last recorded offset.", SnapshotMode.SCHEMA_ONLY_RECOVERY);
                     }
                     else {
                         String msg = "The db history topic is missing. You may attempt to recover it by reconfiguring the connector to " + SnapshotMode.SCHEMA_ONLY_RECOVERY;
-                        throw new IllegalStateException(msg);
+                        throw new ConnectException(msg);
                     }
                 }
                 else {
