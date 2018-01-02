@@ -18,6 +18,9 @@ public class ISODateTimeFormatTest {
     @Test
     public void testTimestamp() {
         Assertions.assertThat(DateTimeFormat.get().timestamp("2016-11-04 13:51:30")).isEqualTo(1478267490_000_000_000l);
+        Assertions.assertThat(DateTimeFormat.get().timestamp("2016-11-04 13:51:30.123")).isEqualTo(1478267490_123_000_000l);
+        Assertions.assertThat(DateTimeFormat.get().timestamp("2016-11-04 13:51:30.123000")).isEqualTo(1478267490_123_000_000l);
+        Assertions.assertThat(DateTimeFormat.get().timestamp("2016-11-04 13:51:30.123456")).isEqualTo(1478267490_123_456_000l);
     }
 
     @Test
