@@ -1225,6 +1225,7 @@ public class MySqlDdlParser extends DdlParser {
                 }
                 String columnName = parseColumnName();
                 table.removeColumn(columnName);
+                tokens.canConsume("RESTRICT");
             }
         } else if (tokens.canConsume("ALTER")) {
             if (!isNextTokenQuotedIdentifier()) {
