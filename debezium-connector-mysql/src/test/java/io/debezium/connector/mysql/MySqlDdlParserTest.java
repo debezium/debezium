@@ -1279,7 +1279,7 @@ public class MySqlDdlParserTest {
     }
 
     @Test
-    @FixFor({"DBZ-408", "DBZ-412"})
+    @FixFor({"DBZ-408", "DBZ-412", "DBZ-524"})
     public void shouldParseAlterTableStatementWithColumnNamedColumnWithColumnWord() {
         String ddl = "CREATE TABLE `mytable` ( " + System.lineSeparator()
                     + " `def` int(11) unsigned NOT NULL AUTO_INCREMENT, " + System.lineSeparator()
@@ -1329,7 +1329,7 @@ public class MySqlDdlParserTest {
         ddl = "ALTER TABLE `mytable` "
                 + "DROP COLUMN `column`, "
                 + "DROP COLUMN `ghi`, "
-                + "DROP COLUMN jkl";
+                + "DROP COLUMN jkl RESTRICT";
 
         parser.parse(ddl, tables);
         mytable = tables.forTable(new TableId(null, null, "mytable"));
