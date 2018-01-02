@@ -43,8 +43,11 @@ public interface DateTimeFormat {
     public static class ISODateTimeFormat implements DateTimeFormat {
         private static final Logger LOGGER = LoggerFactory.getLogger(ISODateTimeFormat.class);
 
-        private static final String TS_FORMAT_PATTERN = "yyyy-MM-dd HH:mm:ss";
-        private static final DateTimeFormatter TS_FORMAT = DateTimeFormatter.ofPattern(TS_FORMAT_PATTERN);
+        private static final String TS_FORMAT_PATTERN = "yyyy-MM-dd HH:mm:ss[.S]";
+        private static final DateTimeFormatter TS_FORMAT = new DateTimeFormatterBuilder()
+                .appendPattern("yyyy-MM-dd HH:mm:ss")
+                .appendFraction(ChronoField.MICRO_OF_SECOND, 0, 6, true)
+                .toFormatter();
 
         private static final String TS_TZ_FORMAT_PATTERN = "yyyy-MM-dd HH:mm:ss[.S]X";
         private static final DateTimeFormatter TS_TZ_FORMAT = new DateTimeFormatterBuilder()
