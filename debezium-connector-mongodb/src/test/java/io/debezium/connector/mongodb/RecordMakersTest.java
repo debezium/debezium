@@ -73,7 +73,7 @@ public class RecordMakersTest {
         Document event = new Document().append("o", obj)
                                        .append("ns", "dbA.c1")
                                        .append("ts", ts)
-                                       .append("h", new Long(12345678))
+                                       .append("h", Long.valueOf(12345678))
                                        .append("op", "i");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
         records.recordEvent(event, 1002);
@@ -103,7 +103,7 @@ public class RecordMakersTest {
                                        .append("o2", objId)
                                        .append("ns", "dbA.c1")
                                        .append("ts", ts)
-                                       .append("h", new Long(12345678))
+                                       .append("h", Long.valueOf(12345678))
                                        .append("op", "u");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
         records.recordEvent(event, 1002);
@@ -133,7 +133,7 @@ public class RecordMakersTest {
         Document event = new Document().append("o", obj)
                                        .append("ns", "dbA.c1")
                                        .append("ts", ts)
-                                       .append("h", new Long(12345678))
+                                       .append("h", Long.valueOf(12345678))
                                        .append("op", "d");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
         records.recordEvent(event, 1002);
@@ -172,7 +172,7 @@ public class RecordMakersTest {
         Document event = new Document().append("o", obj)
                                        .append("ns", "dbA.c1")
                                        .append("ts", ts)
-                                       .append("h", new Long(12345678))
+                                       .append("h", Long.valueOf(12345678))
                                        .append("op", "i");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
         records.recordEvent(event, 1002);
@@ -182,7 +182,7 @@ public class RecordMakersTest {
         event = new Document().append("o", obj)
                 .append("ns", "dbA.c1")
                 .append("ts", ts)
-                .append("h", new Long(12345678))
+                .append("h", Long.valueOf(12345678))
                 .append("op", "i");
         records = recordMakers.forCollection(collectionId);
         records.recordEvent(event, 1003);
@@ -194,7 +194,7 @@ public class RecordMakersTest {
         event = new Document().append("o", obj)
                 .append("ns", "dbA.c1")
                 .append("ts", ts)
-                .append("h", new Long(12345678))
+                .append("h", Long.valueOf(12345678))
                 .append("op", "i");
         records = recordMakers.forCollection(collectionId);
         records.recordEvent(event, 1004);
@@ -209,7 +209,7 @@ public class RecordMakersTest {
         event = new Document().append("o", obj)
                 .append("ns", "dbA.c1")
                 .append("ts", ts)
-                .append("h", new Long(12345678))
+                .append("h", Long.valueOf(12345678))
                 .append("op", "i");
         records = recordMakers.forCollection(collectionId);
         records.recordEvent(event, 1005);
@@ -221,7 +221,7 @@ public class RecordMakersTest {
         event = new Document().append("o", obj)
                 .append("ns", "dbA.c1")
                 .append("ts", ts)
-                .append("h", new Long(12345678))
+                .append("h", Long.valueOf(12345678))
                 .append("op", "i");
         records = recordMakers.forCollection(collectionId);
         records.recordEvent(event, 1004);
@@ -262,7 +262,7 @@ public class RecordMakersTest {
         Document event = new Document().append("o", obj)
                                        .append("ns", "dbA.c1")
                                        .append("ts", ts)
-                                       .append("h", new Long(12345678))
+                                       .append("h", Long.valueOf(12345678))
                                        .append("op", "i");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
         records.recordEvent(event, 1002);

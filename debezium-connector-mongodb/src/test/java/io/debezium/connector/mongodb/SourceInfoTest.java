@@ -62,7 +62,7 @@ public class SourceInfoTest {
     @Test
     public void shouldSetAndReturnRecordedOffset() {
         Document event = new Document().append("ts", new BsonTimestamp(100, 2))
-                                       .append("h", new Long(1987654321))
+                                       .append("h", Long.valueOf(1987654321))
                                        .append("ns", "dbA.collectA");
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
@@ -126,7 +126,7 @@ public class SourceInfoTest {
     @Test
     public void shouldReturnRecordedOffsetForUsedReplicaName() {
         Document event = new Document().append("ts", new BsonTimestamp(100, 2))
-                                       .append("h", new Long(1987654321))
+                                       .append("h", Long.valueOf(1987654321))
                                        .append("ns", "dbA.collectA");
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
@@ -183,7 +183,7 @@ public class SourceInfoTest {
         source.startInitialSync(REPLICA_SET_NAME);
 
         Document event = new Document().append("ts", new BsonTimestamp(100, 2))
-                                       .append("h", new Long(1987654321))
+                                       .append("h", Long.valueOf(1987654321))
                                        .append("ns", "dbA.collectA");
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
