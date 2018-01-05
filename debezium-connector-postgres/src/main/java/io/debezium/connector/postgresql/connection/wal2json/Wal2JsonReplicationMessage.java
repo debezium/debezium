@@ -161,7 +161,7 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
         if (typeMetadata.isArray()) {
             try {
                 final String dataString = rawValue.asString();
-                PgArray arrayData = new PgArray(connection.get(), connection.get().getTypeInfo().getPGArrayType(typeMetadata.getFullType()), dataString);
+                PgArray arrayData = new PgArray(connection.get(), connection.get().getTypeInfo().getPGArrayType(toInternalTypeName(typeMetadata)), dataString);
                 Object deserializedArray = arrayData.getArray();
                 // TODO: what types are these? Shouldn't they pass through this function again?
                 return Arrays.asList((Object[])deserializedArray);
@@ -338,5 +338,16 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
             return rawValue.asString();
         }
         return null;
+    }
+
+    /**
+     * CHAR and VARCHAR are using internal name BPCHAR
+     *
+     * @param typeName
+     * @return the internal type name
+     */
+    private String toInternalTypeName(TypeMetadataImpl typeMetadata) {
+        final String fullTypeName = typeMetadata.getFullType();
+        return fullTypeName.startsWith("character") ? "bpchar" : fullTypeName;
     }
 }
