@@ -3,7 +3,7 @@
 - job:
     project-type: freestyle
     name: debezium-postgresql-9.6-legacy-test
-    display-name: PostgreSQL 9.6 Test (legacy decoder)
+    display-name: Debezium PostgreSQL 9.6 Test (legacy decoder)
     description: Executes tests for PostgreSQL Connector with PostgreSQL 9.6 with connector without metadata
     node: Slave
     properties:

@@ -3,7 +3,7 @@
 - job:
     project-type: freestyle
     name: debezium-nightly-image
-    display-name: Nightly Image
+    display-name: Debezium Nightly Image
     description: Triggers a Docker Hub build for a Connect image nightly tag
     node: Slave
     properties:
