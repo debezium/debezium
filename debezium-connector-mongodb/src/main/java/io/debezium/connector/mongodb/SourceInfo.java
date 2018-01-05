@@ -197,13 +197,13 @@ public final class SourceInfo {
         Position existing = positionsByReplicaSetName.get(replicaSetName);
         if (existing == null) existing = INITIAL_POSITION;
         if (isInitialSyncOngoing(replicaSetName)) {
-            return Collect.hashMapOf(TIMESTAMP, new Integer(existing.getTime()),
-                                     ORDER, new Integer(existing.getInc()),
+            return Collect.hashMapOf(TIMESTAMP, Integer.valueOf(existing.getTime()),
+                                     ORDER, Integer.valueOf(existing.getInc()),
                                      OPERATION_ID, existing.getOperationId(),
                                      INITIAL_SYNC, true);
         }
-        return Collect.hashMapOf(TIMESTAMP, new Integer(existing.getTime()),
-                                 ORDER, new Integer(existing.getInc()),
+        return Collect.hashMapOf(TIMESTAMP, Integer.valueOf(existing.getTime()),
+                                 ORDER, Integer.valueOf(existing.getInc()),
                                  OPERATION_ID, existing.getOperationId());
     }
 

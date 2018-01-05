@@ -630,7 +630,7 @@ public final class Strings {
      */
     public static String duration(long durationInMillis) {
         // Calculate how many seconds, and don't lose any information ...
-        BigDecimal bigSeconds = new BigDecimal(Math.abs(durationInMillis)).divide(new BigDecimal(1000));
+        BigDecimal bigSeconds = BigDecimal.valueOf(Math.abs(durationInMillis)).divide(new BigDecimal(1000));
         // Calculate the minutes, and round to lose the seconds
         int minutes = bigSeconds.intValue() / 60;
         // Remove the minutes from the seconds, to just have the remainder of seconds

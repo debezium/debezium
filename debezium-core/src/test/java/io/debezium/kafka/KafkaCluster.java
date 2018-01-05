@@ -121,7 +121,7 @@ public class KafkaCluster {
         if (running) throw new IllegalStateException("Unable to add a broker when the cluster is already running");
         AtomicLong added = new AtomicLong();
         while (added.intValue() < count) {
-            kafkaServers.computeIfAbsent(new Integer(added.intValue() + 1), id -> {
+            kafkaServers.computeIfAbsent(Integer.valueOf(added.intValue() + 1), id -> {
                 added.incrementAndGet();
                 KafkaServer server = new KafkaServer(zkServer::getConnection, id);
                 if (dataDir != null) server.setStateDirectory(dataDir);
@@ -799,7 +799,7 @@ public class KafkaCluster {
             produceIntegers(messageCount, completionCallback, () -> {
                 long i = counter.incrementAndGet();
                 String keyAndValue = Long.toString(i);
-                return new ProducerRecord<String, Integer>(topic, keyAndValue, new Integer((int) i));
+                return new ProducerRecord<String, Integer>(topic, keyAndValue, Integer.valueOf((int) i));
             });
         }
 
