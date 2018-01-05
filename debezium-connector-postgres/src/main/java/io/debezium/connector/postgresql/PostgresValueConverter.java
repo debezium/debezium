@@ -114,7 +114,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return SchemaBuilder.array(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
             case PgOid.INT8_ARRAY:
                 return SchemaBuilder.array(SchemaBuilder.OPTIONAL_INT64_SCHEMA);
+            case PgOid.CHAR_ARRAY:
+            case PgOid.VARCHAR_ARRAY:
             case PgOid.TEXT_ARRAY:
+            case PgOid.BPCHAR_ARRAY:
                 return SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
             case PgOid.NUMERIC_ARRAY:
                 return SchemaBuilder.array(numericSchema(column).optional());
@@ -134,13 +137,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.TIMESTAMP_ARRAY:
             case PgOid.TIMESTAMPTZ_ARRAY:
             case PgOid.BYTEA_ARRAY:
-            case PgOid.VARCHAR_ARRAY:
             case PgOid.OID_ARRAY:
-            case PgOid.BPCHAR_ARRAY:
             case PgOid.MONEY_ARRAY:
             case PgOid.NAME_ARRAY:
             case PgOid.INTERVAL_ARRAY:
-            case PgOid.CHAR_ARRAY:
             case PgOid.VARBIT_ARRAY:
             case PgOid.UUID_ARRAY:
             case PgOid.XML_ARRAY:
@@ -204,7 +204,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.INT2_ARRAY:
             case PgOid.INT4_ARRAY:
             case PgOid.INT8_ARRAY:
+            case PgOid.CHAR_ARRAY:
+            case PgOid.VARCHAR_ARRAY:
             case PgOid.TEXT_ARRAY:
+            case PgOid.BPCHAR_ARRAY:
             case PgOid.NUMERIC_ARRAY:
             case PgOid.FLOAT4_ARRAY:
             case PgOid.FLOAT8_ARRAY:
@@ -219,13 +222,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.TIMESTAMP_ARRAY:
             case PgOid.TIMESTAMPTZ_ARRAY:
             case PgOid.BYTEA_ARRAY:
-            case PgOid.VARCHAR_ARRAY:
             case PgOid.OID_ARRAY:
-            case PgOid.BPCHAR_ARRAY:
             case PgOid.MONEY_ARRAY:
             case PgOid.NAME_ARRAY:
             case PgOid.INTERVAL_ARRAY:
-            case PgOid.CHAR_ARRAY:
             case PgOid.VARBIT_ARRAY:
             case PgOid.UUID_ARRAY:
             case PgOid.XML_ARRAY:

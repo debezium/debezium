@@ -89,8 +89,8 @@ public abstract class AbstractRecordsProducerTest {
             "VALUES ('[2017-06-05 11:29:12.549426+00,)', '[2017-06-05 11:29:12.549426+00, 2017-06-05 12:34:56.789012+00]')";
 
 
-    protected static final String INSERT_ARRAY_TYPES_STMT = "INSERT INTO array_table (int_array, bigint_array, text_array) " +
-                                                             "VALUES ('{1,2,3}', '{1550166368505037572}', '{\"one\",\"two\",\"three\"}')";
+    protected static final String INSERT_ARRAY_TYPES_STMT = "INSERT INTO array_table (int_array, bigint_array, text_array, char_array, varchar_array) " +
+                                                             "VALUES ('{1,2,3}', '{1550166368505037572}', '{\"one\",\"two\",\"three\"}', '{\"cone\",\"ctwo\",\"cthree\"}', '{\"vcone\",\"vctwo\",\"vcthree\"}')";
 
     protected static final String INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT = "INSERT INTO array_table_with_nulls (int_array, bigint_array, text_array) " +
             "VALUES (null, null, null)";
@@ -233,7 +233,11 @@ public abstract class AbstractRecordsProducerTest {
                             new SchemaAndValueField("bigint_array", SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(),
                                 Arrays.asList(1550166368505037572L)),
                             new SchemaAndValueField("text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
-                                Arrays.asList("one", "two", "three"))
+                                Arrays.asList("one", "two", "three")),
+                            new SchemaAndValueField("char_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
+                                    Arrays.asList("cone      ", "ctwo      ", "cthree    ")),
+                            new SchemaAndValueField("varchar_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
+                                    Arrays.asList("vcone", "vctwo", "vcthree"))
                             );
     }
 
@@ -241,7 +245,9 @@ public abstract class AbstractRecordsProducerTest {
         return Arrays.asList(
                 new SchemaAndValueField("int_array", SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(), null),
                 new SchemaAndValueField("bigint_array", SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(), null),
-                new SchemaAndValueField("text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null)
+                new SchemaAndValueField("text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null),
+                new SchemaAndValueField("char_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null),
+                new SchemaAndValueField("varchar_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null)
         );
     }
 
