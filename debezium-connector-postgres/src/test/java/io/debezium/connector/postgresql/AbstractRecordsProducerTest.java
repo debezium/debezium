@@ -394,7 +394,7 @@ public abstract class AbstractRecordsProducerTest {
 
         private void assertStruct(final Struct expectedStruct, final Struct actualStruct) {
             expectedStruct.schema().fields().stream().forEach(field -> {
-                final Object expectedValue = actualStruct.get(field);
+                final Object expectedValue = expectedStruct.get(field);
                 if (expectedValue == null) {
                     assertNull(fieldName + " is present in the actual content", actualStruct.get(field.name()));
                     return;
