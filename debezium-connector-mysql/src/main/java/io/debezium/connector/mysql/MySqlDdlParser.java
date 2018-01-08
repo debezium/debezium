@@ -1297,7 +1297,9 @@ public class MySqlDdlParser extends DdlParser {
         } else if (tokens.canConsume("REORGANIZE", "PARTITION")) {
             parsePartitionNames(start);
             tokens.consume("INTO", "(");
-            parsePartitionDefinition(start, table);
+            do {
+                parsePartitionDefinition(start, table);
+            } while (tokens.canConsume(','));
             tokens.consume(')');
         } else if (tokens.canConsume("EXCHANGE", "PARTITION")) {
             tokens.consume(); // partition name
