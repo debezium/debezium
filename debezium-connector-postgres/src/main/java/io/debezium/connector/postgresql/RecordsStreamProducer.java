@@ -440,6 +440,22 @@ public class RecordsStreamProducer extends RecordsProducer {
                                 incomingType);
                     return true;
                 }
+                if (metadataInMessage) {
+                    final int localLength = column.length();
+                    final int incomingLength = message.getTypeMetadata().getLength().orElse(Column.UNSET_INT_VALUE);
+                    if (localLength != incomingLength) {
+                        logger.debug("detected new length for column '{}', old length was '{}', new length is '{}'; refreshing table schema", columnName, localLength,
+                                    incomingLength);
+                        return true;
+                    }
+                    final int localScale = column.scale();
+                    final int incomingScale = message.getTypeMetadata().getScale().orElse(Column.UNSET_INT_VALUE);
+                    if (localScale != incomingScale) {
+                        logger.debug("detected new scale for column '{}', old scale was '{}', new scale is '{}'; refreshing table schema", columnName, localScale,
+                                    incomingScale);
+                        return true;
+                    }
+                }
             }
             return false;
         }).findFirst().isPresent();
