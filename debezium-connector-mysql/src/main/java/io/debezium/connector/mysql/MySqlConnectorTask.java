@@ -90,13 +90,11 @@ public final class MySqlConnectorTask extends SourceTask {
                         }                     
                         logger.info("The db-history topic is missing but we are in {} snapshot mode. " +
                                     "Attempting to snapshot the current schema and then begin reading the binlog from the last recorded offset.", SnapshotMode.SCHEMA_ONLY_RECOVERY);
-                    }
-                    else {
+                    } else {
                         String msg = "The db history topic is missing. You may attempt to recover it by reconfiguring the connector to " + SnapshotMode.SCHEMA_ONLY_RECOVERY;
                         throw new ConnectException(msg);
                     }
-                }
-                else {
+                } else {
 
                     // Before anything else, recover the database history to the specified binlog coordinates ...
                     taskContext.loadHistory(source);

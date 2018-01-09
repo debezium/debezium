@@ -674,8 +674,7 @@ public class SnapshotReader extends AbstractReader {
                 throw new IllegalStateException("Could not find existing binlog information while attempting schema only recovery snapshot");
             }
             source.startSnapshot();
-        }
-        else {
+        } else {
             logger.info("Step {}: read binlog position of MySQL master", step);
             String showMasterStmt = "SHOW MASTER STATUS";
             sql.set(showMasterStmt);

@@ -16,6 +16,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
@@ -372,7 +373,79 @@ public class SnapshotReaderIT {
         }
     }
 
+    @Test(expected = ConnectException.class)
+    public void shouldCreateSnapshotSchemaOnlyRecovery_exception() throws Exception {
+        config = simpleConfig().with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY_RECOVERY).build();
+        context = new MySqlTaskContext(config);
+        context.start();
+        reader = new SnapshotReader("snapshot", context);
+        reader.uponCompletion(completed::countDown);
+        reader.generateInsertEvents();
+        reader.useMinimalBlocking(true);
+
+        // Start the snapshot ...
+        reader.start();
+
+        // Poll for records ...
+        // Testing.Print.enable();
+        List<SourceRecord> records = null;
+        KeyValueStore store = KeyValueStore.createForTopicsBeginningWith(DATABASE.getServerName() + ".");
+        SchemaChangeHistory schemaChanges = new SchemaChangeHistory(DATABASE.getServerName());
+        while ((records = reader.poll()) != null) {
+            records.forEach(record -> {
+                VerifyRecord.isValid(record);
+                store.add(record);
+                schemaChanges.add(record);
+            });
+        }
+        
+        // should fail because we have no existing binlog information
+    }    
+    
     @Test
+    public void shouldCreateSnapshotSchemaOnlyRecovery() throws Exception {
+        config = simpleConfig().with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY_RECOVERY).build();
+        context = new MySqlTaskContext(config);
+        context.start();
+        context.source().setBinlogStartPoint("binlog1", 555); // manually set for happy path testing
+        reader = new SnapshotReader("snapshot", context);
+        reader.uponCompletion(completed::countDown);
+        reader.generateInsertEvents();
+        reader.useMinimalBlocking(true);
+
+        // Start the snapshot ...
+        reader.start();
+
+        // Poll for records ...
+        // Testing.Print.enable();
+        List<SourceRecord> records = null;
+        KeyValueStore store = KeyValueStore.createForTopicsBeginningWith(DATABASE.getServerName() + ".");
+        SchemaChangeHistory schemaChanges = new SchemaChangeHistory(DATABASE.getServerName());
+        while ((records = reader.poll()) != null) {
+            records.forEach(record -> {
+                VerifyRecord.isValid(record);
+                store.add(record);
+                schemaChanges.add(record);
+            });
+        }
+        // The last poll should always return null ...
+        assertThat(records).isNull();
+
+        // There should be no schema changes ...
+        assertThat(schemaChanges.recordCount()).isEqualTo(0);
+
+        // Check the records via the store ...
+        assertThat(store.collectionCount()).isEqualTo(0);
+
+        // Make sure the snapshot completed ...
+        if (completed.await(10, TimeUnit.SECONDS)) {
+            // completed the snapshot ...
+            Testing.print("completed the snapshot");
+        } else {
+            fail("failed to complete the snapshot within 10 seconds");
+        }
+    }
+    
     public void shouldCreateSnapshotSchemaOnly() throws Exception {
         config = simpleConfig().with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY).build();
         context = new MySqlTaskContext(config);
