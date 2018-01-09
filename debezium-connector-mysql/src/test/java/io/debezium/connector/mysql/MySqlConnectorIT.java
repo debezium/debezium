@@ -759,7 +759,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Consume the first records due to startup and initialization of the database ...
         // Testing.Print.enable();
         SourceRecords records = consumeRecordsByTopic(9 + 9 + 4 + 5 + 6); // 6 DDL changes
-        assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("products")).size()).isEqualTo(9);
+        assertThat(recordsForTopicForRoProductsTable(records).size()).isEqualTo(9);
         assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("products_on_hand")).size()).isEqualTo(9);
         assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("customers")).size()).isEqualTo(4);
         assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("orders")).size()).isEqualTo(5);
@@ -798,7 +798,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Consume the first records due to startup and initialization of the database ...
         // Testing.Print.enable();
         SourceRecords records = consumeRecordsByTopic(9 + 9 + 4 + 5 + 1);
-        assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("products")).size()).isEqualTo(9);
+        assertThat(recordsForTopicForRoProductsTable(records).size()).isEqualTo(9);
         assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("products_on_hand")).size()).isEqualTo(9);
         assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("customers")).size()).isEqualTo(4);
         assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("orders")).size()).isEqualTo(5);
@@ -835,4 +835,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         });
     }
 
+    private List<SourceRecord> recordsForTopicForRoProductsTable(SourceRecords records) {
+        final List<SourceRecord> uc = records.recordsForTopic(RO_DATABASE.topicForTable("Products"));
+        return uc != null ? uc : records.recordsForTopic(RO_DATABASE.topicForTable("products"));
+    }
 }

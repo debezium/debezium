@@ -203,4 +203,8 @@ public final class TableId implements Comparable<TableId> {
    private static String repeat(char quotingChar) {
        return new StringBuilder().append(quotingChar).append(quotingChar).toString();
    }
+
+   public TableId toLowercase() {
+       return new TableId(catalogName, schemaName, tableName.toLowerCase());
+   }
 }

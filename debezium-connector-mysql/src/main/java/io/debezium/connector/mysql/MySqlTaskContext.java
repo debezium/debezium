@@ -35,8 +35,13 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     private final Predicate<String> gtidSourceFilter;
     private final Predicate<String> ddlFilter;
     private final Clock clock = Clock.system();
+    private final boolean tableIdCaseInsensitive;
 
     public MySqlTaskContext(Configuration config) {
+        this(config, null);
+    }
+
+    public MySqlTaskContext(Configuration config, Boolean tableIdCaseInsensitive) {
         super(config);
 
         // Set up the topic selector ...
@@ -52,8 +57,14 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         this.gtidSourceFilter = gtidSetIncludes != null ? Predicates.includesUuids(gtidSetIncludes)
                 : (gtidSetExcludes != null ? Predicates.excludesUuids(gtidSetExcludes) : null);
 
+        if (tableIdCaseInsensitive == null) {
+            this.tableIdCaseInsensitive = !"0".equals(readMySqlSystemVariables(null).get(MySqlSystemVariables.LOWER_CASE_TABLE_NAMES));
+        } else {
+            this.tableIdCaseInsensitive = false;
+        }
+
         // Set up the MySQL schema ...
-        this.dbSchema = new MySqlSchema(config, serverName(), this.gtidSourceFilter);
+        this.dbSchema = new MySqlSchema(config, serverName(), this.gtidSourceFilter, this.tableIdCaseInsensitive);
 
         // Set up the record processor ...
         this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector);
@@ -302,5 +313,9 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
      */
     public Predicate<String> ddlFilter() {
         return ddlFilter;
+    }
+
+    public boolean isTableIdCaseInsensitive() {
+        return tableIdCaseInsensitive;
     }
 }
