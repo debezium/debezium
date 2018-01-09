@@ -110,7 +110,7 @@ public class SnapshotReaderIT {
 
         // Check the records via the store ...
         assertThat(store.collectionCount()).isEqualTo(5);
-        Collection products = store.collection(DATABASE.getDatabaseName(), "products");
+        Collection products = store.collection(DATABASE.getDatabaseName(), productsTableName());
         assertThat(products.numberOfCreates()).isEqualTo(9);
         assertThat(products.numberOfUpdates()).isEqualTo(0);
         assertThat(products.numberOfDeletes()).isEqualTo(0);
@@ -197,6 +197,7 @@ public class SnapshotReaderIT {
                 VerifyRecord.isValid(record);
                 store.add(record);
                 schemaChanges.add(record);
+                System.out.println(record);
             });
         }
         // The last poll should always return null ...
@@ -209,7 +210,7 @@ public class SnapshotReaderIT {
         assertThat(store.databases()).containsOnly(DATABASE.getDatabaseName(), OTHER_DATABASE.getDatabaseName()); // 2 databases
         assertThat(store.collectionCount()).isEqualTo(9); // 2 databases
 
-        Collection products = store.collection(DATABASE.getDatabaseName(), "products");
+        Collection products = store.collection(DATABASE.getDatabaseName(), productsTableName());
         assertThat(products.numberOfCreates()).isEqualTo(0);
         assertThat(products.numberOfUpdates()).isEqualTo(0);
         assertThat(products.numberOfDeletes()).isEqualTo(0);
@@ -273,6 +274,10 @@ public class SnapshotReaderIT {
         }
     }
 
+    private String productsTableName() {
+        return context.isTableIdCaseInsensitive() ? "products" : "Products";
+    }
+
     @Test
     public void shouldCreateSnapshotOfSingleDatabaseWithSchemaChanges() throws Exception {
         config = simpleConfig().with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true).build();
@@ -308,7 +313,7 @@ public class SnapshotReaderIT {
 
         // Check the records via the store ...
         assertThat(store.collectionCount()).isEqualTo(5);
-        Collection products = store.collection(DATABASE.getDatabaseName(), "products");
+        Collection products = store.collection(DATABASE.getDatabaseName(), productsTableName());
         assertThat(products.numberOfCreates()).isEqualTo(9);
         assertThat(products.numberOfUpdates()).isEqualTo(0);
         assertThat(products.numberOfDeletes()).isEqualTo(0);

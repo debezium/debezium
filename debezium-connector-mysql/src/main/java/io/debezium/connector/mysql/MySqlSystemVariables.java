@@ -25,6 +25,12 @@ public class MySqlSystemVariables {
      */
     public static final String CHARSET_NAME_SERVER = "character_set_server";
 
+    /**
+     * The system variable name to see if the MySQL tables are stored and looked-up in case sensitive way.
+     * See https://dev.mysql.com/doc/refman/5.7/en/server-system-variables.html#sysvar_lower_case_table_names
+     */
+    public static final String LOWER_CASE_TABLE_NAMES = "lower_case_table_names";
+
     private final ConcurrentMap<String, String> global = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, String> session = new ConcurrentHashMap<>();
 

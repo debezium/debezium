@@ -78,22 +78,41 @@ public final class Tables {
     }
 
     private final FunctionalReadWriteLock lock = FunctionalReadWriteLock.reentrant();
-    private final Map<TableId, TableImpl> tablesByTableId = new ConcurrentHashMap<>();
-    private final Set<TableId> changes = new HashSet<>();
+    private final Map<TableId, TableImpl> tablesByTableId;
+    private final Set<TableId> changes;
+    private final boolean tableIdCaseInsensitive;
 
     /**
      * Create an empty set of definitions.
+     *
+     * @param tableIdCaseInsensitive - true if lookup is case insensitive (typical for MySQL on Windows)
      */
-    public Tables() {
+    public Tables(boolean tableIdCaseInsensitive) {
+        this.tableIdCaseInsensitive = tableIdCaseInsensitive;
+        if (tableIdCaseInsensitive) {
+            tablesByTableId = new TableIdCaseInsensitiveMap<>(new ConcurrentHashMap<>());
+            changes = new TableIdCaseInsensitiveSet(new HashSet<>());
+        } else {
+            tablesByTableId = new ConcurrentHashMap<>();
+            changes = new HashSet<>();
+        }
     }
 
-    protected Tables( Tables other) {
+    /**
+     * Create case sensitive empty set of definitions.
+     */
+    public Tables() {
+        this(false);
+    }
+
+    protected Tables(Tables other, boolean tableIdCaseInsensitive) {
+        this(tableIdCaseInsensitive);
         this.tablesByTableId.putAll(other.tablesByTableId);
     }
 
     @Override
     public Tables clone() {
-        return new Tables(this);
+        return new Tables(this, tableIdCaseInsensitive);
     }
 
     /**
@@ -164,7 +183,7 @@ public final class Tables {
         return lock.write(() -> {
             Table existing = forTable(existingTableId);
             if (existing == null) return null;
-            tablesByTableId.remove(existing);
+            tablesByTableId.remove(existing.id());
             TableImpl updated = new TableImpl(newTableId, existing.columns(),
                                               existing.primaryKeyColumnNames(), existing.defaultCharsetName());
             try {
@@ -287,7 +306,7 @@ public final class Tables {
     public Tables subset(Predicate<TableId> filter) {
         if (filter == null) return this;
         return lock.read(() -> {
-            Tables result = new Tables();
+            Tables result = new Tables(tableIdCaseInsensitive);
             tablesByTableId.forEach((tableId, table) -> {
                 if (filter.test(tableId)) {
                     result.overwriteTable(table);
