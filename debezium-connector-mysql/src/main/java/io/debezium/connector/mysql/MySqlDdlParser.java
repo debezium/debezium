@@ -137,7 +137,7 @@ public class MySqlDdlParser extends DdlParser {
 
     @Override
     protected void initializeStatementStarts(TokenSet statementStartTokens) {
-        statementStartTokens.add("CREATE", "ALTER", "DROP", "GRANT", "REVOKE", "FLUSH", "TRUNCATE", "COMMIT", "USE", "SAVEPOINT",
+        statementStartTokens.add("CREATE", "ALTER", "DROP", "GRANT", "REVOKE", "FLUSH", "TRUNCATE", "COMMIT", "USE", "SAVEPOINT", "ROLLBACK",
                 // table maintenance statements: https://dev.mysql.com/doc/refman/5.7/en/table-maintenance-sql.html
                 "ANALYZE", "OPTIMIZE", "REPAIR",
                 // DML-related statements
