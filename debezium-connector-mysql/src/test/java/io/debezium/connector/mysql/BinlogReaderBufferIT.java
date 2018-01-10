@@ -10,6 +10,7 @@ import static org.fest.assertions.Assertions.assertThat;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Savepoint;
 import java.sql.Statement;
 
 import org.apache.kafka.connect.data.Struct;
@@ -20,6 +21,7 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.history.FileDatabaseHistory;
@@ -250,6 +252,76 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
             assertThat(records.topics().size()).isEqualTo(1);
 
             Testing.print("*** Done with large TX");
+        }
+    }
+
+    @FixFor("DBZ-411")
+    @Test
+    public void shouldProcessRolledBackSavepoint() throws SQLException, InterruptedException {
+        String masterPort = System.getProperty("database.port", "3306");
+        String replicaPort = System.getProperty("database.replica.port", "3306");
+        boolean replicaIsMaster = masterPort.equals(replicaPort);
+        if (!replicaIsMaster) {
+            // Give time for the replica to catch up to the master ...
+            Thread.sleep(5000L);
+        }
+
+        // Use the DB configuration to define the connector's configuration to use the "replica"
+        // which may be the same as the "master" ...
+        config = Configuration.create()
+                              .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
+                              .with(MySqlConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
+                              .with(MySqlConnectorConfig.USER, "snapper")
+                              .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
+                              .with(MySqlConnectorConfig.SERVER_ID, 18765)
+                              .with(MySqlConnectorConfig.SERVER_NAME, DATABASE.getServerName())
+                              .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
+                              .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
+                              .with(MySqlConnectorConfig.DATABASE_WHITELIST, DATABASE.getDatabaseName())
+                              .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+                              .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                              .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+                              .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        SourceRecords records = consumeRecordsByTopic(5 + 9 + 9 + 4 + 11 + 1); // 11 schema change records + 1 SET statement
+        // Testing.Print.enable();
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Transaction with rollback to savepoint
+        // supported only for non-GTID setup
+        // ---------------------------------------------------------------------------------------------------------------
+        if (replicaIsMaster) {
+            try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+                try (JdbcConnection connection = db.connect()) {
+                    final Connection jdbc = connection.connection();
+                    connection.setAutoCommit(false);
+                    final Statement statement = jdbc.createStatement();
+                    statement.executeUpdate("CREATE TEMPORARY TABLE tmp_ids (a int)");
+                    statement.executeUpdate("INSERT INTO tmp_ids VALUES(5)");
+                    jdbc.commit();
+                    statement.executeUpdate("DROP TEMPORARY TABLE tmp_ids");
+                    statement.executeUpdate("INSERT INTO customers VALUES(default, 'first', 'first', 'first')");
+                    final Savepoint savepoint = jdbc.setSavepoint();
+                    statement.executeUpdate("INSERT INTO customers VALUES(default, 'second', 'second', 'second')");
+                    jdbc.rollback(savepoint);
+                    jdbc.commit();
+                    connection.query("SELECT * FROM customers", rs -> {
+                        if (Testing.Print.isEnabled()) connection.print(rs);
+                    });
+                    connection.setAutoCommit(true);
+                }
+            }
+
+            // Bug DBZ-533
+            // INSERT + SAVEPOINT + INSERT + ROLLBACK
+            records = consumeRecordsByTopic(1 + 1 + 1 + 1);
+            assertThat(records.topics().size()).isEqualTo(1 + 1);
+            assertThat(records.recordsForTopic(DATABASE.topicForTable("customers"))).hasSize(2);
+            assertThat(records.allRecordsInOrder()).hasSize(4);
+            Testing.print("*** Done with savepoint TX");
         }
     }
 }
