@@ -1041,7 +1041,7 @@ public class MySqlDdlParser extends DdlParser {
                 List<String> fromTablePkColumnNames = fromTable.columnNames();
                 List<String> viewPkColumnNames = new ArrayList<>();
                 selectedColumnsByAlias.forEach((viewColumnName, fromTableColumn) -> {
-                    if (fromTablePkColumnNames.contains(fromTableColumn)) {
+                    if (fromTablePkColumnNames.contains(fromTableColumn.name())) {
                         viewPkColumnNames.add(viewColumnName);
                     }
                 });
