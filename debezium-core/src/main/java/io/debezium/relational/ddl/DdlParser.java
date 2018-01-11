@@ -289,7 +289,7 @@ public class DdlParser {
             }
         } catch (ParsingException e) {
             ddlContent.rewind(marker);
-            throw e;
+            throw new ParsingException(e.getPosition(), "Failed to parse statement '" + ddlContent.getInputString() + "'", e);
         } catch (Throwable t) {
             parsingFailed(ddlContent.nextPosition(), "Unexpected exception (" + t.getMessage() + ") parsing", t);
         }
