@@ -74,7 +74,6 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
                         if (skipUnparseableDDL) {
                             logger.warn("Ignoring unparseable statements '{}' stored in database history: {}", ddl, e);
                         } else {
-                            logger.error("Cannot parse DDL statements {} stored in history, exiting", ddl);
                             throw e;
                         }
                     }

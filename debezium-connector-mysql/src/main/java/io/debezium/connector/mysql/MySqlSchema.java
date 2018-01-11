@@ -290,7 +290,6 @@ public class MySqlSchema {
             if (skipUnparseableDDL) {
                 logger.warn("Ignoring unparseable DDL statement '{}': {}", ddlStatements);
             } else {
-                logger.error("Error parsing DDL statement and updating tables: {}", ddlStatements);
                 throw e;
             }
         } finally {
