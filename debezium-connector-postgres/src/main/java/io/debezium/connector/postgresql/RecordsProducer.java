@@ -21,11 +21,11 @@ import io.debezium.util.Clock;
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 public abstract class RecordsProducer {
-    
+
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     protected final PostgresTaskContext taskContext;
     protected final SourceInfo sourceInfo;
-    
+
     protected RecordsProducer(PostgresTaskContext taskContext, SourceInfo sourceInfo) {
         assert taskContext != null;
         assert sourceInfo != null;
@@ -33,7 +33,7 @@ public abstract class RecordsProducer {
         this.sourceInfo = sourceInfo;
         this.taskContext = taskContext;
     }
-    
+
     /**
      * Starts up this producer. This is normally done by a {@link PostgresConnectorTask} instance. Subclasses should start 
      * enqueuing records via a separate thread at the end of this method.
@@ -41,12 +41,12 @@ public abstract class RecordsProducer {
      * @param recordsConsumer a consumer of {@link SourceRecord} instances, may not be null
      */
     protected abstract void start(Consumer<SourceRecord> recordsConsumer);
-    
+
     /**
-     * Notification that offsets have been committed to Kafka.
+     * Notification that offsets have been committed to Kafka and LSN recorded up to the record
      */
-    protected abstract void commit();
-    
+    protected abstract void commit(SourceRecord lastRecordForRecovery);
+
     /**
      * Requests that this producer be stopped. This is normally a request coming from a {@link PostgresConnectorTask} instance
      */
@@ -55,7 +55,7 @@ public abstract class RecordsProducer {
     protected PostgresSchema schema() {
         return taskContext.schema();
     }
-    
+
     protected TopicSelector topicSelector() {
         return taskContext.topicSelector();
     }
@@ -63,7 +63,7 @@ public abstract class RecordsProducer {
     protected Clock clock() {
         return taskContext.clock();
     }
-    
+
     protected Envelope createEnvelope(TableSchema tableSchema, String topicName) {
         return Envelope.defineSchema()
                        .withName(schema().validateSchemaName(topicName + ".Envelope"))

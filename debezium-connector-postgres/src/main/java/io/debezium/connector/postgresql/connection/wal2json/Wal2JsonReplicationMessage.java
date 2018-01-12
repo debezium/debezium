@@ -50,12 +50,14 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
     private final long commitTime;
     private final Document rawMessage;
     private final boolean hasMetadata;
+    final boolean lastEventForLsn;
 
-    public Wal2JsonReplicationMessage(final int txId, final long commitTime, final Document rawMessage, final boolean hasMetadata) {
+    public Wal2JsonReplicationMessage(final int txId, final long commitTime, final Document rawMessage, final boolean hasMetadata, boolean lastEventForLsn) {
         this.txId = txId;
         this.commitTime = commitTime;
         this.rawMessage = rawMessage;
         this.hasMetadata = hasMetadata;
+        this.lastEventForLsn = lastEventForLsn;
     }
 
     @Override
@@ -349,5 +351,10 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
     private String toInternalTypeName(TypeMetadataImpl typeMetadata) {
         final String fullTypeName = typeMetadata.getFullType();
         return fullTypeName.startsWith("character") ? "bpchar" : fullTypeName;
+    }
+
+    @Override
+    public boolean isLastEventForLsn() {
+        return lastEventForLsn;
     }
 }

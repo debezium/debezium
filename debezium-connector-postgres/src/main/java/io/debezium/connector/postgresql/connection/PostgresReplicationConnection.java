@@ -218,6 +218,13 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             }
 
             @Override
+            public void flushLSN(Long lsn) throws SQLException {
+                stream.setFlushedLSN(LogSequenceNumber.valueOf(lsn));
+                stream.setAppliedLSN(LogSequenceNumber.valueOf(lsn));
+                stream.forceUpdateStatus();
+            }
+
+            @Override
             public Long lastReceivedLSN() {
                 return lastReceivedLSN != null ? lastReceivedLSN.asLong() : null;
             }

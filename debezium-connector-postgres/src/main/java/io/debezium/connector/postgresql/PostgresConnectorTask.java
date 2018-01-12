@@ -49,6 +49,7 @@ public class PostgresConnectorTask extends SourceTask {
     private RecordsProducer producer;
     private Metronome metronome;
     private Duration pollInterval;
+    private volatile SourceRecord lastRecordForRecovery = null;
 
     public PostgresConnectorTask() {
     }
@@ -159,10 +160,11 @@ public class PostgresConnectorTask extends SourceTask {
     @Override
     public void commit() throws InterruptedException {
         if (running.get()) {
-            producer.commit();
+            producer.commit(lastRecordForRecovery);
         }
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
@@ -186,6 +188,15 @@ public class PostgresConnectorTask extends SourceTask {
                     // we've been requested to stop polling
                     Thread.interrupted();
                     break;
+                }
+            }
+            if (records.size() > 0) {
+                for (int i = records.size() - 1; i >= 0; i--) {
+                    SourceRecord r = records.get(i);
+                    if (((Map<String, Boolean>)r.sourceOffset()).getOrDefault(SourceInfo.LAST_EVENT_FOR_LSN, Boolean.TRUE)) {
+                        lastRecordForRecovery = r;
+                        break;
+                    }
                 }
             }
             return records;

@@ -20,6 +20,7 @@ import io.debezium.connector.postgresql.connection.ReplicationStream.Replication
 import io.debezium.document.Array;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
+import io.debezium.document.Value;
 
 /**
  * JSON deserialization of a message sent by
@@ -50,8 +51,13 @@ public class Wal2JsonMessageDecoder implements MessageDecoder {
             final String timestamp = message.getString("timestamp");
             final long commitTime = dateTime.systemTimestamp(timestamp);
             final Array changes = message.getArray("change");
-            for (Array.Entry e: changes) {
-                processor.process(new Wal2JsonReplicationMessage(txId, commitTime, e.getValue().asDocument(), containsMetadata));
+            if (changes.size() > 0) {
+                for (int i = 0; i < changes.size() - 2; i++) {
+                    final Value v = changes.get(i);
+                    processor.process(new Wal2JsonReplicationMessage(txId, commitTime, v.asDocument(), containsMetadata, false));
+                }
+                final Value v = changes.get(changes.size() - 1);
+                processor.process(new Wal2JsonReplicationMessage(txId, commitTime, v.asDocument(), containsMetadata, true));
             }
         } catch (final IOException e) {
             throw new ConnectException(e);
