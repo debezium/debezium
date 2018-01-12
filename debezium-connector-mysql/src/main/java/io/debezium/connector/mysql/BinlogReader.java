@@ -354,7 +354,7 @@ public class BinlogReader extends AbstractReader {
     public Document getLastOffsetDocument() {
         return SourceInfo.createDocumentFromOffset(lastOffset);
     }
-    
+
     @Override
     protected void doStop() {
         try {
