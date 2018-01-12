@@ -136,14 +136,20 @@ public class RecordsStreamProducer extends RecordsProducer {
     }
 
     @Override
-    protected synchronized void commit()  {
+    protected synchronized void commit(final SourceRecord lastRecordForRecovery)  {
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
             ReplicationStream replicationStream = this.replicationStream.get();
             if (replicationStream != null) {
                 // tell the server the point up to which we've processed data, so it can be free to recycle WAL segments
                 logger.debug("flushing offsets to server...");
-                replicationStream.flushLSN();
+                if (lastRecordForRecovery != null) {
+                    Map<String, ?> offset = lastRecordForRecovery.sourceOffset();
+                    Long lsn = (Long)offset.get(SourceInfo.LSN_KEY);
+                    if (lsn != null) {
+                        replicationStream.flushLSN();
+                    }
+                }
             } else {
                 logger.debug("streaming has already stopped, ignoring commit callback...");
             }
@@ -220,7 +226,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         // update the source info with the coordinates for this message
         long commitTimeNs = message.getCommitTime();
         int txId = message.getTransactionId();
-        sourceInfo.update(lsn, commitTimeNs, txId);
+        sourceInfo.update(lsn, commitTimeNs, txId, message.isLastEventForLsn());
         if (logger.isDebugEnabled()) {
             logger.debug("received new message at position {}\n{}", ReplicationConnection.format(lsn), message);
         }

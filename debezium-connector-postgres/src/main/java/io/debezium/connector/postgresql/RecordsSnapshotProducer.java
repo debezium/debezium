@@ -108,8 +108,8 @@ public class RecordsSnapshotProducer extends RecordsProducer {
     }
 
     @Override
-    protected void commit()  {
-        streamProducer.ifPresent(RecordsStreamProducer::commit);
+    protected void commit(final SourceRecord lastRecordForRecovery)  {
+        streamProducer.ifPresent(x -> x.commit(lastRecordForRecovery));
     }
 
     @Override
@@ -172,7 +172,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
 
             // and mark the start of the snapshot
             sourceInfo.startSnapshot();
-            sourceInfo.update(xlogStart, clock().currentTimeInMicros(), txId);
+            sourceInfo.update(xlogStart, clock().currentTimeInMicros(), txId, true);
 
             logger.info("Step 3: reading and exporting the contents of each table");
             AtomicInteger rowsCounter = new AtomicInteger(0);

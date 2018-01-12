@@ -55,6 +55,8 @@ public interface ReplicationStream extends AutoCloseable {
      */
     void flushLSN() throws SQLException;
 
+    void flushLSN(Long lsn) throws SQLException;
+
     /**
      * Returns the value for the latest server received LSN during a read operation. The value is always updated once messages
      * are read via the {@link ReplicationConnection#startStreaming()} or {@link ReplicationConnection#startStreaming(Long)} 
