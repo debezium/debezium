@@ -7,13 +7,13 @@ package io.debezium.connector.mysql;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import io.debezium.util.Collect;
 import io.debezium.util.LoggingContext;
@@ -225,24 +225,18 @@ public final class MySqlConnectorTask extends SourceTask {
      * @return true if new tables appear to have been added to the config, and false otherwise.
      */
     private boolean newTablesInConfig() {
-
         final String elementSep = "/s*,/s*";
 
-        // take in two stringified lists, and return the parsed set of all elements exclusive to the first.
-        BiFunction<String, String, Set<String>> exclude = (String a, String b) -> {
+        // take in two stringified lists, and return true if the first list contains elements that are not in the second list
+        BiFunction<String, String, Boolean> hasExclusiveElements = (String a, String b) -> {
             if (a == null || a.isEmpty()) {
-                return new HashSet<>();
+                return false;
             } else if (b == null || b.isEmpty()) {
-                return new HashSet<>(Arrays.asList(a.split(elementSep)));
+                return true;
             }
-            Set<String> ASet = new HashSet<>(Arrays.asList(a.split(elementSep)));
-            Set<String> BSet = new HashSet<>(Arrays.asList(b.split(elementSep)));
-            ASet.removeAll(BSet);
-            return ASet;
+            Set<String> bSet = Stream.of(b.split(elementSep)).collect(Collectors.toSet());
+            return !Stream.of(a.split(elementSep)).filter((x) -> !bSet.contains(x)).collect(Collectors.toSet()).isEmpty();
         };
-
-        // return true if stringified list a contains elements exclusive to it, that are not in stringified element list b.
-        BiFunction<String, String, Boolean> exclusiveElements = (String a, String b) -> !exclude.apply(a, b).isEmpty();
 
         final SourceInfo sourceInfo = taskContext.source();
         final Configuration config = taskContext.config;
@@ -254,17 +248,17 @@ public final class MySqlConnectorTask extends SourceTask {
         // otherwise, we have filter info
         // if either whitelist has been added to, then we may have new tables
 
-        if (exclusiveElements.apply(config.getString(MySqlConnectorConfig.DATABASE_WHITELIST), sourceInfo.getDatabaseWhitelist())) {
+        if (hasExclusiveElements.apply(config.getString(MySqlConnectorConfig.DATABASE_WHITELIST), sourceInfo.getDatabaseWhitelist())) {
             return true;
         }
-        if (exclusiveElements.apply(config.getString(MySqlConnectorConfig.TABLE_WHITELIST), sourceInfo.getTableWhitelist())) {
+        if (hasExclusiveElements.apply(config.getString(MySqlConnectorConfig.TABLE_WHITELIST), sourceInfo.getTableWhitelist())) {
             return true;
         }
         // if either blacklist has been removed from, then we may have new tables
-        if (exclusiveElements.apply(sourceInfo.getDatabaseBlacklist(), config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST))) {
+        if (hasExclusiveElements.apply(sourceInfo.getDatabaseBlacklist(), config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST))) {
             return true;
         }
-        if (exclusiveElements.apply(sourceInfo.getTableBlacklist(), config.getString(MySqlConnectorConfig.TABLE_BLACKLIST))) {
+        if (hasExclusiveElements.apply(sourceInfo.getTableBlacklist(), config.getString(MySqlConnectorConfig.TABLE_BLACKLIST))) {
             return true;
         }
         // otherwise, false.
