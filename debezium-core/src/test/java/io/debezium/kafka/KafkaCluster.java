@@ -351,6 +351,15 @@ public class KafkaCluster {
         return joiner.toString();
     }
 
+    /**
+     * Get the Zookeeper port.
+     *
+     * @return the Zookeeper port
+     */
+    public int zkPort() {
+        return zkServer.getPort();
+    }
+
     private void shutdownReliably(KafkaServer server) {
         try {
             server.shutdown(deleteDataUponShutdown);
