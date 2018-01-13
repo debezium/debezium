@@ -36,7 +36,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     private final Predicate<String> ddlFilter;
     private final Clock clock = Clock.system();
 
-    public MySqlTaskContext(Configuration config) {
+    public MySqlTaskContext(Configuration config, Filters filters) {
         super(config);
 
         // Set up the topic selector ...
@@ -53,7 +53,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
                 : (gtidSetExcludes != null ? Predicates.excludesUuids(gtidSetExcludes) : null);
 
         // Set up the MySQL schema ...
-        this.dbSchema = new MySqlSchema(config, serverName(), this.gtidSourceFilter);
+        this.dbSchema = new MySqlSchema(config, serverName(), filters, this.gtidSourceFilter);
 
         // Set up the record processor ...
         this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector);
