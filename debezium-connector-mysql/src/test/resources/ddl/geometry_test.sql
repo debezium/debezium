@@ -13,9 +13,21 @@ CREATE TABLE dbz_222_point (
   point POINT DEFAULT NULL,
   expected_x FLOAT,
   expected_y FLOAT,
+  expected_srid INT,
   PRIMARY KEY (id)
 ) DEFAULT CHARSET=utf8;
-INSERT INTO dbz_222_point VALUES (default,GeomFromText('POINT(1 1)'), 1.0, 1.0);
-INSERT INTO dbz_222_point VALUES (default,GeomFromText('POINT(8.25554554 3.22124447)'), 8.25554554, 3.22124447);
-INSERT INTO dbz_222_point VALUES (default,GeomFromText('POINT(0 0)'), 0.0, 0.0);
-INSERT INTO dbz_222_point VALUES (default,NULL, 0.0, 0.0);
+INSERT INTO dbz_222_point VALUES (default,GeomFromText('POINT(1 1)'), 1.0, 1.0, 0);
+INSERT INTO dbz_222_point VALUES (default,GeomFromText('POINT(8.25554554 3.22124447)', 4326), 8.25554554, 3.22124447, 4326);
+INSERT INTO dbz_222_point VALUES (default,GeomFromText('POINT(0 0)', 1234), 0.0, 0.0, 1234);
+INSERT INTO dbz_222_point VALUES (default,NULL, NULL, NULL, NULL);
+
+CREATE TABLE dbz_507_geometry (
+    id INT NOT NULL,
+    geom GEOMETRY,
+    linestring LINESTRING,
+    polygon POLYGON,
+    collection GEOMETRYCOLLECTION,
+    PRIMARY KEY (id)
+);
+INSERT INTO dbz_507_geometry VALUES (1, ST_GeomFromText('POINT(1 1)', 4326), ST_GeomFromText('LINESTRING(0 0, 1 1)', 3187), ST_GeomFromText('POLYGON((0 0, 1 1, 1 0, 0 0))'), ST_GeomFromText('GEOMETRYCOLLECTION(POINT(1 1), LINESTRING(0 0, 1 1))', 4326));
+INSERT INTO dbz_507_geometry VALUES (2, ST_GeomFromText('LINESTRING(0 0, 1 1)'), NULL, NULL, NULL);

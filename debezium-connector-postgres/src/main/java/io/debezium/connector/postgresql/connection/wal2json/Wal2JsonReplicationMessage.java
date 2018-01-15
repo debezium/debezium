@@ -23,6 +23,7 @@ import org.postgresql.geometric.PGpolygon;
 import org.postgresql.jdbc.PgArray;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGmoney;
+import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -161,9 +162,9 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
         if (typeMetadata.isArray()) {
             try {
                 final String dataString = rawValue.asString();
-                PgArray arrayData = new PgArray(connection.get(), connection.get().getTypeInfo().getPGArrayType(toInternalTypeName(typeMetadata)), dataString);
+                int arrayTypeOid = connection.get().getTypeInfo().getPGType(typeMetadata.getName());
+                PgArray arrayData = new PgArray(connection.get(), arrayTypeOid, dataString);
                 Object deserializedArray = arrayData.getArray();
-                // TODO: what types are these? Shouldn't they pass through this function again?
                 return Arrays.asList((Object[])deserializedArray);
             }
             catch (SQLException e) {
@@ -306,6 +307,12 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
                     throw new ConnectException(e);
                 }
 
+            // PostGIS types are HexEWKB strings
+            // ValueConverter turns them into the correct types
+            case "geometry":
+            case "geography":
+                return rawValue.asString();
+
             case "bit":
             case "bit varying":
             case "varbit":
@@ -337,6 +344,7 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
                     typeMetadata.getFullType());
             return rawValue.asString();
         }
+        LOGGER.debug("Unknown column type {} for column {} – ignoring", typeMetadata.getFullTypeWithSchema(), columnName);
         return null;
     }
 

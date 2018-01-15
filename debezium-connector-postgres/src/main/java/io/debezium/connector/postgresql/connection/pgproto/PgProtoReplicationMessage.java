@@ -228,11 +228,26 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                     LOGGER.warn("Unexpected exception trying to process PgArray column '{}'", datumMessage.getColumnName(), e);
                 }
                 return null;
+
+            case PgOid.UNSPECIFIED:
+                return null;
+
             default:
+                try {
+                    String typeName = PgOid.oidToTypeName(connection.get(), columnType);
+                    if (typeName.equals("GEOMETRY") || typeName.equals("GEOGRAPHY")) {
+                        return datumMessage.getDatumBytes().toByteArray();
+                    }
+                } catch (SQLException e) {
+                    LOGGER.warn("Unexpected exception trying to process Postgis column '{}'", datumMessage.getColumnName(), e);
+                    return null;
+                }
+
                 // unknown datatype is sent by decoder as binary value
                 if (includeUnknownDatatypes && datumMessage.hasDatumBytes()) {
                     return datumMessage.getDatumBytes().toByteArray();
                 }
+
                 return null;
         }
     }

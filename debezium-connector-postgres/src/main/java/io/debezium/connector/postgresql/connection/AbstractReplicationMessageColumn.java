@@ -30,10 +30,14 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
 
         private static final Logger LOGGER = LoggerFactory.getLogger(TypeMetadataImpl.class);
 
-        private static final int[] EMPTY_TYPE_MODIFIERS = {};
-        private static final Pattern TYPE_PATTERN = Pattern.compile("^(?<full>(?<base>[^(\\[]+)(?:\\((?<mod>.+)\\))?(?<suffix>.*?))(?<array>\\[\\])?$");
+        private static final Pattern TYPE_PATTERN = Pattern.compile("^(?<schema>[^\\.\\(]+\\.)?(?<full>(?<base>[^(\\[]+)(?:\\((?<mod>.+)\\))?(?<suffix>.*?))(?<array>\\[\\])?$");
         private static final Pattern TYPEMOD_PATTERN = Pattern.compile("\\s*,\\s*");
-            // "text"; "character varying(255)"; "numeric(12,3)"; "geometry(MultiPolygon,4326)"; "timestamp (12) with time zone"; "int[]"
+            // "text"; "character varying(255)"; "numeric(12,3)"; "geometry(MultiPolygon,4326)"; "timestamp (12) with time zone"; "int[]"; "myschema.geometry"
+
+        /**
+         * The schema of the type
+         */
+        private final String schema;
 
         /**
          * The basic name of the type without constraints
@@ -70,6 +74,8 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
          */
         private final boolean optional;
 
+        private String[] typeModifiers = {};
+
         public TypeMetadataImpl(String columnName, String typeWithModifiers, boolean optional) {
             this.optional = optional;
             Matcher m = TYPE_PATTERN.matcher(typeWithModifiers);
@@ -77,22 +83,14 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
                 LOGGER.error("Failed to parse columnType for {} '{}'", columnName, typeWithModifiers);
                 throw new ConnectException(String.format("Failed to parse columnType '%s' for column %s", typeWithModifiers, columnName));
             }
+            String schema = m.group("schema");
             String fullType = m.group("full");
             String baseType = m.group("base").trim();
             if (!Objects.toString(m.group("suffix"), "").isEmpty()) {
                 baseType = String.join(" ", baseType, m.group("suffix").trim());
             }
-            int[] typeModifiers = EMPTY_TYPE_MODIFIERS;
             if (m.group("mod") != null) {
-                final String[] typeModifiersStr = TYPEMOD_PATTERN.split(m.group("mod"));
-                typeModifiers = new int[typeModifiersStr.length];
-                for (int i = 0; i < typeModifiersStr.length; i++) {
-                    try {
-                        typeModifiers[i] = Integer.parseInt(typeModifiersStr[i]);
-                    } catch (NumberFormatException e) {
-                        throw new ConnectException(String.format("Failed to parse type modifier '%s' for column %s", typeModifiersStr[i], columnName));
-                    }
-                }
+                typeModifiers = TYPEMOD_PATTERN.split(m.group("mod"));
             }
             boolean isArray = m.group("array") != null;
 
@@ -105,29 +103,49 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
             }
             String normalizedTypeName = PgOid.normalizeTypeName(baseType);
 
+            if (schema != null) {
+                // strip . suffix
+                schema = schema.substring(0, schema.length()-1);
+            }
+
             if (isArray) {
                 normalizedTypeName = "_" + normalizedTypeName;
             }
             this.baseType = baseType;
             this.fullType = fullType;
             this.normalizedTypeName = normalizedTypeName;
+            this.schema = schema;
 
+            // TODO: make this more elegant/type-specific
             if (typeModifiers.length > 0) {
-                this.length = typeModifiers[0];
+                try {
+                    this.length = Integer.parseInt(typeModifiers[0]);
+                } catch (NumberFormatException e) {
+                }
             }
             if (typeModifiers.length > 1) {
-                this.scale = typeModifiers[1];
+                try {
+                    this.scale = Integer.parseInt(typeModifiers[1]);
+                } catch (NumberFormatException e) {
+                }
             }
 
             this.isArray = isArray;
         }
 
+
         public String getBaseType() {
             return baseType;
+        }
+        public String getBaseTypeWithSchema() {
+            return getSchemaPrefix() + getBaseType();
         }
 
         public String getFullType() {
             return fullType;
+        }
+        public String getFullTypeWithSchema() {
+            return getSchemaPrefix() + getFullType();
         }
 
         @Override
@@ -138,6 +156,10 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
         @Override
         public OptionalInt getScale() {
             return scale != null ? OptionalInt.of(scale) : OptionalInt.empty();
+        }
+
+        public String[] getModifiers() {
+            return typeModifiers;
         }
 
         @Override
@@ -152,6 +174,17 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
 
         public boolean isOptional() {
             return optional;
+        }
+
+        public String getSchema() {
+            return schema;
+        }
+        public String getSchemaPrefix() {
+            if (schema != null) {
+                return schema + ".";
+            } else {
+                return "";
+            }
         }
     }
 

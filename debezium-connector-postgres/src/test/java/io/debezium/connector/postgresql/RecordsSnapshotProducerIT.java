@@ -58,7 +58,8 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER), false);
 
         TestHelper.executeDDL("postgres_create_tables.ddl");
-        TestConsumer consumer = testConsumer(ALL_STMTS.size());
+        TestHelper.executeDDL("postgis_create_tables.ddl");
+        TestConsumer consumer = testConsumer(ALL_STMTS.size(), "public", "Quoted_\"");
 
         //insert data for each of different supported types
         String statementsBuilder = ALL_STMTS.stream().collect(Collectors.joining(";" + System.lineSeparator())) + ";";
@@ -66,7 +67,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         //then start the producer and validate all records are there
         snapshotProducer.start(consumer);
-        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
         Map<String, List<SchemaAndValueField>> expectedValuesByTableName = super.schemaAndValuesByTableName();
         consumer.process(record -> assertReadRecord(record, expectedValuesByTableName));
@@ -167,7 +168,8 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER), false);
 
         TestHelper.executeDDL("postgres_create_tables.ddl");
-        TestConsumer consumer = testConsumer(ALL_STMTS.size());
+        TestHelper.executeDDL("postgis_create_tables.ddl");
+        TestConsumer consumer = testConsumer(ALL_STMTS.size(), "public", "Quoted_\"");
 
         //insert data for each of different supported types
         String statementsBuilder = ALL_STMTS.stream().collect(Collectors.joining(";" + System.lineSeparator())) + ";";
@@ -175,7 +177,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         //then start the producer and validate all records are there
         snapshotProducer.start(consumer);
-        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
         Map<String, List<SchemaAndValueField>> expectedValuesByTableName = super.schemaAndValuesByTableNameAdaptiveTimeMicroseconds();
         consumer.process(record -> assertReadRecord(record, expectedValuesByTableName));

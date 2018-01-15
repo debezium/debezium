@@ -25,6 +25,7 @@ import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.postgresql.core.TypeInfo;
 import org.postgresql.geometric.PGpoint;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
@@ -34,6 +35,8 @@ import io.debezium.data.Bits;
 import io.debezium.data.Json;
 import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
+import io.debezium.data.geometry.Geography;
+import io.debezium.data.geometry.Geometry;
 import io.debezium.data.geometry.Point;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -72,12 +75,18 @@ public class PostgresValueConverter extends JdbcValueConverters {
      */
     private final boolean includeUnknownDatatypes;
 
+    protected TypeInfo oidTypeInfo;
+
     private final PostgresSchema schema;
 
     protected PostgresValueConverter(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode, boolean includeUnknownDatatypes, PostgresSchema schema) {
         super(decimalMode, temporalPrecisionMode, defaultOffset, null, bigIntUnsignedMode);
         this.includeUnknownDatatypes = includeUnknownDatatypes;
         this.schema = schema;
+    }
+
+    public void setTypeInfo(TypeInfo info) {
+        this.oidTypeInfo = info;
     }
 
     @Override
@@ -155,11 +164,23 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 // These array types still need to be implemented.  The superclass won't handle them so
                 // we return null here until we can code schema implementations for them.
                 return null;
+
+            case PgOid.POSTGIS_GEOMETRY:
+                return Geometry.builder();
+            case PgOid.POSTGIS_GEOGRAPHY:
+                return Geography.builder();
+            case PgOid.POSTGIS_GEOMETRY_ARRAY:
+                return SchemaBuilder.array(Geometry.builder().optional().build());
+            case PgOid.POSTGIS_GEOGRAPHY_ARRAY:
+                return SchemaBuilder.array(Geography.builder().optional().build());
+
             case PgOid.UNSPECIFIED:
                 return includeUnknownDatatypes ? SchemaBuilder.bytes() : super.schemaBuilder(column);
+
             default:
                 return super.schemaBuilder(column);
         }
+
     }
 
     private SchemaBuilder numericSchema(final Column column) {
@@ -238,8 +259,19 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.JSON_ARRAY:
             case PgOid.REF_CURSOR_ARRAY:
                 return super.converter(column, fieldDefn);
+
+            case PgOid.POSTGIS_GEOMETRY:
+                return data -> convertGeometry(column, fieldDefn, data);
+            case PgOid.POSTGIS_GEOGRAPHY:
+                return data -> convertGeography(column, fieldDefn, data);
+
+            case PgOid.POSTGIS_GEOMETRY_ARRAY:
+            case PgOid.POSTGIS_GEOGRAPHY_ARRAY:
+                return createArrayConverter(column, fieldDefn);
+
             case PgOid.UNSPECIFIED:
                 return includeUnknownDatatypes ? data -> convertBinary(column, fieldDefn, data) : super.converter(column, fieldDefn);
+
             default:
                 return super.converter(column, fieldDefn);
         }
@@ -250,7 +282,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         final String elementColumnName = column.name() + "-element";
         final Column elementColumn = Column.editor()
                 .name(elementColumnName)
-                .jdbcType(schema.columnTypeNameToJdbcTypeId(elementTypeName))
+                .jdbcType(schema.columnTypeNameToJdbcTypeId(PostgresSchema.parse(elementTypeName).table()))
                 .type(elementTypeName)
                 .optional(true)
                 .create();
@@ -406,6 +438,68 @@ public class PostgresValueConverter extends JdbcValueConverters {
                                        ZoneOffset.UTC);
     }
 
+    protected Object convertGeometry(Column column, Field fieldDefn, Object data) {
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+
+        Schema schema = fieldDefn.schema();
+
+        if (data == null) {
+            if (column.isOptional()) return null;
+            PostgisGeometry emptyGeom = PostgisGeometry.createEmpty();
+            return io.debezium.data.geometry.Geometry.createValue(schema, emptyGeom.getWkb(), emptyGeom.getSrid());
+        }
+
+        try {
+            if (data instanceof byte[]) {
+                PostgisGeometry geom = PostgisGeometry.fromEWKB((byte[]) data);
+                return io.debezium.data.geometry.Geometry.createValue(schema, geom.getWkb(), geom.getSrid());
+            } else if (data instanceof PGobject) {
+                PGobject pgo = (PGobject)data;
+                PostgisGeometry geom = PostgisGeometry.fromHexEWKB(pgo.getValue());
+                return io.debezium.data.geometry.Geometry.createValue(schema, geom.getWkb(), geom.getSrid());
+            } else if (data instanceof String) {
+                PostgisGeometry geom = PostgisGeometry.fromHexEWKB((String)data);
+                return io.debezium.data.geometry.Geometry.createValue(schema, geom.getWkb(), geom.getSrid());
+            }
+        } catch (IllegalArgumentException e) {
+            logger.warn("Error converting to a Geometry type", column);
+        }
+        return handleUnknownData(column, fieldDefn, data);
+    }
+
+    protected Object convertGeography(Column column, Field fieldDefn, Object data) {
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+
+        Schema schema = fieldDefn.schema();
+
+        if (data == null) {
+            if (column.isOptional()) return null;
+            PostgisGeometry emptyGeom = PostgisGeometry.createEmpty();
+            return io.debezium.data.geometry.Geography.createValue(schema, emptyGeom.getWkb(), emptyGeom.getSrid());
+        }
+
+        try {
+            if (data instanceof byte[]) {
+                PostgisGeometry geom = PostgisGeometry.fromEWKB((byte[]) data);
+                return io.debezium.data.geometry.Geography.createValue(schema, geom.getWkb(), geom.getSrid());
+            } else if (data instanceof PGobject) {
+                PGobject pgo = (PGobject)data;
+                PostgisGeometry geom = PostgisGeometry.fromHexEWKB(pgo.getValue());
+                return io.debezium.data.geometry.Geography.createValue(schema, geom.getWkb(), geom.getSrid());
+            } else if (data instanceof String) {
+                PostgisGeometry geom = PostgisGeometry.fromHexEWKB((String)data);
+                return io.debezium.data.geometry.Geography.createValue(schema, geom.getWkb(), geom.getSrid());
+            }
+        } catch (IllegalArgumentException e) {
+            logger.warn("Error converting to a Geography type", column);
+        }
+        return handleUnknownData(column, fieldDefn, data);
+    }
+
     /**
      * Converts a value representing a Postgres point for a column, to a Kafka Connect value.
      *
@@ -421,8 +515,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         Schema schema = fieldDefn.schema();
         if (data == null) {
             if (column.isOptional()) return null;
-            //TODO author=Horia Chiorean date=28/10/2016 description=is this ok ?
-            return Point.createValue(schema, 0, 0);
+            return handleUnknownData(column, fieldDefn, data);
         }
         if (data instanceof PGpoint) {
             PGpoint pgPoint = (PGpoint) data;

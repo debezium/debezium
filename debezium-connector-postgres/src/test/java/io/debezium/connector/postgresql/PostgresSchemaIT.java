@@ -29,6 +29,8 @@ import io.debezium.data.Json;
 import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.Xml;
+import io.debezium.data.geometry.Geography;
+import io.debezium.data.geometry.Geometry;
 import io.debezium.data.geometry.Point;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -119,6 +121,21 @@ public class PostgresSchemaIT {
             assertTablesIncluded(TEST_TABLES);
             assertTableSchema("public.custom_table", "lt, i",
                     Schema.OPTIONAL_BYTES_SCHEMA, Schema.OPTIONAL_BYTES_SCHEMA);
+        }
+    }
+
+    @Test
+    public void shouldLoadSchemaForPostgisTypes() throws Exception {
+        TestHelper.executeDDL("postgis_create_tables.ddl");
+        schema = new PostgresSchema(new PostgresConnectorConfig(TestHelper.defaultConfig().build()));
+        try (PostgresConnection connection = TestHelper.create()) {
+            schema.refresh(connection, false);
+            final String[] testTables = new String[] {"public.postgis_table"};
+            assertTablesIncluded(testTables);
+            Arrays.stream(testTables).forEach(tableId -> assertKeySchema(tableId, "pk", Schema.INT32_SCHEMA));
+
+            assertTableSchema("public.postgis_table", "p, ml",
+                              Geometry.builder().optional().build(), Geography.builder().optional().build());
         }
     }
 
