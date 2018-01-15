@@ -35,6 +35,10 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     private final Predicate<String> gtidSourceFilter;
     private final Predicate<String> ddlFilter;
     private final Clock clock = Clock.system();
+
+    /**
+     * Whether table ids are compared ingnoring letter casing.
+     */
     private final boolean tableIdCaseInsensitive;
 
     public MySqlTaskContext(Configuration config) {
@@ -60,7 +64,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         if (tableIdCaseInsensitive == null) {
             this.tableIdCaseInsensitive = !"0".equals(readMySqlSystemVariables(null).get(MySqlSystemVariables.LOWER_CASE_TABLE_NAMES));
         } else {
-            this.tableIdCaseInsensitive = false;
+            this.tableIdCaseInsensitive = tableIdCaseInsensitive;
         }
 
         // Set up the MySQL schema ...
