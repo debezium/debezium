@@ -5,7 +5,6 @@
  */
 package io.debezium.relational;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +21,7 @@ import io.debezium.util.FunctionalReadWriteLock;
 
 /**
  * Structural definitions for a set of tables in a JDBC database.
- * 
+ *
  * @author Randall Hauch
  */
 @ThreadSafe
@@ -48,7 +47,7 @@ public final class Tables {
     public static interface TableNameFilter {
         /**
          * Determine whether the named table should be included.
-         * 
+         *
          * @param catalogName the name of the database catalog that contains the table; may be null if the JDBC driver does not
          *            show a schema for this table
          * @param schemaName the name of the database schema that contains the table; may be null if the JDBC driver does not
@@ -66,7 +65,7 @@ public final class Tables {
     public static interface ColumnNameFilter {
         /**
          * Determine whether the named column should be included in the table's {@link Schema} definition.
-         * 
+         *
          * @param catalogName the name of the database catalog that contains the table; may be null if the JDBC driver does not
          *            show a schema for this table
          * @param schemaName the name of the database schema that contains the table; may be null if the JDBC driver does not
@@ -87,11 +86,11 @@ public final class Tables {
      */
     public Tables() {
     }
-    
+
     protected Tables( Tables other) {
         this.tablesByTableId.putAll(other.tablesByTableId);
     }
-    
+
     @Override
     public Tables clone() {
         return new Tables(this);
@@ -99,7 +98,7 @@ public final class Tables {
 
     /**
      * Get the number of tables that are in this object.
-     * 
+     *
      * @return the table count
      */
     public int size() {
@@ -116,7 +115,7 @@ public final class Tables {
 
     /**
      * Add or update the definition for the identified table.
-     * 
+     *
      * @param tableId the identifier of the table
      * @param columnDefs the list of column definitions; may not be null or empty
      * @param primaryKeyColumnNames the list of the column names that make up the primary key; may be null or empty
@@ -139,7 +138,7 @@ public final class Tables {
 
     /**
      * Add or update the definition for the identified table.
-     * 
+     *
      * @param table the definition for the table; may not be null
      * @return the previous table definition, or null if there was no prior table definition
      */
@@ -156,7 +155,7 @@ public final class Tables {
 
     /**
      * Rename an existing table.
-     * 
+     *
      * @param existingTableId the identifier of the existing table to be renamed; may not be null
      * @param newTableId the new identifier for the table; may not be null
      * @return the previous table definition, or null if there was no prior table definition
@@ -179,7 +178,7 @@ public final class Tables {
 
     /**
      * Add or update the definition for the identified table.
-     * 
+     *
      * @param tableId the identifier of the table
      * @param changer the function that accepts the current {@link Table} and returns either the same or an updated
      *            {@link Table}; may not be null
@@ -199,33 +198,8 @@ public final class Tables {
     }
 
     /**
-     * Add or update the definition for the identified table.
-     * 
-     * @param tableId the identifier of the table
-     * @param changer the function that accepts and changes the mutable ordered list of column definitions and the mutable set of
-     *            column names that make up the primary key; may not be null
-     * @return the previous table definition, or null if there was no prior table definition
-     */
-    public Table updateTable(TableId tableId, TableChanger changer) {
-        return lock.write(() -> {
-            TableImpl existing = tablesByTableId.get(tableId);
-            List<Column> columns = new ArrayList<>(existing.columns());
-            List<String> pkColumnNames = new ArrayList<>(existing.primaryKeyColumnNames());
-            changer.rewrite(columns, pkColumnNames);
-            TableImpl updated = new TableImpl(tableId, columns, pkColumnNames, existing.defaultCharsetName());
-            tablesByTableId.put(tableId, updated);
-            changes.add(tableId);
-            return existing;
-        });
-    }
-
-    public static interface TableChanger {
-        void rewrite(List<Column> columnDefinitions, List<String> primaryKeyNames);
-    }
-
-    /**
      * Remove the definition of the identified table.
-     * 
+     *
      * @param tableId the identifier of the table
      * @return the existing table definition that was removed, or null if there was no prior table definition
      */
@@ -238,7 +212,7 @@ public final class Tables {
 
     /**
      * Obtain the definition of the identified table.
-     * 
+     *
      * @param tableId the identifier of the table
      * @return the table definition, or null if there was no definition for the identified table
      */
@@ -248,7 +222,7 @@ public final class Tables {
 
     /**
      * Obtain the definition of the identified table.
-     * 
+     *
      * @param catalogName the name of the database catalog that contains the table; may be null if the JDBC driver does not
      *            show a schema for this table
      * @param schemaName the name of the database schema that contains the table; may be null if the JDBC driver does not
@@ -262,7 +236,7 @@ public final class Tables {
 
     /**
      * Get the set of {@link TableId}s for which there is a {@link Schema}.
-     * 
+     *
      * @return the immutable set of table identifiers; never null
      */
     public Set<TableId> tableIds() {
@@ -273,7 +247,7 @@ public final class Tables {
      * Obtain an editor for the table with the given ID. This method does not lock the set of table definitions, so use
      * with caution. The resulting editor can be used to modify the table definition, but when completed the new {@link Table}
      * needs to be added back to this object via {@link #overwriteTable(Table)}.
-     * 
+     *
      * @param tableId the identifier of the table
      * @return the editor for the table, or null if there is no table with the specified ID
      */
@@ -283,49 +257,16 @@ public final class Tables {
     }
 
     /**
-     * Obtain an editor for the identified table. This method does not lock the set of table definitions, so use
-     * with caution. The resulting editor can be used to modify the table definition, but when completed the new {@link Table}
-     * needs to be added back to this object via {@link #overwriteTable(Table)}.
-     * 
-     * @param catalogName the name of the database catalog that contains the table; may be null if the JDBC driver does not
-     *            show a schema for this table
-     * @param schemaName the name of the database schema that contains the table; may be null if the JDBC driver does not
-     *            show a schema for this table
-     * @param tableName the name of the table
-     * @return the editor for the table, or null if there is no table with the specified ID
-     */
-    public TableEditor editTable(String catalogName, String schemaName, String tableName) {
-        return editTable(new TableId(catalogName, schemaName, tableName));
-    }
-
-    /**
      * Obtain an editor for the table with the given ID. This method does not lock or modify the set of table definitions, so use
      * with caution. The resulting editor can be used to modify the table definition, but when completed the new {@link Table}
      * needs to be added back to this object via {@link #overwriteTable(Table)}.
-     * 
+     *
      * @param tableId the identifier of the table
      * @return the editor for the table, or null if there is no table with the specified ID
      */
     public TableEditor editOrCreateTable(TableId tableId) {
         Table table = forTable(tableId);
         return table == null ? Table.editor().tableId(tableId) : table.edit();
-    }
-
-    /**
-     * Obtain an editor for the identified table or, if there is no such table, create an editor with the specified ID.
-     * This method does not lock or modify the set of table definitions, so use with caution. The resulting editor can be used to
-     * modify the table definition, but when completed the new {@link Table} needs to be added back to this object via
-     * {@link #overwriteTable(Table)}.
-     * 
-     * @param catalogName the name of the database catalog that contains the table; may be null if the JDBC driver does not
-     *            show a schema for this table
-     * @param schemaName the name of the database schema that contains the table; may be null if the JDBC driver does not
-     *            show a schema for this table
-     * @param tableName the name of the table
-     * @return the editor for the table, or null if there is no table with the specified ID
-     */
-    public TableEditor editOrCreateTable(String catalogName, String schemaName, String tableName) {
-        return editOrCreateTable(new TableId(catalogName, schemaName, tableName));
     }
 
     @Override
