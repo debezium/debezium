@@ -22,7 +22,6 @@ import java.time.LocalTime;
 import java.time.Month;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -231,28 +230,22 @@ public abstract class AbstractRecordsProducerTest {
 
     protected List<SchemaAndValueField> schemasAndValuesForArrayTypes() {
        return Arrays.asList(new SchemaAndValueField("int_array", SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(),
-                                expectedArray(1, 2, 3)),
+                                Arrays.asList(1, 2, 3)),
                             new SchemaAndValueField("bigint_array", SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(),
-                                expectedArray(1550166368505037572L)),
+                                Arrays.asList(1550166368505037572L)),
                             new SchemaAndValueField("text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
-                                expectedArray("one", "two", "three")),
+                                Arrays.asList("one", "two", "three")),
                             new SchemaAndValueField("char_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
-                                expectedArray("cone      ", "ctwo      ", "cthree    ")),
+                                Arrays.asList("cone      ", "ctwo      ", "cthree    ")),
                             new SchemaAndValueField("varchar_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
-                                expectedArray("vcone", "vctwo", "vcthree")),
+                                Arrays.asList("vcone", "vctwo", "vcthree")),
                             new SchemaAndValueField("date_array", SchemaBuilder.array(Date.builder().optional().schema()).optional().build(),
-                                expectedArray(
+                                Arrays.asList(
                                         (int)LocalDate.of(2016, Month.NOVEMBER, 4).toEpochDay(),
                                         (int)LocalDate.of(2016, Month.NOVEMBER, 5).toEpochDay(),
                                         (int)LocalDate.of(2016, Month.NOVEMBER, 6).toEpochDay()
                                 ))
                             );
-    }
-
-    private List<?> expectedArray(Object... elements) {
-        final ArrayList<Object> list = new ArrayList<>();
-        list.addAll(Arrays.asList(elements));
-        return list;
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForArrayTypesWithNullValues() {
@@ -396,8 +389,15 @@ public abstract class AbstractRecordsProducerTest {
                 return;
             }
             Object actualValue = content.get(fieldName);
-            assertNotNull("No value found for " + fieldName, actualValue);
-            assertEquals("Incorrect value type for " + fieldName, value.getClass(), actualValue.getClass());
+
+            // assert the value type; for List all implementation types (e.g. immutable ones) are acceptable
+            if(actualValue instanceof List) {
+                assertTrue("Incorrect value type for " + fieldName, value instanceof List);
+            }
+            else {
+                assertEquals("Incorrect value type for " + fieldName, value.getClass(), actualValue.getClass());
+            }
+
             if (actualValue instanceof byte[]) {
                 assertArrayEquals("Values don't match for " + fieldName, (byte[]) value, (byte[]) actualValue);
             } else if (actualValue instanceof Struct) {

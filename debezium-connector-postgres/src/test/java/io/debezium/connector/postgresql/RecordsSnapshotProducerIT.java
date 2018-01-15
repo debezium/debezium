@@ -18,8 +18,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import io.debezium.doc.FixFor;
-import io.debezium.jdbc.TemporalPrecisionMode;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
@@ -27,6 +25,8 @@ import org.junit.Test;
 
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
+import io.debezium.doc.FixFor;
+import io.debezium.jdbc.TemporalPrecisionMode;
 
 /**
  * Integration test for {@link RecordsSnapshotProducerIT}
@@ -157,7 +157,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     @FixFor("DBZ-342")
-    public void shouldGenerateSnapshotsForDefaultDatatypesAdpativeMicroseconds() throws Exception {
+    public void shouldGenerateSnapshotsForDefaultDatatypesAdaptiveMicroseconds() throws Exception {
         PostgresConnectorConfig config = new PostgresConnectorConfig(
                 TestHelper.defaultConfig()
                         .with(PostgresConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS)
