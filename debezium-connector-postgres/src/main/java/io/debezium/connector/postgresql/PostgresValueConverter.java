@@ -19,6 +19,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
@@ -71,9 +72,12 @@ public class PostgresValueConverter extends JdbcValueConverters {
      */
     private final boolean includeUnknownDatatypes;
 
-    protected PostgresValueConverter(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode, boolean includeUnknownDatatypes) {
+    private final PostgresSchema schema;
+
+    protected PostgresValueConverter(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode, boolean includeUnknownDatatypes, PostgresSchema schema) {
         super(decimalMode, temporalPrecisionMode, defaultOffset, null, bigIntUnsignedMode);
         this.includeUnknownDatatypes = includeUnknownDatatypes;
+        this.schema = schema;
     }
 
     @Override
@@ -213,7 +217,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.FLOAT8_ARRAY:
             case PgOid.BOOL_ARRAY:
             case PgOid.DATE_ARRAY:
-                return data -> convertArray(column, fieldDefn, data);
+                return createArrayConverter(column, fieldDefn);
 
             // TODO DBZ-459 implement support for these array types; for now we just fall back to the default, i.e.
             // having no converter, so to be consistent with the schema definitions above
@@ -239,6 +243,20 @@ public class PostgresValueConverter extends JdbcValueConverters {
             default:
                 return super.converter(column, fieldDefn);
         }
+    }
+
+    private ValueConverter createArrayConverter(Column column, Field fieldDefn) {
+        final String elementTypeName = column.typeName().substring(1);
+        final String elementColumnName = column.name() + "-element";
+        final Column elementColumn = Column.editor()
+                .name(elementColumnName)
+                .jdbcType(schema.columnTypeNameToJdbcTypeId(elementTypeName))
+                .type(elementTypeName)
+                .optional(true)
+                .create();
+        final Field elementField = new Field(elementColumnName, 0, schemaBuilder(elementColumn).build());
+        final ValueConverter elementConverter = converter(elementColumn, elementField);
+        return data -> convertArray(column, fieldDefn, elementConverter, data);
     }
 
     @Override
@@ -425,7 +443,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         return handleUnknownData(column, fieldDefn, data);
     }
 
-    protected Object convertArray(Column column, Field fieldDefn, Object data) {
+    protected Object convertArray(Column column, Field fieldDefn, ValueConverter elementConverter, Object data) {
         if (data == null) {
             data = fieldDefn.schema().defaultValue();
         }
@@ -441,7 +459,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
         if (!(data instanceof List)) {
             return handleUnknownData(column, fieldDefn, data);
         }
-        return data;
+        return ((List<?>)data).stream()
+                .map(elementConverter::convert)
+                .collect(Collectors.toList());
     }
 
     private boolean isVariableScaleDecimal(final Column column) {
