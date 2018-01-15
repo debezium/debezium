@@ -5,9 +5,10 @@
  */
 package io.debezium.connector.mysql;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Schema;
@@ -26,7 +27,6 @@ import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.relational.TableIdCaseInsensitiveMap;
 import io.debezium.relational.TableSchema;
 import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
@@ -63,7 +63,7 @@ public class MySqlSchema {
     private final AvroValidator schemaNameValidator = AvroValidator.create(logger);
     private final Set<String> ignoredQueryStatements = Collect.unmodifiableSet("BEGIN", "END", "FLUSH PRIVILEGES");
     private final MySqlDdlParser ddlParser;
-    private final Map<TableId, TableSchema> tableSchemaByTableId;
+    private final SchemasByTableId tableSchemaByTableId;
     private final Filters filters;
     private final DatabaseHistory dbHistory;
     private final TableSchemaBuilder schemaBuilder;
@@ -137,7 +137,7 @@ public class MySqlSchema {
 
         this.skipUnparseableDDL = dbHistoryConfig.getBoolean(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS);
 
-        tableSchemaByTableId = tableIdCaseInsensitive ?  new TableIdCaseInsensitiveMap<>(new HashMap<>()) : new HashMap<>();
+        tableSchemaByTableId = new SchemasByTableId(tableIdCaseInsensitive);
     }
 
     protected HistoryRecordComparator historyComparator() {
@@ -347,5 +347,39 @@ public class MySqlSchema {
             }
         });
         return true;
+    }
+
+    /**
+     * A map of schemas by table id. Table names are stored lower-case if required as per the config.
+     */
+    private static class SchemasByTableId {
+
+        private final boolean tableIdCaseInsensitive;
+        private final ConcurrentMap<TableId, TableSchema> values;
+
+        public SchemasByTableId(boolean tableIdCaseInsensitive) {
+            this.tableIdCaseInsensitive = tableIdCaseInsensitive;
+            this.values = new ConcurrentHashMap<>();
+        }
+
+        public void clear() {
+            values.clear();
+        }
+
+        public TableSchema remove(TableId tableId) {
+            return values.remove(toLowerCaseIfNeeded(tableId));
+        }
+
+        public TableSchema get(TableId tableId) {
+            return values.get(toLowerCaseIfNeeded(tableId));
+        }
+
+        public TableSchema put(TableId tableId, TableSchema updated) {
+            return values.put(toLowerCaseIfNeeded(tableId), updated);
+        }
+
+        private TableId toLowerCaseIfNeeded(TableId tableId) {
+            return tableIdCaseInsensitive ? tableId.toLowercase() : tableId;
+        }
     }
 }

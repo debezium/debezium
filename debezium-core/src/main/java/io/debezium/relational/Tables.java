@@ -7,9 +7,10 @@ package io.debezium.relational;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -78,8 +79,8 @@ public final class Tables {
     }
 
     private final FunctionalReadWriteLock lock = FunctionalReadWriteLock.reentrant();
-    private final Map<TableId, TableImpl> tablesByTableId;
-    private final Set<TableId> changes;
+    private final TablesById tablesByTableId;
+    private final TableIds changes;
     private final boolean tableIdCaseInsensitive;
 
     /**
@@ -89,13 +90,8 @@ public final class Tables {
      */
     public Tables(boolean tableIdCaseInsensitive) {
         this.tableIdCaseInsensitive = tableIdCaseInsensitive;
-        if (tableIdCaseInsensitive) {
-            tablesByTableId = new TableIdCaseInsensitiveMap<>(new ConcurrentHashMap<>());
-            changes = new TableIdCaseInsensitiveSet(new HashSet<>());
-        } else {
-            tablesByTableId = new ConcurrentHashMap<>();
-            changes = new HashSet<>();
-        }
+        this.tablesByTableId = new TablesById(tableIdCaseInsensitive);
+        this.changes = new TableIds(tableIdCaseInsensitive);
     }
 
     /**
@@ -126,7 +122,7 @@ public final class Tables {
 
     public Set<TableId> drainChanges() {
         return lock.write(() -> {
-            Set<TableId> result = new HashSet<>(changes);
+            Set<TableId> result = changes.toSet();
             changes.clear();
             return result;
         });
@@ -259,7 +255,7 @@ public final class Tables {
      * @return the immutable set of table identifiers; never null
      */
     public Set<TableId> tableIds() {
-        return lock.read(() -> Collect.unmodifiableSet(tablesByTableId.keySet()));
+        return lock.read(() -> Collect.unmodifiableSet(tablesByTableId.ids()));
     }
 
     /**
@@ -332,5 +328,112 @@ public final class Tables {
             sb.append("}");
             return sb.toString();
         });
+    }
+
+    /**
+     * A map of tables by id. Table names are stored lower-case if required as per the config.
+     */
+    private static class TablesById {
+
+        private final boolean tableIdCaseInsensitive;
+        private final ConcurrentMap<TableId, TableImpl> values;
+
+        public TablesById(boolean tableIdCaseInsensitive) {
+            this.tableIdCaseInsensitive = tableIdCaseInsensitive;
+            this.values = new ConcurrentHashMap<>();
+        }
+
+        public Set<TableId> ids() {
+            return values.keySet();
+        }
+
+        boolean isEmpty() {
+            return values.isEmpty();
+        }
+
+        public void putAll(TablesById tablesByTableId) {
+            if(tableIdCaseInsensitive) {
+                tablesByTableId.values.entrySet()
+                    .forEach(e -> put(e.getKey().toLowercase(), e.getValue()));
+            }
+            else {
+                values.putAll(tablesByTableId.values);
+            }
+        }
+
+        public TableImpl remove(TableId tableId) {
+            return values.remove(toLowerCaseIfNeeded(tableId));
+        }
+
+        public TableImpl get(TableId tableId) {
+            return values.get(toLowerCaseIfNeeded(tableId));
+        }
+
+        public Table put(TableId tableId, TableImpl updated) {
+            return values.put(toLowerCaseIfNeeded(tableId), updated);
+        }
+
+        int size() {
+            return values.size();
+        }
+
+        void forEach(BiConsumer<? super TableId, ? super TableImpl> action) {
+            values.forEach(action);
+        }
+
+        private TableId toLowerCaseIfNeeded(TableId tableId) {
+            return tableIdCaseInsensitive ? tableId.toLowercase() : tableId;
+        }
+
+        @Override
+        public int hashCode() {
+            return values.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            TablesById other = (TablesById) obj;
+
+            return values.equals(other.values);
+        }
+    }
+
+    /**
+     * A set of table ids. Table names are stored lower-case if required as per the config.
+     */
+    private static class TableIds {
+
+        private final boolean tableIdCaseInsensitive;
+        private final Set<TableId> values;
+
+        public TableIds(boolean tableIdCaseInsensitive) {
+            this.tableIdCaseInsensitive = tableIdCaseInsensitive;
+            this.values = new HashSet<>();
+        }
+
+        public void add(TableId tableId) {
+            values.add(toLowerCaseIfNeeded(tableId));
+        }
+
+        public Set<TableId> toSet() {
+            return new HashSet<>(values);
+        }
+
+        public void clear() {
+            values.clear();
+        }
+
+        private TableId toLowerCaseIfNeeded(TableId tableId) {
+            return tableIdCaseInsensitive ? tableId.toLowercase() : tableId;
+        }
     }
 }
