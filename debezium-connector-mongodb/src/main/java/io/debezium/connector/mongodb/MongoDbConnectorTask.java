@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
@@ -31,9 +32,12 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.Configuration;
+import io.debezium.config.ConfigurationDefaults;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext.PreviousContext;
 import io.debezium.util.Metronome;
+import io.debezium.util.Threads;
+import io.debezium.util.Threads.Timer;
 
 /**
  * A Kafka Connect source task that replicates the changes from one or more MongoDB replica sets, using one {@link Replicator}
@@ -201,11 +205,12 @@ public final class MongoDbConnectorTask extends SourceTask {
         private final BlockingQueue<SourceRecord> records;
         private final BooleanSupplier isRunning;
         private final Consumer<List<SourceRecord>> batchConsumer;
+        private final long pollIntervalMs;
 
         protected TaskRecordQueue(Configuration config, int numThreads, BooleanSupplier isRunning,
                                   Consumer<List<SourceRecord>> batchConsumer) {
             final int maxQueueSize = config.getInteger(MongoDbConnectorConfig.MAX_QUEUE_SIZE);
-            final long pollIntervalMs = config.getLong(MongoDbConnectorConfig.POLL_INTERVAL_MS);
+            pollIntervalMs = config.getLong(MongoDbConnectorConfig.POLL_INTERVAL_MS);
             maxBatchSize = config.getInteger(MongoDbConnectorConfig.MAX_BATCH_SIZE);
             metronome = Metronome.parker(pollIntervalMs, TimeUnit.MILLISECONDS, Clock.SYSTEM);
             records = new LinkedBlockingDeque<>(maxQueueSize);
@@ -215,9 +220,13 @@ public final class MongoDbConnectorTask extends SourceTask {
 
         public List<SourceRecord> poll() throws InterruptedException {
             List<SourceRecord> batch = new ArrayList<>(maxBatchSize);
+            final Timer timeout = Threads.timer(Clock.SYSTEM, Duration.ofMillis(Math.max(pollIntervalMs, ConfigurationDefaults.RETURN_CONTROL_INTERVAL.toMillis())));
             while (isRunning.getAsBoolean() && records.drainTo(batch, maxBatchSize) == 0) {
                 // No events to process, so sleep for a bit ...
                 metronome.pause();
+                if (timeout.expired()) {
+                    break;
+                }
             }
             this.batchConsumer.accept(batch);
             return batch;
