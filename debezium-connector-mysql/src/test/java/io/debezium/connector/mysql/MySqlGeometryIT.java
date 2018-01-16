@@ -72,7 +72,7 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
         //Testing.Debug.enable();
         int numCreateDatabase = 1;
         int numCreateTables = 2;
-        int numDataRecords = 4+2;
+        int numDataRecords = 4 + 2;
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords);
         stopConnector();
         assertThat(records).isNotNull();

@@ -133,7 +133,6 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
             this.isArray = isArray;
         }
 
-
         public String getBaseType() {
             return baseType;
         }

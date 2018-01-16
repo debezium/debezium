@@ -14,6 +14,9 @@ import org.apache.kafka.connect.data.Struct;
  * A semantic type for an OGC Simple Features for SQL Geometry.
  * Used to describe geometries on a planar basis (rather than Geography, which is a spherical basis).
  *
+ * See the Open Geospatial Consortium Simple Features Access specification for details on
+ * the Well-Known-Binary format http://www.opengeospatial.org/standards/sfa
+ *
  * WKB has to be forwards-compatible to the spec, so strict OGC WKB, and EWKB (PostGIS) are both ok.
  *
  * @author Robert Coup
@@ -34,7 +37,7 @@ public class Geometry {
         return SchemaBuilder.struct()
                             .name(LOGICAL_NAME)
                             .version(1)
-                            .doc("A Geometry")
+                            .doc("Geometry")
                             .field(WKB_FIELD, Schema.BYTES_SCHEMA)
                             .field(SRID_FIELD, Schema.INT32_SCHEMA);
     }
@@ -48,7 +51,6 @@ public class Geometry {
     public static Schema schema() {
         return builder().build();
     }
-
 
     /**
      * Create a value for this schema using WKB and SRID

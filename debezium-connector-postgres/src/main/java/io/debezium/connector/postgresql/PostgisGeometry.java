@@ -12,8 +12,24 @@ import java.nio.ByteOrder;
 
 public class PostgisGeometry {
 
+    /**
+     * PostGIS Extended-Well-Known-Binary (EWKB) geometry representation. An extension of the
+     * Open Geospatial Consortium Well-Known-Binary format. Since EWKB is a superset of
+     * WKB, we use EWKB here.
+     * https://postgis.net/docs/using_postgis_dbmanagement.html#EWKB_EWKT
+     * http://www.opengeospatial.org/standards/sfa
+     */
     private final byte[] wkb;
+    /**
+     * Coordinate reference system identifier. While it's technically user-defined,
+     * the standard/common values in use are the EPSG code list http://www.epsg.org/
+     */
     private final int srid;
+
+    /**
+     * Static Hex EKWB for a GEOMETRYCOLLECTION EMPTY.
+     */
+    private static final String HEXEWKB_EMPTY_GEOMETRYCOLLECTION = "010700000000000000";
 
     /**
      * Create a PostgisGeometry using the supplied PostGIS Hex EWKB string.
@@ -30,6 +46,15 @@ public class PostgisGeometry {
      */
     public static PostgisGeometry fromEWKB(byte[] ewkb) {
         return new PostgisGeometry(ewkb, parseSrid(ewkb));
+    }
+
+    /**
+     * Create a GEOMETRYCOLLECTION EMPTY PostgisGeometry
+     *
+     * @return a {@link PostgisGeometry} which represents a PostgisGeometry API
+     */
+    public static PostgisGeometry createEmpty() {
+        return PostgisGeometry.fromHexEWKB(HEXEWKB_EMPTY_GEOMETRYCOLLECTION);
     }
 
     /**
@@ -59,7 +84,6 @@ public class PostgisGeometry {
     public int getSrid() {
         return srid;
     }
-
 
     /**
      * Parses an EWKB Geometry and extracts the SRID (if any)
@@ -103,17 +127,4 @@ public class PostgisGeometry {
         }
         return data;
     }
-
-    private static final String HEXEWKB_EMPTY_GEOMETRYCOLLECTION = "010700000000000000";
-
-    /**
-     * Create a GEOMETRYCOLLECTION EMPTY PostgisGeometry
-     *
-     * @return a {@link PostgisGeometry} which represents a PostgisGeometry API
-     */
-    public static PostgisGeometry createEmpty() {
-        return PostgisGeometry.fromHexEWKB(HEXEWKB_EMPTY_GEOMETRYCOLLECTION);
-    }
-
-
 }

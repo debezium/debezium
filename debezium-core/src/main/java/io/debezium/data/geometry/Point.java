@@ -41,7 +41,7 @@ public class Point extends Geometry {
         return SchemaBuilder.struct()
                 .name(LOGICAL_NAME)
                 .version(1)
-                .doc("A Geometry (POINT)")
+                .doc("Geometry (POINT)")
                 .field(WKB_FIELD, Schema.BYTES_SCHEMA)
                 .field(SRID_FIELD, Schema.INT32_SCHEMA)
                 .field(X_FIELD, Schema.FLOAT64_SCHEMA)
