@@ -117,15 +117,12 @@ public final class ChainedReader implements Reader {
 
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
-        // We have to be prepared for the current reader to be in the middle of stopping and this chain transitioning
-        // to the next reader. In this case, the reader that is stopping will return null or empty, and we can ignore
-        // those until the next reader has started ...
-        while (running.get() || !completed.get()) {
-            Reader reader = currentReader.get();
+        // We return no records when no reader is running. The caller thus gets back control
+        // but must be able to handle such situation
+        if (running.get() || !completed.get()) {
+            final Reader reader = currentReader.get();
             if (reader != null) {
-                List<SourceRecord> records = reader.poll();
-                if (records != null && !records.isEmpty()) return records;
-                // otherwise, we'll go ahead until the next reader is ready or until we're no longer running ...
+                return reader.poll();
             }
         }
         return null;

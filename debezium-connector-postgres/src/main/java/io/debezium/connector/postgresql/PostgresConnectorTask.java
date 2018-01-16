@@ -7,6 +7,7 @@
 package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +15,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
@@ -21,10 +23,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.ConfigurationDefaults;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Metronome;
+import io.debezium.util.Threads;
+import io.debezium.util.Threads.Timer;
 
 /**
  * Kafka connect source task which uses Postgres logical decoding over a streaming replication connection to process DB changes. 
@@ -32,20 +37,21 @@ import io.debezium.util.Metronome;
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 public class PostgresConnectorTask extends SourceTask {
-    
+
     private static final String CONTEXT_NAME = "postgres-connector-task";
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final AtomicBoolean running = new AtomicBoolean(false);
-    
+
     private PostgresTaskContext taskContext;
     private BlockingQueue<SourceRecord> queue;
     private int maxBatchSize;
     private RecordsProducer producer;
     private Metronome metronome;
-    
+    private long pollIntervalMs;
+
     public PostgresConnectorTask() {
     }
-    
+
     @Override
     public void start(Map<String, String> props) {
         if (running.get()) {
@@ -114,6 +120,7 @@ public class PostgresConnectorTask extends SourceTask {
             }
     
             metronome = Metronome.sleeper(config.pollIntervalMs(), TimeUnit.MILLISECONDS, Clock.SYSTEM);
+            pollIntervalMs = config.pollIntervalMs();
             producer.start(this::enqueueRecord);
             running.compareAndSet(false, true);
         }  catch (SQLException e) {
@@ -162,6 +169,7 @@ public class PostgresConnectorTask extends SourceTask {
         try {
             logger.debug("polling records...");
             List<SourceRecord> records = new ArrayList<>();
+            final Timer timeout = Threads.timer(Clock.SYSTEM, Duration.ofMillis(Math.max(pollIntervalMs, ConfigurationDefaults.RETURN_CONTROL_INTERVAL.toMillis())));
             while (running.get() && queue.drainTo(records, maxBatchSize) == 0) {
                 if (taskContext.getTaskFailure() != null) {
                     throw new ConnectException(taskContext.getTaskFailure());
@@ -170,6 +178,9 @@ public class PostgresConnectorTask extends SourceTask {
                     logger.debug("no records available yet, sleeping a bit...");
                     // no records yet, so wait a bit
                     metronome.pause();
+                    if (timeout.expired()) {
+                        break;
+                    }
                     logger.debug("checking for more records...");
                 } catch (InterruptedException e) {
                     // we've been requested to stop polling

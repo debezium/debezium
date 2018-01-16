@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -12,13 +14,16 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.fest.assertions.Assertions.assertThat;
-
+import io.debezium.config.ConfigurationDefaults;
 import io.debezium.connector.mysql.Reader.State;
+import io.debezium.util.Clock;
 import io.debezium.util.Collect;
+import io.debezium.util.Threads;
+import io.debezium.util.Threads.Timer;
 
 /**
  * @author Randall Hauch
@@ -105,7 +110,17 @@ public class ChainedReaderTest {
         assertThat(reader.poll()).isSameAs(RL3);
         assertThat(reader.poll()).isSameAs(RL4);
         assertThat(reader.poll()).isSameAs(RL5);
-        assertThat(reader.poll()).isSameAs(RL1);
+        // Wait for 2nd reader to start
+        List<SourceRecord> records = reader.poll();
+        final Timer timeout = Threads.timer(Clock.SYSTEM, ConfigurationDefaults.RETURN_CONTROL_INTERVAL);
+        while (records == null) {
+            if (timeout.expired()) {
+                Assert.fail("Subsequent reader has not started");
+            }
+            Thread.sleep(100);
+            records = reader.poll();
+        }
+        assertThat(records).isSameAs(RL1);
         assertThat(reader.poll()).isSameAs(RL2);
         assertThat(reader.poll()).isSameAs(RL3);
         assertThat(reader.poll()).isSameAs(RL4);
