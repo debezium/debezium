@@ -45,6 +45,16 @@ public interface DatabaseHistory {
                     + "which it cannot parse. If skipping is enabled then Debezium can miss metadata changes.")
             .withDefault(false);
 
+    public static final Field STORE_ONLY_MONITORED_TABLES_DDL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "store.only.monitored.tables.ddl")
+            .withDisplayName("Store only DDL that modifies whitelisted/not-blacklisted tables")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Controls what DDL will Debezium store in history topic."
+                    + "By default (false) Debezium will store all DDL incoming. If set to true"
+                    + "then only DDL that manipulates a monitored table will be stored.")
+            .withDefault(false);
+
     public static final Field DDL_FILTER = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "ddl.filter")
                                                 .withDisplayName("DDL filter")
                                                 .withType(Type.STRING)

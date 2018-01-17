@@ -826,6 +826,7 @@ public class MySqlConnectorConfig {
                                                                 KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
                                                                 KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS,
                                                                 DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS,
+                                                                DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL,
                                                                 DatabaseHistory.DDL_FILTER);
 
     protected static ConfigDef configDef() {
@@ -835,7 +836,8 @@ public class MySqlConnectorConfig {
         Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                     KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
                     KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, DATABASE_HISTORY,
-                    DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, DatabaseHistory.DDL_FILTER);
+                    DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, DatabaseHistory.DDL_FILTER,
+                    DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL);
         Field.group(config, "Events", INCLUDE_SCHEMA_CHANGES, TABLES_IGNORE_BUILTIN, DATABASE_WHITELIST, TABLE_WHITELIST,
                     COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST,
                     GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS, BUFFER_SIZE_FOR_BINLOG_READER,
