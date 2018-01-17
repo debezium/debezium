@@ -6,8 +6,10 @@
 package io.debezium.relational.history;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
+import java.util.function.Function;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +30,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     protected Configuration config;
     private HistoryRecordComparator comparator = HistoryRecordComparator.INSTANCE;
     private boolean skipUnparseableDDL;
-    private Predicate<String> ddlFilter = (x -> false);
+    private Function<String, Optional<Pattern>> ddlFilter = (x -> Optional.empty());
 
     protected AbstractDatabaseHistory() {
     }
@@ -40,7 +42,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
         this.skipUnparseableDDL = config.getBoolean(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS);
 
         final String ddlFilter = config.getString(DatabaseHistory.DDL_FILTER);
-        this.ddlFilter = (ddlFilter != null) ? Predicates.includes(ddlFilter) : this.ddlFilter;
+        this.ddlFilter = (ddlFilter != null) ? Predicates.matchedBy(ddlFilter) : this.ddlFilter;
     }
 
     @Override
@@ -63,8 +65,9 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
                 String ddl = recovered.ddl();
                 if (ddl != null) {
                     ddlParser.setCurrentSchema(recovered.databaseName()); // may be null
-                    if (ddlFilter.test(ddl)) {
-                        logger.info("a DDL '{}' was filtered out of processing", ddl);
+                    Optional<Pattern> filteredBy = ddlFilter.apply(ddl);
+                    if (filteredBy.isPresent()) {
+                        logger.info("a DDL '{}' was filtered out of processing by regular expression '{}", ddl, filteredBy.get());
                         return;
                     }
                     try {
