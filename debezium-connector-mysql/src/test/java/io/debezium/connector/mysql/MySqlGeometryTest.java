@@ -24,7 +24,7 @@ public class MySqlGeometryTest {
         //This represents 'POINT(6.9845 18.22115554)'
         MySqlGeometry geom = MySqlGeometry.fromBytes(mysqlBytes);
         assertTrue(geom.isPoint());
-        assertEquals(geom.getSrid(), 0);
+        assertEquals(geom.getSrid(), null);
         double[] coords = geom.getPointCoords();
         assertEquals(coords[0], 6.9845, 0.0001);
         assertEquals(coords[1], 18.22115554, 0.0001);
@@ -36,7 +36,7 @@ public class MySqlGeometryTest {
         //This represents 'SRID=4326;LINESTRING(6.9845 18.22115554, 0 0)'
         MySqlGeometry geom = MySqlGeometry.fromBytes(mysqlBytes);
         assertFalse(geom.isPoint());
-        assertEquals(4326, geom.getSrid());
+        assertEquals(Integer.valueOf(4326), geom.getSrid());
         assertEquals("010200000002000000E3A59BC420F01B4015A143A69D38324000000000000000000000000000000000", DatatypeConverter.printHexBinary(geom.getWkb()));
     }
 
@@ -46,7 +46,7 @@ public class MySqlGeometryTest {
         //This represents 'SRID=4326;POLYGON((0 0, 1 1, 1 0, 0 0))'
         MySqlGeometry geom = MySqlGeometry.fromBytes(mysqlBytes);
         assertFalse(geom.isPoint());
-        assertEquals(geom.getSrid(), 4326);
+        assertEquals(geom.getSrid(), Integer.valueOf(4326));
         assertEquals("0103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F000000000000000000000000000000000000000000000000", DatatypeConverter.printHexBinary(geom.getWkb()));
     }
 
@@ -56,7 +56,7 @@ public class MySqlGeometryTest {
         //This represents 'SRID=3187;GEOMETRYCOLLECTION(POINT(1 1), LINESTRING(0 0, 1 1))'
         MySqlGeometry geom = MySqlGeometry.fromBytes(mysqlBytes);
         assertFalse(geom.isPoint());
-        assertEquals(geom.getSrid(), 3187);
+        assertEquals(geom.getSrid(), Integer.valueOf(3187));
         assertEquals("0107000000020000000101000000000000000000F03F000000000000F03F01020000000200000000000000000000000000000000000000000000000000F03F000000000000F03F", DatatypeConverter.printHexBinary(geom.getWkb()));
 
     }
@@ -67,7 +67,7 @@ public class MySqlGeometryTest {
         //This represents 'MULTIPOINT(1 1, 2 2)''
         MySqlGeometry geom = MySqlGeometry.fromBytes(mysqlBytes);
         assertFalse(geom.isPoint());
-        assertEquals(geom.getSrid(), 0);
+        assertEquals(geom.getSrid(), null);
         assertEquals("0104000000020000000101000000000000000000F03F000000000000F03F010100000000000000000000400000000000000040", DatatypeConverter.printHexBinary(geom.getWkb()));
     }
 }

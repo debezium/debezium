@@ -286,7 +286,7 @@ public abstract class AbstractRecordsProducerTest {
                 // geometries are encoded here as HexEWKB
                 new SchemaAndValueField("ga", SchemaBuilder.array(geomSchema).optional().build(),
                         Arrays.asList(
-                                Geometry.createValue(geomSchema, PostgisGeometry.hex2bin("010700000000000000"), 0),
+                                Geometry.createValue(geomSchema, PostgisGeometry.hex2bin("010700000000000000"), null),
                                 Geometry.createValue(geomSchema, PostgisGeometry.hex2bin("01030000000100000005000000B81E85EB51D0644052B81E85EB5147C0713D0AD7A350664052B81E85EB5147C0713D0AD7A35066409A999999993941C0B81E85EB51D064409A999999993941C0B81E85EB51D0644052B81E85EB5147C0"), 4326)
                         )
                 )

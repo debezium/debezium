@@ -29,8 +29,9 @@ public class MySqlGeometry {
     /**
      * Coordinate reference system identifier. While it's technically user-defined,
      * the standard/common values in use are the EPSG code list http://www.epsg.org/
+     * null if unset/unknown
      */
-    private final int srid;
+    private final Integer srid;
     /**
      * {X,Y} coordinate pair if the geometry is a 2D point
      */
@@ -47,7 +48,7 @@ public class MySqlGeometry {
      *
      * @param wkb the Well-Known binary representation of the coordinate in the standard format
      */
-    private MySqlGeometry(byte[] wkb, int srid) {
+    private MySqlGeometry(byte[] wkb, Integer srid) {
         this.wkb = wkb;
         this.srid = srid;
 
@@ -65,8 +66,14 @@ public class MySqlGeometry {
     public static MySqlGeometry fromBytes(final byte[] mysqlBytes) {
         ByteBuffer buf = ByteBuffer.wrap(mysqlBytes);
         buf.order(ByteOrder.LITTLE_ENDIAN);
+
         // first 4 bytes are SRID
-        int srid = buf.getInt();
+        Integer srid = buf.getInt();
+        if (srid == 0) {
+            // Debezium uses null for an unset/unknown SRID
+            srid = null;
+        }
+
         // remainder is WKB
         byte[] wkb = new byte[buf.remaining()];
         buf.get(wkb);
@@ -86,7 +93,7 @@ public class MySqlGeometry {
      * Returns the coordinate reference system identifier (SRID)
      * @return srid
      */
-    public int getSrid() {
+    public Integer getSrid() {
         return srid;
     }
 
@@ -141,7 +148,7 @@ public class MySqlGeometry {
      * @return a {@link MySqlGeometry} which represents a MySqlGeometry API
      */
     public static MySqlGeometry createEmpty() {
-        return new MySqlGeometry(WKB_EMPTY_GEOMETRYCOLLECTION, 0);
+        return new MySqlGeometry(WKB_EMPTY_GEOMETRYCOLLECTION, null);
     }
 
 }

@@ -42,10 +42,10 @@ public class Point extends Geometry {
                 .name(LOGICAL_NAME)
                 .version(1)
                 .doc("Geometry (POINT)")
-                .field(WKB_FIELD, Schema.BYTES_SCHEMA)
-                .field(SRID_FIELD, Schema.INT32_SCHEMA)
                 .field(X_FIELD, Schema.FLOAT64_SCHEMA)
-                .field(Y_FIELD, Schema.FLOAT64_SCHEMA);
+                .field(Y_FIELD, Schema.FLOAT64_SCHEMA)
+                .field(WKB_FIELD, Schema.BYTES_SCHEMA)
+                .field(SRID_FIELD, Schema.OPTIONAL_INT32_SCHEMA);
     }
 
     private static final int WKB_POINT = 1;  // type constant
@@ -106,8 +106,7 @@ public class Point extends Geometry {
     public static Struct createValue(Schema geomSchema, double x, double y){
         // turn the specified points
         byte[] wkb = buildWKBPoint(x, y);
-        // -1 is the typical SRID=unknown value
-        Struct result = Geometry.createValue(geomSchema, wkb, -1);
+        Struct result = Geometry.createValue(geomSchema, wkb, null);
         result.put(X_FIELD, x);
         result.put(Y_FIELD, y);
         return result;
@@ -117,10 +116,10 @@ public class Point extends Geometry {
      * Create a value for this schema using WKB
      * @param pointSchema a {@link Schema} instance which represents a point; may not be null
      * @param wkb the original Well-Known binary representation of the coordinate; may not be null
-     * @param srid the coordinate reference system identifier
+     * @param srid the coordinate reference system identifier; null if unset/unknown
      * @return a {@link Struct} which represents a Connect value for this schema; never null
      */
-    public static Struct createValue(Schema geomSchema, byte[] wkb, int srid) throws IllegalArgumentException {
+    public static Struct createValue(Schema geomSchema, byte[] wkb, Integer srid) throws IllegalArgumentException {
         Struct result = Geometry.createValue(geomSchema, wkb, srid);
         double[] pt = parseWKBPoint(wkb);
         result.put(X_FIELD, pt[0]);

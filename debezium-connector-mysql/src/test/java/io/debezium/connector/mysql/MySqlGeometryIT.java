@@ -186,14 +186,14 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
             assertThat(after.getStruct("linestring").getInt32("srid")).isEqualTo(3187);
             assertThat(DatatypeConverter.printHexBinary(after.getStruct("linestring").getBytes("wkb"))).isEqualTo("01020000000200000000000000000000000000000000000000000000000000F03F000000000000F03F");
 
-            assertThat(after.getStruct("polygon").getInt32("srid")).isEqualTo(0);
+            assertThat(after.getStruct("polygon").getInt32("srid")).isEqualTo(null);
             assertThat(DatatypeConverter.printHexBinary(after.getStruct("polygon").getBytes("wkb"))).isEqualTo("0103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F000000000000000000000000000000000000000000000000");
 
             assertThat(after.getStruct("collection").getInt32("srid")).isEqualTo(4326);
             assertThat(DatatypeConverter.printHexBinary(after.getStruct("collection").getBytes("wkb"))).isEqualTo("0107000000020000000101000000000000000000F03F000000000000F03F01020000000200000000000000000000000000000000000000000000000000F03F000000000000F03F");
         } else if (i == 2) {
             // INSERT INTO dbz_507_geometry VALUES (2, ST_GeomFromText('LINESTRING(0 0, 1 1)'), NULL, NULL, NULL);
-            assertThat(after.getStruct("geom").getInt32("srid")).isEqualTo(0);
+            assertThat(after.getStruct("geom").getInt32("srid")).isEqualTo(null);
             assertThat(DatatypeConverter.printHexBinary(after.getStruct("geom").getBytes("wkb"))).isEqualTo("01020000000200000000000000000000000000000000000000000000000000F03F000000000000F03F");
 
             assertThat(after.getStruct("linestring")).isNull();

@@ -7,7 +7,6 @@ package io.debezium.data.geometry;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.kafka.connect.data.Struct;
 
 /**
  * A semantic type for a Geography class.
@@ -21,11 +20,8 @@ import org.apache.kafka.connect.data.Struct;
  *
  * @author Robert Coup
  */
-public class Geography {
+public class Geography extends Geometry {
     public static final String LOGICAL_NAME = "io.debezium.data.geometry.Geography";
-
-    public static final String WKB_FIELD = "wkb";
-    public static final String SRID_FIELD = "srid";
 
     /**
      * Returns a {@link SchemaBuilder} for a Geography field. You can use the resulting SchemaBuilder
@@ -39,30 +35,6 @@ public class Geography {
                             .version(1)
                             .doc("Geography")
                             .field(WKB_FIELD, Schema.BYTES_SCHEMA)
-                            .field(SRID_FIELD, Schema.INT32_SCHEMA);
-    }
-
-    /**
-     * Returns a {@link SchemaBuilder} for a Geography field, with all other default Schema settings.
-     *
-     * @return the schema
-     * @see #builder()
-     */
-    public static Schema schema() {
-        return builder().build();
-    }
-
-    /**
-     * Create a value for this schema using WKB and SRID
-     * @param geomSchema a {@link Schema} instance which represents a Geography; may not be null
-     * @param wkb OGC Well-Known Binary representation of the geometry; may not be null
-     * @param srid the coordinate reference system identifier; may not be null
-     * @return a {@link Struct} which represents a Connect value for this schema; never null
-     */
-    public static Struct createValue(Schema geogSchema, byte[] wkb, int srid){
-        Struct result = new Struct(geogSchema);
-        result.put(WKB_FIELD, wkb);
-        result.put(SRID_FIELD, srid);
-        return result;
+                            .field(SRID_FIELD, Schema.OPTIONAL_INT32_SCHEMA);
     }
 }

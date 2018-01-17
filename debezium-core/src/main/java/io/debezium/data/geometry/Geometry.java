@@ -39,7 +39,7 @@ public class Geometry {
                             .version(1)
                             .doc("Geometry")
                             .field(WKB_FIELD, Schema.BYTES_SCHEMA)
-                            .field(SRID_FIELD, Schema.INT32_SCHEMA);
+                            .field(SRID_FIELD, Schema.OPTIONAL_INT32_SCHEMA);
     }
 
     /**
@@ -56,13 +56,15 @@ public class Geometry {
      * Create a value for this schema using WKB and SRID
      * @param geomSchema a {@link Schema} instance which represents a geometry; may not be null
      * @param wkb OGC Well-Known Binary representation of the geometry; may not be null
-     * @param srid the coordinate reference system identifier; may not be null
+     * @param srid the coordinate reference system identifier; may be null if unset/unknown
      * @return a {@link Struct} which represents a Connect value for this schema; never null
      */
-    public static Struct createValue(Schema geomSchema, byte[] wkb, int srid){
+    public static Struct createValue(Schema geomSchema, byte[] wkb, Integer srid){
         Struct result = new Struct(geomSchema);
         result.put(WKB_FIELD, wkb);
-        result.put(SRID_FIELD, srid);
+        if (srid != null) {
+            result.put(SRID_FIELD, srid);
+        }
         return result;
     }
 }

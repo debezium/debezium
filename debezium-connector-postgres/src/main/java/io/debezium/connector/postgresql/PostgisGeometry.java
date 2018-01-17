@@ -23,8 +23,9 @@ public class PostgisGeometry {
     /**
      * Coordinate reference system identifier. While it's technically user-defined,
      * the standard/common values in use are the EPSG code list http://www.epsg.org/
+     * null if unset/unspecified
      */
-    private final int srid;
+    private final Integer srid;
 
     /**
      * Static Hex EKWB for a GEOMETRYCOLLECTION EMPTY.
@@ -61,9 +62,9 @@ public class PostgisGeometry {
      * Create a PostgisGeometry using the supplied EWKB and SRID.
      *
      * @param ewkb the Extended Well-Known binary representation of the coordinate in the standard format
-     * @param srid the coordinate system identifier (SRID)
+     * @param srid the coordinate system identifier (SRID); null if unset/unknown
      */
-    private PostgisGeometry(byte[] ewkb, int srid) {
+    private PostgisGeometry(byte[] ewkb, Integer srid) {
         this.wkb = ewkb;
         this.srid = srid;
     }
@@ -91,9 +92,9 @@ public class PostgisGeometry {
      * https://trac.osgeo.org/postgis/browser/trunk/doc/ZMSgeoms.txt
      *
      * @param ewkb PostGIS EWKB geometry
-     * @return Geometry SRID or 0 if there is no SRID.
+     * @return Geometry SRID or null if there is no SRID.
      */
-    protected static int parseSrid(byte[] ewkb) {
+    protected static Integer parseSrid(byte[] ewkb) {
         if (ewkb.length < 9) {
             throw new IllegalArgumentException("Invalid EWKB length");
         }
@@ -111,7 +112,7 @@ public class PostgisGeometry {
             // value is encoded as a 4 byte integer right after the type integer.
             return reader.getInt();
         }
-        return 0;
+        return null;
     }
 
     /**

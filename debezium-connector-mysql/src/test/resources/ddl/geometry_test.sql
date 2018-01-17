@@ -16,7 +16,7 @@ CREATE TABLE dbz_222_point (
   expected_srid INT,
   PRIMARY KEY (id)
 ) DEFAULT CHARSET=utf8;
-INSERT INTO dbz_222_point VALUES (default,GeomFromText('POINT(1 1)'), 1.0, 1.0, 0);
+INSERT INTO dbz_222_point VALUES (default,GeomFromText('POINT(1 1)'), 1.0, 1.0, NULL);
 INSERT INTO dbz_222_point VALUES (default,GeomFromText('POINT(8.25554554 3.22124447)', 4326), 8.25554554, 3.22124447, 4326);
 INSERT INTO dbz_222_point VALUES (default,GeomFromText('POINT(0 0)', 1234), 0.0, 0.0, 1234);
 INSERT INTO dbz_222_point VALUES (default,NULL, NULL, NULL, NULL);
