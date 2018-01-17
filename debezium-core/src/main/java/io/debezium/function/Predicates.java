@@ -203,7 +203,7 @@ public class Predicates {
     }
 
     /**
-     * Generate a predicate function that for any supplied string returns a {@link Pattern} if of the regular expression
+     * Generate a predicate function that for any supplied string returns a {@link Pattern} representing the first regular expression
      * in the supplied comma-separated list that matches the predicate parameter in a case-insensitive manner.
      *
      * @param regexPatterns the comma-separated regular expression pattern (or literal) strings; may not be null
