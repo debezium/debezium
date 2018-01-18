@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.config.ConfigurationDefaults;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.time.Temporals;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Metronome;
@@ -32,8 +33,8 @@ import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
 
 /**
- * Kafka connect source task which uses Postgres logical decoding over a streaming replication connection to process DB changes. 
- * 
+ * Kafka connect source task which uses Postgres logical decoding over a streaming replication connection to process DB changes.
+ *
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 public class PostgresConnectorTask extends SourceTask {
@@ -47,7 +48,7 @@ public class PostgresConnectorTask extends SourceTask {
     private int maxBatchSize;
     private RecordsProducer producer;
     private Metronome metronome;
-    private long pollIntervalMs;
+    private Duration pollInterval;
 
     public PostgresConnectorTask() {
     }
@@ -58,26 +59,25 @@ public class PostgresConnectorTask extends SourceTask {
             // already running
             return;
         }
-    
+
         if (context == null) {
             throw new ConnectException("Unexpected null context");
         }
-    
+
         // Validate the configuration ...
         PostgresConnectorConfig config = new PostgresConnectorConfig(Configuration.from(props));
         if (!config.validateAndRecord(logger::error)) {
             throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }
-        
-        
+
         // create the task context and schema...
         PostgresSchema schema = new PostgresSchema(config);
         this.taskContext = new PostgresTaskContext(config, schema);
-        
+
         // create the queue in which records will be produced
         this.queue = new LinkedBlockingDeque<>(config.maxQueueSize());
         this.maxBatchSize = config.maxBatchSize();
-        
+
         SourceInfo sourceInfo = new SourceInfo(config.serverName());
         Map<String, Object> existingOffset = context.offsetStorageReader().offset(sourceInfo.partition());
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
@@ -86,7 +86,7 @@ public class PostgresConnectorTask extends SourceTask {
             try (PostgresConnection connection = taskContext.createConnection()) {
                 logger.info(connection.serverInfo().toString());
             }
-            
+
             if (existingOffset == null) {
                 logger.info("No previous offset found");
                 if (config.snapshotNeverAllowed()) {
@@ -118,9 +118,9 @@ public class PostgresConnectorTask extends SourceTask {
                     producer = new RecordsStreamProducer(taskContext, sourceInfo);
                 }
             }
-    
+
             metronome = Metronome.sleeper(config.pollIntervalMs(), TimeUnit.MILLISECONDS, Clock.SYSTEM);
-            pollIntervalMs = config.pollIntervalMs();
+            pollInterval = Duration.ofMillis(config.pollIntervalMs());
             producer.start(this::enqueueRecord);
             running.compareAndSet(false, true);
         }  catch (SQLException e) {
@@ -129,11 +129,11 @@ public class PostgresConnectorTask extends SourceTask {
             previousContext.restore();
         }
     }
-    
+
     private void enqueueRecord(SourceRecord record) {
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
-            queue.put(record);    
+            queue.put(record);
             if (logger.isDebugEnabled()) {
                 logger.debug("Placed source record '{}' into queue", record);
             }
@@ -145,31 +145,31 @@ public class PostgresConnectorTask extends SourceTask {
             previousContext.restore();
         }
     }
-    
+
     private void createSnapshotProducer(PostgresTaskContext taskContext, SourceInfo sourceInfo, boolean initialOnlySnapshot) {
         if (initialOnlySnapshot) {
             logger.info("Taking only a snapshot of the DB without streaming any changes afterwards...");
-            producer = new RecordsSnapshotProducer(taskContext, sourceInfo, false); 
+            producer = new RecordsSnapshotProducer(taskContext, sourceInfo, false);
         } else {
             logger.info("Taking a new snapshot of the DB and streaming logical changes once the snapshot is finished...");
-            producer = new RecordsSnapshotProducer(taskContext, sourceInfo, true);   
+            producer = new RecordsSnapshotProducer(taskContext, sourceInfo, true);
         }
     }
-    
+
     @Override
     public void commit() throws InterruptedException {
         if (running.get()) {
             producer.commit();
         }
     }
-    
+
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
             logger.debug("polling records...");
             List<SourceRecord> records = new ArrayList<>();
-            final Timer timeout = Threads.timer(Clock.SYSTEM, Duration.ofMillis(Math.max(pollIntervalMs, ConfigurationDefaults.RETURN_CONTROL_INTERVAL.toMillis())));
+            final Timer timeout = Threads.timer(Clock.SYSTEM, Temporals.max(pollInterval, ConfigurationDefaults.RETURN_CONTROL_INTERVAL));
             while (running.get() && queue.drainTo(records, maxBatchSize) == 0) {
                 if (taskContext.getTaskFailure() != null) {
                     throw new ConnectException(taskContext.getTaskFailure());
@@ -190,17 +190,17 @@ public class PostgresConnectorTask extends SourceTask {
             }
             return records;
         } finally {
-            previousContext.restore();    
+            previousContext.restore();
         }
     }
-    
+
     @Override
     public void stop() {
         if (running.compareAndSet(true, false)) {
             producer.stop();
         }
     }
-    
+
     @Override
     public String version() {
         return Module.version();
