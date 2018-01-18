@@ -12,15 +12,16 @@ import org.apache.kafka.connect.data.SchemaBuilder;
  * A semantic type for a Geography class.
  * Used to describe geometries operating on a spherical base (rather than Geometry which operates on a planar basis).
  * This is extremely similar to a Geometry – but they're quite different types and not in a hierarchy.
- *
+ * <p>
  * See the Open Geospatial Consortium Simple Features Access specification for details on
  * the Well-Known-Binary format http://www.opengeospatial.org/standards/sfa
- *
+ * <p>
  * WKB has to be forwards-compatible to the spec, so strict OGC WKB, and EWKB (PostGIS) are both ok.
  *
  * @author Robert Coup
  */
 public class Geography extends Geometry {
+
     public static final String LOGICAL_NAME = "io.debezium.data.geometry.Geography";
 
     /**

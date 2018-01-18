@@ -5,13 +5,15 @@
  */
 package io.debezium.connector.mysql;
 
-import org.junit.Test;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import javax.xml.bind.DatatypeConverter;
+
+import org.junit.Test;
+
+import io.debezium.data.geometry.Point;
 
 /**
  * @author Omar Al-Safi
@@ -25,7 +27,7 @@ public class MySqlGeometryTest {
         MySqlGeometry geom = MySqlGeometry.fromBytes(mysqlBytes);
         assertTrue(geom.isPoint());
         assertEquals(geom.getSrid(), null);
-        double[] coords = geom.getPointCoords();
+        double[] coords = Point.parseWKBPoint(geom.getWkb());
         assertEquals(coords[0], 6.9845, 0.0001);
         assertEquals(coords[1], 18.22115554, 0.0001);
     }
@@ -58,7 +60,6 @@ public class MySqlGeometryTest {
         assertFalse(geom.isPoint());
         assertEquals(geom.getSrid(), Integer.valueOf(3187));
         assertEquals("0107000000020000000101000000000000000000F03F000000000000F03F01020000000200000000000000000000000000000000000000000000000000F03F000000000000F03F", DatatypeConverter.printHexBinary(geom.getWkb()));
-
     }
 
     @Test

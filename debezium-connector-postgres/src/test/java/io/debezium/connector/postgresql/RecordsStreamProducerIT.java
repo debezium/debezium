@@ -23,8 +23,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
@@ -40,8 +38,6 @@ import io.debezium.relational.TableId;
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(RecordsStreamProducerIT.class);
 
     private RecordsStreamProducer recordsProducer;
     private TestConsumer consumer;

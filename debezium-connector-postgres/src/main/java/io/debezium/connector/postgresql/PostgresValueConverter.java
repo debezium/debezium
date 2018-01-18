@@ -25,7 +25,6 @@ import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.postgresql.core.TypeInfo;
 import org.postgresql.geometric.PGpoint;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
@@ -60,7 +59,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     /**
      * The approximation used by the plugin when converting a duration to micros
      */
-    protected static final double DAYS_PER_MONTH_AVG = 365.25 / 12.0d;
+    static final double DAYS_PER_MONTH_AVG = 365.25 / 12.0d;
 
     /**
      * Variable scale decimal/numeric is defined by metadata
@@ -75,18 +74,12 @@ public class PostgresValueConverter extends JdbcValueConverters {
      */
     private final boolean includeUnknownDatatypes;
 
-    protected TypeInfo oidTypeInfo;
-
     private final PostgresSchema schema;
 
     protected PostgresValueConverter(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode, boolean includeUnknownDatatypes, PostgresSchema schema) {
         super(decimalMode, temporalPrecisionMode, defaultOffset, null, bigIntUnsignedMode);
         this.includeUnknownDatatypes = includeUnknownDatatypes;
         this.schema = schema;
-    }
-
-    public void setTypeInfo(TypeInfo info) {
-        this.oidTypeInfo = info;
     }
 
     @Override
@@ -180,7 +173,6 @@ public class PostgresValueConverter extends JdbcValueConverters {
             default:
                 return super.schemaBuilder(column);
         }
-
     }
 
     private SchemaBuilder numericSchema(final Column column) {
@@ -453,14 +445,14 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
         try {
             if (data instanceof byte[]) {
-                PostgisGeometry geom = PostgisGeometry.fromEWKB((byte[]) data);
+                PostgisGeometry geom = PostgisGeometry.fromEwkb((byte[]) data);
                 return io.debezium.data.geometry.Geometry.createValue(schema, geom.getWkb(), geom.getSrid());
             } else if (data instanceof PGobject) {
                 PGobject pgo = (PGobject)data;
-                PostgisGeometry geom = PostgisGeometry.fromHexEWKB(pgo.getValue());
+                PostgisGeometry geom = PostgisGeometry.fromHexEwkb(pgo.getValue());
                 return io.debezium.data.geometry.Geometry.createValue(schema, geom.getWkb(), geom.getSrid());
             } else if (data instanceof String) {
-                PostgisGeometry geom = PostgisGeometry.fromHexEWKB((String)data);
+                PostgisGeometry geom = PostgisGeometry.fromHexEwkb((String)data);
                 return io.debezium.data.geometry.Geometry.createValue(schema, geom.getWkb(), geom.getSrid());
             }
         } catch (IllegalArgumentException e) {
@@ -484,14 +476,14 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
         try {
             if (data instanceof byte[]) {
-                PostgisGeometry geom = PostgisGeometry.fromEWKB((byte[]) data);
+                PostgisGeometry geom = PostgisGeometry.fromEwkb((byte[]) data);
                 return io.debezium.data.geometry.Geography.createValue(schema, geom.getWkb(), geom.getSrid());
             } else if (data instanceof PGobject) {
                 PGobject pgo = (PGobject)data;
-                PostgisGeometry geom = PostgisGeometry.fromHexEWKB(pgo.getValue());
+                PostgisGeometry geom = PostgisGeometry.fromHexEwkb(pgo.getValue());
                 return io.debezium.data.geometry.Geography.createValue(schema, geom.getWkb(), geom.getSrid());
             } else if (data instanceof String) {
-                PostgisGeometry geom = PostgisGeometry.fromHexEWKB((String)data);
+                PostgisGeometry geom = PostgisGeometry.fromHexEwkb((String)data);
                 return io.debezium.data.geometry.Geography.createValue(schema, geom.getWkb(), geom.getSrid());
             }
         } catch (IllegalArgumentException e) {

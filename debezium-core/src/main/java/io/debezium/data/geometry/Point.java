@@ -12,24 +12,25 @@ import java.nio.ByteOrder;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * A semantic type for a geometric Point, defined as a set of (x,y) coordinates.
  *
- * This historically used to be a useful class, but is now a MySQL-only type to be deprecated.
+ * This historically used to be a useful class, but is now mostly obsolete due
+ * to the generic {@link Geometry} type. TODO for 1.0: Decide whether to remove
+ * it or keep it.
  *
  * @author Horia Chiorean
  * @author Omar Al-Safi
  */
 public class Point extends Geometry {
 
-    protected static final Logger LOGGER = LoggerFactory.getLogger(Point.class);
-
     public static final String LOGICAL_NAME = "io.debezium.data.geometry.Point";
     public static final String X_FIELD = "x";
     public static final String Y_FIELD = "y";
+
+    private static final int WKB_POINT = 1;  // type constant
+    private static final int WKB_POINT_SIZE = (1 + 4 + 8 + 8);  // fixed size
 
     /**
      * Returns a {@link SchemaBuilder} for a Point field.
@@ -48,16 +49,13 @@ public class Point extends Geometry {
                 .field(SRID_FIELD, Schema.OPTIONAL_INT32_SCHEMA);
     }
 
-    private static final int WKB_POINT = 1;  // type constant
-    private static final int WKB_POINT_SIZE = (1 + 4 + 8 + 8);  // fixed size
-
     /**
      * Creates WKB for a 2D {x,y} point.
      * @param x coordinate
      * @param y coordinate
      * @return OGC WKB byte array
      */
-    protected static byte[] buildWKBPoint(double x, double y) {
+    private static byte[] buildWKBPoint(double x, double y) {
         ByteBuffer wkb = ByteBuffer.allocate(WKB_POINT_SIZE);
         wkb.put((byte)1); // BOM
         wkb.order(ByteOrder.LITTLE_ENDIAN);
@@ -74,7 +72,7 @@ public class Point extends Geometry {
      * @param wkb OGC WKB geometry
      * @return x,y coordinate array
      */
-    protected static double[] parseWKBPoint(byte[] wkb) throws IllegalArgumentException {
+    public static double[] parseWKBPoint(byte[] wkb) throws IllegalArgumentException {
         if (wkb.length != WKB_POINT_SIZE) {
             throw new IllegalArgumentException(String.format("Invalid WKB for Point (length %d < %d)", wkb.length, WKB_POINT_SIZE));
         }

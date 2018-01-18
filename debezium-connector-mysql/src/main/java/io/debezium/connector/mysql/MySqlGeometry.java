@@ -8,10 +8,6 @@ package io.debezium.connector.mysql;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-
 /**
  * A parser API for MySQL Geometry types
  *
@@ -19,7 +15,11 @@ import org.slf4j.LoggerFactory;
  * @author Robert Coup
  */
 public class MySqlGeometry {
-    protected static final Logger LOGGER = LoggerFactory.getLogger(MySqlGeometry.class);
+
+    // WKB constants from http://www.opengeospatial.org/standards/sfa
+    private static final int WKB_POINT_SIZE = (1 + 4 + 8 + 8);  // fixed size
+    // WKB for a GEOMETRYCOLLECTION EMPTY object
+    private static final byte[] WKB_EMPTY_GEOMETRYCOLLECTION = {0x01, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};  // 0x010700000000000000
 
     /**
      * Open Geospatial Consortium Well-Known-Binary representation of the Geometry.
@@ -32,16 +32,6 @@ public class MySqlGeometry {
      * null if unset/unknown
      */
     private final Integer srid;
-    /**
-     * {X,Y} coordinate pair if the geometry is a 2D point
-     */
-    private final double[] coords;
-
-    // WKB constants from http://www.opengeospatial.org/standards/sfa
-    private static final int WKB_POINT = 1;  // type constant
-    private static final int WKB_POINT_SIZE = (1 + 4 + 8 + 8);  // fixed size
-    // WKB for a GEOMETRYCOLLECTION EMPTY object
-    private static final byte[] WKB_EMPTY_GEOMETRYCOLLECTION = {0x01, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};  // 0x010700000000000000
 
     /**
      * Create a MySqlGeometry using the supplied wkb, note this should be the cleaned wkb for MySQL
@@ -51,9 +41,6 @@ public class MySqlGeometry {
     private MySqlGeometry(byte[] wkb, Integer srid) {
         this.wkb = wkb;
         this.srid = srid;
-
-        // this will be either a {X,Y} coordinate pair if the geometry is a 2D point, null otherwise
-        this.coords = parseWKBPoint(wkb);
     }
 
     /**
@@ -102,44 +89,7 @@ public class MySqlGeometry {
      * @return true if the geometry is a 2D Point.
      */
     public boolean isPoint() {
-        return (coords != null);
-    }
-
-    /**
-     * Returns the {x,y} coordinates of this geometry if it is a 2D Point.
-     * @return {x,y} coordinate array, or null if the geometry is not a 2D Point.
-     */
-    public double[] getPointCoords() {
-        return coords;
-    }
-
-    /**
-     * Parses a 2D WKB Point into a {x,y} coordinate array.
-     * Returns null for any non-point or points with Z/M/etc modifiers.
-     * @param wkb OGC WKB geometry
-     * @return {x,y} coordinate array, or null if the geometry is not a 2D Point
-     */
-    protected double[] parseWKBPoint(byte[] wkb) {
-        if (wkb == null) {
-            return null;
-        } else if (wkb.length != WKB_POINT_SIZE) {
-            return null;
-        }
-
-        final ByteBuffer reader = ByteBuffer.wrap(wkb);
-
-        // Read the BOM
-        reader.order((reader.get() != 0) ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN);
-
-        int geomType = reader.getInt();
-        if (geomType != WKB_POINT) {
-            // we only parse 2D points
-            return null;
-        }
-
-        double x = reader.getDouble();
-        double y = reader.getDouble();
-        return new double[] {x, y};
+        return wkb.length == WKB_POINT_SIZE;
     }
 
     /**
@@ -150,5 +100,4 @@ public class MySqlGeometry {
     public static MySqlGeometry createEmpty() {
         return new MySqlGeometry(WKB_EMPTY_GEOMETRYCOLLECTION, null);
     }
-
 }

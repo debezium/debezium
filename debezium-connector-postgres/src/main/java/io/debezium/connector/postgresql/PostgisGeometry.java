@@ -9,8 +9,17 @@ package io.debezium.connector.postgresql;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-
+/**
+ * A parser API for Postgres Geometry types
+ *
+ * @author Robert Coup
+ */
 public class PostgisGeometry {
+
+    /**
+     * Static Hex EKWB for a GEOMETRYCOLLECTION EMPTY.
+     */
+    private static final String HEXEWKB_EMPTY_GEOMETRYCOLLECTION = "010700000000000000";
 
     /**
      * PostGIS Extended-Well-Known-Binary (EWKB) geometry representation. An extension of the
@@ -20,6 +29,7 @@ public class PostgisGeometry {
      * http://www.opengeospatial.org/standards/sfa
      */
     private final byte[] wkb;
+
     /**
      * Coordinate reference system identifier. While it's technically user-defined,
      * the standard/common values in use are the EPSG code list http://www.epsg.org/
@@ -28,24 +38,19 @@ public class PostgisGeometry {
     private final Integer srid;
 
     /**
-     * Static Hex EKWB for a GEOMETRYCOLLECTION EMPTY.
-     */
-    private static final String HEXEWKB_EMPTY_GEOMETRYCOLLECTION = "010700000000000000";
-
-    /**
      * Create a PostgisGeometry using the supplied PostGIS Hex EWKB string.
      * SRID is extracted from the EWKB
      */
-    public static PostgisGeometry fromHexEWKB(String hexEWKB) {
-        byte[] ewkb = hex2bin(hexEWKB);
-        return fromEWKB(ewkb);
+    public static PostgisGeometry fromHexEwkb(String hexEwkdb) {
+        byte[] ewkb = hex2bin(hexEwkdb);
+        return fromEwkb(ewkb);
     }
 
     /**
      * Create a PostgisGeometry using the supplied PostGIS EWKB.
      * SRID is extracted from the EWKB
      */
-    public static PostgisGeometry fromEWKB(byte[] ewkb) {
+    public static PostgisGeometry fromEwkb(byte[] ewkb) {
         return new PostgisGeometry(ewkb, parseSrid(ewkb));
     }
 
@@ -55,7 +60,7 @@ public class PostgisGeometry {
      * @return a {@link PostgisGeometry} which represents a PostgisGeometry API
      */
     public static PostgisGeometry createEmpty() {
-        return PostgisGeometry.fromHexEWKB(HEXEWKB_EMPTY_GEOMETRYCOLLECTION);
+        return PostgisGeometry.fromHexEwkb(HEXEWKB_EMPTY_GEOMETRYCOLLECTION);
     }
 
     /**
@@ -82,7 +87,7 @@ public class PostgisGeometry {
      * Returns the coordinate reference system identifier (SRID)
      * @return srid
      */
-    public int getSrid() {
+    public Integer getSrid() {
         return srid;
     }
 
@@ -94,7 +99,7 @@ public class PostgisGeometry {
      * @param ewkb PostGIS EWKB geometry
      * @return Geometry SRID or null if there is no SRID.
      */
-    protected static Integer parseSrid(byte[] ewkb) {
+    private static Integer parseSrid(byte[] ewkb) {
         if (ewkb.length < 9) {
             throw new IllegalArgumentException("Invalid EWKB length");
         }

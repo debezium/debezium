@@ -15,7 +15,6 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Schema;
-import org.postgresql.jdbc.PgConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -89,7 +88,6 @@ public class PostgresSchema {
     protected PostgresSchema refresh(PostgresConnection connection, boolean printReplicaIdentityInfo) throws SQLException {
         if (typeInfo == null) {
             typeInfo = connection.readTypeInfo();
-            this.valueConverter.setTypeInfo(((PgConnection)connection.connection()).getTypeInfo());
         }
 
         // read all the information from the DB
@@ -183,15 +181,6 @@ public class PostgresSchema {
 
     protected int columnTypeNameToJdbcTypeId(String localTypeName) {
         return typeInfo.get(localTypeName);
-    }
-
-    protected int columnTypeNameToPgOid(String localTypeName) {
-        String typeName = TableId.parse(localTypeName).table();  // type names here can be '"scheme"."type"'
-        Integer oid = typeInfo.get(typeName);
-        if (oid == null || oid == 0 || oid == PgOid.UNSPECIFIED) {
-            LOGGER.warn("columnTypeNameToPgOid: {} ({}) => {}", localTypeName, typeName, oid);
-        }
-        return oid;
     }
 
     protected Stream<TableId> tables() {

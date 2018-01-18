@@ -571,7 +571,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @return the converted value, or null if the conversion could not be made and the column allows nulls
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
-    protected Object convertGeometry(Column column, Field fieldDefn, Object data){
+    protected Object convertGeometry(Column column, Field fieldDefn, Object data) {
         if (data == null) {
             data = fieldDefn.schema().defaultValue();
         }
@@ -579,7 +579,10 @@ public class MySqlValueConverters extends JdbcValueConverters {
         Schema schema = fieldDefn.schema();
 
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
+
             MySqlGeometry emptyMysqlGeometry = MySqlGeometry.createEmpty();
             return io.debezium.data.geometry.Point.createValue(schema, emptyMysqlGeometry.getWkb(), emptyMysqlGeometry.getSrid());
         }
@@ -590,6 +593,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
             MySqlGeometry mySqlGeometry = MySqlGeometry.fromBytes((byte[]) data);
             return io.debezium.data.geometry.Geometry.createValue(schema, mySqlGeometry.getWkb(), mySqlGeometry.getSrid());
         }
+
         return handleUnknownData(column, fieldDefn, data);
     }
 
