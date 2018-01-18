@@ -49,10 +49,7 @@ public class PostgresConnectorTask extends SourceTask {
     private RecordsProducer producer;
     private Metronome metronome;
     private Duration pollInterval;
-    private volatile SourceRecord lastRecordForRecovery = null;
-
-    public PostgresConnectorTask() {
-    }
+    private volatile long lastProcessedLsn;
 
     @Override
     public void start(Map<String, String> props) {
@@ -160,7 +157,7 @@ public class PostgresConnectorTask extends SourceTask {
     @Override
     public void commit() throws InterruptedException {
         if (running.get()) {
-            producer.commit(lastRecordForRecovery);
+            producer.commit(lastProcessedLsn);
         }
     }
 
@@ -194,7 +191,8 @@ public class PostgresConnectorTask extends SourceTask {
                 for (int i = records.size() - 1; i >= 0; i--) {
                     SourceRecord r = records.get(i);
                     if (((Map<String, Boolean>)r.sourceOffset()).getOrDefault(SourceInfo.LAST_EVENT_FOR_LSN, Boolean.TRUE)) {
-                        lastRecordForRecovery = r;
+                        Map<String, ?> offset = r.sourceOffset();
+                        lastProcessedLsn = (Long)offset.get(SourceInfo.LSN_KEY);
                         break;
                     }
                 }
