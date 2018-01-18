@@ -23,8 +23,6 @@ import org.bson.BsonValue;
 import org.junit.Before;
 import org.junit.Test;
 
-import io.debezium.connector.mongodb.transforms.MongoDataConverter;
-
 /**
  * Unit test for {@code MongoDataConverter}.
  *

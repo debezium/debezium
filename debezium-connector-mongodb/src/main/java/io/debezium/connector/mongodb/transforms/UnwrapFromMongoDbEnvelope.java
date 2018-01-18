@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.mongodb.transforms;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -21,11 +20,6 @@ import org.apache.kafka.connect.transforms.Transformation;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-
 /**
  * Debezium Mongo Connector generates the CDC records in String format. Sink connectors usually are not able to parse
  * the string and insert the document as it is represented in the Source. so a user use this SMT to parse the String
@@ -34,7 +28,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author Sairam Polavarapu
  */
-public class StringToJSON<R extends ConnectRecord<R>> implements Transformation<R> {
+public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Transformation<R> {
 
     private final ExtractField<R> afterExtractor = new ExtractField.Value<R>();
     private final ExtractField<R> patchExtractor = new ExtractField.Value<R>();
@@ -46,39 +40,21 @@ public class StringToJSON<R extends ConnectRecord<R>> implements Transformation<
         SchemaBuilder schemabuilder1 = SchemaBuilder.struct();
         BsonDocument value = null;
         BsonDocument Key = null;
-        ObjectMapper mapper = new ObjectMapper();
 
         final R afterRecord = afterExtractor.apply(r);
+        final R key = keyExtractor.apply(r);
+        Key = BsonDocument.parse("{ \"id\" : " + key.key().toString() + "}");
 
         if (afterRecord.value() == null) {
             final R patchRecord = patchExtractor.apply(r);
-            final R key = keyExtractor.apply(r);
-            ObjectNode patchEventWKey = mapper.createObjectNode();
-            JsonNode patchEvent = null;
+            value = BsonDocument.parse(patchRecord.value().toString());
+            value = value.getDocument("$set");            
 
-            try {
-                patchEvent = mapper.readTree(patchRecord.value().toString());
-            } catch (JsonProcessingException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
+            if (!value.containsKey("id")) {
+                value.append("id", Key.get("id"));
             }
-            patchEventWKey.set("$set",patchEvent.path("$set"));
-            boolean hasId = patchEvent.has("_id");
-            if(hasId) {
-                patchEventWKey.set("_id", patchEvent.path("_id"));
             } else {
-                patchEventWKey.set("_id", mapper.convertValue(key.key(), JsonNode.class));
-            }
-
-            value = BsonDocument.parse(patchEventWKey.toString());
-            BsonDocument doc = new BsonDocument().append("id", value.get("_id"));
-            Key = BsonDocument.parse(doc.toString());
-
-        } else {
             value = BsonDocument.parse(afterRecord.value().toString());
-            BsonDocument doc = new BsonDocument().append("id", value.get("_id"));
-            Key = BsonDocument.parse(doc.toString());
         }
 
         Set<Entry<String, BsonValue>> valuePairs = value.entrySet();
