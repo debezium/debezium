@@ -22,7 +22,7 @@ import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Testing;
-import junit.framework.Assert;
+import org.junit.Assert;
 import mil.nga.wkb.geom.Point;
 import mil.nga.wkb.io.ByteReader;
 import mil.nga.wkb.io.WkbGeometryReader;
