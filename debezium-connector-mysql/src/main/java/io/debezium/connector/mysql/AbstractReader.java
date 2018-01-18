@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import com.github.shyiko.mysql.binlog.network.ServerException;
 
 import io.debezium.config.ConfigurationDefaults;
+import io.debezium.time.Temporals;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 import io.debezium.util.Threads;
@@ -219,7 +220,7 @@ public abstract class AbstractReader implements Reader {
 
         logger.trace("Polling for next batch of records");
         List<SourceRecord> batch = new ArrayList<>(maxBatchSize);
-        final Timer timeout = Threads.timer(Clock.SYSTEM, Duration.ofMillis(Math.max(context.pollIntervalInMillseconds(), ConfigurationDefaults.RETURN_CONTROL_INTERVAL.toMillis())));
+        final Timer timeout = Threads.timer(Clock.SYSTEM, Temporals.max(Duration.ofMillis(context.pollIntervalInMillseconds()), ConfigurationDefaults.RETURN_CONTROL_INTERVAL));
         while (running.get() && (records.drainTo(batch, maxBatchSize) == 0) && !success.get()) {
             // No records are available even though the snapshot has not yet completed, so sleep for a bit ...
             metronome.pause();
