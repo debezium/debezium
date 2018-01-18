@@ -69,7 +69,7 @@ public class SnapshotReader extends AbstractReader {
      */
     public SnapshotReader(String name, MySqlTaskContext context) {
         super(name, context);
-        this.includeData = !context.isSchemaOnlySnapshot() && !context.isSchemaOnlyRecoverySnapshot();
+        this.includeData = context.snapshotMode().includeData();
         recorder = this::recordRowAsRead;
         metrics = new SnapshotReaderMetrics(context.clock());
     }
@@ -668,8 +668,8 @@ public class SnapshotReader extends AbstractReader {
 
     protected void readBinlogPosition(int step, SourceInfo source, JdbcConnection mysql, AtomicReference<String> sql) throws SQLException {
         if (context.isSchemaOnlyRecoverySnapshot()) {
-            // We are in schema only recovery mode, use the existing binlog position            
-            if (source.binlogFilename() == null || source.binlogFilename().isEmpty()) {
+            // We are in schema only recovery mode, use the existing binlog position
+            if (Strings.isNullOrEmpty(source.binlogFilename())) {
                 // would like to also verify binlog position exists, but it defaults to 0 which is technically valid
                 throw new IllegalStateException("Could not find existing binlog information while attempting schema only recovery snapshot");
             }
