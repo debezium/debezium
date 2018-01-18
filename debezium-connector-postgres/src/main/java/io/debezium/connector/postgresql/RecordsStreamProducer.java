@@ -116,7 +116,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 // this will block until a message is available
-                stream.read(x -> process(x, stream.lastReceivedLSN(), consumer));
+                stream.read(x -> process(x, stream.lastReceivedLsn(), consumer));
             } catch (SQLException e) {
                 Throwable cause = e.getCause();
                 if (cause != null && (cause instanceof IOException)) {
@@ -136,20 +136,14 @@ public class RecordsStreamProducer extends RecordsProducer {
     }
 
     @Override
-    protected synchronized void commit(final SourceRecord lastRecordForRecovery)  {
+    protected synchronized void commit(long lsn)  {
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
             ReplicationStream replicationStream = this.replicationStream.get();
             if (replicationStream != null) {
                 // tell the server the point up to which we've processed data, so it can be free to recycle WAL segments
                 logger.debug("flushing offsets to server...");
-                if (lastRecordForRecovery != null) {
-                    Map<String, ?> offset = lastRecordForRecovery.sourceOffset();
-                    Long lsn = (Long)offset.get(SourceInfo.LSN_KEY);
-                    if (lsn != null) {
-                        replicationStream.flushLSN();
-                    }
-                }
+                replicationStream.flushLsn(lsn);
             } else {
                 logger.debug("streaming has already stopped, ignoring commit callback...");
             }

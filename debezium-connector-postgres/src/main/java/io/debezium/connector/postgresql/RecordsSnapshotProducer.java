@@ -108,8 +108,8 @@ public class RecordsSnapshotProducer extends RecordsProducer {
     }
 
     @Override
-    protected void commit(final SourceRecord lastRecordForRecovery)  {
-        streamProducer.ifPresent(x -> x.commit(lastRecordForRecovery));
+    protected void commit(long lsn)  {
+        streamProducer.ifPresent(x -> x.commit(lsn));
     }
 
     @Override
