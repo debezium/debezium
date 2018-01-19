@@ -80,7 +80,6 @@ final class SourceInfo {
     public static final String LSN_KEY = "lsn";
     public static final String SNAPSHOT_KEY = "snapshot";
     public static final String LAST_SNAPSHOT_RECORD_KEY = "last_snapshot_record";
-    public static final String LAST_EVENT_FOR_LSN = "last_event_for_lsn";
 
     /**
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition()} and {@link #offset()} information.
@@ -93,7 +92,6 @@ final class SourceInfo {
                                                      .field(LSN_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                      .field(SNAPSHOT_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
                                                      .field(LAST_SNAPSHOT_RECORD_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
-                                                     .field(LAST_EVENT_FOR_LSN, Schema.OPTIONAL_BOOLEAN_SCHEMA)
                                                      .build();
 
     private final String serverName;
@@ -104,8 +102,7 @@ final class SourceInfo {
     private Long useconds;
     private boolean snapshot = false;
     private Boolean lastSnapshotRecord;
-    private Boolean lastEventForLsn;
-
+     
     protected SourceInfo(String serverName) {
         this.serverName = serverName;
         this.sourcePartition = Collections.singletonMap(SERVER_PARTITION_KEY, serverName);
@@ -119,7 +116,6 @@ final class SourceInfo {
         if (this.snapshot) {
             this.lastSnapshotRecord = (Boolean) lastStoredOffset.get(LAST_SNAPSHOT_RECORD_KEY);
         }
-        this.lastEventForLsn = (Boolean)lastStoredOffset.get(LAST_EVENT_FOR_LSN);
     }
 
     /**
@@ -155,9 +151,6 @@ final class SourceInfo {
             result.put(SNAPSHOT_KEY, true);
             result.put(LAST_SNAPSHOT_RECORD_KEY, lastSnapshotRecord);
         }
-        if (lastEventForLsn != null) {
-            result.put(LAST_EVENT_FOR_LSN, lastEventForLsn);
-        }
         return result;
     }
     
@@ -168,15 +161,13 @@ final class SourceInfo {
      * available
      * @param useconds the commit time (in microseconds since epoch) of the transaction that generated the event; 
      * may be null indicating that this information is not available
-     * @param txId the ID of the transaction that generated the transaction; may be null if this information is not available
-     * @param lastEventForLsn a flag indicating that record associated with offset was the last one in a batch with same LSN
+     * @param txId the ID of the transaction that generated the transaction; may be null if this information nis not available
      * @return this instance
      */
-    protected SourceInfo update(Long lsn, Long useconds, Integer txId, boolean lastEventForLsn) {
+    protected SourceInfo update(Long lsn, Long useconds, Integer txId) {
         this.lsn = lsn;
         this.useconds = useconds;
         this.txId = txId;
-        this.lastEventForLsn = lastEventForLsn;
         return this;
     }
     
@@ -270,9 +261,5 @@ final class SourceInfo {
         }
         sb.append(']');
         return sb.toString();
-    }
-
-    protected Boolean getLastEventForLsn() {
-        return lastEventForLsn;
     }
 }

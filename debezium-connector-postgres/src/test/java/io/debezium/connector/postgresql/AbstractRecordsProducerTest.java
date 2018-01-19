@@ -442,7 +442,7 @@ public abstract class AbstractRecordsProducerTest {
          return new TestConsumer(expectedRecordsCount, topicPrefixes);
     }
 
-    protected static class TestConsumer implements Consumer<SourceRecord> {
+    protected static class TestConsumer implements Consumer<ChangeEvent> {
         private final ConcurrentLinkedQueue<SourceRecord> records;
         private final VariableLatch latch;
         private final List<String> topicPrefixes;
@@ -456,7 +456,8 @@ public abstract class AbstractRecordsProducerTest {
         }
 
         @Override
-        public void accept(SourceRecord record) {
+        public void accept(ChangeEvent event) {
+            final SourceRecord record = event.getRecord();
             if ( ignoreTopic(record.topic()) ) {
                 return;
             }
