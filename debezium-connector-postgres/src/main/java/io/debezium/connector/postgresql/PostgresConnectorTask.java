@@ -15,6 +15,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -44,7 +45,7 @@ public class PostgresConnectorTask extends SourceTask {
     private final AtomicBoolean running = new AtomicBoolean(false);
 
     private PostgresTaskContext taskContext;
-    private BlockingQueue<SourceRecord> queue;
+    private BlockingQueue<ChangeEvent> queue;
     private int maxBatchSize;
     private RecordsProducer producer;
     private Metronome metronome;
@@ -128,7 +129,7 @@ public class PostgresConnectorTask extends SourceTask {
         }
     }
 
-    private void enqueueRecord(SourceRecord record) {
+    private void enqueueRecord(ChangeEvent record) {
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
             queue.put(record);
@@ -161,15 +162,14 @@ public class PostgresConnectorTask extends SourceTask {
         }
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
             logger.debug("polling records...");
-            List<SourceRecord> records = new ArrayList<>();
+            List<ChangeEvent> events = new ArrayList<>();
             final Timer timeout = Threads.timer(Clock.SYSTEM, Temporals.max(pollInterval, ConfigurationDefaults.RETURN_CONTROL_INTERVAL));
-            while (running.get() && queue.drainTo(records, maxBatchSize) == 0) {
+            while (running.get() && queue.drainTo(events, maxBatchSize) == 0) {
                 if (taskContext.getTaskFailure() != null) {
                     throw new ConnectException(taskContext.getTaskFailure());
                 }
@@ -187,17 +187,17 @@ public class PostgresConnectorTask extends SourceTask {
                     break;
                 }
             }
-            if (records.size() > 0) {
-                for (int i = records.size() - 1; i >= 0; i--) {
-                    SourceRecord r = records.get(i);
-                    if (((Map<String, Boolean>)r.sourceOffset()).getOrDefault(SourceInfo.LAST_EVENT_FOR_LSN, Boolean.TRUE)) {
+            if (events.size() > 0) {
+                for (int i = events.size() - 1; i >= 0; i--) {
+                    SourceRecord r = events.get(i).getRecord();
+                    if (events.get(i).isLastOfLsn()) {
                         Map<String, ?> offset = r.sourceOffset();
                         lastProcessedLsn = (Long)offset.get(SourceInfo.LSN_KEY);
                         break;
                     }
                 }
             }
-            return records;
+            return events.stream().map(ChangeEvent::getRecord).collect(Collectors.toList());
         } finally {
             previousContext.restore();
         }

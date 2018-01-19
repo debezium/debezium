@@ -8,7 +8,6 @@ package io.debezium.connector.postgresql;
 
 import java.util.function.Consumer;
 
-import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,9 +38,9 @@ public abstract class RecordsProducer {
      * Starts up this producer. This is normally done by a {@link PostgresConnectorTask} instance. Subclasses should start
      * enqueuing records via a separate thread at the end of this method.
      *
-     * @param recordsConsumer a consumer of {@link SourceRecord} instances, may not be null
+     * @param recordsConsumer a consumer of {@link ChangeEvent} instances, may not be null
      */
-    protected abstract void start(Consumer<SourceRecord> recordsConsumer);
+    protected abstract void start(Consumer<ChangeEvent> recordsConsumer);
 
     /**
      * Notification that offsets have been committed to Kafka up to the given LSN.
