@@ -102,8 +102,8 @@ public final class EmbeddedEngine implements Runnable {
                                                                   .withDefault("");
 
     /**
-     * An optional field that specifies the file location for the {@link KafkaOffsetBackingStore}.
-     * 
+     * An optional field that specifies the topic name for the {@link KafkaOffsetBackingStore}.
+     *
      * @see #OFFSET_STORAGE
      */
     public static final Field OFFSET_STORAGE_KAFKA_TOPIC = Field.create(DistributedConfig.OFFSET_STORAGE_TOPIC_CONFIG)
@@ -112,6 +112,32 @@ public final class EmbeddedEngine implements Runnable {
                                                                         +
                                                                         KafkaOffsetBackingStore.class.getName() + " class.")
                                                                 .withDefault("");
+
+    /**
+     * An optional field that specifies the number of partitions for the {@link KafkaOffsetBackingStore}.
+     *
+     * @see #OFFSET_STORAGE
+     */
+
+    public static final Field OFFSET_STORAGE_KAFKA_PARTITIONS = Field.create(DistributedConfig.OFFSET_STORAGE_PARTITIONS_CONFIG)
+                                                                     .withType(ConfigDef.Type.INT)
+                                                                     .withDescription("The number of partitions used when creating the offset storage topic. "
+                                                                             + "Required with other properties when 'offset.storage' is set to the "
+                                                                             +
+                                                                             KafkaOffsetBackingStore.class.getName() + " class.");
+
+    /**
+     * An optional field that specifies the replication factor for the {@link KafkaOffsetBackingStore}.
+     *
+     * @see #OFFSET_STORAGE
+     */
+
+    public static final Field OFFSET_STORAGE_KAFKA_REPLICATION_FACTOR = Field.create(DistributedConfig.OFFSET_STORAGE_REPLICATION_FACTOR_CONFIG)
+                                                                             .withType(ConfigDef.Type.SHORT)
+                                                                             .withDescription("Replication factor used when creating the offset storage topic. "
+                                                                                     + "Required with other properties when 'offset.storage' is set to the "
+                                                                                     +
+                                                                                     KafkaOffsetBackingStore.class.getName() + " class.");
 
     /**
      * An optional advanced field that specifies the maximum amount of time that the embedded connector should wait
@@ -850,6 +876,8 @@ public final class EmbeddedEngine implements Runnable {
             ConfigDef config = baseConfigDef();
             Field.group(config, "file", OFFSET_STORAGE_FILE_FILENAME);
             Field.group(config, "kafka", OFFSET_STORAGE_KAFKA_TOPIC);
+            Field.group(config, "kafka", OFFSET_STORAGE_KAFKA_PARTITIONS);
+            Field.group(config, "kafka", OFFSET_STORAGE_KAFKA_REPLICATION_FACTOR);
             CONFIG = config;
         }
 
