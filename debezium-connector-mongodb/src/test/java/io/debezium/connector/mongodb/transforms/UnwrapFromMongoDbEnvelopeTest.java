@@ -7,172 +7,150 @@ package io.debezium.connector.mongodb.transforms;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
-import java.util.Map.Entry;
+import java.util.List;
 
-import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.sink.SinkRecord;
-import org.apache.kafka.connect.transforms.ExtractField;
-import org.bson.BsonDocument;
-import org.bson.BsonValue;
+import org.apache.kafka.connect.source.SourceRecord;
+import org.bson.BsonTimestamp;
+import org.bson.Document;
+import org.bson.types.ObjectId;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import io.debezium.data.Envelope.FieldName;
-import io.debezium.data.Json;
+import io.debezium.connector.mongodb.CollectionId;
+import io.debezium.connector.mongodb.RecordMakers;
+import io.debezium.connector.mongodb.RecordMakers.RecordsForCollection;
+import io.debezium.connector.mongodb.SourceInfo;
+import io.debezium.connector.mongodb.TopicSelector;
 
 /**
- * Unit test for {@code UnwrapFromMongoDbEnvelope}.
+ * Unit test for {@link UnwrapFromMongoDbEnvelope}. It uses {@link RecordMakers}
+ * to assemble source records as the connector would emit them and feeds them to
+ * the SMT.
  *
- * @author Sairam Polavarapu
+ * @author Gunnar Morling
  */
 public class UnwrapFromMongoDbEnvelopeTest {
 
-    private ExtractField<SinkRecord> afterExtractor;
-    private ExtractField<SinkRecord> patchExtractor;
-    private ExtractField<SinkRecord> keyExtractor;
+    private static final String SERVER_NAME = "serverX.";
+    private static final String PREFIX = SERVER_NAME + ".";
+
+    private SourceInfo source;
+    private RecordMakers recordMakers;
+    private TopicSelector topicSelector;
+    private List<SourceRecord> produced;
+
+    private UnwrapFromMongoDbEnvelope<SourceRecord> transformation;
 
     @Before
-    public void setup() throws Exception {
-        afterExtractor = new ExtractField.Value<>();
-        afterExtractor.configure(Collections.singletonMap("field", "after"));
-        patchExtractor = new ExtractField.Value<>();
-        patchExtractor.configure(Collections.singletonMap("field", "patch"));
-        keyExtractor = new ExtractField.Key<>();
-        keyExtractor.configure(Collections.singletonMap("field", "id"));
+    public void setup() {
+        source = new SourceInfo(SERVER_NAME);
+        topicSelector = TopicSelector.defaultSelector(PREFIX);
+        produced = new ArrayList<>();
+        recordMakers = new RecordMakers(source, topicSelector, produced::add);
+
+        transformation = new UnwrapFromMongoDbEnvelope<SourceRecord>();
+        transformation.configure(Collections.emptyMap());
+    }
+
+    @After
+    public void closeSmt() {
+        transformation.close();
     }
 
     @Test
-    public void shouldCreateCorrectStructsFromInsertJson() {
-        final Schema keySchema = SchemaBuilder.struct()
-                 .field("id", Schema.STRING_SCHEMA)
-                 .build();
+    public void shouldTransformRecordForInsertEvent() throws InterruptedException {
+        CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
+        BsonTimestamp ts = new BsonTimestamp(1000, 1);
+        ObjectId objId = new ObjectId();
+        Document obj = new Document().append("_id", objId)
+                .append("name", "Sally")
+                .append("phone", 123L)
+                .append("active", true)
+                .append("scores", Arrays.asList(1.2, 3.4, 5.6));
 
-        final Struct key = new Struct(keySchema).put("id", "{ \"$oid\" : \"5a01e6d384d7be31bf48dac7\"}");
+        // given
+        Document event = new Document().append("o", obj)
+                                       .append("ns", "dbA.c1")
+                                       .append("ts", ts)
+                                       .append("h", Long.valueOf(12345678))
+                                       .append("op", "i");
+        RecordsForCollection records = recordMakers.forCollection(collectionId);
+        records.recordEvent(event, 1002);
+        assertThat(produced.size()).isEqualTo(1);
+        SourceRecord record = produced.get(0);
 
-        final Schema valueSchema = SchemaBuilder.struct()
-                .field(FieldName.AFTER, Json.builder().optional().build())
-                .field("patch", Json.builder().optional().build())
-                .build();
+        // when
+        SourceRecord transformed = transformation.apply(record);
 
-        final Struct value = new Struct(valueSchema).put("after", "{\"_id\" : {\"$oid\" : \"5a01e6d384d7be31bf48dac7\"},\"borough\" : \"Manhattan\",\"cuisine\" : \"Irish\"}")
-                .put("patch", null);
+        Struct key = (Struct) transformed.key();
+        Struct value = (Struct) transformed.value();
 
-        final SinkRecord record = new SinkRecord("test", 0, keySchema, key, valueSchema, value, 0);
+        // then assert key and its schema
+        assertThat(key.schema()).isSameAs(transformed.keySchema());
+        assertThat(key.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(key.get("id")).isEqualTo(objId.toString());
 
-        final SinkRecord afterRecord = afterExtractor.apply(record);
-        BsonDocument valueRecord = BsonDocument.parse(afterRecord.value().toString());
-        BsonDocument doc = new BsonDocument().append("id", valueRecord.get("_id"));
-        BsonDocument keyRecord = BsonDocument.parse(doc.toString());
+        // and then assert value and its schema
+        assertThat(value.schema()).isSameAs(transformed.valueSchema());
+        assertThat(value.get("name")).isEqualTo("Sally");
+        assertThat(value.get("id")).isEqualTo(objId.toString());
+        assertThat(value.get("phone")).isEqualTo(123L);
+        assertThat(value.get("active")).isEqualTo(true);
+        assertThat(value.get("scores")).isEqualTo(Arrays.asList(1.2, 3.4, 5.6));
 
-        SchemaBuilder valueBuilder = SchemaBuilder.struct();
-        SchemaBuilder keyBuilder = SchemaBuilder.struct();
+        assertThat(value.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("phone").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT64_SCHEMA);
+        assertThat(value.schema().field("active").schema()).isEqualTo(SchemaBuilder.OPTIONAL_BOOLEAN_SCHEMA);
+        assertThat(value.schema().field("scores").schema()).isEqualTo(SchemaBuilder.array(SchemaBuilder.OPTIONAL_FLOAT64_SCHEMA).build());
+        assertThat(value.schema().fields()).hasSize(5);
 
-        for (Entry<String, BsonValue> entry : valueRecord.entrySet()) {
-            MongoDataConverter.addFieldSchema(entry, valueBuilder);
-        }
-
-        for (Entry<String, BsonValue> entry : keyRecord.entrySet()) {
-            MongoDataConverter.addFieldSchema(entry, valueBuilder);
-        }
-
-        Schema finalValueSchema = valueBuilder.build();
-        Schema finalKeySchema = keyBuilder.build();
-        Struct valueStruct = new Struct(finalValueSchema);
-        Struct keyStruct = new Struct(finalValueSchema);
-
-        for (Entry<String, BsonValue> entry : valueRecord.entrySet()) {
-            MongoDataConverter.convertRecord(entry, finalValueSchema, valueStruct);
-        }
-
-        for (Entry<String, BsonValue> entry : keyRecord.entrySet()) {
-            MongoDataConverter.convertRecord(entry, finalKeySchema, keyStruct);
-        }
-
-        assertThat(valueStruct.toString()).isEqualTo(
-                "Struct{"
-                + "_id=5a01e6d384d7be31bf48dac7,"
-                + "borough=Manhattan,"
-                + "cuisine=Irish"
-              + "}"
-        );
-
-        assertThat(keyStruct.toString()).isEqualTo(
-                "Struct{"
-                + "id=5a01e6d384d7be31bf48dac7"
-              + "}"
-        );
+        transformation.close();
     }
 
     @Test
-    public void shouldCreateCorrectUpdateStructsFromUpdateJson() {
-        final Schema keySchema = SchemaBuilder.struct()
-                .field("id", Schema.STRING_SCHEMA)
-                .build();
+    public void shouldGenerateRecordForUpdateEvent() throws InterruptedException {
+        BsonTimestamp ts = new BsonTimestamp(1000, 1);
+        CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
+        ObjectId objId = new ObjectId();
+        Document obj = new Document().append("$set", new Document("name", "Sally"));
 
-        final Struct key = new Struct(keySchema).put("id", "{ \"$oid\" : \"5a01e6d384d7be31bf48dac7\"}");
+        // given
+        Document event = new Document().append("o", obj)
+                                       .append("o2", objId)
+                                       .append("ns", "dbA.c1")
+                                       .append("ts", ts)
+                                       .append("h", Long.valueOf(12345678))
+                                       .append("op", "u");
+        RecordsForCollection records = recordMakers.forCollection(collectionId);
+        records.recordEvent(event, 1002);
+        assertThat(produced.size()).isEqualTo(1);
+        SourceRecord record = produced.get(0);
 
-        final Schema valueSchema = SchemaBuilder.struct()
-                .field(FieldName.AFTER, Json.builder().optional().build())
-                .field("patch", Json.builder().optional().build())
-                .build();
+        // when
+        SourceRecord transformed = transformation.apply(record);
 
-        final Struct value = new Struct(valueSchema).put("after", null)
-                .put("patch", "{\"$set\" : {\"cuisine\" : \"French\"}}");
+        Struct key = (Struct) transformed.key();
+        Struct value = (Struct) transformed.value();
 
-        final SinkRecord record = new SinkRecord("test", 0, keySchema, key, valueSchema, value, 0);
+        // then assert key and its schema
+        assertThat(key.schema()).isSameAs(transformed.keySchema());
+        assertThat(key.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(key.get("id")).isEqualTo(objId.toString());
 
-        final SinkRecord afterRecord = afterExtractor.apply(record);
+        // and then assert value and its schema
+        assertThat(value.schema()).isSameAs(transformed.valueSchema());
+        assertThat(value.get("name")).isEqualTo("Sally");
+        assertThat(value.get("id")).isEqualTo(objId.toString());
 
-        if (afterRecord.value() == null) {
-            final SinkRecord patchRecord = patchExtractor.apply(record);
-            final SinkRecord Key = keyExtractor.apply(record);
-            BsonDocument valueRecord = BsonDocument.parse(patchRecord.value().toString());
-            valueRecord = valueRecord.getDocument("$set");
-
-            BsonDocument keyRecord = BsonDocument.parse("{ \"id\" : " + Key.key().toString() + "}");
-
-            if (!valueRecord.containsKey("_id")) {
-                valueRecord.append("_id", keyRecord.get("id"));
-            }
-
-            SchemaBuilder valueBuilder = SchemaBuilder.struct();
-            SchemaBuilder keyBuilder = SchemaBuilder.struct();
-
-            for (Entry<String, BsonValue> entry : valueRecord.entrySet()) {
-                MongoDataConverter.addFieldSchema(entry, valueBuilder);
-            }
-
-            for (Entry<String, BsonValue> entry : keyRecord.entrySet()) {
-                MongoDataConverter.addFieldSchema(entry, valueBuilder);
-            }
-
-            Schema finalValueSchema = valueBuilder.build();
-            Schema finalKeySchema = keyBuilder.build();
-            Struct finalValueStruct = new Struct(finalValueSchema);
-            Struct finalKeyStruct = new Struct(finalValueSchema);
-
-            for (Entry<String, BsonValue> entry : valueRecord.entrySet()) {
-                MongoDataConverter.convertRecord(entry, finalValueSchema, finalValueStruct);
-            }
-
-            for (Entry<String, BsonValue> entry : keyRecord.entrySet()) {
-                MongoDataConverter.convertRecord(entry, finalKeySchema, finalKeyStruct);
-            }
-
-            assertThat(finalValueStruct.toString()).isEqualTo(
-                    "Struct{"
-                    + "cuisine=French,"
-                    + "_id=5a01e6d384d7be31bf48dac7"
-                  + "}"
-            );
-            assertThat(finalKeyStruct.toString()).isEqualTo(
-                    "Struct{"
-                    + "id=5a01e6d384d7be31bf48dac7"
-                  + "}"
-            );
-        }
+        assertThat(value.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().fields()).hasSize(2);
     }
 }

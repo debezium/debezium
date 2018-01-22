@@ -36,49 +36,50 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
 
     @Override
     public R apply(R r) {
-        SchemaBuilder schemabuilder = SchemaBuilder.struct();
-        SchemaBuilder schemabuilder1 = SchemaBuilder.struct();
-        BsonDocument value = null;
-        BsonDocument Key = null;
+        SchemaBuilder valueSchemaBuilder = SchemaBuilder.struct();
+        SchemaBuilder keySchemabuilder = SchemaBuilder.struct();
+        BsonDocument valueDocument = null;
 
         final R afterRecord = afterExtractor.apply(r);
         final R key = keyExtractor.apply(r);
-        Key = BsonDocument.parse("{ \"id\" : " + key.key().toString() + "}");
+        BsonDocument keyDocument = BsonDocument.parse("{ \"id\" : " + key.key().toString() + "}");
 
         if (afterRecord.value() == null) {
             final R patchRecord = patchExtractor.apply(r);
-            value = BsonDocument.parse(patchRecord.value().toString());
-            value = value.getDocument("$set");
+            valueDocument = BsonDocument.parse(patchRecord.value().toString());
+            valueDocument = valueDocument.getDocument("$set");
 
-            if (!value.containsKey("id")) {
-                value.append("id", Key.get("id"));
+            if (!valueDocument.containsKey("id")) {
+                valueDocument.append("id", keyDocument.get("id"));
             }
-            } else {
-                value = BsonDocument.parse(afterRecord.value().toString());
-            }
+        } else {
+            valueDocument = BsonDocument.parse(afterRecord.value().toString());
+            valueDocument.remove("_id");
+            valueDocument.append("id", keyDocument.get("id"));
+        }
 
-        Set<Entry<String, BsonValue>> valuePairs = value.entrySet();
-        Set<Entry<String, BsonValue>> keyPairs = Key.entrySet();
+        Set<Entry<String, BsonValue>> valuePairs = valueDocument.entrySet();
+        Set<Entry<String, BsonValue>> keyPairs = keyDocument.entrySet();
 
         for (Entry<String, BsonValue> valuePairsforSchema : valuePairs) {
             if(valuePairsforSchema.getKey().toString().equalsIgnoreCase("$set")) {
                 BsonDocument val1 = BsonDocument.parse(valuePairsforSchema.getValue().toString());
                 Set<Entry<String, BsonValue>> keyValuesforSetSchema = val1.entrySet();
                 for (Entry<String, BsonValue> keyValuesforSetSchemaEntry : keyValuesforSetSchema) {
-                    MongoDataConverter.addFieldSchema(keyValuesforSetSchemaEntry, schemabuilder);
+                    MongoDataConverter.addFieldSchema(keyValuesforSetSchemaEntry, valueSchemaBuilder);
                 }
             } else {
-                MongoDataConverter.addFieldSchema(valuePairsforSchema, schemabuilder);
+                MongoDataConverter.addFieldSchema(valuePairsforSchema, valueSchemaBuilder);
             }
         }
 
         for (Entry<String, BsonValue> keyPairsforSchema : keyPairs) {
-            MongoDataConverter.addFieldSchema(keyPairsforSchema, schemabuilder1);
+            MongoDataConverter.addFieldSchema(keyPairsforSchema, keySchemabuilder);
         }
 
-        Schema finalValueSchema = schemabuilder.build();
+        Schema finalValueSchema = valueSchemaBuilder.build();
         Struct finalValueStruct = new Struct(finalValueSchema);
-        Schema finalKeySchema = schemabuilder1.build();
+        Schema finalKeySchema = keySchemabuilder.build();
         Struct finalKeyStruct = new Struct(finalKeySchema);
 
         for (Entry<String, BsonValue> valuePairsforStruct : valuePairs) {
