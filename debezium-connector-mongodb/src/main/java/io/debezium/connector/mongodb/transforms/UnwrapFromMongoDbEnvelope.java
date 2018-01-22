@@ -48,14 +48,14 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
         if (afterRecord.value() == null) {
             final R patchRecord = patchExtractor.apply(r);
             value = BsonDocument.parse(patchRecord.value().toString());
-            value = value.getDocument("$set");            
+            value = value.getDocument("$set");
 
             if (!value.containsKey("id")) {
                 value.append("id", Key.get("id"));
             }
             } else {
-            value = BsonDocument.parse(afterRecord.value().toString());
-        }
+                value = BsonDocument.parse(afterRecord.value().toString());
+            }
 
         Set<Entry<String, BsonValue>> valuePairs = value.entrySet();
         Set<Entry<String, BsonValue>> keyPairs = Key.entrySet();

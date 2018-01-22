@@ -269,51 +269,50 @@ public class MongoDataConverter {
                 BsonType valueType = keyValuesforSchema.getValue().asArray().get(0).getBsonType();
 
                 switch (valueType) {
+                    case NULL:
+                        LOG.warn("Data type {} not currently supported", valueType);
+                        break;
 
-                case NULL:
-                    LOG.warn("Data type {} not currently supported", valueType);
-                    break;
+                    case STRING:
+                    case JAVASCRIPT:
+                    case OBJECT_ID:
+                    case DECIMAL128:
+                        builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).build());
+                        break;
+                    case DOUBLE:
+                        builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_FLOAT64_SCHEMA).build());
+                        break;
+                    case BINARY:
+                        builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_BYTES_SCHEMA).build());
+                        break;
 
-                case STRING:
-                case JAVASCRIPT:
-                case OBJECT_ID:
-                case DECIMAL128:
-                    builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).build());
-                    break;
-                case DOUBLE:
-                    builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_FLOAT64_SCHEMA).build());
-                    break;
-                case BINARY:
-                    builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_BYTES_SCHEMA).build());
-                    break;
+                    case INT32:
+                    case TIMESTAMP:
+                        builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).build());
+                        break;
 
-                case INT32:
-                case TIMESTAMP:
-                    builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).build());
-                    break;
+                    case INT64:
+                    case DATE_TIME:
+                        builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).build());
+                        break;
 
-                case INT64:
-                case DATE_TIME:
-                    builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).build());
-                    break;
+                    case BOOLEAN:
+                        builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_BOOLEAN_SCHEMA).build());
+                        break;
 
-                case BOOLEAN:
-                    builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_BOOLEAN_SCHEMA).build());
-                    break;
+                    case DOCUMENT:
+                        SchemaBuilder documentSchemaBuilder = SchemaBuilder.struct();
+                        BsonDocument arrayDocs = keyValuesforSchema.getValue().asArray().get(0).asDocument();
 
-                case DOCUMENT:
-                    SchemaBuilder documentSchemaBuilder = SchemaBuilder.struct();
-                    BsonDocument arrayDocs = keyValuesforSchema.getValue().asArray().get(0).asDocument();
+                        for (Entry<String, BsonValue> arrayDoc : arrayDocs.entrySet()) {
+                            addFieldSchema(arrayDoc, documentSchemaBuilder);
+                        }
+                        Schema build = documentSchemaBuilder.build();
+                        builder.field(key, SchemaBuilder.array(build).build());
+                        break;
 
-                    for (Entry<String, BsonValue> arrayDoc : arrayDocs.entrySet()) {
-                        addFieldSchema(arrayDoc, documentSchemaBuilder);
-                    }
-                    Schema build = documentSchemaBuilder.build();
-                    builder.field(key, SchemaBuilder.array(build).build());
-                    break;
-
-                default:
-                    break;
+                    default:
+                        break;
                 }
                 break;
             }

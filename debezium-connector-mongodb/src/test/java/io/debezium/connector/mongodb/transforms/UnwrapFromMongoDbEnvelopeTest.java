@@ -6,6 +6,7 @@
 package io.debezium.connector.mongodb.transforms;
 
 import static org.fest.assertions.Assertions.assertThat;
+
 import java.util.Collections;
 import java.util.Map.Entry;
 
@@ -21,8 +22,9 @@ import org.junit.Test;
 
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Json;
+
 /**
- * Unit test for {@code StringToJSON}.
+ * Unit test for {@code UnwrapFromMongoDbEnvelope}.
  *
  * @author Sairam Polavarapu
  */
@@ -34,17 +36,16 @@ public class UnwrapFromMongoDbEnvelopeTest {
 
     @Before
     public void setup() throws Exception {
-    afterExtractor = new ExtractField.Value<>();
-    afterExtractor.configure(Collections.singletonMap("field", "after"));
-    patchExtractor = new ExtractField.Value<>();
-    patchExtractor.configure(Collections.singletonMap("field", "patch"));
-    keyExtractor = new ExtractField.Key<>();
-    keyExtractor.configure(Collections.singletonMap("field", "id"));
+        afterExtractor = new ExtractField.Value<>();
+        afterExtractor.configure(Collections.singletonMap("field", "after"));
+        patchExtractor = new ExtractField.Value<>();
+        patchExtractor.configure(Collections.singletonMap("field", "patch"));
+        keyExtractor = new ExtractField.Key<>();
+        keyExtractor.configure(Collections.singletonMap("field", "id"));
     }
 
     @Test
     public void shouldCreateCorrectStructsFromInsertJson() {
-
         final Schema keySchema = SchemaBuilder.struct()
                  .field("id", Schema.STRING_SCHEMA)
                  .build();
@@ -71,24 +72,24 @@ public class UnwrapFromMongoDbEnvelopeTest {
 
         for (Entry<String, BsonValue> entry : valueRecord.entrySet()) {
             MongoDataConverter.addFieldSchema(entry, valueBuilder);
-            }
+        }
 
         for (Entry<String, BsonValue> entry : keyRecord.entrySet()) {
             MongoDataConverter.addFieldSchema(entry, valueBuilder);
-            }
+        }
 
         Schema finalValueSchema = valueBuilder.build();
         Schema finalKeySchema = keyBuilder.build();
         Struct valueStruct = new Struct(finalValueSchema);
         Struct keyStruct = new Struct(finalValueSchema);
-        
+
         for (Entry<String, BsonValue> entry : valueRecord.entrySet()) {
             MongoDataConverter.convertRecord(entry, finalValueSchema, valueStruct);
-            }
+        }
 
         for (Entry<String, BsonValue> entry : keyRecord.entrySet()) {
             MongoDataConverter.convertRecord(entry, finalKeySchema, keyStruct);
-            }
+        }
 
         assertThat(valueStruct.toString()).isEqualTo(
                 "Struct{"
@@ -97,7 +98,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
                 + "cuisine=Irish"
               + "}"
         );
-        
+
         assertThat(keyStruct.toString()).isEqualTo(
                 "Struct{"
                 + "id=5a01e6d384d7be31bf48dac7"
@@ -107,7 +108,6 @@ public class UnwrapFromMongoDbEnvelopeTest {
 
     @Test
     public void shouldCreateCorrectUpdateStructsFromUpdateJson() {
-
         final Schema keySchema = SchemaBuilder.struct()
                 .field("id", Schema.STRING_SCHEMA)
                 .build();
@@ -128,7 +128,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
 
         if (afterRecord.value() == null) {
             final SinkRecord patchRecord = patchExtractor.apply(record);
-            final SinkRecord Key = keyExtractor.apply(record);    
+            final SinkRecord Key = keyExtractor.apply(record);
             BsonDocument valueRecord = BsonDocument.parse(patchRecord.value().toString());
             valueRecord = valueRecord.getDocument("$set");
 
@@ -136,18 +136,18 @@ public class UnwrapFromMongoDbEnvelopeTest {
 
             if (!valueRecord.containsKey("_id")) {
                 valueRecord.append("_id", keyRecord.get("id"));
-                }
+            }
 
             SchemaBuilder valueBuilder = SchemaBuilder.struct();
             SchemaBuilder keyBuilder = SchemaBuilder.struct();
 
             for (Entry<String, BsonValue> entry : valueRecord.entrySet()) {
                 MongoDataConverter.addFieldSchema(entry, valueBuilder);
-                }
+            }
 
             for (Entry<String, BsonValue> entry : keyRecord.entrySet()) {
                 MongoDataConverter.addFieldSchema(entry, valueBuilder);
-                }
+            }
 
             Schema finalValueSchema = valueBuilder.build();
             Schema finalKeySchema = keyBuilder.build();
@@ -156,10 +156,11 @@ public class UnwrapFromMongoDbEnvelopeTest {
 
             for (Entry<String, BsonValue> entry : valueRecord.entrySet()) {
                 MongoDataConverter.convertRecord(entry, finalValueSchema, finalValueStruct);
-                }
+            }
+
             for (Entry<String, BsonValue> entry : keyRecord.entrySet()) {
                 MongoDataConverter.convertRecord(entry, finalKeySchema, finalKeyStruct);
-                }
+            }
 
             assertThat(finalValueStruct.toString()).isEqualTo(
                     "Struct{"
@@ -172,6 +173,6 @@ public class UnwrapFromMongoDbEnvelopeTest {
                     + "id=5a01e6d384d7be31bf48dac7"
                   + "}"
             );
-            }
         }
     }
+}
