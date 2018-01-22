@@ -115,6 +115,51 @@ public class UnwrapFromMongoDbEnvelopeTest {
     }
 
     @Test
+    public void shouldTransformRecordForInsertEventWithComplexIdType() throws InterruptedException {
+        CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
+        BsonTimestamp ts = new BsonTimestamp(1000, 1);
+        Document obj = new Document().append("_id", new Document().append("company", 32).append("dept", "home improvement"))
+                .append("name", "Sally");
+
+        // given
+        Document event = new Document().append("o", obj)
+                                       .append("ns", "dbA.c1")
+                                       .append("ts", ts)
+                                       .append("h", Long.valueOf(12345678))
+                                       .append("op", "i");
+        RecordsForCollection records = recordMakers.forCollection(collectionId);
+        records.recordEvent(event, 1002);
+        assertThat(produced.size()).isEqualTo(1);
+        SourceRecord record = produced.get(0);
+
+        // when
+        SourceRecord transformed = transformation.apply(record);
+
+        Struct key = (Struct) transformed.key();
+        Struct value = (Struct) transformed.value();
+
+        // then assert key and its schema
+        assertThat(key.schema()).isSameAs(transformed.keySchema());
+        assertThat(key.schema().field("id").schema().field("company").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
+        assertThat(key.schema().field("id").schema().field("dept").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(((Struct)key.get("id")).get("company")).isEqualTo(32);
+        assertThat(((Struct)key.get("id")).get("dept")).isEqualTo("home improvement");
+
+        // and then assert value and its schema
+        assertThat(value.schema()).isSameAs(transformed.valueSchema());
+        assertThat(((Struct)value.get("id")).get("company")).isEqualTo(32);
+        assertThat(((Struct)value.get("id")).get("dept")).isEqualTo("home improvement");
+        assertThat(value.get("name")).isEqualTo("Sally");
+
+        assertThat(value.schema().field("id").schema().field("company").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
+        assertThat(value.schema().field("id").schema().field("dept").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().fields()).hasSize(2);
+
+        transformation.close();
+    }
+
+    @Test
     public void shouldGenerateRecordForUpdateEvent() throws InterruptedException {
         BsonTimestamp ts = new BsonTimestamp(1000, 1);
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
