@@ -80,9 +80,12 @@ public class Configurator {
         return new Filters(configBuilder.build());
     }
 
+    /**
+     * For tests use only
+     */
     public MySqlSchema createSchemas() {
         Configuration config = configBuilder.build();
-        return new MySqlSchema(config,config.getString(MySqlConnectorConfig.SERVER_NAME), null);
+        return new MySqlSchema(config,config.getString(MySqlConnectorConfig.SERVER_NAME), null, false);
     }
 
 }

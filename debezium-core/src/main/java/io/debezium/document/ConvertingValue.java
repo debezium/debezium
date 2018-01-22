@@ -74,7 +74,7 @@ final class ConvertingValue implements Value {
     @Override
     public Integer asInteger() {
         if (value.isInteger()) return value.asInteger();
-        if (value.isNumber()) return new Integer(asNumber().intValue());
+        if (value.isNumber()) return Integer.valueOf(asNumber().intValue());
         if (value.isString()) {
             try {
                 return Integer.valueOf(asString());
@@ -87,7 +87,7 @@ final class ConvertingValue implements Value {
     @Override
     public Long asLong() {
         if (value.isLong()) return value.asLong();
-        if (value.isNumber()) return new Long(asNumber().longValue());
+        if (value.isNumber()) return Long.valueOf(asNumber().longValue());
         if (value.isString()) {
             try {
                 return Long.valueOf(asString());
@@ -100,7 +100,7 @@ final class ConvertingValue implements Value {
     @Override
     public Float asFloat() {
         if (value.isFloat()) return value.asFloat();
-        if (value.isNumber()) return new Float(asNumber().floatValue());
+        if (value.isNumber()) return Float.valueOf(asNumber().floatValue());
         if (value.isString()) {
             try {
                 return Float.valueOf(asString());
@@ -113,7 +113,7 @@ final class ConvertingValue implements Value {
     @Override
     public Double asDouble() {
         if (value.isDouble()) return value.asDouble();
-        if (value.isNumber()) return new Double(asNumber().doubleValue());
+        if (value.isNumber()) return Double.valueOf(asNumber().doubleValue());
         if (value.isString()) {
             try {
                 return Double.valueOf(asString());
@@ -131,7 +131,7 @@ final class ConvertingValue implements Value {
             Number number = Strings.asNumber(str);
             if ( number instanceof Short ) {
                 // Shorts aren't allowed, so just use an integer ...
-                number = new Integer(number.intValue());
+                number = Integer.valueOf(number.intValue());
             }
             return number;
         }

@@ -3,7 +3,7 @@
 - job:
     project-type: freestyle
     name: debezium-postgresql-test-wal2json
-    display-name: PostgreSQL(wal2json) Test
+    display-name: Debezium PostgreSQL(wal2json) Test
     description: Executes tests for wal2json decoder
     node: Slave
     properties:

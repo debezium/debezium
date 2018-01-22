@@ -5,10 +5,7 @@
  */
 package io.debezium.relational;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Types;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -26,7 +23,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.data.SchemaUtil;
-import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.mapping.ColumnMapper;
 import io.debezium.relational.mapping.ColumnMappers;
 
@@ -62,34 +58,6 @@ public class TableSchemaBuilder {
     public TableSchemaBuilder(ValueConverterProvider valueConverterProvider, Function<String, String> schemaNameValidator) {
         this.schemaNameValidator = schemaNameValidator;
         this.valueConverterProvider = valueConverterProvider;
-    }
-
-    /**
-     * Create a {@link TableSchema} from the given JDBC {@link ResultSet}. The resulting TableSchema will have no primary key,
-     * and its {@link TableSchema#valueSchema()} will contain fields for each column in the result set.
-     *
-     * @param resultSet the result set for a query; may not be null
-     * @param name the name of the value schema; may not be null
-     * @return the table schema that can be used for sending rows of data for this table to Kafka Connect; never null
-     * @throws SQLException if an error occurs while using the result set's metadata
-     */
-    public TableSchema create(ResultSet resultSet, String name) throws SQLException {
-        // Determine the columns that make up the result set ...
-        List<Column> columns = new ArrayList<>();
-        JdbcConnection.columnsFor(resultSet, columns::add);
-
-        // Create a schema that represents these columns ...
-        String schemaName = schemaNameValidator.apply(name);
-        SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(schemaName);
-        columns.forEach(column -> addField(schemaBuilder, column, null));
-        Schema valueSchema = schemaBuilder.build();
-
-        // And a generator that can be used to create values from rows in the result set ...
-        TableId id = new TableId(null, null, name);
-        Function<Object[], Struct> valueGenerator = createValueGenerator(valueSchema, id, columns, null, null);
-
-        // Finally create our result object with no primary key or key generator ...
-        return new TableSchema(null, null, valueSchema, valueGenerator);
     }
 
     /**

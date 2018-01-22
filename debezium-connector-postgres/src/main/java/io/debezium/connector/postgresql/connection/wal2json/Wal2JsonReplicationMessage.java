@@ -50,12 +50,14 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
     private final long commitTime;
     private final Document rawMessage;
     private final boolean hasMetadata;
+    final boolean lastEventForLsn;
 
-    public Wal2JsonReplicationMessage(final int txId, final long commitTime, final Document rawMessage, final boolean hasMetadata) {
+    public Wal2JsonReplicationMessage(final int txId, final long commitTime, final Document rawMessage, final boolean hasMetadata, boolean lastEventForLsn) {
         this.txId = txId;
         this.commitTime = commitTime;
         this.rawMessage = rawMessage;
         this.hasMetadata = hasMetadata;
+        this.lastEventForLsn = lastEventForLsn;
     }
 
     @Override
@@ -161,7 +163,7 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
         if (typeMetadata.isArray()) {
             try {
                 final String dataString = rawValue.asString();
-                PgArray arrayData = new PgArray(connection.get(), connection.get().getTypeInfo().getPGArrayType(typeMetadata.getFullType()), dataString);
+                PgArray arrayData = new PgArray(connection.get(), connection.get().getTypeInfo().getPGArrayType(toInternalTypeName(typeMetadata)), dataString);
                 Object deserializedArray = arrayData.getArray();
                 // TODO: what types are these? Shouldn't they pass through this function again?
                 return Arrays.asList((Object[])deserializedArray);
@@ -338,5 +340,21 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
             return rawValue.asString();
         }
         return null;
+    }
+
+    /**
+     * CHAR and VARCHAR are using internal name BPCHAR
+     *
+     * @param typeName
+     * @return the internal type name
+     */
+    private String toInternalTypeName(TypeMetadataImpl typeMetadata) {
+        final String fullTypeName = typeMetadata.getFullType();
+        return fullTypeName.startsWith("character") ? "bpchar" : fullTypeName;
+    }
+
+    @Override
+    public boolean isLastEventForLsn() {
+        return lastEventForLsn;
     }
 }

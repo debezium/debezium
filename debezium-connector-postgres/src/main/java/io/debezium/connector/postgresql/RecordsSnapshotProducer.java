@@ -14,6 +14,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -71,12 +73,12 @@ public class RecordsSnapshotProducer extends RecordsProducer {
     }
 
     @Override
-    protected void start(Consumer<SourceRecord> recordConsumer) {
+    protected void start(Consumer<ChangeEvent> eventConsumer) {
         // MDC should be in inherited from parent to child threads
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
-            CompletableFuture.runAsync(() -> this.takeSnapshot(recordConsumer), executorService)
-                             .thenRun(() -> this.startStreaming(recordConsumer))
+            CompletableFuture.runAsync(() -> this.takeSnapshot(eventConsumer), executorService)
+                             .thenRun(() -> this.startStreaming(eventConsumer))
                              .exceptionally(this::handleException);
         } finally {
             previousContext.restore();
@@ -91,7 +93,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         return null;
     }
 
-    private void startStreaming(Consumer<SourceRecord> consumer) {
+    private void startStreaming(Consumer<ChangeEvent> consumer) {
         try {
             // and then start streaming if necessary
             streamProducer.ifPresent(producer -> {
@@ -106,8 +108,8 @@ public class RecordsSnapshotProducer extends RecordsProducer {
     }
 
     @Override
-    protected void commit()  {
-        streamProducer.ifPresent(RecordsStreamProducer::commit);
+    protected void commit(long lsn)  {
+        streamProducer.ifPresent(x -> x.commit(lsn));
     }
 
     @Override
@@ -124,7 +126,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         executorService.shutdownNow();
     }
 
-    private void takeSnapshot(Consumer<SourceRecord> consumer) {
+    private void takeSnapshot(Consumer<ChangeEvent> consumer) {
         long snapshotStart = clock().currentTimeInMillis();
         Connection jdbcConnection = null;
         try (PostgresConnection connection = taskContext.createConnection()) {
@@ -174,6 +176,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
 
             logger.info("Step 3: reading and exporting the contents of each table");
             AtomicInteger rowsCounter = new AtomicInteger(0);
+            final Map<TableId, String> selectOverrides = getSnapshotSelectOverridesByTable();
             schema.tables().forEach(tableId -> {
                 if (schema.isFilteredOut(tableId)) {
                     logger.info("\t table '{}' is filtered out, ignoring", tableId);
@@ -183,7 +186,10 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                 logger.info("\t exporting data from table '{}'", tableId);
                 try {
                     // DBZ-298 Quoting name in case it has been quoted originally; it doesn't do harm if it hasn't been quoted
-                    connection.query("SELECT * FROM " + tableId.toDoubleQuotedString(),
+                    final String selectStatement = selectOverrides.getOrDefault(tableId, "SELECT * FROM " + tableId.toDoubleQuotedString());
+                    logger.info("For table '{}' using select statement: '{}'", tableId, selectStatement);
+
+                    connection.query(selectStatement,
                                      this::readTableStatement,
                                      rs -> readTable(tableId, rs, consumer, rowsCounter));
                     logger.info("\t finished exporting '{}' records for '{}'; total duration '{}'", rowsCounter.get(),
@@ -233,7 +239,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
     }
 
     private void readTable(TableId tableId, ResultSet rs,
-                           Consumer<SourceRecord> consumer,
+                           Consumer<ChangeEvent> consumer,
                            AtomicInteger rowsCounter) throws SQLException {
         Table table = schema().tableFor(tableId);
         assert table != null;
@@ -300,7 +306,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                                            envelope.read(value, sourceInfo.source(), clock().currentTimeInMillis())));
     }
 
-    private void sendCurrentRecord(Consumer<SourceRecord> consumer) {
+    private void sendCurrentRecord(Consumer<ChangeEvent> consumer) {
         SourceRecord record = currentRecord.get();
         if (record == null) {
             return;
@@ -309,6 +315,28 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             logger.debug("sending read event '{}'", record);
         }
         //send the last generated record
-        consumer.accept(record);
+        consumer.accept(new ChangeEvent(record));
+    }
+
+    /**
+     * Returns any SELECT overrides, if present.
+     */
+    private Map<TableId, String> getSnapshotSelectOverridesByTable() {
+        String tableList = taskContext.getConfig().snapshotSelectOverrides();
+
+        if (tableList == null) {
+            return Collections.emptyMap();
+        }
+
+        Map<TableId, String> snapshotSelectOverridesByTable = new HashMap<>();
+
+        for (String table : tableList.split(",")) {
+            snapshotSelectOverridesByTable.put(
+                TableId.parse(table),
+                taskContext.getConfig().snapshotSelectOverrideForTable(table)
+            );
+        }
+
+        return snapshotSelectOverridesByTable;
     }
 }

@@ -19,6 +19,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.Month;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
@@ -89,11 +90,11 @@ public abstract class AbstractRecordsProducerTest {
             "VALUES ('[2017-06-05 11:29:12.549426+00,)', '[2017-06-05 11:29:12.549426+00, 2017-06-05 12:34:56.789012+00]')";
 
 
-    protected static final String INSERT_ARRAY_TYPES_STMT = "INSERT INTO array_table (int_array, bigint_array, text_array) " +
-                                                             "VALUES ('{1,2,3}', '{1550166368505037572}', '{\"one\",\"two\",\"three\"}')";
+    protected static final String INSERT_ARRAY_TYPES_STMT = "INSERT INTO array_table (int_array, bigint_array, text_array, char_array, varchar_array, date_array) " +
+                                                             "VALUES ('{1,2,3}', '{1550166368505037572}', '{\"one\",\"two\",\"three\"}', '{\"cone\",\"ctwo\",\"cthree\"}', '{\"vcone\",\"vctwo\",\"vcthree\"}', '{2016-11-04,2016-11-05,2016-11-06}')";
 
-    protected static final String INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT = "INSERT INTO array_table_with_nulls (int_array, bigint_array, text_array) " +
-            "VALUES (null, null, null)";
+    protected static final String INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT = "INSERT INTO array_table_with_nulls (int_array, bigint_array, text_array, date_array) " +
+            "VALUES (null, null, null, null)";
 
     protected static final String INSERT_QUOTED_TYPES_STMT = "INSERT INTO \"Quoted_\"\" . Schema\".\"Quoted_\"\" . Table\" (\"Quoted_\"\" . Text_Column\") " +
                                                              "VALUES ('some text')";
@@ -233,7 +234,17 @@ public abstract class AbstractRecordsProducerTest {
                             new SchemaAndValueField("bigint_array", SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(),
                                 Arrays.asList(1550166368505037572L)),
                             new SchemaAndValueField("text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
-                                Arrays.asList("one", "two", "three"))
+                                Arrays.asList("one", "two", "three")),
+                            new SchemaAndValueField("char_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
+                                Arrays.asList("cone      ", "ctwo      ", "cthree    ")),
+                            new SchemaAndValueField("varchar_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
+                                Arrays.asList("vcone", "vctwo", "vcthree")),
+                            new SchemaAndValueField("date_array", SchemaBuilder.array(Date.builder().optional().schema()).optional().build(),
+                                Arrays.asList(
+                                        (int)LocalDate.of(2016, Month.NOVEMBER, 4).toEpochDay(),
+                                        (int)LocalDate.of(2016, Month.NOVEMBER, 5).toEpochDay(),
+                                        (int)LocalDate.of(2016, Month.NOVEMBER, 6).toEpochDay()
+                                ))
                             );
     }
 
@@ -241,7 +252,10 @@ public abstract class AbstractRecordsProducerTest {
         return Arrays.asList(
                 new SchemaAndValueField("int_array", SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(), null),
                 new SchemaAndValueField("bigint_array", SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(), null),
-                new SchemaAndValueField("text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null)
+                new SchemaAndValueField("text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null),
+                new SchemaAndValueField("char_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null),
+                new SchemaAndValueField("varchar_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null),
+                new SchemaAndValueField("date_array", SchemaBuilder.array(Date.builder().optional().schema()).optional().build(), null)
         );
     }
 
@@ -375,8 +389,15 @@ public abstract class AbstractRecordsProducerTest {
                 return;
             }
             Object actualValue = content.get(fieldName);
-            assertNotNull("No value found for " + fieldName, actualValue);
-            assertEquals("Incorrect value type for " + fieldName, value.getClass(), actualValue.getClass());
+
+            // assert the value type; for List all implementation types (e.g. immutable ones) are acceptable
+            if(actualValue instanceof List) {
+                assertTrue("Incorrect value type for " + fieldName, value instanceof List);
+            }
+            else {
+                assertEquals("Incorrect value type for " + fieldName, value.getClass(), actualValue.getClass());
+            }
+
             if (actualValue instanceof byte[]) {
                 assertArrayEquals("Values don't match for " + fieldName, (byte[]) value, (byte[]) actualValue);
             } else if (actualValue instanceof Struct) {
@@ -388,7 +409,7 @@ public abstract class AbstractRecordsProducerTest {
 
         private void assertStruct(final Struct expectedStruct, final Struct actualStruct) {
             expectedStruct.schema().fields().stream().forEach(field -> {
-                final Object expectedValue = actualStruct.get(field);
+                final Object expectedValue = expectedStruct.get(field);
                 if (expectedValue == null) {
                     assertNull(fieldName + " is present in the actual content", actualStruct.get(field.name()));
                     return;
@@ -421,7 +442,7 @@ public abstract class AbstractRecordsProducerTest {
          return new TestConsumer(expectedRecordsCount, topicPrefixes);
     }
 
-    protected static class TestConsumer implements Consumer<SourceRecord> {
+    protected static class TestConsumer implements Consumer<ChangeEvent> {
         private final ConcurrentLinkedQueue<SourceRecord> records;
         private final VariableLatch latch;
         private final List<String> topicPrefixes;
@@ -435,7 +456,8 @@ public abstract class AbstractRecordsProducerTest {
         }
 
         @Override
-        public void accept(SourceRecord record) {
+        public void accept(ChangeEvent event) {
+            final SourceRecord record = event.getRecord();
             if ( ignoreTopic(record.topic()) ) {
                 return;
             }

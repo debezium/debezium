@@ -52,33 +52,33 @@ public final class MathOps {
     public static Number add(Short first, short second) {
         int sum = first.shortValue() + second;
         if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return new Short((short) sum);
-        return new Integer(sum);
+        return Integer.valueOf(sum);
     }
 
     public static Number add(Short first, int second) {
         long sum = first.longValue() + second;
         if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return new Short((short) sum);
-        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return new Integer((int) sum);
-        return new Long(sum);
+        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return Integer.valueOf((int) sum);
+        return Long.valueOf(sum);
     }
 
     public static Number add(Short first, long second) {
         long sum = first.longValue() + second;
         if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return new Short((short) sum);
-        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return new Integer((int) sum);
-        return new Long(sum);
+        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return Integer.valueOf((int) sum);
+        return Long.valueOf(sum);
     }
 
     public static Number add(Short first, float second) {
         double sum = first.floatValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return new Float((float) sum);
-        return new Double(sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        return Double.valueOf(sum);
     }
 
     public static Number add(Short first, double second) {
         double sum = first.doubleValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return new Float((float) sum);
-        return new Double(sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        return Double.valueOf(sum);
     }
 
     public static Number add(Short first, Short second) {
@@ -133,34 +133,34 @@ public final class MathOps {
     public static Number add(Integer first, short second) {
         long sum = first.longValue() + second;
         if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return new Short((short) sum);
-        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return new Integer((int) sum);
-        return new Long(sum);
+        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return Integer.valueOf((int) sum);
+        return Long.valueOf(sum);
     }
 
     public static Number add(Integer first, int second) {
         long sum = first.longValue() + second;
         if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return new Short((short) sum);
-        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return new Integer((int) sum);
-        return new Long(sum);
+        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return Integer.valueOf((int) sum);
+        return Long.valueOf(sum);
     }
 
     public static Number add(Integer first, long second) {
         long sum = first.longValue() + second;
         if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return new Short((short) sum);
-        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return new Integer((int) sum);
-        return new Long(sum);
+        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return Integer.valueOf((int) sum);
+        return Long.valueOf(sum);
     }
 
     public static Number add(Integer first, float second) {
         double sum = first.floatValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return new Float((float) sum);
-        return new Double(sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        return Double.valueOf(sum);
     }
 
     public static Number add(Integer first, double second) {
         double sum = first.doubleValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return new Float((float) sum);
-        return new Double(sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        return Double.valueOf(sum);
     }
 
     public static Number add(Integer first, Short second) {
@@ -215,34 +215,34 @@ public final class MathOps {
     public static Number add(Long first, short second) {
         long sum = first.longValue() + second;
         if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return new Short((short) sum);
-        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return new Integer((int) sum);
-        return new Long(sum);
+        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return Integer.valueOf((int) sum);
+        return Long.valueOf(sum);
     }
 
     public static Number add(Long first, int second) {
         long sum = first.longValue() + second;
         if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return new Short((short) sum);
-        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return new Integer((int) sum);
-        return new Long(sum);
+        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return Integer.valueOf((int) sum);
+        return Long.valueOf(sum);
     }
 
     public static Number add(Long first, long second) {
         long sum = first.longValue() + second;
         if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return new Short((short) sum);
-        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return new Integer((int) sum);
-        return new Long(sum);
+        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return Integer.valueOf((int) sum);
+        return Long.valueOf(sum);
     }
 
     public static Number add(Long first, float second) {
         double sum = first.doubleValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return new Float((float) sum);
-        return new Double(sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        return Double.valueOf(sum);
     }
 
     public static Number add(Long first, double second) {
         double sum = first.doubleValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return new Float((float) sum);
-        return new Double(sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        return Double.valueOf(sum);
     }
 
     public static Number add(Long first, Short second) {
@@ -296,32 +296,32 @@ public final class MathOps {
 
     public static Number add(Float first, short second) {
         double sum = first.floatValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return new Float((float) sum);
-        return new Double(sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        return Double.valueOf(sum);
     }
 
     public static Number add(Float first, int second) {
         double sum = first.floatValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return new Float((float) sum);
-        return new Double(sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        return Double.valueOf(sum);
     }
 
     public static Number add(Float first, long second) {
         double sum = first.floatValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return new Float((float) sum);
-        return new Double(sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        return Double.valueOf(sum);
     }
 
     public static Number add(Float first, float second) {
         double sum = first.floatValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return new Float((float) sum);
-        return new Double(sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        return Double.valueOf(sum);
     }
 
     public static Number add(Float first, double second) {
         double sum = first.floatValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return new Float((float) sum);
-        return new Double(sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        return Double.valueOf(sum);
     }
 
     public static Number add(Float first, Short second) {
@@ -375,32 +375,32 @@ public final class MathOps {
 
     public static Number add(Double first, short second) {
         double sum = first.floatValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return new Float((float) sum);
-        return new Double(sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        return Double.valueOf(sum);
     }
 
     public static Number add(Double first, int second) {
         double sum = first.floatValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return new Float((float) sum);
-        return new Double(sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        return Double.valueOf(sum);
     }
 
     public static Number add(Double first, long second) {
         double sum = first.floatValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return new Float((float) sum);
-        return new Double(sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        return Double.valueOf(sum);
     }
 
     public static Number add(Double first, float second) {
         double sum = first.floatValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return new Float((float) sum);
-        return new Double(sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        return Double.valueOf(sum);
     }
 
     public static Number add(Double first, double second) {
         double sum = first.floatValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return new Float((float) sum);
-        return new Double(sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        return Double.valueOf(sum);
     }
 
     public static Number add(Double first, Short second) {
@@ -591,23 +591,23 @@ public final class MathOps {
     }
 
     public static Number add(AtomicInteger first, short second) {
-        return add(new Integer(first.intValue()), second);
+        return add(Integer.valueOf(first.intValue()), second);
     }
 
     public static Number add(AtomicInteger first, int second) {
-        return add(new Integer(first.intValue()), second);
+        return add(Integer.valueOf(first.intValue()), second);
     }
 
     public static Number add(AtomicInteger first, long second) {
-        return add(new Integer(first.intValue()), second);
+        return add(Integer.valueOf(first.intValue()), second);
     }
 
     public static Number add(AtomicInteger first, float second) {
-        return add(new Integer(first.intValue()), second);
+        return add(Integer.valueOf(first.intValue()), second);
     }
 
     public static Number add(AtomicInteger first, double second) {
-        return add(new Integer(first.intValue()), second);
+        return add(Integer.valueOf(first.intValue()), second);
     }
 
     public static Number add(AtomicInteger first, Short second) {
@@ -660,23 +660,23 @@ public final class MathOps {
     }
 
     public static Number add(AtomicLong first, short second) {
-        return add(new Long(first.longValue()), second);
+        return add(Long.valueOf(first.longValue()), second);
     }
 
     public static Number add(AtomicLong first, int second) {
-        return add(new Long(first.longValue()), second);
+        return add(Long.valueOf(first.longValue()), second);
     }
 
     public static Number add(AtomicLong first, long second) {
-        return add(new Long(first.longValue()), second);
+        return add(Long.valueOf(first.longValue()), second);
     }
 
     public static Number add(AtomicLong first, float second) {
-        return add(new Long(first.longValue()), second);
+        return add(Long.valueOf(first.longValue()), second);
     }
 
     public static Number add(AtomicLong first, double second) {
-        return add(new Long(first.longValue()), second);
+        return add(Long.valueOf(first.longValue()), second);
     }
 
     public static Number add(AtomicLong first, Short second) {

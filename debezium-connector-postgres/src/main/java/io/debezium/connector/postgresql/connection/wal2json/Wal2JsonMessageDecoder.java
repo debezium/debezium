@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Iterator;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
@@ -18,8 +19,10 @@ import org.slf4j.LoggerFactory;
 import io.debezium.connector.postgresql.connection.MessageDecoder;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
 import io.debezium.document.Array;
+import io.debezium.document.Array.Entry;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
+import io.debezium.document.Value;
 
 /**
  * JSON deserialization of a message sent by
@@ -50,8 +53,11 @@ public class Wal2JsonMessageDecoder implements MessageDecoder {
             final String timestamp = message.getString("timestamp");
             final long commitTime = dateTime.systemTimestamp(timestamp);
             final Array changes = message.getArray("change");
-            for (Array.Entry e: changes) {
-                processor.process(new Wal2JsonReplicationMessage(txId, commitTime, e.getValue().asDocument(), containsMetadata));
+
+            Iterator<Entry> it = changes.iterator();
+            while (it.hasNext()) {
+                Value value = it.next().getValue();
+                processor.process(new Wal2JsonReplicationMessage(txId, commitTime, value.asDocument(), containsMetadata, !it.hasNext()));
             }
         } catch (final IOException e) {
             throw new ConnectException(e);

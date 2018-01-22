@@ -92,4 +92,9 @@ public interface ReplicationMessage {
      * @return true if type metadata are passed as a part of message
      */
     boolean hasMetadata();
+
+    /**
+     * @return true if this is the last message in the batch of messages with same LSN
+     */
+    boolean isLastEventForLsn();
 }

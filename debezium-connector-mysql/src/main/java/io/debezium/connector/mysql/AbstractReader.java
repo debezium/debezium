@@ -6,6 +6,7 @@
 package io.debezium.connector.mysql;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -21,8 +22,12 @@ import org.slf4j.LoggerFactory;
 
 import com.github.shyiko.mysql.binlog.network.ServerException;
 
+import io.debezium.config.ConfigurationDefaults;
+import io.debezium.time.Temporals;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
+import io.debezium.util.Threads;
+import io.debezium.util.Threads.Timer;
 
 /**
  * A component that performs a snapshot of a MySQL server, and records the schema changes in {@link MySqlSchema}.
@@ -215,6 +220,7 @@ public abstract class AbstractReader implements Reader {
 
         logger.trace("Polling for next batch of records");
         List<SourceRecord> batch = new ArrayList<>(maxBatchSize);
+        final Timer timeout = Threads.timer(Clock.SYSTEM, Temporals.max(Duration.ofMillis(context.pollIntervalInMillseconds()), ConfigurationDefaults.RETURN_CONTROL_INTERVAL));
         while (running.get() && (records.drainTo(batch, maxBatchSize) == 0) && !success.get()) {
             // No records are available even though the snapshot has not yet completed, so sleep for a bit ...
             metronome.pause();
@@ -222,6 +228,9 @@ public abstract class AbstractReader implements Reader {
             // Check for failure after waking up ...
             failureException = this.failure.get();
             if (failureException != null) throw failureException;
+            if (timeout.expired()) {
+                break;
+            }
         }
 
         if (batch.isEmpty() && success.get() && records.isEmpty()) {

@@ -12,10 +12,10 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
 /**
- * A utility for converting various Java temporal object representations into the signed {@link SchemaBuilder#int64() INT64}
+ * A utility for converting various Java temporal object representations into the signed {@link SchemaBuilder#int32() INT32}
  * number of <em>days</em> since January 1, 1970, at 00:00:00UTC, and for defining a Kafka Connect {@link Schema} for date values
  * with no time or timezone information.
- * 
+ *
  * @author Randall Hauch
  * @see Timestamp
  * @see ZonedTimestamp
@@ -31,7 +31,7 @@ public class Date {
      * <p>
      * You can use the resulting SchemaBuilder to set or override additional schema settings such as required/optional, default
      * value, and documentation.
-     * 
+     *
      * @return the schema builder
      */
     public static SchemaBuilder builder() {
@@ -44,19 +44,19 @@ public class Date {
      * Returns a Schema for a {@link Date} but with all other default Schema settings. The schema describes a field
      * with the {@value #SCHEMA_NAME} as the {@link Schema#name() name} and {@link SchemaBuilder#int32() INT32} for the literal
      * type storing the number of <em>days</em> since January 1, 1970, at 00:00:00Z.
-     * 
+     *
      * @return the schema
      * @see #builder()
      */
     public static Schema schema() {
         return builder().build();
     }
-    
+
     /**
      * Get the number of epoch days of the given {@link java.time.LocalDateTime}, {@link java.time.LocalDate},
      * {@link java.time.LocalTime}, {@link java.util.Date}, {@link java.sql.Date}, {@link java.sql.Time}, or
      * {@link java.sql.Timestamp}, ignoring any time portions of the supplied value.
-     * 
+     *
      * @param value the local or SQL date, time, or timestamp value; may not be null
      * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
      * adjustment is necessary

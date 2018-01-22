@@ -1,6 +1,7 @@
 Aaron Rosenberg
 Akshath Patkar
 Andras Istvan Nagy
+Andrey Pustovetov
 Attila Szucs
 Barry LaFond
 Ben Williams
@@ -10,6 +11,7 @@ Christian Posta
 David Chen
 David Leibovic
 David Szabo
+Denis Mikhaylov
 Dennis Persson
 Duncan Sands
 Emrul Islam
@@ -35,4 +37,5 @@ Scofield Xu
 Sherafudheen PM
 Stanley Shyiko
 Steven Siahetiong
+Tom Bentley
 Willie Cheong

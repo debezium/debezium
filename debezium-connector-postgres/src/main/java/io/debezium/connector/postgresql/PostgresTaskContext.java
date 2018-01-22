@@ -102,4 +102,8 @@ public class PostgresTaskContext {
     void failTask(final Throwable taskFailure) {
         this.taskFailure = taskFailure;
     }
+
+    PostgresConnectorConfig getConfig() {
+        return config;
+    }
 }

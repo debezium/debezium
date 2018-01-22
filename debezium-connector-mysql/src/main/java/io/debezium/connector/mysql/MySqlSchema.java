@@ -5,9 +5,10 @@
  */
 package io.debezium.connector.mysql;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Schema;
@@ -62,7 +63,7 @@ public class MySqlSchema {
     private final AvroValidator schemaNameValidator = AvroValidator.create(logger);
     private final Set<String> ignoredQueryStatements = Collect.unmodifiableSet("BEGIN", "END", "FLUSH PRIVILEGES");
     private final MySqlDdlParser ddlParser;
-    private final Map<TableId, TableSchema> tableSchemaByTableId = new HashMap<>();
+    private final SchemasByTableId tableSchemaByTableId;
     private final Filters filters;
     private final DatabaseHistory dbHistory;
     private final TableSchemaBuilder schemaBuilder;
@@ -72,7 +73,7 @@ public class MySqlSchema {
     private final HistoryRecordComparator historyComparator;
     private Tables tables;
     private final boolean skipUnparseableDDL;
-
+    private final boolean tableIdCaseInsensitive;
     /**
      * Create a schema component given the supplied {@link MySqlConnectorConfig MySQL connector configuration}.
      *
@@ -81,13 +82,15 @@ public class MySqlSchema {
      * @param gtidFilter the predicate function that should be applied to GTID sets in database history, and which
      *          returns {@code true} if a GTID source is to be included, or {@code false} if a GTID source is to be excluded;
      *          may be null if not needed
+     * @param tableIdCaseInsensitive true if table lookup ignores letter case
      */
-    public MySqlSchema(Configuration config, String serverName, Predicate<String> gtidFilter) {
+    public MySqlSchema(Configuration config, String serverName, Predicate<String> gtidFilter, boolean tableIdCaseInsensitive) {
         this.filters = new Filters(config);
         this.ddlParser = new MySqlDdlParser(false);
-        this.tables = new Tables();
+        this.tables = new Tables(tableIdCaseInsensitive);
         this.ddlChanges = new DdlChanges(this.ddlParser.terminator());
         this.ddlParser.addListener(ddlChanges);
+        this.tableIdCaseInsensitive = tableIdCaseInsensitive;
 
         // Use MySQL-specific converters and schemas for values ...
         String timePrecisionModeStr = config.getString(MySqlConnectorConfig.TIME_PRECISION_MODE);
@@ -133,6 +136,8 @@ public class MySqlSchema {
         this.dbHistory.configure(dbHistoryConfig, historyComparator); // validates
 
         this.skipUnparseableDDL = dbHistoryConfig.getBoolean(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS);
+
+        tableSchemaByTableId = new SchemasByTableId(tableIdCaseInsensitive);
     }
 
     protected HistoryRecordComparator historyComparator() {
@@ -245,7 +250,7 @@ public class MySqlSchema {
      *            offset} at which the database schemas are to reflect; may not be null
      */
     public void loadHistory(SourceInfo startingPoint) {
-        tables = new Tables();
+        tables = new Tables(tableIdCaseInsensitive);
         dbHistory.recover(startingPoint.partition(), startingPoint.offset(), tables, ddlParser);
         refreshSchemas();
     }
@@ -297,7 +302,6 @@ public class MySqlSchema {
             if (skipUnparseableDDL) {
                 logger.warn("Ignoring unparseable DDL statement '{}': {}", ddlStatements);
             } else {
-                logger.error("Error parsing DDL statement and updating tables: {}", ddlStatements);
                 throw e;
             }
         } finally {
@@ -350,5 +354,39 @@ public class MySqlSchema {
             }
         });
         return true;
+    }
+
+    /**
+     * A map of schemas by table id. Table names are stored lower-case if required as per the config.
+     */
+    private static class SchemasByTableId {
+
+        private final boolean tableIdCaseInsensitive;
+        private final ConcurrentMap<TableId, TableSchema> values;
+
+        public SchemasByTableId(boolean tableIdCaseInsensitive) {
+            this.tableIdCaseInsensitive = tableIdCaseInsensitive;
+            this.values = new ConcurrentHashMap<>();
+        }
+
+        public void clear() {
+            values.clear();
+        }
+
+        public TableSchema remove(TableId tableId) {
+            return values.remove(toLowerCaseIfNeeded(tableId));
+        }
+
+        public TableSchema get(TableId tableId) {
+            return values.get(toLowerCaseIfNeeded(tableId));
+        }
+
+        public TableSchema put(TableId tableId, TableSchema updated) {
+            return values.put(toLowerCaseIfNeeded(tableId), updated);
+        }
+
+        private TableId toLowerCaseIfNeeded(TableId tableId) {
+            return tableIdCaseInsensitive ? tableId.toLowercase() : tableId;
+        }
     }
 }
