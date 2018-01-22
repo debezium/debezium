@@ -9,6 +9,8 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.storage.OffsetBackingStore;
 
+import io.debezium.config.Configuration;
+
 /**
  * The policy that defines when the offsets should be committed to {@link OffsetBackingStore offset storage}.
  * 
@@ -18,28 +20,48 @@ import org.apache.kafka.connect.storage.OffsetBackingStore;
 interface OffsetCommitPolicy {
 
     /**
-     * Get an {@link OffsetCommitPolicy} that will commit offsets as frequently as possible. This may result in reduced
+     * An {@link OffsetCommitPolicy} that will commit offsets as frequently as possible. This may result in reduced
      * performance, but it has the least potential for seeing source records more than once upon restart.
-     * 
-     * @return the offset commit policy; never null
      */
-    static OffsetCommitPolicy always() {
-        return (number, time, unit) -> true;
+    public static class AlwaysCommitOffsetPolicy implements OffsetCommitPolicy {
+
+        @Override
+        public boolean performCommit(long numberOfMessagesSinceLastCommit, long timeSinceLastCommit,
+                TimeUnit timeUnit) {
+            return true;
+        }
     }
 
     /**
-     * Get an {@link OffsetCommitPolicy} that will commit offsets no more than the specified time period. If the {@code minimumTime}
-     * is not positive, then this method returns {@link #always()}.
-     * 
-     * @param minimumTime the minimum amount of time between committing offsets
-     * @param timeUnit the time unit for {@code minimumTime}; may not be null
-     * @return the offset commit policy; never null
+     * An {@link OffsetCommitPolicy} that will commit offsets no more than the specified time period. If the specified
+     * time is less than {@code 0} then the policy will behave as {@link AlwaysCommitOffsetPolicy}.
+     * @see io.debezium.embedded.EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS
      */
-    static OffsetCommitPolicy periodic(long minimumTime, TimeUnit timeUnit) {
-        if ( minimumTime <= 0 ) return always();
-        return (number, actualTime, actualUnit) -> {
-            return timeUnit.convert(actualTime, actualUnit) >= minimumTime;
-        };
+    public static class PeriodicCommitOffsetPolicy implements OffsetCommitPolicy {
+
+        private TimeUnit minimumTimetimeUnit = TimeUnit.MILLISECONDS;
+        private long minimumTime;
+
+        @Override
+        public OffsetCommitPolicy configure(Configuration config) {
+            OffsetCommitPolicy.super.configure(config);
+            minimumTime = config.getLong(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS);
+            return this;
+        }
+
+        @Override
+        public boolean performCommit(long numberOfMessagesSinceLastCommit, long timeSinceLastCommit,
+                TimeUnit timeUnit) {
+                return minimumTimetimeUnit.convert(timeSinceLastCommit, timeUnit) >= minimumTime;
+        }
+    }
+
+    static OffsetCommitPolicy always() {
+        return new AlwaysCommitOffsetPolicy();
+    }
+
+    static OffsetCommitPolicy periodic(Configuration config) {
+        return new PeriodicCommitOffsetPolicy().configure(config);
     }
 
     /**
@@ -73,5 +95,9 @@ interface OffsetCommitPolicy {
     default OffsetCommitPolicy and(OffsetCommitPolicy other) {
         if ( other == null ) return this;
         return (number, time, unit) -> this.performCommit(number, time, unit) && other.performCommit(number, time, unit);
+    }
+
+    default OffsetCommitPolicy configure(Configuration config) {
+        return this;
     }
 }

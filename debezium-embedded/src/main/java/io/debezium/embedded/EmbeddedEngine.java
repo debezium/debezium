@@ -154,6 +154,12 @@ public final class EmbeddedEngine implements Runnable {
                                                               .withDefault(5000L)
                                                               .withValidation(Field::isPositiveInteger);
 
+    public static final Field OFFSET_COMMIT_POLICY = Field.create("offset.commit.policy")
+                                                          .withDescription("The name of the class implementing commit policy."
+                                                                      + "Default is periodic commity policy based upon time intervals.")
+                                                          .withDefault(OffsetCommitPolicy.PeriodicCommitOffsetPolicy.class.getName())
+                                                          .withValidation(Field::isClassName);
+
     protected static final Field INTERNAL_KEY_CONVERTER_CLASS = Field.create("internal.key.converter")
                                                                      .withDescription("The Converter class that should be used to serialize and deserialize key data for offsets.")
                                                                      .withDefault(JsonConverter.class.getName());
@@ -604,8 +610,8 @@ public final class EmbeddedEngine implements Runnable {
                 }
 
                 // Set up the offset commit policy ...
-                long offsetPeriodMs = config.getLong(OFFSET_FLUSH_INTERVAL_MS);
-                OffsetCommitPolicy offsetCommitPolicy = OffsetCommitPolicy.periodic(offsetPeriodMs, TimeUnit.MILLISECONDS);
+                OffsetCommitPolicy offsetCommitPolicy = config.getInstance(EmbeddedEngine.OFFSET_COMMIT_POLICY, OffsetCommitPolicy.class);
+                offsetCommitPolicy.configure(config);
 
                 // Initialize the connector using a context that does NOT respond to requests to reconfigure tasks ...
                 ConnectorContext context = new ConnectorContext() {
