@@ -65,7 +65,8 @@ public final class PgOid extends Oid {
 
     protected static int jdbcColumnToOid(Column column) {
         if (column.jdbcType() == Types.ARRAY) {
-            return column.componentType();
+            return column.typeName() != null ? typeNameToOid(column.typeName().substring(1) + "_array")
+                    : column.componentType();
         }
         return typeNameToOid(column.typeName());
     }
