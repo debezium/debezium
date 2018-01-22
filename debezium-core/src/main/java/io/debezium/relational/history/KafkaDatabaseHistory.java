@@ -264,15 +264,19 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         boolean exists = false;
 
         try (KafkaConsumer<String, String> historyConsumer = new KafkaConsumer<>(consumerConfig.asProperties());) {
-            Set<TopicPartition> historyTopic = Collections.singleton(new TopicPartition(topicName, PARTITION));
+            // First, check if the topic exists in the list of all topics
+            if (historyConsumer.listTopics().keySet().contains(topicName)) {
+                // check if the topic is empty
+                Set<TopicPartition> historyTopic = Collections.singleton(new TopicPartition(topicName, PARTITION));
 
-            Map<TopicPartition, Long> beginningOffsets = historyConsumer.beginningOffsets(historyTopic);
-            Map<TopicPartition, Long> endOffsets = historyConsumer.endOffsets(historyTopic);
+                Map<TopicPartition, Long> beginningOffsets = historyConsumer.beginningOffsets(historyTopic);
+                Map<TopicPartition, Long> endOffsets = historyConsumer.endOffsets(historyTopic);
 
-            Long beginOffset = beginningOffsets.entrySet().iterator().next().getValue();
-            Long endOffset = endOffsets.entrySet().iterator().next().getValue();
+                Long beginOffset = beginningOffsets.entrySet().iterator().next().getValue();
+                Long endOffset = endOffsets.entrySet().iterator().next().getValue();
 
-            exists = (endOffset - beginOffset) != 0;
+                exists = endOffset > beginOffset;
+            }
         }
 
         return exists;
