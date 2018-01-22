@@ -198,4 +198,37 @@ public class UnwrapFromMongoDbEnvelopeTest {
         assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().fields()).hasSize(2);
     }
+
+    @Test
+    public void shouldGenerateRecordForDeleteEvent() throws InterruptedException {
+        BsonTimestamp ts = new BsonTimestamp(1000, 1);
+        CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
+        ObjectId objId = new ObjectId();
+        Document obj = new Document("_id", objId);
+
+        // given
+        Document event = new Document().append("o", obj)
+                                       .append("ns", "dbA.c1")
+                                       .append("ts", ts)
+                                       .append("h", Long.valueOf(12345678))
+                                       .append("op", "d");
+        RecordsForCollection records = recordMakers.forCollection(collectionId);
+        records.recordEvent(event, 1002);
+        assertThat(produced.size()).isEqualTo(2);
+
+        SourceRecord record = produced.get(0);
+
+        // when
+        SourceRecord transformed = transformation.apply(record);
+
+        Struct key = (Struct) transformed.key();
+        Struct value = (Struct) transformed.value();
+
+        // then assert key and its schema
+        assertThat(key.schema()).isSameAs(transformed.keySchema());
+        assertThat(key.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(key.get("id")).isEqualTo(objId.toString());
+
+        assertThat(value).isNull();
+    }
 }

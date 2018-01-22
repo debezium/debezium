@@ -46,13 +46,23 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
 
         if (afterRecord.value() == null) {
             final R patchRecord = patchExtractor.apply(r);
-            valueDocument = BsonDocument.parse(patchRecord.value().toString());
-            valueDocument = valueDocument.getDocument("$set");
 
-            if (!valueDocument.containsKey("id")) {
-                valueDocument.append("id", keyDocument.get("id"));
+            // update
+            if (patchRecord.value() != null) {
+                valueDocument = BsonDocument.parse(patchRecord.value().toString());
+                valueDocument = valueDocument.getDocument("$set");
+
+                if (!valueDocument.containsKey("id")) {
+                    valueDocument.append("id", keyDocument.get("id"));
+                }
             }
-        } else {
+            // delete
+            else {
+                valueDocument = new BsonDocument();
+            }
+        // insert
+        }
+        else {
             valueDocument = BsonDocument.parse(afterRecord.value().toString());
             valueDocument.remove("_id");
             valueDocument.append("id", keyDocument.get("id"));
@@ -98,8 +108,14 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
             MongoDataConverter.convertRecord(keyPairsforStruct, finalKeySchema, finalKeyStruct);
         }
 
-        return r.newRecord(r.topic(), r.kafkaPartition(), finalKeySchema, finalKeyStruct, finalValueSchema, finalValueStruct,
-                r.timestamp());
+        if (finalValueSchema.fields().isEmpty()) {
+            return r.newRecord(r.topic(), r.kafkaPartition(), finalKeySchema, finalKeyStruct, null, null,
+                    r.timestamp());
+        }
+        else {
+            return r.newRecord(r.topic(), r.kafkaPartition(), finalKeySchema, finalKeyStruct, finalValueSchema, finalValueStruct,
+                    r.timestamp());
+        }
     }
 
     @Override
