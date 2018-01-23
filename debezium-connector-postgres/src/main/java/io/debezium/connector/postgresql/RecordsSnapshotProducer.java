@@ -73,12 +73,12 @@ public class RecordsSnapshotProducer extends RecordsProducer {
     }
 
     @Override
-    protected void start(Consumer<SourceRecord> recordConsumer) {
+    protected void start(Consumer<ChangeEvent> eventConsumer) {
         // MDC should be in inherited from parent to child threads
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
-            CompletableFuture.runAsync(() -> this.takeSnapshot(recordConsumer), executorService)
-                             .thenRun(() -> this.startStreaming(recordConsumer))
+            CompletableFuture.runAsync(() -> this.takeSnapshot(eventConsumer), executorService)
+                             .thenRun(() -> this.startStreaming(eventConsumer))
                              .exceptionally(this::handleException);
         } finally {
             previousContext.restore();
@@ -93,7 +93,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         return null;
     }
 
-    private void startStreaming(Consumer<SourceRecord> consumer) {
+    private void startStreaming(Consumer<ChangeEvent> consumer) {
         try {
             // and then start streaming if necessary
             streamProducer.ifPresent(producer -> {
@@ -108,8 +108,8 @@ public class RecordsSnapshotProducer extends RecordsProducer {
     }
 
     @Override
-    protected void commit()  {
-        streamProducer.ifPresent(RecordsStreamProducer::commit);
+    protected void commit(long lsn)  {
+        streamProducer.ifPresent(x -> x.commit(lsn));
     }
 
     @Override
@@ -126,7 +126,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         executorService.shutdownNow();
     }
 
-    private void takeSnapshot(Consumer<SourceRecord> consumer) {
+    private void takeSnapshot(Consumer<ChangeEvent> consumer) {
         long snapshotStart = clock().currentTimeInMillis();
         Connection jdbcConnection = null;
         try (PostgresConnection connection = taskContext.createConnection()) {
@@ -239,7 +239,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
     }
 
     private void readTable(TableId tableId, ResultSet rs,
-                           Consumer<SourceRecord> consumer,
+                           Consumer<ChangeEvent> consumer,
                            AtomicInteger rowsCounter) throws SQLException {
         Table table = schema().tableFor(tableId);
         assert table != null;
@@ -306,7 +306,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                                            envelope.read(value, sourceInfo.source(), clock().currentTimeInMillis())));
     }
 
-    private void sendCurrentRecord(Consumer<SourceRecord> consumer) {
+    private void sendCurrentRecord(Consumer<ChangeEvent> consumer) {
         SourceRecord record = currentRecord.get();
         if (record == null) {
             return;
@@ -315,7 +315,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             logger.debug("sending read event '{}'", record);
         }
         //send the last generated record
-        consumer.accept(record);
+        consumer.accept(new ChangeEvent(record));
     }
 
     /**

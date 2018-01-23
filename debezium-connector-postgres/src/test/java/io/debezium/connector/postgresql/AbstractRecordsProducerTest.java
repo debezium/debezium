@@ -447,7 +447,7 @@ public abstract class AbstractRecordsProducerTest {
 
         private void assertStruct(final Struct expectedStruct, final Struct actualStruct) {
             expectedStruct.schema().fields().stream().forEach(field -> {
-                final Object expectedValue = actualStruct.get(field);
+                final Object expectedValue = expectedStruct.get(field);
                 if (expectedValue == null) {
                     assertNull(fieldName + " is present in the actual content", actualStruct.get(field.name()));
                     return;
@@ -480,7 +480,7 @@ public abstract class AbstractRecordsProducerTest {
          return new TestConsumer(expectedRecordsCount, topicPrefixes);
     }
 
-    protected static class TestConsumer implements Consumer<SourceRecord> {
+    protected static class TestConsumer implements Consumer<ChangeEvent> {
         private final ConcurrentLinkedQueue<SourceRecord> records;
         private final VariableLatch latch;
         private final List<String> topicPrefixes;
@@ -499,7 +499,8 @@ public abstract class AbstractRecordsProducerTest {
         }
 
         @Override
-        public void accept(SourceRecord record) {
+        public void accept(ChangeEvent event) {
+            final SourceRecord record = event.getRecord();
             if ( ignoreTopic(record.topic()) ) {
                 return;
             }

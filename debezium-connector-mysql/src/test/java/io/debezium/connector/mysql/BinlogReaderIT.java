@@ -129,7 +129,7 @@ public class BinlogReaderIT {
 
         // Check the records via the store ...
         assertThat(store.collectionCount()).isEqualTo(5);
-        Collection products = store.collection(DATABASE.getDatabaseName(), "products");
+        Collection products = store.collection(DATABASE.getDatabaseName(), productsTableName());
         assertThat(products.numberOfCreates()).isEqualTo(9);
         assertThat(products.numberOfUpdates()).isEqualTo(0);
         assertThat(products.numberOfDeletes()).isEqualTo(0);
@@ -191,7 +191,7 @@ public class BinlogReaderIT {
 
         // Check the records via the store ...
         assertThat(store.collectionCount()).isEqualTo(5);
-        Collection products = store.collection(DATABASE.getDatabaseName(), "products");
+        Collection products = store.collection(DATABASE.getDatabaseName(), productsTableName());
         assertThat(products.numberOfCreates()).isEqualTo(9);
         assertThat(products.numberOfUpdates()).isEqualTo(0);
         assertThat(products.numberOfDeletes()).isEqualTo(0);
@@ -353,5 +353,9 @@ public class BinlogReaderIT {
 
     private Duration toDuration(String duration) {
         return Duration.parse(duration);
+    }
+
+    private String productsTableName() {
+        return context.isTableIdCaseInsensitive() ? "products" : "Products";
     }
 }

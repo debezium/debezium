@@ -5,6 +5,7 @@
  */
 package io.debezium.util;
 
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.function.LongSupplier;
 
@@ -33,6 +34,17 @@ public class Threads {
     }
 
     /**
+     * Expires after defined time period.
+     *
+     */
+    public static interface Timer {
+        /**
+         * @return true if current time is greater than start time plus requested time period
+         */
+        boolean expired();
+    }
+
+    /**
      * Obtain a {@link TimeSince} that uses the given clock to record the time elapsed.
      * 
      * @param clock the clock; may not be null
@@ -53,6 +65,19 @@ public class Threads {
                 return elapsed <= 0L ? 0L : elapsed;
             }
         };
+    }
+
+    /**
+     * Obtain a {@link Timer} that uses the given clock to indicate that a pre-defined time period expired.
+     *
+     * @param clock the clock; may not be null
+     * @param time a time interval to expire
+     * @return the {@link Timer} object; never null
+     */
+    public static Timer timer(Clock clock, Duration time) {
+        final TimeSince start = timeSince(clock);
+        start.reset();
+        return () -> start.elapsedTime() > time.toMillis();
     }
 
     /**

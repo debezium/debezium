@@ -5,6 +5,7 @@
  */
 package io.debezium.util;
 
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 
@@ -62,6 +63,10 @@ public interface Metronome {
         };
     }
 
+    public static Metronome sleeper(Duration period, Clock timeSystem) {
+        return sleeper(period.toNanos(), TimeUnit.NANOSECONDS, timeSystem);
+    }
+
     /**
      * Create a new metronome that starts ticking immediately and that uses {@link LockSupport#parkNanos(long)} to wait.
      * <p>
@@ -99,5 +104,9 @@ public interface Metronome {
                 return "Metronome (park for " + TimeUnit.NANOSECONDS.toMillis(periodInNanos) + " ms)";
             }
         };
+    }
+
+    public static Metronome parker(Duration period, Clock timeSystem) {
+        return parker(period.toNanos(), TimeUnit.NANOSECONDS, timeSystem);
     }
 }

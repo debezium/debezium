@@ -3,15 +3,15 @@
 -- ----------------------------------------------------------------------------------------------------------------
 
 -- Create and populate our products using a single insert with many rows
-CREATE TABLE products (
+CREATE TABLE Products (
   id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   description VARCHAR(512),
   weight FLOAT
 );
-ALTER TABLE products AUTO_INCREMENT = 101;
+ALTER TABLE Products AUTO_INCREMENT = 101;
 
-INSERT INTO products 
+INSERT INTO Products
 VALUES (default,"scooter","Small 2-wheel scooter",3.14),
        (default,"car battery","12V car battery",8.1),
        (default,"12-pack drill bits","12-pack of drill bits with sizes ranging from #40 to #3",0.8),
@@ -26,7 +26,7 @@ VALUES (default,"scooter","Small 2-wheel scooter",3.14),
 CREATE TABLE products_on_hand (
   product_id INTEGER NOT NULL PRIMARY KEY,
   quantity INTEGER NOT NULL,
-  FOREIGN KEY (product_id) REFERENCES products(id)
+  FOREIGN KEY (product_id) REFERENCES Products(id)
 );
 
 INSERT INTO products_on_hand VALUES (101,3);
@@ -62,7 +62,7 @@ CREATE TABLE orders (
   quantity INTEGER NOT NULL,
   product_id INTEGER NOT NULL,
   FOREIGN KEY order_customer (purchaser) REFERENCES customers(id),
-  FOREIGN KEY ordered_product (product_id) REFERENCES products(id)
+  FOREIGN KEY ordered_product (product_id) REFERENCES Products(id)
 ) AUTO_INCREMENT = 10001;
 
 INSERT INTO orders 

@@ -18,6 +18,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import io.debezium.config.Configuration;
 import io.debezium.kafka.KafkaCluster;
@@ -244,5 +246,35 @@ public class KafkaDatabaseHistoryTest {
         }
 
         testHistoryTopicContent(false);
+    }
+    
+    @Test
+    public void testExists() {          
+        // happy path
+        testHistoryTopicContent(true);                
+        assertTrue(history.exists());
+        
+        // Set history to use dummy topic
+        Configuration config = Configuration.create()
+                .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
+                .with(KafkaDatabaseHistory.TOPIC, "dummytopic")
+                .with(DatabaseHistory.NAME, "my-db-history")
+                .with(KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, 500)
+                // new since 0.10.1.0 - we want a low value because we're running everything locally
+                // in this test. However, it can't be so low that the broker returns the same
+                // messages more than once.
+                .with(KafkaDatabaseHistory.consumerConfigPropertyName(
+                      ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG),
+                      100)
+                .with(KafkaDatabaseHistory.consumerConfigPropertyName(
+                      ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG),
+                      50000)
+                .with(KafkaDatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)
+                .build();
+
+        history.configure(config, null);
+        
+        // dummytopic should not exist yet
+        assertFalse(history.exists());
     }
 }

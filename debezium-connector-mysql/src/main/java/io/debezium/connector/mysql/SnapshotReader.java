@@ -69,7 +69,7 @@ public class SnapshotReader extends AbstractReader {
      */
     public SnapshotReader(String name, MySqlTaskContext context) {
         super(name, context);
-        this.includeData = !context.isSchemaOnlySnapshot();
+        this.includeData = context.snapshotMode().includeData();
         recorder = this::recordRowAsRead;
         metrics = new SnapshotReaderMetrics(context.clock());
     }
@@ -667,29 +667,38 @@ public class SnapshotReader extends AbstractReader {
     }
 
     protected void readBinlogPosition(int step, SourceInfo source, JdbcConnection mysql, AtomicReference<String> sql) throws SQLException {
-        logger.info("Step {}: read binlog position of MySQL master", step);
-        String showMasterStmt = "SHOW MASTER STATUS";
-        sql.set(showMasterStmt);
-        mysql.query(sql.get(), rs -> {
-            if (rs.next()) {
-                String binlogFilename = rs.getString(1);
-                long binlogPosition = rs.getLong(2);
-                source.setBinlogStartPoint(binlogFilename, binlogPosition);
-                if (rs.getMetaData().getColumnCount() > 4) {
-                    // This column exists only in MySQL 5.6.5 or later ...
-                    String gtidSet = rs.getString(5);// GTID set, may be null, blank, or contain a GTID set
-                    source.setCompletedGtidSet(gtidSet);
-                    logger.info("\t using binlog '{}' at position '{}' and gtid '{}'", binlogFilename, binlogPosition,
-                                gtidSet);
-                } else {
-                    logger.info("\t using binlog '{}' at position '{}'", binlogFilename, binlogPosition);
-                }
-                source.startSnapshot();
-            } else {
-                throw new IllegalStateException("Cannot read the binlog filename and position via '" + showMasterStmt
-                        + "'. Make sure your server is correctly configured");
+        if (context.isSchemaOnlyRecoverySnapshot()) {
+            // We are in schema only recovery mode, use the existing binlog position
+            if (Strings.isNullOrEmpty(source.binlogFilename())) {
+                // would like to also verify binlog position exists, but it defaults to 0 which is technically valid
+                throw new IllegalStateException("Could not find existing binlog information while attempting schema only recovery snapshot");
             }
-        });
+            source.startSnapshot();
+        } else {
+            logger.info("Step {}: read binlog position of MySQL master", step);
+            String showMasterStmt = "SHOW MASTER STATUS";
+            sql.set(showMasterStmt);
+            mysql.query(sql.get(), rs -> {
+                if (rs.next()) {
+                    String binlogFilename = rs.getString(1);
+                    long binlogPosition = rs.getLong(2);
+                    source.setBinlogStartPoint(binlogFilename, binlogPosition);
+                    if (rs.getMetaData().getColumnCount() > 4) {
+                        // This column exists only in MySQL 5.6.5 or later ...
+                        String gtidSet = rs.getString(5);// GTID set, may be null, blank, or contain a GTID set
+                        source.setCompletedGtidSet(gtidSet);
+                        logger.info("\t using binlog '{}' at position '{}' and gtid '{}'", binlogFilename, binlogPosition,
+                                    gtidSet);
+                    } else {
+                        logger.info("\t using binlog '{}' at position '{}'", binlogFilename, binlogPosition);
+                    }
+                    source.startSnapshot();
+                } else {
+                    throw new IllegalStateException("Cannot read the binlog filename and position via '" + showMasterStmt
+                            + "'. Make sure your server is correctly configured");
+                }
+            });
+        }
     }
 
     protected String quote(String dbOrTableName) {

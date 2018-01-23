@@ -28,7 +28,7 @@ import io.debezium.relational.TableId;
 /**
  * A test utility for accumulating the {@link SourceRecord}s that represent change events on rows. This store applies the
  * changes and maintains the current state of the rows.
- * 
+ *
  * @author Randall Hauch
  */
 public class KeyValueStore {
@@ -55,7 +55,7 @@ public class KeyValueStore {
     /**
      * Create a KeyValueStore that uses the supplied regular expression and group number to extract the {@link TableId} from
      * the topic name.
-     * 
+     *
      * @param regex the regular expression that identifies the table ID within the topic name; may not be null
      * @param groupNumber the group number in the regex for the table ID string
      * @return the key value store
@@ -66,7 +66,7 @@ public class KeyValueStore {
 
     /**
      * Create a KeyValueStore that removes from the topic names the supplied prefix to obtain the {@link TableId}.
-     * 
+     *
      * @param prefix the prefix after which all of the topic name forms the table ID; may not be null
      * @return the key value store
      */
@@ -89,11 +89,11 @@ public class KeyValueStore {
             getOrCreate(tableId).add(record);
         }
     }
-    
+
     public List<SourceRecord> sourceRecords() {
         return sourceRecords;
     }
-    
+
     public Collection collection(String fullyQualifiedName) {
         return collection(TableId.parse(fullyQualifiedName));
     }
@@ -116,14 +116,6 @@ public class KeyValueStore {
 
     public int collectionCount() {
         return collectionsByTableId.size();
-    }
-
-    public Collection getOrCreate(String fullyQualifiedName) {
-        return getOrCreate(TableId.parse(fullyQualifiedName));
-    }
-
-    public Collection getOrCreate(String catalog, String tableName) {
-        return getOrCreate(new TableId(catalog, null, tableName));
     }
 
     public Collection getOrCreate(TableId tableId) {
@@ -149,7 +141,7 @@ public class KeyValueStore {
 
         /**
          * Get the number of changes to the key schema for events in this collection.
-         * 
+         *
          * @return the count; never negative
          */
         public long numberOfKeySchemaChanges() {
@@ -158,7 +150,7 @@ public class KeyValueStore {
 
         /**
          * Get the number of changes to the key schema for events in this collection.
-         * 
+         *
          * @return the count; never negative
          */
         public long numberOfValueSchemaChanges() {
@@ -167,7 +159,7 @@ public class KeyValueStore {
 
         /**
          * Get the number of {@link Operation#CREATE CREATE} records {@link #add(SourceRecord) added} to this collection.
-         * 
+         *
          * @return the count; never negative
          */
         public long numberOfCreates() {
@@ -176,7 +168,7 @@ public class KeyValueStore {
 
         /**
          * Get the number of {@link Operation#DELETE DELETE} records {@link #add(SourceRecord) added} to this collection.
-         * 
+         *
          * @return the count; never negative
          */
         public long numberOfDeletes() {
@@ -185,7 +177,7 @@ public class KeyValueStore {
 
         /**
          * Get the number of {@link Operation#READ READ} records {@link #add(SourceRecord) added} to this collection.
-         * 
+         *
          * @return the count; never negative
          */
         public long numberOfReads() {
@@ -194,7 +186,7 @@ public class KeyValueStore {
 
         /**
          * Get the number of {@link Operation#UPDATE UPDATE} records {@link #add(SourceRecord) added} to this collection.
-         * 
+         *
          * @return the count; never negative
          */
         public long numberOfUpdates() {
@@ -203,7 +195,7 @@ public class KeyValueStore {
 
         /**
          * Get the number of tombstone records that were {@link #add(SourceRecord) added} to this collection.
-         * 
+         *
          * @return the count; never negative
          */
         public long numberOfTombstones() {

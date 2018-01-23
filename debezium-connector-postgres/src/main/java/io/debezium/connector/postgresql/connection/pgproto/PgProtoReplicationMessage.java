@@ -111,6 +111,12 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                 .collect(Collectors.toList());
     }
 
+
+    @Override
+    public boolean isLastEventForLsn() {
+        return true;
+    }
+
     /**
      * Converts the Protobuf value for a {@link io.debezium.connector.postgresql.proto.PgProto.DatumMessage plugin message} to
      * a Java value based on the type of the column from the message. This value will be converted later on if necessary by the
