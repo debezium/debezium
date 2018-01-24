@@ -60,6 +60,17 @@ public interface TopicSelector {
                 return String.join(delimiter, prefix, databaseName, tableName);
             }
 
+            /**
+             * Get the name of the heartbeat topic for the given server. This method returns
+             * "{@code <prefix>-heartbeat}".
+             * 
+             * @return the topic name; never null
+             */
+            @Override
+            public String getHeartbeatTopic() {
+                return prefix + "-heartbeat";
+            }
+
         };
     }
 
@@ -88,4 +99,11 @@ public interface TopicSelector {
      * @return the topic name; never null
      */
     String getPrimaryTopic();
+
+    /**
+     * Get the name of the heartbeat topic.
+     * 
+     * @return the topic name; never null
+     */
+    String getHeartbeatTopic();
 }
