@@ -42,7 +42,7 @@ import io.debezium.text.TokenStream.Marker;
 
 /**
  * A parser for DDL statements.
- * 
+ *
  * @author Randall Hauch
  * @author Horia Chiorean
  * @author Barry LaFond
@@ -73,7 +73,7 @@ public class DdlParser {
 
     /**
      * Create a new parser that uses the supplied {@link DataTypeParser}, but that does not include view definitions.
-     * 
+     *
      * @param terminator the terminator character sequence; may be null if the default terminator ({@code ;}) should be used
      */
     public DdlParser(String terminator) {
@@ -82,7 +82,7 @@ public class DdlParser {
 
     /**
      * Create a new parser that uses the supplied {@link DataTypeParser}.
-     * 
+     *
      * @param terminator the terminator character sequence; may be null if the default terminator ({@code ;}) should be used
      * @param includeViews {@code true} if view definitions should be included, or {@code false} if they should be skipped
      */
@@ -97,7 +97,7 @@ public class DdlParser {
     /**
      * Add a listener. This method should not be called more than once with the same listener object, since the result will be
      * that object will be called multiple times for each event.
-     * 
+     *
      * @param listener the listener; if null nothing is done
      */
     public void addListener(DdlParserListener listener) {
@@ -106,7 +106,7 @@ public class DdlParser {
 
     /**
      * Remove an existing listener.
-     * 
+     *
      * @param listener the listener; if null nothing is done
      * @return {@code true} if the listener was removed, or {@code false} otherwise
      */
@@ -138,17 +138,17 @@ public class DdlParser {
     public final String terminator() {
         return terminator;
     }
-    
+
     /**
      * Determine if the next token is a single- or double-quoted string.
-     * 
+     *
      * @return {@code true} if the next token is a {@link DdlTokenizer#SINGLE_QUOTED_STRING single-quoted string} or
      * {@link DdlTokenizer#DOUBLE_QUOTED_STRING double-quoted string}, or {@code false} otherwise
      */
     protected boolean isNextTokenQuotedIdentifier() {
         return tokens.matchesAnyOf(DdlTokenizer.SINGLE_QUOTED_STRING,DdlTokenizer.DOUBLE_QUOTED_STRING);
     }
-    
+
     protected int determineTokenType(int type, String token) {
         if (statementStarts.contains(token)) type |= DdlTokenizer.STATEMENT_KEY;
         if (keywords.contains(token)) type |= DdlTokenizer.KEYWORD;
@@ -158,7 +158,7 @@ public class DdlParser {
 
     /**
      * Set the name of the current schema used when {@link #resolveTableId(String, String) resolving} {@link TableId}s.
-     * 
+     *
      * @param name the name of the current schema; may be null
      */
     public void setCurrentSchema(String name) {
@@ -167,7 +167,7 @@ public class DdlParser {
 
     /**
      * Get the name of the current schema.
-     * 
+     *
      * @return the current schema name, or null if the current schema name has not been {@link #setCurrentSchema(String) set}
      */
     public String currentSchema() {
@@ -178,7 +178,7 @@ public class DdlParser {
      * Parse the next tokens for a possibly qualified name. This method builds up a string containing the schema name (or if none
      * is found the the {@link #currentSchema() current schema}), a '.' delimiter, and the object name. If no schema name is
      * found, just the object name is returned.
-     * 
+     *
      * @param start the start of the statement
      * @return the qualified schema name.
      */
@@ -198,7 +198,7 @@ public class DdlParser {
      * Parse the next tokens for a possibly qualified table name. This method uses the schema name that appears in the
      * token stream, or if none is found the {@link #currentSchema()}, and then calls {@link #resolveTableId(String, String)} with
      * the values.
-     * 
+     *
      * @param start the start of the statement
      * @return the resolved {@link TableId}
      */
@@ -216,7 +216,7 @@ public class DdlParser {
      * in the
      * token stream, or if none is found the {@link #currentSchema()}, and then calls {@link #resolveTableId(String, String)} with
      * the values.
-     * 
+     *
      * @param start the start of the statement
      * @return the resolved {@link TableId}
      */
@@ -234,7 +234,7 @@ public class DdlParser {
     /**
      * Create a {@link TableId} from the supplied schema and table names. By default, this method uses the supplied schema name
      * as the TableId's catalog, which often matches the catalog name in JDBC database metadata.
-     * 
+     *
      * @param schemaName the name of the schema; may be null if not specified
      * @param tableName the name of the table; should not be null
      * @return the table identifier; never null
@@ -245,7 +245,7 @@ public class DdlParser {
 
     /**
      * Determine whether parsing should exclude comments from the token stream. By default, this method returns {@code true}.
-     * 
+     *
      * @return {@code true} if comments should be skipped/excluded, or {@code false} if they should not be skipped
      */
     protected boolean skipComments() {
@@ -255,7 +255,7 @@ public class DdlParser {
     /**
      * Examine the supplied string containing DDL statements, and apply those statements to the specified
      * database table definitions.
-     * 
+     *
      * @param ddlContent the stream of tokens containing the DDL statements; may not be null
      * @param databaseTables the database's table definitions, which should be used by this method to create, change, or remove
      *            tables as defined in the DDL content; may not be null
@@ -270,7 +270,7 @@ public class DdlParser {
     /**
      * Examine the stream starting at its current position for DDL statements, and apply those statements to the specified
      * database table definitions.
-     * 
+     *
      * @param ddlContent the stream of tokens containing the DDL statements; may not be null
      * @param databaseTables the database's table definitions, which should be used by this method to create, change, or remove
      *            tables as defined in the DDL content; may not be null
@@ -291,13 +291,13 @@ public class DdlParser {
             ddlContent.rewind(marker);
             throw new ParsingException(e.getPosition(), "Failed to parse statement '" + ddlContent.getInputString() + "'", e);
         } catch (Throwable t) {
-            parsingFailed(ddlContent.nextPosition(), "Unexpected exception (" + t.getMessage() + ") parsing", t);
+            parsingFailed(ddlContent.nextPosition(), "Unexpected exception while parsing statement " + ddlContent.getInputString(), t);
         }
     }
 
     /**
      * Parse the next DDL statement. This is the primary entry point for subclasses.
-     * 
+     *
      * @param marker the start of the statement; never null
      * @throws ParsingException if there is an error parsing the statement
      */
@@ -318,7 +318,7 @@ public class DdlParser {
     /**
      * Parse the a DDL line comment. This is generally called by {@link #parseNextStatement} for line comments that appear
      * between other DDL statements, and is not typically called for comments that appear <i>within</i> DDL statements.
-     * 
+     *
      * @param marker the start of the statement; never null
      * @throws ParsingException if there is an error parsing the statement
      */
@@ -331,7 +331,7 @@ public class DdlParser {
      * Parse the a DDL "CREATE" statement. This method is intended to be overridden by subclasses.
      * <p>
      * By default this method simply consumes the complete statement.
-     * 
+     *
      * @param marker the start of the statement; never null
      * @throws ParsingException if there is an error parsing the statement
      */
@@ -343,7 +343,7 @@ public class DdlParser {
      * Parse the a DDL "ALTER" statement. This method is intended to be overridden by subclasses.
      * <p>
      * By default this method simply consumes the complete statement.
-     * 
+     *
      * @param marker the start of the statement; never null
      * @throws ParsingException if there is an error parsing the statement
      */
@@ -355,7 +355,7 @@ public class DdlParser {
      * Parse the a DDL "DROP" statement. This method is intended to be overridden by subclasses.
      * <p>
      * By default this method simply consumes the complete statement.
-     * 
+     *
      * @param marker the start of the statement; never null
      * @throws ParsingException if there is an error parsing the statement
      */
@@ -368,7 +368,7 @@ public class DdlParser {
      * although it will be more common for subclasses to override {@link #parseNextStatement}.
      * <p>
      * By default this method simply consumes the complete statement.
-     * 
+     *
      * @param marker the start of the statement; never null
      * @throws ParsingException if there is an error parsing the statement
      */
@@ -378,7 +378,7 @@ public class DdlParser {
 
     /**
      * Signal an event to all listeners.
-     * 
+     *
      * @param event the event; may not be null
      */
     protected void signalEvent(DdlParserListener.Event event) {
@@ -389,7 +389,7 @@ public class DdlParser {
 
     /**
      * Signal a create database event to all listeners.
-     * 
+     *
      * @param databaseName the database name; may not be null
      * @param statementStart the start of the statement; may not be null
      */
@@ -399,7 +399,7 @@ public class DdlParser {
 
     /**
      * Signal an alter database event to all listeners.
-     * 
+     *
      * @param databaseName the database name; may not be null
      * @param previousDatabaseName the previous name of the database if it was renamed, or null if it was not renamed
      * @param statementStart the start of the statement; may not be null
@@ -410,7 +410,7 @@ public class DdlParser {
 
     /**
      * Signal a drop database event to all listeners.
-     * 
+     *
      * @param databaseName the database name; may not be null
      * @param statementStart the start of the statement; may not be null
      */
@@ -420,7 +420,7 @@ public class DdlParser {
 
     /**
      * Signal a create table event to all listeners.
-     * 
+     *
      * @param id the table identifier; may not be null
      * @param statementStart the start of the statement; may not be null
      */
@@ -430,7 +430,7 @@ public class DdlParser {
 
     /**
      * Signal an alter table event to all listeners.
-     * 
+     *
      * @param id the table identifier; may not be null
      * @param previousId the previous name of the view if it was renamed, or null if it was not renamed
      * @param statementStart the start of the statement; may not be null
@@ -441,7 +441,7 @@ public class DdlParser {
 
     /**
      * Signal an alter table event to all listeners.
-     * 
+     *
      * @param id the table identifier; may not be null
      * @param previousId the previous name of the view if it was renamed, or null if it was not renamed
      * @param statement the DDL statement; may not be null
@@ -452,7 +452,7 @@ public class DdlParser {
 
     /**
      * Signal a drop table event to all listeners.
-     * 
+     *
      * @param id the table identifier; may not be null
      * @param statementStart the start of the statement; may not be null
      */
@@ -462,7 +462,7 @@ public class DdlParser {
 
     /**
      * Signal a drop table event to all listeners.
-     * 
+     *
      * @param id the table identifier; may not be null
      * @param statement the statement; may not be null
      */
@@ -472,7 +472,7 @@ public class DdlParser {
 
     /**
      * Signal a create view event to all listeners.
-     * 
+     *
      * @param id the table identifier; may not be null
      * @param statementStart the start of the statement; may not be null
      */
@@ -482,7 +482,7 @@ public class DdlParser {
 
     /**
      * Signal an alter view event to all listeners.
-     * 
+     *
      * @param id the table identifier; may not be null
      * @param previousId the previous name of the view if it was renamed, or null if it was not renamed
      * @param statementStart the start of the statement; may not be null
@@ -493,7 +493,7 @@ public class DdlParser {
 
     /**
      * Signal a drop view event to all listeners.
-     * 
+     *
      * @param id the table identifier; may not be null
      * @param statementStart the start of the statement; may not be null
      */
@@ -503,7 +503,7 @@ public class DdlParser {
 
     /**
      * Signal a drop view event to all listeners.
-     * 
+     *
      * @param id the table identifier; may not be null
      * @param statement the statement; may not be null
      */
@@ -513,7 +513,7 @@ public class DdlParser {
 
     /**
      * Signal a create index event to all listeners.
-     * 
+     *
      * @param indexName the name of the index; may not be null
      * @param id the table identifier; may be null if the index does not apply to a single table
      * @param statementStart the start of the statement; may not be null
@@ -524,7 +524,7 @@ public class DdlParser {
 
     /**
      * Signal a drop index event to all listeners.
-     * 
+     *
      * @param indexName the name of the index; may not be null
      * @param id the table identifier; may not be null
      * @param statementStart the start of the statement; may not be null
@@ -560,7 +560,7 @@ public class DdlParser {
      * token} until either the
      * {@link #terminator() end-of-statement terminator token} or before the next
      * {@link #initializeStatementStarts(TokenSet) starting-statement token}.
-     * 
+     *
      * @throws ParsingException if the next token is not a {@link #initializeStatementStarts(TokenSet) starting-statement token}
      */
     protected void consumeStatement() throws ParsingException {
@@ -573,7 +573,7 @@ public class DdlParser {
      * Consume all tokens from the current position until and including either the {@link #terminator() end-of-statement
      * terminator token} or one of
      * the {@link #initializeStatementStarts(TokenSet) tokens that is registered} as the start of a statement.
-     * 
+     *
      * @param start the marker at which the statement was begun
      */
     protected void consumeRemainingStatement(Marker start) {
@@ -595,7 +595,7 @@ public class DdlParser {
     /**
      * Consume the entire {@code BEGIN...END} block that appears next in the token stream. This method may need to be
      * specialized for a specific DDL grammar.
-     * 
+     *
      * @param start the marker at which the statement was begun
      */
     protected void consumeBeginStatement(Marker start) {
@@ -606,10 +606,10 @@ public class DdlParser {
             tokens.consumeThrough("END");
         }
     }
-    
+
     /**
      * Consume the next token that is a single-quoted string.
-     * 
+     *
      * @return the quoted string; never null
      * @throws ParsingException if there is no single-quoted string at the current position
      */
@@ -619,7 +619,7 @@ public class DdlParser {
 
     /**
      * Consume the next token that is a double-quoted string.
-     * 
+     *
      * @return the quoted string; never null
      * @throws ParsingException if there is no double-quoted string at the current position
      */
@@ -629,7 +629,7 @@ public class DdlParser {
 
     /**
      * Consume the next token that is either a single-quoted string or a double-quoted string.
-     * 
+     *
      * @return the quoted string; never null
      * @throws ParsingException if there is no single- or double-quoted string at the current position
      */
@@ -640,7 +640,7 @@ public class DdlParser {
     /**
      * Generate a {@link ParsingException} with the supplied message, which is appended by this method with additional
      * information about the position's line and column.
-     * 
+     *
      * @param position the position at which the error occurred; may not be null
      * @param msg the leading portion of the message; may not be null
      */
@@ -651,7 +651,7 @@ public class DdlParser {
     /**
      * Generate a {@link ParsingException} with the supplied message, which is appended by this method with additional
      * information about the position's line and column.
-     * 
+     *
      * @param position the position at which the error occurred; may not be null
      * @param msg the leading portion of the message; may not be null
      * @param t the exception that occurred; may be null
@@ -663,7 +663,7 @@ public class DdlParser {
     /**
      * Generate a {@link ParsingException} or {@link MultipleParsingExceptions} with the supplied error or errors and the
      * supplied message, which is appended by this method with additional information about the position's line and column.
-     * 
+     *
      * @param position the position at which the error occurred; may not be null
      * @param errors the multiple parsing exception errors; may not be null
      * @param msg the leading portion of the message; may not be null
@@ -674,7 +674,7 @@ public class DdlParser {
         }
         throw new MultipleParsingExceptions(msg + " at line " + position.line() + ", column " + position.column(), errors);
     }
-    
+
     /**
      * Utility method to accumulate a parsing exception.
      * @param e the parsing exception
@@ -687,7 +687,7 @@ public class DdlParser {
        list.add(e);
        return list;
     }
-    
+
     /**
      * Utility method to accumulate a parsing exception.
      * @param e the multiple parsing exceptions
@@ -815,7 +815,7 @@ public class DdlParser {
 
     /**
      * Parse the column information in the SELECT clause. This statement stops before consuming the FROM clause.
-     * 
+     *
      * @param start the start of the statement
      * @return the map of resolved Columns keyed by the column alias (or name) used in the SELECT statement; never null but
      *         possibly
@@ -945,7 +945,7 @@ public class DdlParser {
 
     /**
      * Parse the potentially qualified and aliased column information, and add the information to the supplied maps.
-     * 
+     *
      * @param start the start of the statement
      * @param tableAliasByColumnAliases the map to which is added the column's alias (or name) keyed by the alias of the table
      *            in which the column should appear; may not be null
@@ -977,7 +977,7 @@ public class DdlParser {
     /**
      * Returns the tables keyed by their aliases that appear in a SELECT clause's "FROM" list. This method handles the
      * {@link #canConsumeJoin various standard joins}.
-     * 
+     *
      * @param start the start of the statement
      * @return the map of resolved tables keyed by the alias (or table name) used in the SELECT statement; never null but possibly
      *         empty if we couldn't parse the from clause correctly
@@ -1025,7 +1025,7 @@ public class DdlParser {
 
     /**
      * Parse a potentially qualified table name along with an optional alias.
-     * 
+     *
      * @param start the start of the statement
      * @param tablesByAlias the map to which this method should add the table keyed by its alias (or name if there is no alias);
      *            may not be null

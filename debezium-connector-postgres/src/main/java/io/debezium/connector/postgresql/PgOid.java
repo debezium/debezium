@@ -84,7 +84,8 @@ public final class PgOid extends Oid {
                 return PgOid.POSTGIS_GEOGRAPHY;
             }
 
-            return column.componentType();
+            return column.typeName() != null ? typeNameToOid(column.typeName().substring(1) + "_array")
+                    : column.componentType();
         }
         return typeNameToOid(typeName);
     }
