@@ -7,6 +7,7 @@ package io.debezium.connector.mysql;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.time.Duration;
 import java.util.BitSet;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -51,6 +52,7 @@ import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
+import io.debezium.util.Threads.Timer;
 
 /**
  * A component that reads the binlog of a MySQL server, and records any schema changes in {@link MySqlSchema}.
@@ -62,6 +64,7 @@ public class BinlogReader extends AbstractReader {
 
     private static final long INITIAL_POLL_PERIOD_IN_MILLIS = TimeUnit.SECONDS.toMillis(5);
     private static final long MAX_POLL_PERIOD_IN_MILLIS = TimeUnit.HOURS.toMillis(1);
+    private static final Duration HEARTBEAT_INTERVAL = Duration.ofHours(1);
 
     private final boolean recordSchemaChangesInSourceRecords;
     private final RecordMakers recordMakers;
@@ -84,6 +87,7 @@ public class BinlogReader extends AbstractReader {
     private final AtomicLong totalRecordCounter = new AtomicLong();
     private volatile Map<String, ?> lastOffset = null;
     private com.github.shyiko.mysql.binlog.GtidSet gtidSet;
+    private Timer heartbeatTimeout = resetHeartbeat();
 
     public static class BinlogPosition {
         final String filename;
@@ -416,6 +420,12 @@ public class BinlogReader extends AbstractReader {
 
         // If there is a handler for this event, forward the event to it ...
         try {
+            // Generate heartbeat message if the time is right
+            if (heartbeatTimeout.expired()) {
+                recordMakers.heartbeat(super::enqueueRecord);
+                resetHeartbeat();
+            }
+
             // Forward the event to the handler ...
             eventHandlers.getOrDefault(eventType, this::ignoreEvent).accept(event);
 
@@ -948,5 +958,9 @@ public class BinlogReader extends AbstractReader {
 
     public BinlogPosition getCurrentBinlogPosition() {
         return new BinlogPosition(client.getBinlogFilename(), client.getBinlogPosition());
+    }
+
+    private Timer resetHeartbeat() {
+        return Threads.timer(Clock.SYSTEM, HEARTBEAT_INTERVAL);
     }
 }
