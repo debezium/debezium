@@ -36,6 +36,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import javax.xml.bind.DatatypeConverter;
+
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -102,7 +104,7 @@ public abstract class AbstractRecordsProducerTest {
             "VALUES ('SRID=3187;POINT(174.9479 -36.7208)'::postgis.geometry, 'MULTILINESTRING((169.1321 -44.7032, 167.8974 -44.6414))'::postgis.geography)";
 
     protected static final String INSERT_POSTGIS_ARRAY_TYPES_STMT = "INSERT INTO public.postgis_array_table (ga) " +
-            "VALUES (ARRAY['GEOMETRYCOLLECTION EMPTY'::postgis.geometry, 'POLYGON((166.51 -46.64, 178.52 -46.64, 178.52 -34.45, 166.51 -34.45, 166.51 -46.64))'::postgis.geometry]::postgis.geometry[])";
+            "VALUES (ARRAY['GEOMETRYCOLLECTION EMPTY'::postgis.geometry, 'POLYGON((166.51 -46.64, 178.52 -46.64, 178.52 -34.45, 166.51 -34.45, 166.51 -46.64))'::postgis.geometry])";
 
     protected static final String INSERT_QUOTED_TYPES_STMT = "INSERT INTO \"Quoted_\"\" . Schema\".\"Quoted_\"\" . Table\" (\"Quoted_\"\" . Text_Column\") " +
                                                              "VALUES ('some text')";
@@ -274,23 +276,32 @@ public abstract class AbstractRecordsProducerTest {
         return Arrays.asList(
                 // geometries are encoded here as HexEWKB
                 new SchemaAndValueField("p", geomSchema,
-                        Geometry.createValue(geomSchema, PostgisGeometry.hex2bin("0101000020E61000001C7C613255DE6540787AA52C435C42C0"), 3187)),
+                        // 'SRID=3187;POINT(174.9479 -36.7208)'::postgis.geometry
+                        Geometry.createValue(geomSchema, DatatypeConverter.parseHexBinary("0101000020730C00001C7C613255DE6540787AA52C435C42C0"), 3187)),
                 new SchemaAndValueField("ml", geogSchema,
-                        Geography.createValue(geogSchema, PostgisGeometry.hex2bin("0105000020E610000001000000010200000002000000A779C7293A2465400B462575025A46C0C66D3480B7FC6440C3D32B65195246C0"), 4326))
+                        // 'MULTILINESTRING((169.1321 -44.7032, 167.8974 -44.6414))'::postgis.geography
+                        Geography.createValue(geogSchema, DatatypeConverter.parseHexBinary("0105000020E610000001000000010200000002000000A779C7293A2465400B462575025A46C0C66D3480B7FC6440C3D32B65195246C0"), 4326))
         );
     }
 
     protected List<SchemaAndValueField> schemaAndValuesForPostgisArrayTypes() {
-        Schema geomSchema = Geometry.builder().optional().build();
+        // Geometry arrays aren't supported yet, currently they're interpreted as unknown bytestreams.
         return Arrays.asList(
-                // geometries are encoded here as HexEWKB
-                new SchemaAndValueField("ga", SchemaBuilder.array(geomSchema).optional().build(),
-                        Arrays.asList(
-                                Geometry.createValue(geomSchema, PostgisGeometry.hex2bin("010700000000000000"), null),
-                                Geometry.createValue(geomSchema, PostgisGeometry.hex2bin("01030000000100000005000000B81E85EB51D0644052B81E85EB5147C0713D0AD7A350664052B81E85EB5147C0713D0AD7A35066409A999999993941C0B81E85EB51D064409A999999993941C0B81E85EB51D0644052B81E85EB5147C0"), 4326)
-                        )
-                )
+                new SchemaAndValueField("ga", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap("Top.Collections.Pictures.Astronomy.Galaxies".getBytes()))
         );
+
+//        Schema geomSchema = Geometry.builder().optional().build();
+//        return Arrays.asList(
+//                // geometries are encoded here as HexEWKB
+//                new SchemaAndValueField("ga", SchemaBuilder.array(geomSchema).optional().build(),
+//                        Arrays.asList(
+//                                // 'GEOMETRYCOLLECTION EMPTY'::postgis.geometry
+//                                Geometry.createValue(geomSchema, PostgisGeometry.hex2bin("010700000000000000"), null),
+//                                // 'POLYGON((166.51 -46.64, 178.52 -46.64, 178.52 -34.45, 166.51 -34.45, 166.51 -46.64))'::postgis.geometry
+//                                Geometry.createValue(geomSchema, PostgisGeometry.hex2bin("01030000000100000005000000B81E85EB51D0644052B81E85EB5147C0713D0AD7A350664052B81E85EB5147C0713D0AD7A35066409A999999993941C0B81E85EB51D064409A999999993941C0B81E85EB51D0644052B81E85EB5147C0"), 4326)
+//                        )
+//                )
+//        );
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForQuotedTypes() {

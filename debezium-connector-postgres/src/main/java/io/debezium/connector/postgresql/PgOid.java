@@ -78,11 +78,12 @@ public final class PgOid extends Oid {
         String typeName = TableId.parse(column.typeName()).table().toUpperCase();
 
         if (column.jdbcType() == Types.ARRAY) {
-            if (typeName.equals("_GEOMETRY")) {
-                return PgOid.POSTGIS_GEOMETRY;
-            } else if (typeName.equals("_GEOGRAPHY")) {
-                return PgOid.POSTGIS_GEOGRAPHY;
-            }
+            // until array handling is cleaner, geometry arrays aren't supported
+            // if (typeName.equals("_GEOMETRY")) {
+            //     return PgOid.POSTGIS_GEOMETRY;
+            // } else if (typeName.equals("_GEOGRAPHY")) {
+            //     return PgOid.POSTGIS_GEOGRAPHY;
+            // }
 
             return column.typeName() != null ? typeNameToOid(column.typeName().substring(1) + "_array")
                     : column.componentType();
@@ -91,25 +92,28 @@ public final class PgOid extends Oid {
     }
 
     public static int typeNameToOid(String typeName) {
-        if (typeName.toUpperCase().equals("TSTZRANGE")) {
+        switch (typeName.toUpperCase()) {
+        case "TSTZRANGE":
             return TSTZRANGE_OID;
-        } else if (typeName.toUpperCase().equals("SMALLSERIAL")) {
+        case "SMALLSERIAL":
             return PgOid.INT2;
-        } else if (typeName.toUpperCase().equals("SERIAL")) {
+        case "SERIAL":
             return PgOid.INT4;
-        } else if (typeName.toUpperCase().equals("BIGSERIAL")) {
+        case "BIGSERIAL":
             return PgOid.INT8;
-        } else if (typeName.toUpperCase().equals("JSONB")) {
+        case "JSONB":
             return PgOid.JSONB_OID;
-        } else if (typeName.toUpperCase().equals("GEOMETRY")) {
+        case "GEOMETRY":
             return PgOid.POSTGIS_GEOMETRY;
-        } else if (typeName.toUpperCase().equals("GEOGRAPHY")) {
+        case "GEOGRAPHY":
             return PgOid.POSTGIS_GEOGRAPHY;
-        } else if (typeName.toUpperCase().equals("_GEOMETRY")) {
-            return PgOid.POSTGIS_GEOMETRY_ARRAY;
-        } else if (typeName.toUpperCase().equals("_GEOGRAPHY")) {
-            return PgOid.POSTGIS_GEOGRAPHY_ARRAY;
+        // until array handling is cleaner, geometry arrays aren't supported
+        // case "_GEOMETRY":
+        //     return PgOid.POSTGIS_GEOMETRY_ARRAY;
+        // case "_GEOGRAPHY":
+        //     return PgOid.POSTGIS_GEOGRAPHY_ARRAY;
         }
+
         try {
             return Oid.valueOf(typeName);
         } catch (PSQLException e) {

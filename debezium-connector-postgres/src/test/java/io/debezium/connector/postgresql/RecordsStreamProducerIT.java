@@ -23,6 +23,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
@@ -144,7 +145,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertInsert(INSERT_POSTGIS_TYPES_STMT, schemaAndValuesForPostgisTypes());
     }
 
+    // Geometry arrays are waiting on better array support
     @Test(timeout=30000)
+    @Ignore
     public void shouldReceiveChangesForInsertsWithPostgisArrayTypes() throws Exception {
         TestHelper.executeDDL("postgis_create_tables.ddl");
         consumer = testConsumer(1, "public"); // spatial_ref_sys produces a tonne of records in the postgis schema

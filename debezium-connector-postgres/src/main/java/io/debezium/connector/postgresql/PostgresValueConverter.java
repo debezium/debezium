@@ -6,6 +6,7 @@
 
 package io.debezium.connector.postgresql;
 
+import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.SQLException;
@@ -445,7 +446,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
         try {
             if (data instanceof byte[]) {
-                PostgisGeometry geom = PostgisGeometry.fromEwkb((byte[]) data);
+                PostgisGeometry geom = PostgisGeometry.fromHexEwkb(new String((byte[])data, "ASCII"));
                 return io.debezium.data.geometry.Geometry.createValue(schema, geom.getWkb(), geom.getSrid());
             } else if (data instanceof PGobject) {
                 PGobject pgo = (PGobject)data;
@@ -455,7 +456,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 PostgisGeometry geom = PostgisGeometry.fromHexEwkb((String)data);
                 return io.debezium.data.geometry.Geometry.createValue(schema, geom.getWkb(), geom.getSrid());
             }
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | UnsupportedEncodingException e) {
             logger.warn("Error converting to a Geometry type", column);
         }
         return handleUnknownData(column, fieldDefn, data);
@@ -476,7 +477,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
         try {
             if (data instanceof byte[]) {
-                PostgisGeometry geom = PostgisGeometry.fromEwkb((byte[]) data);
+                PostgisGeometry geom = PostgisGeometry.fromHexEwkb(new String((byte[])data, "ASCII"));
                 return io.debezium.data.geometry.Geography.createValue(schema, geom.getWkb(), geom.getSrid());
             } else if (data instanceof PGobject) {
                 PGobject pgo = (PGobject)data;
@@ -486,7 +487,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 PostgisGeometry geom = PostgisGeometry.fromHexEwkb((String)data);
                 return io.debezium.data.geometry.Geography.createValue(schema, geom.getWkb(), geom.getSrid());
             }
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | UnsupportedEncodingException e) {
             logger.warn("Error converting to a Geography type", column);
         }
         return handleUnknownData(column, fieldDefn, data);
