@@ -337,7 +337,7 @@ public class MySqlSchema {
                     if (!storeOnlyMonitoredTablesDdl || changes.stream().anyMatch(filters().tableFilter()::test)) {
                         dbHistory.record(source.partition(), source.offset(), databaseName, tables, ddlStatements);
                     } else {
-                        logger.debug("Changes for DDL '{}' were filtered and not recorded in schema history", ddlStatements);
+                        logger.debug("Changes for DDL '{}' were filtered and not recorded in database history", ddlStatements);
                     }
                 } catch (Throwable e) {
                     throw new ConnectException(

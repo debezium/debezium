@@ -50,8 +50,8 @@ public interface DatabaseHistory {
             .withType(Type.BOOLEAN)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDescription("Controls what DDL will Debezium store in history topic."
-                    + "By default (false) Debezium will store all DDL incoming. If set to true"
+            .withDescription("Controls what DDL will Debezium store in database history."
+                    + "By default (false) Debezium will store all incoming DDL statements. If set to true"
                     + "then only DDL that manipulates a monitored table will be stored.")
             .withDefault(false);
 
