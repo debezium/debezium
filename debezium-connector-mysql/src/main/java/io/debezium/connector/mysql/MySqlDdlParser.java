@@ -128,7 +128,14 @@ public class MySqlDdlParser extends DdlParser {
         dataTypes.register(Types.CHAR, "ENUM(...)");
         dataTypes.register(Types.CHAR, "SET(...)");
         dataTypes.register(Types.OTHER, "JSON");
+        dataTypes.register(Types.OTHER, "GEOMETRY");
         dataTypes.register(Types.OTHER, "POINT");
+        dataTypes.register(Types.OTHER, "LINESTRING");
+        dataTypes.register(Types.OTHER, "POLYGON");
+        dataTypes.register(Types.OTHER, "MULTIPOINT");
+        dataTypes.register(Types.OTHER, "MULTILINESTRING");
+        dataTypes.register(Types.OTHER, "MULTIPOLYGON");
+        dataTypes.register(Types.OTHER, "GEOMETRYCOLLECTION");
     }
 
     @Override

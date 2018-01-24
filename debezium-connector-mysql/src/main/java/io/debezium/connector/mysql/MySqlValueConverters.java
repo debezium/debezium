@@ -41,8 +41,6 @@ import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
 import io.debezium.time.Year;
 import io.debezium.util.Strings;
-import mil.nga.wkb.geom.Point;
-import mil.nga.wkb.util.WkbException;
 
 /**
  * MySQL-specific customization of the conversions from JDBC values obtained from the MySQL binlog client library.
@@ -154,6 +152,15 @@ public class MySqlValueConverters extends JdbcValueConverters {
         if (matches(typeName, "POINT")) {
             return io.debezium.data.geometry.Point.builder();
         }
+        if (matches(typeName, "GEOMETRY")
+                || matches(typeName, "LINESTRING")
+                || matches(typeName, "POLYGON")
+                || matches(typeName, "MULTIPOINT")
+                || matches(typeName, "MULTILINESTRING")
+                || matches(typeName, "MULTIPOLYGON")
+                || matches(typeName, "GEOMETRYCOLLECTION")) {
+            return io.debezium.data.geometry.Geometry.builder();
+        }
         if (matches(typeName, "YEAR")) {
             return Year.builder();
         }
@@ -196,7 +203,17 @@ public class MySqlValueConverters extends JdbcValueConverters {
         if (matches(typeName, "JSON")) {
             return (data) -> convertJson(column, fieldDefn, data);
         }
+        if (matches(typeName, "GEOMETRY")
+                || matches(typeName, "LINESTRING")
+                || matches(typeName, "POLYGON")
+                || matches(typeName, "MULTIPOINT")
+                || matches(typeName, "MULTILINESTRING")
+                || matches(typeName, "MULTIPOLYGON")
+                || matches(typeName, "GEOMETRYCOLLECTION")) {
+            return (data -> convertGeometry(column, fieldDefn, data));
+        }
         if (matches(typeName, "POINT")){
+            // backwards compatibility
             return (data -> convertPoint(column, fieldDefn, data));
         }
         if (matches(typeName, "YEAR")) {
@@ -528,20 +545,55 @@ public class MySqlValueConverters extends JdbcValueConverters {
 
         if (data == null) {
             if (column.isOptional()) return null;
-            return io.debezium.data.geometry.Point.createValue(schema, 0.0, 0.0);
+            // we can't create an EMPTY Point because it has X & Y integer fields which can't be null.
+            throw new IllegalArgumentException("Nulls not valid on " + column);
         }
 
         if (data instanceof byte[]) {
             // The binlog utility sends a byte array for any Geometry type, we will use our own binaryParse to parse the byte to WKB, hence
             // to the suitable class
-            try {
-                MySqlGeometry mySqlGeometry = MySqlGeometry.fromBytes((byte[]) data);
-                Point point = mySqlGeometry.getPoint();
-                return io.debezium.data.geometry.Point.createValue(schema, point.getX(), point.getY(), mySqlGeometry.getWkb());
-            } catch (WkbException e) {
-                throw new ConnectException("Failed to parse and read a value of type POINT on " + column + ": " + e.getMessage(), e);
+            MySqlGeometry mySqlGeometry = MySqlGeometry.fromBytes((byte[]) data);
+            if (mySqlGeometry.isPoint()) {
+                return io.debezium.data.geometry.Point.createValue(schema, mySqlGeometry.getWkb(), mySqlGeometry.getSrid());
+            } else {
+                throw new ConnectException("Failed to parse and read a value of type POINT on " + column);
             }
         }
+        return handleUnknownData(column, fieldDefn, data);
+    }
+
+    /**
+     * Convert the a value representing a GEOMETRY {@code byte[]} value to a Geometry value used in a {@link SourceRecord}.
+     *
+     * @param column the column in which the value appears
+     * @param fieldDefn the field definition for the {@link SourceRecord}'s {@link Schema}; never null
+     * @param data the data; may be null
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
+     */
+    protected Object convertGeometry(Column column, Field fieldDefn, Object data) {
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+
+        Schema schema = fieldDefn.schema();
+
+        if (data == null) {
+            if (column.isOptional()) {
+                return null;
+            }
+
+            MySqlGeometry emptyMysqlGeometry = MySqlGeometry.createEmpty();
+            return io.debezium.data.geometry.Point.createValue(schema, emptyMysqlGeometry.getWkb(), emptyMysqlGeometry.getSrid());
+        }
+
+        if (data instanceof byte[]) {
+            // The binlog utility sends a byte array for any Geometry type, we will use our own binaryParse to parse the byte to WKB, hence
+            // to the suitable class
+            MySqlGeometry mySqlGeometry = MySqlGeometry.fromBytes((byte[]) data);
+            return io.debezium.data.geometry.Geometry.createValue(schema, mySqlGeometry.getWkb(), mySqlGeometry.getSrid());
+        }
+
         return handleUnknownData(column, fieldDefn, data);
     }
 

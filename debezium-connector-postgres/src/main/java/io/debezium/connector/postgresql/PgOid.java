@@ -6,17 +6,20 @@
 
 package io.debezium.connector.postgresql;
 
+import java.sql.SQLException;
 import java.sql.Types;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.postgresql.core.Oid;
+import org.postgresql.jdbc.PgConnection;
 import org.postgresql.util.PSQLException;
 
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
+import io.debezium.relational.TableId;
 
 /**
  * Extension to the {@link org.postgresql.core.Oid} class which contains Postgres specific datatypes not found currently in the
@@ -59,30 +62,58 @@ public final class PgOid extends Oid {
 
         return longTypeNames;
     }
+    /**
+     * Types defined by the PostGIS extension
+     * OIDs are dynamic... so we alias them to static integers outside the OID range.
+     */
+    public static final int POSTGIS_GEOMETRY = -101;
+    public static final int POSTGIS_GEOGRAPHY = -102;
+    public static final int POSTGIS_GEOMETRY_ARRAY = -201;
+    public static final int POSTGIS_GEOGRAPHY_ARRAY = -202;
 
     private PgOid() {
     }
 
     protected static int jdbcColumnToOid(Column column) {
+        String typeName = TableId.parse(column.typeName()).table().toUpperCase();
+
         if (column.jdbcType() == Types.ARRAY) {
+            // until array handling is cleaner, geometry arrays aren't supported
+            // if (typeName.equals("_GEOMETRY")) {
+            //     return PgOid.POSTGIS_GEOMETRY;
+            // } else if (typeName.equals("_GEOGRAPHY")) {
+            //     return PgOid.POSTGIS_GEOGRAPHY;
+            // }
+
             return column.typeName() != null ? typeNameToOid(column.typeName().substring(1) + "_array")
                     : column.componentType();
         }
-        return typeNameToOid(column.typeName());
+        return typeNameToOid(typeName);
     }
 
     public static int typeNameToOid(String typeName) {
-        if (typeName.toUpperCase().equals("TSTZRANGE")) {
+        switch (typeName.toUpperCase()) {
+        case "TSTZRANGE":
             return TSTZRANGE_OID;
-        } else if (typeName.toUpperCase().equals("SMALLSERIAL")) {
+        case "SMALLSERIAL":
             return PgOid.INT2;
-        } else if (typeName.toUpperCase().equals("SERIAL")) {
+        case "SERIAL":
             return PgOid.INT4;
-        } else if (typeName.toUpperCase().equals("BIGSERIAL")) {
+        case "BIGSERIAL":
             return PgOid.INT8;
-        } else if (typeName.toUpperCase().equals("JSONB")) {
+        case "JSONB":
             return PgOid.JSONB_OID;
+        case "GEOMETRY":
+            return PgOid.POSTGIS_GEOMETRY;
+        case "GEOGRAPHY":
+            return PgOid.POSTGIS_GEOGRAPHY;
+        // until array handling is cleaner, geometry arrays aren't supported
+        // case "_GEOMETRY":
+        //     return PgOid.POSTGIS_GEOMETRY_ARRAY;
+        // case "_GEOGRAPHY":
+        //     return PgOid.POSTGIS_GEOGRAPHY_ARRAY;
         }
+
         try {
             return Oid.valueOf(typeName);
         } catch (PSQLException e) {
@@ -127,6 +158,16 @@ public final class PgOid extends Oid {
                 columnEditor.scale(6);
                 break;
         }
+    }
+
+    /**
+     * Returns an unqualified type name (ie. no schema) for an OID
+     * @throws SQLException
+     */
+    public static String oidToTypeName(PgConnection conn, int oid) throws SQLException {
+        String typeName = conn.getTypeInfo().getPGType(oid);
+        // column types here can be '"schema"."type"' too...
+        return TableId.parse(typeName).table().toUpperCase();
     }
 
 }

@@ -23,6 +23,7 @@
         <dependency>
             <groupId>mil.nga</groupId>
             <artifactId>wkb</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.kafka</groupId>
