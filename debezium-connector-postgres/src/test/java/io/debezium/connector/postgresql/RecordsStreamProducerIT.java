@@ -118,6 +118,58 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertInsert(INSERT_CUSTOM_TYPES_STMT, schemasAndValuesForCustomTypes());
     }
 
+    @Test(timeout=30000)
+    public void shouldReceiveChangesForInsertsWithPostgisTypes() throws Exception {
+        TestHelper.executeDDL("postgis_create_tables.ddl");
+        consumer = testConsumer(1, "public"); // spatial_ref_sys produces a tonne of records in the postgis schema
+        consumer.setIgnoreExtraRecords(true);
+        recordsProducer.start(consumer);
+
+        // need to wait for all the spatial_ref_sys to flow through and be ignored.
+        // this exceeds the normal 2s timeout.
+        TestHelper.execute("INSERT INTO public.dummy_table DEFAULT VALUES;");
+        consumer.await(TestHelper.waitTimeForRecords() * 10, TimeUnit.SECONDS);
+        while (true) {
+            if (!consumer.isEmpty()) {
+                SourceRecord record = consumer.remove();
+                if (record.topic().endsWith(".public.dummy_table")) {
+                    break;
+                }
+            }
+        }
+
+        // now do it for actual testing
+        // postgis types
+        consumer.expects(1);
+        assertInsert(INSERT_POSTGIS_TYPES_STMT, schemaAndValuesForPostgisTypes());
+    }
+
+    @Test(timeout=30000)
+    public void shouldReceiveChangesForInsertsWithPostgisArrayTypes() throws Exception {
+        TestHelper.executeDDL("postgis_create_tables.ddl");
+        consumer = testConsumer(1, "public"); // spatial_ref_sys produces a tonne of records in the postgis schema
+        consumer.setIgnoreExtraRecords(true);
+        recordsProducer.start(consumer);
+
+        // need to wait for all the spatial_ref_sys to flow through and be ignored.
+        // this exceeds the normal 2s timeout.
+        TestHelper.execute("INSERT INTO public.dummy_table DEFAULT VALUES;");
+        consumer.await(TestHelper.waitTimeForRecords() * 10, TimeUnit.SECONDS);
+        while (true) {
+            if (!consumer.isEmpty()) {
+                SourceRecord record = consumer.remove();
+                if (record.topic().endsWith(".public.dummy_table")) {
+                    break;
+                }
+            }
+        }
+
+        // now do it for actual testing
+        // postgis types
+        consumer.expects(1);
+        assertInsert(INSERT_POSTGIS_ARRAY_TYPES_STMT, schemaAndValuesForPostgisArrayTypes());
+    }
+
     @Test
     @ShouldFailWhen(DecoderDifferences.AreQuotedIdentifiersUnsupported.class)
     // TODO DBZ-493

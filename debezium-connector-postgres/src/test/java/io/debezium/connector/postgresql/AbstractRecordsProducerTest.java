@@ -49,6 +49,8 @@ import io.debezium.data.Json;
 import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.Xml;
+import io.debezium.data.geometry.Geography;
+import io.debezium.data.geometry.Geometry;
 import io.debezium.data.geometry.Point;
 import io.debezium.relational.TableId;
 import io.debezium.time.Date;
@@ -96,6 +98,12 @@ public abstract class AbstractRecordsProducerTest {
     protected static final String INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT = "INSERT INTO array_table_with_nulls (int_array, bigint_array, text_array, date_array) " +
             "VALUES (null, null, null, null)";
 
+    protected static final String INSERT_POSTGIS_TYPES_STMT = "INSERT INTO public.postgis_table (p, ml) " +
+            "VALUES ('SRID=3187;POINT(174.9479 -36.7208)'::postgis.geometry, 'MULTILINESTRING((169.1321 -44.7032, 167.8974 -44.6414))'::postgis.geography)";
+
+    protected static final String INSERT_POSTGIS_ARRAY_TYPES_STMT = "INSERT INTO public.postgis_array_table (ga) " +
+            "VALUES (ARRAY['GEOMETRYCOLLECTION EMPTY'::postgis.geometry, 'POLYGON((166.51 -46.64, 178.52 -46.64, 178.52 -34.45, 166.51 -34.45, 166.51 -46.64))'::postgis.geometry]::postgis.geometry[])";
+
     protected static final String INSERT_QUOTED_TYPES_STMT = "INSERT INTO \"Quoted_\"\" . Schema\".\"Quoted_\"\" . Table\" (\"Quoted_\"\" . Text_Column\") " +
                                                              "VALUES ('some text')";
 
@@ -106,7 +114,8 @@ public abstract class AbstractRecordsProducerTest {
                                                                  INSERT_DATE_TIME_TYPES_STMT,
                                                                  INSERT_BIN_TYPES_STMT, INSERT_GEOM_TYPES_STMT, INSERT_TEXT_TYPES_STMT,
                                                                  INSERT_CASH_TYPES_STMT, INSERT_STRING_TYPES_STMT, INSERT_ARRAY_TYPES_STMT,
-                                                                 INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT, INSERT_QUOTED_TYPES_STMT));
+                                                                 INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT, INSERT_QUOTED_TYPES_STMT,
+                                                                 INSERT_POSTGIS_TYPES_STMT));
 
     protected List<SchemaAndValueField> schemasAndValuesForNumericType() {
         return Arrays.asList(new SchemaAndValueField("si", SchemaBuilder.OPTIONAL_INT16_SCHEMA, (short) 1),
@@ -259,6 +268,31 @@ public abstract class AbstractRecordsProducerTest {
         );
     }
 
+    protected List<SchemaAndValueField> schemaAndValuesForPostgisTypes() {
+        Schema geomSchema = Geometry.builder().optional().build();
+        Schema geogSchema = Geography.builder().optional().build();
+        return Arrays.asList(
+                // geometries are encoded here as HexEWKB
+                new SchemaAndValueField("p", geomSchema,
+                        Geometry.createValue(geomSchema, PostgisGeometry.hex2bin("0101000020E61000001C7C613255DE6540787AA52C435C42C0"), 3187)),
+                new SchemaAndValueField("ml", geogSchema,
+                        Geography.createValue(geogSchema, PostgisGeometry.hex2bin("0105000020E610000001000000010200000002000000A779C7293A2465400B462575025A46C0C66D3480B7FC6440C3D32B65195246C0"), 4326))
+        );
+    }
+
+    protected List<SchemaAndValueField> schemaAndValuesForPostgisArrayTypes() {
+        Schema geomSchema = Geometry.builder().optional().build();
+        return Arrays.asList(
+                // geometries are encoded here as HexEWKB
+                new SchemaAndValueField("ga", SchemaBuilder.array(geomSchema).optional().build(),
+                        Arrays.asList(
+                                Geometry.createValue(geomSchema, PostgisGeometry.hex2bin("010700000000000000"), null),
+                                Geometry.createValue(geomSchema, PostgisGeometry.hex2bin("01030000000100000005000000B81E85EB51D0644052B81E85EB5147C0713D0AD7A350664052B81E85EB5147C0713D0AD7A35066409A999999993941C0B81E85EB51D064409A999999993941C0B81E85EB51D0644052B81E85EB5147C0"), 4326)
+                        )
+                )
+        );
+    }
+
     protected List<SchemaAndValueField> schemasAndValuesForQuotedTypes() {
        return Arrays.asList(new SchemaAndValueField("Quoted_\" . Text_Column", Schema.OPTIONAL_STRING_SCHEMA, "some text"));
     }
@@ -309,6 +343,10 @@ public abstract class AbstractRecordsProducerTest {
                 return schemasAndValuesForArrayTypesWithNullValues();
             case INSERT_CUSTOM_TYPES_STMT:
                 return schemasAndValuesForCustomTypes();
+            case INSERT_POSTGIS_TYPES_STMT:
+                return schemaAndValuesForPostgisTypes();
+            case INSERT_POSTGIS_ARRAY_TYPES_STMT:
+                return schemaAndValuesForPostgisArrayTypes();
             case INSERT_QUOTED_TYPES_STMT:
                 return schemasAndValuesForQuotedTypes();
             default:
@@ -446,6 +484,7 @@ public abstract class AbstractRecordsProducerTest {
         private final ConcurrentLinkedQueue<SourceRecord> records;
         private final VariableLatch latch;
         private final List<String> topicPrefixes;
+        private boolean ignoreExtraRecords = false;
 
         protected TestConsumer(int expectedRecordsCount, String... topicPrefixes) {
             this.latch = new VariableLatch(expectedRecordsCount);
@@ -453,6 +492,10 @@ public abstract class AbstractRecordsProducerTest {
             this.topicPrefixes = Arrays.stream(topicPrefixes)
                     .map(p -> TestHelper.TEST_SERVER + "." + p)
                     .collect(Collectors.toList());
+        }
+
+        public void setIgnoreExtraRecords(boolean ignoreExtraRecords) {
+            this.ignoreExtraRecords = ignoreExtraRecords;
         }
 
         @Override
@@ -463,10 +506,15 @@ public abstract class AbstractRecordsProducerTest {
             }
 
             if (latch.getCount() == 0) {
-                fail("received more events than expected");
+                if (ignoreExtraRecords) {
+                    records.add(record);
+                } else {
+                    fail("received more events than expected");
+                }
+            } else {
+                records.add(record);
+                latch.countDown();
             }
-            records.add(record);
-            latch.countDown();
         }
 
         private boolean ignoreTopic(String topicName) {
