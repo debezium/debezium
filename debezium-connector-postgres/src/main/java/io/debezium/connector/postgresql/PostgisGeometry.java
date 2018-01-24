@@ -9,6 +9,8 @@ package io.debezium.connector.postgresql;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+import javax.xml.bind.DatatypeConverter;
+
 /**
  * A parser API for Postgres Geometry types
  *
@@ -41,8 +43,8 @@ public class PostgisGeometry {
      * Create a PostgisGeometry using the supplied PostGIS Hex EWKB string.
      * SRID is extracted from the EWKB
      */
-    public static PostgisGeometry fromHexEwkb(String hexEwkdb) {
-        byte[] ewkb = hex2bin(hexEwkdb);
+    public static PostgisGeometry fromHexEwkb(String hexEwkb) {
+        byte[] ewkb = DatatypeConverter.parseHexBinary(hexEwkb);
         return fromEwkb(ewkb);
     }
 
@@ -118,19 +120,5 @@ public class PostgisGeometry {
             return reader.getInt();
         }
         return null;
-    }
-
-    /**
-     * Convert hex string to byte array
-     * @param s hex string
-     * @return bytes
-     */
-    protected static byte[] hex2bin(String s) {
-        int len = s.length();
-        byte[] data = new byte[len/2];
-        for (int i=0; i<len; i+=2) {
-            data[i/2] = (byte)((Character.digit(s.charAt(i), 16) << 4) + Character.digit(s.charAt(i+1), 16));
-        }
-        return data;
     }
 }
