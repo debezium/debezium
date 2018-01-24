@@ -45,7 +45,7 @@ public class Point extends Geometry {
                 .doc("Geometry (POINT)")
                 .field(X_FIELD, Schema.FLOAT64_SCHEMA)
                 .field(Y_FIELD, Schema.FLOAT64_SCHEMA)
-                .field(WKB_FIELD, Schema.BYTES_SCHEMA)
+                .field(WKB_FIELD, Schema.OPTIONAL_BYTES_SCHEMA)
                 .field(SRID_FIELD, Schema.OPTIONAL_INT32_SCHEMA);
     }
 
