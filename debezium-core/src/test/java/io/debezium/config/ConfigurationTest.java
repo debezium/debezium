@@ -50,6 +50,12 @@ public class ConfigurationTest {
     }
 
     @Test
+    public void shoulCreateInternalFields() {
+        config = Configuration.create().with(Field.createInternal("a"), "a1").build();
+        assertThat(config.getString("internal.a")).isEqualTo("a1");
+    }
+
+    @Test
     public void shouldCallFunctionOnEachMatchingFieldUsingRegex() {
         config = Configuration.create()
                 .with("column.truncate.to.-10.chars", "should-not-be-matched")
