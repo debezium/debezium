@@ -6,14 +6,21 @@
 package io.debezium.relational.history;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Config;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -23,10 +30,12 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
+import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -46,6 +55,8 @@ import io.debezium.util.Collect;
  */
 @NotThreadSafe
 public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
+
+    private static final Duration MESSAGE_RETENTION_IN_DAYS = Duration.ofDays(365 * 10);
 
     public static final Field TOPIC = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.topic")
                                            .withDisplayName("Database history topic name")
@@ -91,6 +102,8 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
 
     private static final String CONSUMER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "consumer.";
     private static final String PRODUCER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "producer.";
+
+    private static final Duration KAFKA_QUERY_TIMEOUT = Duration.ofSeconds(3);
 
     /**
      * The one and only partition of the history topic.
@@ -150,6 +163,39 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     @Override
     public synchronized void start() {
         super.start();
+        createDatabaseHistoryTopic();
+    }
+
+    private void createDatabaseHistoryTopic() {
+        final AdminClient admin = AdminClient.create(this.producerConfig.asProperties());
+        try {
+            short replicationFactor;
+
+            Optional<String> findTopic = admin.listTopics().names().get(KAFKA_QUERY_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS).stream().filter(x -> topicName.equals(x)).findFirst();
+
+            if (!findTopic.isPresent()) {
+                // Find default replication factor
+                final Collection<Node> nodes = admin.describeCluster().nodes().get(KAFKA_QUERY_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+                if (nodes.isEmpty()) {
+                    throw new ConnectException("No brokers available to obtain default settings");
+                }
+                final Map<ConfigResource, Config> configs = admin.describeConfigs(Collections.singleton(new ConfigResource(ConfigResource.Type.BROKER, nodes.iterator().next().idString()))).all().get(KAFKA_QUERY_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+                if (configs.isEmpty()) {
+                    throw new ConnectException("No configs have been received");
+                }
+                final Config config = configs.values().iterator().next();
+                replicationFactor = Short.parseShort(config.get("default.replication.factor").value());
+
+                // Create topic
+                final NewTopic topic = new NewTopic(topicName, (short)1, replicationFactor);
+                topic.configs(Collect.hashMapOf("cleanup.policy", "delete", "retention.ms", Long.toString(MESSAGE_RETENTION_IN_DAYS.toMillis())));
+                admin.createTopics(Collections.singleton(topic));
+            } else {
+                logger.info("Database history topic exists");
+            }
+        } catch (Exception e) {
+            logger.warn("Debezium could not create database history topic, delegating to operator or broker", e);
+        }
         if (this.producer == null) {
             this.producer = new KafkaProducer<>(this.producerConfig.asProperties());
         }
