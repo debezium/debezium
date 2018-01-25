@@ -46,6 +46,9 @@ import io.debezium.util.Strings;
  */
 @Immutable
 public final class Field {
+
+    public static final String INTERNAL_PREFIX = "internal.";
+
     /**
      * Create a set of fields.
      * 
@@ -235,6 +238,17 @@ public final class Field {
      */
     public static Field create(String name) {
         return new Field(name, null, null, null, null, null, null, null);
+    }
+
+    /**
+     * Create an immutable internal {@link Field} instance with the given property name.
+     * The name will be prefixed with {@code internal.} prefix.
+     *
+     * @param name the name of the field; may not be null
+     * @return the field; never null
+     */
+    public static Field createInternal(String name) {
+        return new Field(INTERNAL_PREFIX + name, null, null, null, null, null, null, null, null, null);
     }
 
     /**
