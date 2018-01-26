@@ -79,7 +79,7 @@ public class RecordsStreamProducer extends RecordsProducer {
     }
 
     @Override
-    protected synchronized void start(Consumer<ChangeEvent> eventConsumer)  {
+    protected synchronized void start(Consumer<ChangeEvent> eventConsumer, Consumer<Throwable> failureConsumer)  {
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
             if (executorService.isShutdown()) {
@@ -102,7 +102,7 @@ public class RecordsStreamProducer extends RecordsProducer {
             taskContext.refreshSchema(true);
 
             // the new thread will inherit it's parent MDC
-            executorService.submit(() -> streamChanges(eventConsumer));
+            executorService.submit(() -> streamChanges(eventConsumer, failureConsumer));
         } catch (Throwable t) {
             throw new ConnectException(t.getCause() != null ? t.getCause() : t);
         } finally {
@@ -110,7 +110,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         }
     }
 
-    private void streamChanges(Consumer<ChangeEvent> consumer) {
+    private void streamChanges(Consumer<ChangeEvent> consumer, Consumer<Throwable> failureConsumer) {
         ReplicationStream stream = this.replicationStream.get();
         // run while we haven't been requested to stop
         while (!Thread.currentThread().isInterrupted()) {
@@ -125,11 +125,11 @@ public class RecordsStreamProducer extends RecordsProducer {
                 } else {
                     logger.error("unexpected exception while streaming logical changes", e);
                 }
-                taskContext.failTask(e);
+                failureConsumer.accept(e);
                 throw new ConnectException(e);
             } catch (Throwable e) {
                 logger.error("unexpected exception while streaming logical changes", e);
-                taskContext.failTask(e);
+                failureConsumer.accept(e);
                 throw new ConnectException(e);
             }
         }

@@ -66,7 +66,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         TestHelper.execute(statementsBuilder);
 
         //then start the producer and validate all records are there
-        snapshotProducer.start(consumer);
+        snapshotProducer.start(consumer, e -> {});
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
         Map<String, List<SchemaAndValueField>> expectedValuesByTableName = super.schemaAndValuesByTableName();
@@ -93,7 +93,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER), true);
         TestConsumer consumer = testConsumer(2, "s1", "s2");
-        snapshotProducer.start(consumer);
+        snapshotProducer.start(consumer, e -> {});
 
         // first make sure we get the initial records from both schemas...
         consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
@@ -122,7 +122,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         int expectedRecordsCount = 6;
         consumer = testConsumer(expectedRecordsCount, "s1", "s2");
         snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER), true);
-        snapshotProducer.start(consumer);
+        snapshotProducer.start(consumer, e -> {});
         consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
 
         AtomicInteger counter = new AtomicInteger(0);
@@ -176,7 +176,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         TestHelper.execute(statementsBuilder);
 
         //then start the producer and validate all records are there
-        snapshotProducer.start(consumer);
+        snapshotProducer.start(consumer, e -> {});
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
         Map<String, List<SchemaAndValueField>> expectedValuesByTableName = super.schemaAndValuesByTableNameAdaptiveTimeMicroseconds();

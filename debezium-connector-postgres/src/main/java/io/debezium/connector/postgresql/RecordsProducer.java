@@ -40,7 +40,7 @@ public abstract class RecordsProducer {
      *
      * @param recordsConsumer a consumer of {@link ChangeEvent} instances, may not be null
      */
-    protected abstract void start(Consumer<ChangeEvent> recordsConsumer);
+    protected abstract void start(Consumer<ChangeEvent> recordsConsumer, Consumer<Throwable> failureConsumer);
 
     /**
      * Notification that offsets have been committed to Kafka up to the given LSN.
