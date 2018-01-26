@@ -35,7 +35,7 @@ public abstract class AbstractMongoIT implements Testing {
     public void beforeEach() {
         Testing.Print.disable();
         Testing.Debug.disable();
-        useConfiguration(Configuration.fromSystemProperties("connector."));
+        useConfiguration(TestHelper.getConfiguration());
     }
 
     /**
