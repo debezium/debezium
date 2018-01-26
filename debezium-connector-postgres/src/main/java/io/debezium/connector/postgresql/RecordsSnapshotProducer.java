@@ -73,32 +73,31 @@ public class RecordsSnapshotProducer extends RecordsProducer {
     }
 
     @Override
-    protected void start(Consumer<ChangeEvent> eventConsumer) {
+    protected void start(Consumer<ChangeEvent> eventConsumer, Consumer<Throwable> failureConsumer) {
         // MDC should be in inherited from parent to child threads
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
             CompletableFuture.runAsync(() -> this.takeSnapshot(eventConsumer), executorService)
-                             .thenRun(() -> this.startStreaming(eventConsumer))
-                             .exceptionally(this::handleException);
+                             .thenRun(() -> this.startStreaming(eventConsumer, failureConsumer))
+                             .exceptionally(e -> {
+                                 logger.error("unexpected exception", e.getCause() != null ? e.getCause() : e);
+                                 // always stop to clean up data
+                                 stop();
+                                 failureConsumer.accept(e);
+
+                                 return null;
+                             });
         } finally {
             previousContext.restore();
         }
     }
 
-    private Void handleException(Throwable t) {
-        logger.error("unexpected exception", t.getCause() != null ? t.getCause() : t);
-        // always stop to clean up data
-        stop();
-        taskContext.failTask(t);
-        return null;
-    }
-
-    private void startStreaming(Consumer<ChangeEvent> consumer) {
+    private void startStreaming(Consumer<ChangeEvent> consumer, Consumer<Throwable> failureConsumer) {
         try {
             // and then start streaming if necessary
             streamProducer.ifPresent(producer -> {
                 logger.info("Snapshot finished, continuing streaming changes from {}", ReplicationConnection.format(sourceInfo.lsn()));
-                producer.start(consumer);
+                producer.start(consumer, failureConsumer);
 
             });
         } finally {
