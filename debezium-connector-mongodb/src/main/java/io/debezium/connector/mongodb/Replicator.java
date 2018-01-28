@@ -115,7 +115,7 @@ public class Replicator {
         this.rsName = replicaSet.replicaSetName();
         this.copyThreads = Executors.newFixedThreadPool(context.maxNumberOfCopyThreads());
         this.bufferedRecorder = new BufferableRecorder(recorder);
-        this.recordMakers = new RecordMakers(this.source, context.topicSelector(), this.bufferedRecorder);
+        this.recordMakers = new RecordMakers(this.source, context.topicSelector(), this.bufferedRecorder, context.config);
         this.collectionFilter = this.context.collectionFilter();
         this.databaseFilter = this.context.databaseFilter();
         this.clock = this.context.clock();

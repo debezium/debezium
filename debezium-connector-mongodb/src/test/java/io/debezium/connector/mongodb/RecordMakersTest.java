@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
+import io.debezium.config.Configuration;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.BsonTimestamp;
@@ -45,13 +46,15 @@ public class RecordMakersTest {
     private RecordMakers recordMakers;
     private TopicSelector topicSelector;
     private List<SourceRecord> produced;
+    private Configuration configuration = Configuration.create().build();
+
 
     @Before
     public void beforeEach() {
         source = new SourceInfo(SERVER_NAME);
         topicSelector = TopicSelector.defaultSelector(PREFIX);
         produced = new ArrayList<>();
-        recordMakers = new RecordMakers(source, topicSelector, produced::add);
+        recordMakers = new RecordMakers(source, topicSelector, produced::add, configuration);
     }
 
     @Test
@@ -159,6 +162,40 @@ public class RecordMakersTest {
         assertThat(key2.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
         assertThat(tombstone.value()).isNull();
         assertThat(tombstone.valueSchema()).isNull();
+    }
+
+    @Test
+    public void shouldGenerateRecordForDeleteEventWithoutTombstone() throws InterruptedException {
+        Configuration configurationTemp = Configuration.create().with(MongoDbConnectorConfig.COMAPCT_DELETE_OPERATIONS, "false").build();
+        RecordMakers recordMakersTemp = recordMakers = new RecordMakers(source, topicSelector, produced::add, configurationTemp);
+
+        BsonTimestamp ts = new BsonTimestamp(1000, 1);
+        CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
+        ObjectId objId = new ObjectId();
+        Document obj = new Document("_id", objId);
+        Document event = new Document().append("o", obj)
+                .append("ns", "dbA.c1")
+                .append("ts", ts)
+                .append("h", new Long(12345678))
+                .append("op", "d");
+        RecordsForCollection records = recordMakersTemp.forCollection(collectionId);
+        records.recordEvent(event, 1002);
+        assertThat(produced.size()).isEqualTo(1);
+
+        SourceRecord record = produced.get(0);
+        Struct key = (Struct) record.key();
+        Struct value = (Struct) record.value();
+        assertThat(key.schema()).isSameAs(record.keySchema());
+        assertThat(key.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
+        assertThat(value.schema()).isSameAs(record.valueSchema());
+        assertThat(value.getString(FieldName.AFTER)).isNull();
+        assertThat(value.getString("patch")).isNull();
+        assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.DELETE.code());
+        assertThat(value.getInt64(FieldName.TIMESTAMP)).isEqualTo(1002L);
+        Struct actualSource = value.getStruct(FieldName.SOURCE);
+        Struct expectedSource = source.lastOffsetStruct("rs0", collectionId);
+        assertThat(actualSource).isEqualTo(expectedSource);
+
     }
 
     @Test
