@@ -116,7 +116,7 @@ public class Replicator {
         final String copyThreadName = "copy-" + (replicaSet.hasReplicaSetName() ? replicaSet.replicaSetName() : "main");
         this.copyThreads = Threads.newFixedThreadPool(MongoDbConnector.class, context.serverName(), copyThreadName, context.maxNumberOfCopyThreads());
         this.bufferedRecorder = new BufferableRecorder(recorder);
-        this.recordMakers = new RecordMakers(this.source, context.topicSelector(), this.bufferedRecorder);
+        this.recordMakers = new RecordMakers(this.source, context.topicSelector(), this.bufferedRecorder, context.config.getBoolean(MongoDbConnectorConfig.COMPACT_DELETE_OPERATIONS));
         this.collectionFilter = this.context.collectionFilter();
         this.databaseFilter = this.context.databaseFilter();
         this.clock = this.context.clock();
