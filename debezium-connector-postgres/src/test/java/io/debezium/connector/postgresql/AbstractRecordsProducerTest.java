@@ -22,6 +22,7 @@ import java.time.LocalTime;
 import java.time.Month;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -94,11 +95,11 @@ public abstract class AbstractRecordsProducerTest {
             "VALUES ('[2017-06-05 11:29:12.549426+00,)', '[2017-06-05 11:29:12.549426+00, 2017-06-05 12:34:56.789012+00]')";
 
 
-    protected static final String INSERT_ARRAY_TYPES_STMT = "INSERT INTO array_table (int_array, bigint_array, text_array, char_array, varchar_array, date_array) " +
-                                                             "VALUES ('{1,2,3}', '{1550166368505037572}', '{\"one\",\"two\",\"three\"}', '{\"cone\",\"ctwo\",\"cthree\"}', '{\"vcone\",\"vctwo\",\"vcthree\"}', '{2016-11-04,2016-11-05,2016-11-06}')";
+    protected static final String INSERT_ARRAY_TYPES_STMT = "INSERT INTO array_table (int_array, bigint_array, text_array, char_array, varchar_array, date_array, numeric_array, varnumeric_array) " +
+                                                             "VALUES ('{1,2,3}', '{1550166368505037572}', '{\"one\",\"two\",\"three\"}', '{\"cone\",\"ctwo\",\"cthree\"}', '{\"vcone\",\"vctwo\",\"vcthree\"}', '{2016-11-04,2016-11-05,2016-11-06}', '{1.2,3.4,5.6}', '{1.1,2.22,3.333}')";
 
-    protected static final String INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT = "INSERT INTO array_table_with_nulls (int_array, bigint_array, text_array, date_array) " +
-            "VALUES (null, null, null, null)";
+    protected static final String INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT = "INSERT INTO array_table_with_nulls (int_array, bigint_array, text_array, date_array, numeric_array, varnumeric_array) " +
+            "VALUES (null, null, null, null, null, null)";
 
     protected static final String INSERT_POSTGIS_TYPES_STMT = "INSERT INTO public.postgis_table (p, ml) " +
             "VALUES ('SRID=3187;POINT(174.9479 -36.7208)'::postgis.geometry, 'MULTILINESTRING((169.1321 -44.7032, 167.8974 -44.6414))'::postgis.geography)";
@@ -240,6 +241,18 @@ public abstract class AbstractRecordsProducerTest {
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForArrayTypes() {
+        Struct element;
+        final List<Struct> varnumArray = new ArrayList<>();
+        element = new Struct(VariableScaleDecimal.schema());
+        element.put("scale", 1).put("value", new BigDecimal("1.1").unscaledValue().toByteArray());
+        varnumArray.add(element);
+        element = new Struct(VariableScaleDecimal.schema());
+        element.put("scale", 2).put("value", new BigDecimal("2.22").unscaledValue().toByteArray());
+        varnumArray.add(element);
+        element = new Struct(VariableScaleDecimal.schema());
+        element.put("scale", 3).put("value", new BigDecimal("3.333").unscaledValue().toByteArray());
+        varnumArray.add(element);
+
        return Arrays.asList(new SchemaAndValueField("int_array", SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(),
                                 Arrays.asList(1, 2, 3)),
                             new SchemaAndValueField("bigint_array", SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(),
@@ -255,7 +268,15 @@ public abstract class AbstractRecordsProducerTest {
                                         (int)LocalDate.of(2016, Month.NOVEMBER, 4).toEpochDay(),
                                         (int)LocalDate.of(2016, Month.NOVEMBER, 5).toEpochDay(),
                                         (int)LocalDate.of(2016, Month.NOVEMBER, 6).toEpochDay()
-                                ))
+                                )),
+                            new SchemaAndValueField("numeric_array", SchemaBuilder.array(Decimal.builder(2).optional().build()).optional().build(),
+                                    Arrays.asList(
+                                            new BigDecimal("1.20"),
+                                            new BigDecimal("3.40"),
+                                            new BigDecimal("5.60")
+                                    )),
+                            new SchemaAndValueField("varnumeric_array", SchemaBuilder.array(VariableScaleDecimal.builder().optional().build()).optional().build(),
+                                    varnumArray)
                             );
     }
 
@@ -266,7 +287,8 @@ public abstract class AbstractRecordsProducerTest {
                 new SchemaAndValueField("text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null),
                 new SchemaAndValueField("char_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null),
                 new SchemaAndValueField("varchar_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null),
-                new SchemaAndValueField("date_array", SchemaBuilder.array(Date.builder().optional().schema()).optional().build(), null)
+                new SchemaAndValueField("date_array", SchemaBuilder.array(Date.builder().optional().schema()).optional().build(), null),
+                new SchemaAndValueField("numeric_array", SchemaBuilder.array(Decimal.builder(2).optional().build()).optional().build(), null)
         );
     }
 
@@ -442,6 +464,15 @@ public abstract class AbstractRecordsProducerTest {
             // assert the value type; for List all implementation types (e.g. immutable ones) are acceptable
             if(actualValue instanceof List) {
                 assertTrue("Incorrect value type for " + fieldName, value instanceof List);
+                final List<?> actualValueList = (List<?>)actualValue;
+                final List<?> valueList = (List<?>)value;
+                assertEquals("List size don't match for " + fieldName, valueList.size(), actualValueList.size());
+                if (!valueList.isEmpty() && valueList.iterator().next() instanceof Struct) {
+                    for (int i = 0; i < valueList.size(); i++) {
+                        assertStruct((Struct)valueList.get(i), (Struct)actualValueList.get(i));
+                    }
+                    return;
+                }
             }
             else {
                 assertEquals("Incorrect value type for " + fieldName, value.getClass(), actualValue.getClass());
