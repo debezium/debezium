@@ -245,6 +245,7 @@ public class BinlogReader extends AbstractReader {
         eventHandlers.put(EventType.EXT_DELETE_ROWS, this::handleDelete);
         eventHandlers.put(EventType.VIEW_CHANGE, this::viewChange);
         eventHandlers.put(EventType.XA_PREPARE, this::prepareTransaction);
+        eventHandlers.put(EventType.XID, this::handleTransactionCompletion);
 
         // Get the current GtidSet from MySQL so we can get a filtered/merged GtidSet based off of the last Debezium checkpoint.
         String availableServerGtidStr = context.knownGtidSet();
@@ -580,11 +581,7 @@ public class BinlogReader extends AbstractReader {
             return;
         }
         if (sql.equalsIgnoreCase("COMMIT")) {
-            // We are completing the transaction ...
-            source.commitTransaction();
-            source.setBinlogThread(-1L);
-            skipEvent = false;
-            ignoreDmlEventByGtidSource = false;
+            handleTransactionCompletion(event);
             return;
         }
         if (sql.toUpperCase().startsWith("XA ")) {
@@ -605,6 +602,14 @@ public class BinlogReader extends AbstractReader {
                 logger.debug("Recorded DDL statements for database '{}': {}", dbName, statements);
             }
         });
+    }
+
+    private void handleTransactionCompletion(Event event) {
+        // We are completing the transaction ...
+        source.commitTransaction();
+        source.setBinlogThread(-1L);
+        skipEvent = false;
+        ignoreDmlEventByGtidSource = false;
     }
 
     /**
