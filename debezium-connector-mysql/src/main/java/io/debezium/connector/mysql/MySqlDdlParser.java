@@ -126,6 +126,7 @@ public class MySqlDdlParser extends DdlParser {
         dataTypes.register(Types.BLOB, "LONGTEXT BINARY");
         dataTypes.register(Types.VARCHAR, "TINYTEXT");
         dataTypes.register(Types.VARCHAR, "TEXT");
+        dataTypes.register(Types.VARCHAR, "LONG");
         dataTypes.register(Types.VARCHAR, "MEDIUMTEXT");
         dataTypes.register(Types.VARCHAR, "LONGTEXT");
         dataTypes.register(Types.CHAR, "ENUM(...)");
@@ -141,7 +142,9 @@ public class MySqlDdlParser extends DdlParser {
     @Override
     protected void initializeStatementStarts(TokenSet statementStartTokens) {
         statementStartTokens.add("CREATE", "ALTER", "DROP", "INSERT", "GRANT", "REVOKE",
-            "FLUSH", "TRUNCATE", "COMMIT", "USE", "SAVEPOINT" , "RELEASE SAVEPOINT");
+            "FLUSH", "TRUNCATE", "COMMIT", "USE", "SAVEPOINT" , "RELEASE SAVEPOINT",
+            // table maintenance statements: https://dev.mysql.com/doc/refman/5.7/en/table-maintenance-sql.html
+            "ANALYZE", "OPTIMIZE", "REPAIR");
     }
 
     @Override

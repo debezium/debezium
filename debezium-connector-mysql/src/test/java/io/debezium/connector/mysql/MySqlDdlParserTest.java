@@ -1106,6 +1106,20 @@ public class MySqlDdlParserTest {
         assertColumn(t2, "c2", "NCHAR", Types.NCHAR, 10, "utf8", true);
     }
 
+    @FixFor("DBZ-253")
+    @Test
+    public void shouldParseTableMaintenanceStatements() {
+        String ddl = "create table `db1`.`table1` ( `id` int not null, `other` int );";
+        ddl += "analyze table `db1`.`table1`;";
+        ddl += "optimize table `db1`.`table1`;";
+        ddl += "repair table `db1`.`table1`;";
+
+        parser.parse(ddl, tables);
+        Testing.print(tables);
+        assertThat(tables.size()).isEqualTo(1);
+        assertThat(listener.total()).isEqualTo(1);
+    }
+
     protected void assertParseEnumAndSetOptions(String typeExpression, String optionString) {
         List<String> options = MySqlDdlParser.parseSetAndEnumOptions(typeExpression);
         String commaSeperatedOptions = Strings.join(",", options);
