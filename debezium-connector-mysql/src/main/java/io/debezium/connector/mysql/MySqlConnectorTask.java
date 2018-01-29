@@ -161,28 +161,28 @@ public final class MySqlConnectorTask extends SourceTask {
             // Check whether the row-level binlog is enabled ...
             final boolean rowBinlogEnabled = isRowBinlogEnabled();
 
+            ChainedReader.Builder chainedReaderBuilder = new ChainedReader.Builder();
+
             // Set up the readers, with a callback to `completeReaders` so that we know when it is finished ...
-            readers = new ChainedReader();
-            readers.uponCompletion(this::completeReaders);
             BinlogReader binlogReader = new BinlogReader("binlog", taskContext);
             if (startWithSnapshot) {
                 // We're supposed to start with a snapshot, so set that up ...
                 SnapshotReader snapshotReader = new SnapshotReader("snapshot", taskContext);
                 snapshotReader.useMinimalBlocking(taskContext.useMinimalSnapshotLocking());
                 if (snapshotEventsAreInserts) snapshotReader.generateInsertEvents();
-                readers.add(snapshotReader);
+                chainedReaderBuilder.addReader(snapshotReader);
 
                 if (taskContext.isInitialSnapshotOnly()) {
                     logger.warn("This connector will only perform a snapshot, and will stop after that completes.");
-                    readers.add(new BlockingReader("blocker"));
-                    readers.uponCompletion("Connector configured to only perform snapshot, and snapshot completed successfully. Connector will terminate.");
+                    chainedReaderBuilder.addReader(new BlockingReader("blocker"));
+                    chainedReaderBuilder.completionMessage("Connector configured to only perform snapshot, and snapshot completed successfully. Connector will terminate.");
                 } else {
                     if (!rowBinlogEnabled) {
                         throw new ConnectException("The MySQL server is not configured to use a row-level binlog, which is "
                                 + "required for this connector to work properly. Change the MySQL configuration to use a "
                                 + "row-level binlog and restart the connector.");
                     }
-                    readers.add(binlogReader);
+                    chainedReaderBuilder.addReader(binlogReader);
                 }
             } else {
                 if (!rowBinlogEnabled) {
@@ -190,8 +190,11 @@ public final class MySqlConnectorTask extends SourceTask {
                             "The MySQL server does not appear to be using a row-level binlog, which is required for this connector to work properly. Enable this mode and restart the connector.");
                 }
                 // We're going to start by reading the binlog ...
-                readers.add(binlogReader);
+                chainedReaderBuilder.addReader(binlogReader);
             }
+
+            readers = chainedReaderBuilder.build();
+            readers.uponCompletion(this::completeReaders);
 
             // And finally initialize and start the chain of readers ...
             this.readers.initialize();

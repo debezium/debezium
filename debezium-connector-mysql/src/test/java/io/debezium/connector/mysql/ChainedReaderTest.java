@@ -15,7 +15,6 @@ import java.util.function.Supplier;
 
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.ConfigurationDefaults;
@@ -52,13 +51,9 @@ public class ChainedReaderTest {
 
     private ChainedReader reader;
 
-    @Before
-    public void beforeEach() {
-        reader = new ChainedReader();
-    }
-
     @Test
     public void shouldNotStartWithoutReaders() throws InterruptedException {
+        reader = new ChainedReader.Builder().build();
         assertThat(reader.state()).isEqualTo(State.STOPPED);
         reader.start();
         assertThat(reader.state()).isEqualTo(State.STOPPED);
@@ -67,8 +62,10 @@ public class ChainedReaderTest {
 
     @Test
     public void shouldStartAndStopSingleReaderBeforeReaderStopsItself() throws InterruptedException {
-        reader.add(new MockReader("r1", records()));
-        reader.uponCompletion("Stopped the r1 reader");
+        reader = new ChainedReader.Builder()
+                .addReader(new MockReader("r1", records()))
+                .completionMessage("Stopped the r1 reader")
+                .build();
         reader.start();
         assertThat(reader.state()).isEqualTo(State.RUNNING);
         assertThat(reader.poll()).isSameAs(RL1);
@@ -84,8 +81,10 @@ public class ChainedReaderTest {
 
     @Test
     public void shouldStartSingleReaderThatStopsAutomatically() throws InterruptedException {
-        reader.add(new MockReader("r2", records()));
-        reader.uponCompletion("Stopped the r2 reader");
+        reader = new ChainedReader.Builder()
+                .addReader(new MockReader("r2", records()))
+                .completionMessage("Stopped the r2 reader")
+                .build();
         reader.start();
         assertThat(reader.state()).isEqualTo(State.RUNNING);
         assertThat(reader.poll()).isSameAs(RL1);
@@ -100,9 +99,11 @@ public class ChainedReaderTest {
 
     @Test
     public void shouldStartAndStopMultipleReaders() throws InterruptedException {
-        reader.add(new MockReader("r3", records()));
-        reader.add(new MockReader("r4", records()));
-        reader.uponCompletion("Stopped the r3+r4 reader");
+        reader = new ChainedReader.Builder()
+                .addReader(new MockReader("r3", records()))
+                .addReader(new MockReader("r4", records()))
+                .completionMessage("Stopped the r3+r4 reader")
+                .build();
         reader.start();
         assertThat(reader.state()).isEqualTo(State.RUNNING);
         assertThat(reader.poll()).isSameAs(RL1);
@@ -132,8 +133,10 @@ public class ChainedReaderTest {
 
     @Test
     public void shouldStartAndStopReaderThatContinuesProducingItsRecordsAfterBeingStopped() throws InterruptedException {
-        reader.add(new CompletingMockReader("r5", records()));
-        reader.uponCompletion("Stopped the r5 reader");
+        reader = new ChainedReader.Builder()
+                .addReader(new CompletingMockReader("r5", records()))
+                .completionMessage("Stopped the r5 reader")
+                .build();
         reader.start();
         assertThat(reader.state()).isEqualTo(State.RUNNING);
         assertThat(reader.poll()).isSameAs(RL1);
@@ -150,7 +153,7 @@ public class ChainedReaderTest {
         assertThat(reader.state()).isEqualTo(State.STOPPED);
         assertPollReturnsNoMoreRecords();
     }
-    
+
     protected void assertPollReturnsNoMoreRecords() throws InterruptedException {
         for (int i=0;i!=10; ++i) {
             assertThat(reader.poll()).isNull();
