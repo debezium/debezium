@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
-import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.BsonTimestamp;
@@ -46,7 +46,7 @@ public class RecordMakersTest {
     private RecordMakers recordMakers;
     private TopicSelector topicSelector;
     private List<SourceRecord> produced;
-    private Configuration configuration = Configuration.create().build();
+    private boolean compactOnDelete;
 
 
     @Before
@@ -54,7 +54,8 @@ public class RecordMakersTest {
         source = new SourceInfo(SERVER_NAME);
         topicSelector = TopicSelector.defaultSelector(PREFIX);
         produced = new ArrayList<>();
-        recordMakers = new RecordMakers(source, topicSelector, produced::add, configuration);
+        compactOnDelete = true;
+        recordMakers = new RecordMakers(source, topicSelector, produced::add, compactOnDelete);
     }
 
     @Test
@@ -165,9 +166,9 @@ public class RecordMakersTest {
     }
 
     @Test
+    @FixFor("DBZ-582")
     public void shouldGenerateRecordForDeleteEventWithoutTombstone() throws InterruptedException {
-        Configuration configurationTemp = Configuration.create().with(MongoDbConnectorConfig.COMAPCT_DELETE_OPERATIONS, "false").build();
-        RecordMakers recordMakersTemp = recordMakers = new RecordMakers(source, topicSelector, produced::add, configurationTemp);
+        RecordMakers recordMakersTemp = recordMakers = new RecordMakers(source, topicSelector, produced::add, false);
 
         BsonTimestamp ts = new BsonTimestamp(1000, 1);
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");

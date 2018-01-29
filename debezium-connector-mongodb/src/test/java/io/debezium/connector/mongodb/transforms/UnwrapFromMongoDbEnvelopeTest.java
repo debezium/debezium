@@ -11,12 +11,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.CollectionId;
 import io.debezium.connector.mongodb.RecordMakers;
 import io.debezium.connector.mongodb.SourceInfo;
 import io.debezium.connector.mongodb.TopicSelector;
-import io.debezium.connector.mongodb.MongoDbConnectorConfig;
+import io.debezium.doc.FixFor;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -45,17 +44,16 @@ public class UnwrapFromMongoDbEnvelopeTest {
     private RecordMakers recordMakers;
     private TopicSelector topicSelector;
     private List<SourceRecord> produced;
-    private Configuration configuration;
+    private boolean compactOnDelete;
 
     private UnwrapFromMongoDbEnvelope<SourceRecord> transformation;
 
     @Before
     public void setup() {
-        configuration = Configuration.create().build();
         source = new SourceInfo(SERVER_NAME);
         topicSelector = TopicSelector.defaultSelector(PREFIX);
         produced = new ArrayList<>();
-        recordMakers = new RecordMakers(source, topicSelector, produced::add, configuration);
+        recordMakers = new RecordMakers(source, topicSelector, produced::add, true);
 
         transformation = new UnwrapFromMongoDbEnvelope<SourceRecord>();
         transformation.configure(Collections.emptyMap());
@@ -203,9 +201,9 @@ public class UnwrapFromMongoDbEnvelopeTest {
 
 
     @Test
-    public void shouldGenerateRecordForDeleteEventWithoutNullRecord() throws InterruptedException {
-        Configuration configurationTemp = Configuration.create().with(MongoDbConnectorConfig.COMAPCT_DELETE_OPERATIONS, "false").build();
-        RecordMakers recordMakersTemp = recordMakers = new RecordMakers(source, topicSelector, produced::add, configurationTemp);
+    @FixFor("DBZ-582")
+    public void shouldGenerateRecordForDeleteEventWithoutTombstone() throws InterruptedException {
+        RecordMakers recordMakersTemp = recordMakers = new RecordMakers(source, topicSelector, produced::add, false);
 
         BsonTimestamp ts = new BsonTimestamp(1000, 1);
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");

@@ -108,7 +108,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.SSL_ENABLED);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.SSL_ALLOW_INVALID_HOSTNAMES);
-        assertNoConfigurationErrors(result, MongoDbConnectorConfig.COMAPCT_DELETE_OPERATIONS);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.COMPACT_DELETE_OPERATIONS);
     }
 
     @Test
@@ -141,7 +141,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.SSL_ENABLED);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.SSL_ALLOW_INVALID_HOSTNAMES);
-        assertNoConfigurationErrors(result, MongoDbConnectorConfig.COMAPCT_DELETE_OPERATIONS);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.COMPACT_DELETE_OPERATIONS);
     }
 
     @Test

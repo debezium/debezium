@@ -92,15 +92,14 @@ public class MongoDbConnectorConfig {
             .withValidation(Field::isBoolean)
             .withDescription("Whether invalid host names are allowed when using SSL. If true the connection will not prevent man-in-the-middle attacks");
 
-    public static final Field COMAPCT_DELETE_OPERATIONS = Field.create("kafka.force.compact.delete")
+    public static final Field COMPACT_DELETE_OPERATIONS = Field.create("tombstones.on.delete")
             .withDisplayName("Change the behaviour of Debezium with regards to delete operations")
             .withType(Type.BOOLEAN)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDefault(true)
             .withValidation(Field::isBoolean)
-            .withDescription("By default debezium will always produce two messages for each oplog delete operation, this is to allow kafka to compact " +
-                    "the topic. Change to false to produce only one message and maintain the full history of operations");
+            .withDescription("Whether delete operations should be represented by a delete event and a subsquent tombstone event (true) or only by a delete event (false). Emitting the tombstone event (the default behavior) allows Kafka to completely delete all events pertaining to the given key once the source record got deleted.");
 
     public static final Field MAX_COPY_THREADS = Field.create("initial.sync.max.threads")
                                                       .withDisplayName("Maximum number of threads for initial sync")
@@ -247,7 +246,7 @@ public class MongoDbConnectorConfig {
                                                      AUTO_DISCOVER_MEMBERS,
                                                      DATABASE_WHITELIST,
                                                      DATABASE_BLACKLIST,
-                                                     COMAPCT_DELETE_OPERATIONS);
+            COMPACT_DELETE_OPERATIONS);
 
     protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS;
 
@@ -256,7 +255,7 @@ public class MongoDbConnectorConfig {
         Field.group(config, "MongoDB", HOSTS, USER, PASSWORD, LOGICAL_NAME, CONNECT_BACKOFF_INITIAL_DELAY_MS,
                     CONNECT_BACKOFF_MAX_DELAY_MS, MAX_FAILED_CONNECTIONS, AUTO_DISCOVER_MEMBERS,
                     SSL_ENABLED, SSL_ALLOW_INVALID_HOSTNAMES);
-        Field.group(config, "Events", DATABASE_WHITELIST, DATABASE_BLACKLIST, COLLECTION_WHITELIST, COLLECTION_BLACKLIST, COMAPCT_DELETE_OPERATIONS);
+        Field.group(config, "Events", DATABASE_WHITELIST, DATABASE_BLACKLIST, COLLECTION_WHITELIST, COLLECTION_BLACKLIST, COMPACT_DELETE_OPERATIONS);
         Field.group(config, "Connector", MAX_COPY_THREADS, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS);
         return config;
     }

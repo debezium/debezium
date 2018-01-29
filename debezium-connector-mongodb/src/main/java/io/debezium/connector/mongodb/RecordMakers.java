@@ -13,7 +13,6 @@ import com.mongodb.DBCollection;
 import com.mongodb.MongoClient;
 import com.mongodb.util.JSONSerializers;
 import com.mongodb.util.ObjectSerializer;
-import io.debezium.config.Configuration;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -54,7 +53,7 @@ public class RecordMakers {
     private final Map<CollectionId, RecordsForCollection> recordMakerByCollectionId = new HashMap<>();
     private final Function<Document, String> valueTransformer;
     private final BlockingConsumer<SourceRecord> recorder;
-    protected final Configuration config;
+    private final boolean compactOnDelete;
 
     /**
      * Create the record makers using the supplied components.
@@ -63,13 +62,13 @@ public class RecordMakers {
      * @param topicSelector the selector for topic names; may not be null
      * @param recorder the potentially blocking consumer function to be called for each generated record; may not be null
      */
-    public RecordMakers(SourceInfo source, TopicSelector topicSelector, BlockingConsumer<SourceRecord> recorder, Configuration config) {
+    public RecordMakers(SourceInfo source, TopicSelector topicSelector, BlockingConsumer<SourceRecord> recorder, boolean compactOnDelete) {
         this.source = source;
         this.topicSelector = topicSelector;
         JsonWriterSettings writerSettings = new JsonWriterSettings(JsonMode.STRICT, "", ""); // most compact JSON
         this.valueTransformer = (doc) -> doc.toJson(writerSettings);
         this.recorder = recorder;
-        this.config = config;
+        this.compactOnDelete = compactOnDelete;
     }
 
     /**
@@ -81,7 +80,7 @@ public class RecordMakers {
     public RecordsForCollection forCollection(CollectionId collectionId) {
         return recordMakerByCollectionId.computeIfAbsent(collectionId, id -> {
             String topicName = topicSelector.getTopic(collectionId);
-            return new RecordsForCollection(collectionId, source, topicName, schemaNameValidator, valueTransformer, recorder, config);
+            return new RecordsForCollection(collectionId, source, topicName, schemaNameValidator, valueTransformer, recorder, compactOnDelete);
         });
     }
 
@@ -98,10 +97,10 @@ public class RecordMakers {
         private final Schema valueSchema;
         private final Function<Document, String> valueTransformer;
         private final BlockingConsumer<SourceRecord> recorder;
-        private final Configuration config;
+        private final boolean compactOnDelete;
 
         protected RecordsForCollection(CollectionId collectionId, SourceInfo source, String topicName, AvroValidator validator,
-                Function<Document, String> valueTransformer, BlockingConsumer<SourceRecord> recorder, Configuration config) {
+                Function<Document, String> valueTransformer, BlockingConsumer<SourceRecord> recorder, boolean compactOnDelete) {
             this.sourcePartition = source.partition(collectionId.replicaSetName());
             this.collectionId = collectionId;
             this.replicaSetName = this.collectionId.replicaSetName();
@@ -122,7 +121,7 @@ public class RecordMakers {
             JsonWriterSettings writerSettings = new JsonWriterSettings(JsonMode.STRICT, "", ""); // most compact JSON
             this.valueTransformer = (doc) -> doc.toJson(writerSettings, MongoClient.getDefaultCodecRegistry().get(Document.class));
             this.recorder = recorder;
-            this.config = config;
+            this.compactOnDelete = compactOnDelete;
         }
 
         /**
@@ -201,7 +200,7 @@ public class RecordMakers {
             SourceRecord record = new SourceRecord(sourcePartition, offset, topicName, partition, keySchema, key, valueSchema, value);
             recorder.accept(record);
 
-            if (operation == Operation.DELETE && config.getBoolean(MongoDbConnectorConfig.COMAPCT_DELETE_OPERATIONS)) {
+            if (operation == Operation.DELETE && compactOnDelete) {
                 // Also generate a tombstone event ...
                 record = new SourceRecord(sourcePartition, offset, topicName, partition, keySchema, key, null, null);
                 recorder.accept(record);
