@@ -64,7 +64,6 @@ public class BinlogReader extends AbstractReader {
 
     private static final long INITIAL_POLL_PERIOD_IN_MILLIS = TimeUnit.SECONDS.toMillis(5);
     private static final long MAX_POLL_PERIOD_IN_MILLIS = TimeUnit.HOURS.toMillis(1);
-    private static final Duration HEARTBEAT_INTERVAL = Duration.ofHours(1);
 
     private final boolean recordSchemaChangesInSourceRecords;
     private final RecordMakers recordMakers;
@@ -87,7 +86,8 @@ public class BinlogReader extends AbstractReader {
     private final AtomicLong totalRecordCounter = new AtomicLong();
     private volatile Map<String, ?> lastOffset = null;
     private com.github.shyiko.mysql.binlog.GtidSet gtidSet;
-    private Timer heartbeatTimeout = resetHeartbeat();
+    private Duration heartbeatInterval;
+    private Timer heartbeatTimeout;
 
     public static class BinlogPosition {
         final String filename;
@@ -230,6 +230,9 @@ public class BinlogReader extends AbstractReader {
 
         // Set up for JMX ...
         metrics = new BinlogReaderMetrics(client);
+
+        heartbeatInterval = Duration.ofSeconds(context.getBinlogReaderHeartbeatInterval());
+        heartbeatTimeout = resetHeartbeat();
     }
 
     @Override
@@ -363,6 +366,13 @@ public class BinlogReader extends AbstractReader {
 
     @Override
     protected void pollComplete(List<SourceRecord> batch) {
+        // Generate heartbeat message if the time is right
+        if (heartbeatTimeout.expired()) {
+            logger.info("Generating heartbeat event");
+            recordMakers.heartbeat(batch::add);
+            heartbeatTimeout = resetHeartbeat();
+        }
+
         // Record a bit about this batch ...
         int batchSize = batch.size();
         recordCounter += batchSize;
@@ -420,12 +430,6 @@ public class BinlogReader extends AbstractReader {
 
         // If there is a handler for this event, forward the event to it ...
         try {
-            // Generate heartbeat message if the time is right
-            if (heartbeatTimeout.expired()) {
-                recordMakers.heartbeat(super::enqueueRecord);
-                resetHeartbeat();
-            }
-
             // Forward the event to the handler ...
             eventHandlers.getOrDefault(eventType, this::ignoreEvent).accept(event);
 
@@ -961,6 +965,6 @@ public class BinlogReader extends AbstractReader {
     }
 
     private Timer resetHeartbeat() {
-        return Threads.timer(Clock.SYSTEM, HEARTBEAT_INTERVAL);
+        return Threads.timer(Clock.SYSTEM, heartbeatInterval.isZero() ? Duration.ofMillis(Long.MAX_VALUE) : heartbeatInterval);
     }
 }
