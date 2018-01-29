@@ -37,7 +37,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     private final Clock clock = Clock.system();
 
     /**
-     * Whether table ids are compared ingnoring letter casing.
+     * Whether table ids are compared ignoring letter casing.
      */
     private final boolean tableIdCaseInsensitive;
 
@@ -49,7 +49,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         super(config);
 
         // Set up the topic selector ...
-        this.topicSelector = TopicSelector.defaultSelector(serverName());
+        this.topicSelector = TopicSelector.defaultSelector(serverName(), getHeartbeatTopicsPrefix());
 
         // Set up the source information ...
         this.source = new SourceInfo();
@@ -232,6 +232,14 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
 
     public String getSnapshotSelectOverrides() {
         return config.getString(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
+    }
+
+    public int getBinlogReaderHeartbeatInterval() {
+        return config.getInteger(MySqlConnectorConfig.BINLOG_READER_HEARTBEAT_INTERVAL);
+    }
+
+    public String getHeartbeatTopicsPrefix() {
+        return config.getString(MySqlConnectorConfig.HEARTBEAT_TOPICS_PREFIX);
     }
 
     @Override

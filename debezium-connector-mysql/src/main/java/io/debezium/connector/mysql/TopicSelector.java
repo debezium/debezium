@@ -20,10 +20,12 @@ public interface TopicSelector {
      * 
      * @param prefix the name of the prefix to be used for all topics; may not be null and must not terminate in the
      *            {@code delimiter}
+     * @param heartbeatPrefix the name of the prefix to be used for all heartbeat topics; may not be null and must not terminate in the
+     *            {@code delimiter}
      * @return the topic selector; never null
      */
-    static TopicSelector defaultSelector(String prefix) {
-        return defaultSelector(prefix,".");
+    static TopicSelector defaultSelector(String prefix, String heartbeatPrefix) {
+        return defaultSelector(prefix, heartbeatPrefix, ".");
     }
 
     /**
@@ -31,10 +33,12 @@ public interface TopicSelector {
      * 
      * @param prefix the name of the prefix to be used for all topics; may not be null and must not terminate in the
      *            {@code delimiter}
+     * @param heartbeatPrefix - a prefix that will be used for heartbeat topics. All heartbeat topics will start with this prefix and will use
+     *            {@code delimiter} to separate the heartbeat prefix and the rest of the name
      * @param delimiter the string delineating the server, database, and table names; may not be null
      * @return the topic selector; never null
      */
-    static TopicSelector defaultSelector(String prefix, String delimiter) {
+    static TopicSelector defaultSelector(String prefix, String heartbeatPrefix, String delimiter) {
         return new TopicSelector() {
             /**
              * Get the name of the topic for the given server, database, and table names. This method returns
@@ -68,7 +72,7 @@ public interface TopicSelector {
              */
             @Override
             public String getHeartbeatTopic() {
-                return prefix + "-heartbeat";
+                return String.join(delimiter, heartbeatPrefix, prefix);
             }
 
         };
