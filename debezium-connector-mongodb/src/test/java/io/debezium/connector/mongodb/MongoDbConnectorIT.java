@@ -112,11 +112,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
 
     @Test
     public void shouldValidateAcceptableConfiguration() {
-        config = Configuration.create()
-                              .with(MongoDbConnectorConfig.HOSTS, System.getProperty("connector.mongodb.hosts"))
-                              .with(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS, System.getProperty("connector.mongodb.members.auto.discover"))
-                              .with(MongoDbConnectorConfig.LOGICAL_NAME, System.getProperty("connector.mongodb.name"))
-                              .build();
+        config = TestHelper.getConfiguration();
         
         // Add data to the databases so that the databases will be listed ...
         context = new ReplicationContext(config);
@@ -150,11 +146,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
     public void shouldConsumeAllEventsFromDatabase() throws InterruptedException, IOException {
 
         // Use the DB configuration to define the connector's configuration ...
-        config = Configuration.create()
-                              .with(MongoDbConnectorConfig.HOSTS, System.getProperty("connector.mongodb.hosts"))
-                              .with(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS,
-                                    System.getProperty("connector.mongodb.members.auto.discover"))
-                              .with(MongoDbConnectorConfig.LOGICAL_NAME, System.getProperty("connector.mongodb.name"))
+        config = TestHelper.getConfiguration().edit()
                               .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                               .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
                               .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
@@ -162,6 +154,9 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
 
         // Set up the replication context for connections ...
         context = new ReplicationContext(config);
+
+        // Cleanup database
+        TestHelper.cleanDatabase(primary(), "dbit");
 
         // Before starting the connector, add data to the databases ...
         storeDocuments("dbit", "simpletons", "simple_objects.json");
@@ -174,6 +169,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
         SourceRecords records = consumeRecordsByTopic(12);
+        records.topics().forEach(System.out::println);
         assertThat(records.recordsForTopic("mongo.dbit.simpletons").size()).isEqualTo(6);
         assertThat(records.recordsForTopic("mongo.dbit.restaurants").size()).isEqualTo(6);
         assertThat(records.topics().size()).isEqualTo(2);
@@ -395,11 +391,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
     @Test(expected = ConnectException.class)
     public void shouldUseSSL() throws InterruptedException, IOException {
         // Use the DB configuration to define the connector's configuration ...
-        config = Configuration.create()
-                              .with(MongoDbConnectorConfig.HOSTS, System.getProperty("connector.mongodb.hosts"))
-                              .with(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS,
-                                    System.getProperty("connector.mongodb.members.auto.discover"))
-                              .with(MongoDbConnectorConfig.LOGICAL_NAME, System.getProperty("connector.mongodb.name"))
+        config = TestHelper.getConfiguration().edit()
                               .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                               .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
                               .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
