@@ -26,7 +26,7 @@ public class TestHelper {
 
     public static Configuration getConfiguration() {
         return Configuration.fromSystemProperties("connector.").edit()
-                .withDefault(MongoDbConnectorConfig.HOSTS, "rs0/localhost:37017")
+                .withDefault(MongoDbConnectorConfig.HOSTS, "rs0/localhost:27017")
                 .withDefault(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS, false)
                 .withDefault(MongoDbConnectorConfig.LOGICAL_NAME, "mongo1").build();
     }
