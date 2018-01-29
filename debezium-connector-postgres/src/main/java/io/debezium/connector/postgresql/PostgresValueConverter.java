@@ -127,7 +127,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.BPCHAR_ARRAY:
                 return SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
             case PgOid.NUMERIC_ARRAY:
-                return SchemaBuilder.array(numericSchema(column).optional());
+                return SchemaBuilder.array(numericSchema(column).optional().build());
             case PgOid.FLOAT4_ARRAY:
                 return SchemaBuilder.array(Schema.OPTIONAL_FLOAT32_SCHEMA);
             case PgOid.FLOAT8_ARRAY:
@@ -278,6 +278,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 .jdbcType(schema.columnTypeNameToJdbcTypeId(PostgresSchema.parse(elementTypeName).table()))
                 .type(elementTypeName)
                 .optional(true)
+                .scale(column.scale())
+                .length(column.length())
                 .create();
         final Field elementField = new Field(elementColumnName, 0, schemaBuilder(elementColumn).build());
         final ValueConverter elementConverter = converter(elementColumn, elementField);
