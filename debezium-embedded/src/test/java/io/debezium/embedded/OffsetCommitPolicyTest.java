@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.embedded.spi.OffsetCommitPolicy;
 
 import static org.fest.assertions.Assertions.assertThat;
 

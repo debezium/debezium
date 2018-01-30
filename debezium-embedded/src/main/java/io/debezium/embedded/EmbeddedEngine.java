@@ -43,6 +43,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.embedded.spi.OffsetCommitPolicy;
 import io.debezium.util.Clock;
 import io.debezium.util.VariableLatch;
 
