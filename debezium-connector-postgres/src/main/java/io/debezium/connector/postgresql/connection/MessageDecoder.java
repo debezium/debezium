@@ -28,7 +28,7 @@ public interface MessageDecoder {
      * @param buffer - binary representation of replication message
      * @param processor - message processing on arrival
      */
-    void processMessage(final ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException;
+    void processMessage(final ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException, InterruptedException;
 
     /**
      * Allows MessageDecoder to configure options with which the replication stream is started.

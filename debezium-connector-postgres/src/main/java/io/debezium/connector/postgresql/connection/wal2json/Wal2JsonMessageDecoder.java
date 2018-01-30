@@ -40,7 +40,7 @@ public class Wal2JsonMessageDecoder implements MessageDecoder {
     private boolean containsMetadata = false;
 
     @Override
-    public void processMessage(ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException {
+    public void processMessage(ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
         try {
             if (!buffer.hasArray()) {
                 throw new IllegalStateException("Invalid buffer received from PG server during streaming replication");

@@ -318,6 +318,10 @@ public class JdbcConnection implements AutoCloseable {
         void accept(ResultSet rs) throws SQLException;
     }
 
+    public static interface BlockingResultSetConsumer {
+        void accept(ResultSet rs) throws SQLException, InterruptedException;
+    }
+
     public static interface SingleParameterResultSetConsumer {
         boolean accept(String parameter, ResultSet rs) throws SQLException;
     }
@@ -379,6 +383,21 @@ public class JdbcConnection implements AutoCloseable {
      * @see #execute(Operations)
      */
     public JdbcConnection query(String query, StatementFactory statementFactory, ResultSetConsumer resultConsumer) throws SQLException {
+        Connection conn = connection();
+        try (Statement statement = statementFactory.createStatement(conn);) {
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("running '{}'", query);
+            }
+            try (ResultSet resultSet = statement.executeQuery(query);) {
+                if (resultConsumer != null) {
+                    resultConsumer.accept(resultSet);
+                }
+            }
+        }
+        return this;
+    }
+
+    public JdbcConnection queryWithBlockingConsumer(String query, StatementFactory statementFactory, BlockingResultSetConsumer resultConsumer) throws SQLException, InterruptedException {
         Connection conn = connection();
         try (Statement statement = statementFactory.createStatement(conn);) {
             if (LOGGER.isTraceEnabled()) {

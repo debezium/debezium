@@ -55,6 +55,7 @@ import io.debezium.data.Xml;
 import io.debezium.data.geometry.Geography;
 import io.debezium.data.geometry.Geometry;
 import io.debezium.data.geometry.Point;
+import io.debezium.function.BlockingConsumer;
 import io.debezium.relational.TableId;
 import io.debezium.time.Date;
 import io.debezium.time.MicroDuration;
@@ -522,7 +523,7 @@ public abstract class AbstractRecordsProducerTest {
          return new TestConsumer(expectedRecordsCount, topicPrefixes);
     }
 
-    protected static class TestConsumer implements Consumer<ChangeEvent> {
+    protected static class TestConsumer implements BlockingConsumer<ChangeEvent> {
         private final ConcurrentLinkedQueue<SourceRecord> records;
         private final VariableLatch latch;
         private final List<String> topicPrefixes;

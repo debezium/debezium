@@ -10,9 +10,9 @@ import java.sql.SQLException;
 import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
@@ -183,8 +183,8 @@ public class PostgresSchema {
         return typeInfo.get(localTypeName);
     }
 
-    protected Stream<TableId> tables() {
-        return tables.tableIds().stream();
+    protected Set<TableId> tables() {
+        return tables.tableIds();
     }
 
     /**
