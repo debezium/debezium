@@ -39,13 +39,10 @@ public interface OffsetCommitPolicy {
      */
     public static class PeriodicCommitOffsetPolicy implements OffsetCommitPolicy {
 
-        private Duration minimumTime;
+        private final Duration minimumTime;
 
-        @Override
-        public OffsetCommitPolicy configure(Configuration config) {
-            OffsetCommitPolicy.super.configure(config);
+        public PeriodicCommitOffsetPolicy(Configuration config) {
             minimumTime = Duration.ofMillis(config.getLong(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS));
-            return this;
         }
 
         @Override
@@ -59,7 +56,7 @@ public interface OffsetCommitPolicy {
     }
 
     static OffsetCommitPolicy periodic(Configuration config) {
-        return new PeriodicCommitOffsetPolicy().configure(config);
+        return new PeriodicCommitOffsetPolicy(config);
     }
 
     /**
@@ -92,9 +89,5 @@ public interface OffsetCommitPolicy {
     default OffsetCommitPolicy and(OffsetCommitPolicy other) {
         if ( other == null ) return this;
         return (number, time) -> this.performCommit(number, time) && other.performCommit(number, time);
-    }
-
-    default OffsetCommitPolicy configure(Configuration config) {
-        return this;
     }
 }
