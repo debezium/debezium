@@ -103,21 +103,31 @@ public class ChangeEventQueue<T> {
         }
     }
 
-    public void enqueue(T record) {
-        LoggingContext.PreviousContext previousContext = loggingContextSupplier.get();
-
-        try {
-            queue.put(record);
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Placed source record '{}' into queue", record);
-            }
-        } catch (InterruptedException e) {
-            LOGGER.debug("received interrupt request");
-            // clear the interrupted status
-            Thread.interrupted();
-        } finally {
-            previousContext.restore();
+    /**
+     * Enqueues a record so that it can be obtained via {@link #poll()}. This method
+     * will block if the queue is full.
+     *
+     * @param record
+     *            the record to be enqueued
+     * @throws InterruptedException
+     *             if this thread has been interrupted
+     */
+    public void enqueue(T record) throws InterruptedException {
+        if (record == null) {
+            return;
         }
+
+        // The calling thread has been interrupted, let's abort
+        if (Thread.interrupted()) {
+            throw new InterruptedException();
+        }
+
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Enqueuing source record '{}'", record);
+        }
+
+        // this will also raise an InterruptedException if the thread is interrupted while waiting for space in the queue
+        queue.put(record);
     }
 
     /**

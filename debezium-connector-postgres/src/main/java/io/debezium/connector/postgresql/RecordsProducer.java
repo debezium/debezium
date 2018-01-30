@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.data.Envelope;
+import io.debezium.function.BlockingConsumer;
 import io.debezium.relational.TableSchema;
 import io.debezium.util.Clock;
 
@@ -40,7 +41,7 @@ public abstract class RecordsProducer {
      *
      * @param recordsConsumer a consumer of {@link ChangeEvent} instances, may not be null
      */
-    protected abstract void start(Consumer<ChangeEvent> recordsConsumer, Consumer<Throwable> failureConsumer);
+    protected abstract void start(BlockingConsumer<ChangeEvent> recordsConsumer, Consumer<Throwable> failureConsumer);
 
     /**
      * Notification that offsets have been committed to Kafka up to the given LSN.

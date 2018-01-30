@@ -29,6 +29,7 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.connector.postgresql.connection.ReplicationStream;
 import io.debezium.data.Envelope;
+import io.debezium.function.BlockingConsumer;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
@@ -79,7 +80,7 @@ public class RecordsStreamProducer extends RecordsProducer {
     }
 
     @Override
-    protected synchronized void start(Consumer<ChangeEvent> eventConsumer, Consumer<Throwable> failureConsumer)  {
+    protected synchronized void start(BlockingConsumer<ChangeEvent> eventConsumer, Consumer<Throwable> failureConsumer)  {
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
             if (executorService.isShutdown()) {
@@ -110,7 +111,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         }
     }
 
-    private void streamChanges(Consumer<ChangeEvent> consumer, Consumer<Throwable> failureConsumer) {
+    private void streamChanges(BlockingConsumer<ChangeEvent> consumer, Consumer<Throwable> failureConsumer) {
         ReplicationStream stream = this.replicationStream.get();
         // run while we haven't been requested to stop
         while (!Thread.currentThread().isInterrupted()) {
@@ -208,7 +209,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         }
     }
 
-    private void process(ReplicationMessage message, Long lsn, Consumer<ChangeEvent> consumer) throws SQLException {
+    private void process(ReplicationMessage message, Long lsn, BlockingConsumer<ChangeEvent> consumer) throws SQLException, InterruptedException {
         if (message == null) {
             // in some cases we can get null if PG gives us back a message earlier than the latest reported flushed LSN
             return;
@@ -257,7 +258,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         }
     }
 
-    protected void generateCreateRecord(TableId tableId, Object[] rowData, boolean isLastEventForLsn, Consumer<ChangeEvent> recordConsumer) {
+    protected void generateCreateRecord(TableId tableId, Object[] rowData, boolean isLastEventForLsn, BlockingConsumer<ChangeEvent> recordConsumer) throws InterruptedException {
         if (rowData == null || rowData.length == 0) {
             logger.warn("no new values found for table '{}' from update message at '{}';skipping record" , tableId, sourceInfo);
             return;
@@ -284,7 +285,7 @@ public class RecordsStreamProducer extends RecordsProducer {
     }
 
     protected void generateUpdateRecord(TableId tableId, Object[] oldRowData, Object[] newRowData, boolean isLastEventForLsn,
-                                        Consumer<ChangeEvent> recordConsumer) {
+                                        BlockingConsumer<ChangeEvent> recordConsumer) throws InterruptedException {
         if (newRowData == null || newRowData.length == 0) {
             logger.warn("no values found for table '{}' from update message at '{}';skipping record" , tableId, sourceInfo);
             return;
@@ -353,7 +354,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         }
     }
 
-    protected void generateDeleteRecord(TableId tableId, Object[] oldRowData, boolean isLastEventForLsn, Consumer<ChangeEvent> recordConsumer) {
+    protected void generateDeleteRecord(TableId tableId, Object[] oldRowData, boolean isLastEventForLsn, BlockingConsumer<ChangeEvent> recordConsumer) throws InterruptedException {
         if (oldRowData == null || oldRowData.length == 0) {
             logger.warn("no values found for table '{}' from update message at '{}';skipping record" , tableId, sourceInfo);
             return;

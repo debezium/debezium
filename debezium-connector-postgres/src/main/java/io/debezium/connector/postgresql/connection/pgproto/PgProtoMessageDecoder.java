@@ -29,7 +29,7 @@ import io.debezium.connector.postgresql.proto.PgProto.RowMessage;
 public class PgProtoMessageDecoder implements MessageDecoder {
 
     @Override
-    public void processMessage(final ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException {
+    public void processMessage(final ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
         try {
             if (!buffer.hasArray()) {
                 throw new IllegalStateException(

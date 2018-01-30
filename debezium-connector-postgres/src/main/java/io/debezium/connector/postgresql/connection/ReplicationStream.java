@@ -18,7 +18,7 @@ import org.postgresql.replication.PGReplicationStream;
 public interface ReplicationStream extends AutoCloseable {
     @FunctionalInterface
     public interface ReplicationMessageProcessor {
-        void process(ReplicationMessage message) throws SQLException;
+        void process(ReplicationMessage message) throws SQLException, InterruptedException;
     }
 
     /**
@@ -29,7 +29,7 @@ public interface ReplicationStream extends AutoCloseable {
      * @throws SQLException if anything unexpected fails
      * @see PGReplicationStream#read()
      */
-    void read(ReplicationMessageProcessor processor) throws SQLException;
+    void read(ReplicationMessageProcessor processor) throws SQLException, InterruptedException;
 
     /**
      * Attempts to read a replication message from a replication connection, returning that message if it's available or returning
@@ -40,7 +40,7 @@ public interface ReplicationStream extends AutoCloseable {
      * @throws SQLException if anything unexpected fails
      * @see PGReplicationStream#readPending()
      */
-    void readPending(ReplicationMessageProcessor processor) throws SQLException;
+    void readPending(ReplicationMessageProcessor processor) throws SQLException, InterruptedException;
 
     /**
      * Sends a message to the server informing it about that latest position in the WAL that this stream has read via
