@@ -1385,23 +1385,8 @@ public interface Configuration {
      * @return the new instance, or null if there is no such key-value pair in the configuration or if there is a key-value
      *         configuration but the value could not be converted to an existing class with a zero-argument constructor
      */
-    @SuppressWarnings("unchecked")
     default <T> T getInstance(String key, Class<T> type, Supplier<ClassLoader> classloaderSupplier) {
-        String className = getString(key);
-        if (className != null) {
-            ClassLoader classloader = classloaderSupplier != null ? classloaderSupplier.get() : getClass().getClassLoader();
-            try {
-                Class<? extends T> clazz = (Class<? extends T>) classloader.loadClass(className);
-                return clazz.newInstance();
-            } catch (ClassNotFoundException e) {
-                LoggerFactory.getLogger(getClass()).error("Unable to find class {}", className, e);
-            } catch (InstantiationException e) {
-                LoggerFactory.getLogger(getClass()).error("Unable to instantiate class {}", className, e);
-            } catch (IllegalAccessException e) {
-                LoggerFactory.getLogger(getClass()).error("Unable to access class {}", className, e);
-            }
-        }
-        return null;
+        return ConfigurationHelper.doGetInstance(getString(key), classloaderSupplier, null);
     }
 
     /**
@@ -1417,6 +1402,34 @@ public interface Configuration {
     }
 
     /**
+     * Get an instance of the class given by the value in the configuration associated with the given key.
+     * The instance is created using {@code Instance(Configuration)} constructor.
+     *
+     * @param key the key for the configuration property
+     * @param clazz the Class of which the resulting object is expected to be an instance of; may not be null
+     * @param the {@link Configuration} object that is passed as a parameter to the constructor
+     * @return the new instance, or null if there is no such key-value pair in the configuration or if there is a key-value
+     *         configuration but the value could not be converted to an existing class with a zero-argument constructor
+     */
+    default <T> T getInstance(String key, Class<T> clazz, Configuration configuration) {
+        return ConfigurationHelper.doGetInstance(getString(key), () -> getClass().getClassLoader(), configuration);
+    }
+
+    /**
+     * Get an instance of the class given by the value in the configuration associated with the given field.
+     * The instance is created using {@code Instance(Configuration)} constructor.
+     *
+     * @param field the field for the configuration property
+     * @param clazz the Class of which the resulting object is expected to be an instance of; may not be null
+     * @param the {@link Configuration} object that is passed as a parameter to the constructor
+     * @return the new instance, or null if there is no such key-value pair in the configuration or if there is a key-value
+     *         configuration but the value could not be converted to an existing class with a zero-argument constructor
+     */
+    default <T> T getInstance(Field field, Class<T> clazz, Configuration configuration) {
+        return ConfigurationHelper.doGetInstance(getString(field), () -> getClass().getClassLoader(), configuration);
+    }
+
+    /**
      * Get an instance of the class given by the value in the configuration associated with the given field.
      *
      * @param field the field for the configuration property
@@ -1426,23 +1439,8 @@ public interface Configuration {
      * @return the new instance, or null if there is no such key-value pair in the configuration or if there is a key-value
      *         configuration but the value could not be converted to an existing class with a zero-argument constructor
      */
-    @SuppressWarnings("unchecked")
     default <T> T getInstance(Field field, Class<T> type, Supplier<ClassLoader> classloaderSupplier) {
-        String className = getString(field);
-        if (className != null) {
-            ClassLoader classloader = classloaderSupplier != null ? classloaderSupplier.get() : getClass().getClassLoader();
-            try {
-                Class<? extends T> clazz = (Class<? extends T>) classloader.loadClass(className);
-                return clazz.newInstance();
-            } catch (ClassNotFoundException e) {
-                LoggerFactory.getLogger(getClass()).error("Unable to find class {}", className, e);
-            } catch (InstantiationException e) {
-                LoggerFactory.getLogger(getClass()).error("Unable to instantiate class {}", className, e);
-            } catch (IllegalAccessException e) {
-                LoggerFactory.getLogger(getClass()).error("Unable to access class {}", className, e);
-            }
-        }
-        return null;
+        return ConfigurationHelper.doGetInstance(getString(field), classloaderSupplier, null);
     }
 
     /**

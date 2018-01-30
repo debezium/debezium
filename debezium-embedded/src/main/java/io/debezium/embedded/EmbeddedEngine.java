@@ -633,8 +633,7 @@ public final class EmbeddedEngine implements Runnable {
 
                 // Set up the offset commit policy ...
                 if (offsetCommitPolicy == null) {
-                    offsetCommitPolicy = config.getInstance(EmbeddedEngine.OFFSET_COMMIT_POLICY, OffsetCommitPolicy.class);
-                    offsetCommitPolicy.configure(config);
+                    offsetCommitPolicy = config.getInstance(EmbeddedEngine.OFFSET_COMMIT_POLICY, OffsetCommitPolicy.class, config);
                 }
 
                 // Initialize the connector using a context that does NOT respond to requests to reconfigure tasks ...
