@@ -7,7 +7,6 @@ package io.debezium.connector.mysql;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.time.Duration;
 import java.util.BitSet;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -47,12 +46,13 @@ import io.debezium.connector.mysql.MySqlConnectorConfig.EventProcessingFailureHa
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
 import io.debezium.function.BlockingConsumer;
+import io.debezium.heartbeat.HeartbeatController;
+import io.debezium.heartbeat.OffsetPosition;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
-import io.debezium.util.Threads.Timer;
 
 /**
  * A component that reads the binlog of a MySQL server, and records any schema changes in {@link MySqlSchema}.
@@ -86,8 +86,7 @@ public class BinlogReader extends AbstractReader {
     private final AtomicLong totalRecordCounter = new AtomicLong();
     private volatile Map<String, ?> lastOffset = null;
     private com.github.shyiko.mysql.binlog.GtidSet gtidSet;
-    private Duration heartbeatInterval;
-    private Timer heartbeatTimeout;
+    private HeartbeatController heartbeat;
 
     public static class BinlogPosition {
         final String filename;
@@ -230,9 +229,7 @@ public class BinlogReader extends AbstractReader {
 
         // Set up for JMX ...
         metrics = new BinlogReaderMetrics(client);
-
-        heartbeatInterval = Duration.ofSeconds(context.getBinlogReaderHeartbeatInterval());
-        heartbeatTimeout = resetHeartbeat();
+        heartbeat = new HeartbeatController(context.config(), context.topicSelector().getHeartbeatTopic(), () -> OffsetPosition.build(source.partition(), source.offset()));
     }
 
     @Override
@@ -367,11 +364,7 @@ public class BinlogReader extends AbstractReader {
     @Override
     protected void pollComplete(List<SourceRecord> batch) {
         // Generate heartbeat message if the time is right
-        if (heartbeatTimeout.expired()) {
-            logger.info("Generating heartbeat event");
-            recordMakers.heartbeat(batch::add);
-            heartbeatTimeout = resetHeartbeat();
-        }
+        heartbeat.heartbeat(batch::add);
 
         // Record a bit about this batch ...
         int batchSize = batch.size();
@@ -962,9 +955,5 @@ public class BinlogReader extends AbstractReader {
 
     public BinlogPosition getCurrentBinlogPosition() {
         return new BinlogPosition(client.getBinlogFilename(), client.getBinlogPosition());
-    }
-
-    private Timer resetHeartbeat() {
-        return Threads.timer(Clock.SYSTEM, heartbeatInterval.isZero() ? Duration.ofMillis(Long.MAX_VALUE) : heartbeatInterval);
     }
 }
