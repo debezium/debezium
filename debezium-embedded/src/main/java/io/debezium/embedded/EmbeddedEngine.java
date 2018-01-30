@@ -399,6 +399,14 @@ public final class EmbeddedEngine implements Runnable {
         Builder using(ConnectorCallback connectorCallback);
 
         /**
+         * During the engine's {@link EmbeddedEngine#run()} method, decide when the offsets
+         * should be committed into to the {@link OffsetBackingStore}.
+         * @param policy
+         * @return this builder object so methods can be chained together; never null
+         */
+        Builder using(OffsetCommitPolicy policy);
+
+        /**
          * Build a new connector with the information previously supplied to this builder.
          *
          * @return the embedded connector; never null
@@ -421,6 +429,7 @@ public final class EmbeddedEngine implements Runnable {
             private Clock clock;
             private CompletionCallback completionCallback;
             private ConnectorCallback connectorCallback;
+            private OffsetCommitPolicy offsetCommitPolicy = null;
 
             @Override
             public Builder using(Configuration config) {
@@ -453,6 +462,12 @@ public final class EmbeddedEngine implements Runnable {
             }
 
             @Override
+            public Builder using(OffsetCommitPolicy offsetCommitPolicy) {
+                this.offsetCommitPolicy = offsetCommitPolicy;
+                return this;
+            }
+
+            @Override
             public Builder notifying(Consumer<SourceRecord> consumer) {
                 this.consumer = consumer;
                 return this;
@@ -464,7 +479,8 @@ public final class EmbeddedEngine implements Runnable {
                 if (clock == null) clock = Clock.system();
                 Objects.requireNonNull(config, "A connector configuration must be specified.");
                 Objects.requireNonNull(consumer, "A connector consumer must be specified.");
-                return new EmbeddedEngine(config, classLoader, clock, consumer, completionCallback, connectorCallback);
+                return new EmbeddedEngine(config, classLoader, clock,
+                        consumer, completionCallback, connectorCallback, offsetCommitPolicy);
             }
 
         };
@@ -485,9 +501,11 @@ public final class EmbeddedEngine implements Runnable {
     private final CompletionResult completionResult;
     private long recordsSinceLastCommit = 0;
     private long timeSinceLastCommitMillis = 0;
+    private OffsetCommitPolicy offsetCommitPolicy;
 
     private EmbeddedEngine(Configuration config, ClassLoader classLoader, Clock clock, Consumer<SourceRecord> consumer,
-                           CompletionCallback completionCallback, ConnectorCallback connectorCallback) {
+                           CompletionCallback completionCallback, ConnectorCallback connectorCallback,
+                           OffsetCommitPolicy offsetCommitPolicy) {
         this.config = config;
         this.consumer = consumer;
         this.classLoader = classLoader;
@@ -497,6 +515,8 @@ public final class EmbeddedEngine implements Runnable {
         };
         this.connectorCallback = connectorCallback;
         this.completionResult = new CompletionResult();
+        this.offsetCommitPolicy = offsetCommitPolicy;
+
         assert this.config != null;
         assert this.consumer != null;
         assert this.classLoader != null;
@@ -612,8 +632,10 @@ public final class EmbeddedEngine implements Runnable {
                 }
 
                 // Set up the offset commit policy ...
-                OffsetCommitPolicy offsetCommitPolicy = config.getInstance(EmbeddedEngine.OFFSET_COMMIT_POLICY, OffsetCommitPolicy.class);
-                offsetCommitPolicy.configure(config);
+                if (offsetCommitPolicy == null) {
+                    offsetCommitPolicy = config.getInstance(EmbeddedEngine.OFFSET_COMMIT_POLICY, OffsetCommitPolicy.class);
+                    offsetCommitPolicy.configure(config);
+                }
 
                 // Initialize the connector using a context that does NOT respond to requests to reconfigure tasks ...
                 ConnectorContext context = new ConnectorContext() {
