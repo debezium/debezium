@@ -3,13 +3,14 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.embedded;
+package io.debezium.embedded.spi;
 
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.storage.OffsetBackingStore;
 
 import io.debezium.config.Configuration;
+import io.debezium.embedded.EmbeddedEngine;
 
 /**
  * The policy that defines when the offsets should be committed to {@link OffsetBackingStore offset storage}.
@@ -17,7 +18,7 @@ import io.debezium.config.Configuration;
  * @author Randall Hauch
  */
 @FunctionalInterface
-interface OffsetCommitPolicy {
+public interface OffsetCommitPolicy {
 
     /**
      * An {@link OffsetCommitPolicy} that will commit offsets as frequently as possible. This may result in reduced
