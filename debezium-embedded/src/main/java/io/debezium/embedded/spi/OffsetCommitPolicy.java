@@ -5,7 +5,7 @@
  */
 package io.debezium.embedded.spi;
 
-import java.util.concurrent.TimeUnit;
+import java.time.Duration;
 
 import org.apache.kafka.connect.storage.OffsetBackingStore;
 
@@ -27,8 +27,7 @@ public interface OffsetCommitPolicy {
     public static class AlwaysCommitOffsetPolicy implements OffsetCommitPolicy {
 
         @Override
-        public boolean performCommit(long numberOfMessagesSinceLastCommit, long timeSinceLastCommit,
-                TimeUnit timeUnit) {
+        public boolean performCommit(long numberOfMessagesSinceLastCommit, Duration timeSinceLastCommit) {
             return true;
         }
     }
@@ -40,20 +39,18 @@ public interface OffsetCommitPolicy {
      */
     public static class PeriodicCommitOffsetPolicy implements OffsetCommitPolicy {
 
-        private TimeUnit minimumTimetimeUnit = TimeUnit.MILLISECONDS;
-        private long minimumTime;
+        private Duration minimumTime;
 
         @Override
         public OffsetCommitPolicy configure(Configuration config) {
             OffsetCommitPolicy.super.configure(config);
-            minimumTime = config.getLong(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS);
+            minimumTime = Duration.ofMillis(config.getLong(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS));
             return this;
         }
 
         @Override
-        public boolean performCommit(long numberOfMessagesSinceLastCommit, long timeSinceLastCommit,
-                TimeUnit timeUnit) {
-                return minimumTimetimeUnit.convert(timeSinceLastCommit, timeUnit) >= minimumTime;
+        public boolean performCommit(long numberOfMessagesSinceLastCommit, Duration timeSinceLastCommit) {
+                return timeSinceLastCommit.compareTo(minimumTime) >= 0;
         }
     }
 
@@ -71,10 +68,9 @@ public interface OffsetCommitPolicy {
      * @param numberOfMessagesSinceLastCommit the number of messages that have been received from the connector since last
      *            the offsets were last committed; never negative
      * @param timeSinceLastCommit the time that has elapsed since the offsets were last committed; never negative
-     * @param timeUnit the unit of time used for {@code timeSinceLastCommit}; never null
      * @return {@code true} if the offsets should be committed, or {@code false} otherwise
      */
-    boolean performCommit(long numberOfMessagesSinceLastCommit, long timeSinceLastCommit, TimeUnit timeUnit);
+    boolean performCommit(long numberOfMessagesSinceLastCommit, Duration timeSinceLastCommit);
 
     /**
      * Obtain a new {@link OffsetCommitPolicy} that will commit offsets if this policy OR the other requests it.
@@ -84,7 +80,7 @@ public interface OffsetCommitPolicy {
      */
     default OffsetCommitPolicy or(OffsetCommitPolicy other) {
         if ( other == null ) return this;
-        return (number, time, unit) -> this.performCommit(number, time, unit) || other.performCommit(number, time, unit);
+        return (number, time) -> this.performCommit(number, time) || other.performCommit(number, time);
     }
 
     /**
@@ -95,7 +91,7 @@ public interface OffsetCommitPolicy {
      */
     default OffsetCommitPolicy and(OffsetCommitPolicy other) {
         if ( other == null ) return this;
-        return (number, time, unit) -> this.performCommit(number, time, unit) && other.performCommit(number, time, unit);
+        return (number, time) -> this.performCommit(number, time) && other.performCommit(number, time);
     }
 
     default OffsetCommitPolicy configure(Configuration config) {

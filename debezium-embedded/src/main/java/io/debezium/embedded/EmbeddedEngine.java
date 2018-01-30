@@ -5,6 +5,7 @@
  */
 package io.debezium.embedded;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -783,8 +784,7 @@ public final class EmbeddedEngine implements Runnable {
     protected void maybeFlush(OffsetStorageWriter offsetWriter, OffsetCommitPolicy policy, long commitTimeoutMs,
                               SourceTask task) {
         // Determine if we need to commit to offset storage ...
-        if (policy.performCommit(recordsSinceLastCommit, timeSinceLastCommitMillis,
-                                 TimeUnit.MILLISECONDS)) {
+        if (policy.performCommit(recordsSinceLastCommit, Duration.ofMillis(timeSinceLastCommitMillis))) {
             commitOffsets(offsetWriter, commitTimeoutMs, task);
         }
     }
