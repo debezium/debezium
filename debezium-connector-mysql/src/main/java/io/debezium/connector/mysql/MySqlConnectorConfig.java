@@ -391,7 +391,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
      * Default length of interval in which BinlogReader generates periodically
      * heartbeat messages. A size of 0 disables heartbeat.
      */
-    private static final int DEFAULT_BINLOG_READER_HEARTBEAT_INTERVAL = 3600;
+    private static final int DEFAULT_BINLOG_READER_HEARTBEAT_INTERVAL = 0;
 
     /**
      * Default prefix for names of heartbeat topics
@@ -702,7 +702,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                                       .withDescription("The length of interval in which Binlog reader periodically sends heartbeat messages "
                                                                               + "to the Connect. "
                                                                               + "Use 0 to disable heartbeat. "
-                                                                              + "Defaults to " + DEFAULT_BINLOG_READER_HEARTBEAT_INTERVAL + ".")
+                                                                              + "Disabled by default.")
                                                                       .withDefault(DEFAULT_BINLOG_READER_HEARTBEAT_INTERVAL)
                                                                       .withValidation(Field::isNonNegativeInteger);
 
