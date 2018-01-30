@@ -19,6 +19,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
+import io.debezium.heartbeat.HeartbeatController;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -386,17 +387,6 @@ public class MySqlConnectorConfig {
      */
     private static final int DEFAULT_BINLOG_BUFFER_SIZE = 0;
 
-    /**
-     * Default length of interval in which BinlogReader generates periodically
-     * heartbeat messages. A size of 0 disables heartbeat.
-     */
-    private static final int DEFAULT_BINLOG_READER_HEARTBEAT_INTERVAL = 0;
-
-    /**
-     * Default prefix for names of heartbeat topics
-     */
-    private static final String DEFAULT_HEARTBEAT_TOPICS_PREFIX = "__debezium-heartbeat";
-
     public static final Field HOSTNAME = Field.create("database.hostname")
                                               .withDisplayName("Hostname")
                                               .withType(Type.STRING)
@@ -693,27 +683,6 @@ public class MySqlConnectorConfig {
                                                                    .withDefault(DEFAULT_BINLOG_BUFFER_SIZE)
                                                                    .withValidation(Field::isNonNegativeInteger);
 
-    public static final Field BINLOG_READER_HEARTBEAT_INTERVAL = Field.create("binlog.reader.heartbeat.interval")
-                                                                      .withDisplayName("Binlog reader heartbeat inteval (seconds)")
-                                                                      .withType(Type.INT)
-                                                                      .withWidth(Width.MEDIUM)
-                                                                      .withImportance(Importance.MEDIUM)
-                                                                      .withDescription("The length of interval in which Binlog reader periodically sends heartbeat messages "
-                                                                              + "to the Connect. "
-                                                                              + "Use 0 to disable heartbeat. "
-                                                                              + "Disabled by default.")
-                                                                      .withDefault(DEFAULT_BINLOG_READER_HEARTBEAT_INTERVAL)
-                                                                      .withValidation(Field::isNonNegativeInteger);
-
-    public static final Field HEARTBEAT_TOPICS_PREFIX = Field.create("heartbeat.topics.prefix")
-                                                             .withDisplayName("A prefix used for naming of heartbeat topics")
-                                                             .withType(Type.STRING)
-                                                             .withWidth(Width.MEDIUM)
-                                                             .withImportance(Importance.LOW)
-                                                             .withDescription("The prefix that is used to name heartbeat topics."
-                                                                     + "Defaults to " + DEFAULT_HEARTBEAT_TOPICS_PREFIX + ".")
-                                                             .withDefault(DEFAULT_HEARTBEAT_TOPICS_PREFIX);
-
     /**
      * The database history class is hidden in the {@link #configDef()} since that is designed to work with a user interface,
      * and in these situations using Kafka is the only way to go.
@@ -863,8 +832,8 @@ public class MySqlConnectorConfig {
                                                      SERVER_NAME,
                                                      CONNECTION_TIMEOUT_MS, KEEP_ALIVE,
                                                      MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
-                                                     BUFFER_SIZE_FOR_BINLOG_READER, BINLOG_READER_HEARTBEAT_INTERVAL,
-                                                     HEARTBEAT_TOPICS_PREFIX, DATABASE_HISTORY, INCLUDE_SCHEMA_CHANGES,
+                                                     BUFFER_SIZE_FOR_BINLOG_READER, HeartbeatController.HEARTBEAT_INTERVAL,
+                                                     HeartbeatController.HEARTBEAT_TOPICS_PREFIX, DATABASE_HISTORY, INCLUDE_SCHEMA_CHANGES,
                                                      TABLE_WHITELIST, TABLE_BLACKLIST, TABLES_IGNORE_BUILTIN,
                                                      DATABASE_WHITELIST, DATABASE_BLACKLIST,
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING,
@@ -903,7 +872,7 @@ public class MySqlConnectorConfig {
         Field.group(config, "Events", INCLUDE_SCHEMA_CHANGES, TABLES_IGNORE_BUILTIN, DATABASE_WHITELIST, TABLE_WHITELIST,
                     COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST,
                     GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS, BUFFER_SIZE_FOR_BINLOG_READER,
-                    BINLOG_READER_HEARTBEAT_INTERVAL, HEARTBEAT_TOPICS_PREFIX, EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE, INCONSISTENT_SCHEMA_HANDLING_MODE);
+                    HeartbeatController.HEARTBEAT_INTERVAL, HeartbeatController.HEARTBEAT_TOPICS_PREFIX, EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE, INCONSISTENT_SCHEMA_HANDLING_MODE);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
                     SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                     BIGINT_UNSIGNED_HANDLING_MODE);

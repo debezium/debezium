@@ -133,25 +133,6 @@ public class RecordMakers {
     }
 
     /**
-     * Produce an empty record to heartbeat topic.
-     * 
-     * @param consumer the consumer for all produced records; may not be null
-     * @return the number of records produced; will be 0 or 1
-     */
-    public int heartbeat(BlockingConsumer<SourceRecord> consumer) {
-        String topicName = topicSelector.getHeartbeatTopic();
-        Integer partition = 0;
-        SourceRecord record = new SourceRecord(source.partition(), source.offset(),
-                topicName, partition, null, null, null, null);
-        try {
-            consumer.accept(record);
-            return 1;
-        } catch (InterruptedException e) {
-            return 0;
-        }
-    }
-
-    /**
      * Clear all of the cached record makers. This should be done when the logs are rotated, since in that a different table
      * numbering scheme will be used by all subsequent TABLE_MAP binlog events.
      */
