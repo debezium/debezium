@@ -296,6 +296,7 @@ public class Replicator {
             Thread.interrupted();
             aborted.set(true);
         }
+        this.copyThreads.shutdown();
 
         // Stopping the replicator does not interrupt *our* thread but does interrupt the copy threads.
         // Therefore, check the aborted state here ...
