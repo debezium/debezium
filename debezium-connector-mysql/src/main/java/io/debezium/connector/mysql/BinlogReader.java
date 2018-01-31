@@ -50,6 +50,7 @@ import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
 import io.debezium.util.Strings;
+import io.debezium.util.Threads;
 
 /**
  * A component that reads the binlog of a MySQL server, and records any schema changes in {@link MySqlSchema}.
@@ -152,6 +153,8 @@ public class BinlogReader extends AbstractReader {
 
         // Set up the log reader ...
         client = new BinaryLogClient(context.hostname(), context.port(), context.username(), context.password());
+        // BinaryLogClient will overwrite thread names later
+        client.setThreadFactory(Threads.threadFactory(MySqlConnector.class, context.serverName(), "binlog-client", false));
         client.setServerId(context.serverId());
         client.setSSLMode(sslModeFor(context.sslMode()));
         client.setKeepAlive(context.config().getBoolean(MySqlConnectorConfig.KEEP_ALIVE));

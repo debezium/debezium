@@ -12,7 +12,6 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -42,6 +41,7 @@ import io.debezium.function.BlockingConsumer;
 import io.debezium.function.BufferedBlockingConsumer;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
+import io.debezium.util.Threads;
 
 /**
  * A component that replicates the content of a replica set, starting with an initial sync or continuing to read the oplog where
@@ -113,7 +113,8 @@ public class Replicator {
         this.source = context.source();
         this.replicaSet = replicaSet;
         this.rsName = replicaSet.replicaSetName();
-        this.copyThreads = Executors.newFixedThreadPool(context.maxNumberOfCopyThreads());
+        final String copyThreadName = "copy-" + (replicaSet.hasReplicaSetName() ? replicaSet.replicaSetName() : "main");
+        this.copyThreads = Threads.newFixedThreadPool(MongoDbConnector.class, context.serverName(), copyThreadName, context.maxNumberOfCopyThreads());
         this.bufferedRecorder = new BufferableRecorder(recorder);
         this.recordMakers = new RecordMakers(this.source, context.topicSelector(), this.bufferedRecorder);
         this.collectionFilter = this.context.collectionFilter();
