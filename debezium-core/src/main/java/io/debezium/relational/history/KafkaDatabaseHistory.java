@@ -164,6 +164,9 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     public synchronized void start() {
         super.start();
         createDatabaseHistoryTopic();
+        if (this.producer == null) {
+            this.producer = new KafkaProducer<>(this.producerConfig.asProperties());
+        }
     }
 
     private void createDatabaseHistoryTopic() {
@@ -190,14 +193,12 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                 final NewTopic topic = new NewTopic(topicName, (short)1, replicationFactor);
                 topic.configs(Collect.hashMapOf("cleanup.policy", "delete", "retention.ms", Long.toString(MESSAGE_RETENTION_IN_DAYS.toMillis())));
                 admin.createTopics(Collections.singleton(topic));
+                logger.info("Database history topic created");
             } else {
-                logger.info("Database history topic exists");
+                logger.info("Database history topic already exists");
             }
         } catch (Exception e) {
             logger.warn("Debezium could not create database history topic, delegating to operator or broker", e);
-        }
-        if (this.producer == null) {
-            this.producer = new KafkaProducer<>(this.producerConfig.asProperties());
         }
     }
 
@@ -348,7 +349,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     @Override
     public String toString() {
         if (topicName != null) {
-            return "Kakfa topic " + topicName + ":" + PARTITION
+            return "Kafka topic " + topicName + ":" + PARTITION
                     + " using brokers at " + producerConfig.getString(BOOTSTRAP_SERVERS);
         }
         return "Kafka topic";
