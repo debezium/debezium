@@ -235,7 +235,8 @@ public class Threads {
 
             @Override
             public Thread newThread(Runnable r) {
-                StringBuilder threadName = new StringBuilder(connector.getSimpleName().toLowerCase())
+                StringBuilder threadName = new StringBuilder(DEBEZIUM_THREAD_NAME_PREFIX)
+                                            .append(connector.getSimpleName().toLowerCase())
                                             .append('-')
                                             .append(connectorId)
                                             .append('-')

@@ -22,6 +22,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -60,6 +61,7 @@ public class SnapshotReader extends AbstractReader {
     private final boolean includeData;
     private RecordRecorder recorder;
     private final SnapshotReaderMetrics metrics;
+    private ExecutorService executorService;
 
     /**
      * Create a snapshot reader.
@@ -122,12 +124,14 @@ public class SnapshotReader extends AbstractReader {
      */
     @Override
     protected void doStart() {
-        Threads.newSingleThreadExecutor(MySqlConnector.class, context.serverName(), "mysql-snapshot").execute(this::execute);
+        executorService = Threads.newSingleThreadExecutor(MySqlConnector.class, context.serverName(), "snapshot");
+        executorService.execute(this::execute);
     }
 
     @Override
     protected void doStop() {
         logger.debug("Stopping snapshot reader");
+        executorService.shutdown();
         // The parent class will change the isRunning() state, and this class' execute() uses that and will stop automatically
     }
 

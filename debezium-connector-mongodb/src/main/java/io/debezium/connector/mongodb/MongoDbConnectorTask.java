@@ -131,7 +131,7 @@ public final class MongoDbConnectorTask extends SourceTask {
 
             // Set up a replicator for each replica set ...
             final int numThreads = replicaSets.replicaSetCount();
-            final ExecutorService executor = Threads.newFixedThreadPool(MongoDbConnector.class, replicationContext.serverName(), "replica-set", numThreads);
+            final ExecutorService executor = Threads.newFixedThreadPool(MongoDbConnector.class, replicationContext.serverName(), "replicator", numThreads);
             AtomicInteger stillRunning = new AtomicInteger(numThreads);
             logger.info("Ignoring unnamed replica sets: {}", replicaSets.unnamedReplicaSets());
             logger.info("Starting {} thread(s) to replicate replica sets: {}", numThreads, replicaSets);
