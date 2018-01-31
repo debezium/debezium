@@ -42,6 +42,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
+import io.debezium.util.Threads;
 
 /**
  * A component that performs a snapshot of a MySQL server, and records the schema changes in {@link MySqlSchema}.
@@ -58,7 +59,6 @@ public class SnapshotReader extends AbstractReader {
     private boolean minimalBlocking = true;
     private final boolean includeData;
     private RecordRecorder recorder;
-    private volatile Thread thread;
     private final SnapshotReaderMetrics metrics;
 
     /**
@@ -122,8 +122,7 @@ public class SnapshotReader extends AbstractReader {
      */
     @Override
     protected void doStart() {
-        thread = new Thread(this::execute, "mysql-snapshot-" + context.serverName());
-        thread.start();
+        Threads.newSingleThreadExecutor(MySqlConnector.class, context.serverName(), "mysql-snapshot").execute(this::execute);
     }
 
     @Override
@@ -135,7 +134,6 @@ public class SnapshotReader extends AbstractReader {
     @Override
     protected void doCleanup() {
         try {
-            this.thread = null;
             logger.debug("Completed writing all snapshot records");
         } finally {
             metrics.unregister(logger);
