@@ -141,6 +141,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                                     .withDefault(ProducerConfig.BUFFER_MEMORY_CONFIG, 1024 * 1024) // 1MB
                                     .withDefault(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
                                     .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
+                                    .withDefault(ProducerConfig.MAX_BLOCK_MS_CONFIG, 10_000) // wait at most this if we can't reach Kafka
                                     .build();
         logger.info("KafkaDatabaseHistory Consumer config: " + consumerConfig.withMaskedPasswords());
         logger.info("KafkaDatabaseHistory Producer config: " + producerConfig.withMaskedPasswords());
