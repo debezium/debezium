@@ -189,7 +189,7 @@ public class MySqlSchema {
      *         or if the table has been excluded by the filters
      */
     public Table tableFor(TableId id) {
-        return filters.tableFilter().test(id) ? tables.forTable(id) : null;
+        return isTableMonitored(id) ? tables.forTable(id) : null;
     }
 
     /**
@@ -204,7 +204,17 @@ public class MySqlSchema {
      *         or if the table has been excluded by the filters
      */
     public TableSchema schemaFor(TableId id) {
-        return filters.tableFilter().test(id) ? tableSchemaByTableId.get(id) : null;
+        return isTableMonitored(id) ? tableSchemaByTableId.get(id) : null;
+    }
+
+    /**
+     * Decide whether events should be captured for a given table 
+     *
+     * @param id the fully-qualified table identifier; may be null
+     * @return true if events from the table are captured
+     */
+    public boolean isTableMonitored(TableId id) {
+        return filters.tableFilter().test(id);
     }
 
     /**

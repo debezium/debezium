@@ -323,9 +323,9 @@ public class MySqlConnectorConfig {
     }
 
     /**
-     * The set of predefined modes for dealing with failures during binlog event serialization.
+     * The set of predefined modes for dealing with failures during binlog event processing.
      */
-    public static enum EventDeserializationFailureHandlingMode implements EnumeratedValue {
+    public static enum EventProcessingFailureHandlingMode implements EnumeratedValue {
 
         /**
          * Problematic events will be skipped.
@@ -344,7 +344,7 @@ public class MySqlConnectorConfig {
 
         private final String value;
 
-        private EventDeserializationFailureHandlingMode(String value) {
+        private EventProcessingFailureHandlingMode(String value) {
             this.value = value;
         }
 
@@ -359,14 +359,14 @@ public class MySqlConnectorConfig {
          * @param value the configuration property value; may not be null
          * @return the matching option, or null if no match is found
          */
-        public static EventDeserializationFailureHandlingMode parse(String value) {
+        public static EventProcessingFailureHandlingMode parse(String value) {
             if (value == null) {
                 return null;
             }
 
             value = value.trim();
 
-            for (EventDeserializationFailureHandlingMode option : EventDeserializationFailureHandlingMode.values()) {
+            for (EventProcessingFailureHandlingMode option : EventProcessingFailureHandlingMode.values()) {
                 if (option.getValue().equalsIgnoreCase(value)) return option;
             }
 
@@ -765,10 +765,20 @@ public class MySqlConnectorConfig {
 
     public static final Field EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE = Field.create("event.deserialization.failure.handling.mode")
             .withDisplayName("Event deserialization failure handling")
-            .withEnum(EventDeserializationFailureHandlingMode.class, EventDeserializationFailureHandlingMode.FAIL)
+            .withEnum(EventProcessingFailureHandlingMode.class, EventProcessingFailureHandlingMode.FAIL)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDescription("Specify how failures during deserialization of binlog events (i.e. when encountering a corrupted event) should be handled, including:"
+                             + "'fail' (the default) an exception indicating the problematic event and its binlog position is raised, causing the connector to be stopped; "
+                             + "'warn' the problematic event and its binlog position will be logged and the event will be skipped;"
+                             + "'ignore' the problematic event will be skipped.");
+
+    public static final Field INCONSISTENT_SCHEMA_HANDLING_MODE = Field.create("inconsistent.schema.handling.mode")
+            .withDisplayName("Inconsistent schema failure handling")
+            .withEnum(EventProcessingFailureHandlingMode.class, EventProcessingFailureHandlingMode.FAIL)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Specify how binlog events that belong to a table missing from internal schema representation (i.e. internal representation is not consistent with database) should be handled, including:"
                              + "'fail' (the default) an exception indicating the problematic event and its binlog position is raised, causing the connector to be stopped; "
                              + "'warn' the problematic event and its binlog position will be logged and the event will be skipped;"
                              + "'ignore' the problematic event will be skipped.");
@@ -831,7 +841,8 @@ public class MySqlConnectorConfig {
                                                      SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD,
                                                      SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER,
                                                      BIGINT_UNSIGNED_HANDLING_MODE,
-                                                     EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE);
+                                                     EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE,
+                                                     INCONSISTENT_SCHEMA_HANDLING_MODE);
 
     /**
      * The set of {@link Field}s that are included in the {@link #configDef() configuration definition}. This includes
@@ -859,7 +870,7 @@ public class MySqlConnectorConfig {
         Field.group(config, "Events", INCLUDE_SCHEMA_CHANGES, TABLES_IGNORE_BUILTIN, DATABASE_WHITELIST, TABLE_WHITELIST,
                     COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST,
                     GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS, BUFFER_SIZE_FOR_BINLOG_READER,
-                    EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE);
+                    EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE, INCONSISTENT_SCHEMA_HANDLING_MODE);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
                     SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                     BIGINT_UNSIGNED_HANDLING_MODE);

@@ -42,7 +42,7 @@ import com.github.shyiko.mysql.binlog.io.ByteArrayInputStream;
 import com.github.shyiko.mysql.binlog.network.AuthenticationException;
 import com.github.shyiko.mysql.binlog.network.SSLMode;
 
-import io.debezium.connector.mysql.MySqlConnectorConfig.EventDeserializationFailureHandlingMode;
+import io.debezium.connector.mysql.MySqlConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
 import io.debezium.function.BlockingConsumer;
@@ -71,7 +71,8 @@ public class BinlogReader extends AbstractReader {
     private final BinlogReaderMetrics metrics;
     private final Clock clock;
     private final ElapsedTimeStrategy pollOutputDelay;
-    private final EventDeserializationFailureHandlingMode eventDeserializationFailureHandlingMode;
+    private final EventProcessingFailureHandlingMode eventDeserializationFailureHandlingMode;
+    private final EventProcessingFailureHandlingMode inconsistentSchemaHandlingMode;
 
     private int startingRowNumber = 0;
     private long recordCounter = 0L;
@@ -147,6 +148,7 @@ public class BinlogReader extends AbstractReader {
         recordSchemaChangesInSourceRecords = context.includeSchemaChangeRecords();
         clock = context.clock();
         eventDeserializationFailureHandlingMode = context.eventDeserializationFailureHandlingMode();
+        inconsistentSchemaHandlingMode = context.inconsistentSchemaHandlingMode();
 
         // Use exponential delay to log the progress frequently at first, but the quickly tapering off to once an hour...
         pollOutputDelay = ElapsedTimeStrategy.exponential(clock, INITIAL_POLL_PERIOD_IN_MILLIS, MAX_POLL_PERIOD_IN_MILLIS);
@@ -485,7 +487,7 @@ public class BinlogReader extends AbstractReader {
             EventHeaderV4 eventHeader = (EventHeaderV4) data.getCause().getEventHeader(); // safe cast, instantiated that ourselves
 
             // logging some additional context but not the exception itself, this will happen in handleEvent()
-            if(eventDeserializationFailureHandlingMode == EventDeserializationFailureHandlingMode.FAIL) {
+            if(eventDeserializationFailureHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
                 logger.error(
                         "Error while deserializing binlog event at offset {}.{}" +
                         "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
@@ -498,7 +500,7 @@ public class BinlogReader extends AbstractReader {
 
                 throw new RuntimeException(data.getCause());
             }
-            else if(eventDeserializationFailureHandlingMode == EventDeserializationFailureHandlingMode.WARN) {
+            else if(eventDeserializationFailureHandlingMode == EventProcessingFailureHandlingMode.WARN) {
                 logger.warn(
                         "Error while deserializing binlog event at offset {}.{}" +
                         "This exception will be ignored and the event be skipped.{}" +
@@ -638,7 +640,48 @@ public class BinlogReader extends AbstractReader {
         if (recordMakers.assign(tableNumber, tableId)) {
             logger.debug("Received update table metadata event: {}", event);
         } else {
-            logger.debug("Skipping update table metadata event: {}", event);
+            if (context.dbSchema().isTableMonitored(tableId)) {
+                EventHeaderV4 eventHeader = event.getHeader();
+
+                if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
+                    logger.error(
+                            "Schema inconsistency detected while processing binlog event at offset {}.{}" +
+                            "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
+                            source.offset(),
+                            System.lineSeparator(),
+                            eventHeader.getPosition(),
+                            eventHeader.getNextPosition(),
+                            source.binlogFilename()
+                    );
+                    throw new ConnectException("Inconsistency in internal schema detected");
+                } else if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.WARN) {
+                    logger.warn(
+                            "Schema inconsistency detected while processing binlog event at offset {}.{}" +
+                            "This exception will be ignored and the event be skipped.{}" +
+                            "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
+                            source.offset(),
+                            System.lineSeparator(),
+                            System.lineSeparator(),
+                            eventHeader.getPosition(),
+                            eventHeader.getNextPosition(),
+                            source.binlogFilename()
+                    );
+                } else {
+                    logger.debug(
+                            "Schema inconsistency detected while processing binlog event at offset {}.{}" +
+                            "This exception will be ignored and the event be skipped.{}" +
+                            "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
+                            source.offset(),
+                            System.lineSeparator(),
+                            System.lineSeparator(),
+                            eventHeader.getPosition(),
+                            eventHeader.getNextPosition(),
+                            source.binlogFilename()
+                    );
+                }
+            } else {
+                logger.debug("Skipping update table metadata event: {} for non-monitored table {}", event, tableId);
+            }
         }
     }
 
