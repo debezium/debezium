@@ -10,11 +10,11 @@ import java.util.Map;
 import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
 import io.debezium.document.Document;
 import io.debezium.relational.TableId;
@@ -90,7 +90,7 @@ import io.debezium.util.Collect;
  * @author Randall Hauch
  */
 @NotThreadSafe
-final class SourceInfo {
+final class SourceInfo extends AbstractSourceInfo {
 
     // Avro Schema doesn't allow "-" to be included as field name, use "_" instead.
     // Ref https://issues.apache.org/jira/browse/AVRO-838.
@@ -113,7 +113,7 @@ final class SourceInfo {
     /**
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition()} and {@link #offset()} information.
      */
-    public static final Schema SCHEMA = SchemaBuilder.struct()
+    public static final Schema SCHEMA = schemaBuilder()
                                                      .name("io.debezium.connector.mysql.Source")
                                                      .field(SERVER_NAME_KEY, Schema.STRING_SCHEMA)
                                                      .field(SERVER_ID_KEY, Schema.INT64_SCHEMA)
@@ -300,7 +300,7 @@ final class SourceInfo {
      */
     public Struct struct(TableId tableId) {
         assert serverName != null;
-        Struct result = new Struct(SCHEMA);
+        Struct result = super.struct();
         result.put(SERVER_NAME_KEY, serverName);
         result.put(SERVER_ID_KEY, serverId);
         if (currentGtid != null) {

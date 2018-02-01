@@ -12,7 +12,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonTimestamp;
@@ -21,6 +20,7 @@ import org.bson.types.BSONTimestamp;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.util.AvroValidator;
 import io.debezium.util.Collect;
 
@@ -63,7 +63,7 @@ import io.debezium.util.Collect;
  * @author Randall Hauch
  */
 @NotThreadSafe
-public final class SourceInfo {
+public final class SourceInfo extends AbstractSourceInfo {
 
     public static final int SCHEMA_VERSION = 1;
 
@@ -83,7 +83,7 @@ public final class SourceInfo {
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition(String)} and {@link #lastOffset}
      * information.
      */
-    private final Schema SOURCE_SCHEMA = SchemaBuilder.struct()
+    private final Schema SOURCE_SCHEMA = schemaBuilder()
                                                       .name(AvroValidator.defaultValidator().validate("io.debezium.connector.mongo.Source"))
                                                       .version(SCHEMA_VERSION)
                                                       .field(SERVER_NAME, Schema.STRING_SCHEMA)
@@ -256,7 +256,7 @@ public final class SourceInfo {
 
     private Struct offsetStructFor(String replicaSetName, String namespace, Position position, boolean isInitialSync) {
         if (position == null) position = INITIAL_POSITION;
-        Struct result = new Struct(SOURCE_SCHEMA);
+        Struct result = super.struct();
         result.put(SERVER_NAME, serverName);
         result.put(REPLICA_SET_NAME, replicaSetName);
         result.put(NAMESPACE, namespace);
