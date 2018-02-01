@@ -131,13 +131,13 @@ public class SnapshotReader extends AbstractReader {
     @Override
     protected void doStop() {
         logger.debug("Stopping snapshot reader");
-        executorService.shutdown();
         // The parent class will change the isRunning() state, and this class' execute() uses that and will stop automatically
     }
 
     @Override
     protected void doCleanup() {
         try {
+            executorService.shutdown();
             logger.debug("Completed writing all snapshot records");
         } finally {
             metrics.unregister(logger);
