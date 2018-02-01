@@ -9,11 +9,12 @@ package io.debezium.connector.postgresql;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 
 /**
@@ -71,7 +72,7 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
  * @author Horia Chiorean
  */
 @NotThreadSafe
-final class SourceInfo {
+final class SourceInfo extends AbstractSourceInfo {
 
     public static final String SERVER_NAME_KEY = "name";
     public static final String SERVER_PARTITION_KEY = "server";
@@ -84,7 +85,7 @@ final class SourceInfo {
     /**
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition()} and {@link #offset()} information.
      */
-    public static final Schema SCHEMA = SchemaBuilder.struct()
+    public static final Schema SCHEMA = schemaBuilder()
                                                      .name("io.debezium.connector.postgresql.Source")
                                                      .field(SERVER_NAME_KEY, Schema.STRING_SCHEMA)
                                                      .field(TIMESTAMP_KEY, Schema.OPTIONAL_INT64_SCHEMA)
@@ -202,7 +203,7 @@ final class SourceInfo {
      */
     protected Struct source() {
         assert serverName != null;
-        Struct result = new Struct(SCHEMA);
+        Struct result = super.struct();
         result.put(SERVER_NAME_KEY, serverName);
         // use the offset information without the snapshot part (see below)
         offset().forEach(result::put);
