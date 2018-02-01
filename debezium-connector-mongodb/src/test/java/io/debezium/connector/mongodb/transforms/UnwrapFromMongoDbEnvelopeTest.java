@@ -44,7 +44,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
     private RecordMakers recordMakers;
     private TopicSelector topicSelector;
     private List<SourceRecord> produced;
-    private boolean compactOnDelete;
+    private boolean emitTombstonesOnDelete;
 
     private UnwrapFromMongoDbEnvelope<SourceRecord> transformation;
 

@@ -46,7 +46,7 @@ public class RecordMakersTest {
     private RecordMakers recordMakers;
     private TopicSelector topicSelector;
     private List<SourceRecord> produced;
-    private boolean compactOnDelete;
+    private boolean emitTombstonesOnDelete;
 
 
     @Before
@@ -54,8 +54,8 @@ public class RecordMakersTest {
         source = new SourceInfo(SERVER_NAME);
         topicSelector = TopicSelector.defaultSelector(PREFIX);
         produced = new ArrayList<>();
-        compactOnDelete = true;
-        recordMakers = new RecordMakers(source, topicSelector, produced::add, compactOnDelete);
+        emitTombstonesOnDelete = true;
+        recordMakers = new RecordMakers(source, topicSelector, produced::add, emitTombstonesOnDelete);
     }
 
     @Test
