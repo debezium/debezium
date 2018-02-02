@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -99,13 +100,15 @@ public class Replicator {
     private final Predicate<String> databaseFilter;
     private final Clock clock;
     private ReplicationContext.MongoPrimary primaryClient;
+    private final Consumer<Throwable> onFailure;
 
     /**
      * @param context the replication context; may not be null
      * @param replicaSet the replica set to be replicated; may not be null
      * @param recorder the recorder for source record produced by this replicator; may not be null
+     * @param onFailure listener of exceptions thrown by replicator task
      */
-    public Replicator(ReplicationContext context, ReplicaSet replicaSet, BlockingConsumer<SourceRecord> recorder) {
+    public Replicator(ReplicationContext context, ReplicaSet replicaSet, BlockingConsumer<SourceRecord> recorder, Consumer<Throwable> onFailure) {
         assert context != null;
         assert replicaSet != null;
         assert recorder != null;
@@ -120,6 +123,7 @@ public class Replicator {
         this.collectionFilter = this.context.collectionFilter();
         this.databaseFilter = this.context.databaseFilter();
         this.clock = this.context.clock();
+        this.onFailure = onFailure;
     }
 
     /**
@@ -146,7 +150,12 @@ public class Replicator {
                     }
                     readOplog();
                 }
-            } finally {
+            }
+            catch (Throwable t) {
+                logger.error("Replicator for replica set {} failed", rsName, t);
+                onFailure.accept(t);
+            }
+            finally {
                 this.running.set(false);
             }
         }

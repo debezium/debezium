@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.common.config.Config;
@@ -25,6 +26,7 @@ import com.mongodb.MongoException;
 
 import io.debezium.config.Configuration;
 import io.debezium.util.Clock;
+import io.debezium.util.Threads;
 import io.debezium.util.LoggingContext.PreviousContext;
 
 /**
@@ -78,6 +80,7 @@ public class MongoDbConnector extends SourceConnector {
     private Configuration config;
     private ReplicaSetMonitorThread monitorThread;
     private ReplicationContext replContext;
+    private ExecutorService replicaSetMonitorExecutor;
 
     public MongoDbConnector() {
     }
@@ -109,10 +112,11 @@ public class MongoDbConnector extends SourceConnector {
             logger.info("Starting MongoDB connector and discovering replica set(s) at {}", replContext.hosts());
 
             // Set up and start the thread that monitors the members of all of the replica sets ...
+            replicaSetMonitorExecutor = Threads.newSingleThreadExecutor(MongoDbConnector.class, replContext.serverName(), "replica-set-monitor");
             ReplicaSetDiscovery monitor = new ReplicaSetDiscovery(replContext);
             monitorThread = new ReplicaSetMonitorThread(monitor::getReplicaSets, replContext.pollPeriodInSeconds(), TimeUnit.SECONDS,
                     Clock.SYSTEM, () -> replContext.configureLoggingContext("disc"), this::replicaSetsChanged);
-            monitorThread.start();
+            replicaSetMonitorExecutor.execute(monitorThread);
             logger.info("Successfully started MongoDB connector, and continuing to discover changes in replica sets", replContext.hosts());
         } finally {
             previousLogContext.restore();
@@ -167,6 +171,7 @@ public class MongoDbConnector extends SourceConnector {
         try {
             logger.info("Stopping MongoDB connector");
             this.config = null;
+            if (replicaSetMonitorExecutor != null) replicaSetMonitorExecutor.shutdown();
             try {
                 if ( this.monitorThread != null ) this.monitorThread.shutdown();
             } finally {

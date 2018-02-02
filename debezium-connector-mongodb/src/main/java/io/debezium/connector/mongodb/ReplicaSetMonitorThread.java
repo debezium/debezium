@@ -23,7 +23,7 @@ import io.debezium.util.Metronome;
  * 
  * @author Randall Hauch
  */
-public final class ReplicaSetMonitorThread extends Thread {
+public final class ReplicaSetMonitorThread implements Runnable {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final Metronome metronome;
@@ -93,7 +93,7 @@ public final class ReplicaSetMonitorThread extends Thread {
             logger.debug("Stopping the thread monitoring replica sets");
             // We were running, so interrupt the thread if it is paused ...
             try {
-                this.interrupt();
+                Thread.currentThread().interrupt();
             } catch (Throwable t) {
                 logger.warn("Unable to interrupt the thread monitoring replica sets", t);
             }
