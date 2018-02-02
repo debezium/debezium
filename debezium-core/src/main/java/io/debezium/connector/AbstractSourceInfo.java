@@ -6,14 +6,15 @@
 
 package io.debezium.connector;
 
+import java.util.Objects;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.ConnectException;
 
 /**
  * Common information provided by all connectors in either source field or offsets
- * 
+ *
  * @author Jiri Pechanec
  *
  */
@@ -26,13 +27,8 @@ public abstract class AbstractSourceInfo {
         return SchemaBuilder.struct().field(DEBEZIUM_VERSION_KEY, Schema.OPTIONAL_STRING_SCHEMA);
     }
 
-    protected AbstractSourceInfo() {
-        final String connector = getClass().getName().split("\\.")[3];
-        try {
-            version = (String)Class.forName("io.debezium.connector." + connector + ".Module").getMethod("version").invoke(null);
-        } catch (Exception e) {
-            throw new ConnectException("Failed to read module version");
-        }
+    protected AbstractSourceInfo(String version) {
+        this.version = Objects.requireNonNull(version);
     }
 
     protected abstract Schema schema();

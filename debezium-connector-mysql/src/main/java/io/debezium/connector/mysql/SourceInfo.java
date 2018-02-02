@@ -26,13 +26,13 @@ import io.debezium.util.Collect;
  * The {@link #partition() source partition} information describes the database whose log is being consumed. Typically, the
  * database is identified by the host address port number of the MySQL server and the name of the database. Here's a JSON-like
  * representation of an example database:
- * 
+ *
  * <pre>
  * {
  *     "server" : "production-server"
  * }
  * </pre>
- * 
+ *
  * <p>
  * The {@link #offset() source offset} information is included in each event and captures where the connector should restart
  * if this event's offset is the last one recorded. The offset includes the {@link #binlogFilename() binlog filename},
@@ -41,7 +41,7 @@ import io.debezium.util.Collect;
  * {@link #rowsToSkipUponRestart() number of rows to also skip}.
  * <p>
  * Here's a JSON-like representation of an example offset:
- * 
+ *
  * <pre>
  * {
  *     "server_id": 112233,
@@ -70,7 +70,7 @@ import io.debezium.util.Collect;
  * <p>
  * Here's a JSON-like representation of the source for the metadata for an event that corresponds to the above partition and
  * offset:
- * 
+ *
  * <pre>
  * {
  *     "name": "production-server",
@@ -86,7 +86,7 @@ import io.debezium.util.Collect;
  *     "table" : "products"
  * }
  * </pre>
- * 
+ *
  * @author Randall Hauch
  */
 @NotThreadSafe
@@ -149,11 +149,12 @@ final class SourceInfo extends AbstractSourceInfo {
     private boolean nextSnapshot = false;
 
     public SourceInfo() {
+        super(Module.version());
     }
 
     /**
      * Set the database identifier. This is typically called once upon initialization.
-     * 
+     *
      * @param logicalId the logical identifier for the database; may not be null
      */
     public void setServerName(String logicalId) {
@@ -167,7 +168,7 @@ final class SourceInfo extends AbstractSourceInfo {
      * {@link #setServerName(String) database server}.
      * <p>
      * The resulting map is mutable for efficiency reasons (this information rarely changes), but should not be mutated.
-     * 
+     *
      * @return the source partition information; never null
      */
     public Map<String, String> partition() {
@@ -176,7 +177,7 @@ final class SourceInfo extends AbstractSourceInfo {
 
     /**
      * Set the position in the MySQL binlog where we will start reading.
-     * 
+     *
      * @param binlogFilename the name of the binary log file; may not be null
      * @param positionOfFirstEvent the position in the binary log file to begin processing
      */
@@ -194,7 +195,7 @@ final class SourceInfo extends AbstractSourceInfo {
 
     /**
      * Set the position within the MySQL binary log file of the <em>current event</em>.
-     * 
+     *
      * @param positionOfCurrentEvent the position within the binary log file of the current event
      * @param eventSizeInBytes the size in bytes of this event
      */
@@ -211,7 +212,7 @@ final class SourceInfo extends AbstractSourceInfo {
     /**
      * Get the Kafka Connect detail about the source "offset", which describes the position within the source where we last
      * have last read.
-     * 
+     *
      * @return a copy of the current offset; never null
      */
     public Map<String, ?> offset() {
@@ -223,7 +224,7 @@ final class SourceInfo extends AbstractSourceInfo {
      * Kafka Connect offset that is be included in the produced change event describing the row.
      * <p>
      * This method should always be called before {@link #struct()}.
-     * 
+     *
      * @param eventRowNumber the 0-based row number within the event for which the offset is to be produced
      * @param totalNumberOfRows the total number of rows within the event being processed
      * @return a copy of the current offset; never null
@@ -267,10 +268,11 @@ final class SourceInfo extends AbstractSourceInfo {
 
     /**
      * Get a {@link Schema} representation of the source {@link #partition()} and {@link #offset()} information.
-     * 
+     *
      * @return the source partition and offset {@link Schema}; never null
      * @see #struct()
      */
+    @Override
     public Schema schema() {
         return SCHEMA;
     }
@@ -280,10 +282,11 @@ final class SourceInfo extends AbstractSourceInfo {
      * complies with the {@link #SCHEMA} for the MySQL connector.
      * <p>
      * This method should always be called after {@link #offsetForRow(int, int)}.
-     * 
+     *
      * @return the source partition and offset {@link Struct}; never null
      * @see #schema()
      */
+    @Override
     public Struct struct() {
         return struct(null);
     }
@@ -293,7 +296,7 @@ final class SourceInfo extends AbstractSourceInfo {
      * complies with the {@link #SCHEMA} for the MySQL connector.
      * <p>
      * This method should always be called after {@link #offsetForRow(int, int)}.
-     * 
+     *
      * @param tableId the table that should be included in the struct; may be null
      * @return the source partition and offset {@link Struct}; never null
      * @see #schema()
@@ -326,7 +329,7 @@ final class SourceInfo extends AbstractSourceInfo {
 
     /**
      * Determine whether a snapshot is currently in effect.
-     * 
+     *
      * @return {@code true} if a snapshot is in effect, or {@code false} otherwise
      */
     public boolean isSnapshotInEffect() {
@@ -351,7 +354,7 @@ final class SourceInfo extends AbstractSourceInfo {
 
     /**
      * Get the number of events after the last transaction BEGIN that we've already processed.
-     * 
+     *
      * @return the number of events in the transaction that have been processed completely
      * @see #completeEvent()
      * @see #startNextTransaction()
@@ -371,7 +374,7 @@ final class SourceInfo extends AbstractSourceInfo {
 
     /**
      * Record that a new GTID transaction has been started and has been included in the set of GTIDs known to the MySQL server.
-     * 
+     *
      * @param gtid the string representation of a specific GTID that has been begun; may not be null
      * @param gtidSet the string representation of GTID set that includes the newly begun GTID; may not be null
      */
@@ -389,7 +392,7 @@ final class SourceInfo extends AbstractSourceInfo {
 
     /**
      * Set the GTID set that captures all of the GTID transactions that have been completely processed.
-     * 
+     *
      * @param gtidSet the string representation of the GTID set; may not be null, but may be an empty string if no GTIDs
      *            have been previously processed
      */
@@ -404,7 +407,7 @@ final class SourceInfo extends AbstractSourceInfo {
 
     /**
      * Set the server ID as found within the MySQL binary log file.
-     * 
+     *
      * @param serverId the server ID found within the binary log file
      */
     public void setBinlogServerId(long serverId) {
@@ -416,7 +419,7 @@ final class SourceInfo extends AbstractSourceInfo {
      * Note that the value in the binlog events is in seconds, but the library we use returns the value in milliseconds
      * (with only second precision and therefore all fractions of a second are zero). We capture this as seconds
      * since that is the precision that MySQL uses.
-     * 
+     *
      * @param timestampInSeconds the timestamp in <em>seconds</em> found within the binary log file
      */
     public void setBinlogTimestampSeconds(long timestampInSeconds) {
@@ -425,7 +428,7 @@ final class SourceInfo extends AbstractSourceInfo {
 
     /**
      * Set the identifier of the MySQL thread that generated the most recent event.
-     * 
+     *
      * @param threadId the thread identifier; may be negative if not known
      */
     public void setBinlogThread(long threadId) {
@@ -458,7 +461,7 @@ final class SourceInfo extends AbstractSourceInfo {
 
     /**
      * Set the source offset, as read from Kafka Connect. This method does nothing if the supplied map is null.
-     * 
+     *
      * @param sourceOffset the previously-recorded Kafka Connect source offset
      * @throws ConnectException if any offset parameter values are missing, invalid, or of the wrong type
      */
@@ -499,7 +502,7 @@ final class SourceInfo extends AbstractSourceInfo {
 
     /**
      * Get the string representation of the GTID range for the MySQL binary log file.
-     * 
+     *
      * @return the string representation of the binlog GTID ranges; may be null
      */
     public String gtidSet() {
@@ -508,7 +511,7 @@ final class SourceInfo extends AbstractSourceInfo {
 
     /**
      * Get the name of the MySQL binary log file that has last been processed.
-     * 
+     *
      * @return the name of the binary log file; null if it has not been {@link #setBinlogStartPoint(String, long) set}
      */
     public String binlogFilename() {
@@ -517,7 +520,7 @@ final class SourceInfo extends AbstractSourceInfo {
 
     /**
      * Get the position within the MySQL binary log file of the next event to be processed.
-     * 
+     *
      * @return the position within the binary log file; null if it has not been {@link #setBinlogStartPoint(String, long) set}
      */
     public long binlogPosition() {
@@ -526,7 +529,7 @@ final class SourceInfo extends AbstractSourceInfo {
 
     /**
      * Get the position within the MySQL binary log file of the most recently processed event.
-     * 
+     *
      * @return the position within the binary log file; null if it has not been {@link #setBinlogStartPoint(String, long) set}
      */
     protected long restartBinlogPosition() {
@@ -536,7 +539,7 @@ final class SourceInfo extends AbstractSourceInfo {
     /**
      * Get the number of rows beyond the {@link #eventsToSkipUponRestart() last completely processed event} to be skipped
      * upon restart.
-     * 
+     *
      * @return the number of rows to be skipped
      */
     public int rowsToSkipUponRestart() {
@@ -545,7 +548,7 @@ final class SourceInfo extends AbstractSourceInfo {
 
     /**
      * Get the logical identifier of the database that is the source of the events.
-     * 
+     *
      * @return the database name; null if it has not been {@link #setServerName(String) set}
      */
     public String serverName() {
@@ -591,7 +594,7 @@ final class SourceInfo extends AbstractSourceInfo {
      * <p>
      * When both positions have GTIDs, then we compare the positions by using only the GTIDs. Of course, if the
      * GTIDs are the same, then we also look at whether they have snapshots enabled.
-     * 
+     *
      * @param recorded the position obtained from recorded history; never null
      * @param desired the desired position that we want to obtain, which should be after some recorded positions,
      *            at some recorded positions, and before other recorded positions; never null
