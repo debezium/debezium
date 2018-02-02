@@ -16,7 +16,6 @@ import org.apache.kafka.connect.data.Struct;
  * Common information provided by all connectors in either source field or offsets
  *
  * @author Jiri Pechanec
- *
  */
 public abstract class AbstractSourceInfo {
     public static final String DEBEZIUM_VERSION_KEY = "version";
@@ -31,6 +30,10 @@ public abstract class AbstractSourceInfo {
         this.version = Objects.requireNonNull(version);
     }
 
+    /**
+     * Returns the schema of specific sub-types. Implementations should call
+     * {@link #schemaBuilder()} to add all shared fields to their schema.
+     */
     protected abstract Schema schema();
 
     protected Struct struct() {
