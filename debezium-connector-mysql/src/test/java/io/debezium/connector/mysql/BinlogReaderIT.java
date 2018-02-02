@@ -413,7 +413,6 @@ public class BinlogReaderIT {
         }
     }
 
-
     private Duration toDuration(String duration) {
         return Duration.parse(duration);
     }

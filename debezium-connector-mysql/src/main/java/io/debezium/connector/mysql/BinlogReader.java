@@ -645,32 +645,23 @@ public class BinlogReader extends AbstractReader {
 
                 if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
                     logger.error(
-                            "Schema inconsistency detected while processing binlog event at offset {}.{}" +
+                            "Encountered change event '{}' at offset {} for table whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}" +
                             "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
+                            event,
                             source.offset(),
                             System.lineSeparator(),
                             eventHeader.getPosition(),
                             eventHeader.getNextPosition(),
                             source.binlogFilename()
                     );
-                    throw new ConnectException("Inconsistency in internal schema detected");
-                } else if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.WARN) {
+                    throw new ConnectException("Encountered change event for table whose schema isn't known to this connector");
+                }
+                else if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.WARN) {
                     logger.warn(
-                            "Schema inconsistency detected while processing binlog event at offset {}.{}" +
-                            "This exception will be ignored and the event be skipped.{}" +
+                            "Encountered change event '{}' at offset {} for table whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}" +
+                            "The event will be ingored.{}" +
                             "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
-                            source.offset(),
-                            System.lineSeparator(),
-                            System.lineSeparator(),
-                            eventHeader.getPosition(),
-                            eventHeader.getNextPosition(),
-                            source.binlogFilename()
-                    );
-                } else {
-                    logger.debug(
-                            "Schema inconsistency detected while processing binlog event at offset {}.{}" +
-                            "This exception will be ignored and the event be skipped.{}" +
-                            "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
+                            event,
                             source.offset(),
                             System.lineSeparator(),
                             System.lineSeparator(),
@@ -679,7 +670,22 @@ public class BinlogReader extends AbstractReader {
                             source.binlogFilename()
                     );
                 }
-            } else {
+                else {
+                    logger.debug(
+                            "Encountered change event '{}' at offset {} for table whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}" +
+                            "The event will be ingored.{}" +
+                            "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
+                            event,
+                            source.offset(),
+                            System.lineSeparator(),
+                            System.lineSeparator(),
+                            eventHeader.getPosition(),
+                            eventHeader.getNextPosition(),
+                            source.binlogFilename()
+                    );
+                }
+            }
+            else {
                 logger.debug("Skipping update table metadata event: {} for non-monitored table {}", event, tableId);
             }
         }
