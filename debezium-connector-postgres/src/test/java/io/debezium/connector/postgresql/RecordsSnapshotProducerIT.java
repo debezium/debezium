@@ -18,8 +18,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import io.debezium.doc.FixFor;
-import io.debezium.jdbc.TemporalPrecisionMode;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
@@ -27,6 +25,8 @@ import org.junit.Test;
 
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
+import io.debezium.doc.FixFor;
+import io.debezium.jdbc.TemporalPrecisionMode;
 
 /**
  * Integration test for {@link RecordsSnapshotProducerIT}
@@ -58,7 +58,8 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER), false);
 
         TestHelper.executeDDL("postgres_create_tables.ddl");
-        TestConsumer consumer = testConsumer(ALL_STMTS.size());
+        TestHelper.executeDDL("postgis_create_tables.ddl");
+        TestConsumer consumer = testConsumer(ALL_STMTS.size(), "public", "Quoted_\"");
 
         //insert data for each of different supported types
         String statementsBuilder = ALL_STMTS.stream().collect(Collectors.joining(";" + System.lineSeparator())) + ";";
@@ -66,7 +67,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         //then start the producer and validate all records are there
         snapshotProducer.start(consumer);
-        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
         Map<String, List<SchemaAndValueField>> expectedValuesByTableName = super.schemaAndValuesByTableName();
         consumer.process(record -> assertReadRecord(record, expectedValuesByTableName));
@@ -157,7 +158,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     @FixFor("DBZ-342")
-    public void shouldGenerateSnapshotsForDefaultDatatypesAdpativeMicroseconds() throws Exception {
+    public void shouldGenerateSnapshotsForDefaultDatatypesAdaptiveMicroseconds() throws Exception {
         PostgresConnectorConfig config = new PostgresConnectorConfig(
                 TestHelper.defaultConfig()
                         .with(PostgresConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS)
@@ -167,7 +168,8 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER), false);
 
         TestHelper.executeDDL("postgres_create_tables.ddl");
-        TestConsumer consumer = testConsumer(ALL_STMTS.size());
+        TestHelper.executeDDL("postgis_create_tables.ddl");
+        TestConsumer consumer = testConsumer(ALL_STMTS.size(), "public", "Quoted_\"");
 
         //insert data for each of different supported types
         String statementsBuilder = ALL_STMTS.stream().collect(Collectors.joining(";" + System.lineSeparator())) + ";";
@@ -175,7 +177,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         //then start the producer and validate all records are there
         snapshotProducer.start(consumer);
-        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
         Map<String, List<SchemaAndValueField>> expectedValuesByTableName = super.schemaAndValuesByTableNameAdaptiveTimeMicroseconds();
         consumer.process(record -> assertReadRecord(record, expectedValuesByTableName));

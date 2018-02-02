@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.util.LoggingContext.PreviousContext;
 
 /**
@@ -76,32 +77,52 @@ public final class MySqlConnectorTask extends SourceTask {
                 source.setOffset(offsets);
                 logger.info("Found existing offset: {}", offsets);
 
-                // Before anything else, recover the database history to the specified binlog coordinates ...
-                taskContext.loadHistory(source);
+                // First check if db history is available
+                if (!taskContext.historyExists()) {
+                    if (taskContext.isSchemaOnlyRecoverySnapshot()) {
+                        startWithSnapshot = true;
 
-                if (source.isSnapshotInEffect()) {
-                    // The last offset was an incomplete snapshot that we cannot recover from...
-                    if (taskContext.isSnapshotNeverAllowed()) {
-                        // No snapshots are allowed
-                        String msg = "The connector previously stopped while taking a snapshot, but now the connector is configured "
-                                + "to never allow snapshots. Reconfigure the connector to use snapshots initially or when needed.";
-                        throw new ConnectException(msg);
-                    }
-                    // Otherwise, restart a new snapshot ...
-                    startWithSnapshot = true;
-                    logger.info("Prior execution was an incomplete snapshot, so starting new snapshot");
-                } else {
-                    // No snapshot was in effect, so we should just start reading from the binlog ...
-                    startWithSnapshot = false;
-
-                    // But check to see if the server still has those binlog coordinates ...
-                    if (!isBinlogAvailable()) {
-                        if (!taskContext.isSnapshotAllowedWhenNeeded()) {
+                        // But check to see if the server still has those binlog coordinates ...
+                        if (!isBinlogAvailable()) {
                             String msg = "The connector is trying to read binlog starting at " + source + ", but this is no longer "
                                     + "available on the server. Reconfigure the connector to use a snapshot when needed.";
                             throw new ConnectException(msg);
                         }
+                        logger.info("The db-history topic is missing but we are in {} snapshot mode. " +
+                                    "Attempting to snapshot the current schema and then begin reading the binlog from the last recorded offset.", SnapshotMode.SCHEMA_ONLY_RECOVERY);
+                    } else {
+                        String msg = "The db history topic is missing. You may attempt to recover it by reconfiguring the connector to " + SnapshotMode.SCHEMA_ONLY_RECOVERY;
+                        throw new ConnectException(msg);
+                    }
+                } else {
+
+                    // Before anything else, recover the database history to the specified binlog coordinates ...
+                    taskContext.loadHistory(source);
+
+                    if (source.isSnapshotInEffect()) {
+                        // The last offset was an incomplete snapshot that we cannot recover from...
+                        if (taskContext.isSnapshotNeverAllowed()) {
+                            // No snapshots are allowed
+                            String msg = "The connector previously stopped while taking a snapshot, but now the connector is configured "
+                                    + "to never allow snapshots. Reconfigure the connector to use snapshots initially or when needed.";
+                            throw new ConnectException(msg);
+                        }
+                        // Otherwise, restart a new snapshot ...
                         startWithSnapshot = true;
+                        logger.info("Prior execution was an incomplete snapshot, so starting new snapshot");
+                    } else {
+                        // No snapshot was in effect, so we should just start reading from the binlog ...
+                        startWithSnapshot = false;
+
+                        // But check to see if the server still has those binlog coordinates ...
+                        if (!isBinlogAvailable()) {
+                            if (!taskContext.isSnapshotAllowedWhenNeeded()) {
+                                String msg = "The connector is trying to read binlog starting at " + source + ", but this is no longer "
+                                        + "available on the server. Reconfigure the connector to use a snapshot when needed.";
+                                throw new ConnectException(msg);
+                            }
+                            startWithSnapshot = true;
+                        }
                     }
                 }
 
@@ -140,28 +161,28 @@ public final class MySqlConnectorTask extends SourceTask {
             // Check whether the row-level binlog is enabled ...
             final boolean rowBinlogEnabled = isRowBinlogEnabled();
 
+            ChainedReader.Builder chainedReaderBuilder = new ChainedReader.Builder();
+
             // Set up the readers, with a callback to `completeReaders` so that we know when it is finished ...
-            readers = new ChainedReader();
-            readers.uponCompletion(this::completeReaders);
             BinlogReader binlogReader = new BinlogReader("binlog", taskContext);
             if (startWithSnapshot) {
                 // We're supposed to start with a snapshot, so set that up ...
                 SnapshotReader snapshotReader = new SnapshotReader("snapshot", taskContext);
                 snapshotReader.useMinimalBlocking(taskContext.useMinimalSnapshotLocking());
                 if (snapshotEventsAreInserts) snapshotReader.generateInsertEvents();
-                readers.add(snapshotReader);
+                chainedReaderBuilder.addReader(snapshotReader);
 
                 if (taskContext.isInitialSnapshotOnly()) {
                     logger.warn("This connector will only perform a snapshot, and will stop after that completes.");
-                    readers.add(new BlockingReader("blocker"));
-                    readers.uponCompletion("Connector configured to only perform snapshot, and snapshot completed successfully. Connector will terminate.");
+                    chainedReaderBuilder.addReader(new BlockingReader("blocker"));
+                    chainedReaderBuilder.completionMessage("Connector configured to only perform snapshot, and snapshot completed successfully. Connector will terminate.");
                 } else {
                     if (!rowBinlogEnabled) {
                         throw new ConnectException("The MySQL server is not configured to use a row-level binlog, which is "
                                 + "required for this connector to work properly. Change the MySQL configuration to use a "
                                 + "row-level binlog and restart the connector.");
                     }
-                    readers.add(binlogReader);
+                    chainedReaderBuilder.addReader(binlogReader);
                 }
             } else {
                 if (!rowBinlogEnabled) {
@@ -169,8 +190,11 @@ public final class MySqlConnectorTask extends SourceTask {
                             "The MySQL server does not appear to be using a row-level binlog, which is required for this connector to work properly. Enable this mode and restart the connector.");
                 }
                 // We're going to start by reading the binlog ...
-                readers.add(binlogReader);
+                chainedReaderBuilder.addReader(binlogReader);
             }
+
+            readers = chainedReaderBuilder.build();
+            readers.uponCompletion(this::completeReaders);
 
             // And finally initialize and start the chain of readers ...
             this.readers.initialize();

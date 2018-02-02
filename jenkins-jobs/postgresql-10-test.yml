@@ -3,7 +3,7 @@
 - job:
     project-type: freestyle
     name: debezium-postgresql-10-test
-    display-name: PostgreSQL 10.0 Test
+    display-name: Debezium PostgreSQL 10.0 Test
     description: Executes tests for PostgreSQL Connector with PostgreSQL 10.0
     node: Slave
     properties:
@@ -29,7 +29,8 @@
       - timeout:
           timeout: 45
     triggers:
-      - timed: "H 05 * * *"
+      - pollscm:
+          cron: "H 04 * * *"
     builders:
       - maven-target:
           maven-version: (Default)

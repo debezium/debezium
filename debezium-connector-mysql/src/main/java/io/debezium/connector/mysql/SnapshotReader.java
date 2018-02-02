@@ -15,12 +15,14 @@ import java.sql.Types;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -41,6 +43,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
+import io.debezium.util.Threads;
 
 /**
  * A component that performs a snapshot of a MySQL server, and records the schema changes in {@link MySqlSchema}.
@@ -57,8 +60,8 @@ public class SnapshotReader extends AbstractReader {
     private boolean minimalBlocking = true;
     private final boolean includeData;
     private RecordRecorder recorder;
-    private volatile Thread thread;
     private final SnapshotReaderMetrics metrics;
+    private ExecutorService executorService;
 
     /**
      * Create a snapshot reader.
@@ -68,7 +71,7 @@ public class SnapshotReader extends AbstractReader {
      */
     public SnapshotReader(String name, MySqlTaskContext context) {
         super(name, context);
-        this.includeData = !context.isSchemaOnlySnapshot();
+        this.includeData = context.snapshotMode().includeData();
         recorder = this::recordRowAsRead;
         metrics = new SnapshotReaderMetrics(context.clock());
     }
@@ -121,20 +124,21 @@ public class SnapshotReader extends AbstractReader {
      */
     @Override
     protected void doStart() {
-        thread = new Thread(this::execute, "mysql-snapshot-" + context.serverName());
-        thread.start();
+        executorService = Threads.newSingleThreadExecutor(MySqlConnector.class, context.serverName(), "snapshot");
+        executorService.execute(this::execute);
     }
 
     @Override
     protected void doStop() {
         logger.debug("Stopping snapshot reader");
+        cleanupResources();
         // The parent class will change the isRunning() state, and this class' execute() uses that and will stop automatically
     }
 
     @Override
     protected void doCleanup() {
         try {
-            this.thread = null;
+            executorService.shutdown();
             logger.debug("Completed writing all snapshot records");
         } finally {
             metrics.unregister(logger);
@@ -157,6 +161,7 @@ public class SnapshotReader extends AbstractReader {
      */
     private Object readTimeField(ResultSet rs, int fieldNo) throws SQLException {
         Blob b = rs.getBlob(fieldNo);
+        if (b == null) return null; // Don't continue parsing time field if it is null
         String timeString;
 
         try {
@@ -384,45 +389,53 @@ public class SnapshotReader extends AbstractReader {
                 // ------
                 // Transform the current schema so that it reflects the *current* state of the MySQL server's contents.
                 // First, get the DROP TABLE and CREATE TABLE statement (with keys and constraint definitions) for our tables ...
-                logger.info("Step {}: generating DROP and CREATE statements to reflect current database schemas:", step++);
-                schema.applyDdl(source, null, setSystemVariablesStatement, this::enqueueSchemaChanges);
 
-                // Add DROP TABLE statements for all tables that we knew about AND those tables found in the databases ...
-                Set<TableId> allTableIds = new HashSet<>(schema.tables().tableIds());
-                allTableIds.addAll(tableIds);
-                allTableIds.stream()
-                           .filter(id -> isRunning()) // ignore all subsequent tables if this reader is stopped
-                           .forEach(tableId -> schema.applyDdl(source, tableId.schema(),
-                                                               "DROP TABLE IF EXISTS " + quote(tableId),
-                                                               this::enqueueSchemaChanges));
+                try {
+                    logger.info("Step {}: generating DROP and CREATE statements to reflect current database schemas:", step++);
+                    schema.applyDdl(source, null, setSystemVariablesStatement, this::enqueueSchemaChanges);
 
-                // Add a DROP DATABASE statement for each database that we no longer know about ...
-                schema.tables().tableIds().stream().map(TableId::catalog)
-                      .filter(Predicates.not(readableDatabaseNames::contains))
-                      .filter(id -> isRunning()) // ignore all subsequent tables if this reader is stopped
-                      .forEach(missingDbName -> schema.applyDdl(source, missingDbName,
-                                                                "DROP DATABASE IF EXISTS " + quote(missingDbName),
-                                                                this::enqueueSchemaChanges));
+                    // Add DROP TABLE statements for all tables that we knew about AND those tables found in the databases ...
+                    Set<TableId> allTableIds = new HashSet<>(schema.tables().tableIds());
+                    allTableIds.addAll(tableIds);
+                    allTableIds.stream()
+                               .filter(id -> isRunning()) // ignore all subsequent tables if this reader is stopped
+                               .forEach(tableId -> schema.applyDdl(source, tableId.schema(),
+                                                                   "DROP TABLE IF EXISTS " + quote(tableId),
+                                                                   this::enqueueSchemaChanges));
 
-                // Now process all of our tables for each database ...
-                for (Map.Entry<String, List<TableId>> entry : tableIdsByDbName.entrySet()) {
-                    if (!isRunning()) break;
-                    String dbName = entry.getKey();
-                    // First drop, create, and then use the named database ...
-                    schema.applyDdl(source, dbName, "DROP DATABASE IF EXISTS " + quote(dbName), this::enqueueSchemaChanges);
-                    schema.applyDdl(source, dbName, "CREATE DATABASE " + quote(dbName), this::enqueueSchemaChanges);
-                    schema.applyDdl(source, dbName, "USE " + quote(dbName), this::enqueueSchemaChanges);
-                    for (TableId tableId : entry.getValue()) {
+                    // Add a DROP DATABASE statement for each database that we no longer know about ...
+                    schema.tables().tableIds().stream().map(TableId::catalog)
+                          .filter(Predicates.not(readableDatabaseNames::contains))
+                          .filter(id -> isRunning()) // ignore all subsequent tables if this reader is stopped
+                          .forEach(missingDbName -> schema.applyDdl(source, missingDbName,
+                                                                    "DROP DATABASE IF EXISTS " + quote(missingDbName),
+                                                                    this::enqueueSchemaChanges));
+
+                    // Now process all of our tables for each database ...
+                    for (Map.Entry<String, List<TableId>> entry : tableIdsByDbName.entrySet()) {
                         if (!isRunning()) break;
-                        sql.set("SHOW CREATE TABLE " + quote(tableId));
-                        mysql.query(sql.get(), rs -> {
-                            if (rs.next()) {
-                                schema.applyDdl(source, dbName, rs.getString(2), this::enqueueSchemaChanges);
-                            }
-                        });
+                        String dbName = entry.getKey();
+                        // First drop, create, and then use the named database ...
+                        schema.applyDdl(source, dbName, "DROP DATABASE IF EXISTS " + quote(dbName), this::enqueueSchemaChanges);
+                        schema.applyDdl(source, dbName, "CREATE DATABASE " + quote(dbName), this::enqueueSchemaChanges);
+                        schema.applyDdl(source, dbName, "USE " + quote(dbName), this::enqueueSchemaChanges);
+                        for (TableId tableId : entry.getValue()) {
+                            if (!isRunning()) break;
+                            sql.set("SHOW CREATE TABLE " + quote(tableId));
+                            mysql.query(sql.get(), rs -> {
+                                if (rs.next()) {
+                                    schema.applyDdl(source, dbName, rs.getString(2), this::enqueueSchemaChanges);
+                                }
+                            });
+                        }
                     }
+                    context.makeRecord().regenerate();
                 }
-                context.makeRecord().regenerate();
+                // most likely, something went wrong while writing the history topic
+                catch(Exception e) {
+                    interrupted.set(true);
+                    throw e;
+                }
 
                 // ------
                 // STEP 7
@@ -508,7 +521,13 @@ public class SnapshotReader extends AbstractReader {
                             // Scan the rows in the table ...
                             long start = clock.currentTimeInMillis();
                             logger.info("Step {}: - scanning table '{}' ({} of {} tables)", step, tableId, ++counter, tableIds.size());
-                            sql.set("SELECT * FROM " + quote(tableId));
+
+                            Map<TableId, String> selectOverrides = getSnapshotSelectOverridesByTable();
+
+                            String selectStatement = selectOverrides.getOrDefault(tableId, "SELECT * FROM " + quote(tableId));
+                            logger.info("For table '{}' using select statement: '{}'", tableId, selectStatement);
+                            sql.set(selectStatement);
+
                             try {
                                 int stepNum = step;
                                 mysql.query(sql.get(), statementFactory, rs -> {
@@ -584,7 +603,7 @@ public class SnapshotReader extends AbstractReader {
                 step++;
             } finally {
                 // No matter what, we always want to do these steps if necessary ...
-
+                boolean rolledBack = false;
                 // ------
                 // STEP 9
                 // ------
@@ -597,20 +616,22 @@ public class SnapshotReader extends AbstractReader {
                         sql.set("ROLLBACK");
                         mysql.execute(sql.get());
                         metrics.abortSnapshot();
-                        return;
+                        rolledBack = true;
                     }
-                    // Otherwise, commit our transaction
-                    logger.info("Step {}: committing transaction", step++);
-                    sql.set("COMMIT");
-                    mysql.execute(sql.get());
-                    metrics.completeSnapshot();
+                    else {
+                        // Otherwise, commit our transaction
+                        logger.info("Step {}: committing transaction", step++);
+                        sql.set("COMMIT");
+                        mysql.execute(sql.get());
+                        metrics.completeSnapshot();
+                    }
                 }
 
                 // -------
                 // STEP 10
                 // -------
                 // Release the read lock(s) if we have not yet done so. Locks are not released when committing/rolling back ...
-                if (isLocked) {
+                if (isLocked && !rolledBack) {
                     if (tableLocks) {
                         logger.info("Step {}: releasing table read locks to enable MySQL writes", step++);
                     } else {
@@ -659,29 +680,38 @@ public class SnapshotReader extends AbstractReader {
     }
 
     protected void readBinlogPosition(int step, SourceInfo source, JdbcConnection mysql, AtomicReference<String> sql) throws SQLException {
-        logger.info("Step {}: read binlog position of MySQL master", step);
-        String showMasterStmt = "SHOW MASTER STATUS";
-        sql.set(showMasterStmt);
-        mysql.query(sql.get(), rs -> {
-            if (rs.next()) {
-                String binlogFilename = rs.getString(1);
-                long binlogPosition = rs.getLong(2);
-                source.setBinlogStartPoint(binlogFilename, binlogPosition);
-                if (rs.getMetaData().getColumnCount() > 4) {
-                    // This column exists only in MySQL 5.6.5 or later ...
-                    String gtidSet = rs.getString(5);// GTID set, may be null, blank, or contain a GTID set
-                    source.setCompletedGtidSet(gtidSet);
-                    logger.info("\t using binlog '{}' at position '{}' and gtid '{}'", binlogFilename, binlogPosition,
-                                gtidSet);
-                } else {
-                    logger.info("\t using binlog '{}' at position '{}'", binlogFilename, binlogPosition);
-                }
-                source.startSnapshot();
-            } else {
-                throw new IllegalStateException("Cannot read the binlog filename and position via '" + showMasterStmt
-                        + "'. Make sure your server is correctly configured");
+        if (context.isSchemaOnlyRecoverySnapshot()) {
+            // We are in schema only recovery mode, use the existing binlog position
+            if (Strings.isNullOrEmpty(source.binlogFilename())) {
+                // would like to also verify binlog position exists, but it defaults to 0 which is technically valid
+                throw new IllegalStateException("Could not find existing binlog information while attempting schema only recovery snapshot");
             }
-        });
+            source.startSnapshot();
+        } else {
+            logger.info("Step {}: read binlog position of MySQL master", step);
+            String showMasterStmt = "SHOW MASTER STATUS";
+            sql.set(showMasterStmt);
+            mysql.query(sql.get(), rs -> {
+                if (rs.next()) {
+                    String binlogFilename = rs.getString(1);
+                    long binlogPosition = rs.getLong(2);
+                    source.setBinlogStartPoint(binlogFilename, binlogPosition);
+                    if (rs.getMetaData().getColumnCount() > 4) {
+                        // This column exists only in MySQL 5.6.5 or later ...
+                        String gtidSet = rs.getString(5);// GTID set, may be null, blank, or contain a GTID set
+                        source.setCompletedGtidSet(gtidSet);
+                        logger.info("\t using binlog '{}' at position '{}' and gtid '{}'", binlogFilename, binlogPosition,
+                                    gtidSet);
+                    } else {
+                        logger.info("\t using binlog '{}' at position '{}'", binlogFilename, binlogPosition);
+                    }
+                    source.startSnapshot();
+                } else {
+                    throw new IllegalStateException("Cannot read the binlog filename and position via '" + showMasterStmt
+                            + "'. Make sure your server is correctly configured");
+                }
+            });
+        }
     }
 
     protected String quote(String dbOrTableName) {
@@ -793,6 +823,28 @@ public class SnapshotReader extends AbstractReader {
 
     protected void recordRowAsInsert(RecordsForTable recordMaker, Object[] row, long ts) throws InterruptedException {
         recordMaker.create(row, ts);
+    }
+
+    /**
+     * Returns any SELECT overrides, if present.
+     */
+    private Map<TableId, String> getSnapshotSelectOverridesByTable() {
+        String tableList = context.getSnapshotSelectOverrides();
+
+        if (tableList == null) {
+            return Collections.emptyMap();
+        }
+
+        Map<TableId, String> snapshotSelectOverridesByTable = new HashMap<>();
+
+        for (String table : tableList.split(",")) {
+            snapshotSelectOverridesByTable.put(
+                TableId.parse(table),
+                context.config.getString(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table)
+            );
+        }
+
+        return snapshotSelectOverridesByTable;
     }
 
     protected static interface RecordRecorder {

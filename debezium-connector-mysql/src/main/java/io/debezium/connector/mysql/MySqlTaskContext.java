@@ -36,7 +36,16 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     private final Predicate<String> ddlFilter;
     private final Clock clock = Clock.system();
 
+    /**
+     * Whether table ids are compared ingnoring letter casing.
+     */
+    private final boolean tableIdCaseInsensitive;
+
     public MySqlTaskContext(Configuration config) {
+        this(config, null);
+    }
+
+    public MySqlTaskContext(Configuration config, Boolean tableIdCaseInsensitive) {
         super(config);
 
         // Set up the topic selector ...
@@ -52,8 +61,14 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         this.gtidSourceFilter = gtidSetIncludes != null ? Predicates.includesUuids(gtidSetIncludes)
                 : (gtidSetExcludes != null ? Predicates.excludesUuids(gtidSetExcludes) : null);
 
+        if (tableIdCaseInsensitive == null) {
+            this.tableIdCaseInsensitive = !"0".equals(readMySqlSystemVariables(null).get(MySqlSystemVariables.LOWER_CASE_TABLE_NAMES));
+        } else {
+            this.tableIdCaseInsensitive = tableIdCaseInsensitive;
+        }
+
         // Set up the MySQL schema ...
-        this.dbSchema = new MySqlSchema(config, serverName(), this.gtidSourceFilter);
+        this.dbSchema = new MySqlSchema(config, serverName(), this.gtidSourceFilter, this.tableIdCaseInsensitive);
 
         // Set up the record processor ...
         this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector);
@@ -134,6 +149,18 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         recordProcessor.regenerate();
     }
 
+    /**
+     * Return true if the database history entity exists
+     */
+    public boolean historyExists() {
+        // Read the system variables from the MySQL instance and load them into the DDL parser as defaults ...
+        Map<String, String> variables = readMySqlCharsetSystemVariables(null);
+        dbSchema.setSystemVariables(variables);
+
+        // And then load the history ...
+       return dbSchema.historyExists();
+    }
+
     public Clock clock() {
         return clock;
     }
@@ -166,6 +193,10 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         return config.getLong(MySqlConnectorConfig.ROW_COUNT_FOR_STREAMING_RESULT_SETS);
     }
 
+    public int bufferSizeForBinlogReader() {
+        return config.getInteger(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER);
+    }
+
     public boolean includeSchemaChangeRecords() {
         return config.getBoolean(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES);
     }
@@ -186,6 +217,10 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         return snapshotMode() == SnapshotMode.SCHEMA_ONLY;
     }
 
+    public boolean isSchemaOnlyRecoverySnapshot() {
+        return snapshotMode() == SnapshotMode.SCHEMA_ONLY_RECOVERY;
+    }
+
     protected SnapshotMode snapshotMode() {
         String value = config.getString(MySqlConnectorConfig.SNAPSHOT_MODE);
         return SnapshotMode.parse(value, MySqlConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
@@ -193,6 +228,10 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
 
     public boolean useMinimalSnapshotLocking() {
         return config.getBoolean(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING);
+    }
+
+    public String getSnapshotSelectOverrides() {
+        return config.getString(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
     }
 
     @Override
@@ -294,5 +333,9 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
      */
     public Predicate<String> ddlFilter() {
         return ddlFilter;
+    }
+
+    public boolean isTableIdCaseInsensitive() {
+        return tableIdCaseInsensitive;
     }
 }

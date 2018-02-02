@@ -20,6 +20,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -30,36 +31,36 @@ import io.debezium.util.Metronome;
 
 /**
  * Integration test for {@link ReplicationConnection}
- * 
+ *
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 public class ReplicationConnectionIT {
-    
+
     @Before
     public void before() throws Exception {
         TestHelper.dropAllSchemas();
-        String statement = "CREATE SCHEMA public;" + 
+        String statement = "CREATE SCHEMA public;" +
                            "CREATE TABLE table_with_pk (a SERIAL, b VARCHAR(30), c TIMESTAMP NOT NULL, PRIMARY KEY(a, c));" +
                            "CREATE TABLE table_without_pk (a SERIAL, b NUMERIC(5,2), c TEXT);";
         TestHelper.execute(statement);
-    } 
-  
+    }
+
     @Test
     public void shouldCreateAndDropReplicationSlots() throws Exception {
         // create a replication connection which should be dropped once it's closed
         try (ReplicationConnection connection = TestHelper.createForReplication("test1", true)) {
-            ReplicationStream stream = connection.startStreaming();  
-            assertNull(stream.lastReceivedLSN());                              
+            ReplicationStream stream = connection.startStreaming();
+            assertNull(stream.lastReceivedLsn());
             stream.close();
-        }    
+        }
         // create a replication connection which should be dropped once it's closed
         try (ReplicationConnection connection = TestHelper.createForReplication("test2", true)) {
             ReplicationStream stream = connection.startStreaming();
-            assertNull(stream.lastReceivedLSN());
+            assertNull(stream.lastReceivedLsn());
             stream.close();
         }
     }
-    
+
     @Test(expected = IllegalStateException.class)
     public void shouldNotAllowMultipleReplicationSlotsOnTheSameDBSlotAndPlugin() throws Exception {
         // create a replication connection which should be dropped once it's closed
@@ -71,7 +72,7 @@ public class ReplicationConnectionIT {
             }
         }
     }
-   
+
     @Test
     public void shouldReceiveAndDecodeIndividualChanges() throws Exception {
         // create a replication connection which should be dropped once it's closed
@@ -81,13 +82,13 @@ public class ReplicationConnectionIT {
             expectedMessagesFromStream(stream, expectedMessages);
         }
     }
-    
+
     @Test
     public void shouldReceiveSameChangesIfNotFlushed() throws Exception {
         // don't drop the replication slot once this is finished
         String slotName = "test";
         int receivedMessagesCount = startInsertStop(slotName, null);
-    
+
         // create a new replication connection with the same slot and check that without the LSN having been flushed,
         // we'll get back the same message again from before
         try (ReplicationConnection connection = TestHelper.createForReplication(slotName, true)) {
@@ -95,15 +96,15 @@ public class ReplicationConnectionIT {
             expectedMessagesFromStream(stream, receivedMessagesCount);
         }
     }
-    
-    
+
+
     @Test
     public void shouldNotReceiveSameChangesIfFlushed() throws Exception {
         // don't drop the replication slot once this is finished
         String slotName = "test";
         startInsertStop(slotName, this::flushLSN);
 
-        // create a new replication connection with the same slot and check that we don't get back the same changes that we've 
+        // create a new replication connection with the same slot and check that we don't get back the same changes that we've
         // flushed
         try (ReplicationConnection connection = TestHelper.createForReplication(slotName, true)) {
             ReplicationStream stream = connection.startStreaming();
@@ -111,43 +112,43 @@ public class ReplicationConnectionIT {
             expectedMessagesFromStream(stream, 0);
         }
     }
-    
+
     @Test
     public void shouldReceiveMissedChangesWhileDown() throws Exception {
         String slotName = "test";
         startInsertStop(slotName, this::flushLSN);
 
-        // run some more SQL while the slot is stopped 
+        // run some more SQL while the slot is stopped
         // this deletes 2 entries so each of them will have a message
         TestHelper.execute("DELETE FROM table_with_pk WHERE a < 3;");
         int additionalMessages = 2;
-        
+
         // create a new replication connection with the same slot and check that we get the additional messages
         try (ReplicationConnection connection = TestHelper.createForReplication(slotName, true)) {
             ReplicationStream stream = connection.startStreaming();
             expectedMessagesFromStream(stream, additionalMessages);
         }
     }
-    
+
     @Test
     public void shouldResumeFromLastReceivedLSN() throws Exception {
         String slotName = "test";
         AtomicLong lastReceivedLSN = new AtomicLong(0);
-        startInsertStop(slotName, stream -> lastReceivedLSN.compareAndSet(0, stream.lastReceivedLSN()));
+        startInsertStop(slotName, stream -> lastReceivedLSN.compareAndSet(0, stream.lastReceivedLsn()));
         assertTrue(lastReceivedLSN.get() > 0);
-    
+
         // resume replication from the last received LSN and don't expect anything else
         try (ReplicationConnection connection = TestHelper.createForReplication(slotName, true)) {
             ReplicationStream stream = connection.startStreaming(lastReceivedLSN.get());
             expectedMessagesFromStream(stream, 0);
         }
-    }    
-    
+    }
+
     @Test
     public void shouldTolerateInvalidLSNValues() throws Exception {
         String slotName = "test";
         startInsertStop(slotName, null);
-    
+
         // resume replication from the last received LSN and don't expect anything else
         try (ReplicationConnection connection = TestHelper.createForReplication(slotName, true)) {
             ReplicationStream stream = connection.startStreaming(Long.MAX_VALUE);
@@ -158,7 +159,7 @@ public class ReplicationConnectionIT {
             expectedMessagesFromStream(stream, 0);
         }
     }
-    
+
     @Test
     public void shouldReceiveOneMessagePerDMLOnTransactionCommit() throws Exception {
         try (ReplicationConnection connection = TestHelper.createForReplication("test", true)) {
@@ -173,7 +174,7 @@ public class ReplicationConnectionIT {
             expectedMessagesFromStream(stream, 2);
         }
     }
-    
+
     @Test
     public void shouldNotReceiveMessagesOnTransactionRollback() throws Exception {
         try (ReplicationConnection connection = TestHelper.createForReplication("test", true)) {
@@ -186,7 +187,7 @@ public class ReplicationConnectionIT {
             expectedMessagesFromStream(stream, 0);
         }
     }
-    
+
     @Test
     public void shouldGeneratesEventsForMultipleSchemas() throws Exception {
         try (ReplicationConnection connection = TestHelper.createForReplication("test", true)) {
@@ -201,12 +202,12 @@ public class ReplicationConnectionIT {
                                 "INSERT INTO schema2.table (b, c) VALUES('Value for schema2', now());";
             TestHelper.execute(statements);
             expectedMessagesFromStream(stream, 2);
-        }    
+        }
     }
-    
+
     private void flushLSN(ReplicationStream stream) {
         try {
-            stream.flushLSN();
+            stream.flushLastReceivedLsn();
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -224,7 +225,7 @@ public class ReplicationConnectionIT {
                     streamProcessor.accept(stream);
                 }
             } catch (Throwable t) {
-                // make sure we always drop the slot if something fails - note the connection was created with the drop on close 
+                // make sure we always drop the slot if something fails - note the connection was created with the drop on close
                 // set to false
                 try (PostgresConnection conn = TestHelper.create()) {
                     conn.dropReplicationSlot(slotName);
@@ -236,7 +237,7 @@ public class ReplicationConnectionIT {
         Thread.sleep(100);
         return expectedMessageCount;
     }
-    
+
     private List<ReplicationMessage> expectedMessagesFromStream(ReplicationStream stream,
                                                                 int expectedMessages) throws Exception {
         List<ReplicationMessage> actualMessages = new ArrayList<>();
@@ -270,7 +271,7 @@ public class ReplicationConnectionIT {
         }
         return actualMessages;
     }
-    
+
     private int insertSmallTestData() throws Exception {
         String statement = "INSERT INTO table_with_pk (b, c) VALUES('Backup and Restore', now());" +
                            "INSERT INTO table_with_pk (b, c) VALUES('Tuning', now());";
@@ -278,7 +279,7 @@ public class ReplicationConnectionIT {
         // we expect 2 messages from the above
         return 2;
     }
-    
+
     private int insertLargeTestData() throws Exception {
         String statement = "INSERT INTO table_with_pk (b, c) VALUES('Backup and Restore', now());" +
                            "INSERT INTO table_with_pk (b, c) VALUES('Tuning', now());" +
@@ -288,9 +289,9 @@ public class ReplicationConnectionIT {
                            "ALTER TABLE table_without_pk REPLICA IDENTITY FULL;" +
                            "UPDATE table_without_pk SET c = 'Baz' WHERE c = 'Bar';" +
                            "DELETE FROM table_without_pk WHERE c = 'Baz';";
-        
+
         // Postgres WILL NOT fire any tuple changes (UPDATES or DELETES) for tables which don't have a PK by default EXCEPT
-        // if that table has a REPLICA IDENTITY of FULL or INDEX. 
+        // if that table has a REPLICA IDENTITY of FULL or INDEX.
         // See http://michael.otacoo.com/postgresql-2/postgres-9-4-feature-highlight-replica-identity-logical-replication/
         // ...so we expect 8 messages for the above DML
         TestHelper.execute(statement);

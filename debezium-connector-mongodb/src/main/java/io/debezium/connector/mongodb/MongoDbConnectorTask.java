@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
@@ -14,9 +15,7 @@ import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
@@ -31,9 +30,13 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.Configuration;
+import io.debezium.config.ConfigurationDefaults;
+import io.debezium.time.Temporals;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext.PreviousContext;
 import io.debezium.util.Metronome;
+import io.debezium.util.Threads;
+import io.debezium.util.Threads.Timer;
 
 /**
  * A Kafka Connect source task that replicates the changes from one or more MongoDB replica sets, using one {@link Replicator}
@@ -43,7 +46,7 @@ import io.debezium.util.Metronome;
  * replica sets will be assigned to each task when the maximum number of tasks is limited. Regardless, every task will use a
  * separate thread to replicate the contents of each replica set, and each replication thread may use multiple threads
  * to perform an initial sync of the replica set.
- * 
+ *
  * @see MongoDbConnector
  * @see MongoDbConnectorConfig
  * @author Randall Hauch
@@ -128,7 +131,7 @@ public final class MongoDbConnectorTask extends SourceTask {
 
             // Set up a replicator for each replica set ...
             final int numThreads = replicaSets.replicaSetCount();
-            final ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+            final ExecutorService executor = Threads.newFixedThreadPool(MongoDbConnector.class, replicationContext.serverName(), "replicator", numThreads);
             AtomicInteger stillRunning = new AtomicInteger(numThreads);
             logger.info("Ignoring unnamed replica sets: {}", replicaSets.unnamedReplicaSets());
             logger.info("Starting {} thread(s) to replicate replica sets: {}", numThreads, replicaSets);
@@ -201,13 +204,14 @@ public final class MongoDbConnectorTask extends SourceTask {
         private final BlockingQueue<SourceRecord> records;
         private final BooleanSupplier isRunning;
         private final Consumer<List<SourceRecord>> batchConsumer;
+        private final Duration pollInterval;
 
         protected TaskRecordQueue(Configuration config, int numThreads, BooleanSupplier isRunning,
                                   Consumer<List<SourceRecord>> batchConsumer) {
             final int maxQueueSize = config.getInteger(MongoDbConnectorConfig.MAX_QUEUE_SIZE);
-            final long pollIntervalMs = config.getLong(MongoDbConnectorConfig.POLL_INTERVAL_MS);
+            pollInterval = Duration.ofMillis(config.getLong(MongoDbConnectorConfig.POLL_INTERVAL_MS));
             maxBatchSize = config.getInteger(MongoDbConnectorConfig.MAX_BATCH_SIZE);
-            metronome = Metronome.parker(pollIntervalMs, TimeUnit.MILLISECONDS, Clock.SYSTEM);
+            metronome = Metronome.parker(pollInterval, Clock.SYSTEM);
             records = new LinkedBlockingDeque<>(maxQueueSize);
             this.isRunning = isRunning;
             this.batchConsumer = batchConsumer != null ? batchConsumer : (records) -> {};
@@ -215,9 +219,13 @@ public final class MongoDbConnectorTask extends SourceTask {
 
         public List<SourceRecord> poll() throws InterruptedException {
             List<SourceRecord> batch = new ArrayList<>(maxBatchSize);
+            final Timer timeout = Threads.timer(Clock.SYSTEM, Temporals.max(pollInterval, ConfigurationDefaults.RETURN_CONTROL_INTERVAL));
             while (isRunning.getAsBoolean() && records.drainTo(batch, maxBatchSize) == 0) {
                 // No events to process, so sleep for a bit ...
                 metronome.pause();
+                if (timeout.expired()) {
+                    break;
+                }
             }
             this.batchConsumer.accept(batch);
             return batch;
@@ -225,7 +233,7 @@ public final class MongoDbConnectorTask extends SourceTask {
 
         /**
          * Adds the event into the queue for subsequent batch processing.
-         * 
+         *
          * @param record a record from the MongoDB oplog
          * @throws InterruptedException if the thread is interrupted while waiting to enqueue the record
          */

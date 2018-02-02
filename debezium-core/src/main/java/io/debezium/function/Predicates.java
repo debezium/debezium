@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -198,14 +199,31 @@ public class Predicates {
     }
 
     protected static <T> Predicate<T> includedInPatterns(Collection<Pattern> patterns, Function<T, String> conversion) {
+        return (t) -> matchedByPattern(patterns, conversion).apply(t).isPresent();
+    }
+
+    /**
+     * Generate a predicate function that for any supplied string returns a {@link Pattern} representing the first regular expression
+     * in the supplied comma-separated list that matches the predicate parameter in a case-insensitive manner.
+     *
+     * @param regexPatterns the comma-separated regular expression pattern (or literal) strings; may not be null
+
+     * @return the function that performs the matching
+     * @throws PatternSyntaxException if the string includes an invalid regular expression
+     */
+    public static Function<String, Optional<Pattern>> matchedBy(String regexPatterns) {
+        return matchedByPattern(Strings.listOfRegex(regexPatterns, Pattern.CASE_INSENSITIVE), Function.identity());
+    }
+
+    protected static <T> Function<T, Optional<Pattern>> matchedByPattern(Collection<Pattern> patterns, Function<T, String> conversion) {
         return (t) -> {
             String str = conversion.apply(t);
             if (str != null) {
                 for (Pattern p : patterns) {
-                    if (p.matcher(str).matches()) return true;
+                    if (p.matcher(str).matches()) return Optional.of(p);
                 }
             }
-            return false;
+            return Optional.empty();
         };
     }
 

@@ -128,7 +128,14 @@ public class MySqlDdlParser extends DdlParser {
         dataTypes.register(Types.CHAR, "ENUM(...)");
         dataTypes.register(Types.CHAR, "SET(...)");
         dataTypes.register(Types.OTHER, "JSON");
+        dataTypes.register(Types.OTHER, "GEOMETRY");
         dataTypes.register(Types.OTHER, "POINT");
+        dataTypes.register(Types.OTHER, "LINESTRING");
+        dataTypes.register(Types.OTHER, "POLYGON");
+        dataTypes.register(Types.OTHER, "MULTIPOINT");
+        dataTypes.register(Types.OTHER, "MULTILINESTRING");
+        dataTypes.register(Types.OTHER, "MULTIPOLYGON");
+        dataTypes.register(Types.OTHER, "GEOMETRYCOLLECTION");
     }
 
     @Override
@@ -137,7 +144,7 @@ public class MySqlDdlParser extends DdlParser {
 
     @Override
     protected void initializeStatementStarts(TokenSet statementStartTokens) {
-        statementStartTokens.add("CREATE", "ALTER", "DROP", "GRANT", "REVOKE", "FLUSH", "TRUNCATE", "COMMIT", "USE", "SAVEPOINT",
+        statementStartTokens.add("CREATE", "ALTER", "DROP", "GRANT", "REVOKE", "FLUSH", "TRUNCATE", "COMMIT", "USE", "SAVEPOINT", "ROLLBACK",
                 // table maintenance statements: https://dev.mysql.com/doc/refman/5.7/en/table-maintenance-sql.html
                 "ANALYZE", "OPTIMIZE", "REPAIR",
                 // DML-related statements
@@ -1041,7 +1048,7 @@ public class MySqlDdlParser extends DdlParser {
                 List<String> fromTablePkColumnNames = fromTable.columnNames();
                 List<String> viewPkColumnNames = new ArrayList<>();
                 selectedColumnsByAlias.forEach((viewColumnName, fromTableColumn) -> {
-                    if (fromTablePkColumnNames.contains(fromTableColumn)) {
+                    if (fromTablePkColumnNames.contains(fromTableColumn.name())) {
                         viewPkColumnNames.add(viewColumnName);
                     }
                 });
@@ -1225,6 +1232,7 @@ public class MySqlDdlParser extends DdlParser {
                 }
                 String columnName = parseColumnName();
                 table.removeColumn(columnName);
+                tokens.canConsume("RESTRICT");
             }
         } else if (tokens.canConsume("ALTER")) {
             if (!isNextTokenQuotedIdentifier()) {
@@ -1296,7 +1304,9 @@ public class MySqlDdlParser extends DdlParser {
         } else if (tokens.canConsume("REORGANIZE", "PARTITION")) {
             parsePartitionNames(start);
             tokens.consume("INTO", "(");
-            parsePartitionDefinition(start, table);
+            do {
+                parsePartitionDefinition(start, table);
+            } while (tokens.canConsume(','));
             tokens.consume(')');
         } else if (tokens.canConsume("EXCHANGE", "PARTITION")) {
             tokens.consume(); // partition name

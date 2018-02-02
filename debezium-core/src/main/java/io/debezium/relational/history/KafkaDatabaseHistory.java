@@ -8,6 +8,7 @@ package io.debezium.relational.history;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -140,6 +141,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                                     .withDefault(ProducerConfig.BUFFER_MEMORY_CONFIG, 1024 * 1024) // 1MB
                                     .withDefault(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
                                     .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
+                                    .withDefault(ProducerConfig.MAX_BLOCK_MS_CONFIG, 10_000) // wait at most this if we can't reach Kafka
                                     .build();
         logger.info("KafkaDatabaseHistory Consumer config: " + consumerConfig.withMaskedPasswords());
         logger.info("KafkaDatabaseHistory Producer config: " + producerConfig.withMaskedPasswords());
@@ -256,6 +258,29 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         }
 
         return endOffset;
+    }
+
+    @Override
+    public boolean exists() {
+        boolean exists = false;
+
+        try (KafkaConsumer<String, String> historyConsumer = new KafkaConsumer<>(consumerConfig.asProperties());) {
+            // First, check if the topic exists in the list of all topics
+            if (historyConsumer.listTopics().keySet().contains(topicName)) {
+                // check if the topic is empty
+                Set<TopicPartition> historyTopic = Collections.singleton(new TopicPartition(topicName, PARTITION));
+
+                Map<TopicPartition, Long> beginningOffsets = historyConsumer.beginningOffsets(historyTopic);
+                Map<TopicPartition, Long> endOffsets = historyConsumer.endOffsets(historyTopic);
+
+                Long beginOffset = beginningOffsets.entrySet().iterator().next().getValue();
+                Long endOffset = endOffsets.entrySet().iterator().next().getValue();
+
+                exists = endOffset > beginOffset;
+            }
+        }
+
+        return exists;
     }
 
     @Override

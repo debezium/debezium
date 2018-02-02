@@ -3,7 +3,7 @@
 - job:
     project-type: freestyle
     name: debezium-deploy-snapshots
-    display-name: Deploy Snapshots
+    display-name: Debezium Deploy Snapshots
     description: Deploy -SNAPSHOT versions to Maven Central
     node: Slave
     properties:
@@ -20,7 +20,8 @@
       - timeout:
           timeout: 45
     triggers:
-      - timed: "H 03 * * *"
+      - pollscm:
+          cron: "H 03 * * *"
     builders:
       - maven-target:
           maven-version: (Default)

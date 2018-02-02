@@ -5,28 +5,42 @@
  */
 package io.debezium.connector.mysql;
 
-import java.util.Arrays;
-
-import mil.nga.wkb.geom.Point;
-import mil.nga.wkb.io.ByteReader;
-import mil.nga.wkb.io.WkbGeometryReader;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 /**
- * A parser API for MySQL Geometry types, it uses geopackage-wkb-java as a base for parsing Well-Known Binary
+ * A parser API for MySQL Geometry types
  *
  * @author Omar Al-Safi
+ * @author Robert Coup
  */
 public class MySqlGeometry {
 
+    // WKB constants from http://www.opengeospatial.org/standards/sfa
+    private static final int WKB_POINT_SIZE = (1 + 4 + 8 + 8);  // fixed size
+    // WKB for a GEOMETRYCOLLECTION EMPTY object
+    private static final byte[] WKB_EMPTY_GEOMETRYCOLLECTION = {0x01, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};  // 0x010700000000000000
+
+    /**
+     * Open Geospatial Consortium Well-Known-Binary representation of the Geometry.
+     * http://www.opengeospatial.org/standards/sfa
+     */
     private final byte[] wkb;
+    /**
+     * Coordinate reference system identifier. While it's technically user-defined,
+     * the standard/common values in use are the EPSG code list http://www.epsg.org/
+     * null if unset/unknown
+     */
+    private final Integer srid;
 
     /**
      * Create a MySqlGeometry using the supplied wkb, note this should be the cleaned wkb for MySQL
      *
      * @param wkb the Well-Known binary representation of the coordinate in the standard format
      */
-    private MySqlGeometry(byte[] wkb) {
+    private MySqlGeometry(byte[] wkb, Integer srid) {
         this.wkb = wkb;
+        this.srid = srid;
     }
 
     /**
@@ -37,7 +51,20 @@ public class MySqlGeometry {
      * @return a {@link MySqlGeometry} which represents a MySqlGeometry API
      */
     public static MySqlGeometry fromBytes(final byte[] mysqlBytes) {
-        return new MySqlGeometry(convertToWkb(mysqlBytes));
+        ByteBuffer buf = ByteBuffer.wrap(mysqlBytes);
+        buf.order(ByteOrder.LITTLE_ENDIAN);
+
+        // first 4 bytes are SRID
+        Integer srid = buf.getInt();
+        if (srid == 0) {
+            // Debezium uses null for an unset/unknown SRID
+            srid = null;
+        }
+
+        // remainder is WKB
+        byte[] wkb = new byte[buf.remaining()];
+        buf.get(wkb);
+        return new MySqlGeometry(wkb, srid);
     }
 
     /**
@@ -50,23 +77,27 @@ public class MySqlGeometry {
     }
 
     /**
-     * It returns a Point coordinate according to OpenGIS based on the WKB
-     *
-     * @return {@link Point} point coordinate
+     * Returns the coordinate reference system identifier (SRID)
+     * @return srid
      */
-    public Point getPoint() {
-        return (Point) WkbGeometryReader.readGeometry(new ByteReader(wkb));
+    public Integer getSrid() {
+        return srid;
     }
 
     /**
-     * Since MySQL prepends 4 bytes as type prefix, we remove those bytes in order to have a valid WKB
-     * representation
-     *
-     * @param source      the original byte array from MySQL binlog event
-     *
-     * @return a {@link byte[]} which represents the standard well-known binary
+     * Returns whether this geometry is a 2D POINT type.
+     * @return true if the geometry is a 2D Point.
      */
-    private static byte[] convertToWkb(byte[] source) {
-        return Arrays.copyOfRange(source, 4, source.length);
+    public boolean isPoint() {
+        return wkb.length == WKB_POINT_SIZE;
+    }
+
+    /**
+     * Create a GEOMETRYCOLLECTION EMPTY MySqlGeometry
+     *
+     * @return a {@link MySqlGeometry} which represents a MySqlGeometry API
+     */
+    public static MySqlGeometry createEmpty() {
+        return new MySqlGeometry(WKB_EMPTY_GEOMETRYCOLLECTION, null);
     }
 }

@@ -8,13 +8,14 @@ package io.debezium.connector.postgresql;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -29,11 +30,13 @@ import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.connector.postgresql.connection.ReplicationStream;
 import io.debezium.data.Envelope;
 import io.debezium.relational.Column;
+import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Strings;
+import io.debezium.util.Threads;
 
 /**
  * A {@link RecordsProducer} which creates {@link SourceRecord records} from a
@@ -66,7 +69,7 @@ public class RecordsStreamProducer extends RecordsProducer {
     public RecordsStreamProducer(PostgresTaskContext taskContext,
                                  SourceInfo sourceInfo) {
         super(taskContext, sourceInfo);
-        this.executorService = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, CONTEXT_NAME + "-thread"));
+        executorService = Threads.newSingleThreadExecutor(PostgresConnector.class, taskContext.config().serverName(), CONTEXT_NAME);
         this.replicationStream = new AtomicReference<>();
         try {
             this.replicationConnection = taskContext.createReplicationConnection();
@@ -76,9 +79,13 @@ public class RecordsStreamProducer extends RecordsProducer {
     }
 
     @Override
-    protected void start(Consumer<SourceRecord> recordConsumer)  {
+    protected synchronized void start(Consumer<ChangeEvent> eventConsumer)  {
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
+            if (executorService.isShutdown()) {
+                logger.info("Streaming will not start, stop already requested");
+                return;
+            }
             if (sourceInfo.hasLastKnownPosition()) {
                 // start streaming from the last recorded position in the offset
                 Long lsn = sourceInfo.lsn();
@@ -93,8 +100,9 @@ public class RecordsStreamProducer extends RecordsProducer {
 
             // refresh the schema so we have a latest view of the DB tables
             taskContext.refreshSchema(true);
+
             // the new thread will inherit it's parent MDC
-            executorService.submit(() -> streamChanges(recordConsumer));
+            executorService.submit(() -> streamChanges(eventConsumer));
         } catch (Throwable t) {
             throw new ConnectException(t.getCause() != null ? t.getCause() : t);
         } finally {
@@ -102,13 +110,13 @@ public class RecordsStreamProducer extends RecordsProducer {
         }
     }
 
-    private void streamChanges(Consumer<SourceRecord> consumer) {
+    private void streamChanges(Consumer<ChangeEvent> consumer) {
         ReplicationStream stream = this.replicationStream.get();
         // run while we haven't been requested to stop
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 // this will block until a message is available
-                stream.read(x -> process(x, stream.lastReceivedLSN(), consumer));
+                stream.read(x -> process(x, stream.lastReceivedLsn(), consumer));
             } catch (SQLException e) {
                 Throwable cause = e.getCause();
                 if (cause != null && (cause instanceof IOException)) {
@@ -119,7 +127,7 @@ public class RecordsStreamProducer extends RecordsProducer {
                 }
                 taskContext.failTask(e);
                 throw new ConnectException(e);
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 logger.error("unexpected exception while streaming logical changes", e);
                 taskContext.failTask(e);
                 throw new ConnectException(e);
@@ -128,14 +136,14 @@ public class RecordsStreamProducer extends RecordsProducer {
     }
 
     @Override
-    protected synchronized void commit()  {
+    protected synchronized void commit(long lsn)  {
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
             ReplicationStream replicationStream = this.replicationStream.get();
             if (replicationStream != null) {
                 // tell the server the point up to which we've processed data, so it can be free to recycle WAL segments
                 logger.debug("flushing offsets to server...");
-                replicationStream.flushLSN();
+                replicationStream.flushLsn(lsn);
             } else {
                 logger.debug("streaming has already stopped, ignoring commit callback...");
             }
@@ -200,7 +208,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         }
     }
 
-    private void process(ReplicationMessage message, Long lsn, Consumer<SourceRecord> consumer) throws SQLException {
+    private void process(ReplicationMessage message, Long lsn, Consumer<ChangeEvent> consumer) throws SQLException {
         if (message == null) {
             // in some cases we can get null if PG gives us back a message earlier than the latest reported flushed LSN
             return;
@@ -228,19 +236,19 @@ public class RecordsStreamProducer extends RecordsProducer {
         ReplicationMessage.Operation operation = message.getOperation();
         switch (operation) {
             case INSERT: {
-                Object[] row = columnValues(message.getNewTupleList(), tableId, true);
-                generateCreateRecord(tableId, row, consumer);
+                Object[] row = columnValues(message.getNewTupleList(), tableId, true, message.hasMetadata());
+                generateCreateRecord(tableId, row, message.isLastEventForLsn(), consumer);
                 break;
             }
             case UPDATE: {
-                Object[] newRow = columnValues(message.getNewTupleList(), tableId, true);
-                Object[] oldRow = columnValues(message.getOldTupleList(), tableId, true);
-                generateUpdateRecord(tableId, oldRow, newRow, consumer);
+                Object[] newRow = columnValues(message.getNewTupleList(), tableId, true, message.hasMetadata());
+                Object[] oldRow = columnValues(message.getOldTupleList(), tableId, false, message.hasMetadata());
+                generateUpdateRecord(tableId, oldRow, newRow, message.isLastEventForLsn(), consumer);
                 break;
             }
             case DELETE: {
-                Object[] row = columnValues(message.getOldTupleList(), tableId, false);
-                generateDeleteRecord(tableId, row, consumer);
+                Object[] row = columnValues(message.getOldTupleList(), tableId, false, message.hasMetadata());
+                generateDeleteRecord(tableId, row, message.isLastEventForLsn(), consumer);
                 break;
             }
             default: {
@@ -249,7 +257,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         }
     }
 
-    protected void generateCreateRecord(TableId tableId, Object[] rowData, Consumer<SourceRecord> recordConsumer) {
+    protected void generateCreateRecord(TableId tableId, Object[] rowData, boolean isLastEventForLsn, Consumer<ChangeEvent> recordConsumer) {
         if (rowData == null || rowData.length == 0) {
             logger.warn("no new values found for table '{}' from update message at '{}';skipping record" , tableId, sourceInfo);
             return;
@@ -272,11 +280,11 @@ public class RecordsStreamProducer extends RecordsProducer {
         if (logger.isDebugEnabled()) {
             logger.debug("sending create event '{}' to topic '{}'", record, topicName);
         }
-        recordConsumer.accept(record);
+        recordConsumer.accept(new ChangeEvent(record, isLastEventForLsn));
     }
 
-    protected void generateUpdateRecord(TableId tableId, Object[] oldRowData, Object[] newRowData,
-                                        Consumer<SourceRecord> recordConsumer) {
+    protected void generateUpdateRecord(TableId tableId, Object[] oldRowData, Object[] newRowData, boolean isLastEventForLsn,
+                                        Consumer<ChangeEvent> recordConsumer) {
         if (newRowData == null || newRowData.length == 0) {
             logger.warn("no values found for table '{}' from update message at '{}';skipping record" , tableId, sourceInfo);
             return;
@@ -308,36 +316,44 @@ public class RecordsStreamProducer extends RecordsProducer {
             // the primary key has changed, so we need to send a DELETE followed by a CREATE
 
             // then send a delete event for the old key ...
-            SourceRecord record = new SourceRecord(partition, offset, topicName, null, oldKeySchema, oldKey, envelope.schema(),
-                                                   envelope.delete(oldValue, source, clock().currentTimeInMillis()));
+            ChangeEvent changeEvent = new ChangeEvent(
+                    new SourceRecord(
+                            partition, offset, topicName, null, oldKeySchema, oldKey, envelope.schema(),
+                            envelope.delete(oldValue, source, clock().currentTimeInMillis())),
+                    isLastEventForLsn);
             if (logger.isDebugEnabled()) {
-                logger.debug("sending delete event '{}' to topic '{}'", record, topicName);
+                logger.debug("sending delete event '{}' to topic '{}'", changeEvent.getRecord(), topicName);
             }
-            recordConsumer.accept(record);
+            recordConsumer.accept(changeEvent);
 
             // send a tombstone event (null value) for the old key so it can be removed from the Kafka log eventually...
-            record = new SourceRecord(partition, offset, topicName, null, oldKeySchema, oldKey, null, null);
+            changeEvent = new ChangeEvent(
+                    new SourceRecord(partition, offset, topicName, null, oldKeySchema, oldKey, null, null),
+                    isLastEventForLsn);
             if (logger.isDebugEnabled()) {
-                logger.debug("sending tombstone event '{}' to topic '{}'", record, topicName);
+                logger.debug("sending tombstone event '{}' to topic '{}'", changeEvent.getRecord(), topicName);
             }
-            recordConsumer.accept(record);
+            recordConsumer.accept(changeEvent);
 
             // then send a create event for the new key...
-            record = new SourceRecord(partition, offset, topicName, null, newKeySchema, newKey, envelope.schema(),
-                                      envelope.create(newValue, source, clock().currentTimeInMillis()));
+            changeEvent = new ChangeEvent(
+                    new SourceRecord(
+                            partition, offset, topicName, null, newKeySchema, newKey, envelope.schema(),
+                            envelope.create(newValue, source, clock().currentTimeInMillis())),
+                    isLastEventForLsn);
             if (logger.isDebugEnabled()) {
-                logger.debug("sending create event '{}' to topic '{}'", record, topicName);
+                logger.debug("sending create event '{}' to topic '{}'", changeEvent.getRecord(), topicName);
             }
-            recordConsumer.accept(record);
+            recordConsumer.accept(changeEvent);
         } else {
             SourceRecord record = new SourceRecord(partition, offset, topicName, null,
                                                    newKeySchema, newKey, envelope.schema(),
                                                    envelope.update(oldValue, newValue, source, clock().currentTimeInMillis()));
-            recordConsumer.accept(record);
+            recordConsumer.accept(new ChangeEvent(record, isLastEventForLsn));
         }
     }
 
-    protected void generateDeleteRecord(TableId tableId, Object[] oldRowData, Consumer<SourceRecord> recordConsumer) {
+    protected void generateDeleteRecord(TableId tableId, Object[] oldRowData, boolean isLastEventForLsn, Consumer<ChangeEvent> recordConsumer) {
         if (oldRowData == null || oldRowData.length == 0) {
             logger.warn("no values found for table '{}' from update message at '{}';skipping record" , tableId, sourceInfo);
             return;
@@ -356,55 +372,65 @@ public class RecordsStreamProducer extends RecordsProducer {
         Envelope envelope = createEnvelope(tableSchema, topicName);
 
         // create the regular delete record
-        SourceRecord record = new SourceRecord(partition, offset, topicName, null,
-                                               keySchema, key, envelope.schema(),
-                                               envelope.delete(value, sourceInfo.source(), clock().currentTimeInMillis()));
+        ChangeEvent changeEvent = new ChangeEvent(
+                new SourceRecord(
+                        partition, offset, topicName, null,
+                        keySchema, key, envelope.schema(),
+                        envelope.delete(value, sourceInfo.source(), clock().currentTimeInMillis())),
+                isLastEventForLsn);
         if (logger.isDebugEnabled()) {
-            logger.debug("sending delete event '{}' to topic '{}'", record, topicName);
+            logger.debug("sending delete event '{}' to topic '{}'", changeEvent.getRecord(), topicName);
         }
-        recordConsumer.accept(record);
+        recordConsumer.accept(changeEvent);
 
         // And send a tombstone event (null value) for the old key so it can be removed from the Kafka log eventually...
-        record = new SourceRecord(partition, offset, topicName, null, keySchema, key, null, null);
+        changeEvent = new ChangeEvent(
+                new SourceRecord(partition, offset, topicName, null, keySchema, key, null, null),
+                isLastEventForLsn);
         if (logger.isDebugEnabled()) {
-            logger.debug("sending tombstone event '{}' to topic '{}'", record, topicName);
+            logger.debug("sending tombstone event '{}' to topic '{}'", changeEvent.getRecord(), topicName);
         }
-        recordConsumer.accept(record);
+        recordConsumer.accept(changeEvent);
     }
 
-    private Object[] columnValues(List<ReplicationMessage.Column> messageList, TableId tableId, boolean refreshSchemaIfChanged)
+    private Object[] columnValues(List<ReplicationMessage.Column> columns, TableId tableId, boolean refreshSchemaIfChanged, boolean metadataInMessage)
             throws SQLException {
-        if (messageList == null || messageList.isEmpty()) {
+        if (columns == null || columns.isEmpty()) {
             return null;
         }
         Table table = schema().tableFor(tableId);
         assert table != null;
 
         // check if we need to refresh our local schema due to DB schema changes for this table
-        if (refreshSchemaIfChanged && schemaChanged(messageList, table)) {
+        if (refreshSchemaIfChanged && schemaChanged(columns, table, metadataInMessage)) {
             try (final PostgresConnection connection = taskContext.createConnection()) {
+                // Refresh the schema so we get information about primary keys
                 schema().refresh(connection, tableId);
+                // Update the schema with metadata coming from decoder message
+                if (metadataInMessage) {
+                    schema().refresh(tableFromFromMessage(columns, schema().tableFor(tableId)));
+                }
+                table = schema().tableFor(tableId);
             }
-            table = schema().tableFor(tableId);
         }
 
         // based on the schema columns, create the values on the same position as the columns
         List<String> columnNames = table.columnNames();
         // JSON does not deliver a list of all columns for REPLICA IDENTITY DEFAULT
-        Object[] values = new Object[messageList.size() < columnNames.size() ? columnNames.size() : messageList.size()];
-        messageList.forEach(message -> {
+        Object[] values = new Object[columns.size() < columnNames.size() ? columnNames.size() : columns.size()];
+        columns.forEach(message -> {
             //DBZ-298 Quoted column names will be sent like that in messages, but stored unquoted in the column names
             String columnName = Strings.unquoteIdentifierPart(message.getName());
             int position = columnNames.indexOf(columnName);
             assert position >= 0;
-            values[position] = message.getValue(this::typeResolverConnection);
+            values[position] = message.getValue(this::typeResolverConnection, taskContext.config().includeUnknownDatatypes());
         });
         return values;
     }
 
-    private boolean schemaChanged(List<ReplicationMessage.Column> messageList, Table table) {
+    private boolean schemaChanged(List<ReplicationMessage.Column> columns, Table table, boolean metadataInMessage) {
         List<String> columnNames = table.columnNames();
-        int messagesCount = messageList.size();
+        int messagesCount = columns.size();
         if (columnNames.size() != messagesCount) {
             // the table metadata has less or more columns than the event, which means the table structure has changed,
             // so we need to trigger a refresh...
@@ -413,16 +439,36 @@ public class RecordsStreamProducer extends RecordsProducer {
 
         // go through the list of columns from the message to figure out if any of them are new or have changed their type based
         // on what we have in the table metadata....
-        return messageList.stream().filter(message -> {
+        return columns.stream().filter(message -> {
             String columnName = message.getName();
             Column column = table.columnWithName(columnName);
             if (column == null) {
                 logger.debug("found new column '{}' present in the server message which is not part of the table metadata; refreshing table schema", columnName);
                 return true;
-            } else if (!schema().isType(column.typeName(), column.jdbcType())) {
-                logger.debug("detected new type for column '{}', old type was '{}', new type is '{}'; refreshing table schema", columnName, column.jdbcType(),
-                            message.getType());
-                return true;
+            } else {
+                final int localType = metadataInMessage ? column.jdbcType() : PgOid.typeNameToOid(column.typeName());
+                final int incomingType = metadataInMessage ? typeNameToJdbcType(message.getTypeMetadata()) : message.getOidType();
+                if (localType != incomingType) {
+                    logger.debug("detected new type for column '{}', old type was '{}', new type is '{}'; refreshing table schema", columnName, localType,
+                                incomingType);
+                    return true;
+                }
+                if (metadataInMessage) {
+                    final int localLength = column.length();
+                    final int incomingLength = message.getTypeMetadata().getLength().orElse(Column.UNSET_INT_VALUE);
+                    if (localLength != incomingLength) {
+                        logger.debug("detected new length for column '{}', old length was '{}', new length is '{}'; refreshing table schema", columnName, localLength,
+                                    incomingLength);
+                        return true;
+                    }
+                    final int localScale = column.scale();
+                    final int incomingScale = message.getTypeMetadata().getScale().orElse(Column.UNSET_INT_VALUE);
+                    if (localScale != incomingScale) {
+                        logger.debug("detected new scale for column '{}', old scale was '{}', new scale is '{}'; refreshing table schema", columnName, localScale,
+                                    incomingScale);
+                        return true;
+                    }
+                }
             }
             return false;
         }).findFirst().isPresent();
@@ -458,5 +504,35 @@ public class RecordsStreamProducer extends RecordsProducer {
             typeResolverConnection = (PgConnection)taskContext.createConnection().connection();
         }
         return typeResolverConnection;
+    }
+
+    private Table tableFromFromMessage(List<ReplicationMessage.Column> columns, Table table) {
+        return table.edit()
+            .setColumns(columns.stream()
+                .map(column -> {
+                    final ColumnEditor columnEditor = Column.editor()
+                            .name(column.getName())
+                            .jdbcType(column.getOidType() == Types.ARRAY ? Types.ARRAY : typeNameToJdbcType(column.getTypeMetadata()))
+                            .type(column.getTypeMetadata().getName())
+                            .optional(column.isOptional());
+                    PgOid.reconcileJdbcOidTypeConstraints(column.getTypeMetadata(), columnEditor);
+                    if (column.getOidType() == Types.ARRAY) {
+                        columnEditor.componentType(column.getComponentOidType());
+                    }
+                    if (column.getTypeMetadata().getLength().isPresent()) {
+                        columnEditor.length(column.getTypeMetadata().getLength().getAsInt());
+                    }
+                    if (column.getTypeMetadata().getScale().isPresent()) {
+                        columnEditor.scale(column.getTypeMetadata().getScale().getAsInt());
+                    }
+                    return columnEditor.create();
+                })
+                .collect(Collectors.toList())
+            )
+            .setPrimaryKeyNames(table.filterColumnNames(c -> table.isPrimaryKeyColumn(c.name()))).create();
+    }
+
+    private int typeNameToJdbcType(final ReplicationMessage.ColumnTypeMetadata columnTypeMetadata) {
+        return taskContext.schema().columnTypeNameToJdbcTypeId(columnTypeMetadata.getName());
     }
 }

@@ -5,8 +5,17 @@
  */
 package io.debezium.util;
 
+import java.time.Duration;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.LongSupplier;
+
+import org.apache.kafka.connect.source.SourceConnector;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Utilities related to threads and threading.
@@ -14,6 +23,9 @@ import java.util.function.LongSupplier;
  * @author Randall Hauch
  */
 public class Threads {
+
+    private static final String DEBEZIUM_THREAD_NAME_PREFIX = "debezium-";
+    private static final Logger LOGGER = LoggerFactory.getLogger(Threads.class);
 
     /**
      * Measures the amount time that has elapsed since the last {@link #reset() reset}.
@@ -30,6 +42,17 @@ public class Threads {
          * @return the number of milliseconds
          */
         long elapsedTime();
+    }
+
+    /**
+     * Expires after defined time period.
+     *
+     */
+    public static interface Timer {
+        /**
+         * @return true if current time is greater than start time plus requested time period
+         */
+        boolean expired();
     }
 
     /**
@@ -53,6 +76,19 @@ public class Threads {
                 return elapsed <= 0L ? 0L : elapsed;
             }
         };
+    }
+
+    /**
+     * Obtain a {@link Timer} that uses the given clock to indicate that a pre-defined time period expired.
+     *
+     * @param clock the clock; may not be null
+     * @param time a time interval to expire
+     * @return the {@link Timer} object; never null
+     */
+    public static Timer timer(Clock clock, Duration time) {
+        final TimeSince start = timeSince(clock);
+        start.reset();
+        return () -> start.elapsedTime() > time.toMillis();
     }
 
     /**
@@ -175,10 +211,50 @@ public class Threads {
             // Otherwise we've timed out ...
             uponTimeout.run();
         };
-        return new Thread(r, threadName);
+        return new Thread(r, DEBEZIUM_THREAD_NAME_PREFIX + "-timeout-" + threadName);
     }
 
     private Threads() {
     }
 
+    /**
+     * Returns a thread factory that creates threads conforming to Debezium thread naming
+     * pattern {@code debezium-<connector class>-<connector-id>-<thread-name>}.
+     *
+     * @param connector - the source connector class
+     * @param connectorId - the identifier to differentiate between connector instances
+     * @param name - the name of the thread
+     * @param indexed - true if the thread name should be appended with an index
+     * @return the thread factory setting the correct name
+     */
+    public static ThreadFactory threadFactory(Class<? extends SourceConnector> connector, String connectorId, String name, boolean indexed) {
+        LOGGER.info("Requested thread factory for connector {}, id = {} named = {}", connector.getSimpleName(), connectorId, name);
+
+        return new ThreadFactory() {
+            private final AtomicInteger index = new AtomicInteger(0);
+
+            @Override
+            public Thread newThread(Runnable r) {
+                StringBuilder threadName = new StringBuilder(DEBEZIUM_THREAD_NAME_PREFIX)
+                                            .append(connector.getSimpleName().toLowerCase())
+                                            .append('-')
+                                            .append(connectorId)
+                                            .append('-')
+                                            .append(name);
+                if (indexed) {
+                    threadName.append('-').append(index.getAndIncrement());
+                }
+                LOGGER.info("Creating thread {} in group {}", threadName);
+                return new Thread(r, threadName.toString());
+            }
+        };
+    }
+
+    public static ExecutorService newSingleThreadExecutor(Class<? extends SourceConnector> connector, String connectorId, String name) {
+        return Executors.newSingleThreadExecutor(threadFactory(connector, connectorId, name, false));
+    }
+
+    public static ExecutorService newFixedThreadPool(Class<? extends SourceConnector> connector, String connectorId, String name, int threadCount) {
+        return Executors.newFixedThreadPool(threadCount, threadFactory(connector, connectorId, name, true));
+    }
 }

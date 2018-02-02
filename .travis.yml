@@ -34,6 +34,7 @@ after_install:
 
 script: 
   - mvn clean install -Passembly
+  - mvn install -pl debezium-connector-postgres -Pwal2json-decoder
 
 notifications:
   webhooks:

@@ -50,6 +50,7 @@ import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
 import io.debezium.util.Strings;
+import io.debezium.util.Threads;
 
 /**
  * A component that reads the binlog of a MySQL server, and records any schema changes in {@link MySqlSchema}.
@@ -83,6 +84,55 @@ public class BinlogReader extends AbstractReader {
     private volatile Map<String, ?> lastOffset = null;
     private com.github.shyiko.mysql.binlog.GtidSet gtidSet;
 
+    public static class BinlogPosition {
+        final String filename;
+        final long position;
+
+        public BinlogPosition(String filename, long position) {
+            assert filename != null;
+
+            this.filename = filename;
+            this.position = position;
+        }
+
+        public String getFilename() {
+            return filename;
+        }
+        public long getPosition() {
+            return position;
+        }
+
+        @Override
+        public String toString() {
+            return filename + "/" + position;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + filename.hashCode();
+            result = prime * result + (int) (position ^ (position >>> 32));
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj)
+                return true;
+            if (obj == null)
+                return false;
+            if (getClass() != obj.getClass())
+                return false;
+            BinlogPosition other = (BinlogPosition) obj;
+            if (!filename.equals(other.filename))
+                return false;
+            if (position != other.position)
+                return false;
+            return true;
+        }
+    }
+
     /**
      * Create a binlog reader.
      *
@@ -103,10 +153,15 @@ public class BinlogReader extends AbstractReader {
 
         // Set up the log reader ...
         client = new BinaryLogClient(context.hostname(), context.port(), context.username(), context.password());
+        // BinaryLogClient will overwrite thread names later
+        client.setThreadFactory(Threads.threadFactory(MySqlConnector.class, context.serverName(), "binlog-client", false));
         client.setServerId(context.serverId());
         client.setSSLMode(sslModeFor(context.sslMode()));
         client.setKeepAlive(context.config().getBoolean(MySqlConnectorConfig.KEEP_ALIVE));
-        client.registerEventListener(this::handleEvent);
+        client.registerEventListener(context.bufferSizeForBinlogReader() == 0
+                ? this::handleEvent
+                : (new EventBuffer(context.bufferSizeForBinlogReader(), this))::add);
+
         client.registerLifecycleListener(new ReaderThreadLifecycleListener());
         if (logger.isDebugEnabled()) client.registerEventListener(this::logEvent);
 
@@ -193,6 +248,7 @@ public class BinlogReader extends AbstractReader {
         eventHandlers.put(EventType.EXT_DELETE_ROWS, this::handleDelete);
         eventHandlers.put(EventType.VIEW_CHANGE, this::viewChange);
         eventHandlers.put(EventType.XA_PREPARE, this::prepareTransaction);
+        eventHandlers.put(EventType.XID, this::handleTransactionCompletion);
 
         // Get the current GtidSet from MySQL so we can get a filtered/merged GtidSet based off of the last Debezium checkpoint.
         String availableServerGtidStr = context.knownGtidSet();
@@ -260,6 +316,20 @@ public class BinlogReader extends AbstractReader {
                 throw new ConnectException("Unable to connect to the MySQL database at " +
                         context.hostname() + ":" + context.port() + " with user '" + context.username() + "': " + e.getMessage(), e);
             }
+        }
+    }
+
+    protected void rewindBinaryLogClient(BinlogPosition position) {
+        try {
+            if (isRunning()) {
+                logger.debug("Rewinding binlog to position {}", position);
+                client.disconnect();
+                client.setBinlogFilename(position.getFilename());
+                client.setBinlogPosition(position.getPosition());
+                client.connect();
+            }
+        } catch (IOException e) {
+            logger.error("Unexpected error when re-connecting to the MySQL binary log reader", e);
         }
     }
 
@@ -372,6 +442,7 @@ public class BinlogReader extends AbstractReader {
             logger.info("Stopped processing binlog events due to thread interruption");
         }
     }
+
 
     @SuppressWarnings("unchecked")
     protected <T extends EventData> T unwrapData(Event event) {
@@ -513,11 +584,7 @@ public class BinlogReader extends AbstractReader {
             return;
         }
         if (sql.equalsIgnoreCase("COMMIT")) {
-            // We are completing the transaction ...
-            source.commitTransaction();
-            source.setBinlogThread(-1L);
-            skipEvent = false;
-            ignoreDmlEventByGtidSource = false;
+            handleTransactionCompletion(event);
             return;
         }
         if (sql.toUpperCase().startsWith("XA ")) {
@@ -528,11 +595,24 @@ public class BinlogReader extends AbstractReader {
             logger.debug("DDL '{}' was filtered out of processing", sql);
             return;
         }
+        if (sql.equalsIgnoreCase("ROLLBACK")) {
+            // We have hit a ROLLBACK which is not supported
+            logger.warn("Rollback statements cannot be handled without binlog buffering, the connector will fail. Please check '{}' to see how to enable buffering",
+                    MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER.name());
+        }
         context.dbSchema().applyDdl(context.source(), command.getDatabase(), command.getSql(), (dbName, statements) -> {
             if (recordSchemaChangesInSourceRecords && recordMakers.schemaChanges(dbName, statements, super::enqueueRecord) > 0) {
                 logger.debug("Recorded DDL statements for database '{}': {}", dbName, statements);
             }
         });
+    }
+
+    private void handleTransactionCompletion(Event event) {
+        // We are completing the transaction ...
+        source.commitTransaction();
+        source.setBinlogThread(-1L);
+        skipEvent = false;
+        ignoreDmlEventByGtidSource = false;
     }
 
     /**
@@ -794,5 +874,17 @@ public class BinlogReader extends AbstractReader {
                 lastOffset,
                 client == null ? "N/A" : client.getBinlogFilename() + "/" + client.getBinlogPosition()
         );
+    }
+
+    protected BinlogReaderMetrics getMetrics() {
+        return metrics;
+    }
+
+    protected BinaryLogClient getBinlogClient() {
+        return client;
+    }
+
+    public BinlogPosition getCurrentBinlogPosition() {
+        return new BinlogPosition(client.getBinlogFilename(), client.getBinlogPosition());
     }
 }

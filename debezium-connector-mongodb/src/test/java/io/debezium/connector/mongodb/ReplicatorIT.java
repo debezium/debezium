@@ -38,12 +38,13 @@ public class ReplicatorIT extends AbstractMongoIT {
     @Test
     public void shouldReplicateContent() throws InterruptedException {
         Testing.Print.disable();
-
         // Update the configuration to add a collection filter ...
         useConfiguration(config.edit()
                                .with(MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS, 1)
                                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbA.contacts")
                                .build());
+
+        TestHelper.cleanDatabase(primary, "dbA");
 
         // ------------------------------------------------------------------------------
         // ADD A DOCUMENT

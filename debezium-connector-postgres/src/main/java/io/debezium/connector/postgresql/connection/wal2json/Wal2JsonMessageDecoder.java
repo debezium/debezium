@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Iterator;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
@@ -18,8 +19,10 @@ import org.slf4j.LoggerFactory;
 import io.debezium.connector.postgresql.connection.MessageDecoder;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
 import io.debezium.document.Array;
+import io.debezium.document.Array.Entry;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
+import io.debezium.document.Value;
 
 /**
  * JSON deserialization of a message sent by
@@ -34,6 +37,7 @@ public class Wal2JsonMessageDecoder implements MessageDecoder {
     private static final  Logger LOGGER = LoggerFactory.getLogger(Wal2JsonMessageDecoder.class);
 
     private final DateTimeFormat dateTime = DateTimeFormat.get();
+    private boolean containsMetadata = false;
 
     @Override
     public void processMessage(ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException {
@@ -49,8 +53,11 @@ public class Wal2JsonMessageDecoder implements MessageDecoder {
             final String timestamp = message.getString("timestamp");
             final long commitTime = dateTime.systemTimestamp(timestamp);
             final Array changes = message.getArray("change");
-            for (Array.Entry e: changes) {
-                processor.process(new Wal2JsonReplicationMessage(txId, commitTime, e.getValue().asDocument()));
+
+            Iterator<Entry> it = changes.iterator();
+            while (it.hasNext()) {
+                Value value = it.next().getValue();
+                processor.process(new Wal2JsonReplicationMessage(txId, commitTime, value.asDocument(), containsMetadata, !it.hasNext()));
             }
         } catch (final IOException e) {
             throw new ConnectException(e);
@@ -58,11 +65,22 @@ public class Wal2JsonMessageDecoder implements MessageDecoder {
     }
 
     @Override
-    public ChainedLogicalStreamBuilder options(ChainedLogicalStreamBuilder builder) {
+    public ChainedLogicalStreamBuilder optionsWithMetadata(ChainedLogicalStreamBuilder builder) {
+        return optionsWithoutMetadata(builder)
+            .withSlotOption("include-not-null", "true");
+    }
+
+    @Override
+    public ChainedLogicalStreamBuilder optionsWithoutMetadata(ChainedLogicalStreamBuilder builder) {
         return builder
             .withSlotOption("pretty-print", 1)
             .withSlotOption("write-in-chunks", 0)
             .withSlotOption("include-xids", 1)
             .withSlotOption("include-timestamp", 1);
+    }
+
+    @Override
+    public void setContainsMetadata(boolean containsMetadata) {
+        this.containsMetadata = containsMetadata;
     }
 }

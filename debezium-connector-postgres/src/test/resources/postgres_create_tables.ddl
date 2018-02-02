@@ -4,6 +4,10 @@
 DROP SCHEMA IF EXISTS public CASCADE;
 CREATE SCHEMA public;
 
+-- load contrib extensions for testing non-builtin types
+CREATE EXTENSION IF NOT EXISTS ltree SCHEMA public;
+CREATE EXTENSION IF NOT EXISTS isn SCHEMA public;
+
 CREATE TABLE numeric_table (pk SERIAL, si SMALLINT, i INTEGER, bi BIGINT, r REAL, db DOUBLE PRECISION, ss SMALLSERIAL, bs BIGSERIAL, b BOOLEAN, PRIMARY KEY(pk));
 -- no suffix -fixed scale, zs - zero scale, vs - variable scale
 CREATE TABLE numeric_decimal_table (pk SERIAL, d DECIMAL(3,2), dzs DECIMAL(4), dvs DECIMAL, n NUMERIC(6,4), nzs NUMERIC(4), nvs NUMERIC, PRIMARY KEY(pk));
@@ -14,8 +18,9 @@ CREATE TABLE time_table (pk SERIAL, ts TIMESTAMP, tz TIMESTAMPTZ, date DATE, ti 
 CREATE TABLE text_table (pk SERIAL, j JSON, jb JSONB, x XML, u Uuid, PRIMARY KEY(pk));
 CREATE TABLE geom_table (pk SERIAL, p POINT, PRIMARY KEY(pk));
 CREATE TABLE tstzrange_table (pk serial, unbounded_exclusive_range tstzrange, bounded_inclusive_range tstzrange, PRIMARY KEY(pk));
-CREATE TABLE array_table (pk SERIAL, int_array INT[], bigint_array BIGINT[], text_array TEXT[], PRIMARY KEY(pk));
-CREATE TABLE array_table_with_nulls (pk SERIAL, int_array INT[], bigint_array BIGINT[], text_array TEXT[], PRIMARY KEY(pk));
+CREATE TABLE array_table (pk SERIAL, int_array INT[], bigint_array BIGINT[], text_array TEXT[], char_array CHAR(10)[], varchar_array VARCHAR(10)[], date_array DATE[], numeric_array NUMERIC(10, 2)[], varnumeric_array NUMERIC[3], PRIMARY KEY(pk));
+CREATE TABLE array_table_with_nulls (pk SERIAL, int_array INT[], bigint_array BIGINT[], text_array TEXT[], char_array CHAR(10)[], varchar_array VARCHAR(10)[], date_array DATE[], numeric_array NUMERIC(10, 2)[], varnumeric_array NUMERIC[3], PRIMARY KEY(pk));
+CREATE TABLE custom_table (pk serial, lt ltree, i isbn, n TEXT, PRIMARY KEY(pk));
 
 DROP SCHEMA IF EXISTS "Quoted_"" . Schema" CASCADE;
 CREATE SCHEMA "Quoted_"" . Schema";

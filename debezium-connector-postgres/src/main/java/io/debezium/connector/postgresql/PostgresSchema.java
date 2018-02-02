@@ -49,6 +49,7 @@ public class PostgresSchema {
     private final String schemaPrefix;
     private final Tables tables;
     private final Function<String, String> schemaNameValidator;
+    private final PostgresValueConverter valueConverter;
 
     private Map<String, Integer> typeInfo;
 
@@ -61,8 +62,8 @@ public class PostgresSchema {
         this.filters = new Filters(config);
         this.tables = new Tables();
 
-        PostgresValueConverter valueConverter = new PostgresValueConverter(config.decimalHandlingMode(), config.temporalPrecisionMode(),
-                ZoneOffset.UTC, null);
+        this.valueConverter = new PostgresValueConverter(config.decimalHandlingMode(), config.temporalPrecisionMode(),
+                ZoneOffset.UTC, null, config.includeUnknownDatatypes(), this);
         this.schemaNameValidator = AvroValidator.create(LOGGER)::validate;
         this.schemaBuilder = new TableSchemaBuilder(valueConverter, this.schemaNameValidator);
 
@@ -130,6 +131,18 @@ public class PostgresSchema {
     }
 
     /**
+     * Refreshes the schema content with a table constructed externally
+     *
+     * @param table constructed externally - typically from decoder metadata
+     */
+    protected void refresh(Table table) {
+        // overwrite (add or update) or views of the tables
+        tables.overwriteTable(table);
+        // and refresh the schema
+        refreshSchema(table.id());
+    }
+
+    /**
      * Get the {@link Filters database and table filters} defined by the configuration.
      *
      * @return the filters; never null
@@ -162,11 +175,11 @@ public class PostgresSchema {
         return !filters.tableFilter().test(id);
     }
 
-    protected boolean isType(String localTypeName, int jdbcType) {
-        return typeInfo != null && Integer.compare(jdbcType, columnTypeNameToPgOid(localTypeName)) == 0;
+    protected boolean isJdbcType(String localTypeName, int jdbcType) {
+        return typeInfo != null && columnTypeNameToJdbcTypeId(localTypeName) == jdbcType;
     }
 
-    protected int columnTypeNameToPgOid(String localTypeName) {
+    protected int columnTypeNameToJdbcTypeId(String localTypeName) {
         return typeInfo.get(localTypeName);
     }
 

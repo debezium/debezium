@@ -833,7 +833,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
         if (data instanceof Integer) return data;
         if (data instanceof Number) {
             Number value = (Number) data;
-            return new Integer(value.intValue());
+            return Integer.valueOf(value.intValue());
         }
         if (data instanceof Boolean) {
             return NumberConversions.getInteger((Boolean) data);
@@ -861,7 +861,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
         if (data instanceof Long) return data;
         if (data instanceof Number) {
             Number value = (Number) data;
-            return new Long(value.longValue());
+            return Long.valueOf(value.longValue());
         }
         if (data instanceof Boolean) {
             return NumberConversions.getLong((Boolean) data);
@@ -903,7 +903,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
         if (data instanceof Number) {
             // Includes BigDecimal and other numeric values ...
             Number value = (Number) data;
-            return new Double(value.doubleValue());
+            return Double.valueOf(value.doubleValue());
         }
         if (data instanceof Boolean) {
             return NumberConversions.getDouble((Boolean) data);
@@ -932,7 +932,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
         if (data instanceof Number) {
             // Includes BigDecimal and other numeric values ...
             Number value = (Number) data;
-            return new Float(value.floatValue());
+            return Float.valueOf(value.floatValue());
         }
         if (data instanceof Boolean) {
             return NumberConversions.getFloat((Boolean) data);

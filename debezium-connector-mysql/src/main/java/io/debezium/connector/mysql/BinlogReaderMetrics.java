@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.jmx.BinaryLogClientStatistics;
 
@@ -15,7 +17,12 @@ class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
 
     private final BinaryLogClient client;
     private final BinaryLogClientStatistics stats;
-    
+
+    private final AtomicLong numberOfCommittedTransactions = new AtomicLong();
+    private final AtomicLong numberOfRolledBackTransactions = new AtomicLong();
+    private final AtomicLong numberOfNotWellFormedTransactions = new AtomicLong();
+    private final AtomicLong numberOfLargeTransactions = new AtomicLong();
+
     public BinlogReaderMetrics( BinaryLogClient client) {
         super("binlog");
         this.client = client;
@@ -75,6 +82,46 @@ class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
     @Override
     public void reset() {
         this.stats.reset();
+        numberOfCommittedTransactions.set(0);
+        numberOfRolledBackTransactions.set(0);
+        numberOfNotWellFormedTransactions.set(0);
+        numberOfLargeTransactions.set(0);
+    }
+
+    @Override
+    public long getNumberOfCommittedTransactions() {
+        return numberOfCommittedTransactions.get();
+    }
+
+    @Override
+    public long getNumberOfRolledBackTransactions() {
+        return numberOfRolledBackTransactions.get();
+    }
+
+    @Override
+    public long getNumberOfNotWellFormedTransactions() {
+        return numberOfNotWellFormedTransactions.get();
+    }
+
+    @Override
+    public long getNumberOfLargeTransactions() {
+        return numberOfLargeTransactions.get();
+    }
+
+    public void onCommittedTransaction() {
+        numberOfCommittedTransactions.incrementAndGet();
+    }
+
+    public void onRolledBackTransaction() {
+        numberOfRolledBackTransactions.incrementAndGet();
+    }
+
+    public void onNotWellFormedTransaction() {
+        numberOfNotWellFormedTransactions.incrementAndGet();
+    }
+
+    public void onLargeTransaction() {
+        numberOfLargeTransactions.incrementAndGet();
     }
 
 }

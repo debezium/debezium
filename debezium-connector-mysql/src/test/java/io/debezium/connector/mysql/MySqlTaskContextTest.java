@@ -92,7 +92,7 @@ public class MySqlTaskContextTest {
     public void shouldCreateTaskFromConfigurationWithNeverSnapshotMode() throws Exception {
         config = simpleConfig().with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
                                .build();
-        context = new MySqlTaskContext(config);
+        context = new MySqlTaskContext(config, false);
         context.start();
 
         assertThat("" + context.snapshotMode().getValue()).isEqualTo(SnapshotMode.NEVER.getValue());
@@ -104,7 +104,7 @@ public class MySqlTaskContextTest {
     public void shouldCreateTaskFromConfigurationWithWhenNeededSnapshotMode() throws Exception {
         config = simpleConfig().with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.WHEN_NEEDED)
                                .build();
-        context = new MySqlTaskContext(config);
+        context = new MySqlTaskContext(config, false);
         context.start();
 
         assertThat("" + context.snapshotMode().getValue()).isEqualTo(SnapshotMode.WHEN_NEEDED.getValue());
@@ -116,7 +116,7 @@ public class MySqlTaskContextTest {
     public void shouldUseGtidSetIncludes() throws Exception {
         config = simpleConfig().with(MySqlConnectorConfig.GTID_SOURCE_INCLUDES, "a,b,c,d.*")
                                .build();
-        context = new MySqlTaskContext(config);
+        context = new MySqlTaskContext(config, false);
         context.start();
 
         Predicate<String> filter = context.gtidSourceFilter();
@@ -143,7 +143,7 @@ public class MySqlTaskContextTest {
         config = simpleConfig().with(MySqlConnectorConfig.GTID_SOURCE_INCLUDES,
                                      "036d85a9-64e5-11e6-9b48-42010af0000c,7145bf69-d1ca-11e5-a588-0242ac110004")
                                .build();
-        context = new MySqlTaskContext(config);
+        context = new MySqlTaskContext(config, false);
         context.start();
 
         Predicate<String> filter = context.gtidSourceFilter();
@@ -173,7 +173,7 @@ public class MySqlTaskContextTest {
         config = simpleConfig().with(MySqlConnectorConfig.GTID_SOURCE_EXCLUDES,
                                      "7c1de3f2-3fd2-11e6-9cdc-42010af000bc")
                                .build();
-        context = new MySqlTaskContext(config);
+        context = new MySqlTaskContext(config, false);
         context.start();
 
         Predicate<String> filter = context.gtidSourceFilter();
@@ -202,7 +202,7 @@ public class MySqlTaskContextTest {
                                .with(MySqlConnectorConfig.GTID_SOURCE_EXCLUDES,
                                      "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-41")
                                .build();
-        context = new MySqlTaskContext(config);
+        context = new MySqlTaskContext(config, false);
         boolean valid = config.validateAndRecord(MySqlConnectorConfig.ALL_FIELDS, msg -> {});
         assertThat(valid).isFalse();
     }
@@ -217,7 +217,7 @@ public class MySqlTaskContextTest {
         config = simpleConfig().with(MySqlConnectorConfig.GTID_SOURCE_INCLUDES,
                                      "036d85a9-64e5-11e6-9b48-42010af0000c")
                                .build();
-        context = new MySqlTaskContext(config);
+        context = new MySqlTaskContext(config, false);
         context.start();
         context.source().setCompletedGtidSet(gtidStr);
 
@@ -245,7 +245,7 @@ public class MySqlTaskContextTest {
                 + "d079cbb3-750f-11e6-954e-42010af00c28:1-11544291:11544293-11885648";
         config = simpleConfig().with(MySqlConnectorConfig.GTID_SOURCE_EXCLUDES, "96c2072e-e428-11e6-9590-42010a28002d")
                                .build();
-        context = new MySqlTaskContext(config);
+        context = new MySqlTaskContext(config, false);
         context.start();
         context.source().setCompletedGtidSet(lastGtidStr);
         HistoryRecordComparator comparator = context.dbSchema().historyComparator();
@@ -272,7 +272,7 @@ public class MySqlTaskContextTest {
     public void shouldIgnoreDatabaseHistoryProperties() throws Exception {
         config = simpleConfig().with(KafkaDatabaseHistory.TOPIC, "dummytopic")
                                .build();
-        context = new MySqlTaskContext(config);
+        context = new MySqlTaskContext(config, false);
         context.start();
 
         context.jdbc().config().forEach((k, v) -> {

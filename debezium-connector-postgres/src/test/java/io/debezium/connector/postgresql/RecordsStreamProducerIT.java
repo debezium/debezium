@@ -11,20 +11,25 @@ import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.assertFalse;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.data.Envelope;
+import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.junit.ConditionalFail;
@@ -55,7 +60,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 "CREATE TABLE table_with_interval (id SERIAL PRIMARY KEY, title VARCHAR(512) NOT NULL, time_limit INTERVAL DEFAULT '60 days'::INTERVAL NOT NULL);" +
                 "INSERT INTO test_table(text) VALUES ('insert');";
         TestHelper.execute(statements);
-        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true).build());
         PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config));
         recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.serverName()));
     }
@@ -108,6 +113,64 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // timezone range types
         consumer.expects(1);
         assertInsert(INSERT_TSTZRANGE_TYPES_STMT, schemaAndValuesForTstzRangeTypes());
+
+        // custom types + null value
+        consumer.expects(1);
+        assertInsert(INSERT_CUSTOM_TYPES_STMT, schemasAndValuesForCustomTypes());
+    }
+
+    @Test(timeout=30000)
+    public void shouldReceiveChangesForInsertsWithPostgisTypes() throws Exception {
+        TestHelper.executeDDL("postgis_create_tables.ddl");
+        consumer = testConsumer(1, "public"); // spatial_ref_sys produces a tonne of records in the postgis schema
+        consumer.setIgnoreExtraRecords(true);
+        recordsProducer.start(consumer);
+
+        // need to wait for all the spatial_ref_sys to flow through and be ignored.
+        // this exceeds the normal 2s timeout.
+        TestHelper.execute("INSERT INTO public.dummy_table DEFAULT VALUES;");
+        consumer.await(TestHelper.waitTimeForRecords() * 10, TimeUnit.SECONDS);
+        while (true) {
+            if (!consumer.isEmpty()) {
+                SourceRecord record = consumer.remove();
+                if (record.topic().endsWith(".public.dummy_table")) {
+                    break;
+                }
+            }
+        }
+
+        // now do it for actual testing
+        // postgis types
+        consumer.expects(1);
+        assertInsert(INSERT_POSTGIS_TYPES_STMT, schemaAndValuesForPostgisTypes());
+    }
+
+    // Geometry arrays are waiting on better array support
+    @Test(timeout=30000)
+    @Ignore
+    public void shouldReceiveChangesForInsertsWithPostgisArrayTypes() throws Exception {
+        TestHelper.executeDDL("postgis_create_tables.ddl");
+        consumer = testConsumer(1, "public"); // spatial_ref_sys produces a tonne of records in the postgis schema
+        consumer.setIgnoreExtraRecords(true);
+        recordsProducer.start(consumer);
+
+        // need to wait for all the spatial_ref_sys to flow through and be ignored.
+        // this exceeds the normal 2s timeout.
+        TestHelper.execute("INSERT INTO public.dummy_table DEFAULT VALUES;");
+        consumer.await(TestHelper.waitTimeForRecords() * 10, TimeUnit.SECONDS);
+        while (true) {
+            if (!consumer.isEmpty()) {
+                SourceRecord record = consumer.remove();
+                if (record.topic().endsWith(".public.dummy_table")) {
+                    break;
+                }
+            }
+        }
+
+        // now do it for actual testing
+        // postgis types
+        consumer.expects(1);
+        assertInsert(INSERT_POSTGIS_ARRAY_TYPES_STMT, schemaAndValuesForPostgisArrayTypes());
     }
 
     @Test
@@ -251,6 +314,30 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statements);
         updatedRecord = consumer.remove();
         VerifyRecord.isValidUpdate(updatedRecord, PK_FIELD, 1);
+
+        // change a column type
+        statements = "ALTER TABLE test_table ADD COLUMN modtype INTEGER;" +
+                "INSERT INTO test_table (pk,modtype) VALUES (2,1);";
+
+        consumer.expects(1);
+        executeAndWait(statements);
+        updatedRecord = consumer.remove();
+
+        VerifyRecord.isValidInsert(updatedRecord, PK_FIELD, 2);
+        assertRecordSchemaAndValues(
+                Collections.singletonList(new SchemaAndValueField("modtype", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 1)), updatedRecord, Envelope.FieldName.AFTER);
+
+        statements = "ALTER TABLE test_table ALTER COLUMN modtype TYPE SMALLINT;"
+                + "UPDATE test_table SET modtype = 2 WHERE pk = 2;";
+
+        consumer.expects(1);
+        executeAndWait(statements);
+        updatedRecord = consumer.remove();
+        VerifyRecord.isValidUpdate(updatedRecord, PK_FIELD, 2);
+        assertRecordSchemaAndValues(
+                Collections.singletonList(new SchemaAndValueField("modtype", SchemaBuilder.OPTIONAL_INT16_SCHEMA, (short)1)), updatedRecord, Envelope.FieldName.BEFORE);
+        assertRecordSchemaAndValues(
+                Collections.singletonList(new SchemaAndValueField("modtype", SchemaBuilder.OPTIONAL_INT16_SCHEMA, (short)2)), updatedRecord, Envelope.FieldName.AFTER);
     }
 
     @Test
@@ -294,6 +381,91 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 new SchemaAndValueField("default_column", SchemaBuilder.OPTIONAL_STRING_SCHEMA ,"default"));
         assertRecordSchemaAndValues(expectedSchemaAndValues, insertRecord, Envelope.FieldName.AFTER);
     }
+
+    @Test
+    public void shouldReceiveChangesForTypeConstraints() throws Exception {
+        // add a new column
+        String statements = "ALTER TABLE test_table ADD COLUMN num_val NUMERIC(5,2);" +
+                            "ALTER TABLE test_table REPLICA IDENTITY FULL;" +
+                            "UPDATE test_table SET num_val = 123.45 WHERE pk = 1;";
+
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer);
+        executeAndWait(statements);
+
+        // the update should be the last record
+        SourceRecord updatedRecord = consumer.remove();
+        String topicName = topicName("public.test_table");
+        assertEquals(topicName, updatedRecord.topic());
+        VerifyRecord.isValidUpdate(updatedRecord, PK_FIELD, 1);
+
+        // now check we got the updated value (the old value should be null, the new one whatever we set)
+        List<SchemaAndValueField> expectedBefore = Collections.singletonList(new SchemaAndValueField("num_val", null, null));
+        assertRecordSchemaAndValues(expectedBefore, updatedRecord, Envelope.FieldName.BEFORE);
+
+        List<SchemaAndValueField> expectedAfter = Collections.singletonList(new SchemaAndValueField("num_val", Decimal.builder(2).optional().build(), new BigDecimal("123.45")));
+        assertRecordSchemaAndValues(expectedAfter, updatedRecord, Envelope.FieldName.AFTER);
+
+        // change a constraint
+        statements = "ALTER TABLE test_table ALTER COLUMN num_val TYPE NUMERIC(6,1);" +
+                "INSERT INTO test_table (pk,num_val) VALUES (2,123.41);";
+
+        consumer.expects(1);
+        executeAndWait(statements);
+        updatedRecord = consumer.remove();
+
+        VerifyRecord.isValidInsert(updatedRecord, PK_FIELD, 2);
+        assertRecordSchemaAndValues(
+                Collections.singletonList(new SchemaAndValueField("num_val", Decimal.builder(1).optional().build(), new BigDecimal("123.4"))), updatedRecord, Envelope.FieldName.AFTER);
+
+        statements = "ALTER TABLE test_table ALTER COLUMN num_val TYPE NUMERIC;" +
+                "INSERT INTO test_table (pk,num_val) VALUES (3,123.4567);";
+
+        consumer.expects(1);
+        executeAndWait(statements);
+        updatedRecord = consumer.remove();
+
+        final Struct dvs = new Struct(VariableScaleDecimal.schema());
+        dvs.put("scale", 4).put("value", new BigDecimal("123.4567").unscaledValue().toByteArray());
+        VerifyRecord.isValidInsert(updatedRecord, PK_FIELD, 3);
+        assertRecordSchemaAndValues(
+                Collections.singletonList(new SchemaAndValueField("num_val", VariableScaleDecimal.builder().optional().build(), dvs)), updatedRecord, Envelope.FieldName.AFTER);
+
+        statements = "ALTER TABLE test_table ALTER COLUMN num_val TYPE DECIMAL(12,4);" +
+                "INSERT INTO test_table (pk,num_val) VALUES (4,2.48);";
+
+        consumer.expects(1);
+        executeAndWait(statements);
+        updatedRecord = consumer.remove();
+
+        VerifyRecord.isValidInsert(updatedRecord, PK_FIELD, 4);
+        assertRecordSchemaAndValues(
+                Collections.singletonList(new SchemaAndValueField("num_val", Decimal.builder(4).optional().build(), new BigDecimal("2.4800"))), updatedRecord, Envelope.FieldName.AFTER);
+
+        statements = "ALTER TABLE test_table ALTER COLUMN num_val TYPE DECIMAL(12);" +
+                "INSERT INTO test_table (pk,num_val) VALUES (5,1238);";
+
+        consumer.expects(1);
+        executeAndWait(statements);
+        updatedRecord = consumer.remove();
+
+        VerifyRecord.isValidInsert(updatedRecord, PK_FIELD, 5);
+        assertRecordSchemaAndValues(
+                Collections.singletonList(new SchemaAndValueField("num_val", Decimal.builder(0).optional().build(), new BigDecimal("1238.0"))), updatedRecord, Envelope.FieldName.AFTER);
+
+        statements = "ALTER TABLE test_table ALTER COLUMN num_val TYPE DECIMAL;" +
+                "INSERT INTO test_table (pk,num_val) VALUES (6,1225.1);";
+
+        consumer.expects(1);
+        executeAndWait(statements);
+        updatedRecord = consumer.remove();
+
+        final Struct dvs2 = new Struct(VariableScaleDecimal.schema());
+        dvs2.put("scale", 1).put("value", new BigDecimal("1225.1").unscaledValue().toByteArray());
+        VerifyRecord.isValidInsert(updatedRecord, PK_FIELD, 6);
+        assertRecordSchemaAndValues(
+                Collections.singletonList(new SchemaAndValueField("num_val", VariableScaleDecimal.builder().optional().build(), dvs2)), updatedRecord, Envelope.FieldName.AFTER);
+}
 
     @Test
     public void shouldReceiveChangesForDeletes() throws Exception {
@@ -354,9 +526,40 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 "INSERT INTO table_with_interval VALUES (default, 'Bar', default);" +
                 "DELETE FROM table_with_interval WHERE id = 1;";
 
-        consumer = testConsumer(3);
+        consumer = testConsumer(4);
         recordsProducer.start(consumer);
         executeAndWait(statements);
+
+        final String topicPrefix = "public.table_with_interval";
+        final String topicName = topicName(topicPrefix);
+        final String pk = "id";
+        assertRecordInserted(topicPrefix, pk, 1);
+        assertRecordInserted(topicPrefix, pk, 2);
+
+        // first entry removed
+        SourceRecord record = consumer.remove();
+        assertEquals(topicName, record.topic());
+        VerifyRecord.isValidDelete(record, pk, 1);
+
+        // followed by a tombstone
+        record = consumer.remove();
+        assertEquals(topicName, record.topic());
+        VerifyRecord.isValidTombstone(record, pk, 1);
+    }
+
+    @Test
+    @FixFor("DBZ-501")
+    public void shouldNotStartAfterStop() throws Exception {
+        recordsProducer.stop();
+        recordsProducer.start(consumer);
+
+        // Need to remove record created in @Before
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true).build());
+        PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config));
+        recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.serverName()));
+
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer);
     }
 
     private void assertInsert(String statement, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {

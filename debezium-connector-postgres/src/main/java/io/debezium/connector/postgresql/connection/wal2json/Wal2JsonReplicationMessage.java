@@ -10,9 +10,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -29,8 +26,11 @@ import org.postgresql.util.PGmoney;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.postgresql.PgOid;
 import io.debezium.connector.postgresql.PostgresValueConverter;
 import io.debezium.connector.postgresql.RecordsStreamProducer.PgConnectionSupplier;
+import io.debezium.connector.postgresql.connection.AbstractReplicationMessageColumn;
+import io.debezium.connector.postgresql.connection.AbstractReplicationMessageColumn.TypeMetadataImpl;
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.document.Array;
 import io.debezium.document.Document;
@@ -45,16 +45,19 @@ import io.debezium.util.Strings;
 class Wal2JsonReplicationMessage implements ReplicationMessage {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Wal2JsonReplicationMessage.class);
-    private static final Pattern TYPE_PATTERN = Pattern.compile("^(?<full>(?<base>[^(\\[]+)(?:\\((?<mod>.+)\\))?(?<suffix>.*?))(?<array>\\[\\])?$");
 
     private final int txId;
     private final long commitTime;
     private final Document rawMessage;
+    private final boolean hasMetadata;
+    final boolean lastEventForLsn;
 
-    public Wal2JsonReplicationMessage(final int txId, final long commitTime, final Document rawMessage) {
+    public Wal2JsonReplicationMessage(final int txId, final long commitTime, final Document rawMessage, final boolean hasMetadata, boolean lastEventForLsn) {
         this.txId = txId;
         this.commitTime = commitTime;
         this.rawMessage = rawMessage;
+        this.hasMetadata = hasMetadata;
+        this.lastEventForLsn = lastEventForLsn;
     }
 
     @Override
@@ -90,18 +93,24 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
     @Override
     public List<ReplicationMessage.Column> getOldTupleList() {
         final Document oldkeys = rawMessage.getDocument("oldkeys");
-        return oldkeys != null ? transform(oldkeys, "keynames", "keytypes", "keyvalues") : null;
+        return oldkeys != null ? transform(oldkeys, "keynames", "keytypes", "keyvalues", "columnoptionals") : null;
     }
 
     @Override
     public List<ReplicationMessage.Column> getNewTupleList() {
-        return transform(rawMessage, "columnnames", "columntypes", "columnvalues");
+        return transform(rawMessage, "columnnames", "columntypes", "columnvalues", "columnoptionals");
     }
 
-    private List<ReplicationMessage.Column> transform(final Document data, final String nameField, final String typeField, final String valueField) {
+    @Override
+    public boolean hasMetadata() {
+        return hasMetadata;
+    }
+
+    private List<ReplicationMessage.Column> transform(final Document data, final String nameField, final String typeField, final String valueField, final String optionalsField) {
         final Array columnNames = data.getArray(nameField);
         final Array columnTypes = data.getArray(typeField);
         final Array columnValues = data.getArray(valueField);
+        final Array columnOptionals = data.getArray(optionalsField);
 
         if (columnNames.size() != columnTypes.size() || columnNames.size() != columnValues.size()) {
             throw new ConnectException("Column related arrays do not have the same size");
@@ -112,23 +121,21 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
         for (int i = 0; i < columnNames.size(); i++) {
             String columnName = columnNames.get(i).asString();
             String columnType = columnTypes.get(i).asString();
+            boolean columnOptional = columnOptionals != null ? columnOptionals.get(i).asBoolean() : false;
             Value rawValue = columnValues.get(i);
 
-            columns.add(new ReplicationMessage.Column() {
+            columns.add(new AbstractReplicationMessageColumn(columnName, columnType, columnOptional, true) {
 
                 @Override
-                public Object getValue(PgConnectionSupplier connection) {
-                    return Wal2JsonReplicationMessage.this.getValue(columnName, columnType, rawValue, connection);
+                public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
+                    return Wal2JsonReplicationMessage.this.getValue(columnName, getTypeMetadata(), rawValue, connection, includeUnknownDatatypes);
                 }
 
                 @Override
-                public String getType() {
-                    return columnType;
-                }
-
-                @Override
-                public String getName() {
-                    return columnName;
+                public int doGetOidType() {
+                    return getTypeMetadata().isArray() ?
+                            PgOid.typeNameToOid(getTypeMetadata().getName().substring(1)) :
+                            PgOid.typeNameToOid(getTypeMetadata().getName());
                 }
             });
         }
@@ -147,53 +154,27 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
      *
      * @return the value; may be null
      */
-    public Object getValue(String columnName, String columnType, Value rawValue, final PgConnectionSupplier connection) {
+    public Object getValue(String columnName, TypeMetadataImpl typeMetadata, Value rawValue, final PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
         if (rawValue.isNull()) {
             // nulls are null
             return null;
         }
 
-        // we support wal2json both before & after commit 0255f2ac, which means we may get old-style type names
-        // (eg. int2, timetz, varchar, numeric, _int4)
-        // or new-style/verbose ones
-        // (eg. smallint; time with time zone; character varying (255); decimal (10,3), integer[])
-
-        Matcher m = TYPE_PATTERN.matcher(columnType);
-        if (!m.matches()) {
-            LOGGER.error("Failed to parse columnType for {} '{}'", columnName, columnType);
-            throw new ConnectException(String.format("Failed to parse columnType '%s' for column %s", columnType, columnName));
-        }
-        String fullType = m.group("full");
-        String baseType = m.group("base").trim();
-        if (!Objects.toString(m.group("suffix"), "").isEmpty()) {
-            baseType = String.join(" ", baseType, m.group("suffix").trim());
-        }
-
-        boolean isArray = (m.group("array") != null);
-
-        if (baseType.startsWith("_")) {
-            // old-style type specifiers use an _ prefix for arrays
-            // e.g. int4[] would be "_int4"
-            baseType = baseType.substring(1);
-            fullType = fullType.substring(1);
-            isArray = true;
-        }
-
-        if (isArray) {
+        if (typeMetadata.isArray()) {
             try {
                 final String dataString = rawValue.asString();
-                PgArray arrayData = new PgArray(connection.get(), connection.get().getTypeInfo().getPGArrayType(fullType), dataString);
+                int arrayTypeOid = connection.get().getTypeInfo().getPGType(typeMetadata.getName());
+                PgArray arrayData = new PgArray(connection.get(), arrayTypeOid, dataString);
                 Object deserializedArray = arrayData.getArray();
-                // TODO: what types are these? Shouldn't they pass through this function again?
                 return Arrays.asList((Object[])deserializedArray);
             }
             catch (SQLException e) {
-                LOGGER.warn("Unexpected exception trying to process PgArray ({}) column '{}', {}", columnType, columnName, e);
+                LOGGER.warn("Unexpected exception trying to process PgArray ({}) column '{}', {}", typeMetadata.getFullType(), columnName, e);
             }
             return null;
         }
 
-        switch (baseType) {
+        switch (typeMetadata.getBaseType()) {
             // include all types from https://www.postgresql.org/docs/current/static/datatype.html#DATATYPE-TABLE
             // plus aliases from the shorter names produced by older wal2json
             case "boolean":
@@ -327,6 +308,12 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
                     throw new ConnectException(e);
                 }
 
+            // PostGIS types are HexEWKB strings
+            // ValueConverter turns them into the correct types
+            case "geometry":
+            case "geography":
+                return rawValue.asString();
+
             case "bit":
             case "bit varying":
             case "varbit":
@@ -351,6 +338,30 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
                 break;
         }
 
+        if (includeUnknownDatatypes) {
+            // this includes things like PostGIS geometries or other custom types.
+            // leave up to the downstream message recipient to deal with.
+            LOGGER.debug("processing column '{}' with unknown data type '{}' as byte array", columnName,
+                    typeMetadata.getFullType());
+            return rawValue.asString();
+        }
+        LOGGER.debug("Unknown column type {} for column {} – ignoring", typeMetadata.getFullTypeWithSchema(), columnName);
         return null;
+    }
+
+    /**
+     * CHAR and VARCHAR are using internal name BPCHAR
+     *
+     * @param typeName
+     * @return the internal type name
+     */
+    private String toInternalTypeName(TypeMetadataImpl typeMetadata) {
+        final String fullTypeName = typeMetadata.getFullType();
+        return fullTypeName.startsWith("character") ? "bpchar" : fullTypeName;
+    }
+
+    @Override
+    public boolean isLastEventForLsn() {
+        return lastEventForLsn;
     }
 }

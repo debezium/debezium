@@ -1,0 +1,42 @@
+# Job definition to test PostgreSQL connector against PostgreSQL 9.6 with old protobuf decoder without metadata
+---
+- job:
+    project-type: freestyle
+    name: debezium-postgresql-9.6-legacy-test
+    display-name: Debezium PostgreSQL 9.6 Test (legacy decoder)
+    description: Executes tests for PostgreSQL Connector with PostgreSQL 9.6 with connector without metadata
+    node: Slave
+    properties:
+      - build-discarder:
+          days-to-keep: 7
+      - github:
+          url: https://github.com/debezium/debezium
+    parameters:
+      - string:
+          name: REPOSITORY
+          default: https://github.com/debezium/debezium
+          description: "Repository from which Debezium is built"
+      - string:
+          name: BRANCH
+          default: master
+          description: "A branch from which Debezium is built"
+    scm:
+      - git:
+         url: $REPOSITORY
+         branches:
+          - "*/$BRANCH"
+    wrappers:
+      - timeout:
+          timeout: 45
+    triggers:
+      - reverse:
+          jobs: 'debezium-postgresql-test-wal2json'
+    builders:
+      - maven-target:
+          maven-version: (Default)
+          goals: clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-postgres -am -fae -Dmaven.test.failure.ignore=true -Dpostgres.port=55432 -Dversion.postgres.server=9.6-legacy
+    publishers:
+      - junit:
+          results: "**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml"
+      - email:
+          recipients: jpechane@redhat.com

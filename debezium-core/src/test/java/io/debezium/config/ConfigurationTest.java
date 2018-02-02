@@ -5,14 +5,19 @@
  */
 package io.debezium.config;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.fest.assertions.Assertions.assertThat;
+import io.debezium.doc.FixFor;
+import io.debezium.function.Predicates;
+import io.debezium.relational.history.DatabaseHistory;
 
 /**
  * @author Randall Hauch
@@ -21,7 +26,7 @@ import static org.fest.assertions.Assertions.assertThat;
 public class ConfigurationTest {
 
     private Configuration config;
-    
+
     @Before
     public void beforeEach() {
         config = Configuration.create().with("A", "a")
@@ -29,7 +34,7 @@ public class ConfigurationTest {
                 .with("1", 1)
                 .build();
     }
-    
+
     @Test
     public void shouldConvertFromProperties() {
         Properties props = new Properties();
@@ -43,7 +48,7 @@ public class ConfigurationTest {
         assertThat(config.getInteger("1")).isEqualTo(1);    // converts
         assertThat(config.getBoolean("1")).isNull();    // not a boolean
     }
-    
+
     @Test
     public void shouldCallFunctionOnEachMatchingFieldUsingRegex() {
         config = Configuration.create()
@@ -54,7 +59,7 @@ public class ConfigurationTest {
                 .with("column.mask.with.0.chars", "0-mask")
                 .with("column.mask.with.chars", "should-not-be-matched")
                 .build();
-        
+
         // Use a regex that captures an integer using a regex group ...
         AtomicInteger counter = new AtomicInteger();
         config.forEachMatchingFieldNameWithInteger("column\\.truncate\\.to\\.(\\d+)\\.chars",(value,n)->{
@@ -62,7 +67,7 @@ public class ConfigurationTest {
             assertThat(value).isEqualTo(Integer.toString(n) + "-chars");
         });
         assertThat(counter.get()).isEqualTo(2);
-        
+
         // Use a regex that captures an integer using a regex group ...
         counter.set(0);
         config.forEachMatchingFieldNameWithInteger("column.mask.with.(\\d+).chars",(value,n)->{
@@ -70,7 +75,7 @@ public class ConfigurationTest {
             assertThat(value).isEqualTo(Integer.toString(n) + "-mask");
         });
         assertThat(counter.get()).isEqualTo(2);
-        
+
         // Use a regex that matches the name but also uses a regex group ...
         counter.set(0);
         config.forEachMatchingFieldName("column.mask.with.(\\d+).chars",(name,value)->{
@@ -80,7 +85,7 @@ public class ConfigurationTest {
             assertThat(value).endsWith("-mask");
         });
         assertThat(counter.get()).isEqualTo(2);
-        
+
         // Use a regex that matches all of our fields ...
         counter.set(0);
         config.forEachMatchingFieldName("column.*",(name,value)->{
@@ -91,13 +96,13 @@ public class ConfigurationTest {
         });
         assertThat(counter.get()).isEqualTo(6);
     }
-    
+
     @Test
     public void shouldMaskPasswords() {
         Pattern p = Pattern.compile(".*password$",Pattern.CASE_INSENSITIVE);
         assertThat(p.matcher("password").matches()).isTrue();
         assertThat(p.matcher("otherpassword").matches()).isTrue();
-        
+
         config = Configuration.create()
                 .with("column.password", "warning")
                 .with("column.Password.this.is.not","value")
@@ -112,4 +117,16 @@ public class ConfigurationTest {
         assertThat(config.getString("column.password")).isEqualTo("warning");
     }
 
+    /**
+     * On Amazon RDS we'll see INSERT (sic!) statements for a heartbeat table in the DDL even stream, they should
+     * be filtered out by default (the reason being that those statements are sent using STATEMENT binlog format,
+     * which is just applied for that session emitting those statements).
+     */
+    @Test
+    @FixFor("DBZ-469")
+    public void defaultDddlFilterShouldFilterOutRdsHeartbeatInsert() {
+        String defaultDdlFilter = Configuration.create().build().getString(DatabaseHistory.DDL_FILTER);
+        Predicate<String> ddlFilter = Predicates.includes(defaultDdlFilter);
+        assertThat(ddlFilter.test("INSERT INTO mysql.rds_heartbeat2(id, value) values (1,1510678117058) ON DUPLICATE KEY UPDATE value = 1510678117058")).isTrue();
+    }
 }

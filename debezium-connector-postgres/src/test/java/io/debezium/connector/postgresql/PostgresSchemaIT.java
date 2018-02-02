@@ -29,6 +29,8 @@ import io.debezium.data.Json;
 import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.Xml;
+import io.debezium.data.geometry.Geography;
+import io.debezium.data.geometry.Geometry;
 import io.debezium.data.geometry.Point;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -52,7 +54,8 @@ public class PostgresSchemaIT {
     private static final String[] TEST_TABLES = new String[] { "public.numeric_table", "public.numeric_decimal_table", "public.string_table",
                                                                "public.cash_table","public.bitbin_table",
                                                                "public.time_table", "public.text_table", "public.geom_table", "public.tstzrange_table",
-                                                               "public.array_table", "\"Quoted_\"\" . Schema\".\"Quoted_\"\" . Table\""
+                                                               "public.array_table", "\"Quoted_\"\" . Schema\".\"Quoted_\"\" . Table\"",
+                                                               "public.custom_table"
                                                              };
 
     private PostgresSchema schema;
@@ -103,6 +106,36 @@ public class PostgresSchemaIT {
                               SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
             assertTableSchema("\"Quoted_\"\" . Schema\".\"Quoted_\"\" . Table\"", "\"Quoted_\"\" . Text_Column\"",
                               Schema.OPTIONAL_STRING_SCHEMA);
+
+            TableSchema tableSchema = schemaFor("public.custom_table");
+            assertThat(tableSchema.valueSchema().field("lt")).isNull();
+        }
+    }
+
+    @Test
+    public void shouldLoadSchemaForExtensionPostgresTypes() throws Exception {
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        schema = new PostgresSchema(new PostgresConnectorConfig(TestHelper.defaultConfig().with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true).build()));
+        try (PostgresConnection connection = TestHelper.create()) {
+            schema.refresh(connection, false);
+            assertTablesIncluded(TEST_TABLES);
+            assertTableSchema("public.custom_table", "lt, i",
+                    Schema.OPTIONAL_BYTES_SCHEMA, Schema.OPTIONAL_BYTES_SCHEMA);
+        }
+    }
+
+    @Test
+    public void shouldLoadSchemaForPostgisTypes() throws Exception {
+        TestHelper.executeDDL("postgis_create_tables.ddl");
+        schema = new PostgresSchema(new PostgresConnectorConfig(TestHelper.defaultConfig().build()));
+        try (PostgresConnection connection = TestHelper.create()) {
+            schema.refresh(connection, false);
+            final String[] testTables = new String[] {"public.postgis_table"};
+            assertTablesIncluded(testTables);
+            Arrays.stream(testTables).forEach(tableId -> assertKeySchema(tableId, "pk", Schema.INT32_SCHEMA));
+
+            assertTableSchema("public.postgis_table", "p, ml",
+                              Geometry.builder().optional().build(), Geography.builder().optional().build());
         }
     }
 

@@ -169,40 +169,58 @@ public class MySqlConnectorConfig {
         /**
          * Perform a snapshot when it is needed.
          */
-        WHEN_NEEDED("when_needed"),
+        WHEN_NEEDED("when_needed", true),
 
         /**
          * Perform a snapshot only upon initial startup of a connector.
          */
-        INITIAL("initial"),
+        INITIAL("initial", true),
 
         /**
          * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog.
          * This should be used with care, but it is very useful when the change event consumers need only the changes
          * from the point in time the snapshot is made (and doesn't care about any state or changes prior to this point).
          */
-        SCHEMA_ONLY("schema_only"),
+        SCHEMA_ONLY("schema_only", false),
+
+        /**
+         * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog at the current binlog position.
+         * This can be used for recovery only if the connector has existing offsets and the database.history.kafka.topic does not exist (deleted).
+         * This recovery option should be used with care as it assumes there have been no schema changes since the connector last stopped,
+         * otherwise some events during the gap may be processed with an incorrect schema and corrupted.
+         */
+        SCHEMA_ONLY_RECOVERY("schema_only_recovery", false),
 
         /**
          * Never perform a snapshot and only read the binlog. This assumes the binlog contains all the history of those
          * databases and tables that will be captured.
          */
-        NEVER("never"),
+        NEVER("never", false),
 
         /**
          * Perform a snapshot and then stop before attempting to read the binlog.
          */
-        INITIAL_ONLY("initial_only");
+        INITIAL_ONLY("initial_only", true);
 
         private final String value;
+        private final boolean includeData;
 
-        private SnapshotMode(String value) {
+        private SnapshotMode(String value, boolean includeData) {
             this.value = value;
+            this.includeData = includeData;
         }
 
         @Override
         public String getValue() {
             return value;
+        }
+
+        /**
+         * Whether this snapshotting mode should include the actual data or just the
+         * schema of captured tables.
+         */
+        public boolean includeData() {
+            return includeData;
         }
 
         /**
@@ -359,6 +377,14 @@ public class MySqlConnectorConfig {
     private static final String DATABASE_WHITELIST_NAME = "database.whitelist";
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
     private static final String TABLE_IGNORE_BUILTIN_NAME = "table.ignore.builtin";
+
+    /**
+     * Default size of the binlog buffer used for examining transactions and
+     * deciding whether to propagate them or not. A size of 0 disables the buffer,
+     * all events will be passed on directly as they are passed by the binlog
+     * client.
+     */
+    private static final int DEFAULT_BINLOG_BUFFER_SIZE = 0;
 
     public static final Field HOSTNAME = Field.create("database.hostname")
                                               .withDisplayName("Hostname")
@@ -644,6 +670,18 @@ public class MySqlConnectorConfig {
                                                                          .withDefault(1_000)
                                                                          .withValidation(Field::isNonNegativeLong);
 
+    public static final Field BUFFER_SIZE_FOR_BINLOG_READER = Field.create("binlog.buffer.size")
+                                                                   .withDisplayName("Binlog reader buffer size")
+                                                                   .withType(Type.INT)
+                                                                   .withWidth(Width.MEDIUM)
+                                                                   .withImportance(Importance.MEDIUM)
+                                                                   .withDescription("The size of a look-ahead buffer used by the  binlog reader to decide whether "
+                                                                           + "the transaction in progress is going to be committed or rolled back. "
+                                                                           + "Use 0 to disable look-ahead buffering. "
+                                                                           + "Defaults to " + DEFAULT_BINLOG_BUFFER_SIZE + " (i.e. buffering is disabled).")
+                                                                   .withDefault(DEFAULT_BINLOG_BUFFER_SIZE)
+                                                                   .withValidation(Field::isNonNegativeInteger);
+
     /**
      * The database history class is hidden in the {@link #configDef()} since that is designed to work with a user interface,
      * and in these situations using Kafka is the only way to go.
@@ -718,12 +756,12 @@ public class MySqlConnectorConfig {
 
     public static final Field BIGINT_UNSIGNED_HANDLING_MODE = Field.create("bigint.unsigned.handling.mode")
                                                            .withDisplayName("BIGINT UNSIGNED Handling")
-                                                           .withEnum(BigIntUnsignedHandlingMode.class, BigIntUnsignedHandlingMode.PRECISE)
+                                                           .withEnum(BigIntUnsignedHandlingMode.class, BigIntUnsignedHandlingMode.LONG)
                                                            .withWidth(Width.SHORT)
                                                            .withImportance(Importance.MEDIUM)
                                                            .withDescription("Specify how BIGINT UNSIGNED columns should be represented in change events, including:"
-                                                                            + "'precise' (the default) uses java.math.BigDecimal to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; "
-                                                                            + "'long' represents values using Java's 'long', which may not offer the precision but will be far easier to use in consumers.");
+                                                                            + "'precise' uses java.math.BigDecimal to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; "
+                                                                            + "'long' (the default) represents values using Java's 'long', which may not offer the precision but will be far easier to use in consumers.");
 
     public static final Field EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE = Field.create("event.deserialization.failure.handling.mode")
             .withDisplayName("Event deserialization failure handling")
@@ -734,6 +772,16 @@ public class MySqlConnectorConfig {
                              + "'fail' (the default) an exception indicating the problematic event and its binlog position is raised, causing the connector to be stopped; "
                              + "'warn' the problematic event and its binlog position will be logged and the event will be skipped;"
                              + "'ignore' the problematic event will be skipped.");
+
+    public static final Field SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE = Field.create("snapshot.select.statement.overrides")
+            .withDisplayName("List of tables where the default select statement used during snapshotting should be overridden.")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription(" This property contains a comma-separated list of fully-qualified tables (DB_NAME.TABLE_NAME). Select statements for the individual tables are " +
+                    "specified in further configuration properties, one for each table, identified by the id 'snapshot.select.statement.overrides.[DB_NAME].[TABLE_NAME]'. " +
+                    "The value of those properties is the select statement to use when retrieving data from the specific table during snapshotting. " +
+                    "A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted.");
 
     /**
      * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
@@ -773,7 +821,7 @@ public class MySqlConnectorConfig {
                                                      SERVER_NAME,
                                                      CONNECTION_TIMEOUT_MS, KEEP_ALIVE,
                                                      MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
-                                                     DATABASE_HISTORY, INCLUDE_SCHEMA_CHANGES,
+                                                     BUFFER_SIZE_FOR_BINLOG_READER, DATABASE_HISTORY, INCLUDE_SCHEMA_CHANGES,
                                                      TABLE_WHITELIST, TABLE_BLACKLIST, TABLES_IGNORE_BUILTIN,
                                                      DATABASE_WHITELIST, DATABASE_BLACKLIST,
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING,
@@ -796,6 +844,7 @@ public class MySqlConnectorConfig {
                                                                 KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
                                                                 KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS,
                                                                 DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS,
+                                                                DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL,
                                                                 DatabaseHistory.DDL_FILTER);
 
     protected static ConfigDef configDef() {
@@ -805,10 +854,11 @@ public class MySqlConnectorConfig {
         Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                     KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
                     KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, DATABASE_HISTORY,
-                    DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, DatabaseHistory.DDL_FILTER);
+                    DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, DatabaseHistory.DDL_FILTER,
+                    DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL);
         Field.group(config, "Events", INCLUDE_SCHEMA_CHANGES, TABLES_IGNORE_BUILTIN, DATABASE_WHITELIST, TABLE_WHITELIST,
                     COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST,
-                    GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS,
+                    GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS, BUFFER_SIZE_FOR_BINLOG_READER,
                     EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
                     SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,

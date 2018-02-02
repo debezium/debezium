@@ -2691,4 +2691,11 @@ public class TokenStream {
             }
         }
     }
+
+    /**
+     * @return a string to be parsed
+     */
+    public String getInputString() {
+        return inputString;
+    }
 }
