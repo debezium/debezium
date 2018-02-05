@@ -640,54 +640,58 @@ public class BinlogReader extends AbstractReader {
         if (recordMakers.assign(tableNumber, tableId)) {
             logger.debug("Received update table metadata event: {}", event);
         } else {
-            if (context.dbSchema().isTableMonitored(tableId)) {
-                EventHeaderV4 eventHeader = event.getHeader();
+            eventNotToBeRecorded(event, tableId, "update table metadata");
+        }
+    }
 
-                if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
-                    logger.error(
-                            "Encountered change event '{}' at offset {} for table whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}" +
-                            "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
-                            event,
-                            source.offset(),
-                            System.lineSeparator(),
-                            eventHeader.getPosition(),
-                            eventHeader.getNextPosition(),
-                            source.binlogFilename()
-                    );
-                    throw new ConnectException("Encountered change event for table whose schema isn't known to this connector");
-                }
-                else if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.WARN) {
-                    logger.warn(
-                            "Encountered change event '{}' at offset {} for table whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}" +
-                            "The event will be ingored.{}" +
-                            "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
-                            event,
-                            source.offset(),
-                            System.lineSeparator(),
-                            System.lineSeparator(),
-                            eventHeader.getPosition(),
-                            eventHeader.getNextPosition(),
-                            source.binlogFilename()
-                    );
-                }
-                else {
-                    logger.debug(
-                            "Encountered change event '{}' at offset {} for table whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}" +
-                            "The event will be ingored.{}" +
-                            "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
-                            event,
-                            source.offset(),
-                            System.lineSeparator(),
-                            System.lineSeparator(),
-                            eventHeader.getPosition(),
-                            eventHeader.getNextPosition(),
-                            source.binlogFilename()
-                    );
-                }
+    private void eventNotToBeRecorded(Event event, TableId tableId, String typeToLog) {
+        if (tableId != null && context.dbSchema().isTableMonitored(tableId)) {
+            EventHeaderV4 eventHeader = event.getHeader();
+
+            if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
+                logger.error(
+                        "Encountered change event '{}' at offset {} for table whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}" +
+                        "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
+                        event,
+                        source.offset(),
+                        System.lineSeparator(),
+                        eventHeader.getPosition(),
+                        eventHeader.getNextPosition(),
+                        source.binlogFilename()
+                );
+                throw new ConnectException("Encountered change event for table whose schema isn't known to this connector");
+            }
+            else if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.WARN) {
+                logger.warn(
+                        "Encountered change event '{}' at offset {} for table whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}" +
+                        "The event will be ignored.{}" +
+                        "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
+                        event,
+                        source.offset(),
+                        System.lineSeparator(),
+                        System.lineSeparator(),
+                        eventHeader.getPosition(),
+                        eventHeader.getNextPosition(),
+                        source.binlogFilename()
+                );
             }
             else {
-                logger.debug("Skipping update table metadata event: {} for non-monitored table {}", event, tableId);
+                logger.debug(
+                        "Encountered change event '{}' at offset {} for table whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}" +
+                        "The event will be ignored.{}" +
+                        "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
+                        event,
+                        source.offset(),
+                        System.lineSeparator(),
+                        System.lineSeparator(),
+                        eventHeader.getPosition(),
+                        eventHeader.getNextPosition(),
+                        source.binlogFilename()
+                );
             }
+        }
+        else {
+            logger.debug("Skipping {} event: {} for non-monitored table {}", typeToLog, event, tableId);
         }
     }
 
@@ -733,7 +737,7 @@ public class BinlogReader extends AbstractReader {
                 logger.debug("Skipping previously processed insert event: {}", event);
             }
         } else {
-            logger.debug("Skipping insert row event: {}", event);
+            eventNotToBeRecorded(event, recordMakers.getTableIfFromTableNumber(tableNumber), "insert row");
         }
         startingRowNumber = 0;
     }
@@ -784,7 +788,7 @@ public class BinlogReader extends AbstractReader {
                 logger.debug("Skipping previously processed update event: {}", event);
             }
         } else {
-            logger.debug("Skipping update row event: {}", event);
+            eventNotToBeRecorded(event, recordMakers.getTableIfFromTableNumber(tableNumber), "update row");
         }
         startingRowNumber = 0;
     }
@@ -831,7 +835,7 @@ public class BinlogReader extends AbstractReader {
                 logger.debug("Skipping previously processed delete event: {}", event);
             }
         } else {
-            logger.debug("Skipping delete row event: {}", event);
+            eventNotToBeRecorded(event, recordMakers.getTableIfFromTableNumber(tableNumber), "delete row");
         }
         startingRowNumber = 0;
     }

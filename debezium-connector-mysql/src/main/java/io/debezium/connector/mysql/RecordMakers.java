@@ -40,6 +40,7 @@ public class RecordMakers {
     private final TopicSelector topicSelector;
     private final Map<Long, Converter> convertersByTableNumber = new HashMap<>();
     private final Map<TableId, Long> tableNumbersByTableId = new HashMap<>();
+    private final Map<Long, TableId> tableIdsByTableNumber = new HashMap<>();
     private final Schema schemaChangeKeySchema;
     private final Schema schemaChangeValueSchema;
     private final AvroValidator schemaNameValidator = AvroValidator.create(logger);
@@ -139,6 +140,7 @@ public class RecordMakers {
         logger.debug("Clearing table converters");
         convertersByTableNumber.clear();
         tableNumbersByTableId.clear();
+        tableIdsByTableNumber.clear();
     }
 
     /**
@@ -302,6 +304,7 @@ public class RecordMakers {
 
         convertersByTableNumber.put(tableNumber, converter);
         Long previousTableNumber = tableNumbersByTableId.put(id, tableNumber);
+        tableIdsByTableNumber.put(tableNumber, id);
         if (previousTableNumber != null) {
             assert previousTableNumber.longValue() != tableNumber;
             convertersByTableNumber.remove(previousTableNumber);
@@ -471,5 +474,15 @@ public class RecordMakers {
         public int delete(Object[] row, long ts, int rowNumber, int numberOfRows) throws InterruptedException {
             return converter.delete(source, row, rowNumber, numberOfRows, includedColumns, ts, consumer);
         }
+    }
+
+    /**
+     * Converts table number back to table id
+     *
+     * @param tableNumber
+     * @return the table id or null for unknown tables
+     */
+    public TableId getTableIfFromTableNumber(long tableNumber) {
+        return tableIdsByTableNumber.get(tableNumber);
     }
 }
