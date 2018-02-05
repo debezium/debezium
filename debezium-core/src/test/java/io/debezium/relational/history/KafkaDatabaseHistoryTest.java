@@ -108,6 +108,9 @@ public class KafkaDatabaseHistoryTest {
         // Should be able to call start more than once ...
         history.start();
 
+        history.initializeStorage();
+        history.initializeStorage();
+
         DdlParser recoveryParser = new DdlParserSql2003();
         DdlParser ddlParser = new DdlParserSql2003();
         ddlParser.setCurrentSchema("db1"); // recover does this, so we need to as well

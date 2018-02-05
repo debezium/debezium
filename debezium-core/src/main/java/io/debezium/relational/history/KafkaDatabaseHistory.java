@@ -10,7 +10,6 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -55,8 +54,6 @@ import io.debezium.util.Collect;
  */
 @NotThreadSafe
 public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
-
-    private static final Duration MESSAGE_RETENTION_IN_DAYS = Duration.ofDays(365 * 10);
 
     public static final Field TOPIC = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.topic")
                                            .withDisplayName("Database history topic name")
@@ -163,42 +160,8 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     @Override
     public synchronized void start() {
         super.start();
-        createDatabaseHistoryTopic();
         if (this.producer == null) {
             this.producer = new KafkaProducer<>(this.producerConfig.asProperties());
-        }
-    }
-
-    private void createDatabaseHistoryTopic() {
-        final AdminClient admin = AdminClient.create(this.producerConfig.asProperties());
-        try {
-            short replicationFactor;
-
-            Optional<String> findTopic = admin.listTopics().names().get(KAFKA_QUERY_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS).stream().filter(x -> topicName.equals(x)).findFirst();
-
-            if (!findTopic.isPresent()) {
-                // Find default replication factor
-                final Collection<Node> nodes = admin.describeCluster().nodes().get(KAFKA_QUERY_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
-                if (nodes.isEmpty()) {
-                    throw new ConnectException("No brokers available to obtain default settings");
-                }
-                final Map<ConfigResource, Config> configs = admin.describeConfigs(Collections.singleton(new ConfigResource(ConfigResource.Type.BROKER, nodes.iterator().next().idString()))).all().get(KAFKA_QUERY_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
-                if (configs.isEmpty()) {
-                    throw new ConnectException("No configs have been received");
-                }
-                final Config config = configs.values().iterator().next();
-                replicationFactor = Short.parseShort(config.get("default.replication.factor").value());
-
-                // Create topic
-                final NewTopic topic = new NewTopic(topicName, (short)1, replicationFactor);
-                topic.configs(Collect.hashMapOf("cleanup.policy", "delete", "retention.ms", Long.toString(MESSAGE_RETENTION_IN_DAYS.toMillis())));
-                admin.createTopics(Collections.singleton(topic));
-                logger.info("Database history topic created");
-            } else {
-                logger.info("Database history topic already exists");
-            }
-        } catch (Exception e) {
-            logger.warn("Debezium could not create database history topic, delegating to operator or broker", e);
         }
     }
 
@@ -357,5 +320,32 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
 
     protected static String consumerConfigPropertyName(String kafkaConsumerPropertyName) {
         return CONSUMER_PREFIX + kafkaConsumerPropertyName;
+    }
+
+    @Override
+    public void initializeStorage() {
+        super.initializeStorage();
+        final AdminClient admin = AdminClient.create(this.producerConfig.asProperties());
+        try {
+            // Find default replication factor
+            final Collection<Node> nodes = admin.describeCluster().nodes().get(KAFKA_QUERY_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+            if (nodes.isEmpty()) {
+                throw new ConnectException("No brokers available to obtain default settings");
+            }
+            final Map<ConfigResource, Config> configs = admin.describeConfigs(Collections.singleton(new ConfigResource(ConfigResource.Type.BROKER, nodes.iterator().next().idString()))).all().get(KAFKA_QUERY_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+            if (configs.isEmpty()) {
+                throw new ConnectException("No configs have been received");
+            }
+            final Config config = configs.values().iterator().next();
+            final short replicationFactor = Short.parseShort(config.get("default.replication.factor").value());
+
+            // Create topic
+            final NewTopic topic = new NewTopic(topicName, (short)1, replicationFactor);
+            topic.configs(Collect.hashMapOf("cleanup.policy", "delete", "retention.ms", Long.toString(Long.MAX_VALUE)));
+            admin.createTopics(Collections.singleton(topic));
+            logger.info("Database history topic '{}' created", topic);
+        } catch (Exception e) {
+            logger.warn("Creation of database history topic failed, please create the topic manually", e);
+        }
     }
 }

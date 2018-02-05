@@ -79,6 +79,7 @@ public final class MySqlConnectorTask extends SourceTask {
 
                 // First check if db history is available
                 if (!taskContext.historyExists()) {
+                    taskContext.initializeHistoryStorage();
                     if (taskContext.isSchemaOnlyRecoverySnapshot()) {
                         startWithSnapshot = true;
 
@@ -128,6 +129,7 @@ public final class MySqlConnectorTask extends SourceTask {
 
             } else {
                 // We have no recorded offsets ...
+                taskContext.initializeHistoryStorage();
                 if (taskContext.isSnapshotNeverAllowed()) {
                     // We're not allowed to take a snapshot, so instead we have to assume that the binlog contains the
                     // full history of the database.
