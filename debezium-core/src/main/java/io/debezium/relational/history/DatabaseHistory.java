@@ -116,11 +116,15 @@ public interface DatabaseHistory {
      * Stop recording history and release any resources acquired since {@link #configure(Configuration, HistoryRecordComparator)}.
      */
     void stop();
-    
+
     /**
      * Determines if the DatabaseHistory entity exists
      * @return
      */
     boolean exists();
-      
+
+    /**
+     * Called to initialize permanent storage of the history.
+     */
+    void initializeStorage();
 }

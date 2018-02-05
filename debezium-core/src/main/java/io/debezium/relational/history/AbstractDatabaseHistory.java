@@ -95,4 +95,8 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     public void stop() {
         // do nothing
     }
+
+    @Override
+    public void initializeStorage() {
+    }
 }

@@ -163,6 +163,13 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
        return dbSchema.historyExists();
     }
 
+    /**
+     * Initialize permanent storage for database history
+     */
+    public void initializeHistoryStorage() {
+        dbSchema.intializeHistoryStorage();
+    }
+
     public Clock clock() {
         return clock;
     }
