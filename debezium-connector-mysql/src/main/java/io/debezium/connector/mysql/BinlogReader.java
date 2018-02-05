@@ -42,7 +42,7 @@ import com.github.shyiko.mysql.binlog.io.ByteArrayInputStream;
 import com.github.shyiko.mysql.binlog.network.AuthenticationException;
 import com.github.shyiko.mysql.binlog.network.SSLMode;
 
-import io.debezium.connector.mysql.MySqlConnectorConfig.EventDeserializationFailureHandlingMode;
+import io.debezium.connector.mysql.MySqlConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
 import io.debezium.function.BlockingConsumer;
@@ -71,7 +71,8 @@ public class BinlogReader extends AbstractReader {
     private final BinlogReaderMetrics metrics;
     private final Clock clock;
     private final ElapsedTimeStrategy pollOutputDelay;
-    private final EventDeserializationFailureHandlingMode eventDeserializationFailureHandlingMode;
+    private final EventProcessingFailureHandlingMode eventDeserializationFailureHandlingMode;
+    private final EventProcessingFailureHandlingMode inconsistentSchemaHandlingMode;
 
     private int startingRowNumber = 0;
     private long recordCounter = 0L;
@@ -147,6 +148,7 @@ public class BinlogReader extends AbstractReader {
         recordSchemaChangesInSourceRecords = context.includeSchemaChangeRecords();
         clock = context.clock();
         eventDeserializationFailureHandlingMode = context.eventDeserializationFailureHandlingMode();
+        inconsistentSchemaHandlingMode = context.inconsistentSchemaHandlingMode();
 
         // Use exponential delay to log the progress frequently at first, but the quickly tapering off to once an hour...
         pollOutputDelay = ElapsedTimeStrategy.exponential(clock, INITIAL_POLL_PERIOD_IN_MILLIS, MAX_POLL_PERIOD_IN_MILLIS);
@@ -485,7 +487,7 @@ public class BinlogReader extends AbstractReader {
             EventHeaderV4 eventHeader = (EventHeaderV4) data.getCause().getEventHeader(); // safe cast, instantiated that ourselves
 
             // logging some additional context but not the exception itself, this will happen in handleEvent()
-            if(eventDeserializationFailureHandlingMode == EventDeserializationFailureHandlingMode.FAIL) {
+            if(eventDeserializationFailureHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
                 logger.error(
                         "Error while deserializing binlog event at offset {}.{}" +
                         "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
@@ -498,7 +500,7 @@ public class BinlogReader extends AbstractReader {
 
                 throw new RuntimeException(data.getCause());
             }
-            else if(eventDeserializationFailureHandlingMode == EventDeserializationFailureHandlingMode.WARN) {
+            else if(eventDeserializationFailureHandlingMode == EventProcessingFailureHandlingMode.WARN) {
                 logger.warn(
                         "Error while deserializing binlog event at offset {}.{}" +
                         "This exception will be ignored and the event be skipped.{}" +
@@ -638,7 +640,58 @@ public class BinlogReader extends AbstractReader {
         if (recordMakers.assign(tableNumber, tableId)) {
             logger.debug("Received update table metadata event: {}", event);
         } else {
-            logger.debug("Skipping update table metadata event: {}", event);
+            eventNotToBeRecorded(event, tableId, "update table metadata");
+        }
+    }
+
+    private void eventNotToBeRecorded(Event event, TableId tableId, String typeToLog) {
+        if (tableId != null && context.dbSchema().isTableMonitored(tableId)) {
+            EventHeaderV4 eventHeader = event.getHeader();
+
+            if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
+                logger.error(
+                        "Encountered change event '{}' at offset {} for table whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}" +
+                        "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
+                        event,
+                        source.offset(),
+                        System.lineSeparator(),
+                        eventHeader.getPosition(),
+                        eventHeader.getNextPosition(),
+                        source.binlogFilename()
+                );
+                throw new ConnectException("Encountered change event for table whose schema isn't known to this connector");
+            }
+            else if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.WARN) {
+                logger.warn(
+                        "Encountered change event '{}' at offset {} for table whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}" +
+                        "The event will be ignored.{}" +
+                        "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
+                        event,
+                        source.offset(),
+                        System.lineSeparator(),
+                        System.lineSeparator(),
+                        eventHeader.getPosition(),
+                        eventHeader.getNextPosition(),
+                        source.binlogFilename()
+                );
+            }
+            else {
+                logger.debug(
+                        "Encountered change event '{}' at offset {} for table whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}" +
+                        "The event will be ignored.{}" +
+                        "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
+                        event,
+                        source.offset(),
+                        System.lineSeparator(),
+                        System.lineSeparator(),
+                        eventHeader.getPosition(),
+                        eventHeader.getNextPosition(),
+                        source.binlogFilename()
+                );
+            }
+        }
+        else {
+            logger.debug("Skipping {} event: {} for non-monitored table {}", typeToLog, event, tableId);
         }
     }
 
@@ -684,7 +737,7 @@ public class BinlogReader extends AbstractReader {
                 logger.debug("Skipping previously processed insert event: {}", event);
             }
         } else {
-            logger.debug("Skipping insert row event: {}", event);
+            eventNotToBeRecorded(event, recordMakers.getTableIfFromTableNumber(tableNumber), "insert row");
         }
         startingRowNumber = 0;
     }
@@ -735,7 +788,7 @@ public class BinlogReader extends AbstractReader {
                 logger.debug("Skipping previously processed update event: {}", event);
             }
         } else {
-            logger.debug("Skipping update row event: {}", event);
+            eventNotToBeRecorded(event, recordMakers.getTableIfFromTableNumber(tableNumber), "update row");
         }
         startingRowNumber = 0;
     }
@@ -782,7 +835,7 @@ public class BinlogReader extends AbstractReader {
                 logger.debug("Skipping previously processed delete event: {}", event);
             }
         } else {
-            logger.debug("Skipping delete row event: {}", event);
+            eventNotToBeRecorded(event, recordMakers.getTableIfFromTableNumber(tableNumber), "delete row");
         }
         startingRowNumber = 0;
     }
