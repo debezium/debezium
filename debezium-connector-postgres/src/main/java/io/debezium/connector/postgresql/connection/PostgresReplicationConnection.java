@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
+import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.PGConnection;
 import org.postgresql.replication.LogSequenceNumber;
 import org.postgresql.replication.PGReplicationStream;
@@ -162,6 +163,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 LOGGER.warn("Could not register for streaming with metadata in messages, falling back to messages without metadata");
                 s = startPgReplicationStream(lsn, messageDecoder::optionsWithoutMetadata);
                 messageDecoder.setContainsMetadata(false);
+            } else if (e.getMessage().matches("(?s)ERROR: requested WAL segment .* has already been removed.*")) {
+                LOGGER.error("Cannot rewind to last processed WAL position", e);
+                throw new ConnectException("The offset to start reading from has been removed from the database write-ahead log. Create a new snapshot and consider setting of PostgreSQL parameter wal_keep_segments = 0.");
             } else {
                 throw e;
             }
