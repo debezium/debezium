@@ -7,6 +7,8 @@ package io.debezium.relational;
 
 import io.debezium.annotation.Immutable;
 
+import java.util.List;
+
 /**
  * Unique identifier for a database table.
  *
@@ -119,6 +121,26 @@ public final class TableId implements Comparable<TableId> {
     public int compareToIgnoreCase(TableId that) {
         if (this == that) return 0;
         return this.id.compareToIgnoreCase(that.id);
+    }
+
+    public int compareToWithWhitelist(TableId that, List<String> whitelist) {
+        if (this == that) return 0;
+        if (whitelist.isEmpty()) {
+            return compareToIgnoreCase(that);
+        }
+
+        int strposThis = whitelist.indexOf(this.id.toLowerCase());
+        int strposThat = whitelist.indexOf(that.id.toLowerCase());
+
+        if (strposThis == -1 && strposThat == -1) {
+            return compareToIgnoreCase(that);
+        } else if (strposThis == -1) {
+            return 1;
+        } else if (strposThat == -1) {
+            return -1;
+        }
+
+        return Integer.compare(strposThis, strposThat);
     }
 
     @Override

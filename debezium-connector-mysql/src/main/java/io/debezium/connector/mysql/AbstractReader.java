@@ -15,6 +15,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import io.debezium.relational.TableId;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
@@ -47,6 +48,7 @@ public abstract class AbstractReader implements Reader {
     private final int maxBatchSize;
     private final Metronome metronome;
     private final AtomicReference<Runnable> uponCompletion = new AtomicReference<>();
+    protected List<TableId> snapshottedTables = new ArrayList<TableId>();;
 
     /**
      * Create a snapshot reader.
@@ -284,5 +286,9 @@ public abstract class AbstractReader implements Reader {
             }
             this.records.put(record);
         }
+    }
+
+    public List<TableId> getSnapshottedTables() {
+        return snapshottedTables;
     }
 }

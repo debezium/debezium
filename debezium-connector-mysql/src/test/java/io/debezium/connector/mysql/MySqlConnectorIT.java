@@ -123,6 +123,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.DECIMAL_HANDLING_MODE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TIME_PRECISION_MODE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_ORDERED_BY_WHITELIST);
         assertConfigurationErrors(result, KafkaDatabaseHistory.BOOTSTRAP_SERVERS);
         assertConfigurationErrors(result, KafkaDatabaseHistory.TOPIC);
         assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS);
@@ -176,6 +177,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.DECIMAL_HANDLING_MODE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TIME_PRECISION_MODE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_ORDERED_BY_WHITELIST);
         assertNoConfigurationErrors(result, KafkaDatabaseHistory.BOOTSTRAP_SERVERS);
         assertNoConfigurationErrors(result, KafkaDatabaseHistory.TOPIC);
         assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS);
@@ -223,6 +225,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.DECIMAL_HANDLING_MODE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TIME_PRECISION_MODE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_ORDERED_BY_WHITELIST);
         assertNoConfigurationErrors(result, KafkaDatabaseHistory.BOOTSTRAP_SERVERS);
         assertNoConfigurationErrors(result, KafkaDatabaseHistory.TOPIC);
         assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS);
