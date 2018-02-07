@@ -90,7 +90,7 @@
         <version.protoc.maven.plugin>3.0.0.1</version.protoc.maven.plugin>
 
         <!-- Data pipeline internal dependency-->
-        <version.datapipeline>0.5.1-SNAPSHOT</version.datapipeline>
+        <version.datapipeline>0.5.1.5-SNAPSHOT</version.datapipeline>
         <!-- Dockerfiles -->
         <docker.maintainer>Debezium community</docker.maintainer>
 

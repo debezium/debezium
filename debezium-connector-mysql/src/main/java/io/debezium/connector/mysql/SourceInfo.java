@@ -6,26 +6,22 @@
 package io.debezium.connector.mysql;
 
 
-import com.datapipeline.clients.DpRecordConstants;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.Predicate;
-
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.ConnectException;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
+import com.datapipeline.clients.record.DpRecordConstants;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.data.Envelope;
 import io.debezium.document.Document;
 import io.debezium.relational.TableId;
 import io.debezium.util.Collect;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Predicate;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 
 /**
  * Information about the source of information, which includes the position in the source binary log we have previously processed.
