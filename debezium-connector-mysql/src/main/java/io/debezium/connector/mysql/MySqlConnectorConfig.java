@@ -377,6 +377,7 @@ public class MySqlConnectorConfig {
     private static final String DATABASE_WHITELIST_NAME = "database.whitelist";
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
     private static final String TABLE_IGNORE_BUILTIN_NAME = "table.ignore.builtin";
+    private static final String SNAPSHOT_ORDERED_BY_WHITELIST_NAME = "snapshot.order.whitelist";
 
     /**
      * Default size of the binlog buffer used for examining transactions and
@@ -783,6 +784,16 @@ public class MySqlConnectorConfig {
                     "The value of those properties is the select statement to use when retrieving data from the specific table during snapshotting. " +
                     "A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted.");
 
+    public static final Field SNAPSHOT_ORDERED_BY_WHITELIST = Field.create(SNAPSHOT_ORDERED_BY_WHITELIST_NAME)
+            .withDisplayName("Table import order determined by whitelist")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("When tables are imported in the snapshot, use the order specified in the whitelist to "
+                             + "determine the order in which they are imported.")
+            .withValidation(Field::isBoolean)
+            .withDefault(false);
+
     /**
      * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
      * have their values truncated to be no longer than the specified number of characters.
@@ -831,7 +842,8 @@ public class MySqlConnectorConfig {
                                                      SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD,
                                                      SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER,
                                                      BIGINT_UNSIGNED_HANDLING_MODE,
-                                                     EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE);
+                                                     EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE,
+                                                     SNAPSHOT_ORDERED_BY_WHITELIST);
 
     /**
      * The set of {@link Field}s that are included in the {@link #configDef() configuration definition}. This includes
@@ -862,7 +874,7 @@ public class MySqlConnectorConfig {
                     EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
                     SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
-                    BIGINT_UNSIGNED_HANDLING_MODE);
+                    BIGINT_UNSIGNED_HANDLING_MODE, SNAPSHOT_ORDERED_BY_WHITELIST);
         return config;
     }
 

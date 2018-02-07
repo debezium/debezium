@@ -6,15 +6,17 @@
 package io.debezium.connector.mysql;
 
 import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.ArrayList;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import io.debezium.relational.TableId;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -403,10 +405,10 @@ public class SnapshotReaderIT {
                 schemaChanges.add(record);
             });
         }
-        
+
         // should fail because we have no existing binlog information
-    }    
-    
+    }
+
     @Test
     public void shouldCreateSnapshotSchemaOnlyRecovery() throws Exception {
         config = simpleConfig().with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY_RECOVERY).build();
@@ -450,7 +452,7 @@ public class SnapshotReaderIT {
             fail("failed to complete the snapshot within 10 seconds");
         }
     }
-    
+
     public void shouldCreateSnapshotSchemaOnly() throws Exception {
         config = simpleConfig().with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY).build();
         context = new MySqlTaskContext(config);
@@ -483,6 +485,177 @@ public class SnapshotReaderIT {
 
         // Check the records via the store ...
         assertThat(store.collectionCount()).isEqualTo(0);
+
+        // Make sure the snapshot completed ...
+        if (completed.await(10, TimeUnit.SECONDS)) {
+            // completed the snapshot ...
+            Testing.print("completed the snapshot");
+        } else {
+            fail("failed to complete the snapshot within 10 seconds");
+        }
+    }
+
+    @Test
+    public void shouldCreateSnapshotOfSingleDatabaseWithWhitelist() throws Exception {
+        String whitelist = DATABASE.getDatabaseName() + ".products_on_hand," +
+                DATABASE.getDatabaseName() + ".customers," +
+                DATABASE.getDatabaseName() + ".Products";
+        config = simpleConfig()
+                .with(MySqlConnectorConfig.TABLE_WHITELIST, whitelist)
+                .build();
+        context = new MySqlTaskContext(config);
+        context.start();
+        reader = new SnapshotReader("snapshot", context);
+        reader.uponCompletion(completed::countDown);
+        reader.generateInsertEvents();
+        reader.useMinimalBlocking(true);
+
+        // Start the snapshot ...
+        reader.start();
+
+        // Poll for records ...
+        // Testing.Print.enable();
+        List<SourceRecord> records = null;
+        KeyValueStore store = KeyValueStore.createForTopicsBeginningWith(DATABASE.getServerName() + ".");
+        SchemaChangeHistory schemaChanges = new SchemaChangeHistory(DATABASE.getServerName());
+        while ((records = reader.poll()) != null) {
+            records.forEach(record -> {
+                VerifyRecord.isValid(record);
+                store.add(record);
+                schemaChanges.add(record);
+            });
+        }
+        // The last poll should always return null ...
+        assertThat(records).isNull();
+
+        // There should be no schema changes ...
+        assertThat(schemaChanges.recordCount()).isEqualTo(0);
+
+        // Check the records via the store ...
+        assertThat(store.collectionCount()).isEqualTo(3);
+        Collection products = store.collection(DATABASE.getDatabaseName(), productsTableName());
+        assertThat(products.numberOfCreates()).isEqualTo(9);
+        assertThat(products.numberOfUpdates()).isEqualTo(0);
+        assertThat(products.numberOfDeletes()).isEqualTo(0);
+        assertThat(products.numberOfReads()).isEqualTo(0);
+        assertThat(products.numberOfTombstones()).isEqualTo(0);
+        assertThat(products.numberOfKeySchemaChanges()).isEqualTo(1);
+        assertThat(products.numberOfValueSchemaChanges()).isEqualTo(1);
+
+        Collection products_on_hand = store.collection(DATABASE.getDatabaseName(), "products_on_hand");
+        assertThat(products_on_hand.numberOfCreates()).isEqualTo(9);
+        assertThat(products_on_hand.numberOfUpdates()).isEqualTo(0);
+        assertThat(products_on_hand.numberOfDeletes()).isEqualTo(0);
+        assertThat(products_on_hand.numberOfReads()).isEqualTo(0);
+        assertThat(products_on_hand.numberOfTombstones()).isEqualTo(0);
+        assertThat(products_on_hand.numberOfKeySchemaChanges()).isEqualTo(1);
+        assertThat(products_on_hand.numberOfValueSchemaChanges()).isEqualTo(1);
+
+        Collection customers = store.collection(DATABASE.getDatabaseName(), "customers");
+        assertThat(customers.numberOfCreates()).isEqualTo(4);
+        assertThat(customers.numberOfUpdates()).isEqualTo(0);
+        assertThat(customers.numberOfDeletes()).isEqualTo(0);
+        assertThat(customers.numberOfReads()).isEqualTo(0);
+        assertThat(customers.numberOfTombstones()).isEqualTo(0);
+        assertThat(customers.numberOfKeySchemaChanges()).isEqualTo(1);
+        assertThat(customers.numberOfValueSchemaChanges()).isEqualTo(1);
+
+        Collection orders = store.collection(DATABASE.getDatabaseName(), "orders");
+        assertThat(orders).isNull();
+
+        List<TableId> snapshottedTables = reader.getSnapshottedTables();
+        List<TableId> expected = new ArrayList<>();
+
+        expected.add(new TableId(null, DATABASE.getDatabaseName(), productsTableName()));
+        expected.add(new TableId(null, DATABASE.getDatabaseName(), "customers"));
+        expected.add(new TableId(null, DATABASE.getDatabaseName(), "products_on_hand"));
+        assertEquals(expected, snapshottedTables);
+
+        // Make sure the snapshot completed ...
+        if (completed.await(10, TimeUnit.SECONDS)) {
+            // completed the snapshot ...
+            Testing.print("completed the snapshot");
+        } else {
+            fail("failed to complete the snapshot within 10 seconds");
+        }
+    }
+
+    @Test
+    public void shouldCreateSnapshotOfSingleDatabaseWithOrderedWhitelist() throws Exception {
+        String whitelist = DATABASE.getDatabaseName() + ".products_on_hand," +
+                DATABASE.getDatabaseName() + ".Products," +
+                DATABASE.getDatabaseName() + ".customers";
+        config = simpleConfig()
+                .with(MySqlConnectorConfig.TABLE_WHITELIST, whitelist)
+                .with(MySqlConnectorConfig.SNAPSHOT_ORDERED_BY_WHITELIST, true)
+                .build();
+        context = new MySqlTaskContext(config);
+        context.start();
+        reader = new SnapshotReader("snapshot", context);
+        reader.uponCompletion(completed::countDown);
+        reader.generateInsertEvents();
+        reader.useMinimalBlocking(true);
+
+        // Start the snapshot ...
+        reader.start();
+
+        // Poll for records ...
+        // Testing.Print.enable();
+        List<SourceRecord> records = null;
+        KeyValueStore store = KeyValueStore.createForTopicsBeginningWith(DATABASE.getServerName() + ".");
+        SchemaChangeHistory schemaChanges = new SchemaChangeHistory(DATABASE.getServerName());
+        while ((records = reader.poll()) != null) {
+            records.forEach(record -> {
+                VerifyRecord.isValid(record);
+                store.add(record);
+                schemaChanges.add(record);
+            });
+        }
+        // The last poll should always return null ...
+        assertThat(records).isNull();
+
+        // There should be no schema changes ...
+        assertThat(schemaChanges.recordCount()).isEqualTo(0);
+
+        // Check the records via the store ...
+        assertThat(store.collectionCount()).isEqualTo(3);
+        Collection products = store.collection(DATABASE.getDatabaseName(), productsTableName());
+        assertThat(products.numberOfCreates()).isEqualTo(9);
+        assertThat(products.numberOfUpdates()).isEqualTo(0);
+        assertThat(products.numberOfDeletes()).isEqualTo(0);
+        assertThat(products.numberOfReads()).isEqualTo(0);
+        assertThat(products.numberOfTombstones()).isEqualTo(0);
+        assertThat(products.numberOfKeySchemaChanges()).isEqualTo(1);
+        assertThat(products.numberOfValueSchemaChanges()).isEqualTo(1);
+
+        Collection products_on_hand = store.collection(DATABASE.getDatabaseName(), "products_on_hand");
+        assertThat(products_on_hand.numberOfCreates()).isEqualTo(9);
+        assertThat(products_on_hand.numberOfUpdates()).isEqualTo(0);
+        assertThat(products_on_hand.numberOfDeletes()).isEqualTo(0);
+        assertThat(products_on_hand.numberOfReads()).isEqualTo(0);
+        assertThat(products_on_hand.numberOfTombstones()).isEqualTo(0);
+        assertThat(products_on_hand.numberOfKeySchemaChanges()).isEqualTo(1);
+        assertThat(products_on_hand.numberOfValueSchemaChanges()).isEqualTo(1);
+
+        Collection customers = store.collection(DATABASE.getDatabaseName(), "customers");
+        assertThat(customers.numberOfCreates()).isEqualTo(4);
+        assertThat(customers.numberOfUpdates()).isEqualTo(0);
+        assertThat(customers.numberOfDeletes()).isEqualTo(0);
+        assertThat(customers.numberOfReads()).isEqualTo(0);
+        assertThat(customers.numberOfTombstones()).isEqualTo(0);
+        assertThat(customers.numberOfKeySchemaChanges()).isEqualTo(1);
+        assertThat(customers.numberOfValueSchemaChanges()).isEqualTo(1);
+
+        Collection orders = store.collection(DATABASE.getDatabaseName(), "orders");
+        assertThat(orders).isNull();
+
+        List<TableId> snapshottedTables = reader.getSnapshottedTables();
+        List<TableId> expected = new ArrayList<>();
+
+        expected.add(new TableId(null, DATABASE.getDatabaseName(), "products_on_hand"));
+        expected.add(new TableId(null, DATABASE.getDatabaseName(), productsTableName()));
+        expected.add(new TableId(null, DATABASE.getDatabaseName(), "customers"));
+        assertEquals(expected, snapshottedTables);
 
         // Make sure the snapshot completed ...
         if (completed.await(10, TimeUnit.SECONDS)) {

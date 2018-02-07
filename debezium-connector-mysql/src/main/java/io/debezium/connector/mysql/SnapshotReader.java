@@ -15,6 +15,7 @@ import java.sql.Types;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -483,7 +484,7 @@ public class SnapshotReader extends AbstractReader {
                     int counter = 0;
                     int completedCounter = 0;
                     long largeTableCount = context.rowCountForLargeTable();
-                    Iterator<TableId> tableIdIter = tableIds.iterator();
+                    Iterator<TableId> tableIdIter = getTableIdIterator(tableIds);
                     while (tableIdIter.hasNext()) {
                         TableId tableId = tableIdIter.next();
                         if (!isRunning()) break;
@@ -561,6 +562,7 @@ public class SnapshotReader extends AbstractReader {
                                             long stop = clock.currentTimeInMillis();
                                             logger.info("Step {}: - Completed scanning a total of {} rows from table '{}' after {}",
                                                         stepNum, rowNum, tableId, Strings.duration(stop - start));
+                                            snapshottedTables.add(tableId);
                                         }
                                     } catch (InterruptedException e) {
                                         Thread.interrupted();
@@ -849,5 +851,23 @@ public class SnapshotReader extends AbstractReader {
 
     protected static interface RecordRecorder {
         void recordRow(RecordsForTable recordMaker, Object[] row, long ts) throws InterruptedException;
+    }
+
+    private Iterator<TableId> getTableIdIterator(List<TableId> tableIds) {
+        Iterator<TableId> tableIdIterator;
+        if (context.config().getBoolean(MySqlConnectorConfig.SNAPSHOT_ORDERED_BY_WHITELIST) && context.config().getString(MySqlConnectorConfig.TABLE_WHITELIST) != null) {
+            List<String> whiteListedTables = Arrays.asList(context.config().getString(MySqlConnectorConfig.TABLE_WHITELIST).toLowerCase().split("\\s*,\\s*"));
+            Comparator<TableId> comparator = new Comparator<TableId>() {
+                @Override
+                public int compare(TableId tableId1, TableId tableId2) {
+                    return tableId1.compareToWithWhitelist(tableId2, whiteListedTables);
+                }
+            };
+            tableIds.sort(comparator);
+            tableIdIterator = tableIds.iterator();
+        } else {
+            tableIdIterator = tableIds.iterator();
+        }
+        return tableIdIterator;
     }
 }
