@@ -24,7 +24,6 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
@@ -56,15 +55,16 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Before
     public void before() throws Exception {
         TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("init_postgis.ddl");
         String statements =
-                "CREATE SCHEMA public;" +
+                "CREATE SCHEMA IF NOT EXISTS public;" +
                 "DROP TABLE IF EXISTS test_table;" +
                 "CREATE TABLE test_table (pk SERIAL, text TEXT, PRIMARY KEY(pk));" +
                 "CREATE TABLE table_with_interval (id SERIAL PRIMARY KEY, title VARCHAR(512) NOT NULL, time_limit INTERVAL DEFAULT '60 days'::INTERVAL NOT NULL);" +
                 "INSERT INTO test_table(text) VALUES ('insert');";
         TestHelper.execute(statements);
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true).build());
-        PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config));
+        PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config, TestHelper.getTypeRegistry()));
         recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.serverName()));
     }
 
@@ -122,7 +122,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertInsert(INSERT_CUSTOM_TYPES_STMT, schemasAndValuesForCustomTypes());
     }
 
-    @Test(timeout=30000)
+    @Test(timeout = 30000)
     public void shouldReceiveChangesForInsertsWithPostgisTypes() throws Exception {
         TestHelper.executeDDL("postgis_create_tables.ddl");
         consumer = testConsumer(1, "public"); // spatial_ref_sys produces a tonne of records in the postgis schema
@@ -148,9 +148,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertInsert(INSERT_POSTGIS_TYPES_STMT, schemaAndValuesForPostgisTypes());
     }
 
-    // Geometry arrays are waiting on better array support
-    @Test(timeout=30000)
-    @Ignore
+    @Test(timeout = 30000)
     public void shouldReceiveChangesForInsertsWithPostgisArrayTypes() throws Exception {
         TestHelper.executeDDL("postgis_create_tables.ddl");
         consumer = testConsumer(1, "public"); // spatial_ref_sys produces a tonne of records in the postgis schema
@@ -375,7 +373,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
                 .build()
         );
-        PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config));
+        PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config, TestHelper.getTypeRegistry()));
         recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.serverName()));
         consumer = testConsumer(2);
         recordsProducer.start(consumer, blackHole);
@@ -541,7 +539,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
                 .build()
         );
-        PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config));
+        PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config, TestHelper.getTypeRegistry()));
         recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.serverName()));
 
         // add a new entry and remove both
@@ -572,7 +570,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, PostgresConnectorConfig.DecimalHandlingMode.DOUBLE)
                 .build());
-        PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config));
+        PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config, TestHelper.getTypeRegistry()));
         recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.serverName()));
 
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -620,7 +618,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // Need to remove record created in @Before
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true).build());
-        PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config));
+        PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config, TestHelper.getTypeRegistry()));
         recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.serverName()));
 
         consumer = testConsumer(1);

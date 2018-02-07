@@ -8,7 +8,6 @@ package io.debezium.connector.postgresql;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.sql.Types;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -237,18 +236,18 @@ public class RecordsStreamProducer extends RecordsProducer {
         ReplicationMessage.Operation operation = message.getOperation();
         switch (operation) {
             case INSERT: {
-                Object[] row = columnValues(message.getNewTupleList(), tableId, true, message.hasMetadata());
+                Object[] row = columnValues(message.getNewTupleList(), tableId, true, message.hasTypeMetadata());
                 generateCreateRecord(tableId, row, message.isLastEventForLsn(), consumer);
                 break;
             }
             case UPDATE: {
-                Object[] newRow = columnValues(message.getNewTupleList(), tableId, true, message.hasMetadata());
-                Object[] oldRow = columnValues(message.getOldTupleList(), tableId, false, message.hasMetadata());
+                Object[] newRow = columnValues(message.getNewTupleList(), tableId, true, message.hasTypeMetadata());
+                Object[] oldRow = columnValues(message.getOldTupleList(), tableId, false, message.hasTypeMetadata());
                 generateUpdateRecord(tableId, oldRow, newRow, message.isLastEventForLsn(), consumer);
                 break;
             }
             case DELETE: {
-                Object[] row = columnValues(message.getOldTupleList(), tableId, false, message.hasMetadata());
+                Object[] row = columnValues(message.getOldTupleList(), tableId, false, message.hasTypeMetadata());
                 generateDeleteRecord(tableId, row, message.isLastEventForLsn(), consumer);
                 break;
             }
@@ -448,13 +447,13 @@ public class RecordsStreamProducer extends RecordsProducer {
             String columnName = message.getName();
             Column column = table.columnWithName(columnName);
             if (column == null) {
-                logger.debug("found new column '{}' present in the server message which is not part of the table metadata; refreshing table schema", columnName);
+                logger.info("found new column '{}' present in the server message which is not part of the table metadata; refreshing table schema", columnName);
                 return true;
             } else {
-                final int localType = metadataInMessage ? column.jdbcType() : PgOid.typeNameToOid(column.typeName());
-                final int incomingType = metadataInMessage ? typeNameToJdbcType(message.getTypeMetadata()) : message.getOidType();
+                final int localType = column.nativeType();
+                final int incomingType = message.getType().getOid();
                 if (localType != incomingType) {
-                    logger.debug("detected new type for column '{}', old type was '{}', new type is '{}'; refreshing table schema", columnName, localType,
+                    logger.info("detected new type for column '{}', old type was '{}', new type is '{}'; refreshing table schema", columnName, localType,
                                 incomingType);
                     return true;
                 }
@@ -462,14 +461,14 @@ public class RecordsStreamProducer extends RecordsProducer {
                     final int localLength = column.length();
                     final int incomingLength = message.getTypeMetadata().getLength().orElse(Column.UNSET_INT_VALUE);
                     if (localLength != incomingLength) {
-                        logger.debug("detected new length for column '{}', old length was '{}', new length is '{}'; refreshing table schema", columnName, localLength,
+                        logger.info("detected new length for column '{}', old length was '{}', new length is '{}'; refreshing table schema", columnName, localLength,
                                     incomingLength);
                         return true;
                     }
                     final int localScale = column.scale();
                     final int incomingScale = message.getTypeMetadata().getScale().orElse(Column.UNSET_INT_VALUE);
                     if (localScale != incomingScale) {
-                        logger.debug("detected new scale for column '{}', old scale was '{}', new scale is '{}'; refreshing table schema", columnName, localScale,
+                        logger.info("detected new scale for column '{}', old scale was '{}', new scale is '{}'; refreshing table schema", columnName, localScale,
                                     incomingScale);
                         return true;
                     }
@@ -515,15 +514,14 @@ public class RecordsStreamProducer extends RecordsProducer {
         return table.edit()
             .setColumns(columns.stream()
                 .map(column -> {
+                    final PostgresType type = column.getType();
                     final ColumnEditor columnEditor = Column.editor()
                             .name(column.getName())
-                            .jdbcType(column.getOidType() == Types.ARRAY ? Types.ARRAY : typeNameToJdbcType(column.getTypeMetadata()))
-                            .type(column.getTypeMetadata().getName())
-                            .optional(column.isOptional());
-                    PgOid.reconcileJdbcOidTypeConstraints(column.getTypeMetadata(), columnEditor);
-                    if (column.getOidType() == Types.ARRAY) {
-                        columnEditor.componentType(column.getComponentOidType());
-                    }
+                            .jdbcType(type.getJdbcId())
+                            .type(type.getName())
+                            .optional(column.isOptional())
+                            .nativeType(type.getOid());
+                    TypeRegistry.reconcileJdbcOidTypeConstraints(type, columnEditor);
                     if (column.getTypeMetadata().getLength().isPresent()) {
                         columnEditor.length(column.getTypeMetadata().getLength().getAsInt());
                     }
@@ -535,9 +533,5 @@ public class RecordsStreamProducer extends RecordsProducer {
                 .collect(Collectors.toList())
             )
             .setPrimaryKeyNames(table.filterColumnNames(c -> table.isPrimaryKeyColumn(c.name()))).create();
-    }
-
-    private int typeNameToJdbcType(final ReplicationMessage.ColumnTypeMetadata columnTypeMetadata) {
-        return taskContext.schema().columnTypeNameToJdbcTypeId(columnTypeMetadata.getName());
     }
 }

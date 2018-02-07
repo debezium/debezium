@@ -76,6 +76,7 @@ public class PostgresTaskContext {
                                     .withPlugin(config.plugin())
                                     .dropSlotOnClose(config.dropSlotOnStop())
                                     .statusUpdateIntervalMillis(config.statusUpdateIntervalMillis())
+                                    .withTypeRegistry(schema.getTypeRegistry())
                                     .build();
     }
 

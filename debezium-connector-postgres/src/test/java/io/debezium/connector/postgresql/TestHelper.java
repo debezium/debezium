@@ -50,6 +50,7 @@ public final class TestHelper {
         return ReplicationConnection.builder(defaultJdbcConfig())
                                     .withPlugin(plugin)
                                     .withSlot(slotName)
+                                    .withTypeRegistry(getTypeRegistry())
                                     .dropSlotOnClose(dropOnClose)
                                     .build();
     }
@@ -107,6 +108,18 @@ public final class TestHelper {
                                       .map(schema -> "DROP SCHEMA IF EXISTS " + schema + " CASCADE;")
                                       .collect(Collectors.joining(lineSeparator));
         TestHelper.execute(dropStmts);
+        try {
+            TestHelper.executeDDL("init_database.ddl");
+        }
+        catch (Exception e) {
+            throw new IllegalStateException("Failed to initialize database", e);
+        }
+    }
+
+    public static TypeRegistry getTypeRegistry() {
+        try (final PostgresConnection connection = new PostgresConnection(defaultJdbcConfig())) {
+            return connection.getTypeRegistry();
+        }
     }
 
     protected static Set<String> schemaNames() throws SQLException {

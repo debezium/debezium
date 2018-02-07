@@ -760,7 +760,7 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
         return config.getBoolean(INCLUDE_UNKNOWN_DATATYPES);
     }
 
-    protected Configuration jdbcConfig() {
+    public Configuration jdbcConfig() {
         return config.subset(DATABASE_CONFIG_PREFIX, true);
     }
 

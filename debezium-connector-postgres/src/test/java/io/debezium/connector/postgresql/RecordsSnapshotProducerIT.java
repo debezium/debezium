@@ -11,7 +11,6 @@ import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
-import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -39,11 +38,14 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     private PostgresTaskContext context;
 
     @Before
-    public void before() throws SQLException {
+    public void before() throws Exception {
         TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("init_postgis.ddl");
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL("postgis_create_tables.ddl");
 
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
-        context = new PostgresTaskContext(config, new PostgresSchema(config));
+        context = new PostgresTaskContext(config, new PostgresSchema(config, TestHelper.getTypeRegistry()));
     }
 
     @After
@@ -57,8 +59,6 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     public void shouldGenerateSnapshotsForDefaultDatatypes() throws Exception {
         snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER), false);
 
-        TestHelper.executeDDL("postgres_create_tables.ddl");
-        TestHelper.executeDDL("postgis_create_tables.ddl");
         TestConsumer consumer = testConsumer(ALL_STMTS.size(), "public", "Quoted_\"");
 
         //insert data for each of different supported types
@@ -81,6 +81,13 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     public void shouldGenerateSnapshotAndContinueStreaming() throws Exception {
+        // PostGIS must not be used
+        TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
+        context = new PostgresTaskContext(config, new PostgresSchema(config, TestHelper.getTypeRegistry()));
+
         String insertStmt = "INSERT INTO s1.a (aa) VALUES (1);" +
                             "INSERT INTO s2.a (aa) VALUES (1);";
 
@@ -163,12 +170,10 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 TestHelper.defaultConfig()
                         .with(PostgresConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS)
                         .build());
-        context = new PostgresTaskContext(config, new PostgresSchema(config));
+        context = new PostgresTaskContext(config, new PostgresSchema(config, TestHelper.getTypeRegistry()));
 
         snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER), false);
 
-        TestHelper.executeDDL("postgres_create_tables.ddl");
-        TestHelper.executeDDL("postgis_create_tables.ddl");
         TestConsumer consumer = testConsumer(ALL_STMTS.size(), "public", "Quoted_\"");
 
         //insert data for each of different supported types

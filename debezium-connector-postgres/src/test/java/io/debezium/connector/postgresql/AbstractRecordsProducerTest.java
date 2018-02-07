@@ -119,7 +119,7 @@ public abstract class AbstractRecordsProducerTest {
                                                                  INSERT_BIN_TYPES_STMT, INSERT_GEOM_TYPES_STMT, INSERT_TEXT_TYPES_STMT,
                                                                  INSERT_CASH_TYPES_STMT, INSERT_STRING_TYPES_STMT, INSERT_ARRAY_TYPES_STMT,
                                                                  INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT, INSERT_QUOTED_TYPES_STMT,
-                                                                 INSERT_POSTGIS_TYPES_STMT));
+                                                                 INSERT_POSTGIS_TYPES_STMT, INSERT_POSTGIS_ARRAY_TYPES_STMT));
 
     protected List<SchemaAndValueField> schemasAndValuesForNumericType() {
         return Arrays.asList(new SchemaAndValueField("si", SchemaBuilder.OPTIONAL_INT16_SCHEMA, (short) 1),
@@ -308,23 +308,18 @@ public abstract class AbstractRecordsProducerTest {
     }
 
     protected List<SchemaAndValueField> schemaAndValuesForPostgisArrayTypes() {
-        // Geometry arrays aren't supported yet, currently they're interpreted as unknown bytestreams.
+        Schema geomSchema = Geometry.builder().build();
         return Arrays.asList(
-                new SchemaAndValueField("ga", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap("Top.Collections.Pictures.Astronomy.Galaxies".getBytes()))
+                // geometries are encoded here as HexEWKB
+                new SchemaAndValueField("ga", SchemaBuilder.array(geomSchema).optional().build(),
+                        Arrays.asList(
+                                // 'GEOMETRYCOLLECTION EMPTY'::postgis.geometry
+                                Geometry.createValue(geomSchema, DatatypeConverter.parseHexBinary("010700000000000000"), null),
+                                // 'POLYGON((166.51 -46.64, 178.52 -46.64, 178.52 -34.45, 166.51 -34.45, 166.51 -46.64))'::postgis.geometry
+                                Geometry.createValue(geomSchema, DatatypeConverter.parseHexBinary("01030000000100000005000000B81E85EB51D0644052B81E85EB5147C0713D0AD7A350664052B81E85EB5147C0713D0AD7A35066409A999999993941C0B81E85EB51D064409A999999993941C0B81E85EB51D0644052B81E85EB5147C0"), null)
+                        )
+                )
         );
-
-//        Schema geomSchema = Geometry.builder().optional().build();
-//        return Arrays.asList(
-//                // geometries are encoded here as HexEWKB
-//                new SchemaAndValueField("ga", SchemaBuilder.array(geomSchema).optional().build(),
-//                        Arrays.asList(
-//                                // 'GEOMETRYCOLLECTION EMPTY'::postgis.geometry
-//                                Geometry.createValue(geomSchema, PostgisGeometry.hex2bin("010700000000000000"), null),
-//                                // 'POLYGON((166.51 -46.64, 178.52 -46.64, 178.52 -34.45, 166.51 -34.45, 166.51 -46.64))'::postgis.geometry
-//                                Geometry.createValue(geomSchema, PostgisGeometry.hex2bin("01030000000100000005000000B81E85EB51D0644052B81E85EB5147C0713D0AD7A350664052B81E85EB5147C0713D0AD7A35066409A999999993941C0B81E85EB51D064409A999999993941C0B81E85EB51D0644052B81E85EB5147C0"), 4326)
-//                        )
-//                )
-//        );
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForQuotedTypes() {
@@ -353,7 +348,9 @@ public abstract class AbstractRecordsProducerTest {
                              new SchemaAndValueField("i", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap("0-393-04002-X".getBytes())),
                              new SchemaAndValueField("n", Schema.OPTIONAL_STRING_SCHEMA, null));
 
-    }protected List<SchemaAndValueField> schemasAndValuesForTable(String insertTableStatement) {
+    }
+
+    protected List<SchemaAndValueField> schemasAndValuesForTable(String insertTableStatement) {
         switch (insertTableStatement) {
             case INSERT_NUMERIC_TYPES_STMT:
                 return schemasAndValuesForNumericType();

@@ -51,13 +51,11 @@ public interface Column extends Comparable<Column> {
     int jdbcType();
 
     /**
-     * Get the component type for this column where jdbcType() is ARRAY. This is database specific and can be any integer
-     * value that relays additional information about the column-type since some jdbcTypes return generic type information
-     * (such as Types.ARRAY) that is not enough to understand the underlying column type.
+     * Get the database native type for this column
      *
      * @return a type constant for the specific database
      */
-    int componentType();
+    int nativeType();
 
     /**
      * Get the database-specific name of the column's data type.
