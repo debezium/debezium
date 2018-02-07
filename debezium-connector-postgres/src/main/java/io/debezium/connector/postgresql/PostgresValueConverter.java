@@ -75,17 +75,17 @@ public class PostgresValueConverter extends JdbcValueConverters {
      */
     private final boolean includeUnknownDatatypes;
 
-    private final PostgresSchema schema;
+    private final TypeRegistry typeRegistry;
 
-    protected PostgresValueConverter(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode, boolean includeUnknownDatatypes, PostgresSchema schema) {
+    protected PostgresValueConverter(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode, boolean includeUnknownDatatypes, TypeRegistry typeRegistry) {
         super(decimalMode, temporalPrecisionMode, defaultOffset, null, bigIntUnsignedMode);
         this.includeUnknownDatatypes = includeUnknownDatatypes;
-        this.schema = schema;
+        this.typeRegistry = typeRegistry;
     }
 
     @Override
     public SchemaBuilder schemaBuilder(Column column) {
-        int oidValue = PgOid.jdbcColumnToOid(column);
+        int oidValue = column.nativeType();
         switch (oidValue) {
             case PgOid.BIT:
             case PgOid.BIT_ARRAY:
@@ -101,7 +101,6 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return ZonedTime.builder();
             case PgOid.OID:
                 return SchemaBuilder.int64();
-            case PgOid.JSONB_JDBC_OID:
             case PgOid.JSONB_OID:
             case PgOid.JSON:
                 return Json.builder();
@@ -159,20 +158,26 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 // we return null here until we can code schema implementations for them.
                 return null;
 
-            case PgOid.POSTGIS_GEOMETRY:
-                return Geometry.builder();
-            case PgOid.POSTGIS_GEOGRAPHY:
-                return Geography.builder();
-            case PgOid.POSTGIS_GEOMETRY_ARRAY:
-                return SchemaBuilder.array(Geometry.builder().optional().build());
-            case PgOid.POSTGIS_GEOGRAPHY_ARRAY:
-                return SchemaBuilder.array(Geography.builder().optional().build());
-
-            case PgOid.UNSPECIFIED:
-                return includeUnknownDatatypes ? SchemaBuilder.bytes() : super.schemaBuilder(column);
-
             default:
-                return super.schemaBuilder(column);
+                if (oidValue == typeRegistry.geometryOid()) {
+                    return Geometry.builder();
+                }
+                else if (oidValue == typeRegistry.geographyOid()) {
+                    return Geography.builder();
+                }
+                else if (oidValue == typeRegistry.geometryArrayOid()) {
+                    return SchemaBuilder.array(Geometry.builder().optional().build()).optional();
+                }
+                else if (oidValue == typeRegistry.geographyArrayOid()) {
+                    return SchemaBuilder.array(Geography.builder().optional().build()).optional();
+                }
+                final SchemaBuilder jdbcSchemaBuilder = super.schemaBuilder(column);
+                if (jdbcSchemaBuilder == null) {
+                    return includeUnknownDatatypes ? SchemaBuilder.bytes() : null;
+                }
+                else {
+                    return jdbcSchemaBuilder;
+                }
         }
     }
 
@@ -189,7 +194,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     @Override
     public ValueConverter converter(Column column, Field fieldDefn) {
-        int oidValue = PgOid.jdbcColumnToOid(column);
+        int oidValue = column.nativeType();
+
         switch (oidValue) {
             case PgOid.BIT:
             case PgOid.VARBIT:
@@ -202,7 +208,6 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return data -> convertTimeWithZone(column, fieldDefn, data);
             case PgOid.OID:
                 return data -> convertBigInt(column, fieldDefn, data);
-            case PgOid.JSONB_JDBC_OID:
             case PgOid.JSONB_OID:
             case PgOid.UUID:
             case PgOid.TSTZRANGE_OID:
@@ -253,29 +258,35 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.REF_CURSOR_ARRAY:
                 return super.converter(column, fieldDefn);
 
-            case PgOid.POSTGIS_GEOMETRY:
-                return data -> convertGeometry(column, fieldDefn, data);
-            case PgOid.POSTGIS_GEOGRAPHY:
-                return data -> convertGeography(column, fieldDefn, data);
-
-            case PgOid.POSTGIS_GEOMETRY_ARRAY:
-            case PgOid.POSTGIS_GEOGRAPHY_ARRAY:
-                return createArrayConverter(column, fieldDefn);
-
-            case PgOid.UNSPECIFIED:
-                return includeUnknownDatatypes ? data -> convertBinary(column, fieldDefn, data) : super.converter(column, fieldDefn);
-
             default:
-                return super.converter(column, fieldDefn);
+                if (oidValue == typeRegistry.geometryOid()) {
+                    return data -> convertGeometry(column, fieldDefn, data);
+                }
+                else if (oidValue == typeRegistry.geographyOid()) {
+                    return data -> convertGeography(column, fieldDefn, data);
+                }
+                else if (oidValue == typeRegistry.geometryArrayOid() || oidValue == typeRegistry.geographyArrayOid()) {
+                    return createArrayConverter(column, fieldDefn);
+                }
+                final ValueConverter jdbcConverter = super.converter(column, fieldDefn);
+                if (jdbcConverter == null) {
+                    return includeUnknownDatatypes ? data -> convertBinary(column, fieldDefn, data) : null;
+                }
+                else {
+                    return jdbcConverter;
+                }
         }
     }
 
     private ValueConverter createArrayConverter(Column column, Field fieldDefn) {
-        final String elementTypeName = column.typeName().substring(1);
+        PostgresType arrayType = typeRegistry.get(column.nativeType());
+        PostgresType elementType = arrayType.getElementType();
+        final String elementTypeName = elementType.getName();
         final String elementColumnName = column.name() + "-element";
         final Column elementColumn = Column.editor()
                 .name(elementColumnName)
-                .jdbcType(schema.columnTypeNameToJdbcTypeId(PostgresSchema.parse(elementTypeName).table()))
+                .jdbcType(elementType.getJdbcId())
+                .nativeType(elementType.getOid())
                 .type(elementTypeName)
                 .optional(true)
                 .scale(column.scale())
@@ -543,6 +554,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return Collections.emptyList();
             }
         }
+
         // RecordStreamProducer and RecordsSnapshotProducer should ensure this arrives as a list
         if (!(data instanceof List)) {
             return handleUnknownData(column, fieldDefn, data);

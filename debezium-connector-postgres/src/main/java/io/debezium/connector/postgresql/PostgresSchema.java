@@ -52,18 +52,19 @@ public class PostgresSchema {
     private final PostgresValueConverter valueConverter;
 
     private Map<String, Integer> typeInfo;
+    private final TypeRegistry typeRegistry;
 
     /**
      * Create a schema component given the supplied {@link PostgresConnectorConfig Postgres connector configuration}.
      *
      * @param config the connector configuration, which is presumed to be valid
      */
-    protected PostgresSchema(PostgresConnectorConfig config) {
+    protected PostgresSchema(PostgresConnectorConfig config, TypeRegistry typeRegistry) {
         this.filters = new Filters(config);
         this.tables = new Tables();
 
         this.valueConverter = new PostgresValueConverter(config.decimalHandlingMode(), config.temporalPrecisionMode(),
-                ZoneOffset.UTC, null, config.includeUnknownDatatypes(), this);
+                ZoneOffset.UTC, null, config.includeUnknownDatatypes(), typeRegistry);
         this.schemaNameValidator = AvroValidator.create(LOGGER)::validate;
         this.schemaBuilder = new TableSchemaBuilder(valueConverter, this.schemaNameValidator);
 
@@ -75,6 +76,7 @@ public class PostgresSchema {
             serverName = serverName.trim();
             this.schemaPrefix = serverName.endsWith(".") || serverName.isEmpty() ? serverName : serverName + ".";
         }
+        this.typeRegistry = typeRegistry;
     }
 
     /**
@@ -211,5 +213,9 @@ public class PostgresSchema {
             return null;
         }
         return tableId.schema() == null ? new TableId(tableId.catalog(), PUBLIC_SCHEMA_NAME, tableId.table()) : tableId;
+    }
+
+    public TypeRegistry getTypeRegistry() {
+        return typeRegistry;
     }
 }

@@ -14,6 +14,7 @@ import org.postgresql.replication.PGReplicationStream;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
+import io.debezium.connector.postgresql.TypeRegistry;
 
 /**
  * A Postgres logical streaming replication connection. Replication connections are established for a slot and a given plugin
@@ -125,6 +126,8 @@ public interface ReplicationConnection extends AutoCloseable {
          * @return this instance
          */
         Builder statusUpdateIntervalMillis(final Integer statusUpdateIntervalMillis);
+
+        Builder withTypeRegistry(TypeRegistry typeRegistry);
 
         /**
          * Creates a new {@link ReplicationConnection} instance

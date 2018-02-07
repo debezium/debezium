@@ -11,16 +11,19 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.postgresql.jdbc.PgConnection;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.replication.LogSequenceNumber;
 import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.postgresql.PostgresType;
+import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.TableId;
@@ -39,6 +42,15 @@ public class PostgresConnection extends JdbcConnection {
                                                                                     PostgresConnection.class.getClassLoader());
     private static Logger LOGGER = LoggerFactory.getLogger(PostgresConnection.class);
 
+    private static final String SQL_NON_ARRAY_TYPES = "SELECT t.oid AS oid, t.typname AS name "
+            + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
+            + "WHERE n.nspname != 'pg_toast' AND t.typcategory <> 'A'";
+    private static final String SQL_ARRAY_TYPES = "SELECT t.oid AS oid, t.typname AS name, t.typelem AS element "
+            + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
+            + "WHERE n.nspname != 'pg_toast' AND t.typcategory = 'A'";
+
+    private final TypeRegistry typeRegistry;
+
     /**
      * Creates a Postgres connection using the supplied configuration.
      *
@@ -46,6 +58,7 @@ public class PostgresConnection extends JdbcConnection {
      */
     public PostgresConnection(Configuration config) {
         super(config, FACTORY, PostgresConnection::validateServerVersion, PostgresConnection::defaultSettings);
+        typeRegistry = initTypeRegistry();
     }
 
     /**
@@ -245,21 +258,40 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     @Override
-    protected int resolveComponentType(ResultSet rs) {
+    protected int resolveNativeType(String typeName) {
+        return getTypeRegistry().get(typeName).getOid();
+    }
+
+    private TypeRegistry initTypeRegistry() {
+        TypeRegistry.Builder typeRegistryBuilder = TypeRegistry.create();
         try {
-            String typeName = rs.getString(6);
-            if (typeName.charAt(0) == '_') {
-                PgConnection connection = (PgConnection)connection();
-                return connection.getTypeInfo().getPGType(typeName);
+            final Connection db = connection();
+            try (final Statement statement = db.createStatement()) {
+                final Map<String, Integer> nameToJdbc = readTypeInfo();
+
+                // Read non-array types
+                try (final ResultSet rs = statement.executeQuery(SQL_NON_ARRAY_TYPES)) {
+                    while (rs.next()) {
+                        typeRegistryBuilder.addType(new PostgresType(rs.getString("name"), rs.getInt("oid"), nameToJdbc.get(rs.getString("name"))));
+                    }
+                }
+
+                // Read array types
+                try (final ResultSet rs = statement.executeQuery(SQL_ARRAY_TYPES)) {
+                    while (rs.next()) {
+                        // int2vector and oidvector will not be treated as arrays
+                        typeRegistryBuilder.addType(new PostgresType(rs.getString("name"), rs.getInt("oid"), nameToJdbc.get(rs.getString("name")), typeRegistryBuilder.get(rs.getInt("element"))));
+                    }
+                }
             }
-            else {
-                LOGGER.warn("resolveComponentType was expecting typeName to start with '_' character: '{}'", typeName);
-            }
-            return -1;
         }
         catch (SQLException e) {
-            LOGGER.warn("Unexpected error trying to get underlying JDBC type for an array:", e);
-            return super.resolveComponentType(rs);
+            throw new ConnectException("Could not intialize type registry", e);
         }
+        return typeRegistryBuilder.build();
+    }
+
+    public TypeRegistry getTypeRegistry() {
+        return typeRegistry;
     }
 }

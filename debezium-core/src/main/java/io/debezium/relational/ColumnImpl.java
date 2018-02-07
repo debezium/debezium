@@ -5,15 +5,13 @@
  */
 package io.debezium.relational;
 
-import java.sql.Types;
-
 import io.debezium.util.Strings;
 
 final class ColumnImpl implements Column, Comparable<Column> {
     private final String name;
     private final int position;
     private final int jdbcType;
-    private final int componentType;
+    private final int nativeType;
     private final String typeName;
     private final String typeExpression;
     private final String charsetName;
@@ -23,13 +21,13 @@ final class ColumnImpl implements Column, Comparable<Column> {
     private final boolean autoIncremented;
     private final boolean generated;
 
-    protected ColumnImpl(String columnName, int position, int jdbcType, int componentType, String typeName, String typeExpression,
+    protected ColumnImpl(String columnName, int position, int jdbcType, int nativeType, String typeName, String typeExpression,
                          String charsetName, String defaultCharsetName, int columnLength, int columnScale,
                          boolean optional, boolean autoIncremented, boolean generated) {
         this.name = columnName;
         this.position = position;
         this.jdbcType = jdbcType;
-        this.componentType = componentType;
+        this.nativeType = nativeType;
         this.typeName = typeName;
         this.typeExpression = typeExpression;
         // We want to always capture the charset name for the column (if the column needs one) ...
@@ -63,8 +61,8 @@ final class ColumnImpl implements Column, Comparable<Column> {
     }
 
     @Override
-    public int componentType() {
-        return componentType;
+    public int nativeType() {
+        return nativeType;
     }
 
     @Override
@@ -158,6 +156,7 @@ final class ColumnImpl implements Column, Comparable<Column> {
                 .name(name())
                 .type(typeName(), typeExpression())
                 .jdbcType(jdbcType())
+                .nativeType(nativeType)
                 .charsetName(charsetName)
                 .length(length())
                 .scale(scale())
@@ -165,9 +164,6 @@ final class ColumnImpl implements Column, Comparable<Column> {
                 .optional(isOptional())
                 .autoIncremented(isAutoIncremented())
                 .generated(isGenerated());
-        if (jdbcType() == Types.ARRAY) {
-            editor.componentType(componentType());
-        }
         return editor;
     }
 }

@@ -12,7 +12,6 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Types;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -274,8 +273,10 @@ public class RecordsSnapshotProducer extends RecordsProducer {
 
     private Object valueForColumn(ResultSet rs, int colIdx, ResultSetMetaData metaData) throws SQLException {
         try {
-            int jdbcSqlType = metaData.getColumnType(colIdx);
-            if ( jdbcSqlType == Types.ARRAY) {
+            final String columnTypeName = metaData.getColumnTypeName(colIdx);
+            final PostgresType type = taskContext.schema().getTypeRegistry().get(columnTypeName);
+
+            if (type.isArrayType()) {
                 Array array = rs.getArray(colIdx);
 
                 if (array == null) {
@@ -284,9 +285,8 @@ public class RecordsSnapshotProducer extends RecordsProducer {
 
                 return Arrays.asList((Object[])array.getArray());
             }
-            String columnTypeName = metaData.getColumnTypeName(colIdx);
-            int colOid = PgOid.valueOf(columnTypeName);
-            switch (colOid) {
+
+            switch (type.getOid()) {
                 case PgOid.MONEY:
                     //TODO author=Horia Chiorean date=14/11/2016 description=workaround for https://github.com/pgjdbc/pgjdbc/issues/100
                     return new PGmoney(rs.getString(colIdx)).val;

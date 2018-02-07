@@ -68,7 +68,7 @@ public class PostgresSchemaIT {
     @Test
     public void shouldLoadSchemaForBuiltinPostgresTypes() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
-        schema = new PostgresSchema(new PostgresConnectorConfig(TestHelper.defaultConfig().build()));
+        schema = new PostgresSchema(new PostgresConnectorConfig(TestHelper.defaultConfig().build()), TestHelper.getTypeRegistry());
         try (PostgresConnection connection = TestHelper.create()) {
             schema.refresh(connection, false);
             assertTablesIncluded(TEST_TABLES);
@@ -115,7 +115,7 @@ public class PostgresSchemaIT {
     @Test
     public void shouldLoadSchemaForExtensionPostgresTypes() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
-        schema = new PostgresSchema(new PostgresConnectorConfig(TestHelper.defaultConfig().with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true).build()));
+        schema = new PostgresSchema(new PostgresConnectorConfig(TestHelper.defaultConfig().with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true).build()), TestHelper.getTypeRegistry());
         try (PostgresConnection connection = TestHelper.create()) {
             schema.refresh(connection, false);
             assertTablesIncluded(TEST_TABLES);
@@ -126,8 +126,9 @@ public class PostgresSchemaIT {
 
     @Test
     public void shouldLoadSchemaForPostgisTypes() throws Exception {
+        TestHelper.executeDDL("init_postgis.ddl");
         TestHelper.executeDDL("postgis_create_tables.ddl");
-        schema = new PostgresSchema(new PostgresConnectorConfig(TestHelper.defaultConfig().build()));
+        schema = new PostgresSchema(new PostgresConnectorConfig(TestHelper.defaultConfig().build()), TestHelper.getTypeRegistry());
         try (PostgresConnection connection = TestHelper.create()) {
             schema.refresh(connection, false);
             final String[] testTables = new String[] {"public.postgis_table"};
@@ -153,7 +154,8 @@ public class PostgresSchemaIT {
                             "CREATE TABLE s2.B (pk SERIAL, ba integer, PRIMARY KEY(pk));";
         TestHelper.execute(statements);
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(SCHEMA_BLACKLIST, "s1").build());
-        schema = new PostgresSchema(config);
+        final TypeRegistry typeRegistry = TestHelper.getTypeRegistry();
+        schema = new PostgresSchema(config, typeRegistry);
         try (PostgresConnection connection = TestHelper.create()) {
             schema.refresh(connection, false);
             assertTablesIncluded("s2.a", "s2.b");
@@ -161,14 +163,14 @@ public class PostgresSchemaIT {
         }
 
         config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(SCHEMA_BLACKLIST, "s.*").build());
-        schema = new PostgresSchema(config);
+        schema = new PostgresSchema(config, typeRegistry);
         try (PostgresConnection connection = TestHelper.create()) {
             schema.refresh(connection, false);
             assertTablesExcluded("s1.a", "s2.a", "s1.b", "s2.b");
         }
 
         config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(PostgresConnectorConfig.TABLE_BLACKLIST, "s1.A,s2.A").build());
-        schema = new PostgresSchema(config);
+        schema = new PostgresSchema(config, typeRegistry);
         try (PostgresConnection connection = TestHelper.create()) {
             schema.refresh(connection, false);
             assertTablesIncluded("s1.b", "s2.b");
@@ -179,7 +181,7 @@ public class PostgresSchemaIT {
                                                           .with(SCHEMA_BLACKLIST, "s2")
                                                           .with(PostgresConnectorConfig.TABLE_BLACKLIST, "s1.A")
                                                           .build());
-        schema = new PostgresSchema(config);
+        schema = new PostgresSchema(config, typeRegistry);
         try (PostgresConnection connection = TestHelper.create()) {
             schema.refresh(connection, false);
             assertTablesIncluded("s1.b");
@@ -187,7 +189,7 @@ public class PostgresSchemaIT {
         }
         config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(PostgresConnectorConfig.COLUMN_BLACKLIST, ".*aa")
                                                        .build());
-        schema = new PostgresSchema(config);
+        schema = new PostgresSchema(config, typeRegistry);
         try (PostgresConnection connection = TestHelper.create()) {
             schema.refresh(connection, false);
             assertColumnsExcluded("s1.a.aa", "s2.a.aa");
@@ -196,11 +198,11 @@ public class PostgresSchemaIT {
 
     @Test
     public void shouldDetectNewChangesAfterRefreshing() throws Exception {
-        String statements = "CREATE SCHEMA public;" +
+        String statements = "CREATE SCHEMA IF NOT EXISTS public;" +
                             "DROP TABLE IF EXISTS table1;" +
                             "CREATE TABLE table1 (pk SERIAL,  PRIMARY KEY(pk));";
         TestHelper.execute(statements);
-        schema = new PostgresSchema(new PostgresConnectorConfig(TestHelper.defaultConfig().build()));
+        schema = new PostgresSchema(new PostgresConnectorConfig(TestHelper.defaultConfig().build()), TestHelper.getTypeRegistry());
         try (PostgresConnection connection = TestHelper.create()) {
             schema.refresh(connection, false);
             assertTablesIncluded("public.table1");
