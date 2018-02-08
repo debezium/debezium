@@ -70,7 +70,7 @@ public class SnapshotReader extends AbstractReader {
      * @param context the task context in which this reader is running; may not be null
      */
     public SnapshotReader(String name, MySqlTaskContext context) {
-        super(name, context);
+        super(name, context, null);
         this.includeData = context.snapshotMode().includeData();
         recorder = this::recordRowAsRead;
         metrics = new SnapshotReaderMetrics(context.getClock());
