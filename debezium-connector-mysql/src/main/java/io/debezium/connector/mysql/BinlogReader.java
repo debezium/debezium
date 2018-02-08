@@ -367,8 +367,6 @@ public class BinlogReader extends AbstractReader {
     }
 
     /**
-<<<<<<< a4103a952ea75b3679cd4460b6fc88bdff855aba
-=======
      * Halting predicate that always returns false.
      */
     @Immutable
@@ -381,7 +379,6 @@ public class BinlogReader extends AbstractReader {
     }
 
     /**
->>>>>>> DBZ-389: More flexibility in Snapshot and Binlog Readers
      * @return a copy of the last offset of this reader.
      */
     public Map<String, ?> getLastOffset() {
