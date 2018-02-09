@@ -1386,7 +1386,21 @@ public interface Configuration {
      *         configuration but the value could not be converted to an existing class with a zero-argument constructor
      */
     default <T> T getInstance(String key, Class<T> type, Supplier<ClassLoader> classloaderSupplier) {
-        return ConfigurationHelper.doGetInstance(getString(key), classloaderSupplier, null);
+        return Instantiator.getInstance(getString(key), classloaderSupplier, null);
+    }
+
+    /**
+     * Get an instance of the class given by the value in the configuration associated with the given key.
+     * The instance is created using {@code Instance(Configuration)} constructor.
+     *
+     * @param key the key for the configuration property
+     * @param clazz the Class of which the resulting object is expected to be an instance of; may not be null
+     * @param the {@link Configuration} object that is passed as a parameter to the constructor
+     * @return the new instance, or null if there is no such key-value pair in the configuration or if there is a key-value
+     *         configuration but the value could not be converted to an existing class with a zero-argument constructor
+     */
+    default <T> T getInstance(String key, Class<T> clazz, Configuration configuration) {
+        return Instantiator.getInstance(getString(key), () -> getClass().getClassLoader(), configuration);
     }
 
     /**
@@ -1402,17 +1416,17 @@ public interface Configuration {
     }
 
     /**
-     * Get an instance of the class given by the value in the configuration associated with the given key.
-     * The instance is created using {@code Instance(Configuration)} constructor.
+     * Get an instance of the class given by the value in the configuration associated with the given field.
      *
-     * @param key the key for the configuration property
-     * @param clazz the Class of which the resulting object is expected to be an instance of; may not be null
-     * @param the {@link Configuration} object that is passed as a parameter to the constructor
+     * @param field the field for the configuration property
+     * @param type the Class of which the resulting object is expected to be an instance of; may not be null
+     * @param classloaderSupplier the supplier of the ClassLoader to be used to load the resulting class; may be null if this
+     *            class' ClassLoader should be used
      * @return the new instance, or null if there is no such key-value pair in the configuration or if there is a key-value
      *         configuration but the value could not be converted to an existing class with a zero-argument constructor
      */
-    default <T> T getInstance(String key, Class<T> clazz, Configuration configuration) {
-        return ConfigurationHelper.doGetInstance(getString(key), () -> getClass().getClassLoader(), configuration);
+    default <T> T getInstance(Field field, Class<T> type, Supplier<ClassLoader> classloaderSupplier) {
+        return Instantiator.getInstance(getString(field), classloaderSupplier, null);
     }
 
     /**
@@ -1426,21 +1440,7 @@ public interface Configuration {
      *         configuration but the value could not be converted to an existing class with a zero-argument constructor
      */
     default <T> T getInstance(Field field, Class<T> clazz, Configuration configuration) {
-        return ConfigurationHelper.doGetInstance(getString(field), () -> getClass().getClassLoader(), configuration);
-    }
-
-    /**
-     * Get an instance of the class given by the value in the configuration associated with the given field.
-     *
-     * @param field the field for the configuration property
-     * @param type the Class of which the resulting object is expected to be an instance of; may not be null
-     * @param classloaderSupplier the supplier of the ClassLoader to be used to load the resulting class; may be null if this
-     *            class' ClassLoader should be used
-     * @return the new instance, or null if there is no such key-value pair in the configuration or if there is a key-value
-     *         configuration but the value could not be converted to an existing class with a zero-argument constructor
-     */
-    default <T> T getInstance(Field field, Class<T> type, Supplier<ClassLoader> classloaderSupplier) {
-        return ConfigurationHelper.doGetInstance(getString(field), classloaderSupplier, null);
+        return Instantiator.getInstance(getString(field), () -> getClass().getClassLoader(), configuration);
     }
 
     /**

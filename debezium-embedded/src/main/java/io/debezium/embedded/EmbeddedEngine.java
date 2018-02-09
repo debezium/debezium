@@ -157,8 +157,9 @@ public final class EmbeddedEngine implements Runnable {
                                                               .withValidation(Field::isPositiveInteger);
 
     public static final Field OFFSET_COMMIT_POLICY = Field.create("offset.commit.policy")
-                                                          .withDescription("The name of the class implementing commit policy."
-                                                                      + "Default is periodic commity policy based upon time intervals.")
+                                                          .withDescription("The fully-qualified class name of the commit policy type. This class must implement the interface "
+                                                                      + OffsetCommitPolicy.class.getName()
+                                                                      + ". The default is a periodic commity policy based upon time intervals.")
                                                           .withDefault(OffsetCommitPolicy.PeriodicCommitOffsetPolicy.class.getName())
                                                           .withValidation(Field::isClassName);
 
@@ -400,7 +401,7 @@ public final class EmbeddedEngine implements Runnable {
 
         /**
          * During the engine's {@link EmbeddedEngine#run()} method, decide when the offsets
-         * should be committed into to the {@link OffsetBackingStore}.
+         * should be committed into the {@link OffsetBackingStore}.
          * @param policy
          * @return this builder object so methods can be chained together; never null
          */
