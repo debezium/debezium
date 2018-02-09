@@ -482,7 +482,7 @@ public class RecordMakers {
      * @param tableNumber
      * @return the table id or null for unknown tables
      */
-    public TableId getTableIfFromTableNumber(long tableNumber) {
+    public TableId getTableIdFromTableNumber(long tableNumber) {
         return tableIdsByTableNumber.get(tableNumber);
     }
 }

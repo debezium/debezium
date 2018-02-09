@@ -639,12 +639,18 @@ public class BinlogReader extends AbstractReader {
         TableId tableId = new TableId(databaseName, null, tableName);
         if (recordMakers.assign(tableNumber, tableId)) {
             logger.debug("Received update table metadata event: {}", event);
-        } else {
-            eventNotToBeRecorded(event, tableId, "update table metadata");
+        }
+        else {
+            informAboutUnknownTableIfRequired(event, tableId, "update table metadata");
         }
     }
 
-    private void eventNotToBeRecorded(Event event, TableId tableId, String typeToLog) {
+    /**
+     * If we receive an event for a table that is monitored but whose metadata we
+     * don't know, either ignore that event or raise a warning or error as per the
+     * {@link MySqlConnectorConfig#INCONSISTENT_SCHEMA_HANDLING_MODE} configuration.
+     */
+    private void informAboutUnknownTableIfRequired(Event event, TableId tableId, String typeToLog) {
         if (tableId != null && context.dbSchema().isTableMonitored(tableId)) {
             EventHeaderV4 eventHeader = event.getHeader();
 
@@ -736,8 +742,9 @@ public class BinlogReader extends AbstractReader {
                 // All rows were previously processed ...
                 logger.debug("Skipping previously processed insert event: {}", event);
             }
-        } else {
-            eventNotToBeRecorded(event, recordMakers.getTableIfFromTableNumber(tableNumber), "insert row");
+        }
+        else {
+            informAboutUnknownTableIfRequired(event, recordMakers.getTableIdFromTableNumber(tableNumber), "insert row");
         }
         startingRowNumber = 0;
     }
@@ -787,8 +794,9 @@ public class BinlogReader extends AbstractReader {
                 // All rows were previously processed ...
                 logger.debug("Skipping previously processed update event: {}", event);
             }
-        } else {
-            eventNotToBeRecorded(event, recordMakers.getTableIfFromTableNumber(tableNumber), "update row");
+        }
+        else {
+            informAboutUnknownTableIfRequired(event, recordMakers.getTableIdFromTableNumber(tableNumber), "update row");
         }
         startingRowNumber = 0;
     }
@@ -834,8 +842,9 @@ public class BinlogReader extends AbstractReader {
                 // All rows were previously processed ...
                 logger.debug("Skipping previously processed delete event: {}", event);
             }
-        } else {
-            eventNotToBeRecorded(event, recordMakers.getTableIfFromTableNumber(tableNumber), "delete row");
+        }
+        else {
+            informAboutUnknownTableIfRequired(event, recordMakers.getTableIdFromTableNumber(tableNumber), "delete row");
         }
         startingRowNumber = 0;
     }
