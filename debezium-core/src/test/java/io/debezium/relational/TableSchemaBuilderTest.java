@@ -95,19 +95,19 @@ public class TableSchemaBuilderTest {
 
     @Test(expected = NullPointerException.class)
     public void shouldFailToBuildTableSchemaFromNullTable() {
-        new TableSchemaBuilder(new JdbcValueConverters(),validator::validate).create(prefix,null);
+        new TableSchemaBuilder(new JdbcValueConverters(),validator::validate, SchemaBuilder.struct().build()).create(prefix, "sometopic", null);
     }
 
     @Test
     public void shouldBuildTableSchemaFromTable() {
-        schema = new TableSchemaBuilder(new JdbcValueConverters(),validator::validate).create(prefix,table);
+        schema = new TableSchemaBuilder(new JdbcValueConverters(),validator::validate, SchemaBuilder.struct().build()).create(prefix, "sometopic", table);
         assertThat(schema).isNotNull();
     }
 
     @Test
     public void shouldBuildTableSchemaFromTableWithoutPrimaryKey() {
         table = table.edit().setPrimaryKeyNames().create();
-        schema = new TableSchemaBuilder(new JdbcValueConverters(),validator::validate).create(prefix,table);
+        schema = new TableSchemaBuilder(new JdbcValueConverters(),validator::validate, SchemaBuilder.struct().build()).create(prefix, "sometopic", table);
         assertThat(schema).isNotNull();
         // Check the keys ...
         assertThat(schema.keySchema()).isNull();

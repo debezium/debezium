@@ -53,20 +53,22 @@ public class PostgresSchema {
 
     private Map<String, Integer> typeInfo;
     private final TypeRegistry typeRegistry;
+    private final TopicSelector topicSelector;
 
     /**
      * Create a schema component given the supplied {@link PostgresConnectorConfig Postgres connector configuration}.
      *
      * @param config the connector configuration, which is presumed to be valid
      */
-    protected PostgresSchema(PostgresConnectorConfig config, TypeRegistry typeRegistry) {
+    protected PostgresSchema(PostgresConnectorConfig config, TypeRegistry typeRegistry, TopicSelector topicSelector) {
         this.filters = new Filters(config);
         this.tables = new Tables();
+        this.topicSelector = topicSelector;
 
         this.valueConverter = new PostgresValueConverter(config.decimalHandlingMode(), config.temporalPrecisionMode(),
                 ZoneOffset.UTC, null, config.includeUnknownDatatypes(), typeRegistry);
         this.schemaNameValidator = AvroValidator.create(LOGGER)::validate;
-        this.schemaBuilder = new TableSchemaBuilder(valueConverter, this.schemaNameValidator);
+        this.schemaBuilder = new TableSchemaBuilder(valueConverter, this.schemaNameValidator, SourceInfo.SCHEMA);
 
         // Set up the server name and schema prefix ...
         String serverName = config.serverName();
@@ -203,8 +205,12 @@ public class PostgresSchema {
             LOGGER.debug("refreshing DB schema for table '{}'", id);
         }
         Table table = this.tables.forTable(id);
-        TableSchema schema = schemaBuilder.create(schemaPrefix, table, filters.columnFilter(), null);
+        TableSchema schema = schemaBuilder.create(schemaPrefix, getEnvelopeSchemaName(table), table, filters.columnFilter(), null);
         tableSchemaByTableId.put(id, schema);
+    }
+
+    private String getEnvelopeSchemaName(Table table) {
+        return topicSelector.topicNameFor(table.id()) + ".Envelope";
     }
 
     protected static TableId parse(String table) {

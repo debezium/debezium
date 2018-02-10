@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.data.Envelope;
 import io.debezium.data.SchemaUtil;
 import io.debezium.relational.mapping.ColumnMapper;
 import io.debezium.relational.mapping.ColumnMappers;
@@ -47,6 +48,7 @@ public class TableSchemaBuilder {
 
     private final Function<String, String> schemaNameValidator;
     private final ValueConverterProvider valueConverterProvider;
+    private final Schema sourceInfoSchema;
 
     /**
      * Create a new instance of the builder.
@@ -55,9 +57,10 @@ public class TableSchemaBuilder {
      *            null
      * @param schemaNameValidator the validation function for schema names; may not be null
      */
-    public TableSchemaBuilder(ValueConverterProvider valueConverterProvider, Function<String, String> schemaNameValidator) {
+    public TableSchemaBuilder(ValueConverterProvider valueConverterProvider, Function<String, String> schemaNameValidator, Schema sourceInfoSchema) {
         this.schemaNameValidator = schemaNameValidator;
         this.valueConverterProvider = valueConverterProvider;
+        this.sourceInfoSchema = sourceInfoSchema;
     }
 
     /**
@@ -73,8 +76,8 @@ public class TableSchemaBuilder {
      * @param table the table definition; may not be null
      * @return the table schema that can be used for sending rows of data for this table to Kafka Connect; never null
      */
-    public TableSchema create(String schemaPrefix, Table table) {
-        return create(schemaPrefix, table, null, null);
+    public TableSchema create(String schemaPrefix, String envelopeSchemaName, Table table) {
+        return create(schemaPrefix, envelopeSchemaName, table, null, null);
     }
 
     /**
@@ -87,13 +90,14 @@ public class TableSchemaBuilder {
      *
      * @param schemaPrefix the prefix added to the table identifier to construct the schema names; may be null if there is no
      *            prefix
+     * @param envelopSchemaName the name of the schema of the built table's envelope
      * @param table the table definition; may not be null
      * @param filter the filter that specifies whether columns in the table should be included; may be null if all columns
      *            are to be included
      * @param mappers the mapping functions for columns; may be null if none of the columns are to be mapped to different values
      * @return the table schema that can be used for sending rows of data for this table to Kafka Connect; never null
      */
-    public TableSchema create(String schemaPrefix, Table table, Predicate<ColumnId> filter, ColumnMappers mappers) {
+    public TableSchema create(String schemaPrefix, String envelopSchemaName, Table table, Predicate<ColumnId> filter, ColumnMappers mappers) {
         if (schemaPrefix == null) schemaPrefix = "";
         // Build the schemas ...
         final TableId tableId = table.id();
@@ -123,12 +127,19 @@ public class TableSchemaBuilder {
             LOGGER.debug("Mapped columns for table '{}' to schema: {}", tableId, SchemaUtil.asDetailedString(valSchema));
         }
 
+        Envelope envelope = Envelope.defineSchema()
+                .withName(schemaNameValidator.apply(envelopSchemaName))
+                .withRecord(valSchema)
+                .withSource(sourceInfoSchema)
+                .build();
+
+
         // Create the generators ...
         Function<Object[], Object> keyGenerator = createKeyGenerator(keySchema, tableId, table.primaryKeyColumns());
         Function<Object[], Struct> valueGenerator = createValueGenerator(valSchema, tableId, table.columns(), filter, mappers);
 
         // And the table schema ...
-        return new TableSchema(keySchema, keyGenerator, valSchema, valueGenerator);
+        return new TableSchema(keySchema, keyGenerator, envelope, valSchema, valueGenerator);
     }
 
     /**

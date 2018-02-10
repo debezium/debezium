@@ -317,7 +317,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         Map<String, ?> partition = sourceInfo.partition();
         Map<String, ?> offset = sourceInfo.offset();
         String topicName = topicSelector().topicNameFor(tableId);
-        Envelope envelope = createEnvelope(tableSchema, topicName);
+        Envelope envelope = tableSchema.getEnvelopeSchema();
         currentRecord.set(new SourceRecord(partition, offset, topicName, null, keySchema, key, envelope.schema(),
                                            envelope.read(value, sourceInfo.source(), clock().currentTimeInMillis())));
     }

@@ -69,8 +69,9 @@ public class PostgresConnectorTask extends SourceTask {
         }
 
         // create the task context and schema...
-        PostgresSchema schema = new PostgresSchema(config, typeRegistry);
-        this.taskContext = new PostgresTaskContext(config, schema);
+        TopicSelector topicSelector = TopicSelector.create(config);
+        PostgresSchema schema = new PostgresSchema(config, typeRegistry, topicSelector);
+        this.taskContext = new PostgresTaskContext(config, schema, topicSelector);
 
         SourceInfo sourceInfo = new SourceInfo(config.serverName());
         Map<String, Object> existingOffset = context.offsetStorageReader().offset(sourceInfo.partition());

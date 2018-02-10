@@ -45,7 +45,12 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         TestHelper.executeDDL("postgis_create_tables.ddl");
 
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
-        context = new PostgresTaskContext(config, new PostgresSchema(config, TestHelper.getTypeRegistry()));
+        TopicSelector selector = TopicSelector.create(config);
+        context = new PostgresTaskContext(
+                config,
+                new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
+                selector
+        );
     }
 
     @After
@@ -86,7 +91,12 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
-        context = new PostgresTaskContext(config, new PostgresSchema(config, TestHelper.getTypeRegistry()));
+        TopicSelector selector = TopicSelector.create(config);
+        context = new PostgresTaskContext(
+                config,
+                new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
+                selector
+        );
 
         String insertStmt = "INSERT INTO s1.a (aa) VALUES (1);" +
                             "INSERT INTO s2.a (aa) VALUES (1);";
@@ -170,7 +180,13 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 TestHelper.defaultConfig()
                         .with(PostgresConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS)
                         .build());
-        context = new PostgresTaskContext(config, new PostgresSchema(config, TestHelper.getTypeRegistry()));
+
+        TopicSelector selector = TopicSelector.create(config);
+        context = new PostgresTaskContext(
+                config,
+                new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
+                selector
+        );
 
         snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER), false);
 
