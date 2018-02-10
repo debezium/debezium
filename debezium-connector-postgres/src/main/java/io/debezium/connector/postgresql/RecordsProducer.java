@@ -11,9 +11,7 @@ import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
-import io.debezium.relational.TableSchema;
 import io.debezium.util.Clock;
 
 /**
@@ -63,13 +61,5 @@ public abstract class RecordsProducer {
 
     protected Clock clock() {
         return taskContext.clock();
-    }
-
-    protected Envelope createEnvelope(TableSchema tableSchema, String topicName) {
-        return Envelope.defineSchema()
-                       .withName(schema().validateSchemaName(topicName + ".Envelope"))
-                       .withRecord(tableSchema.valueSchema())
-                       .withSource(SourceInfo.SCHEMA)
-                       .build();
     }
 }

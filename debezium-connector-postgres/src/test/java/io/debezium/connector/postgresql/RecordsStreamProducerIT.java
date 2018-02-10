@@ -64,8 +64,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 "INSERT INTO test_table(text) VALUES ('insert');";
         TestHelper.execute(statements);
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true).build());
-        PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config, TestHelper.getTypeRegistry()));
-        recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.serverName()));
+        setupRecordsProducer(config);
     }
 
     @After
@@ -373,8 +372,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
                 .build()
         );
-        PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config, TestHelper.getTypeRegistry()));
-        recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.serverName()));
+        setupRecordsProducer(config);
         consumer = testConsumer(2);
         recordsProducer.start(consumer, blackHole);
 
@@ -539,8 +537,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
                 .build()
         );
-        PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config, TestHelper.getTypeRegistry()));
-        recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.serverName()));
+        setupRecordsProducer(config);
 
         // add a new entry and remove both
         String statements = "INSERT INTO test_table (text) VALUES ('insert2');" +
@@ -570,8 +567,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, PostgresConnectorConfig.DecimalHandlingMode.DOUBLE)
                 .build());
-        PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config, TestHelper.getTypeRegistry()));
-        recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.serverName()));
+        setupRecordsProducer(config);
 
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
@@ -618,11 +614,22 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // Need to remove record created in @Before
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true).build());
-        PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config, TestHelper.getTypeRegistry()));
-        recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.serverName()));
+        setupRecordsProducer(config);
 
         consumer = testConsumer(1);
         recordsProducer.start(consumer, blackHole);
+    }
+
+    private void setupRecordsProducer(PostgresConnectorConfig config) {
+        TopicSelector selector = TopicSelector.create(config);
+
+        PostgresTaskContext context = new PostgresTaskContext(
+                config,
+                new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
+                selector
+        );
+
+        recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.serverName()));
     }
 
     private void assertInsert(String statement, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {

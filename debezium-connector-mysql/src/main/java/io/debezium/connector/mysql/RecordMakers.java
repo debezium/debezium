@@ -178,11 +178,7 @@ public class RecordMakers {
         if (tableSchema == null) return false;
 
         String topicName = topicSelector.getTopic(id);
-        Envelope envelope = Envelope.defineSchema()
-                                    .withName(schemaNameValidator.validate(topicName + ".Envelope"))
-                                    .withRecord(schema.schemaFor(id).valueSchema())
-                                    .withSource(SourceInfo.SCHEMA)
-                                    .build();
+        Envelope envelope = tableSchema.getEnvelopeSchema();
 
         // Generate this table's insert, update, and delete converters ...
         Integer partitionNum = null;

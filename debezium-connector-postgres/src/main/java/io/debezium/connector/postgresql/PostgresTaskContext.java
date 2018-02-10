@@ -28,24 +28,12 @@ public class PostgresTaskContext {
     private final TopicSelector topicSelector;
     private final PostgresSchema schema;
 
-    protected PostgresTaskContext(PostgresConnectorConfig config, PostgresSchema schema) {
+    protected PostgresTaskContext(PostgresConnectorConfig config, PostgresSchema schema, TopicSelector topicSelector) {
         this.config = config;
         this.clock = Clock.system();
-        this.topicSelector = initTopicSelector();
+        this.topicSelector = topicSelector;
         assert schema != null;
         this.schema = schema;
-    }
-
-    private TopicSelector initTopicSelector() {
-        PostgresConnectorConfig.TopicSelectionStrategy topicSelectionStrategy = config.topicSelectionStrategy();
-        switch (topicSelectionStrategy) {
-            case TOPIC_PER_SCHEMA:
-                return TopicSelector.topicPerSchema(config.serverName());
-            case TOPIC_PER_TABLE:
-                return TopicSelector.topicPerTable(config.serverName());
-            default:
-                throw new IllegalArgumentException("Unknown topic selection strategy: " + topicSelectionStrategy);
-        }
     }
 
     protected Clock clock() {

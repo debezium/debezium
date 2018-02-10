@@ -63,6 +63,7 @@ public class MySqlSchema {
     private final AvroValidator schemaNameValidator = AvroValidator.create(logger);
     private final Set<String> ignoredQueryStatements = Collect.unmodifiableSet("BEGIN", "END", "FLUSH PRIVILEGES");
     private final MySqlDdlParser ddlParser;
+    private final TopicSelector topicSelector;
     private final SchemasByTableId tableSchemaByTableId;
     private final Filters filters;
     private final DatabaseHistory dbHistory;
@@ -86,12 +87,13 @@ public class MySqlSchema {
      *          may be null if not needed
      * @param tableIdCaseInsensitive true if table lookup ignores letter case
      */
-    public MySqlSchema(Configuration config, String serverName, Predicate<String> gtidFilter, boolean tableIdCaseInsensitive) {
+    public MySqlSchema(Configuration config, String serverName, Predicate<String> gtidFilter, boolean tableIdCaseInsensitive, TopicSelector topicSelector) {
         this.filters = new Filters(config);
         this.ddlParser = new MySqlDdlParser(false);
         this.tables = new Tables(tableIdCaseInsensitive);
         this.ddlChanges = new DdlChanges(this.ddlParser.terminator());
         this.ddlParser.addListener(ddlChanges);
+        this.topicSelector = topicSelector;
         this.tableIdCaseInsensitive = tableIdCaseInsensitive;
 
         // Use MySQL-specific converters and schemas for values ...
@@ -104,7 +106,7 @@ public class MySqlSchema {
         BigIntUnsignedHandlingMode bigIntUnsignedHandlingMode = BigIntUnsignedHandlingMode.parse(bigIntUnsignedHandlingModeStr);
         BigIntUnsignedMode bigIntUnsignedMode = bigIntUnsignedHandlingMode.asBigIntUnsignedMode();
         MySqlValueConverters valueConverters = new MySqlValueConverters(decimalMode, timePrecisionMode, bigIntUnsignedMode);
-        this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameValidator::validate);
+        this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameValidator::validate, SourceInfo.SCHEMA);
 
         // Set up the server name and schema prefix ...
         if (serverName != null) serverName = serverName.trim();
@@ -208,7 +210,7 @@ public class MySqlSchema {
     }
 
     /**
-     * Decide whether events should be captured for a given table 
+     * Decide whether events should be captured for a given table
      *
      * @param id the fully-qualified table identifier; may be null
      * @return true if events from the table are captured
@@ -289,7 +291,7 @@ public class MySqlSchema {
         // Create TableSchema instances for any existing table ...
         this.tables.tableIds().forEach(id -> {
             Table table = this.tables.forTable(id);
-            TableSchema schema = schemaBuilder.create(schemaPrefix, table, filters.columnFilter(), filters.columnMappers());
+            TableSchema schema = schemaBuilder.create(schemaPrefix, getEnvelopeSchemaName(table), table, filters.columnFilter(), filters.columnMappers());
             tableSchemaByTableId.put(id, schema);
         });
     }
@@ -379,11 +381,15 @@ public class MySqlSchema {
             if (table == null) { // removed
                 tableSchemaByTableId.remove(tableId);
             } else {
-                TableSchema schema = schemaBuilder.create(schemaPrefix, table, filters.columnFilter(), filters.columnMappers());
+                TableSchema schema = schemaBuilder.create(schemaPrefix, getEnvelopeSchemaName(table), table, filters.columnFilter(), filters.columnMappers());
                 tableSchemaByTableId.put(tableId, schema);
             }
         });
         return true;
+    }
+
+    private String getEnvelopeSchemaName(Table table) {
+        return topicSelector.getTopic(table.id()) + ".Envelope";
     }
 
     /**
