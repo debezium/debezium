@@ -13,7 +13,7 @@ import com.datapipeline.clients.DpEnv;
 import com.datapipeline.clients.zk.DpTopicMeta;
 import com.dp.internal.bean.DataPipelineActiveBean;
 import com.dp.internal.bean.DataSourceBean;
-import com.dp.internal.bean.DataSourceWhiteListBean;
+import com.dp.internal.bean.DpSchemaBean;
 import com.dp.internal.bean.DpSqlConnectInfoBean;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -74,17 +74,17 @@ public class MySqlConnector extends DpSourceConnector {
         config.put("database.password", connectInfo.getSqlPassword());
         config.put("snapshot.mode", "when_needed");
         config.put("database.whitelist", connectInfo.getSqlDatabase());
-        if (dataSourceBean.getTableWhiteLists() != null && !dataSourceBean.getTableWhiteLists().isEmpty()) {
+
+        List<DpSchemaBean> schemaBeans = activeBean.getSchemas();
+        if (schemaBeans != null && !schemaBeans.isEmpty()) {
             List<String> tableSchemalist = new ArrayList<>();
             List<String> tablewhitelist = new ArrayList<>();
-            for (DataSourceWhiteListBean beans : dataSourceBean.getTableWhiteLists()) {
-                if (isNotBlank(beans.getSchemaNames())) {
+            for (DpSchemaBean schemaBean : schemaBeans) {
+                if (isNotBlank(schemaBean.getDestiantionSchemaName())) {
                     tableSchemalist.add(
-                            String.format("%s:[%s]", beans.getSchemaNames(), String.join(",", beans.getTables())));
+                            String.format("%s:[%s]", schemaBean.getDestiantionSchemaName(), String.join(",", schemaBean.getSourceSchemaName())));
                 }
-                for (String tableName : beans.getTables()) {
-                    tablewhitelist.add(String.format("%s.%s", connectInfo.getSqlDatabase(), tableName));
-                }
+                tablewhitelist.add(String.format("%s.%s", connectInfo.getSqlDatabase(), schemaBean.getSourceSchemaName()));
             }
             config.put("table.whitelist", String.join(",", tablewhitelist));
             config.put("table.schema.map", String.join(",", tableSchemalist));
