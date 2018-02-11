@@ -55,7 +55,7 @@ public interface DatabaseHistory {
                     + "then only DDL that manipulates a monitored table will be stored.")
             .withDefault(false);
 
-    public static final Field DDL_FILTER = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "ddl.filter")
+    public static final Field DDL_FILTER = Field.createInternal(CONFIGURATION_FIELD_PREFIX_STRING + "ddl.filter")
                                                 .withDisplayName("DDL filter")
                                                 .withType(Type.STRING)
                                                 .withDefault(
