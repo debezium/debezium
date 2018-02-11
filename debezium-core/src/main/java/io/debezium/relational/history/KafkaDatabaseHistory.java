@@ -55,6 +55,13 @@ import io.debezium.util.Collect;
 @NotThreadSafe
 public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
 
+    /**
+     * The name of broker property defining default replication factor for topics without the explicit setting.
+     *
+     * @see kafka.server.KafkaConfig.DefaultReplicationFactorProp
+     */
+    private static final String DEFAULT_TOPIC_REPLICATION_FACTOR_PROP_NAME = "default.replication.factor";
+
     public static final Field TOPIC = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.topic")
                                            .withDisplayName("Database history topic name")
                                            .withType(Type.STRING)
@@ -337,7 +344,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                 throw new ConnectException("No configs have been received");
             }
             final Config config = configs.values().iterator().next();
-            final short replicationFactor = Short.parseShort(config.get("default.replication.factor").value());
+            final short replicationFactor = Short.parseShort(config.get(DEFAULT_TOPIC_REPLICATION_FACTOR_PROP_NAME).value());
 
             // Create topic
             final NewTopic topic = new NewTopic(topicName, (short)1, replicationFactor);
@@ -345,7 +352,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             admin.createTopics(Collections.singleton(topic));
             logger.info("Database history topic '{}' created", topic);
         } catch (Exception e) {
-            logger.warn("Creation of database history topic failed, please create the topic manually", e);
+            throw new ConnectException("Creation of database history topic failed, please create the topic manually", e);
         }
     }
 }
