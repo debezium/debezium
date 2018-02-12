@@ -363,9 +363,6 @@ public class BinlogReader extends AbstractReader {
 
     @Override
     protected void pollComplete(List<SourceRecord> batch) {
-        // Generate heartbeat message if the time is right
-        heartbeat.heartbeat(batch::add);
-
         // Record a bit about this batch ...
         int batchSize = batch.size();
         recordCounter += batchSize;
@@ -426,6 +423,9 @@ public class BinlogReader extends AbstractReader {
             // Forward the event to the handler ...
             eventHandlers.getOrDefault(eventType, this::ignoreEvent).accept(event);
 
+            // Generate heartbeat message if the time is right
+            heartbeat.heartbeat((BlockingConsumer<SourceRecord>)this::enqueueRecord);
+
             // Capture that we've completed another event ...
             source.completeEvent();
 
@@ -434,7 +434,6 @@ public class BinlogReader extends AbstractReader {
                 --initialEventsToSkip;
                 skipEvent = initialEventsToSkip > 0;
             }
-
         } catch (RuntimeException e) {
             // There was an error in the event handler, so propagate the failure to Kafka Connect ...
             logReaderState();
