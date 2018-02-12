@@ -14,7 +14,7 @@ import javax.management.ObjectName;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.function.Predicates;
-import io.debezium.heartbeat.HeartbeatController;
+import io.debezium.heartbeat.Heartbeat;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
@@ -236,7 +236,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     }
 
     public String getHeartbeatTopicsPrefix() {
-        return config.getString(HeartbeatController.HEARTBEAT_TOPICS_PREFIX);
+        return config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX);
     }
 
     @Override
