@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.function.BlockingConsumer;
 import io.debezium.util.Clock;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
@@ -89,6 +90,19 @@ public class HeartbeatController {
     public void heartbeat(Consumer<SourceRecord> consumer) {
         if (heartbeatTimeout.expired()) {
             LOGGER.debug("Generating heartbeat event");
+            consumer.accept(heartbeatRecord());
+            heartbeatTimeout = resetHeartbeat();
+        }
+    }
+
+    /**
+     * Generates a heartbeat record if defined time has elapsed
+     *
+     * @param consumer - a code to place record among others to be sent into Connect
+     */
+    public void heartbeat(BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
+        if (heartbeatTimeout.expired()) {
+            LOGGER.info("Generating heartbeat event");
             consumer.accept(heartbeatRecord());
             heartbeatTimeout = resetHeartbeat();
         }
