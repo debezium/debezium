@@ -14,6 +14,7 @@ import javax.management.ObjectName;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.function.Predicates;
+import io.debezium.heartbeat.Heartbeat;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
@@ -37,7 +38,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     private final Clock clock = Clock.system();
 
     /**
-     * Whether table ids are compared ingnoring letter casing.
+     * Whether table ids are compared ignoring letter casing.
      */
     private final boolean tableIdCaseInsensitive;
 
@@ -49,7 +50,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         super(config);
 
         // Set up the topic selector ...
-        this.topicSelector = TopicSelector.defaultSelector(serverName());
+        this.topicSelector = TopicSelector.defaultSelector(serverName(), getHeartbeatTopicsPrefix());
 
         // Set up the source information ...
         this.source = new SourceInfo();
@@ -232,6 +233,10 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
 
     public String getSnapshotSelectOverrides() {
         return config.getString(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
+    }
+
+    public String getHeartbeatTopicsPrefix() {
+        return config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX);
     }
 
     @Override

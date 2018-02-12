@@ -46,6 +46,8 @@ import io.debezium.connector.mysql.MySqlConnectorConfig.EventProcessingFailureHa
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
 import io.debezium.function.BlockingConsumer;
+import io.debezium.heartbeat.Heartbeat;
+import io.debezium.heartbeat.OffsetPosition;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
@@ -84,6 +86,7 @@ public class BinlogReader extends AbstractReader {
     private final AtomicLong totalRecordCounter = new AtomicLong();
     private volatile Map<String, ?> lastOffset = null;
     private com.github.shyiko.mysql.binlog.GtidSet gtidSet;
+    private Heartbeat heartbeat;
 
     public static class BinlogPosition {
         final String filename;
@@ -226,6 +229,8 @@ public class BinlogReader extends AbstractReader {
 
         // Set up for JMX ...
         metrics = new BinlogReaderMetrics(client);
+        heartbeat = Heartbeat.create(context.config(), context.topicSelector().getHeartbeatTopic(),
+                context.serverName(), () -> OffsetPosition.build(source.partition(), source.offset()));
     }
 
     @Override
@@ -419,6 +424,9 @@ public class BinlogReader extends AbstractReader {
             // Forward the event to the handler ...
             eventHandlers.getOrDefault(eventType, this::ignoreEvent).accept(event);
 
+            // Generate heartbeat message if the time is right
+            heartbeat.heartbeat((BlockingConsumer<SourceRecord>)this::enqueueRecord);
+
             // Capture that we've completed another event ...
             source.completeEvent();
 
@@ -427,7 +435,6 @@ public class BinlogReader extends AbstractReader {
                 --initialEventsToSkip;
                 skipEvent = initialEventsToSkip > 0;
             }
-
         } catch (RuntimeException e) {
             // There was an error in the event handler, so propagate the failure to Kafka Connect ...
             logReaderState();
