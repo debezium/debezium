@@ -327,14 +327,16 @@ public class RecordsStreamProducer extends RecordsProducer {
             }
             recordConsumer.accept(changeEvent);
 
-            // send a tombstone event (null value) for the old key so it can be removed from the Kafka log eventually...
-            changeEvent = new ChangeEvent(
-                    new SourceRecord(partition, offset, topicName, null, oldKeySchema, oldKey, null, null),
-                    isLastEventForLsn);
-            if (logger.isDebugEnabled()) {
-                logger.debug("sending tombstone event '{}' to topic '{}'", changeEvent.getRecord(), topicName);
+            if (taskContext.config().isEmitTombstoneOnDelete()) {
+                // send a tombstone event (null value) for the old key so it can be removed from the Kafka log eventually...
+                changeEvent = new ChangeEvent(
+                        new SourceRecord(partition, offset, topicName, null, oldKeySchema, oldKey, null, null),
+                        isLastEventForLsn);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("sending tombstone event '{}' to topic '{}'", changeEvent.getRecord(), topicName);
+                }
+                recordConsumer.accept(changeEvent);
             }
-            recordConsumer.accept(changeEvent);
 
             // then send a create event for the new key...
             changeEvent = new ChangeEvent(
@@ -385,13 +387,15 @@ public class RecordsStreamProducer extends RecordsProducer {
         recordConsumer.accept(changeEvent);
 
         // And send a tombstone event (null value) for the old key so it can be removed from the Kafka log eventually...
-        changeEvent = new ChangeEvent(
-                new SourceRecord(partition, offset, topicName, null, keySchema, key, null, null),
-                isLastEventForLsn);
-        if (logger.isDebugEnabled()) {
-            logger.debug("sending tombstone event '{}' to topic '{}'", changeEvent.getRecord(), topicName);
+        if (taskContext.config().isEmitTombstoneOnDelete()) {
+            changeEvent = new ChangeEvent(
+                    new SourceRecord(partition, offset, topicName, null, keySchema, key, null, null),
+                    isLastEventForLsn);
+            if (logger.isDebugEnabled()) {
+                logger.debug("sending tombstone event '{}' to topic '{}'", changeEvent.getRecord(), topicName);
+            }
+            recordConsumer.accept(changeEvent);
         }
-        recordConsumer.accept(changeEvent);
     }
 
     private Object[] columnValues(List<ReplicationMessage.Column> columns, TableId tableId, boolean refreshSchemaIfChanged, boolean metadataInMessage)
