@@ -11,7 +11,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-
+import io.debezium.connector.mongodb.CollectionId;
+import io.debezium.connector.mongodb.RecordMakers;
+import io.debezium.connector.mongodb.SourceInfo;
+import io.debezium.connector.mongodb.TopicSelector;
+import io.debezium.doc.FixFor;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -22,11 +26,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import io.debezium.connector.mongodb.CollectionId;
-import io.debezium.connector.mongodb.RecordMakers;
 import io.debezium.connector.mongodb.RecordMakers.RecordsForCollection;
-import io.debezium.connector.mongodb.SourceInfo;
-import io.debezium.connector.mongodb.TopicSelector;
 
 /**
  * Unit test for {@link UnwrapFromMongoDbEnvelope}. It uses {@link RecordMakers}
@@ -44,6 +44,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
     private RecordMakers recordMakers;
     private TopicSelector topicSelector;
     private List<SourceRecord> produced;
+    private boolean emitTombstonesOnDelete;
 
     private UnwrapFromMongoDbEnvelope<SourceRecord> transformation;
 
@@ -52,7 +53,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
         source = new SourceInfo(SERVER_NAME);
         topicSelector = TopicSelector.defaultSelector(PREFIX);
         produced = new ArrayList<>();
-        recordMakers = new RecordMakers(source, topicSelector, produced::add);
+        recordMakers = new RecordMakers(source, topicSelector, produced::add, true);
 
         transformation = new UnwrapFromMongoDbEnvelope<SourceRecord>();
         transformation.configure(Collections.emptyMap());
@@ -158,7 +159,6 @@ public class UnwrapFromMongoDbEnvelopeTest {
 
         transformation.close();
     }
-
     @Test
     public void shouldGenerateRecordForUpdateEvent() throws InterruptedException {
         BsonTimestamp ts = new BsonTimestamp(1000, 1);
@@ -197,6 +197,43 @@ public class UnwrapFromMongoDbEnvelopeTest {
         assertThat(value.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().fields()).hasSize(2);
+    }
+
+
+    @Test
+    @FixFor("DBZ-582")
+    public void shouldGenerateRecordForDeleteEventWithoutTombstone() throws InterruptedException {
+        RecordMakers recordMakersTemp = recordMakers = new RecordMakers(source, topicSelector, produced::add, false);
+
+        BsonTimestamp ts = new BsonTimestamp(1000, 1);
+        CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
+        ObjectId objId = new ObjectId();
+        Document obj = new Document("_id", objId);
+
+        // given
+        Document event = new Document().append("o", obj)
+                .append("ns", "dbA.c1")
+                .append("ts", ts)
+                .append("h", Long.valueOf(12345678))
+                .append("op", "d");
+        RecordsForCollection records = recordMakersTemp.forCollection(collectionId);
+        records.recordEvent(event, 1002);
+        assertThat(produced.size()).isEqualTo(1);
+
+        SourceRecord record = produced.get(0);
+
+        // when
+        SourceRecord transformed = transformation.apply(record);
+
+        Struct key = (Struct) transformed.key();
+        Struct value = (Struct) transformed.value();
+
+        // then assert key and its schema
+        assertThat(key.schema()).isSameAs(transformed.keySchema());
+        assertThat(key.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(key.get("id")).isEqualTo(objId.toString());
+
+        assertThat(value).isNull();
     }
 
     @Test

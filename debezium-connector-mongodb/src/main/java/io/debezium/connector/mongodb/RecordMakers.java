@@ -53,6 +53,7 @@ public class RecordMakers {
     private final Map<CollectionId, RecordsForCollection> recordMakerByCollectionId = new HashMap<>();
     private final Function<Document, String> valueTransformer;
     private final BlockingConsumer<SourceRecord> recorder;
+    private final boolean emitTombstonesOnDelete;
 
     /**
      * Create the record makers using the supplied components.
@@ -61,12 +62,13 @@ public class RecordMakers {
      * @param topicSelector the selector for topic names; may not be null
      * @param recorder the potentially blocking consumer function to be called for each generated record; may not be null
      */
-    public RecordMakers(SourceInfo source, TopicSelector topicSelector, BlockingConsumer<SourceRecord> recorder) {
+    public RecordMakers(SourceInfo source, TopicSelector topicSelector, BlockingConsumer<SourceRecord> recorder, boolean emitTombstonesOnDelete) {
         this.source = source;
         this.topicSelector = topicSelector;
         JsonWriterSettings writerSettings = new JsonWriterSettings(JsonMode.STRICT, "", ""); // most compact JSON
         this.valueTransformer = (doc) -> doc.toJson(writerSettings);
         this.recorder = recorder;
+        this.emitTombstonesOnDelete = emitTombstonesOnDelete;
     }
 
     /**
@@ -78,7 +80,7 @@ public class RecordMakers {
     public RecordsForCollection forCollection(CollectionId collectionId) {
         return recordMakerByCollectionId.computeIfAbsent(collectionId, id -> {
             String topicName = topicSelector.getTopic(collectionId);
-            return new RecordsForCollection(collectionId, source, topicName, schemaNameValidator, valueTransformer, recorder);
+            return new RecordsForCollection(collectionId, source, topicName, schemaNameValidator, valueTransformer, recorder, emitTombstonesOnDelete);
         });
     }
 
@@ -95,9 +97,10 @@ public class RecordMakers {
         private final Schema valueSchema;
         private final Function<Document, String> valueTransformer;
         private final BlockingConsumer<SourceRecord> recorder;
+        private final boolean emitTombstonesOnDelete;
 
         protected RecordsForCollection(CollectionId collectionId, SourceInfo source, String topicName, AvroValidator validator,
-                Function<Document, String> valueTransformer, BlockingConsumer<SourceRecord> recorder) {
+                Function<Document, String> valueTransformer, BlockingConsumer<SourceRecord> recorder, boolean emitTombstonesOnDelete) {
             this.sourcePartition = source.partition(collectionId.replicaSetName());
             this.collectionId = collectionId;
             this.replicaSetName = this.collectionId.replicaSetName();
@@ -118,6 +121,7 @@ public class RecordMakers {
             JsonWriterSettings writerSettings = new JsonWriterSettings(JsonMode.STRICT, "", ""); // most compact JSON
             this.valueTransformer = (doc) -> doc.toJson(writerSettings, MongoClient.getDefaultCodecRegistry().get(Document.class));
             this.recorder = recorder;
+            this.emitTombstonesOnDelete = emitTombstonesOnDelete;
         }
 
         /**
@@ -146,7 +150,6 @@ public class RecordMakers {
             assert objId != null;
             return createRecords(sourceValue, offset, Operation.READ, objId, object, timestamp);
         }
-
         /**
          * Generate and record one or more source records to describe the given event.
          * 
@@ -197,7 +200,7 @@ public class RecordMakers {
             SourceRecord record = new SourceRecord(sourcePartition, offset, topicName, partition, keySchema, key, valueSchema, value);
             recorder.accept(record);
 
-            if (operation == Operation.DELETE) {
+            if (operation == Operation.DELETE && emitTombstonesOnDelete) {
                 // Also generate a tombstone event ...
                 record = new SourceRecord(sourcePartition, offset, topicName, partition, keySchema, key, null, null);
                 recorder.accept(record);
