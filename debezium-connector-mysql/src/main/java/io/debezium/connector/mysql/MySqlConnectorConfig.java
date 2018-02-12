@@ -15,6 +15,7 @@ import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
@@ -28,7 +29,7 @@ import io.debezium.relational.history.KafkaDatabaseHistory;
 /**
  * The configuration properties.
  */
-public class MySqlConnectorConfig {
+public class MySqlConnectorConfig extends CommonConnectorConfig {
 
     /**
      * The set of predefined DecimalHandlingMode options or aliases.
@@ -842,7 +843,8 @@ public class MySqlConnectorConfig {
                                                      SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER,
                                                      BIGINT_UNSIGNED_HANDLING_MODE,
                                                      EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE,
-                                                     INCONSISTENT_SCHEMA_HANDLING_MODE);
+                                                     INCONSISTENT_SCHEMA_HANDLING_MODE,
+                                                     CommonConnectorConfig.TOMBSTONES_ON_DELETE);
 
     /**
      * The set of {@link Field}s that are included in the {@link #configDef() configuration definition}. This includes
@@ -858,6 +860,10 @@ public class MySqlConnectorConfig {
                                                                 DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL,
                                                                 DatabaseHistory.DDL_FILTER);
 
+    public MySqlConnectorConfig(Configuration config) {
+        super(config);
+    }
+
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
         Field.group(config, "MySQL", HOSTNAME, PORT, USER, PASSWORD, SERVER_NAME, SERVER_ID,
@@ -870,7 +876,8 @@ public class MySqlConnectorConfig {
         Field.group(config, "Events", INCLUDE_SCHEMA_CHANGES, TABLES_IGNORE_BUILTIN, DATABASE_WHITELIST, TABLE_WHITELIST,
                     COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST,
                     GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS, BUFFER_SIZE_FOR_BINLOG_READER,
-                    EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE, INCONSISTENT_SCHEMA_HANDLING_MODE);
+                    EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE, INCONSISTENT_SCHEMA_HANDLING_MODE,
+                    CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
                     SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                     BIGINT_UNSIGNED_HANDLING_MODE);

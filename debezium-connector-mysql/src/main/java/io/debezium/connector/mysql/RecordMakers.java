@@ -29,7 +29,7 @@ import io.debezium.util.AvroValidator;
 
 /**
  * A component that makes {@link SourceRecord}s for tables.
- * 
+ *
  * @author Randall Hauch
  */
 public class RecordMakers {
@@ -38,6 +38,7 @@ public class RecordMakers {
     private final MySqlSchema schema;
     private final SourceInfo source;
     private final TopicSelector topicSelector;
+    private final boolean emitTombstoneOnDelete;
     private final Map<Long, Converter> convertersByTableNumber = new HashMap<>();
     private final Map<TableId, Long> tableNumbersByTableId = new HashMap<>();
     private final Map<Long, TableId> tableIdsByTableNumber = new HashMap<>();
@@ -47,15 +48,16 @@ public class RecordMakers {
 
     /**
      * Create the record makers using the supplied components.
-     * 
+     *
      * @param schema the schema information about the MySQL server databases; may not be null
      * @param source the connector's source information; may not be null
      * @param topicSelector the selector for topic names; may not be null
      */
-    public RecordMakers(MySqlSchema schema, SourceInfo source, TopicSelector topicSelector) {
+    public RecordMakers(MySqlSchema schema, SourceInfo source, TopicSelector topicSelector, boolean emitTombstoneOnDelete) {
         this.schema = schema;
         this.source = source;
         this.topicSelector = topicSelector;
+        this.emitTombstoneOnDelete = emitTombstoneOnDelete;
         this.schemaChangeKeySchema = SchemaBuilder.struct()
                                                   .name(schemaNameValidator.validate("io.debezium.connector.mysql.SchemaChangeKey"))
                                                   .field(Fields.DATABASE_NAME, Schema.STRING_SCHEMA)
@@ -70,7 +72,7 @@ public class RecordMakers {
 
     /**
      * Obtain the record maker for the given table, using the specified columns and sending records to the given consumer.
-     * 
+     *
      * @param tableId the identifier of the table for which records are to be produced
      * @param includedColumns the set of columns that will be included in each row; may be null if all columns are included
      * @param consumer the consumer for all produced records; may not be null
@@ -83,7 +85,7 @@ public class RecordMakers {
 
     /**
      * Determine if there is a record maker for the given table.
-     * 
+     *
      * @param tableId the identifier of the table
      * @return {@code true} if there is a {@link #forTable(TableId, BitSet, BlockingConsumer) record maker}, or {@code false}
      * if there is none
@@ -97,7 +99,7 @@ public class RecordMakers {
 
     /**
      * Obtain the record maker for the given table, using the specified columns and sending records to the given consumer.
-     * 
+     *
      * @param tableNumber the {@link #assign(long, TableId) assigned table number} for which records are to be produced
      * @param includedColumns the set of columns that will be included in each row; may be null if all columns are included
      * @param consumer the consumer for all produced records; may not be null
@@ -111,7 +113,7 @@ public class RecordMakers {
 
     /**
      * Produce a schema change record for the given DDL statements.
-     * 
+     *
      * @param databaseName the name of the database that is affected by the DDL statements; may not be null
      * @param ddlStatements the DDL statements; may not be null
      * @param consumer the consumer for all produced records; may not be null
@@ -159,7 +161,7 @@ public class RecordMakers {
 
     /**
      * Assign the given table number to the table with the specified {@link TableId table ID}.
-     * 
+     *
      * @param tableNumber the table number found in binlog events
      * @param id the identifier for the corresponding table
      * @return {@code true} if the assignment was successful, or {@code false} if the table is currently excluded in the
@@ -248,10 +250,12 @@ public class RecordMakers {
                         consumer.accept(record);
                         ++count;
 
-                        // Next send a tombstone event for the old key ...
-                        record = new SourceRecord(partition, offset, topicName, partitionNum, keySchema, oldKey, null, null);
-                        consumer.accept(record);
-                        ++count;
+                        if (emitTombstoneOnDelete) {
+                            // Next send a tombstone event for the old key ...
+                            record = new SourceRecord(partition, offset, topicName, partitionNum, keySchema, oldKey, null, null);
+                            consumer.accept(record);
+                            ++count;
+                        }
 
                         // And finally send the create event ...
                         record = new SourceRecord(partition, offset, topicName, partitionNum,
@@ -286,11 +290,14 @@ public class RecordMakers {
                             keySchema, key, envelope.schema(), envelope.delete(value, origin, ts));
                     consumer.accept(record);
                     ++count;
+
                     // And send a tombstone ...
-                    record = new SourceRecord(partition, offset, topicName, partitionNum,
-                            keySchema, key, null, null);
-                    consumer.accept(record);
-                    ++count;
+                    if (emitTombstoneOnDelete) {
+                        record = new SourceRecord(partition, offset, topicName, partitionNum,
+                                keySchema, key, null, null);
+                        consumer.accept(record);
+                        ++count;
+                    }
                 }
                 return count;
             }
@@ -325,7 +332,7 @@ public class RecordMakers {
         result.put(Fields.DDL_STATEMENTS, ddlStatements);
         return result;
     }
-    
+
     protected static interface Converter {
         int read(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
                  BlockingConsumer<SourceRecord> consumer)
@@ -361,7 +368,7 @@ public class RecordMakers {
 
         /**
          * Produce a {@link io.debezium.data.Envelope.Operation#READ read} record for the row.
-         * 
+         *
          * @param row the values of the row, in the same order as the columns in the {@link Table} definition in the
          *            {@link MySqlSchema}.
          * @param ts the timestamp for this row
@@ -374,7 +381,7 @@ public class RecordMakers {
 
         /**
          * Produce a {@link io.debezium.data.Envelope.Operation#READ read} record for the row.
-         * 
+         *
          * @param row the values of the row, in the same order as the columns in the {@link Table} definition in the
          *            {@link MySqlSchema}.
          * @param ts the timestamp for this row
@@ -389,7 +396,7 @@ public class RecordMakers {
 
         /**
          * Produce a {@link io.debezium.data.Envelope.Operation#CREATE create} record for the row.
-         * 
+         *
          * @param row the values of the row, in the same order as the columns in the {@link Table} definition in the
          *            {@link MySqlSchema}.
          * @param ts the timestamp for this row
@@ -402,7 +409,7 @@ public class RecordMakers {
 
         /**
          * Produce a {@link io.debezium.data.Envelope.Operation#CREATE create} record for the row.
-         * 
+         *
          * @param row the values of the row, in the same order as the columns in the {@link Table} definition in the
          *            {@link MySqlSchema}.
          * @param ts the timestamp for this row
@@ -417,7 +424,7 @@ public class RecordMakers {
 
         /**
          * Produce an {@link io.debezium.data.Envelope.Operation#UPDATE update} record for the row.
-         * 
+         *
          * @param before the values of the row <i>before</i> the update, in the same order as the columns in the {@link Table}
          *            definition in the {@link MySqlSchema}
          * @param after the values of the row <i>after</i> the update, in the same order as the columns in the {@link Table}
@@ -432,7 +439,7 @@ public class RecordMakers {
 
         /**
          * Produce an {@link io.debezium.data.Envelope.Operation#UPDATE update} record for the row.
-         * 
+         *
          * @param before the values of the row <i>before</i> the update, in the same order as the columns in the {@link Table}
          *            definition in the {@link MySqlSchema}
          * @param after the values of the row <i>after</i> the update, in the same order as the columns in the {@link Table}
@@ -449,7 +456,7 @@ public class RecordMakers {
 
         /**
          * Produce a {@link io.debezium.data.Envelope.Operation#DELETE delete} record for the row.
-         * 
+         *
          * @param row the values of the row, in the same order as the columns in the {@link Table} definition in the
          *            {@link MySqlSchema}.
          * @param ts the timestamp for this row
@@ -462,7 +469,7 @@ public class RecordMakers {
 
         /**
          * Produce a {@link io.debezium.data.Envelope.Operation#DELETE delete} record for the row.
-         * 
+         *
          * @param row the values of the row, in the same order as the columns in the {@link Table} definition in the
          *            {@link MySqlSchema}.
          * @param ts the timestamp for this row

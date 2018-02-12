@@ -23,10 +23,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.data.Envelope;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.EmbeddedEngine.CompletionResult;
 import io.debezium.jdbc.JdbcConnection;
@@ -833,6 +835,94 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             }
             print(record);
         });
+    }
+
+    @Test
+    @FixFor("DBZ-582")
+    public void shouldEmitTombstoneOnDeleteByDefault() throws Exception {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        SourceRecords records = consumeRecordsByTopic(9 + 9 + 4 + 5 + 6); // 6 DDL changes
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("orders")).size()).isEqualTo(5);
+
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("UPDATE orders SET order_number=10101 WHERE order_number=10001");
+            }
+        }
+        // Consume the update of the PK, which is one insert followed by a delete followed by a tombstone ...
+        records = consumeRecordsByTopic(3);
+        List<SourceRecord> updates = records.recordsForTopic(DATABASE.topicForTable("orders"));
+        assertThat(updates.size()).isEqualTo(3);
+        assertDelete(updates.get(0), "order_number", 10001);
+        assertTombstone(updates.get(1), "order_number", 10001);
+        assertInsert(updates.get(2), "order_number", 10101);
+
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("DELETE FROM orders WHERE order_number=10101");
+            }
+        }
+        records = consumeRecordsByTopic(2);
+        updates = records.recordsForTopic(DATABASE.topicForTable("orders"));
+        assertThat(updates.size()).isEqualTo(2);
+        assertDelete(updates.get(0), "order_number", 10101);
+        assertTombstone(updates.get(1), "order_number", 10101);
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-582")
+    public void shouldEmitNoTombstoneOnDelete() throws Exception {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
+                .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        SourceRecords records = consumeRecordsByTopic(9 + 9 + 4 + 5 + 6); // 6 DDL changes
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("orders")).size()).isEqualTo(5);
+
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("UPDATE orders SET order_number=10101 WHERE order_number=10001");
+            }
+        }
+        // Consume the update of the PK, which is one insert followed by a delete...
+        records = consumeRecordsByTopic(2);
+        List<SourceRecord> updates = records.recordsForTopic(DATABASE.topicForTable("orders"));
+        assertThat(updates.size()).isEqualTo(2);
+        assertDelete(updates.get(0), "order_number", 10001);
+        assertInsert(updates.get(1), "order_number", 10101);
+
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("DELETE FROM orders WHERE order_number = 10101;");
+                connection.execute("DELETE FROM orders WHERE order_number = 10002;");
+            }
+        }
+
+        records = consumeRecordsByTopic(2);
+        updates = records.recordsForTopic(DATABASE.topicForTable("orders"));
+        assertThat(updates.size()).isEqualTo(2);
+        assertDelete(updates.get(0), "order_number", 10101);
+        assertDelete(updates.get(1), "order_number", 10002);
+
+        stopConnector();
     }
 
     private List<SourceRecord> recordsForTopicForRoProductsTable(SourceRecords records) {
