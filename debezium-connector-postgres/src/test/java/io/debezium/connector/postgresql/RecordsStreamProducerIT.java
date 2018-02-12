@@ -29,6 +29,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.data.Envelope;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
@@ -48,6 +49,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     private RecordsStreamProducer recordsProducer;
     private TestConsumer consumer;
     private final Consumer<Throwable> blackHole = t -> {};
+
     @Rule
     public TestRule conditionalFail = new ConditionalFail();
 
@@ -366,6 +368,34 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("DBZ-582")
+    public void shouldReceiveChangesForUpdatesWithPKChangesWithoutTombstone() throws Exception {
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                .build()
+        );
+        PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config));
+        recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.serverName()));
+        consumer = testConsumer(2);
+        recordsProducer.start(consumer, blackHole);
+
+        executeAndWait("UPDATE test_table SET text = 'update', pk = 2");
+
+        String topicName = topicName("public.test_table");
+
+        // first should be a delete of the old pk
+        SourceRecord deleteRecord = consumer.remove();
+        assertEquals(topicName, deleteRecord.topic());
+        VerifyRecord.isValidDelete(deleteRecord, PK_FIELD, 1);
+
+        // followed by insert of the new value
+        SourceRecord insertRecord = consumer.remove();
+        assertEquals(topicName, insertRecord.topic());
+        VerifyRecord.isValidInsert(insertRecord, PK_FIELD, 2);
+    }
+
+    @Test
     public void shouldReceiveChangesForDefaultValues() throws Exception {
         String statements = "ALTER TABLE test_table REPLICA IDENTITY FULL;" +
                             "ALTER TABLE test_table ADD COLUMN default_column TEXT DEFAULT 'default';" +
@@ -501,6 +531,40 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         record = consumer.remove();
         assertEquals(topicName, record.topic());
         VerifyRecord.isValidTombstone(record, PK_FIELD, 2);
+    }
+
+    @Test
+    @FixFor("DBZ-582")
+    public void shouldReceiveChangesForDeletesWithoutTombstone() throws Exception {
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                .build()
+        );
+        PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config));
+        recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.serverName()));
+
+        // add a new entry and remove both
+        String statements = "INSERT INTO test_table (text) VALUES ('insert2');" +
+                            "DELETE FROM test_table WHERE pk > 0;";
+        consumer = testConsumer(3);
+        recordsProducer.start(consumer, blackHole);
+        executeAndWait(statements);
+
+
+        String topicPrefix = "public.test_table";
+        String topicName = topicName(topicPrefix);
+        assertRecordInserted(topicPrefix, PK_FIELD, 2);
+
+        // first entry removed
+        SourceRecord record = consumer.remove();
+        assertEquals(topicName, record.topic());
+        VerifyRecord.isValidDelete(record, PK_FIELD, 1);
+
+        // second entry removed
+        record = consumer.remove();
+        assertEquals(topicName, record.topic());
+        VerifyRecord.isValidDelete(record, PK_FIELD, 2);
     }
 
     @Test
