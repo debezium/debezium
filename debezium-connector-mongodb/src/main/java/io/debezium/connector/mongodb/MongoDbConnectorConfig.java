@@ -12,6 +12,7 @@ import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
@@ -19,7 +20,7 @@ import io.debezium.config.Field.ValidationOutput;
 /**
  * The configuration properties.
  */
-public class MongoDbConnectorConfig {
+public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     private static final String DATABASE_LIST_NAME = "database.list";
     private static final String COLLECTION_LIST_NAME = "collection.list";
@@ -91,15 +92,6 @@ public class MongoDbConnectorConfig {
             .withDefault(false)
             .withValidation(Field::isBoolean)
             .withDescription("Whether invalid host names are allowed when using SSL. If true the connection will not prevent man-in-the-middle attacks");
-
-    public static final Field COMPACT_DELETE_OPERATIONS = Field.create("tombstones.on.delete")
-            .withDisplayName("Change the behaviour of Debezium with regards to delete operations")
-            .withType(Type.BOOLEAN)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withDefault(true)
-            .withValidation(Field::isBoolean)
-            .withDescription("Whether delete operations should be represented by a delete event and a subsquent tombstone event (true) or only by a delete event (false). Emitting the tombstone event (the default behavior) allows Kafka to completely delete all events pertaining to the given key once the source record got deleted.");
 
     public static final Field MAX_COPY_THREADS = Field.create("initial.sync.max.threads")
                                                       .withDisplayName("Maximum number of threads for initial sync")
@@ -246,16 +238,20 @@ public class MongoDbConnectorConfig {
                                                      AUTO_DISCOVER_MEMBERS,
                                                      DATABASE_WHITELIST,
                                                      DATABASE_BLACKLIST,
-            COMPACT_DELETE_OPERATIONS);
+                                                     CommonConnectorConfig.TOMBSTONES_ON_DELETE);
 
     protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS;
+
+    public MongoDbConnectorConfig(Configuration config) {
+        super(config);
+    }
 
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
         Field.group(config, "MongoDB", HOSTS, USER, PASSWORD, LOGICAL_NAME, CONNECT_BACKOFF_INITIAL_DELAY_MS,
                     CONNECT_BACKOFF_MAX_DELAY_MS, MAX_FAILED_CONNECTIONS, AUTO_DISCOVER_MEMBERS,
                     SSL_ENABLED, SSL_ALLOW_INVALID_HOSTNAMES);
-        Field.group(config, "Events", DATABASE_WHITELIST, DATABASE_BLACKLIST, COLLECTION_WHITELIST, COLLECTION_BLACKLIST, COMPACT_DELETE_OPERATIONS);
+        Field.group(config, "Events", DATABASE_WHITELIST, DATABASE_BLACKLIST, COLLECTION_WHITELIST, COLLECTION_BLACKLIST, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         Field.group(config, "Connector", MAX_COPY_THREADS, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS);
         return config;
     }

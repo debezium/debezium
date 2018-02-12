@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -16,7 +17,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
-import com.mongodb.util.JSON;
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -29,9 +29,9 @@ import org.junit.Test;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.InsertOneOptions;
+import com.mongodb.util.JSON;
 
-import static org.fest.assertions.Assertions.assertThat;
-
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.data.Envelope;
@@ -108,18 +108,18 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.SSL_ENABLED);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.SSL_ALLOW_INVALID_HOSTNAMES);
-        assertNoConfigurationErrors(result, MongoDbConnectorConfig.COMPACT_DELETE_OPERATIONS);
+        assertNoConfigurationErrors(result, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
     }
 
     @Test
     public void shouldValidateAcceptableConfiguration() {
         config = TestHelper.getConfiguration();
-        
+
         // Add data to the databases so that the databases will be listed ...
         context = new ReplicationContext(config);
         storeDocuments("dbval", "validationColl1", "simple_objects.json");
         storeDocuments("dbval2", "validationColl2", "restaurants1.json");
-        
+
         MongoDbConnector connector = new MongoDbConnector();
         Config result = connector.validate(config.asMap());
 
@@ -141,7 +141,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.SSL_ENABLED);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.SSL_ALLOW_INVALID_HOSTNAMES);
-        assertNoConfigurationErrors(result, MongoDbConnectorConfig.COMPACT_DELETE_OPERATIONS);
+        assertNoConfigurationErrors(result, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
     }
 
     @Test
@@ -265,7 +265,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             id.set(doc.getObjectId("_id").toString());
             Testing.debug("Document ID: " + id.get());
         });
-        
+
         primary().execute("update", mongo->{
             MongoDatabase db1 = mongo.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection("arbitrary");
@@ -280,7 +280,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             doc = coll.find().first();
             Testing.debug("Document: " + doc);
         });
-        
+
         // Wait until we can consume the 1 insert and 1 update ...
         SourceRecords insertAndUpdate = consumeRecordsByTopic(2);
         assertThat(insertAndUpdate.recordsForTopic("mongo.dbit.arbitrary").size()).isEqualTo(2);

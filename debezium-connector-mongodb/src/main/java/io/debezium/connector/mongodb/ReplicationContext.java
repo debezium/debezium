@@ -10,6 +10,7 @@ import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.util.Clock;
 
@@ -24,6 +25,7 @@ public class ReplicationContext extends ConnectionContext {
     private final SourceInfo source;
     private final Clock clock = Clock.system();
     private final TopicSelector topicSelector;
+    private final boolean emitTombstoneOnDelete;
 
     /**
      * @param config the configuration
@@ -35,8 +37,9 @@ public class ReplicationContext extends ConnectionContext {
         this.filters = new Filters(config);
         this.source = new SourceInfo(serverName);
         this.topicSelector = TopicSelector.defaultSelector(serverName);
+        this.emitTombstoneOnDelete = config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE);
     }
-    
+
     @Override
     protected Logger logger() {
         return logger;
@@ -60,5 +63,9 @@ public class ReplicationContext extends ConnectionContext {
 
     public Clock clock() {
         return clock;
+    }
+
+    public boolean isEmitTombstoneOnDelete() {
+        return emitTombstoneOnDelete;
     }
 }
