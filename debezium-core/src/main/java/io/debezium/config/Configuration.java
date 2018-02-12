@@ -11,6 +11,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.net.URL;
+import java.time.Duration;
+import java.time.temporal.TemporalUnit;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1361,6 +1363,18 @@ public interface Configuration {
      */
     default String getString(Field field, Supplier<String> defaultValueSupplier) {
         return getString(field.name(), defaultValueSupplier);
+    }
+
+    /**
+     *
+     * Gets the duration value associated with the given key.
+     *
+     * @param field the field
+     * @param unit the temporal unit of the duration value
+     * @return the duration value associated with the given key
+     */
+    default Duration getDuration(Field field, TemporalUnit unit) {
+        return Duration.of(getLong(field), unit);
     }
 
     /**

@@ -6,6 +6,7 @@
 package io.debezium.heartbeat;
 
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -24,7 +25,7 @@ import io.debezium.util.Threads.Timer;
 
 /**
  * A class that is able to generate periodic heartbeat messages based on a pre-configured interval. The clients are
- * supposed to call method {@link #heartbeat(Consumer)} from a main loop of a connector. 
+ * supposed to call method {@link #heartbeat(Consumer)} from a main loop of a connector.
  *
  * @author Jiri Pechanec
  *
@@ -44,14 +45,14 @@ public class HeartbeatController {
      */
     private static final String DEFAULT_HEARTBEAT_TOPICS_PREFIX = "__debezium-heartbeat";
 
-    public static final Field HEARTBEAT_INTERVAL = Field.create("heartbeat.interval")
-                                                                      .withDisplayName("Conector heartbeat inteval (seconds)")
+    public static final Field HEARTBEAT_INTERVAL = Field.create("heartbeat.interval.ms")
+                                                                      .withDisplayName("Conector heartbeat interval (milli-seconds)")
                                                                       .withType(Type.INT)
                                                                       .withWidth(Width.MEDIUM)
                                                                       .withImportance(Importance.MEDIUM)
-                                                                      .withDescription("The length of interval in which connector periodically sends heartbeat messages "
-                                                                              + "to the Connect. "
-                                                                              + "Use 0 to disable heartbeat. "
+                                                                      .withDescription("Length of an interval in milli-seconds in in which the connector periodically sends heartbeat messages "
+                                                                              + "to a heartbeat topic. "
+                                                                              + "Use 0 to disable heartbeat messages. "
                                                                               + "Disabled by default.")
                                                                       .withDefault(DEFAULT_HEARTBEAT_INTERVAL)
                                                                       .withValidation(Field::isNonNegativeInteger);
@@ -67,19 +68,16 @@ public class HeartbeatController {
 
     private final String topicName;
     private final Supplier<OffsetPosition> positionSupplier;
-    private final Configuration configuration;
+    private final Duration heartbeatInterval;
 
-    private Duration heartbeatInterval;
-    private Timer heartbeatTimeout;
+    private volatile Timer heartbeatTimeout;
 
     public HeartbeatController(Configuration configuration, String topicName,
             Supplier<OffsetPosition> positionSupplier) {
-        super();
-        this.configuration = configuration;
         this.topicName = topicName;
         this.positionSupplier = positionSupplier;
 
-        heartbeatInterval = Duration.ofSeconds(this.configuration.getInteger(HeartbeatController.HEARTBEAT_INTERVAL));
+        heartbeatInterval = configuration.getDuration(HeartbeatController.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS);
         heartbeatTimeout = resetHeartbeat();
     }
 
@@ -90,7 +88,7 @@ public class HeartbeatController {
      */
     public void heartbeat(Consumer<SourceRecord> consumer) {
         if (heartbeatTimeout.expired()) {
-            LOGGER.info("Generating heartbeat event");
+            LOGGER.debug("Generating heartbeat event");
             consumer.accept(heartbeatRecord());
             heartbeatTimeout = resetHeartbeat();
         }
@@ -98,7 +96,7 @@ public class HeartbeatController {
 
     /**
      * Produce an empty record to heartbeat topic.
-     * 
+     *
      */
     private SourceRecord heartbeatRecord() {
         final Integer partition = 0;
@@ -111,5 +109,4 @@ public class HeartbeatController {
     private Timer resetHeartbeat() {
         return Threads.timer(Clock.SYSTEM, heartbeatInterval.isZero() ? Duration.ofMillis(Long.MAX_VALUE) : heartbeatInterval);
     }
-
 }
