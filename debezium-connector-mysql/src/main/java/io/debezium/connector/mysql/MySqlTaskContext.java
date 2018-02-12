@@ -11,6 +11,7 @@ import java.util.function.Predicate;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.function.Predicates;
@@ -71,7 +72,7 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         this.dbSchema = new MySqlSchema(config, serverName(), this.gtidSourceFilter, this.tableIdCaseInsensitive);
 
         // Set up the record processor ...
-        this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector);
+        this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector, config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE));
 
         // Set up the DDL filter
         final String ddlFilter = config.getString(DatabaseHistory.DDL_FILTER);
