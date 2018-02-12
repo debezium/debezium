@@ -27,6 +27,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.data.Field;
@@ -56,7 +57,8 @@ import io.debezium.data.SchemaUtil;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.EmbeddedEngine.CompletionCallback;
 import io.debezium.embedded.EmbeddedEngine.ConnectorCallback;
-import io.debezium.embedded.EmbeddedEngine.EmbeddedConfig;
+import io.debezium.embedded.internal.EmbeddedEngineImpl;
+import io.debezium.embedded.internal.EmbeddedEngineImpl.EmbeddedConfig;
 import io.debezium.function.BooleanConsumer;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.relational.history.HistoryRecord;
@@ -704,20 +706,20 @@ public abstract class AbstractConnectorTest implements Testing {
                        .build();
 
         final String engineName = config.getString(EmbeddedEngine.ENGINE_NAME);
-        Converter keyConverter = config.getInstance(EmbeddedEngine.INTERNAL_KEY_CONVERTER_CLASS, Converter.class);
-        keyConverter.configure(config.subset(EmbeddedEngine.INTERNAL_KEY_CONVERTER_CLASS.name() + ".", true).asMap(), true);
-        Converter valueConverter = config.getInstance(EmbeddedEngine.INTERNAL_VALUE_CONVERTER_CLASS, Converter.class);
+        Converter keyConverter = config.getInstance(EmbeddedEngineImpl.INTERNAL_KEY_CONVERTER_CLASS, Converter.class);
+        keyConverter.configure(config.subset(EmbeddedEngineImpl.INTERNAL_KEY_CONVERTER_CLASS.name() + ".", true).asMap(), true);
+        Converter valueConverter = config.getInstance(EmbeddedEngineImpl.INTERNAL_VALUE_CONVERTER_CLASS, Converter.class);
         Configuration valueConverterConfig = config;
         if (valueConverter instanceof JsonConverter) {
             // Make sure that the JSON converter is configured to NOT enable schemas ...
-            valueConverterConfig = config.edit().with(EmbeddedEngine.INTERNAL_VALUE_CONVERTER_CLASS + ".schemas.enable", false).build();
+            valueConverterConfig = config.edit().with(EmbeddedEngineImpl.INTERNAL_VALUE_CONVERTER_CLASS + ".schemas.enable", false).build();
         }
-        valueConverter.configure(valueConverterConfig.subset(EmbeddedEngine.INTERNAL_VALUE_CONVERTER_CLASS.name() + ".", true).asMap(),
+        valueConverter.configure(valueConverterConfig.subset(EmbeddedEngineImpl.INTERNAL_VALUE_CONVERTER_CLASS.name() + ".", true).asMap(),
                                  false);
 
         // Create the worker config, adding extra fields that are required for validation of a worker config
         // but that are not used within the embedded engine (since the source records are never serialized) ...
-        Map<String, String> embeddedConfig = config.asMap(EmbeddedEngine.ALL_FIELDS);
+        Map<String, String> embeddedConfig = config.asMap(EmbeddedEngineImpl.ALL_FIELDS);
         embeddedConfig.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
         embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
         WorkerConfig workerConfig = new EmbeddedConfig(embeddedConfig);
