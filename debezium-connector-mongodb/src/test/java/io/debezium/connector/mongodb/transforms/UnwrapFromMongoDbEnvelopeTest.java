@@ -11,11 +11,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import io.debezium.connector.mongodb.CollectionId;
-import io.debezium.connector.mongodb.RecordMakers;
-import io.debezium.connector.mongodb.SourceInfo;
-import io.debezium.connector.mongodb.TopicSelector;
-import io.debezium.doc.FixFor;
+
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -26,7 +22,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.connector.mongodb.CollectionId;
+import io.debezium.connector.mongodb.RecordMakers;
 import io.debezium.connector.mongodb.RecordMakers.RecordsForCollection;
+import io.debezium.connector.mongodb.SourceInfo;
+import io.debezium.connector.mongodb.TopicSelector;
+import io.debezium.doc.FixFor;
 
 /**
  * Unit test for {@link UnwrapFromMongoDbEnvelope}. It uses {@link RecordMakers}
@@ -44,7 +45,6 @@ public class UnwrapFromMongoDbEnvelopeTest {
     private RecordMakers recordMakers;
     private TopicSelector topicSelector;
     private List<SourceRecord> produced;
-    private boolean emitTombstonesOnDelete;
 
     private UnwrapFromMongoDbEnvelope<SourceRecord> transformation;
 
@@ -203,7 +203,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
     @Test
     @FixFor("DBZ-582")
     public void shouldGenerateRecordForDeleteEventWithoutTombstone() throws InterruptedException {
-        RecordMakers recordMakersTemp = recordMakers = new RecordMakers(source, topicSelector, produced::add, false);
+        RecordMakers recordMakers = new RecordMakers(source, topicSelector, produced::add, false);
 
         BsonTimestamp ts = new BsonTimestamp(1000, 1);
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
@@ -216,7 +216,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
                 .append("ts", ts)
                 .append("h", Long.valueOf(12345678))
                 .append("op", "d");
-        RecordsForCollection records = recordMakersTemp.forCollection(collectionId);
+        RecordsForCollection records = recordMakers.forCollection(collectionId);
         records.recordEvent(event, 1002);
         assertThat(produced.size()).isEqualTo(1);
 

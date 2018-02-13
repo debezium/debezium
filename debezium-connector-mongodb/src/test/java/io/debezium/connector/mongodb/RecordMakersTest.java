@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
-import io.debezium.doc.FixFor;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.BsonTimestamp;
@@ -30,6 +29,7 @@ import com.mongodb.util.JSONSerializers;
 import io.debezium.connector.mongodb.RecordMakers.RecordsForCollection;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
+import io.debezium.doc.FixFor;
 
 /**
  * @author Randall Hauch
@@ -168,7 +168,7 @@ public class RecordMakersTest {
     @Test
     @FixFor("DBZ-582")
     public void shouldGenerateRecordForDeleteEventWithoutTombstone() throws InterruptedException {
-        RecordMakers recordMakersTemp = recordMakers = new RecordMakers(source, topicSelector, produced::add, false);
+        RecordMakers recordMakers = new RecordMakers(source, topicSelector, produced::add, false);
 
         BsonTimestamp ts = new BsonTimestamp(1000, 1);
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
@@ -179,7 +179,7 @@ public class RecordMakersTest {
                 .append("ts", ts)
                 .append("h", new Long(12345678))
                 .append("op", "d");
-        RecordsForCollection records = recordMakersTemp.forCollection(collectionId);
+        RecordsForCollection records = recordMakers.forCollection(collectionId);
         records.recordEvent(event, 1002);
         assertThat(produced.size()).isEqualTo(1);
 
@@ -196,7 +196,6 @@ public class RecordMakersTest {
         Struct actualSource = value.getStruct(FieldName.SOURCE);
         Struct expectedSource = source.lastOffsetStruct("rs0", collectionId);
         assertThat(actualSource).isEqualTo(expectedSource);
-
     }
 
     @Test
