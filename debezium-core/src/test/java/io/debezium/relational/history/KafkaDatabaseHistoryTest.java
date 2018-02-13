@@ -58,6 +58,7 @@ public class KafkaDatabaseHistoryTest {
                                   .deleteDataPriorToStartup(true)
                                   .deleteDataUponShutdown(true)
                                   .addBrokers(1)
+                                  .withKafkaConfiguration(Collect.propertiesOf("auto.create.topics.enable", "false"))
                                   .startup();
         history = new KafkaDatabaseHistory();
     }
@@ -106,6 +107,9 @@ public class KafkaDatabaseHistoryTest {
 
         // Should be able to call start more than once ...
         history.start();
+
+        history.initializeStorage();
+        history.initializeStorage();
 
         DdlParser recoveryParser = new DdlParserSql2003();
         DdlParser ddlParser = new DdlParserSql2003();
@@ -249,11 +253,11 @@ public class KafkaDatabaseHistoryTest {
     }
     
     @Test
-    public void testExists() {          
+    public void testExists() {
         // happy path
-        testHistoryTopicContent(true);                
+        testHistoryTopicContent(true);
         assertTrue(history.exists());
-        
+
         // Set history to use dummy topic
         Configuration config = Configuration.create()
                 .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
@@ -273,7 +277,8 @@ public class KafkaDatabaseHistoryTest {
                 .build();
 
         history.configure(config, null);
-        
+        history.start();
+
         // dummytopic should not exist yet
         assertFalse(history.exists());
     }

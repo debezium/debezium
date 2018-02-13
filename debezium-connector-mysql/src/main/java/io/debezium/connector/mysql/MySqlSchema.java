@@ -275,6 +275,13 @@ public class MySqlSchema {
     }
 
     /**
+     * Initialize permanent storage for database history
+     */
+    public void intializeHistoryStorage() {
+        dbHistory.initializeStorage();
+    }
+
+    /**
      * Discard any currently-cached schemas and rebuild them using the filters.
      */
     protected void refreshSchemas() {

@@ -94,6 +94,7 @@ public final class MySqlConnectorTask extends SourceTask {
                         String msg = "The db history topic is missing. You may attempt to recover it by reconfiguring the connector to " + SnapshotMode.SCHEMA_ONLY_RECOVERY;
                         throw new ConnectException(msg);
                     }
+                    taskContext.initializeHistoryStorage();
                 } else {
 
                     // Before anything else, recover the database history to the specified binlog coordinates ...
@@ -128,6 +129,7 @@ public final class MySqlConnectorTask extends SourceTask {
 
             } else {
                 // We have no recorded offsets ...
+                taskContext.initializeHistoryStorage();
                 if (taskContext.isSnapshotNeverAllowed()) {
                     // We're not allowed to take a snapshot, so instead we have to assume that the binlog contains the
                     // full history of the database.
