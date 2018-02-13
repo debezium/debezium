@@ -14,17 +14,14 @@ import org.apache.kafka.connect.data.Struct;
 import org.junit.Test;
 
 import io.debezium.data.VariableScaleDecimal;
-import io.debezium.embedded.spi.OffsetCommitPolicy.PeriodicCommitOffsetPolicy;
 
 public class CustomTypeEncodingTest {
 
     @Test
     public void testVariableScaleDecimal() {
-        System.out.println(PeriodicCommitOffsetPolicy.class.getName());
         final BigDecimal testValue = new BigDecimal("138.456");
         final Struct struct = VariableScaleDecimal.fromLogical(VariableScaleDecimal.schema(), testValue);
         final BigDecimal decodedValue = VariableScaleDecimal.toLogical(struct);
         assertEquals("Number should be same after serde", testValue, decodedValue);
     }
-
 }
