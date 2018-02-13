@@ -79,7 +79,6 @@ public final class MySqlConnectorTask extends SourceTask {
 
                 // First check if db history is available
                 if (!taskContext.historyExists()) {
-                    taskContext.initializeHistoryStorage();
                     if (taskContext.isSchemaOnlyRecoverySnapshot()) {
                         startWithSnapshot = true;
 
@@ -95,6 +94,7 @@ public final class MySqlConnectorTask extends SourceTask {
                         String msg = "The db history topic is missing. You may attempt to recover it by reconfiguring the connector to " + SnapshotMode.SCHEMA_ONLY_RECOVERY;
                         throw new ConnectException(msg);
                     }
+                    taskContext.initializeHistoryStorage();
                 } else {
 
                     // Before anything else, recover the database history to the specified binlog coordinates ...
