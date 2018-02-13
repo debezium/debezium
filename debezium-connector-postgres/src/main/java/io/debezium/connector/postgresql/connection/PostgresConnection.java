@@ -58,7 +58,13 @@ public class PostgresConnection extends JdbcConnection {
      */
     public PostgresConnection(Configuration config) {
         super(config, FACTORY, PostgresConnection::validateServerVersion, PostgresConnection::defaultSettings);
-        typeRegistry = initTypeRegistry();
+
+        try {
+            typeRegistry = initTypeRegistry(connection(), readTypeInfo());
+        }
+        catch (SQLException e) {
+            throw new ConnectException("Could not intialize type registry", e);
+        }
     }
 
     /**
@@ -262,13 +268,10 @@ public class PostgresConnection extends JdbcConnection {
         return getTypeRegistry().get(typeName).getOid();
     }
 
-    private TypeRegistry initTypeRegistry() {
+    private static TypeRegistry initTypeRegistry(Connection db, Map<String, Integer> nameToJdbc) {
         TypeRegistry.Builder typeRegistryBuilder = TypeRegistry.create();
         try {
-            final Connection db = connection();
             try (final Statement statement = db.createStatement()) {
-                final Map<String, Integer> nameToJdbc = readTypeInfo();
-
                 // Read non-array types
                 try (final ResultSet rs = statement.executeQuery(SQL_NON_ARRAY_TYPES)) {
                     while (rs.next()) {

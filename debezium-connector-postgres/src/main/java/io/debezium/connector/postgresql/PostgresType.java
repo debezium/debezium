@@ -16,30 +16,30 @@ import java.util.Objects;
  */
 public class PostgresType {
 
-    public static final PostgresType UNKNOWN = new PostgresType("unknown", -1, Integer.MIN_VALUE); 
+    public static final PostgresType UNKNOWN = new PostgresType("unknown", -1, Integer.MIN_VALUE);
 
     private final String name;
     private final int oid;
-    private final int jdbc;
-    private final PostgresType element;
+    private final int jdbcId;
+    private final PostgresType elementType;
 
-    public PostgresType(String name, int oid, int jdbc, PostgresType element) {
+    public PostgresType(String name, int oid, int jdbcId) {
+        this(name, oid, jdbcId, null);
+    }
+
+    public PostgresType(String name, int oid, int jdbcId, PostgresType elementType) {
         Objects.requireNonNull(name);
         this.name = name;
         this.oid = oid;
-        this.jdbc = jdbc;
-        this.element = element;
-    }
-
-    public PostgresType(String name, int oid, int jdbc) {
-        this(name, oid, jdbc, null);
+        this.jdbcId = jdbcId;
+        this.elementType = elementType;
     }
 
     /**
      * @return true if this type is an array
      */
     public boolean isArrayType() {
-        return element != null;
+        return elementType != null;
     }
 
     /**
@@ -63,15 +63,15 @@ public class PostgresType {
      * @return JDBC id of the type as reported by JDBC metadata
      */
     public int getJdbcId() {
-        return jdbc;
+        return jdbcId;
     }
 
     /**
      *
-     * @return the type of element in arrays or null for primitive types 
+     * @return the type of element in arrays or null for primitive types
      */
     public PostgresType getElementType() {
-        return element;
+        return elementType;
     }
 
     @Override
@@ -88,13 +88,13 @@ public class PostgresType {
         if (getClass() != obj.getClass())
             return false;
         PostgresType other = (PostgresType) obj;
-        if (element == null) {
-            if (other.element != null)
+        if (elementType == null) {
+            if (other.elementType != null)
                 return false;
         }
-        else if (!element.equals(other.element))
+        else if (!elementType.equals(other.elementType))
             return false;
-        if (jdbc != other.jdbc)
+        if (jdbcId != other.jdbcId)
             return false;
         if (!name.equals(other.name))
             return false;
@@ -105,6 +105,6 @@ public class PostgresType {
 
     @Override
     public String toString() {
-        return "PostgresType [name=" + name + ", oid=" + oid + ", jdbc=" + jdbc + ", element=" + element + "]";
+        return "PostgresType [name=" + name + ", oid=" + oid + ", jdbcId=" + jdbcId + ", elementType=" + elementType + "]";
     }
 }

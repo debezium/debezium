@@ -22,6 +22,7 @@ import io.debezium.relational.ColumnEditor;
  *
  */
 public class TypeRegistry {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(TypeRegistry.class);
 
     public static final String TYPE_NAME_GEOGRAPHY = "geography";
@@ -51,79 +52,82 @@ public class TypeRegistry {
         return longTypeNames;
     }
 
-    public static interface Builder {
-        Builder addType(PostgresType type);
-        TypeRegistry build();
-        PostgresType get(int oid);
+    /**
+     * Builder for instances of {@link TypeRegistry}.
+     */
+    public static final class Builder {
+
+        private final Map<String, PostgresType> nameToType = new HashMap<>();
+        private final Map<Integer, PostgresType> oidToType = new HashMap<>();
+        private int geometryOid = Integer.MIN_VALUE;
+        private int geographyOid = Integer.MIN_VALUE;
+        private int geometryArrayOid = Integer.MIN_VALUE;
+        private int geographyArrayOid = Integer.MIN_VALUE;
+
+        /**
+         * Add a new type
+         *
+         * @param type
+         *
+         * @return builder instance
+         */
+        public Builder addType(PostgresType type) {
+            oidToType.put(type.getOid(), type);
+            nameToType.put(type.getName(), type);
+
+            if (TYPE_NAME_GEOMETRY.equals(type.getName())) {
+                geometryOid = type.getOid();
+            }
+            else if (TYPE_NAME_GEOGRAPHY.equals(type.getName())) {
+                geographyOid = type.getOid();
+            }
+            else if (TYPE_NAME_GEOMETRY_ARRAY.equals(type.getName())) {
+                geometryArrayOid = type.getOid();
+            }
+            else if (TYPE_NAME_GEOGRAPHY_ARRAY.equals(type.getName())) {
+                geographyArrayOid = type.getOid();
+            }
+
+            return this;
+        }
+
+        /**
+         *
+         * @param oid - PostgreSQL OID
+         * @return type associated with the given OID
+         */
+        public PostgresType get(int oid) {
+            return oidToType.get(oid);
+        }
+
+        /**
+         * @return initialized type registry
+         */
+        public TypeRegistry build() {
+            return new TypeRegistry(nameToType, oidToType, geometryOid, geographyOid, geometryArrayOid, geographyArrayOid);
+        }
     }
 
     public static Builder create() {
-        return new Builder() {
-            private final TypeRegistry registry = new TypeRegistry();
-
-            /**
-             * @return initialized type registry
-             */
-            @Override
-            public TypeRegistry build() {
-                return registry;
-            }
-
-            /**
-             * Add a new type
-             *
-             * @param type
-             *
-             * @return builder instance
-             */
-            @Override
-            public Builder addType(PostgresType type) {
-                registry.register(type);
-                return this;
-            }
-
-            /**
-             *
-             * @param oid - PostgreSQL OID
-             * @return type associated with the given OID
-             */
-            @Override
-            public PostgresType get(int oid) {
-                return registry.get(oid);
-            }
-        };
+        return new Builder();
     }
 
-    private final Map<String, PostgresType> nameToType = new HashMap<>();
-    private final Map<Integer, PostgresType> oidToType = new HashMap<>();
-    private int geometryOid = Integer.MIN_VALUE;
-    private int geographyOid = Integer.MIN_VALUE;
-    private int geometryArrayOid = Integer.MIN_VALUE;
-    private int geographyArrayOid = Integer.MIN_VALUE;
+    private final Map<String, PostgresType> nameToType;
+    private final Map<Integer, PostgresType> oidToType;
+    private final int geometryOid;
+    private final int geographyOid;
+    private final int geometryArrayOid;
+    private final int geographyArrayOid;
 
-    private TypeRegistry() {
-    }
+    private TypeRegistry(Map<String, PostgresType> nameToType, Map<Integer, PostgresType> oidToType, int geometryOid,
+            int geographyOid, int geometryArrayOid, int geographyArrayOid) {
 
-    /**
-     * Register a type to the registry
-     *
-     * @param type
-     */
-    private void register(PostgresType type) {
-        oidToType.put(type.getOid(), type);
-        nameToType.put(type.getName(), type);
-        if (TYPE_NAME_GEOMETRY.equals(type.getName())) {
-            geometryOid = type.getOid();
-        }
-        else if (TYPE_NAME_GEOGRAPHY.equals(type.getName())) {
-            geographyOid = type.getOid();
-        }
-        else if (TYPE_NAME_GEOMETRY_ARRAY.equals(type.getName())) {
-            geometryArrayOid = type.getOid();
-        }
-        else if (TYPE_NAME_GEOGRAPHY_ARRAY.equals(type.getName())) {
-            geographyArrayOid = type.getOid();
-        }
+        this.nameToType = Collections.unmodifiableMap(nameToType);
+        this.oidToType = Collections.unmodifiableMap(oidToType);
+        this.geometryOid = geometryOid;
+        this.geographyOid = geographyOid;
+        this.geometryArrayOid = geometryArrayOid;
+        this.geographyArrayOid = geographyArrayOid;
     }
 
     /**
