@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -25,8 +26,10 @@ import com.mongodb.ServerAddress;
 
 import io.debezium.config.Configuration;
 import io.debezium.function.BlockingConsumer;
+import io.debezium.util.Clock;
 import io.debezium.util.DelayStrategy;
 import io.debezium.util.LoggingContext;
+import io.debezium.util.Metronome;
 import io.debezium.util.LoggingContext.PreviousContext;
 
 /**
@@ -34,6 +37,12 @@ import io.debezium.util.LoggingContext.PreviousContext;
  *
  */
 public class ConnectionContext implements AutoCloseable {
+
+    /**
+     * A pause between failed MongoDB operations to prevent CPU throttling and DoS of
+     * target MongoDB database.
+     */
+    private static final Duration PAUSE_AFTER_ERROR = Duration.ofMillis(500);
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
     protected final Configuration config;
@@ -257,6 +266,7 @@ public class ConnectionContext implements AutoCloseable {
          * @param operation the operation to be performed on the primary.
          */
         public void execute(String desc, Consumer<MongoClient> operation) {
+            final Metronome errorMetronome = Metronome.sleeper(PAUSE_AFTER_ERROR, Clock.SYSTEM);
             while (true) {
                 MongoClient primary = primaryConnectionSupplier.get();
                 try {
@@ -264,6 +274,12 @@ public class ConnectionContext implements AutoCloseable {
                     return;
                 } catch (Throwable t) {
                     errorHandler.accept(desc, t);
+                    try {
+                        errorMetronome.pause();
+                    }
+                    catch (InterruptedException e) {
+                        // Interruption is not propagated
+                    }
                 }
             }
         }
@@ -277,6 +293,7 @@ public class ConnectionContext implements AutoCloseable {
          * @throws InterruptedException if the operation was interrupted
          */
         public void executeBlocking(String desc, BlockingConsumer<MongoClient> operation) throws InterruptedException {
+            final Metronome errorMetronome = Metronome.sleeper(PAUSE_AFTER_ERROR, Clock.SYSTEM);
             while (true) {
                 MongoClient primary = primaryConnectionSupplier.get();
                 try {
@@ -284,6 +301,7 @@ public class ConnectionContext implements AutoCloseable {
                     return;
                 } catch (Throwable t) {
                     errorHandler.accept(desc, t);
+                    errorMetronome.pause();
                 }
             }
         }

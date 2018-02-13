@@ -244,7 +244,7 @@ public class Threads {
                 if (indexed) {
                     threadName.append('-').append(index.getAndIncrement());
                 }
-                LOGGER.info("Creating thread {} in group {}", threadName);
+                LOGGER.info("Creating thread {}", threadName);
                 return new Thread(r, threadName.toString());
             }
         };

@@ -58,6 +58,7 @@ public final class MongoDbConnectorTask extends SourceTask {
     private volatile ChangeEventQueue<SourceRecord> queue;
     private volatile String taskName;
     private volatile ReplicationContext replContext;
+    private volatile Throwable replicatorError;
 
     /**
      * Create an instance of the MongoDB task.
@@ -106,8 +107,8 @@ public final class MongoDbConnectorTask extends SourceTask {
             final String hosts = config.getString(MongoDbConnectorConfig.HOSTS);
             final ReplicaSets replicaSets = ReplicaSets.parse(hosts);
             if ( replicaSets.validReplicaSetCount() == 0) {
-                logger.info("Unable to start MongoDB connector task since no replica sets were found at {}", hosts);
-                return;
+                throw new ConnectException(
+                        "Unable to start MongoDB connector task since no replica sets were found at " + hosts);
             }
 
             // Set up the task record queue ...
@@ -137,7 +138,7 @@ public final class MongoDbConnectorTask extends SourceTask {
             logger.info("Starting {} thread(s) to replicate replica sets: {}", numThreads, replicaSets);
             replicaSets.validReplicaSets().forEach(replicaSet -> {
                 // Create a replicator for this replica set ...
-                Replicator replicator = new Replicator(replicationContext, replicaSet, queue::enqueue);
+                Replicator replicator = new Replicator(replicationContext, replicaSet, queue::enqueue, this::failedReplicator);
                 replicators.add(replicator);
                 // and submit it for execution ...
                 executor.submit(() -> {
@@ -170,6 +171,9 @@ public final class MongoDbConnectorTask extends SourceTask {
 
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
+        if (replicatorError != null) {
+            throw new ConnectException("Failing connector task, at least one of the replicators has failed");
+        }
         List<SourceRecord> records = queue.poll();
         recordSummarizer.accept(records);
         return records;
@@ -200,6 +204,11 @@ public final class MongoDbConnectorTask extends SourceTask {
 
     private LoggingContext.PreviousContext getLoggingContext() {
         return replContext.configureLoggingContext(CONTEXT_NAME);
+    }
+
+    private void failedReplicator(Throwable t) {
+        replicatorError = t;
+        stop();
     }
 
     protected final class RecordBatchSummarizer implements Consumer<List<SourceRecord>> {
