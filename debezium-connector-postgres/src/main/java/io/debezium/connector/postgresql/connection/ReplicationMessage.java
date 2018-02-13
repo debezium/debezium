@@ -9,6 +9,7 @@ package io.debezium.connector.postgresql.connection;
 import java.util.List;
 import java.util.OptionalInt;
 
+import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.RecordsStreamProducer.PgConnectionSupplier;
 
 /**
@@ -34,13 +35,7 @@ public interface ReplicationMessage {
      */
     public interface Column {
         String getName();
-        int getOidType();
-
-        /**
-         * Returns the type of array elements if this column is of an array type. May
-         * only be called after checking {@link ReplicationMessage#hasMetadata()}.
-         */
-        int getComponentOidType();
+        PostgresType getType();
 
         /**
          * Returns additional metadata about this column's type. May only be called
@@ -52,10 +47,8 @@ public interface ReplicationMessage {
     }
 
     public interface ColumnTypeMetadata {
-        String getName();
         OptionalInt getLength();
         OptionalInt getScale();
-        boolean isArray();
     }
 
     /**
@@ -91,7 +84,7 @@ public interface ReplicationMessage {
     /**
      * @return true if type metadata are passed as a part of message
      */
-    boolean hasMetadata();
+    boolean hasTypeMetadata();
 
     /**
      * @return true if this is the last message in the batch of messages with same LSN

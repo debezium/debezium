@@ -291,7 +291,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         //check the records from the snapshot
         assertRecordsFromSnapshot(2, 1, 1);
-
         // insert and verify 2 new records
         TestHelper.execute(INSERT_STMT);
         assertRecordsAfterInsert(2, 2, 2);

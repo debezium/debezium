@@ -11,7 +11,7 @@ final class ColumnEditorImpl implements ColumnEditor {
 
     private String name;
     private int jdbcType = Types.INTEGER;
-    private int componentType = Column.UNSET_INT_VALUE;
+    private int nativeType = Column.UNSET_INT_VALUE;
     private String typeName;
     private String typeExpression;
     private String charsetName;
@@ -47,8 +47,8 @@ final class ColumnEditorImpl implements ColumnEditor {
     }
 
     @Override
-    public int componentType() {
-        return componentType;
+    public int nativeType() {
+        return nativeType;
     }
 
     @Override
@@ -118,9 +118,8 @@ final class ColumnEditorImpl implements ColumnEditor {
     }
 
     @Override
-    public ColumnEditorImpl componentType(int componentType) {
-        assert jdbcType == Types.ARRAY;
-        this.componentType = componentType;
+    public ColumnEditorImpl nativeType(int nativeType) {
+        this.nativeType = nativeType;
         return this;
     }
 
@@ -176,7 +175,7 @@ final class ColumnEditorImpl implements ColumnEditor {
 
     @Override
     public Column create() {
-        return new ColumnImpl(name, position, jdbcType, componentType, typeName, typeExpression, charsetName, tableCharsetName, length, scale, optional,
+        return new ColumnImpl(name, position, jdbcType, nativeType, typeName, typeExpression, charsetName, tableCharsetName, length, scale, optional,
                               autoIncremented, generated);
     }
 

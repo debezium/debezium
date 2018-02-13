@@ -62,8 +62,14 @@ public class PostgresConnectorTask extends SourceTask {
             throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }
 
+        // Create type registry
+        TypeRegistry typeRegistry;
+        try (final PostgresConnection connection = new PostgresConnection(config.jdbcConfig())) {
+            typeRegistry = connection.getTypeRegistry();
+        }
+
         // create the task context and schema...
-        PostgresSchema schema = new PostgresSchema(config);
+        PostgresSchema schema = new PostgresSchema(config, typeRegistry);
         this.taskContext = new PostgresTaskContext(config, schema);
 
         SourceInfo sourceInfo = new SourceInfo(config.serverName());
