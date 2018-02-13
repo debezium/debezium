@@ -5,6 +5,10 @@
  */
 package io.debezium.relational.history;
 
+import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.io.File;
 import java.util.Map;
 
@@ -16,10 +20,6 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 import io.debezium.config.Configuration;
 import io.debezium.kafka.KafkaCluster;
@@ -109,6 +109,8 @@ public class KafkaDatabaseHistoryTest {
         history.start();
 
         history.initializeStorage();
+
+        // Calling it another time to ensure we can work with the DB history topic already existing
         history.initializeStorage();
 
         DdlParser recoveryParser = new DdlParserSql2003();
@@ -251,7 +253,7 @@ public class KafkaDatabaseHistoryTest {
 
         testHistoryTopicContent(false);
     }
-    
+
     @Test
     public void testExists() {
         // happy path

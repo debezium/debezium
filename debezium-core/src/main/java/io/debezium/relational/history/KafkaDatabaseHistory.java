@@ -335,24 +335,37 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         final AdminClient admin = AdminClient.create(this.producerConfig.asProperties());
         try {
             // Find default replication factor
-            final Collection<Node> nodes = admin.describeCluster().nodes().get(KAFKA_QUERY_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
-            if (nodes.isEmpty()) {
-                throw new ConnectException("No brokers available to obtain default settings");
-            }
-            final Map<ConfigResource, Config> configs = admin.describeConfigs(Collections.singleton(new ConfigResource(ConfigResource.Type.BROKER, nodes.iterator().next().idString()))).all().get(KAFKA_QUERY_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
-            if (configs.isEmpty()) {
-                throw new ConnectException("No configs have been received");
-            }
-            final Config config = configs.values().iterator().next();
-            final short replicationFactor = Short.parseShort(config.get(DEFAULT_TOPIC_REPLICATION_FACTOR_PROP_NAME).value());
+            Config brokerConfig = getKafkaBrokerConfig(admin);
+            final short replicationFactor = Short.parseShort(brokerConfig.get(DEFAULT_TOPIC_REPLICATION_FACTOR_PROP_NAME).value());
 
             // Create topic
             final NewTopic topic = new NewTopic(topicName, (short)1, replicationFactor);
             topic.configs(Collect.hashMapOf("cleanup.policy", "delete", "retention.ms", Long.toString(Long.MAX_VALUE)));
             admin.createTopics(Collections.singleton(topic));
+
             logger.info("Database history topic '{}' created", topic);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             throw new ConnectException("Creation of database history topic failed, please create the topic manually", e);
         }
+    }
+
+    private Config getKafkaBrokerConfig(AdminClient admin) throws Exception {
+        final Collection<Node> nodes = admin.describeCluster().nodes().get(KAFKA_QUERY_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+        if (nodes.isEmpty()) {
+            throw new ConnectException("No brokers available to obtain default settings");
+        }
+
+        String nodeId = nodes.iterator().next().idString();
+        Set<ConfigResource> resources = Collections.singleton(new ConfigResource(ConfigResource.Type.BROKER, nodeId));
+        final Map<ConfigResource, Config> configs = admin.describeConfigs(resources).all().get(
+                KAFKA_QUERY_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS
+        );
+
+        if (configs.isEmpty()) {
+            throw new ConnectException("No configs have been received");
+        }
+
+        return configs.values().iterator().next();
     }
 }
