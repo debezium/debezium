@@ -16,23 +16,27 @@ import java.util.Objects;
  */
 public class PostgresType {
 
-    public static final PostgresType UNKNOWN = new PostgresType("unknown", -1, Integer.MIN_VALUE);
+    public static final PostgresType UNKNOWN = new PostgresType("unknown", -1, Integer.MIN_VALUE, TypeRegistry.UNKNOWN_LENGTH, TypeRegistry.UNKNOWN_LENGTH);
 
     private final String name;
     private final int oid;
     private final int jdbcId;
     private final PostgresType elementType;
+    private final int defaultLength;
+    private final int defaultScale;
 
-    public PostgresType(String name, int oid, int jdbcId) {
-        this(name, oid, jdbcId, null);
+    public PostgresType(String name, int oid, int jdbcId, int defaultLength, int defaultScale) {
+        this(name, oid, jdbcId, defaultLength, defaultScale, null);
     }
 
-    public PostgresType(String name, int oid, int jdbcId, PostgresType elementType) {
+    public PostgresType(String name, int oid, int jdbcId, int defaultLength, int defaultScale, PostgresType elementType) {
         Objects.requireNonNull(name);
         this.name = name;
         this.oid = oid;
         this.jdbcId = jdbcId;
         this.elementType = elementType;
+        this.defaultLength = defaultLength;
+        this.defaultScale = defaultScale;
     }
 
     /**
@@ -74,6 +78,22 @@ public class PostgresType {
         return elementType;
     }
 
+    /**
+     *
+     * @return the default length of the type
+     */
+   public int getDefaultLength() {
+       return defaultLength;
+   }
+
+    /**
+     *
+     * @return the default Scale of the type
+     */
+    public int getDefaultScale() {
+        return defaultScale;
+    }
+
     @Override
     public int hashCode() {
         return name.hashCode();
@@ -88,16 +108,6 @@ public class PostgresType {
         if (getClass() != obj.getClass())
             return false;
         PostgresType other = (PostgresType) obj;
-        if (elementType == null) {
-            if (other.elementType != null)
-                return false;
-        }
-        else if (!elementType.equals(other.elementType))
-            return false;
-        if (jdbcId != other.jdbcId)
-            return false;
-        if (!name.equals(other.name))
-            return false;
         if (oid != other.oid)
             return false;
         return true;

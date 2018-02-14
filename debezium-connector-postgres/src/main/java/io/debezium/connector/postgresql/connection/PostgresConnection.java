@@ -16,6 +16,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
+import org.postgresql.core.BaseConnection;
+import org.postgresql.core.TypeInfo;
 import org.postgresql.replication.LogSequenceNumber;
 import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
@@ -270,12 +272,20 @@ public class PostgresConnection extends JdbcConnection {
 
     private static TypeRegistry initTypeRegistry(Connection db, Map<String, Integer> nameToJdbc) {
         TypeRegistry.Builder typeRegistryBuilder = TypeRegistry.create();
+        final TypeInfo typeInfo = ((BaseConnection)db).getTypeInfo();
         try {
             try (final Statement statement = db.createStatement()) {
                 // Read non-array types
                 try (final ResultSet rs = statement.executeQuery(SQL_NON_ARRAY_TYPES)) {
                     while (rs.next()) {
-                        typeRegistryBuilder.addType(new PostgresType(rs.getString("name"), rs.getInt("oid"), nameToJdbc.get(rs.getString("name"))));
+                        final int oid = rs.getInt("oid");
+                        typeRegistryBuilder.addType(new PostgresType(
+                                rs.getString("name"),
+                                oid,
+                                nameToJdbc.get(rs.getString("name")),
+                                getSize(typeInfo, oid),
+                                getScale(typeInfo, oid)
+                        ));
                     }
                 }
 
@@ -283,7 +293,15 @@ public class PostgresConnection extends JdbcConnection {
                 try (final ResultSet rs = statement.executeQuery(SQL_ARRAY_TYPES)) {
                     while (rs.next()) {
                         // int2vector and oidvector will not be treated as arrays
-                        typeRegistryBuilder.addType(new PostgresType(rs.getString("name"), rs.getInt("oid"), nameToJdbc.get(rs.getString("name")), typeRegistryBuilder.get(rs.getInt("element"))));
+                        final int oid = rs.getInt("oid");
+                        typeRegistryBuilder.addType(new PostgresType(
+                                rs.getString("name"),
+                                oid,
+                                nameToJdbc.get(rs.getString("name")),
+                                getSize(typeInfo, oid),
+                                getScale(typeInfo, oid),
+                                typeRegistryBuilder.get(rs.getInt("element"))
+                        ));
                     }
                 }
             }
@@ -292,6 +310,18 @@ public class PostgresConnection extends JdbcConnection {
             throw new ConnectException("Could not intialize type registry", e);
         }
         return typeRegistryBuilder.build();
+    }
+
+    private static int getSize(final TypeInfo typeInfo, final int oid) {
+        int size = typeInfo.getPrecision(oid, TypeRegistry.NO_TYPE_MODIFIER);
+        if (size == 0) {
+            size = typeInfo.getDisplaySize(oid, TypeRegistry.NO_TYPE_MODIFIER);
+        }
+        return size;
+    }
+
+    private static int getScale(final TypeInfo typeInfo, final int oid) {
+        return typeInfo.getScale(oid, TypeRegistry.NO_TYPE_MODIFIER);
     }
 
     public TypeRegistry getTypeRegistry() {

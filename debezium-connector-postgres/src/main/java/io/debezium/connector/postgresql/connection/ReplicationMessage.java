@@ -7,7 +7,6 @@
 package io.debezium.connector.postgresql.connection;
 
 import java.util.List;
-import java.util.OptionalInt;
 
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.RecordsStreamProducer.PgConnectionSupplier;
@@ -47,8 +46,8 @@ public interface ReplicationMessage {
     }
 
     public interface ColumnTypeMetadata {
-        OptionalInt getLength();
-        OptionalInt getScale();
+        int getLength();
+        int getScale();
     }
 
     /**

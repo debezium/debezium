@@ -459,14 +459,14 @@ public class RecordsStreamProducer extends RecordsProducer {
                 }
                 if (metadataInMessage) {
                     final int localLength = column.length();
-                    final int incomingLength = message.getTypeMetadata().getLength().orElse(Column.UNSET_INT_VALUE);
+                    final int incomingLength = message.getTypeMetadata().getLength();
                     if (localLength != incomingLength) {
                         logger.info("detected new length for column '{}', old length was '{}', new length is '{}'; refreshing table schema", columnName, localLength,
                                     incomingLength);
                         return true;
                     }
                     final int localScale = column.scale();
-                    final int incomingScale = message.getTypeMetadata().getScale().orElse(Column.UNSET_INT_VALUE);
+                    final int incomingScale = message.getTypeMetadata().getScale();
                     if (localScale != incomingScale) {
                         logger.info("detected new scale for column '{}', old scale was '{}', new scale is '{}'; refreshing table schema", columnName, localScale,
                                     incomingScale);
@@ -521,13 +521,8 @@ public class RecordsStreamProducer extends RecordsProducer {
                             .type(type.getName())
                             .optional(column.isOptional())
                             .nativeType(type.getOid());
-                    TypeRegistry.reconcileJdbcOidTypeConstraints(type, columnEditor);
-                    if (column.getTypeMetadata().getLength().isPresent()) {
-                        columnEditor.length(column.getTypeMetadata().getLength().getAsInt());
-                    }
-                    if (column.getTypeMetadata().getScale().isPresent()) {
-                        columnEditor.scale(column.getTypeMetadata().getScale().getAsInt());
-                    }
+                    columnEditor.length(column.getTypeMetadata().getLength());
+                    columnEditor.scale(column.getTypeMetadata().getScale());
                     return columnEditor.create();
                 })
                 .collect(Collectors.toList())
