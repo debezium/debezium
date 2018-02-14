@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.postgresql.connection;
 
-import java.util.OptionalInt;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -49,7 +48,7 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
 
         private String[] typeModifiers = {};
 
-        public TypeMetadataImpl(String columnName, String typeWithModifiers, boolean optional) {
+        public TypeMetadataImpl(String columnName, PostgresType type, String typeWithModifiers, boolean optional) {
             this.optional = optional;
             Matcher m = TYPE_PATTERN.matcher(typeWithModifiers);
             if (!m.matches()) {
@@ -62,12 +61,15 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
             }
 
             // TODO: make this more elegant/type-specific
+            length = type.getDefaultLength();
             if (typeModifiers.length > 0) {
                 try {
                     this.length = Integer.parseInt(typeModifiers[0]);
                 } catch (NumberFormatException e) {
                 }
             }
+
+            scale = type.getDefaultScale();
             if (typeModifiers.length > 1) {
                 try {
                     this.scale = Integer.parseInt(typeModifiers[1]);
@@ -77,13 +79,13 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
         }
 
         @Override
-        public OptionalInt getLength() {
-            return length != null ? OptionalInt.of(length) : OptionalInt.empty();
+        public int getLength() {
+            return length;
         }
 
         @Override
-        public OptionalInt getScale() {
-            return scale != null ? OptionalInt.of(scale) : OptionalInt.empty();
+        public int getScale() {
+            return scale;
         }
 
         public String[] getModifiers() {
@@ -113,7 +115,7 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
 
     private void initMetadata() {
         assert hasMetadata : "Metadata not available";
-        typeMetadata = new TypeMetadataImpl(columnName, typeWithModifiers, optional);
+        typeMetadata = new TypeMetadataImpl(columnName, type, typeWithModifiers, optional);
     }
 
     /**

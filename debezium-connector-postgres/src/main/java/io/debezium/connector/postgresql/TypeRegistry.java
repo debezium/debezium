@@ -12,8 +12,6 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.relational.ColumnEditor;
-
 /**
  * A registry of types supported by a PostgreSQL instance. Allows lookup of the types according to
  * type name or OID.
@@ -29,6 +27,9 @@ public class TypeRegistry {
     public static final String TYPE_NAME_GEOMETRY = "geometry";
     public static final String TYPE_NAME_GEOGRAPHY_ARRAY = "_geography";
     public static final String TYPE_NAME_GEOMETRY_ARRAY = "_geometry";
+
+    public static final int NO_TYPE_MODIFIER = -1;
+    public static final int UNKNOWN_LENGTH = -1;
 
     private static final Map<String, String> LONG_TYPE_NAMES = Collections.unmodifiableMap(getLongTypeNames());
 
@@ -217,32 +218,5 @@ public class TypeRegistry {
      */
     public static String normalizeTypeName(String typeName) {
         return LONG_TYPE_NAMES.getOrDefault(typeName, typeName);
-    }
-
-    /**
-     * JDBC metadata are different for some of the unbounded types from those coming via decoder.
-     * This method sets the type constraints to the values provided by JDBC metadata.
-     *
-     * @param type column type coming from decoder
-     * @param columnEditor the JDBC counterpart of the column
-     */
-    public static void reconcileJdbcOidTypeConstraints(PostgresType type,
-            final ColumnEditor columnEditor) {
-        switch (type.getName()) {
-            case "money":
-                // JDBC returns scale 0 but decoder plugin returns -1 (unscaled)
-                columnEditor.scale(0);
-                break;
-            case "timestamp":
-                // JDBC returns length/scale 29/6 but decoder plugin returns -1 (unlimited)
-                columnEditor.length(29);
-                columnEditor.scale(6);
-                break;
-            case "time":
-                // JDBC returns length/scale 15/6 but decoder plugin returns -1 (unlimited)
-                columnEditor.length(15);
-                columnEditor.scale(6);
-                break;
-        }
     }
 }
