@@ -29,10 +29,9 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.PostgresValueConverter;
-import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.RecordsStreamProducer.PgConnectionSupplier;
+import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.AbstractReplicationMessageColumn;
-import io.debezium.connector.postgresql.connection.AbstractReplicationMessageColumn.TypeMetadataImpl;
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.document.Array;
 import io.debezium.document.Document;
@@ -133,7 +132,7 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
 
                 @Override
                 public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
-                    return Wal2JsonReplicationMessage.this.getValue(columnName, columnType, columnTypeName, getTypeMetadata(), rawValue, connection, includeUnknownDatatypes);
+                    return Wal2JsonReplicationMessage.this.getValue(columnName, columnType, columnTypeName, rawValue, connection, includeUnknownDatatypes);
                 }
 
             });
@@ -171,7 +170,7 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
      *
      * @return the value; may be null
      */
-    public Object getValue(String columnName, PostgresType type, String fullType, TypeMetadataImpl typeMetadata, Value rawValue, final PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
+    public Object getValue(String columnName, PostgresType type, String fullType, Value rawValue, final PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
         if (rawValue.isNull()) {
             // nulls are null
             return null;
