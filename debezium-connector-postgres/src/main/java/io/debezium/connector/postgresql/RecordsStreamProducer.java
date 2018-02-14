@@ -453,22 +453,22 @@ public class RecordsStreamProducer extends RecordsProducer {
                 final int localType = column.nativeType();
                 final int incomingType = message.getType().getOid();
                 if (localType != incomingType) {
-                    logger.info("detected new type for column '{}', old type was '{}', new type is '{}'; refreshing table schema", columnName, localType,
-                                incomingType);
+                    logger.info("detected new type for column '{}', old type was {} ({}), new type is {} ({}); refreshing table schema", columnName, localType, column.typeName(),
+                                incomingType, message.getType().getName());
                     return true;
                 }
                 if (metadataInMessage) {
                     final int localLength = column.length();
                     final int incomingLength = message.getTypeMetadata().getLength();
                     if (localLength != incomingLength) {
-                        logger.info("detected new length for column '{}', old length was '{}', new length is '{}'; refreshing table schema", columnName, localLength,
+                        logger.info("detected new length for column '{}', old length was {}, new length is {}; refreshing table schema", columnName, localLength,
                                     incomingLength);
                         return true;
                     }
                     final int localScale = column.scale();
                     final int incomingScale = message.getTypeMetadata().getScale();
                     if (localScale != incomingScale) {
-                        logger.info("detected new scale for column '{}', old scale was '{}', new scale is '{}'; refreshing table schema", columnName, localScale,
+                        logger.info("detected new scale for column '{}', old scale was {}, new scale is {}; refreshing table schema", columnName, localScale,
                                     incomingScale);
                         return true;
                     }

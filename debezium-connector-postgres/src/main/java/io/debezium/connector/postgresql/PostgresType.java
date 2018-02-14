@@ -88,7 +88,7 @@ public class PostgresType {
 
     /**
      *
-     * @return the default Scale of the type
+     * @return the default scale of the type
      */
     public int getDefaultScale() {
         return defaultScale;
@@ -96,7 +96,10 @@ public class PostgresType {
 
     @Override
     public int hashCode() {
-        return name.hashCode();
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + oid;
+        return result;
     }
 
     @Override
@@ -115,6 +118,7 @@ public class PostgresType {
 
     @Override
     public String toString() {
-        return "PostgresType [name=" + name + ", oid=" + oid + ", jdbcId=" + jdbcId + ", elementType=" + elementType + "]";
+        return "PostgresType [name=" + name + ", oid=" + oid + ", jdbcId=" + jdbcId + ", defaultLength=" + defaultLength
+                + ", defaultScale=" + defaultScale + ", elementType=" + elementType + "]";
     }
 }
