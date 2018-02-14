@@ -27,6 +27,8 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
 
         private static final Logger LOGGER = LoggerFactory.getLogger(TypeMetadataImpl.class);
 
+        private static final String[] NO_MODIFIERS = new String[0];
+
         public static final Pattern TYPE_PATTERN = Pattern.compile("^(?<schema>[^\\.\\(]+\\.)?(?<full>(?<base>[^(\\[]+)(?:\\((?<mod>.+)\\))?(?<suffix>.*?))(?<array>\\[\\])?$");
         private static final Pattern TYPEMOD_PATTERN = Pattern.compile("\\s*,\\s*");
             // "text"; "character varying(255)"; "numeric(12,3)"; "geometry(MultiPolygon,4326)"; "timestamp (12) with time zone"; "int[]"; "myschema.geometry"
@@ -46,8 +48,6 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
          */
         private final boolean optional;
 
-        private String[] typeModifiers = {};
-
         public TypeMetadataImpl(String columnName, PostgresType type, String typeWithModifiers, boolean optional) {
             this.optional = optional;
             Matcher m = TYPE_PATTERN.matcher(typeWithModifiers);
@@ -56,9 +56,7 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
                 throw new ConnectException(String.format("Failed to parse columnType '%s' for column %s", typeWithModifiers, columnName));
             }
 
-            if (m.group("mod") != null) {
-                typeModifiers = TYPEMOD_PATTERN.split(m.group("mod"));
-            }
+            String[] typeModifiers = m.group("mod") != null ? TYPEMOD_PATTERN.split(m.group("mod")) : NO_MODIFIERS;
 
             // TODO: make this more elegant/type-specific
             length = type.getDefaultLength();
@@ -88,10 +86,6 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
         @Override
         public int getScale() {
             return scale;
-        }
-
-        public String[] getModifiers() {
-            return typeModifiers;
         }
 
         public boolean isOptional() {
