@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.postgresql.core.TypeInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,6 +66,9 @@ public class TypeRegistry {
         private int geometryArrayOid = Integer.MIN_VALUE;
         private int geographyArrayOid = Integer.MIN_VALUE;
 
+        private Builder() {
+        }
+
         /**
          * Add a new type
          *
@@ -109,7 +113,7 @@ public class TypeRegistry {
         }
     }
 
-    public static Builder create() {
+    public static Builder create(TypeInfo typeInfo) {
         return new Builder();
     }
 
@@ -120,8 +124,8 @@ public class TypeRegistry {
     private final int geometryArrayOid;
     private final int geographyArrayOid;
 
-    private TypeRegistry(Map<String, PostgresType> nameToType, Map<Integer, PostgresType> oidToType, int geometryOid,
-            int geographyOid, int geometryArrayOid, int geographyArrayOid) {
+    private TypeRegistry(Map<String, PostgresType> nameToType, Map<Integer, PostgresType> oidToType,
+            int geometryOid, int geographyOid, int geometryArrayOid, int geographyArrayOid) {
 
         this.nameToType = Collections.unmodifiableMap(nameToType);
         this.oidToType = Collections.unmodifiableMap(oidToType);

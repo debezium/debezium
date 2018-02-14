@@ -148,7 +148,12 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
             LOGGER.error("Failed to parse columnType for {} '{}'", columnName, typeWithModifiers);
             throw new ConnectException(String.format("Failed to parse columnType '%s' for column %s", typeWithModifiers, columnName));
         }
-        String baseType = TypeRegistry.normalizeTypeName(m.group("base").trim());
+        String baseType = m.group("base").trim();
+        final String suffix = m.group("suffix");
+        if (suffix != null) {
+            baseType += suffix;
+        }
+        baseType = TypeRegistry.normalizeTypeName(baseType);
         if (m.group("array") != null) {
             baseType = "_" + baseType;
         }

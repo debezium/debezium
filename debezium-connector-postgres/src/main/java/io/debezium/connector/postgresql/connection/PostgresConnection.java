@@ -271,8 +271,8 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     private static TypeRegistry initTypeRegistry(Connection db, Map<String, Integer> nameToJdbc) {
-        TypeRegistry.Builder typeRegistryBuilder = TypeRegistry.create();
         final TypeInfo typeInfo = ((BaseConnection)db).getTypeInfo();
+        TypeRegistry.Builder typeRegistryBuilder = TypeRegistry.create(typeInfo);
         try {
             try (final Statement statement = db.createStatement()) {
                 // Read non-array types
@@ -283,8 +283,7 @@ public class PostgresConnection extends JdbcConnection {
                                 rs.getString("name"),
                                 oid,
                                 nameToJdbc.get(rs.getString("name")),
-                                getSize(typeInfo, oid),
-                                getScale(typeInfo, oid)
+                                typeInfo
                         ));
                     }
                 }
@@ -298,8 +297,7 @@ public class PostgresConnection extends JdbcConnection {
                                 rs.getString("name"),
                                 oid,
                                 nameToJdbc.get(rs.getString("name")),
-                                getSize(typeInfo, oid),
-                                getScale(typeInfo, oid),
+                                typeInfo,
                                 typeRegistryBuilder.get(rs.getInt("element"))
                         ));
                     }
@@ -310,18 +308,6 @@ public class PostgresConnection extends JdbcConnection {
             throw new ConnectException("Could not intialize type registry", e);
         }
         return typeRegistryBuilder.build();
-    }
-
-    private static int getSize(final TypeInfo typeInfo, final int oid) {
-        int size = typeInfo.getPrecision(oid, TypeRegistry.NO_TYPE_MODIFIER);
-        if (size == 0) {
-            size = typeInfo.getDisplaySize(oid, TypeRegistry.NO_TYPE_MODIFIER);
-        }
-        return size;
-    }
-
-    private static int getScale(final TypeInfo typeInfo, final int oid) {
-        return typeInfo.getScale(oid, TypeRegistry.NO_TYPE_MODIFIER);
     }
 
     public TypeRegistry getTypeRegistry() {

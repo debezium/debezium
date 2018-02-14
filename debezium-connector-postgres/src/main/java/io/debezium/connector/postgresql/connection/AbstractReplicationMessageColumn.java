@@ -62,14 +62,16 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
 
             // TODO: make this more elegant/type-specific
             length = type.getDefaultLength();
+            scale = type.getDefaultScale();
             if (typeModifiers.length > 0) {
                 try {
-                    this.length = Integer.parseInt(typeModifiers[0]);
+                    final String typMod = typeModifiers[0];
+                    this.length = type.length(Integer.parseInt(typMod));
+                    this.scale = type.scale(Integer.parseInt(typMod));
                 } catch (NumberFormatException e) {
                 }
             }
 
-            scale = type.getDefaultScale();
             if (typeModifiers.length > 1) {
                 try {
                     this.scale = Integer.parseInt(typeModifiers[1]);

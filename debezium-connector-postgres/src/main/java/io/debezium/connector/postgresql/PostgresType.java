@@ -7,6 +7,9 @@ package io.debezium.connector.postgresql;
 
 import java.util.Objects;
 
+import org.postgresql.core.Oid;
+import org.postgresql.core.TypeInfo;
+
 /**
  * A class that binds together a PostgresSQL OID, JDBC type id and the string name of the type.
  * The array types contain link to their element type.
@@ -16,27 +19,25 @@ import java.util.Objects;
  */
 public class PostgresType {
 
-    public static final PostgresType UNKNOWN = new PostgresType("unknown", -1, Integer.MIN_VALUE, TypeRegistry.UNKNOWN_LENGTH, TypeRegistry.UNKNOWN_LENGTH);
+    public static final PostgresType UNKNOWN = new PostgresType("unknown", -1, Integer.MIN_VALUE, null);
 
     private final String name;
     private final int oid;
     private final int jdbcId;
     private final PostgresType elementType;
-    private final int defaultLength;
-    private final int defaultScale;
+    private final TypeInfo typeInfo;
 
-    public PostgresType(String name, int oid, int jdbcId, int defaultLength, int defaultScale) {
-        this(name, oid, jdbcId, defaultLength, defaultScale, null);
+    public PostgresType(String name, int oid, int jdbcId, TypeInfo typeInfo) {
+        this(name, oid, jdbcId, typeInfo, null);
     }
 
-    public PostgresType(String name, int oid, int jdbcId, int defaultLength, int defaultScale, PostgresType elementType) {
+    public PostgresType(String name, int oid, int jdbcId, TypeInfo typeInfo, PostgresType elementType) {
         Objects.requireNonNull(name);
         this.name = name;
         this.oid = oid;
         this.jdbcId = jdbcId;
         this.elementType = elementType;
-        this.defaultLength = defaultLength;
-        this.defaultScale = defaultScale;
+        this.typeInfo = typeInfo;
     }
 
     /**
@@ -83,7 +84,14 @@ public class PostgresType {
      * @return the default length of the type
      */
    public int getDefaultLength() {
-       return defaultLength;
+       if (typeInfo == null) {
+           return TypeRegistry.UNKNOWN_LENGTH;
+       }
+       int size = typeInfo.getPrecision(oid, TypeRegistry.NO_TYPE_MODIFIER);
+       if (size == 0) {
+           size = typeInfo.getDisplaySize(oid, TypeRegistry.NO_TYPE_MODIFIER);
+       }
+       return size;
    }
 
     /**
@@ -91,7 +99,48 @@ public class PostgresType {
      * @return the default scale of the type
      */
     public int getDefaultScale() {
-        return defaultScale;
+        if (typeInfo == null) {
+            return TypeRegistry.UNKNOWN_LENGTH;
+        }
+        return typeInfo.getScale(oid, TypeRegistry.NO_TYPE_MODIFIER);
+    }
+
+    /**
+     * @param modifier - type modifier coming from decoder
+     * @return length of the type based on the modifier
+     */
+    public int length(int modifier) {
+        if (typeInfo == null) {
+            return TypeRegistry.UNKNOWN_LENGTH;
+        }
+        switch (oid) {
+        case Oid.TIMESTAMP:
+        case Oid.TIMESTAMPTZ:
+        case Oid.TIME:
+        case Oid.TIMETZ:
+        case Oid.INTERVAL:
+            return typeInfo.getPrecision(oid, modifier);
+        }
+        return modifier;
+    }
+
+    /**
+     * @param modifier - type modifier coming from decoder
+     * @return scale of the type based on the modifier
+     */
+    public int scale(int modifier) {
+        if (typeInfo == null) {
+            return TypeRegistry.UNKNOWN_LENGTH;
+        }
+        switch (oid) {
+        case Oid.TIMESTAMP:
+        case Oid.TIMESTAMPTZ:
+        case Oid.TIME:
+        case Oid.TIMETZ:
+        case Oid.INTERVAL:
+            return typeInfo.getScale(oid, modifier);
+        }
+        return getDefaultScale();
     }
 
     @Override
@@ -118,7 +167,7 @@ public class PostgresType {
 
     @Override
     public String toString() {
-        return "PostgresType [name=" + name + ", oid=" + oid + ", jdbcId=" + jdbcId + ", defaultLength=" + defaultLength
-                + ", defaultScale=" + defaultScale + ", elementType=" + elementType + "]";
+        return "PostgresType [name=" + name + ", oid=" + oid + ", jdbcId=" + jdbcId + ", defaultLength=" + getDefaultLength()
+                + ", defaultScale=" + getDefaultScale() + ", elementType=" + elementType + "]";
     }
 }
