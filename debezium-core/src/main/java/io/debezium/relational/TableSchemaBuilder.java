@@ -73,23 +73,6 @@ public class TableSchemaBuilder {
      *
      * @param schemaPrefix the prefix added to the table identifier to construct the schema names; may be null if there is no
      *            prefix
-     * @param table the table definition; may not be null
-     * @return the table schema that can be used for sending rows of data for this table to Kafka Connect; never null
-     */
-    public TableSchema create(String schemaPrefix, String envelopeSchemaName, Table table) {
-        return create(schemaPrefix, envelopeSchemaName, table, null, null);
-    }
-
-    /**
-     * Create a {@link TableSchema} from the given {@link Table table definition}. The resulting TableSchema will have a
-     * {@link TableSchema#keySchema() key schema} that contains all of the columns that make up the table's primary key,
-     * and a {@link TableSchema#valueSchema() value schema} that contains only those columns that are not in the table's primary
-     * key.
-     * <p>
-     * This is equivalent to calling {@code create(table,false)}.
-     *
-     * @param schemaPrefix the prefix added to the table identifier to construct the schema names; may be null if there is no
-     *            prefix
      * @param envelopSchemaName the name of the schema of the built table's envelope
      * @param table the table definition; may not be null
      * @param filter the filter that specifies whether columns in the table should be included; may be null if all columns
