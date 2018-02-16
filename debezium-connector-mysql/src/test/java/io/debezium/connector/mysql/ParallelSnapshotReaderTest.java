@@ -165,7 +165,7 @@ public class ParallelSnapshotReaderTest {
 
         ParallelHaltingPredicate parallelHaltingPredicate = new ParallelHaltingPredicate(thisReaderBoolean, otherReaderBoolean, timeRange);
 
-        boolean testResult = parallelHaltingPredicate.test(createOffsetWithTimestamp(System.currentTimeMillis() - (timeRange * 2)));
+        boolean testResult = parallelHaltingPredicate.test(createSourceRecordWithTimestamp(System.currentTimeMillis() - (timeRange * 2)));
 
         Assert.assertFalse(testResult);
 
@@ -185,7 +185,7 @@ public class ParallelSnapshotReaderTest {
 
         ParallelHaltingPredicate parallelHaltingPredicate = new ParallelHaltingPredicate(thisReaderBoolean, otherReaderBoolean, timeRange);
 
-        boolean testResult = parallelHaltingPredicate.test(createOffsetWithTimestamp(System.currentTimeMillis()));
+        boolean testResult = parallelHaltingPredicate.test(createSourceRecordWithTimestamp(System.currentTimeMillis()));
 
         Assert.assertFalse(testResult);
 
@@ -205,7 +205,7 @@ public class ParallelSnapshotReaderTest {
 
         ParallelHaltingPredicate parallelHaltingPredicate = new ParallelHaltingPredicate(thisReaderBoolean, otherReaderBoolean, timeRange);
 
-        boolean testResult = parallelHaltingPredicate.test(createOffsetWithTimestamp(System.currentTimeMillis()));
+        boolean testResult = parallelHaltingPredicate.test(createSourceRecordWithTimestamp(System.currentTimeMillis()));
 
         Assert.assertTrue(testResult);
 
@@ -218,7 +218,8 @@ public class ParallelSnapshotReaderTest {
      * @param tsMs the timestamp in the resulting offset.
      * @return an "offset" containing the given timestamp.
      */
-    private Map<String, ?> createOffsetWithTimestamp(long tsMs) {
-        return Collections.singletonMap(SourceInfo.TIMESTAMP_KEY, tsMs);
+    private SourceRecord createSourceRecordWithTimestamp(long tsMs) {
+        Map<String, ?> offset = Collections.singletonMap(SourceInfo.TIMESTAMP_KEY, tsMs);
+        return new SourceRecord(null, offset, null, null, null);
     }
 }
