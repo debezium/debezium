@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
@@ -55,7 +54,7 @@ public class ParallelSnapshotReader implements Reader {
         SnapshotReader newTablesSnapshotReader = new SnapshotReader("newSnapshot", newTablesContext);
 
         this.newTablesBinlogReader = new BinlogReader("newBinlog", newTablesContext, newTablesReaderHaltingPredicate);
-        this.newTablesReader = new ChainedReader().add(newTablesSnapshotReader).add(newTablesBinlogReader);
+        this.newTablesReader = new ChainedReader.Builder().addReader(newTablesSnapshotReader).addReader(newTablesBinlogReader).build();
 
     }
 
@@ -65,7 +64,7 @@ public class ParallelSnapshotReader implements Reader {
                                                BinlogReader newTablesBinlogReader) {
         this.oldTablesReader = oldTablesBinlogReader;
         this.newTablesBinlogReader = newTablesBinlogReader;
-        this.newTablesReader = new ChainedReader().add(newTablesSnapshotReader).add(newTablesBinlogReader);
+        this.newTablesReader = new ChainedReader.Builder().addReader(newTablesSnapshotReader).addReader(newTablesBinlogReader).build();
     }
 
     /**
@@ -150,7 +149,7 @@ public class ParallelSnapshotReader implements Reader {
      * other reader to halt at the same time.
      */
 
-    /*package local*/ static class ParallelHaltingPredicate implements Predicate<Map<String, ?>> {
+    /*package local*/ static class ParallelHaltingPredicate implements Predicate<SourceRecord> {
 
         // todo maybe this should eventually be configured, but for now the time diff were are interested in
         // is hard coded in as 5 minutes.
@@ -175,11 +174,11 @@ public class ParallelSnapshotReader implements Reader {
         }
 
         @Override
-        public boolean test(Map<String, ?> ourNewOffset) {
+        public boolean test(SourceRecord ourSourceRecord) {
             // we assume if we ever end up near the end of the binlog, then we will remain there.
             if (!thisReaderNearEnd.get()) {
                 Long currentTsMs = System.currentTimeMillis();
-                Long offsetTsMs = (Long) ourNewOffset.get(SourceInfo.TIMESTAMP_KEY);
+                Long offsetTsMs = (Long) ourSourceRecord.sourceOffset().get(SourceInfo.TIMESTAMP_KEY);
                 if (offsetTsMs + timeRangeMs > currentTsMs) {
                     // we are within timeRangeMs of the end
                     thisReaderNearEnd.set(true);
