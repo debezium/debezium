@@ -73,13 +73,13 @@ public class ReconcilingBinlogReader implements Reader {
             determineLeadingReader();
 
             MySqlTaskContext laggingReaderContext = getLaggingReader().context;
-            HaltAfterPredicate haltAfterPredicate =
-                new HaltAfterPredicate(getLeadingReader().getLastOffset(),
-                                       laggingReaderContext.gtidSourceFilter());
+            OffsetLimitPredicate offsetLimitPredicate =
+                new OffsetLimitPredicate(getLeadingReader().getLastOffset(),
+                                         laggingReaderContext.gtidSourceFilter());
             // create our actual reader
             reconcilingReader = new BinlogReader("innerReconcilingReader",
                                                  laggingReaderContext,
-                                                 haltAfterPredicate);
+                                                 offsetLimitPredicate);
             reconcilingReader.start();
         }
     }
@@ -133,21 +133,24 @@ public class ReconcilingBinlogReader implements Reader {
     }
 
     // package private for testing purposes
-    /*package private*/ static class HaltAfterPredicate implements Predicate<Map<String, ?>> {
+    /**
+     * A Predicate that returns false for any record beyond a given offset.
+     */
+    /*package private*/ static class OffsetLimitPredicate implements Predicate<SourceRecord> {
 
         private Document leadingReaderFinalOffsetDocument;
         private Predicate<String> gtidFilter;
 
-        public HaltAfterPredicate(Map<String, ?> leadingReaderFinalOffset,
-                                  Predicate<String> gtidFilter) {
-            this.leadingReaderFinalOffsetDocument =
-                SourceInfo.createDocumentFromOffset(leadingReaderFinalOffset);
+        /*package private*/ OffsetLimitPredicate(Map<String, ?> leadingReaderFinalOffset,
+                                                 Predicate<String> gtidFilter) {
+            this.leadingReaderFinalOffsetDocument = SourceInfo.createDocumentFromOffset(leadingReaderFinalOffset);
             this.gtidFilter = gtidFilter;
+
         }
 
         @Override
-        public boolean test(Map<String, ?> offset) {
-            Document offsetDocument = SourceInfo.createDocumentFromOffset(offset);
+        public boolean test(SourceRecord sourceRecord) {
+            Document offsetDocument = SourceInfo.createDocumentFromOffset(sourceRecord.sourceOffset());
             return SourceInfo.isPositionAtOrBefore(leadingReaderFinalOffsetDocument,
                                                    offsetDocument,
                                                    gtidFilter);

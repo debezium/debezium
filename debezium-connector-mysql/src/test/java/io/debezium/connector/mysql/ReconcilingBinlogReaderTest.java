@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -21,19 +22,21 @@ public class ReconcilingBinlogReaderTest {
     @Test
     public void haltAfterPredicateFalse() {
         List<Map<String, ?>> offsets = createOrderedOffsets(2);
-        ReconcilingBinlogReader.HaltAfterPredicate haltAfterPredicate =
-            new ReconcilingBinlogReader.HaltAfterPredicate(offsets.get(1), (x) -> true);
+        ReconcilingBinlogReader.OffsetLimitPredicate offsetLimitPredicate =
+            new ReconcilingBinlogReader.OffsetLimitPredicate(offsets.get(1), (x) -> true);
 
-        Assert.assertFalse(haltAfterPredicate.test(offsets.get(0)));
+        SourceRecord testSourceRecord = createSourceRecordWithOffset(offsets.get(0));
+        Assert.assertFalse(offsetLimitPredicate.test(testSourceRecord));
     }
 
     @Test
     public void haltAfterPredicateTrue() {
         List<Map<String, ?>> offsets = createOrderedOffsets(2);
-        ReconcilingBinlogReader.HaltAfterPredicate haltAfterPredicate =
-            new ReconcilingBinlogReader.HaltAfterPredicate(offsets.get(0), (x) -> true);
+        ReconcilingBinlogReader.OffsetLimitPredicate offsetLimitPredicate =
+            new ReconcilingBinlogReader.OffsetLimitPredicate(offsets.get(0), (x) -> true);
 
-        Assert.assertTrue(haltAfterPredicate.test(offsets.get(1)));
+        SourceRecord testSourceRecord = createSourceRecordWithOffset(offsets.get(1));
+        Assert.assertTrue(offsetLimitPredicate.test(testSourceRecord));
     }
 
     private final int SERVER_ID = 0;
@@ -58,6 +61,10 @@ public class ReconcilingBinlogReaderTest {
             orderedDocuments.add(offset);
         }
         return orderedDocuments;
+    }
+
+    private SourceRecord createSourceRecordWithOffset(Map<String, ?> offset) {
+        return new SourceRecord(null, offset, null, null, null);
     }
 
 }
