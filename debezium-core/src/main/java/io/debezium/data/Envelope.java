@@ -19,7 +19,7 @@ import org.apache.kafka.connect.source.SourceRecord;
  * An immutable descriptor for the structure of Debezium message envelopes. An {@link Envelope} can be created for each message
  * schema using the {@link #defineSchema()} builder, and once created can generate {@link Struct} objects representing CREATE,
  * READ, UPDATE, and DELETE messages that conform to that schema.
- * 
+ *
  * @author Randall Hauch
  */
 public final class Envelope {
@@ -119,7 +119,7 @@ public final class Envelope {
     public static interface Builder {
         /**
          * Define the {@link Schema} used in the {@link FieldName#BEFORE} and {@link FieldName#AFTER} fields.
-         * 
+         *
          * @param schema the schema of the records, used in the {@link FieldName#BEFORE} and {@link FieldName#AFTER} fields; may
          *            not be null
          * @return this builder so methods can be chained; never null
@@ -130,7 +130,7 @@ public final class Envelope {
 
         /**
          * Define the {@link Schema} used in the {@link FieldName#SOURCE} field.
-         * 
+         *
          * @param sourceSchema the schema of the {@link FieldName#SOURCE} field; may not be null
          * @return this builder so methods can be chained; never null
          */
@@ -140,7 +140,7 @@ public final class Envelope {
 
         /**
          * Define the {@link Schema} used for an arbitrary field in the envelope.
-         * 
+         *
          * @param fieldNames the names of the fields that this schema should be used with; may not be null
          * @param fieldSchema the schema of the new optional field; may not be null
          * @return this builder so methods can be chained; never null
@@ -149,7 +149,7 @@ public final class Envelope {
 
         /**
          * Define the name for the schema.
-         * 
+         *
          * @param name the name
          * @return this builder so methods can be chained; never null
          */
@@ -157,7 +157,7 @@ public final class Envelope {
 
         /**
          * Define the documentation for the schema.
-         * 
+         *
          * @param doc the documentation
          * @return this builder so methods can be chained; never null
          */
@@ -165,7 +165,7 @@ public final class Envelope {
 
         /**
          * Create the message envelope descriptor.
-         * 
+         *
          * @return the envelope schema; never null
          */
         Envelope build();
@@ -173,8 +173,8 @@ public final class Envelope {
 
     public static Builder defineSchema() {
         return new Builder() {
-            private SchemaBuilder builder = SchemaBuilder.struct();
-            private Set<String> missingFields = new HashSet<>();
+            private final SchemaBuilder builder = SchemaBuilder.struct();
+            private final Set<String> missingFields = new HashSet<>();
 
             @Override
             public Builder withSchema(Schema fieldSchema, String... fieldNames) {
@@ -224,7 +224,7 @@ public final class Envelope {
 
     /**
      * Get the {@link Schema} describing the message envelopes and their content.
-     * 
+     *
      * @return the schema; never null
      */
     public Schema schema() {
@@ -233,7 +233,7 @@ public final class Envelope {
 
     /**
      * Generate a {@link Operation#READ read} message with the given information.
-     * 
+     *
      * @param record the state of the record as read; may not be null
      * @param source the information about the source that was read; may be null
      * @param timestamp the timestamp for this message; may be null
@@ -249,8 +249,8 @@ public final class Envelope {
     }
 
     /**
-     * Generate a {@link Operation#CREATE read} message with the given information.
-     * 
+     * Generate a {@link Operation#CREATE create} message with the given information.
+     *
      * @param record the state of the record after creation; may not be null
      * @param source the information about the source where the creation occurred; may be null
      * @param timestamp the timestamp for this message; may be null
@@ -267,7 +267,7 @@ public final class Envelope {
 
     /**
      * Generate an {@link Operation#UPDATE update} message with the given information.
-     * 
+     *
      * @param before the state of the record before the update; may be null
      * @param after the state of the record after the update; may not be null
      * @param source the information about the source where the update occurred; may be null
@@ -286,7 +286,7 @@ public final class Envelope {
 
     /**
      * Generate an {@link Operation#DELETE delete} message with the given information.
-     * 
+     *
      * @param before the state of the record before the delete; may be null
      * @param source the information about the source where the deletion occurred; may be null
      * @param timestamp the timestamp for this message; may be null
@@ -303,7 +303,7 @@ public final class Envelope {
 
     /**
      * Obtain the operation for the given source record.
-     * 
+     *
      * @param record the source record; may not be null
      * @return the operation, or null if no valid operation was found in the record
      */
