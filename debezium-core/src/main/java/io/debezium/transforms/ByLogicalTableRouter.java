@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
-import io.debezium.util.AvroValidator;
+import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Strings;
 
 /**
@@ -101,7 +101,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
                 ". This will be used to create the physical table identifier in the record's key.");
 
     private static final Logger logger = LoggerFactory.getLogger(ByLogicalTableRouter.class);
-    private final AvroValidator schemaNameValidator = AvroValidator.create(logger);
+    private final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(logger);
     private Pattern topicRegex;
     private String topicReplacement;
     private Pattern keyFieldRegex;
@@ -249,7 +249,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
         }
 
         final SchemaBuilder builder = copySchemaExcludingName(oldKeySchema, SchemaBuilder.struct());
-        builder.name(schemaNameValidator.validate(newTopicName + ".Key"));
+        builder.name(schemaNameAdjuster.adjust(newTopicName + ".Key"));
 
         // Now that multiple physical tables can share a topic, the event's key may need to be augmented to include
         // fields other than just those for the record's primary/unique key, since these are not guaranteed to be unique
@@ -287,7 +287,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
 
         final Schema oldValueSchema = oldEnvelopeSchema.field(Envelope.FieldName.BEFORE).schema();
         final SchemaBuilder valueBuilder = copySchemaExcludingName(oldValueSchema, SchemaBuilder.struct());
-        valueBuilder.name(schemaNameValidator.validate(newTopicName + ".Value"));
+        valueBuilder.name(schemaNameAdjuster.adjust(newTopicName + ".Value"));
         final Schema newValueSchema = valueBuilder.build();
 
         final SchemaBuilder envelopeBuilder = copySchemaExcludingName(oldEnvelopeSchema, SchemaBuilder.struct(), false);
@@ -299,7 +299,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
             }
             envelopeBuilder.field(fieldName, fieldSchema);
         }
-        envelopeBuilder.name(schemaNameValidator.validate(newTopicName + ".Envelope"));
+        envelopeBuilder.name(schemaNameAdjuster.adjust(newTopicName + ".Envelope"));
 
         newEnvelopeSchema = envelopeBuilder.build();
         envelopeSchemaUpdateCache.put(oldEnvelopeSchema, newEnvelopeSchema);

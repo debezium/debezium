@@ -41,7 +41,7 @@ import io.debezium.time.NanoTime;
 import io.debezium.time.NanoTimestamp;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
-import io.debezium.util.AvroValidator;
+import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Strings;
 
 /**
@@ -278,7 +278,7 @@ public class PostgresSchemaIT {
 
     private String validFullName(String proposedName, String suffix) {
         TableId id = TableId.parse(proposedName, false);
-        return AvroValidator.validFullname(TestHelper.TEST_SERVER + "." + id.schema() + "." + id.table() + suffix);
+        return SchemaNameAdjuster.validFullname(TestHelper.TEST_SERVER + "." + id.schema() + "." + id.table() + suffix);
     }
 
     protected void assertTablesExcluded(String... fullyQualifiedTableNames) {

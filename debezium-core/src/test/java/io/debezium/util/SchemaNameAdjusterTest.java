@@ -5,25 +5,25 @@
  */
 package io.debezium.util;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
 
-import static org.fest.assertions.Assertions.assertThat;
-
-import io.debezium.util.AvroValidator.ReplacementOccurred;
+import io.debezium.util.SchemaNameAdjuster.ReplacementOccurred;
 
 /**
  * @author Randall Hauch
  *
  */
-public class AvroValidatorTest {
+public class SchemaNameAdjusterTest {
 
     @Test
     public void shouldDetermineValidFirstCharacters() {
         String validChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_";
         for (int i = 0; i != validChars.length(); ++i) {
-            assertThat(AvroValidator.isValidFullnameFirstCharacter(validChars.charAt(i))).isTrue();
+            assertThat(SchemaNameAdjuster.isValidFullnameFirstCharacter(validChars.charAt(i))).isTrue();
         }
     }
 
@@ -31,7 +31,7 @@ public class AvroValidatorTest {
     public void shouldDetermineValidNonFirstCharacters() {
         String validChars = ".abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
         for (int i = 0; i != validChars.length(); ++i) {
-            assertThat(AvroValidator.isValidFullnameNonFirstCharacter(validChars.charAt(i))).isTrue();
+            assertThat(SchemaNameAdjuster.isValidFullnameNonFirstCharacter(validChars.charAt(i))).isTrue();
         }
     }
 
@@ -54,9 +54,9 @@ public class AvroValidatorTest {
             if (conflict != null) conflicts.incrementAndGet();
             counter.incrementAndGet();
         };
-        AvroValidator validator = AvroValidator.create(handler);
+        SchemaNameAdjuster adjuster = SchemaNameAdjuster.create(handler);
         for (int i = 0; i != 20; ++i) {
-            validator.validate("some-invalid-fullname$");
+            adjuster.adjust("some-invalid-fullname$");
         }
         assertThat(counter.get()).isEqualTo(20);
         assertThat(conflicts.get()).isEqualTo(0);
@@ -70,9 +70,9 @@ public class AvroValidatorTest {
             if (conflict != null) conflicts.incrementAndGet();
             counter.incrementAndGet();
         };
-        AvroValidator validator = AvroValidator.create(handler.firstTimeOnly());
+        SchemaNameAdjuster adjuster = SchemaNameAdjuster.create(handler.firstTimeOnly());
         for (int i = 0; i != 20; ++i) {
-            validator.validate("some-invalid-fullname$");
+            adjuster.adjust("some-invalid-fullname$");
         }
         assertThat(counter.get()).isEqualTo(1);
         assertThat(conflicts.get()).isEqualTo(0);
@@ -86,19 +86,18 @@ public class AvroValidatorTest {
             if (conflict != null) conflicts.incrementAndGet();
             counter.incrementAndGet();
         };
-        AvroValidator validator = AvroValidator.create(handler.firstTimeOnly());
-        validator.validate("some-invalid-fullname$");
-        validator.validate("some-invalid%fullname_");
+        SchemaNameAdjuster adjuster = SchemaNameAdjuster.create(handler.firstTimeOnly());
+        adjuster.adjust("some-invalid-fullname$");
+        adjuster.adjust("some-invalid%fullname_");
         assertThat(counter.get()).isEqualTo(2);
         assertThat(conflicts.get()).isEqualTo(1);
     }
 
     protected void assertValidFullname(String fullname) {
-        assertThat(AvroValidator.isValidFullname(fullname)).isTrue();
+        assertThat(SchemaNameAdjuster.isValidFullname(fullname)).isTrue();
     }
 
     protected void assertNotValidFullname(String fullname) {
-        assertThat(AvroValidator.isValidFullname(fullname)).isFalse();
+        assertThat(SchemaNameAdjuster.isValidFullname(fullname)).isFalse();
     }
-
 }

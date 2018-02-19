@@ -22,8 +22,8 @@ import org.bson.types.BSONTimestamp;
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.AbstractSourceInfo;
-import io.debezium.util.AvroValidator;
 import io.debezium.util.Collect;
+import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * Information about the source of information, which includes the partitions and offsets within those partitions. The MongoDB
@@ -85,7 +85,7 @@ public final class SourceInfo extends AbstractSourceInfo {
      * information.
      */
     private final Schema SOURCE_SCHEMA = schemaBuilder()
-                                                      .name(AvroValidator.defaultValidator().validate("io.debezium.connector.mongo.Source"))
+                                                      .name(SchemaNameAdjuster.defaultAdjuster().adjust("io.debezium.connector.mongo.Source"))
                                                       .version(SCHEMA_VERSION)
                                                       .field(SERVER_NAME, Schema.STRING_SCHEMA)
                                                       .field(REPLICA_SET_NAME, Schema.STRING_SCHEMA)

@@ -35,8 +35,8 @@ import io.debezium.relational.ddl.DdlChanges.DatabaseStatementStringConsumer;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.text.ParsingException;
-import io.debezium.util.AvroValidator;
 import io.debezium.util.Collect;
+import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * Component that records the schema history for databases hosted by a MySQL database server. The schema information includes
@@ -60,7 +60,7 @@ import io.debezium.util.Collect;
 public class MySqlSchema {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
-    private final AvroValidator schemaNameValidator = AvroValidator.create(logger);
+    private final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(logger);
     private final Set<String> ignoredQueryStatements = Collect.unmodifiableSet("BEGIN", "END", "FLUSH PRIVILEGES");
     private final MySqlDdlParser ddlParser;
     private final TopicSelector topicSelector;
@@ -106,7 +106,7 @@ public class MySqlSchema {
         BigIntUnsignedHandlingMode bigIntUnsignedHandlingMode = BigIntUnsignedHandlingMode.parse(bigIntUnsignedHandlingModeStr);
         BigIntUnsignedMode bigIntUnsignedMode = bigIntUnsignedHandlingMode.asBigIntUnsignedMode();
         MySqlValueConverters valueConverters = new MySqlValueConverters(decimalMode, timePrecisionMode, bigIntUnsignedMode);
-        this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameValidator, SourceInfo.SCHEMA);
+        this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameAdjuster, SourceInfo.SCHEMA);
 
         // Set up the server name and schema prefix ...
         if (serverName != null) serverName = serverName.trim();
