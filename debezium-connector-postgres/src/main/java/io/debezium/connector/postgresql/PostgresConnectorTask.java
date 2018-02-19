@@ -7,7 +7,6 @@
 package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -115,9 +114,9 @@ public class PostgresConnectorTask extends SourceTask {
             }
 
             changeEventQueue = new ChangeEventQueue.Builder<ChangeEvent>()
-                .pollInterval(Duration.ofMillis(config.pollIntervalMs()))
-                .maxBatchSize(config.maxBatchSize())
-                .maxQueueSize(config.maxQueueSize())
+                .pollInterval(config.getPollInterval())
+                .maxBatchSize(config.getMaxBatchSize())
+                .maxQueueSize(config.getMaxQueueSize())
                 .loggingContextSupplier(this::getLoggingContext)
                 .build();
 
