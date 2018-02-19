@@ -39,11 +39,13 @@ public class MySqlJdbcContext implements AutoCloseable {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     protected final Configuration config;
+    private final MySqlConnectorConfig connectorConfig;
     protected final JdbcConnection jdbc;
     private final Map<String, String> originalSystemProperties = new HashMap<>();
 
     public MySqlJdbcContext(Configuration config) {
         this.config = config; // must be set before most methods are used
+        this.connectorConfig = new MySqlConnectorConfig(config);
 
         // Set up the JDBC connection without actually connecting, with extra MySQL-specific properties
         // to give us better JDBC database metadata behavior, including using UTF-8 for the client-side character encoding
@@ -61,6 +63,10 @@ public class MySqlJdbcContext implements AutoCloseable {
 
     public Configuration config() {
         return config;
+    }
+
+    public MySqlConnectorConfig getConnectorConfig() {
+        return connectorConfig;
     }
 
     public JdbcConnection jdbc() {

@@ -8,7 +8,6 @@ package io.debezium.connector.mysql;
 import java.math.BigDecimal;
 import java.util.Objects;
 import java.util.Random;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -634,33 +633,6 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                 .withDefault(true)
                                                 .withValidation(Field::isBoolean);
 
-    public static final Field MAX_QUEUE_SIZE = Field.create("max.queue.size")
-                                                    .withDisplayName("Change event buffer size")
-                                                    .withType(Type.INT)
-                                                    .withWidth(Width.SHORT)
-                                                    .withImportance(Importance.MEDIUM)
-                                                    .withDescription("Maximum size of the queue for change events read from the database log but not yet recorded or forwarded. Defaults to 2048, and should always be larger than the maximum batch size.")
-                                                    .withDefault(2048)
-                                                    .withValidation(MySqlConnectorConfig::validateMaxQueueSize);
-
-    public static final Field MAX_BATCH_SIZE = Field.create("max.batch.size")
-                                                    .withDisplayName("Change event batch size")
-                                                    .withType(Type.INT)
-                                                    .withWidth(Width.SHORT)
-                                                    .withImportance(Importance.MEDIUM)
-                                                    .withDescription("Maximum size of each batch of source records. Defaults to 1024.")
-                                                    .withDefault(1024)
-                                                    .withValidation(Field::isPositiveInteger);
-
-    public static final Field POLL_INTERVAL_MS = Field.create("poll.interval.ms")
-                                                      .withDisplayName("Poll interval (ms)")
-                                                      .withType(Type.LONG)
-                                                      .withWidth(Width.SHORT)
-                                                      .withImportance(Importance.MEDIUM)
-                                                      .withDescription("Frequency in milliseconds to wait for new change events to appear after receiving no events. Defaults to 1 second (1000 ms).")
-                                                      .withDefault(TimeUnit.SECONDS.toMillis(1))
-                                                      .withValidation(Field::isPositiveInteger);
-
     public static final Field ROW_COUNT_FOR_STREAMING_RESULT_SETS = Field.create("min.row.count.to.stream.results")
                                                                          .withDisplayName("Stream result set of size")
                                                                          .withType(Type.LONG)
@@ -832,7 +804,9 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
     public static Field.Set ALL_FIELDS = Field.setOf(USER, PASSWORD, HOSTNAME, PORT, SERVER_ID,
                                                      SERVER_NAME,
                                                      CONNECTION_TIMEOUT_MS, KEEP_ALIVE,
-                                                     MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
+                                                     CommonConnectorConfig.MAX_QUEUE_SIZE,
+                                                     CommonConnectorConfig.MAX_BATCH_SIZE,
+                                                     CommonConnectorConfig.POLL_INTERVAL_MS,
                                                      BUFFER_SIZE_FOR_BINLOG_READER, Heartbeat.HEARTBEAT_INTERVAL,
                                                      Heartbeat.HEARTBEAT_TOPICS_PREFIX, DATABASE_HISTORY, INCLUDE_SCHEMA_CHANGES,
                                                      TABLE_WHITELIST, TABLE_BLACKLIST, TABLES_IGNORE_BUILTIN,
@@ -880,27 +854,11 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                     GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS, BUFFER_SIZE_FOR_BINLOG_READER,
                     Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX, EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE, INCONSISTENT_SCHEMA_HANDLING_MODE,
                     CommonConnectorConfig.TOMBSTONES_ON_DELETE);
-        Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
+        Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, CommonConnectorConfig.MAX_QUEUE_SIZE,
+                    CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
                     SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                     BIGINT_UNSIGNED_HANDLING_MODE);
         return config;
-    }
-
-    private static int validateMaxQueueSize(Configuration config, Field field, ValidationOutput problems) {
-        int maxQueueSize = config.getInteger(field);
-        int maxBatchSize = config.getInteger(MAX_BATCH_SIZE);
-        int count = 0;
-        if (maxQueueSize <= 0) {
-            maxBatchSize = maxQueueSize / 2;
-            problems.accept(field, maxQueueSize, "A positive queue size is required");
-            ++count;
-        }
-        if (maxQueueSize <= maxBatchSize) {
-            maxBatchSize = maxQueueSize / 2;
-            problems.accept(field, maxQueueSize, "Must be larger than the maximum batch size");
-            ++count;
-        }
-        return count;
     }
 
     private static int validateDatabaseBlacklist(Configuration config, Field field, ValidationOutput problems) {
