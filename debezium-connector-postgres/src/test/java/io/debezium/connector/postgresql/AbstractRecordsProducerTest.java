@@ -89,8 +89,12 @@ public abstract class AbstractRecordsProducerTest {
                                                              "VALUES ('aa', 'bb', 'cdef', 'abc', 'some text')";
     protected static final String INSERT_NUMERIC_TYPES_STMT = "INSERT INTO numeric_table (si, i, bi, r, db, ss, bs, b) " +
                                                               "VALUES (1, 123456, 1234567890123, 3.3, 4.44, 1, 123, true)";
+    protected static final String INSERT_FP_TYPES_NO_DECIMAL_STMT = "INSERT INTO numeric_table (si, i, bi, r, db, ss, bs, b) " +
+                                                                    "VALUES (1, 123456, 1234567890123, 3, 4, 1, 123, true)";
     protected static final String INSERT_NUMERIC_DECIMAL_TYPES_STMT = "INSERT INTO numeric_decimal_table (d, dzs, dvs, n, nzs, nvs) " +
-            "VALUES (1.1, 10.11, 10.1111, 22.22, 22.2, 22.2222)";
+                                                                      "VALUES (1.1, 10.11, 10.1111, 22.22, 22.2, 22.2222)";
+    protected static final String INSERT_NUMERIC_DECIMAL_TYPES_NO_DECIMAL_STMT = "INSERT INTO numeric_decimal_table (d, dzs, dvs, n, nzs, nvs) " +
+                                                                                 "VALUES (1, 10, 10, 22, 22, 22)";
 
     protected static final String INSERT_TSTZRANGE_TYPES_STMT = "INSERT INTO tstzrange_table (unbounded_exclusive_range, bounded_inclusive_range) " +
             "VALUES ('[2017-06-05 11:29:12.549426+00,)', '[2017-06-05 11:29:12.549426+00, 2017-06-05 12:34:56.789012+00]')";
@@ -132,6 +136,17 @@ public abstract class AbstractRecordsProducerTest {
                              new SchemaAndValueField("b", Schema.OPTIONAL_BOOLEAN_SCHEMA, Boolean.TRUE));
     }
 
+    protected List<SchemaAndValueField> schemasAndValuesForFpTypeWithoutDecimals() {
+        return Arrays.asList(new SchemaAndValueField("si", SchemaBuilder.OPTIONAL_INT16_SCHEMA, (short) 1),
+                             new SchemaAndValueField("i", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 123456),
+                             new SchemaAndValueField("bi", SchemaBuilder.OPTIONAL_INT64_SCHEMA, 1234567890123L),
+                             new SchemaAndValueField("r", Schema.OPTIONAL_FLOAT32_SCHEMA, 3.0f),
+                             new SchemaAndValueField("db", Schema.OPTIONAL_FLOAT64_SCHEMA, 4.0d),
+                             new SchemaAndValueField("ss", Schema.INT16_SCHEMA, (short) 1),
+                             new SchemaAndValueField("bs", Schema.INT64_SCHEMA, 123L),
+                             new SchemaAndValueField("b", Schema.OPTIONAL_BOOLEAN_SCHEMA, Boolean.TRUE));
+    }
+
     protected List<SchemaAndValueField> schemasAndValuesForNumericDecimalType() {
         final Struct dvs = new Struct(VariableScaleDecimal.schema());
         dvs.put("scale", 4).put("value", new BigDecimal("10.1111").unscaledValue().toByteArray());
@@ -142,6 +157,21 @@ public abstract class AbstractRecordsProducerTest {
      // DBZ-351 new SchemaAndValueField("dzs", Decimal.builder(0).optional().build(), new BigDecimal("10")),
                 new SchemaAndValueField("dvs", VariableScaleDecimal.builder().optional().build(), dvs),
                 new SchemaAndValueField("n", Decimal.builder(4).optional().build(), new BigDecimal("22.2200")),
+     // DBZ-351 new SchemaAndValueField("nzs", Decimal.builder(0).optional().build(), new BigDecimal("22")),
+                new SchemaAndValueField("nvs", VariableScaleDecimal.builder().optional().build(), nvs)
+        );
+    }
+
+    protected List<SchemaAndValueField> schemasAndValuesForNumericDecimalTypeWithoutDecimals() {
+        final Struct dvs = new Struct(VariableScaleDecimal.schema());
+        dvs.put("scale", 1).put("value", new BigDecimal("10.0").unscaledValue().toByteArray());
+        final Struct nvs = new Struct(VariableScaleDecimal.schema());
+        nvs.put("scale", 1).put("value", new BigDecimal("22.0").unscaledValue().toByteArray());
+        return Arrays.asList(
+                new SchemaAndValueField("d", Decimal.builder(2).optional().build(), new BigDecimal("1.00")),
+     // DBZ-351 new SchemaAndValueField("dzs", Decimal.builder(0).optional().build(), new BigDecimal("10")),
+                new SchemaAndValueField("dvs", VariableScaleDecimal.builder().optional().build(), dvs),
+                new SchemaAndValueField("n", Decimal.builder(4).optional().build(), new BigDecimal("22.0000")),
      // DBZ-351 new SchemaAndValueField("nzs", Decimal.builder(0).optional().build(), new BigDecimal("22")),
                 new SchemaAndValueField("nvs", VariableScaleDecimal.builder().optional().build(), nvs)
         );
