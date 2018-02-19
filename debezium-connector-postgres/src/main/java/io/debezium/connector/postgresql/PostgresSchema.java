@@ -11,7 +11,6 @@ import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Schema;
@@ -48,7 +47,7 @@ public class PostgresSchema {
     private final TableSchemaBuilder schemaBuilder;
     private final String schemaPrefix;
     private final Tables tables;
-    private final Function<String, String> schemaNameValidator;
+    private final AvroValidator schemaNameValidator;
     private final PostgresValueConverter valueConverter;
 
     private Map<String, Integer> typeInfo;
@@ -67,7 +66,7 @@ public class PostgresSchema {
 
         this.valueConverter = new PostgresValueConverter(config.decimalHandlingMode(), config.temporalPrecisionMode(),
                 ZoneOffset.UTC, null, config.includeUnknownDatatypes(), typeRegistry);
-        this.schemaNameValidator = AvroValidator.create(LOGGER)::validate;
+        this.schemaNameValidator = AvroValidator.create(LOGGER);
         this.schemaBuilder = new TableSchemaBuilder(valueConverter, this.schemaNameValidator, SourceInfo.SCHEMA);
 
         // Set up the server name and schema prefix ...
@@ -168,7 +167,7 @@ public class PostgresSchema {
     }
 
     protected String validateSchemaName(String name) {
-        return this.schemaNameValidator.apply(name);
+        return this.schemaNameValidator.validate(name);
     }
 
     protected TableSchema schemaFor(TableId id) {
