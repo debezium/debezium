@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
@@ -111,11 +110,13 @@ public final class MongoDbConnectorTask extends SourceTask {
                         "Unable to start MongoDB connector task since no replica sets were found at " + hosts);
             }
 
+            MongoDbConnectorConfig connectorConfig = new MongoDbConnectorConfig(config);
+
             // Set up the task record queue ...
             this.queue = new ChangeEventQueue.Builder<SourceRecord>()
-                    .pollInterval(Duration.ofMillis(config.getLong(MongoDbConnectorConfig.POLL_INTERVAL_MS)))
-                    .maxBatchSize(config.getInteger(MongoDbConnectorConfig.MAX_BATCH_SIZE))
-                    .maxQueueSize(config.getInteger(MongoDbConnectorConfig.MAX_QUEUE_SIZE))
+                    .pollInterval(connectorConfig.getPollInterval())
+                    .maxBatchSize(connectorConfig.getMaxBatchSize())
+                    .maxQueueSize(connectorConfig.getMaxQueueSize())
                     .loggingContextSupplier(this::getLoggingContext)
                     .build();
 
