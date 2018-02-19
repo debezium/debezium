@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -47,6 +46,7 @@ public abstract class AbstractReader implements Reader {
     private final int maxBatchSize;
     private final Metronome metronome;
     private final AtomicReference<Runnable> uponCompletion = new AtomicReference<>();
+    private final Duration pollInterval;
 
     /**
      * Create a snapshot reader.
@@ -57,9 +57,10 @@ public abstract class AbstractReader implements Reader {
     public AbstractReader(String name, MySqlTaskContext context) {
         this.name = name;
         this.context = context;
-        this.records = new LinkedBlockingDeque<>(context.maxQueueSize());
-        this.maxBatchSize = context.maxBatchSize();
-        this.metronome = Metronome.parker(context.pollIntervalInMillseconds(), TimeUnit.MILLISECONDS, Clock.SYSTEM);
+        this.records = new LinkedBlockingDeque<>(context.getConnectorConfig().getMaxQueueSize());
+        this.maxBatchSize = context.getConnectorConfig().getMaxBatchSize();
+        this.pollInterval = context.getConnectorConfig().getPollInterval();
+        this.metronome = Metronome.parker(pollInterval, Clock.SYSTEM);
     }
 
     @Override
@@ -220,7 +221,7 @@ public abstract class AbstractReader implements Reader {
 
         logger.trace("Polling for next batch of records");
         List<SourceRecord> batch = new ArrayList<>(maxBatchSize);
-        final Timer timeout = Threads.timer(Clock.SYSTEM, Temporals.max(Duration.ofMillis(context.pollIntervalInMillseconds()), ConfigurationDefaults.RETURN_CONTROL_INTERVAL));
+        final Timer timeout = Threads.timer(Clock.SYSTEM, Temporals.max(pollInterval, ConfigurationDefaults.RETURN_CONTROL_INTERVAL));
         while (running.get() && (records.drainTo(batch, maxBatchSize) == 0) && !success.get()) {
             // No records are available even though the snapshot has not yet completed, so sleep for a bit ...
             metronome.pause();

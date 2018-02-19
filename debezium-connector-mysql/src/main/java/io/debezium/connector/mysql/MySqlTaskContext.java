@@ -182,20 +182,8 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         return config.getString(MySqlConnectorConfig.SERVER_NAME);
     }
 
-    public int maxQueueSize() {
-        return config.getInteger(MySqlConnectorConfig.MAX_QUEUE_SIZE);
-    }
-
-    public int maxBatchSize() {
-        return config.getInteger(MySqlConnectorConfig.MAX_BATCH_SIZE);
-    }
-
     public long timeoutInMilliseconds() {
         return config.getLong(MySqlConnectorConfig.CONNECTION_TIMEOUT_MS);
-    }
-
-    public long pollIntervalInMillseconds() {
-        return config.getLong(MySqlConnectorConfig.POLL_INTERVAL_MS);
     }
 
     public long rowCountForLargeTable() {
