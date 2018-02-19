@@ -26,7 +26,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
-import io.debezium.util.AvroValidator;
+import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * Component that records the schema information for the {@link PostgresConnector}. The schema information contains
@@ -47,7 +47,7 @@ public class PostgresSchema {
     private final TableSchemaBuilder schemaBuilder;
     private final String schemaPrefix;
     private final Tables tables;
-    private final AvroValidator schemaNameValidator;
+    private final SchemaNameAdjuster schemaNameAdjuster;
     private final PostgresValueConverter valueConverter;
 
     private Map<String, Integer> typeInfo;
@@ -66,8 +66,8 @@ public class PostgresSchema {
 
         this.valueConverter = new PostgresValueConverter(config.decimalHandlingMode(), config.temporalPrecisionMode(),
                 ZoneOffset.UTC, null, config.includeUnknownDatatypes(), typeRegistry);
-        this.schemaNameValidator = AvroValidator.create(LOGGER);
-        this.schemaBuilder = new TableSchemaBuilder(valueConverter, this.schemaNameValidator, SourceInfo.SCHEMA);
+        this.schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
+        this.schemaBuilder = new TableSchemaBuilder(valueConverter, this.schemaNameAdjuster, SourceInfo.SCHEMA);
 
         // Set up the server name and schema prefix ...
         String serverName = config.serverName();
@@ -167,7 +167,7 @@ public class PostgresSchema {
     }
 
     protected String validateSchemaName(String name) {
-        return this.schemaNameValidator.validate(name);
+        return this.schemaNameAdjuster.adjust(name);
     }
 
     protected TableSchema schemaFor(TableId id) {

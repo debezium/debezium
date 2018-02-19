@@ -21,6 +21,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
+
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Schema.Type;
@@ -31,6 +32,7 @@ import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.json.JsonDeserializer;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.fest.assertions.Delta;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
@@ -41,22 +43,22 @@ import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.time.ZonedTimestamp;
-import io.debezium.util.AvroValidator;
+import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Testing;
 
 /**
  * Test utility for checking {@link SourceRecord}.
- * 
+ *
  * @author Randall Hauch
  */
 public class VerifyRecord {
-    
+
     @FunctionalInterface
     public static interface RecordValueComparator {
         /**
          * Assert that the actual and expected values are equal. By the time this method is called, the actual value
          * and expected values are both determined to be non-null.
-         * 
+         *
          * @param pathToField the path to the field within the JSON representation of the source record; never null
          * @param actualValue the actual value for the field in the source record; never null
          * @param expectedValue the expected value for the field in the source record; never null
@@ -89,14 +91,14 @@ public class VerifyRecord {
     }
 
     /**
-     * 
+     *
      */
     public VerifyRecord() {
     }
 
     /**
      * Verify that the given {@link SourceRecord} is a {@link Operation#CREATE INSERT/CREATE} record.
-     * 
+     *
      * @param record the source record; may not be null
      */
     public static void isValidInsert(SourceRecord record) {
@@ -109,10 +111,10 @@ public class VerifyRecord {
         assertThat(value.get(FieldName.AFTER)).isNotNull();
         assertThat(value.get(FieldName.BEFORE)).isNull();
     }
-    
+
     /**
      * Verify that the given {@link SourceRecord} is a {@link Operation#READ READ} record.
-     * 
+     *
      * @param record the source record; may not be null
      */
     public static void isValidRead(SourceRecord record) {
@@ -128,7 +130,7 @@ public class VerifyRecord {
 
     /**
      * Verify that the given {@link SourceRecord} is a {@link Operation#UPDATE UPDATE} record.
-     * 
+     *
      * @param record the source record; may not be null
      */
     public static void isValidUpdate(SourceRecord record) {
@@ -144,7 +146,7 @@ public class VerifyRecord {
 
     /**
      * Verify that the given {@link SourceRecord} is a {@link Operation#DELETE DELETE} record.
-     * 
+     *
      * @param record the source record; may not be null
      */
     public static void isValidDelete(SourceRecord record) {
@@ -161,7 +163,7 @@ public class VerifyRecord {
     /**
      * Verify that the given {@link SourceRecord} is a valid tombstone, meaning it has a non-null key and key schema but null
      * value and value schema.
-     * 
+     *
      * @param record the source record; may not be null
      */
     public static void isValidTombstone(SourceRecord record) {
@@ -173,7 +175,7 @@ public class VerifyRecord {
 
     /**
      * Verify that the given {@link SourceRecord} has a valid non-null integer key that matches the expected integer value.
-     * 
+     *
      * @param record the source record; may not be null
      * @param pkField the single field defining the primary key of the struct; may not be null
      * @param pk the expected integer value of the primary key in the struct
@@ -186,7 +188,7 @@ public class VerifyRecord {
     /**
      * Verify that the given {@link SourceRecord} is a {@link Operation#CREATE INSERT/CREATE} record, and that the integer key
      * matches the expected value.
-     * 
+     *
      * @param record the source record; may not be null
      * @param pkField the single field defining the primary key of the struct; may not be null
      * @param pk the expected integer value of the primary key in the struct
@@ -199,7 +201,7 @@ public class VerifyRecord {
     /**
      * Verify that the given {@link SourceRecord} is a {@link Operation#CREATE READ} record, and that the integer key
      * matches the expected value.
-     * 
+     *
      * @param record the source record; may not be null
      * @param pkField the single field defining the primary key of the struct; may not be null
      * @param pk the expected integer value of the primary key in the struct
@@ -212,7 +214,7 @@ public class VerifyRecord {
     /**
      * Verify that the given {@link SourceRecord} is a {@link Operation#UPDATE UPDATE} record, and that the integer key
      * matches the expected value.
-     * 
+     *
      * @param record the source record; may not be null
      * @param pkField the single field defining the primary key of the struct; may not be null
      * @param pk the expected integer value of the primary key in the struct
@@ -225,7 +227,7 @@ public class VerifyRecord {
     /**
      * Verify that the given {@link SourceRecord} is a {@link Operation#DELETE DELETE} record, and that the integer key
      * matches the expected value.
-     * 
+     *
      * @param record the source record; may not be null
      * @param pkField the single field defining the primary key of the struct; may not be null
      * @param pk the expected integer value of the primary key in the struct
@@ -238,7 +240,7 @@ public class VerifyRecord {
     /**
      * Verify that the given {@link SourceRecord} is a valid tombstone, meaning it has a valid non-null key with key schema
      * but null value and value schema.
-     * 
+     *
      * @param record the source record; may not be null
      * @param pkField the single field defining the primary key of the struct; may not be null
      * @param pk the expected integer value of the primary key in the struct
@@ -251,7 +253,7 @@ public class VerifyRecord {
     /**
      * Assert that the supplied {@link Struct} is {@link Struct#validate() valid} and its {@link Struct#schema() schema}
      * matches that of the supplied {@code schema}.
-     * 
+     *
      * @param schemaAndValue the value with a schema; may not be null
      */
     public static void schemaMatchesStruct(SchemaAndValue schemaAndValue) {
@@ -269,7 +271,7 @@ public class VerifyRecord {
     /**
      * Assert that the supplied {@link Struct} is {@link Struct#validate() valid} and its {@link Struct#schema() schema}
      * matches that of the supplied {@code schema}.
-     * 
+     *
      * @param struct the {@link Struct} to validate; may not be null
      * @param schema the expected schema of the {@link Struct}; may not be null
      */
@@ -288,7 +290,7 @@ public class VerifyRecord {
 
     /**
      * Verify that the fields in the given {@link Struct} reference the {@link Field} definitions in the given {@link Schema}.
-     * 
+     *
      * @param struct the {@link Struct} instance; may not be null
      * @param schema the {@link Schema} defining the fields in the Struct; may not be null
      */
@@ -305,7 +307,7 @@ public class VerifyRecord {
 
     /**
      * Print a message with the JSON representation of the SourceRecord.
-     * 
+     *
      * @param record the source record; may not be null
      */
     public static void print(SourceRecord record) {
@@ -314,7 +316,7 @@ public class VerifyRecord {
 
     /**
      * Print a debug message with the JSON representation of the SourceRecord.
-     * 
+     *
      * @param record the source record; may not be null
      */
     public static void debug(SourceRecord record) {
@@ -348,7 +350,7 @@ public class VerifyRecord {
         assertEquals(actualKeySchema, actual.key(), expected.key(), "key", "", ignoreFields, comparatorsByName, comparatorsBySchemaName);
         assertEquals(actualValueSchema, actual.value(), expected.value(), "value", "", ignoreFields, comparatorsByName, comparatorsBySchemaName);
     }
-    
+
     protected static String nameOf(String keyOrValue, String field) {
         if (field == null || field.trim().isEmpty()) {
             return keyOrValue;
@@ -504,7 +506,7 @@ public class VerifyRecord {
             ZonedDateTime actualValue = ZonedDateTime.parse(o1.toString(), ZonedTimestamp.FORMATTER);
 
             String expectedValueString = o2.toString();
-            ZonedDateTime expectedValue ;    
+            ZonedDateTime expectedValue ;
             try {
                 // first try a standard offset format which contains the TZ information
                 expectedValue = ZonedDateTime.parse(expectedValueString, ZonedTimestamp.FORMATTER);
@@ -522,7 +524,7 @@ public class VerifyRecord {
     /**
      * Validate that a {@link SourceRecord}'s key and value can each be converted to a byte[] and then back to an equivalent
      * {@link SourceRecord}.
-     * 
+     *
      * @param record the record to validate; may not be null
      */
     public static void isValid(SourceRecord record) {
@@ -643,7 +645,7 @@ public class VerifyRecord {
     protected static void validateSchemaNames(Schema schema) {
         if (schema == null) return;
         String schemaName = schema.name();
-        if (schemaName != null && !AvroValidator.isValidFullname(schemaName)) {
+        if (schemaName != null && !SchemaNameAdjuster.isValidFullname(schemaName)) {
             fail("Kafka schema '" + schemaName + "' is not a valid Avro schema name");
         }
         if (schema.type() == Type.STRUCT) {
@@ -657,7 +659,7 @@ public class VerifyRecord {
         if (field == null) return;
         Schema subSchema = field.schema();
         String subSchemaName = subSchema.name();
-        if (subSchemaName != null && !AvroValidator.isValidFullname(subSchemaName)) {
+        if (subSchemaName != null && !SchemaNameAdjuster.isValidFullname(subSchemaName)) {
             fail("Kafka schema '" + parentSchema.name() + "' contains a subschema for '" + field.name() + "' named '" + subSchema.name()
                     + "' that is not a valid Avro schema name");
         }

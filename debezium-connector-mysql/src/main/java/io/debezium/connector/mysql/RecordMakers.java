@@ -25,7 +25,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.relational.history.HistoryRecord.Fields;
-import io.debezium.util.AvroValidator;
+import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * A component that makes {@link SourceRecord}s for tables.
@@ -44,7 +44,7 @@ public class RecordMakers {
     private final Map<Long, TableId> tableIdsByTableNumber = new HashMap<>();
     private final Schema schemaChangeKeySchema;
     private final Schema schemaChangeValueSchema;
-    private final AvroValidator schemaNameValidator = AvroValidator.create(logger);
+    private final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(logger);
 
     /**
      * Create the record makers using the supplied components.
@@ -59,11 +59,11 @@ public class RecordMakers {
         this.topicSelector = topicSelector;
         this.emitTombstoneOnDelete = emitTombstoneOnDelete;
         this.schemaChangeKeySchema = SchemaBuilder.struct()
-                                                  .name(schemaNameValidator.validate("io.debezium.connector.mysql.SchemaChangeKey"))
+                                                  .name(schemaNameAdjuster.adjust("io.debezium.connector.mysql.SchemaChangeKey"))
                                                   .field(Fields.DATABASE_NAME, Schema.STRING_SCHEMA)
                                                   .build();
         this.schemaChangeValueSchema = SchemaBuilder.struct()
-                                                    .name(schemaNameValidator.validate("io.debezium.connector.mysql.SchemaChangeValue"))
+                                                    .name(schemaNameAdjuster.adjust("io.debezium.connector.mysql.SchemaChangeValue"))
                                                     .field(Fields.SOURCE, SourceInfo.SCHEMA)
                                                     .field(Fields.DATABASE_NAME, Schema.STRING_SCHEMA)
                                                     .field(Fields.DDL_STATEMENTS, Schema.STRING_SCHEMA)
