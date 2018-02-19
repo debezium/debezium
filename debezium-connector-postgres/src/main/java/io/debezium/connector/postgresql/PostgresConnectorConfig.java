@@ -341,10 +341,7 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
 
     protected static final String DATABASE_CONFIG_PREFIX = "database.";
     protected static final int DEFAULT_PORT = 5432;
-    protected static final int DEFAULT_MAX_BATCH_SIZE = 10240;
-    protected static final int DEFAULT_MAX_QUEUE_SIZE = 20480;
     protected static final int DEFAULT_ROWS_FETCH_SIZE = 10240;
-    protected static final long DEFAULT_POLL_INTERVAL_MILLIS = 500;
     protected static final long DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(10);
 
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
@@ -436,24 +433,6 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                                                       + "'table' (the default) each DB table will have a separate Kafka topic; "
                                                       + "'schema' there will be one Kafka topic per DB schema; events from multiple topics belonging to the same schema will be placed on the same topic");
 
-    public static final Field MAX_QUEUE_SIZE = Field.create("max.queue.size")
-                                                    .withDisplayName("Change event buffer size")
-                                                    .withType(Type.INT)
-                                                    .withWidth(Width.SHORT)
-                                                    .withImportance(Importance.MEDIUM)
-                                                    .withDescription("Maximum size of the queue for change events read from the database log but not yet recorded or forwarded. Defaults to 20480, and should always be larger than the maximum batch size.")
-                                                    .withDefault(DEFAULT_MAX_QUEUE_SIZE)
-                                                    .withValidation(PostgresConnectorConfig::validateMaxQueueSize);
-
-    public static final Field MAX_BATCH_SIZE = Field.create("max.batch.size")
-                                                    .withDisplayName("Change event batch size")
-                                                    .withType(Type.INT)
-                                                    .withWidth(Width.SHORT)
-                                                    .withImportance(Importance.MEDIUM)
-                                                    .withDescription("Maximum size of each batch of source records. Defaults to 10240.")
-                                                    .withDefault(DEFAULT_MAX_BATCH_SIZE)
-                                                    .withValidation(Field::isPositiveInteger);
-
     public static final Field ROWS_FETCH_SIZE = Field.create("rows.fetch.size")
                                                      .withDisplayName("Result set fetch size")
                                                      .withType(Type.INT)
@@ -462,15 +441,6 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                                                      .withDescription("The maximum number of DB rows that should be loaded into memory while performing a snapshot")
                                                      .withDefault(DEFAULT_ROWS_FETCH_SIZE)
                                                      .withValidation(Field::isPositiveLong);
-
-    public static final Field POLL_INTERVAL_MS = Field.create("poll.interval.ms")
-                                                      .withDisplayName("Poll interval (ms)")
-                                                      .withType(Type.LONG)
-                                                      .withWidth(Width.SHORT)
-                                                      .withImportance(Importance.MEDIUM)
-                                                      .withDescription("Frequency in milliseconds to wait for new change events to appear after receiving no events. Defaults to 0.5 second (500 ms).")
-                                                      .withDefault(DEFAULT_POLL_INTERVAL_MILLIS)
-                                                      .withValidation(Field::isPositiveInteger);
 
     public static final Field SSL_MODE = Field.create(DATABASE_CONFIG_PREFIX + "sslmode")
                                               .withDisplayName("SSL mode")
@@ -676,8 +646,8 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
      */
     public static Field.Set ALL_FIELDS = Field.setOf(PLUGIN_NAME, SLOT_NAME, DROP_SLOT_ON_STOP,
                                                      DATABASE_NAME, USER, PASSWORD, HOSTNAME, PORT, SERVER_NAME,
-                                                     TOPIC_SELECTION_STRATEGY, MAX_BATCH_SIZE,
-                                                     MAX_QUEUE_SIZE, POLL_INTERVAL_MS, SCHEMA_WHITELIST,
+                                                     TOPIC_SELECTION_STRATEGY, CommonConnectorConfig.MAX_BATCH_SIZE,
+                                                     CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS, SCHEMA_WHITELIST,
                                                      SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE,
                                                      TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
@@ -734,18 +704,6 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
 
     protected Integer statusUpdateIntervalMillis() {
         return config.getInteger(STATUS_UPDATE_INTERVAL_MS, null);
-    }
-
-    protected int maxQueueSize() {
-        return config.getInteger(MAX_QUEUE_SIZE);
-    }
-
-    protected int maxBatchSize() {
-        return config.getInteger(MAX_BATCH_SIZE);
-    }
-
-    protected long pollIntervalMs() {
-        return config.getLong(POLL_INTERVAL_MS);
     }
 
     protected TemporalPrecisionMode temporalPrecisionMode() {
@@ -839,24 +797,9 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
         Field.group(config, "Events", SCHEMA_WHITELIST, SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
                     COLUMN_BLACKLIST, INCLUDE_UNKNOWN_DATATYPES, SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
                     CommonConnectorConfig.TOMBSTONES_ON_DELETE);
-        Field.group(config, "Connector", TOPIC_SELECTION_STRATEGY, POLL_INTERVAL_MS, MAX_BATCH_SIZE, MAX_QUEUE_SIZE,
+        Field.group(config, "Connector", TOPIC_SELECTION_STRATEGY, CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     SNAPSHOT_MODE, SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, ROWS_FETCH_SIZE);
         return config;
-    }
-
-    private static int validateMaxQueueSize(Configuration config, Field field, Field.ValidationOutput problems) {
-        int maxQueueSize = config.getInteger(field);
-        int maxBatchSize = config.getInteger(MAX_BATCH_SIZE);
-        int count = 0;
-        if (maxQueueSize <= 0) {
-            problems.accept(field, maxQueueSize, "A positive queue size is required");
-            ++count;
-        }
-        if (maxQueueSize <= maxBatchSize) {
-            problems.accept(field, maxQueueSize, "Must be larger than the maximum batch size");
-            ++count;
-        }
-        return count;
     }
 
     private static int validateSchemaBlacklist(Configuration config, Field field, Field.ValidationOutput problems) {
@@ -868,7 +811,6 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
         }
         return 0;
     }
-
 
     private static int validateTableBlacklist(Configuration config, Field field, Field.ValidationOutput problems) {
         String whitelist = config.getString(TABLE_WHITELIST);
