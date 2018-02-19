@@ -106,7 +106,7 @@ public class MySqlSchema {
         BigIntUnsignedHandlingMode bigIntUnsignedHandlingMode = BigIntUnsignedHandlingMode.parse(bigIntUnsignedHandlingModeStr);
         BigIntUnsignedMode bigIntUnsignedMode = bigIntUnsignedHandlingMode.asBigIntUnsignedMode();
         MySqlValueConverters valueConverters = new MySqlValueConverters(decimalMode, timePrecisionMode, bigIntUnsignedMode);
-        this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameValidator::validate, SourceInfo.SCHEMA);
+        this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameValidator, SourceInfo.SCHEMA);
 
         // Set up the server name and schema prefix ...
         if (serverName != null) serverName = serverName.trim();

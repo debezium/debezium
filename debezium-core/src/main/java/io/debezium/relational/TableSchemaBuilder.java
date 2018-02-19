@@ -26,6 +26,7 @@ import io.debezium.data.Envelope;
 import io.debezium.data.SchemaUtil;
 import io.debezium.relational.mapping.ColumnMapper;
 import io.debezium.relational.mapping.ColumnMappers;
+import io.debezium.util.AvroValidator;
 
 /**
  * Builder that constructs {@link TableSchema} instances for {@link Table} definitions.
@@ -46,7 +47,7 @@ public class TableSchemaBuilder {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TableSchemaBuilder.class);
 
-    private final Function<String, String> schemaNameValidator;
+    private final AvroValidator schemaNameValidator;
     private final ValueConverterProvider valueConverterProvider;
     private final Schema sourceInfoSchema;
 
@@ -55,9 +56,9 @@ public class TableSchemaBuilder {
      *
      * @param valueConverterProvider the provider for obtaining {@link ValueConverter}s and {@link SchemaBuilder}s; may not be
      *            null
-     * @param schemaNameValidator the validation function for schema names; may not be null
+     * @param schemaNameValidator the validator for schema names; may not be null
      */
-    public TableSchemaBuilder(ValueConverterProvider valueConverterProvider, Function<String, String> schemaNameValidator, Schema sourceInfoSchema) {
+    public TableSchemaBuilder(ValueConverterProvider valueConverterProvider, AvroValidator schemaNameValidator, Schema sourceInfoSchema) {
         this.schemaNameValidator = schemaNameValidator;
         this.valueConverterProvider = valueConverterProvider;
         this.sourceInfoSchema = sourceInfoSchema;
@@ -87,8 +88,8 @@ public class TableSchemaBuilder {
         final String tableIdStr = tableId.toString();
         final String schemaNamePrefix = schemaPrefix + tableIdStr;
         LOGGER.debug("Mapping table '{}' to schemas under '{}'", tableId, schemaNamePrefix);
-        SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(schemaNameValidator.apply(schemaNamePrefix + ".Value"));
-        SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(schemaNameValidator.apply(schemaNamePrefix + ".Key"));
+        SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(schemaNameValidator.validate(schemaNamePrefix + ".Value"));
+        SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(schemaNameValidator.validate(schemaNamePrefix + ".Key"));
         AtomicBoolean hasPrimaryKey = new AtomicBoolean(false);
         table.columns().forEach(column -> {
             if (table.isPrimaryKeyColumn(column.name())) {
@@ -111,7 +112,7 @@ public class TableSchemaBuilder {
         }
 
         Envelope envelope = Envelope.defineSchema()
-                .withName(schemaNameValidator.apply(envelopSchemaName))
+                .withName(schemaNameValidator.validate(envelopSchemaName))
                 .withRecord(valSchema)
                 .withSource(sourceInfoSchema)
                 .build();
