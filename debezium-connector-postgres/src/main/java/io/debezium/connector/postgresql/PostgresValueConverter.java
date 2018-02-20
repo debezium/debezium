@@ -70,6 +70,16 @@ public class PostgresValueConverter extends JdbcValueConverters {
     private static final int VARIABLE_SCALE_DECIMAL_LENGTH = 131089;
 
     /**
+     * A string denoting not-a- number for FP and Numeric types
+     */
+    public static final String N_A_N = "NaN";
+
+    /**
+     * A string denoting positive/negative infinity for FP and Numeric types
+     */
+    public static final String INF = "Infinity";
+
+    /**
      * {@code true} if fields of data type not know should be handle as opaque binary;
      * {@code false} if they should be omitted
      */
@@ -575,5 +585,17 @@ public class PostgresValueConverter extends JdbcValueConverters {
     private boolean isVariableScaleDecimal(final Column column) {
         return (column.scale() == 0 && column.length() == VARIABLE_SCALE_DECIMAL_LENGTH)
                 || (column.scale() == -1 && column.length() == -1);
+    }
+
+    public static SpecialValue toSpecialValue(String value) {
+        switch (value) {
+        case N_A_N:
+            return SpecialValue.NaN;
+        case INF:
+            return SpecialValue.PositiveInfinity;
+        case "-" + INF:
+            return SpecialValue.NegativeInfinity;
+        }
+        return null;
     }
 }

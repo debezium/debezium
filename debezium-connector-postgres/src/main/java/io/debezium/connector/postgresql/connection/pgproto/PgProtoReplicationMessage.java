@@ -25,11 +25,12 @@ import org.slf4j.LoggerFactory;
 import io.debezium.connector.postgresql.PgOid;
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.PostgresValueConverter;
-import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.RecordsStreamProducer.PgConnectionSupplier;
+import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.AbstractReplicationMessageColumn;
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.connector.postgresql.proto.PgProto;
+import io.debezium.jdbc.JdbcValueConverters.SpecialValue;
 import io.debezium.util.Strings;
 
 /**
@@ -143,8 +144,17 @@ class PgProtoReplicationMessage implements ReplicationMessage {
             case PgOid.FLOAT4:
                 return datumMessage.hasDatumFloat()? datumMessage.getDatumFloat() : null;
             case PgOid.FLOAT8:
-            case PgOid.NUMERIC:
                 return datumMessage.hasDatumDouble() ? datumMessage.getDatumDouble() : null;
+            case PgOid.NUMERIC:
+                if (datumMessage.hasDatumDouble()) {
+                    return datumMessage.getDatumDouble();
+                }
+                else if (datumMessage.hasDatumString()) {
+                    final String s = datumMessage.getDatumString();
+                    final SpecialValue v = PostgresValueConverter.toSpecialValue(s);
+                    return v != null ? v : new BigDecimal(s);
+                }
+                return null;
             case PgOid.CHAR:
             case PgOid.VARCHAR:
             case PgOid.BPCHAR:

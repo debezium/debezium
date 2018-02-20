@@ -62,6 +62,15 @@ import io.debezium.util.NumberConversions;
 @Immutable
 public class JdbcValueConverters implements ValueConverterProvider {
 
+    /**
+     * Special values for floating-point and numeric types
+     */
+    public static enum SpecialValue {
+        NaN,
+        PositiveInfinity,
+        NegativeInfinity;
+    }
+
     public enum DecimalMode {
         PRECISE, DOUBLE;
     }
@@ -976,6 +985,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
             decimal = BigDecimal.valueOf(((Float) data).doubleValue());
         else if (data instanceof Double)
             decimal = BigDecimal.valueOf(((Double) data).doubleValue());
+        else if (data instanceof SpecialValue)
+            return null;
         else {
             return handleUnknownData(column, fieldDefn, data);
         }
@@ -1018,6 +1029,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
             decimal = BigDecimal.valueOf(((Float) data).doubleValue());
         else if (data instanceof Double)
             decimal = BigDecimal.valueOf(((Double) data).doubleValue());
+        else if (data instanceof SpecialValue)
+            return null;
         else {
             return handleUnknownData(column, fieldDefn, data);
         }
