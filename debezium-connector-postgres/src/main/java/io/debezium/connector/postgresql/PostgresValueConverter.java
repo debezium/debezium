@@ -311,6 +311,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
           newDecimal = newDecimal.setScale(column.scale());
         }
         if (isVariableScaleDecimal(column)) {
+            newDecimal = newDecimal.stripTrailingZeros();
+            if (newDecimal.scale() < 0) {
+                newDecimal = newDecimal.setScale(0);
+            }
             return VariableScaleDecimal.fromLogical(fieldDefn.schema(), newDecimal);
         }
         return newDecimal;
