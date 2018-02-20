@@ -126,10 +126,11 @@ public class BinlogReaderIT {
 
         // Poll for records ...
         // Testing.Print.enable();
-        int expected = 9 + 9 + 4 + 5; // only the inserts for our 4 tables in this database
+        int expected = 9 + 9 + 4 + 5 + 1; // only the inserts for our 4 tables in this database and 1 create table
         int consumed = consumeAtLeast(expected);
         assertThat(consumed).isGreaterThanOrEqualTo(expected);
 
+        store.sourceRecords().forEach(System.out::println);
         // There should be no schema changes ...
         assertThat(schemaChanges.recordCount()).isEqualTo(0);
 
@@ -397,7 +398,7 @@ public class BinlogReaderIT {
 
         // Poll for records ...
         // Testing.Print.enable();
-        int expected = 9 + 9 + 4 + 5; // only the inserts for our 4 tables in this database
+        int expected = 9 + 9 + 4 + 5 + 1; // only the inserts for our 4 tables in this database and 1 create table
         int consumed = consumeAtLeast(expected);
         assertThat(consumed).isGreaterThanOrEqualTo(expected);
 
