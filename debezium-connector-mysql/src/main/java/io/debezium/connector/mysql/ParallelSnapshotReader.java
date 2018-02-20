@@ -10,6 +10,8 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -72,7 +74,7 @@ public class ParallelSnapshotReader implements Reader {
      * ParallelSnapshotReader.
      * @return a {@link ReconcilingBinlogReader}
      */
-    public ReconcilingBinlogReader createReconcillingBinlogReader() {
+    public ReconcilingBinlogReader createReconcilingBinlogReader() {
         return new ReconcilingBinlogReader(oldTablesReader, newTablesBinlogReader);
     }
 
@@ -97,11 +99,13 @@ public class ParallelSnapshotReader implements Reader {
 
     @Override
     public void stop() {
+        boolean error = false;
         try {
             logger.info("Stopping the {} reader", oldTablesReader.name());
             oldTablesReader.stop();
         } catch (Throwable t) {
             logger.error("Unexpected error stopping the {} reader", oldTablesReader.name());
+            error = true;
         }
 
         try {
@@ -109,8 +113,11 @@ public class ParallelSnapshotReader implements Reader {
             newTablesReader.stop();
         } catch (Throwable t) {
             logger.error("Unexpected error stopping the {} reader", newTablesReader.name());
+            error = true;
         }
-        running.set(false);
+        if (!error) {
+            running.set(false);
+        }
     }
 
     @Override
@@ -153,34 +160,36 @@ public class ParallelSnapshotReader implements Reader {
 
         // todo maybe this should eventually be configured, but for now the time diff were are interested in
         // is hard coded in as 5 minutes.
-        private static final long DEFAULT_TIME_RANGE_MS = 5 * 60 * 1000;
+        private static final long DEFAULT_DURATION_MS = 5 * 60 * 1000;
 
         private volatile AtomicBoolean thisReaderNearEnd;
         private volatile AtomicBoolean otherReaderNearEnd;
 
-        private final long timeRangeMs;
+        // The minimum duration we must be within before we attempt to halt.
+        private final Duration minHaltingDuration;
 
         /*package local*/ ParallelHaltingPredicate(AtomicBoolean thisReaderNearEndRef,
                                                    AtomicBoolean otherReaderNearEndRef) {
-            this(thisReaderNearEndRef, otherReaderNearEndRef, DEFAULT_TIME_RANGE_MS);
+            this(thisReaderNearEndRef, otherReaderNearEndRef, Duration.ofMillis(DEFAULT_DURATION_MS));
         }
 
         /*package local*/ ParallelHaltingPredicate(AtomicBoolean thisReaderNearEndRef,
                                                    AtomicBoolean otherReaderNearEndRef,
-                                                   long timeRangeMs) {
+                                                   Duration minHaltingDuration) {
             this.otherReaderNearEnd = otherReaderNearEndRef;
             this.thisReaderNearEnd = thisReaderNearEndRef;
-            this.timeRangeMs = timeRangeMs;
+            this.minHaltingDuration = minHaltingDuration;
         }
 
         @Override
         public boolean test(SourceRecord ourSourceRecord) {
             // we assume if we ever end up near the end of the binlog, then we will remain there.
             if (!thisReaderNearEnd.get()) {
-                Long currentTsMs = System.currentTimeMillis();
-                Long offsetTsMs = (Long) ourSourceRecord.sourceOffset().get(SourceInfo.TIMESTAMP_KEY);
-                if (offsetTsMs + timeRangeMs > currentTsMs) {
-                    // we are within timeRangeMs of the end
+                Duration durationToEnd =
+                    Duration.between(Instant.ofEpochMilli((Long) ourSourceRecord.sourceOffset().get(SourceInfo.TIMESTAMP_KEY)),
+                                     Instant.now());
+                if (durationToEnd.compareTo(minHaltingDuration) <= 0) {
+                    // we are within minHaltingDuration of the end
                     thisReaderNearEnd.set(true);
                 }
             }
