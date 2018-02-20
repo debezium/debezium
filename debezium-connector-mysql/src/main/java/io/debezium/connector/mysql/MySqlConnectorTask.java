@@ -13,12 +13,13 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.apache.kafka.connect.source.SourceTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
+import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.util.LoggingContext.PreviousContext;
 
@@ -29,7 +30,7 @@ import io.debezium.util.LoggingContext.PreviousContext;
  * @author Randall Hauch
  */
 @NotThreadSafe
-public final class MySqlConnectorTask extends SourceTask {
+public final class MySqlConnectorTask extends BaseSourceTask {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private volatile MySqlTaskContext taskContext;
@@ -50,17 +51,7 @@ public final class MySqlConnectorTask extends SourceTask {
     }
 
     @Override
-    public synchronized void start(Map<String, String> props) {
-        if (context == null) {
-            throw new ConnectException("Unexpected null context");
-        }
-
-        // Validate the configuration ...
-        final Configuration config = Configuration.from(props);
-        if (!config.validateAndRecord(MySqlConnectorConfig.ALL_FIELDS, logger::error)) {
-            throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
-        }
-
+    public synchronized void start(Configuration config) {
         // Create and start the task context ...
         this.taskContext = new MySqlTaskContext(config);
         PreviousContext prevLoggingContext = this.taskContext.configureLoggingContext("task");
@@ -252,6 +243,11 @@ public final class MySqlConnectorTask extends SourceTask {
                 prevLoggingContext.restore();
             }
         }
+    }
+
+    @Override
+    protected Iterable<Field> getAllConfigurationFields() {
+        return MySqlConnectorConfig.ALL_FIELDS;
     }
 
     /**

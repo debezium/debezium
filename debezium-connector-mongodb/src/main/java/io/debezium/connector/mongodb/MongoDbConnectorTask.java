@@ -19,13 +19,14 @@ import java.util.function.Consumer;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.apache.kafka.connect.source.SourceTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.LoggingContext.PreviousContext;
 import io.debezium.util.Threads;
@@ -44,7 +45,7 @@ import io.debezium.util.Threads;
  * @author Randall Hauch
  */
 @ThreadSafe
-public final class MongoDbConnectorTask extends SourceTask {
+public final class MongoDbConnectorTask extends BaseSourceTask {
 
     private static final String CONTEXT_NAME = "mongodb-connector-task";
 
@@ -59,49 +60,25 @@ public final class MongoDbConnectorTask extends SourceTask {
     private volatile ReplicationContext replContext;
     private volatile Throwable replicatorError;
 
-    /**
-     * Create an instance of the MongoDB task.
-     */
-    public MongoDbConnectorTask() {
-    }
-
     @Override
     public String version() {
         return Module.version();
     }
 
     @Override
-    public void start(Map<String, String> props) {
+    public void start(Configuration config) {
         if (!this.running.compareAndSet(false, true)) {
             // Already running ...
             return;
         }
 
-        if (context == null) {
-            throw new ConnectException("Unexpected null context");
-        }
-
         // Read the configuration and set up the replication context ...
-        final Configuration config = Configuration.from(props);
         this.taskName = "task" + config.getInteger(MongoDbConnectorConfig.TASK_ID);
         final ReplicationContext replicationContext = new ReplicationContext(config);
         this.replContext = replicationContext;
         PreviousContext previousLogContext = replicationContext.configureLoggingContext(taskName);
 
         try {
-            // Output the configuration ...
-            logger.info("Starting MongoDB connector task with configuration:");
-            config.forEach((propName, propValue) -> {
-                logger.info("   {} = {}", propName, propValue);
-            });
-
-            // The MongoDbConnector.taskConfigs created our configuration, but we still validate the configuration in case of bugs
-            // ...
-            if (!config.validateAndRecord(MongoDbConnectorConfig.ALL_FIELDS, logger::error)) {
-                throw new ConnectException(
-                        "Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
-            }
-
             // Read from the configuration the information about the replica sets we are to watch ...
             final String hosts = config.getString(MongoDbConnectorConfig.HOSTS);
             final ReplicaSets replicaSets = ReplicaSets.parse(hosts);
@@ -201,6 +178,11 @@ public final class MongoDbConnectorTask extends SourceTask {
         } finally {
             previousLogContext.restore();
         }
+    }
+
+    @Override
+    protected Iterable<Field> getAllConfigurationFields() {
+        return MongoDbConnectorConfig.ALL_FIELDS;
     }
 
     private LoggingContext.PreviousContext getLoggingContext() {

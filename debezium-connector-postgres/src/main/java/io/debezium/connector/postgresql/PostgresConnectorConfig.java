@@ -9,7 +9,6 @@ package io.debezium.connector.postgresql;
 import java.math.BigDecimal;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -735,10 +734,6 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
 
     protected Map<String, ConfigValue> validate() {
         return config.validate(ALL_FIELDS);
-    }
-
-    protected boolean validateAndRecord(Consumer<String> errorConsumer) {
-        return config.validateAndRecord(ALL_FIELDS, errorConsumer);
     }
 
     protected String schemaBlacklist() {
