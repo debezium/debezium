@@ -12,7 +12,6 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.common.ConnectorTaskContext;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
-import io.debezium.util.Clock;
 
 /**
  * The context of a {@link PostgresConnectorTask}. This deals with most of the brunt of reading various configuration options
@@ -24,7 +23,6 @@ import io.debezium.util.Clock;
 public class PostgresTaskContext extends ConnectorTaskContext {
 
     private final PostgresConnectorConfig config;
-    private final Clock clock;
     private final TopicSelector topicSelector;
     private final PostgresSchema schema;
 
@@ -32,14 +30,9 @@ public class PostgresTaskContext extends ConnectorTaskContext {
         super("Postgres", config.serverName());
 
         this.config = config;
-        this.clock = Clock.system();
         this.topicSelector = topicSelector;
         assert schema != null;
         this.schema = schema;
-    }
-
-    protected Clock clock() {
-        return clock;
     }
 
     protected TopicSelector topicSelector() {

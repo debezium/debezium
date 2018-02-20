@@ -149,7 +149,7 @@ public class BinlogReader extends AbstractReader {
         source = context.source();
         recordMakers = context.makeRecord();
         recordSchemaChangesInSourceRecords = context.includeSchemaChangeRecords();
-        clock = context.clock();
+        clock = context.getClock();
         eventDeserializationFailureHandlingMode = context.eventDeserializationFailureHandlingMode();
         inconsistentSchemaHandlingMode = context.inconsistentSchemaHandlingMode();
 
@@ -301,7 +301,7 @@ public class BinlogReader extends AbstractReader {
         // Start the log reader, which starts background threads ...
         if (isRunning()) {
             long timeoutInMilliseconds = context.timeoutInMilliseconds();
-            long started = context.clock().currentTimeInMillis();
+            long started = context.getClock().currentTimeInMillis();
             try {
                 logger.debug("Attempting to establish binlog reader connection with timeout of {} ms", timeoutInMilliseconds);
                 client.connect(context.timeoutInMilliseconds());
@@ -309,7 +309,7 @@ public class BinlogReader extends AbstractReader {
                 // If the client thread is interrupted *before* the client could connect, the client throws a timeout exception
                 // The only way we can distinguish this is if we get the timeout exception before the specified timeout has
                 // elapsed, so we simply check this (within 10%) ...
-                long duration = context.clock().currentTimeInMillis() - started;
+                long duration = context.getClock().currentTimeInMillis() - started;
                 if (duration > (0.9 * context.timeoutInMilliseconds())) {
                     double actualSeconds = TimeUnit.MILLISECONDS.toSeconds(duration);
                     throw new ConnectException("Timed out after " + actualSeconds + " seconds while waiting to connect to MySQL at " +
@@ -730,7 +730,7 @@ public class BinlogReader extends AbstractReader {
         RecordsForTable recordMaker = recordMakers.forTable(tableNumber, includedColumns, super::enqueueRecord);
         if (recordMaker != null) {
             List<Serializable[]> rows = write.getRows();
-            Long ts = context.clock().currentTimeInMillis();
+            Long ts = context.getClock().currentTimeInMillis();
             int count = 0;
             int numRows = rows.size();
             if (startingRowNumber < numRows) {
@@ -779,7 +779,7 @@ public class BinlogReader extends AbstractReader {
         RecordsForTable recordMaker = recordMakers.forTable(tableNumber, includedColumns, super::enqueueRecord);
         if (recordMaker != null) {
             List<Entry<Serializable[], Serializable[]>> rows = update.getRows();
-            Long ts = context.clock().currentTimeInMillis();
+            Long ts = context.getClock().currentTimeInMillis();
             int count = 0;
             int numRows = rows.size();
             if (startingRowNumber < numRows) {
@@ -830,7 +830,7 @@ public class BinlogReader extends AbstractReader {
         RecordsForTable recordMaker = recordMakers.forTable(tableNumber, includedColumns, super::enqueueRecord);
         if (recordMaker != null) {
             List<Serializable[]> rows = deleted.getRows();
-            Long ts = context.clock().currentTimeInMillis();
+            Long ts = context.getClock().currentTimeInMillis();
             int count = 0;
             int numRows = rows.size();
             if (startingRowNumber < numRows) {

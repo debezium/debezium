@@ -25,7 +25,7 @@ public class MySqlTaskContextIT extends MySqlTaskContextTest {
         context.start();
         assertThat(context.config()).isSameAs(config);
 
-        assertThat(context.clock()).isNotNull();
+        assertThat(context.getClock()).isNotNull();
         assertThat(context.dbSchema()).isNotNull();
         assertThat(context.jdbc()).isNotNull();
         assertThat(context.logger()).isNotNull();

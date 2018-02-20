@@ -17,7 +17,6 @@ import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.function.Predicates;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.relational.history.DatabaseHistory;
-import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Strings;
 
@@ -35,7 +34,6 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
     private final RecordMakers recordProcessor;
     private final Predicate<String> gtidSourceFilter;
     private final Predicate<String> ddlFilter;
-    private final Clock clock = Clock.system();
 
     /**
      * Whether table ids are compared ignoring letter casing.
@@ -167,10 +165,6 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
      */
     public void initializeHistoryStorage() {
         dbSchema.intializeHistoryStorage();
-    }
-
-    public Clock clock() {
-        return clock;
     }
 
     public long serverId() {

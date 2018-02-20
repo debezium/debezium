@@ -122,7 +122,7 @@ public class Replicator {
         this.recordMakers = new RecordMakers(this.source, context.topicSelector(), this.bufferedRecorder, context.isEmitTombstoneOnDelete());
         this.collectionFilter = this.context.collectionFilter();
         this.databaseFilter = this.context.databaseFilter();
-        this.clock = this.context.clock();
+        this.clock = this.context.getClock();
         this.onFailure = onFailure;
     }
 
