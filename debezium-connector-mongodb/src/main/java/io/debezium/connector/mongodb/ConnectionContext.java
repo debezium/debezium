@@ -25,18 +25,17 @@ import com.mongodb.ReplicaSetStatus;
 import com.mongodb.ServerAddress;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.common.ConnectorTaskContext;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.util.Clock;
 import io.debezium.util.DelayStrategy;
-import io.debezium.util.LoggingContext;
 import io.debezium.util.Metronome;
-import io.debezium.util.LoggingContext.PreviousContext;
 
 /**
  * @author Randall Hauch
  *
  */
-public class ConnectionContext implements AutoCloseable {
+public class ConnectionContext extends ConnectorTaskContext implements AutoCloseable {
 
     /**
      * A pause between failed MongoDB operations to prevent CPU throttling and DoS of
@@ -55,6 +54,8 @@ public class ConnectionContext implements AutoCloseable {
      * @param config the configuration
      */
     public ConnectionContext(Configuration config) {
+        super("MongoDB", config.getString(MongoDbConnectorConfig.LOGICAL_NAME));
+
         this.config = config;
 
         this.useHostsAsSeeds = config.getBoolean(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS);
@@ -90,12 +91,12 @@ public class ConnectionContext implements AutoCloseable {
             logger().error("Unexpected error shutting down the MongoDB clients", e);
         }
     }
-    
+
     @Override
     public final void close() {
         shutdown();
     }
-    
+
     protected Logger logger() {
         return logger;
     }
@@ -151,7 +152,7 @@ public class ConnectionContext implements AutoCloseable {
     /**
      * Obtain a client that will repeated try to obtain a client to the primary node of the replica set, waiting (and using
      * this context's back-off strategy) if required until the primary becomes available.
-     * 
+     *
      * @param replicaSet the replica set information; may not be null
      * @param errorHandler the function to be called whenever the primary is unable to
      *            {@link MongoPrimary#execute(String, Consumer) execute} an operation to completion; may be null
@@ -164,7 +165,7 @@ public class ConnectionContext implements AutoCloseable {
     /**
      * Obtain a client that will repeated try to obtain a client to the primary node of the replica set, waiting (and using
      * this context's back-off strategy) if required until the primary becomes available.
-     * 
+     *
      * @param replicaSet the replica set information; may not be null
      * @return the client, or {@code null} if no primary could be found for the replica set
      */
@@ -182,7 +183,7 @@ public class ConnectionContext implements AutoCloseable {
     /**
      * Obtain a client that will repeated try to obtain a client to the primary node of the replica set, waiting (and using
      * this context's back-off strategy) if required until the primary becomes available.
-     * 
+     *
      * @param replicaSet the replica set information; may not be null
      * @param handler the function that will be called when the primary could not be obtained; may not be null
      * @return the client, or {@code null} if no primary could be found for the replica set
@@ -235,7 +236,7 @@ public class ConnectionContext implements AutoCloseable {
 
         /**
          * Get the replica set.
-         * 
+         *
          * @return the replica set; never null
          */
         public ReplicaSet replicaSet() {
@@ -244,7 +245,7 @@ public class ConnectionContext implements AutoCloseable {
 
         /**
          * Get the address of the primary node, if there is one.
-         * 
+         *
          * @return the address of the replica set's primary node, or {@code null} if there is currently no primary
          */
         public ServerAddress address() {
@@ -261,7 +262,7 @@ public class ConnectionContext implements AutoCloseable {
         /**
          * Execute the supplied operation using the primary, blocking until a primary is available. Whenever the operation stops
          * (e.g., if the primary is no longer primary), then restart the operation using the current primary.
-         * 
+         *
          * @param desc the description of the operation, for logging purposes
          * @param operation the operation to be performed on the primary.
          */
@@ -287,7 +288,7 @@ public class ConnectionContext implements AutoCloseable {
         /**
          * Execute the supplied operation using the primary, blocking until a primary is available. Whenever the operation stops
          * (e.g., if the primary is no longer primary), then restart the operation using the current primary.
-         * 
+         *
          * @param desc the description of the operation, for logging purposes
          * @param operation the operation to be performed on the primary.
          * @throws InterruptedException if the operation was interrupted
@@ -309,7 +310,7 @@ public class ConnectionContext implements AutoCloseable {
         /**
          * Use the primary to get the names of all the databases in the replica set. This method will block until
          * a primary can be obtained to get the names of all databases in the replica set.
-         * 
+         *
          * @return the database names; never null but possibly empty
          */
         public Set<String> databaseNames() {
@@ -324,7 +325,7 @@ public class ConnectionContext implements AutoCloseable {
         /**
          * Use the primary to get the identifiers of all the collections in the replica set. This method will block until
          * a primary can be obtained to get the identifiers of all collections in the replica set.
-         * 
+         *
          * @return the collection identifiers; never null
          */
         public List<CollectionId> collections() {
@@ -347,7 +348,7 @@ public class ConnectionContext implements AutoCloseable {
 
     /**
      * Obtain a client that talks only to the primary node of the replica set.
-     * 
+     *
      * @param replicaSet the replica set information; may not be null
      * @return the client, or {@code null} if no primary could be found for the replica set
      */
@@ -369,16 +370,5 @@ public class ConnectionContext implements AutoCloseable {
             return pool.clientFor(primaryAddress);
         }
         return null;
-    }
-
-    /**
-     * Configure the logger's Mapped Diagnostic Context (MDC) properties for the thread making this call.
-     * 
-     * @param contextName the name of the context; may not be null
-     * @return the previous MDC context; never null
-     * @throws IllegalArgumentException if {@code contextName} is null
-     */
-    public PreviousContext configureLoggingContext(String contextName) {
-        return LoggingContext.forConnector("MongoDB", serverName(), contextName);
     }
 }

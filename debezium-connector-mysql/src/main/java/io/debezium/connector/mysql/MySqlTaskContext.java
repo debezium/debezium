@@ -19,7 +19,6 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
-import io.debezium.util.LoggingContext.PreviousContext;
 import io.debezium.util.Strings;
 
 /**
@@ -253,17 +252,6 @@ public final class MySqlTaskContext extends MySqlJdbcContext {
         } finally {
             super.shutdown();
         }
-    }
-
-    /**
-     * Configure the logger's Mapped Diagnostic Context (MDC) properties for the thread making this call.
-     *
-     * @param contextName the name of the context; may not be null
-     * @return the previous MDC context; never null
-     * @throws IllegalArgumentException if {@code contextName} is null
-     */
-    public PreviousContext configureLoggingContext(String contextName) {
-        return LoggingContext.forConnector("MySQL", serverName(), contextName);
     }
 
     /**

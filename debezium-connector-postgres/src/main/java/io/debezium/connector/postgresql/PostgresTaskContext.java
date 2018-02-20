@@ -9,10 +9,10 @@ package io.debezium.connector.postgresql;
 import java.sql.SQLException;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.common.ConnectorTaskContext;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.util.Clock;
-import io.debezium.util.LoggingContext;
 
 /**
  * The context of a {@link PostgresConnectorTask}. This deals with most of the brunt of reading various configuration options
@@ -21,7 +21,7 @@ import io.debezium.util.LoggingContext;
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 @ThreadSafe
-public class PostgresTaskContext {
+public class PostgresTaskContext extends ConnectorTaskContext {
 
     private final PostgresConnectorConfig config;
     private final Clock clock;
@@ -29,6 +29,8 @@ public class PostgresTaskContext {
     private final PostgresSchema schema;
 
     protected PostgresTaskContext(PostgresConnectorConfig config, PostgresSchema schema, TopicSelector topicSelector) {
+        super("Postgres", config.serverName());
+
         this.config = config;
         this.clock = Clock.system();
         this.topicSelector = topicSelector;
@@ -70,17 +72,6 @@ public class PostgresTaskContext {
 
     protected PostgresConnection createConnection() {
         return new PostgresConnection(config.jdbcConfig());
-    }
-
-    /**
-     * Configure the logger's Mapped Diagnostic Context (MDC) properties for the thread making this call.
-     *
-     * @param contextName the name of the context; may not be null
-     * @return the previous MDC context; never null
-     * @throws IllegalArgumentException if {@code contextName} is null
-     */
-    protected LoggingContext.PreviousContext configureLoggingContext(String contextName) {
-        return LoggingContext.forConnector("Postgres", config.serverName(), contextName);
     }
 
     PostgresConnectorConfig getConfig() {

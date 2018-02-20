@@ -14,12 +14,13 @@ import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.apache.kafka.connect.source.SourceTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.util.LoggingContext;
 
@@ -28,7 +29,7 @@ import io.debezium.util.LoggingContext;
  *
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
-public class PostgresConnectorTask extends SourceTask {
+public class PostgresConnectorTask extends BaseSourceTask {
 
     private static final String CONTEXT_NAME = "postgres-connector-task";
     private final Logger logger = LoggerFactory.getLogger(getClass());
@@ -45,34 +46,26 @@ public class PostgresConnectorTask extends SourceTask {
     private ChangeEventQueue<ChangeEvent> changeEventQueue;
 
     @Override
-    public void start(Map<String, String> props) {
+    public void start(Configuration config) {
         if (running.get()) {
             // already running
             return;
         }
 
-        if (context == null) {
-            throw new ConnectException("Unexpected null context");
-        }
-
-        // Validate the configuration ...
-        PostgresConnectorConfig config = new PostgresConnectorConfig(Configuration.from(props));
-        if (!config.validateAndRecord(logger::error)) {
-            throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
-        }
+        PostgresConnectorConfig connectorConfig = new PostgresConnectorConfig(config);
 
         // Create type registry
         TypeRegistry typeRegistry;
-        try (final PostgresConnection connection = new PostgresConnection(config.jdbcConfig())) {
+        try (final PostgresConnection connection = new PostgresConnection(connectorConfig.jdbcConfig())) {
             typeRegistry = connection.getTypeRegistry();
         }
 
         // create the task context and schema...
-        TopicSelector topicSelector = TopicSelector.create(config);
-        PostgresSchema schema = new PostgresSchema(config, typeRegistry, topicSelector);
-        this.taskContext = new PostgresTaskContext(config, schema, topicSelector);
+        TopicSelector topicSelector = TopicSelector.create(connectorConfig);
+        PostgresSchema schema = new PostgresSchema(connectorConfig, typeRegistry, topicSelector);
+        this.taskContext = new PostgresTaskContext(connectorConfig, schema, topicSelector);
 
-        SourceInfo sourceInfo = new SourceInfo(config.serverName());
+        SourceInfo sourceInfo = new SourceInfo(connectorConfig.serverName());
         Map<String, Object> existingOffset = context.offsetStorageReader().offset(sourceInfo.partition());
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
@@ -83,27 +76,27 @@ public class PostgresConnectorTask extends SourceTask {
 
             if (existingOffset == null) {
                 logger.info("No previous offset found");
-                if (config.snapshotNeverAllowed()) {
+                if (connectorConfig.snapshotNeverAllowed()) {
                     logger.info("Snapshots are not allowed as per configuration, starting streaming logical changes only");
                     producer = new RecordsStreamProducer(taskContext, sourceInfo);
                 } else {
                     // otherwise we always want to take a snapshot at startup
-                    createSnapshotProducer(taskContext, sourceInfo, config.initialOnlySnapshot());
+                    createSnapshotProducer(taskContext, sourceInfo, connectorConfig.initialOnlySnapshot());
                 }
             } else {
                 sourceInfo.load(existingOffset);
                 logger.info("Found previous offset {}", sourceInfo);
                 if (sourceInfo.isSnapshotInEffect()) {
-                    if (config.snapshotNeverAllowed()) {
+                    if (connectorConfig.snapshotNeverAllowed()) {
                         // No snapshots are allowed
                         String msg = "The connector previously stopped while taking a snapshot, but now the connector is configured "
                                      + "to never allow snapshots. Reconfigure the connector to use snapshots initially or when needed.";
                         throw new ConnectException(msg);
                     } else {
                         logger.info("Found previous incomplete snapshot");
-                        createSnapshotProducer(taskContext, sourceInfo, config.initialOnlySnapshot());
+                        createSnapshotProducer(taskContext, sourceInfo, connectorConfig.initialOnlySnapshot());
                     }
-                } else if (config.alwaysTakeSnapshot()) {
+                } else if (connectorConfig.alwaysTakeSnapshot()) {
                     logger.info("Taking a new snapshot as per configuration");
                     producer = new RecordsSnapshotProducer(taskContext, sourceInfo, true);
                 } else {
@@ -114,10 +107,10 @@ public class PostgresConnectorTask extends SourceTask {
             }
 
             changeEventQueue = new ChangeEventQueue.Builder<ChangeEvent>()
-                .pollInterval(config.getPollInterval())
-                .maxBatchSize(config.getMaxBatchSize())
-                .maxQueueSize(config.getMaxQueueSize())
-                .loggingContextSupplier(this::getLoggingContext)
+                .pollInterval(connectorConfig.getPollInterval())
+                .maxBatchSize(connectorConfig.getMaxBatchSize())
+                .maxQueueSize(connectorConfig.getMaxQueueSize())
+                .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                 .build();
 
             producer.start(changeEventQueue::enqueue, changeEventQueue::producerFailure);
@@ -175,7 +168,8 @@ public class PostgresConnectorTask extends SourceTask {
         return Module.version();
     }
 
-    private LoggingContext.PreviousContext getLoggingContext() {
-        return  taskContext.configureLoggingContext(CONTEXT_NAME);
+    @Override
+    protected Iterable<Field> getAllConfigurationFields() {
+        return PostgresConnectorConfig.ALL_FIELDS;
     }
 }
