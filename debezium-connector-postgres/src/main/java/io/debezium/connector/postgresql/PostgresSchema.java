@@ -166,7 +166,7 @@ public class PostgresSchema {
         return filters.tableFilter().test(id) ? tables.forTable(id) : null;
     }
 
-    protected String validateSchemaName(String name) {
+    protected String adjustSchemaName(String name) {
         return this.schemaNameAdjuster.adjust(name);
     }
 
