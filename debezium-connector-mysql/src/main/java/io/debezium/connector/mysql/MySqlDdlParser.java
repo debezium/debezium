@@ -834,6 +834,15 @@ public class MySqlDdlParser extends DdlParser {
             column.charsetName("utf8");
         }
 
+        if (Types.DECIMAL == dataType.jdbcType()) {
+            if (dataType.length() == -1) {
+                column.length(10);
+            }
+            if (dataType.scale() == -1) {
+                column.scale(0);
+            }
+        }
+
         if (tokens.canConsume("CHARSET") || tokens.canConsume("CHARACTER", "SET")) {
             String charsetName = tokens.consume();
             if (!"DEFAULT".equalsIgnoreCase(charsetName)) {
