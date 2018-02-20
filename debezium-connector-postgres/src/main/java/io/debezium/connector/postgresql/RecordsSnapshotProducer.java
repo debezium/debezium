@@ -292,6 +292,9 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                     return new PGmoney(rs.getString(colIdx)).val;
                 case PgOid.BIT:
                     return rs.getString(colIdx);
+                case PgOid.NUMERIC:
+                    final String s = rs.getString(colIdx);
+                    return "NaN".equals(s) ? null : rs.getBigDecimal(colIdx);
                 default:
                     return rs.getObject(colIdx);
             }
