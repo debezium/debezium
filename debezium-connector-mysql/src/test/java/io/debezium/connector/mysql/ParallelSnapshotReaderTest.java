@@ -9,6 +9,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -161,11 +162,12 @@ public class ParallelSnapshotReaderTest {
         AtomicBoolean thisReaderBoolean = new AtomicBoolean(false);
         AtomicBoolean otherReaderBoolean = new AtomicBoolean(false);
 
-        long timeRange = 5 * 60 * 1000; // five minutes
+        long durationMs = 5 * 60 * 1000; // five minutes
+        Duration duration = Duration.ofMillis(durationMs); // five minutes
 
-        ParallelHaltingPredicate parallelHaltingPredicate = new ParallelHaltingPredicate(thisReaderBoolean, otherReaderBoolean, timeRange);
+        ParallelHaltingPredicate parallelHaltingPredicate = new ParallelHaltingPredicate(thisReaderBoolean, otherReaderBoolean, duration);
 
-        boolean testResult = parallelHaltingPredicate.test(createSourceRecordWithTimestamp(System.currentTimeMillis() - (timeRange * 2)));
+        boolean testResult = parallelHaltingPredicate.test(createSourceRecordWithTimestamp(System.currentTimeMillis() - (durationMs * 2)));
 
         Assert.assertFalse(testResult);
 
@@ -181,9 +183,9 @@ public class ParallelSnapshotReaderTest {
         AtomicBoolean thisReaderBoolean = new AtomicBoolean(false);
         AtomicBoolean otherReaderBoolean = new AtomicBoolean(false);
 
-        long timeRange = 5 * 60 * 1000; // five minutes
+        Duration duration = Duration.ofMillis(5 * 60 * 1000); // five minutes
 
-        ParallelHaltingPredicate parallelHaltingPredicate = new ParallelHaltingPredicate(thisReaderBoolean, otherReaderBoolean, timeRange);
+        ParallelHaltingPredicate parallelHaltingPredicate = new ParallelHaltingPredicate(thisReaderBoolean, otherReaderBoolean, duration);
 
         boolean testResult = parallelHaltingPredicate.test(createSourceRecordWithTimestamp(System.currentTimeMillis()));
 
@@ -201,9 +203,9 @@ public class ParallelSnapshotReaderTest {
         AtomicBoolean thisReaderBoolean = new AtomicBoolean(false);
         AtomicBoolean otherReaderBoolean = new AtomicBoolean(true);
 
-        long timeRange = 5 * 60 * 1000; // five minutes
+        Duration duration = Duration.ofMillis(5 * 60 * 1000); // five minutes
 
-        ParallelHaltingPredicate parallelHaltingPredicate = new ParallelHaltingPredicate(thisReaderBoolean, otherReaderBoolean, timeRange);
+        ParallelHaltingPredicate parallelHaltingPredicate = new ParallelHaltingPredicate(thisReaderBoolean, otherReaderBoolean, duration);
 
         boolean testResult = parallelHaltingPredicate.test(createSourceRecordWithTimestamp(System.currentTimeMillis()));
 
