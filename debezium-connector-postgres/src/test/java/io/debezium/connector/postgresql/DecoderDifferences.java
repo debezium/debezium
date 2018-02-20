@@ -29,7 +29,7 @@ public class DecoderDifferences {
 
     /**
      * wal2json plugin is not currently able to encode and parse quoted identifiers
-     * 
+     *
      * @author Jiri Pechanec
      *
      */
@@ -44,4 +44,13 @@ public class DecoderDifferences {
         return TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.WAL2JSON || TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.WAL2JSON_RDS;
     }
 
+    /**
+     * wal2json plugin is not currently able to encode and parse NaN and Inf values
+     * 
+     * @author Jiri Pechanec
+     *
+     */
+    public static boolean areSpecialFPValuesUnupported() {
+        return wal2Json();
+    }
 }

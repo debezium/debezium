@@ -84,17 +84,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         //numerical types
         assertInsert(INSERT_NUMERIC_TYPES_STMT, schemasAndValuesForNumericType());
 
-        //floating-point without decimals
-        consumer.expects(1);
-        assertInsert(INSERT_FP_TYPES_NO_DECIMAL_STMT, 2, schemasAndValuesForFpTypeWithoutDecimals());
-
         //numerical decimal types
         consumer.expects(1);
         assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT, schemasAndValuesForNumericDecimalType());
-
-        //numerical decimal types without decimals
-        consumer.expects(1);
-        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_NO_DECIMAL_STMT, 2, schemasAndValuesForNumericDecimalTypeWithoutDecimals());
 
         // string types
         consumer.expects(1);
