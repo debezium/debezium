@@ -60,7 +60,7 @@ public final class TestHelper {
      */
     static PostgresConnectorConfig.LogicalDecoder decoderPlugin() {
         final String s = System.getProperty(PostgresConnectorConfig.PLUGIN_NAME.name());
-        return (s == null || s.length() == 0) ? PostgresConnectorConfig.LogicalDecoder.WAL2JSON : PostgresConnectorConfig.LogicalDecoder.parse(s);
+        return (s == null || s.length() == 0) ? PostgresConnectorConfig.LogicalDecoder.DECODERBUFS : PostgresConnectorConfig.LogicalDecoder.parse(s);
     }
 
     /**
