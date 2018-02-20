@@ -7,6 +7,7 @@ package io.debezium.connector.common;
 
 import org.apache.kafka.connect.source.SourceTask;
 
+import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 
 /**
@@ -18,10 +19,13 @@ public class ConnectorTaskContext {
 
     private final String connectorType;
     private final String connectorName;
+    private final Clock clock;
 
     public ConnectorTaskContext(String connectorType, String connectorName) {
         this.connectorType = connectorType;
         this.connectorName = connectorName;
+
+        this.clock = Clock.system();
     }
 
     /**
@@ -33,5 +37,12 @@ public class ConnectorTaskContext {
      */
     public LoggingContext.PreviousContext configureLoggingContext(String contextName) {
         return LoggingContext.forConnector(connectorType, connectorName, contextName);
+    }
+
+    /**
+     * Returns a clock for obtaining the current time.
+     */
+    public Clock getClock() {
+        return clock;
     }
 }

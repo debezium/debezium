@@ -73,7 +73,7 @@ public class SnapshotReader extends AbstractReader {
         super(name, context);
         this.includeData = context.snapshotMode().includeData();
         recorder = this::recordRowAsRead;
-        metrics = new SnapshotReaderMetrics(context.clock());
+        metrics = new SnapshotReaderMetrics(context.getClock());
     }
 
     /**
@@ -218,7 +218,7 @@ public class SnapshotReader extends AbstractReader {
         final MySqlSchema schema = context.dbSchema();
         final Filters filters = schema.filters();
         final SourceInfo source = context.source();
-        final Clock clock = context.clock();
+        final Clock clock = context.getClock();
         final long ts = clock.currentTimeInMillis();
         logger.info("Starting snapshot for {} with user '{}'", context.connectionString(), mysql.username());
         logRolesForCurrentUser(mysql);

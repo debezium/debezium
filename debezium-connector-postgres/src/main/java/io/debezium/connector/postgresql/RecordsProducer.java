@@ -60,6 +60,6 @@ public abstract class RecordsProducer {
     }
 
     protected Clock clock() {
-        return taskContext.clock();
+        return taskContext.getClock();
     }
 }

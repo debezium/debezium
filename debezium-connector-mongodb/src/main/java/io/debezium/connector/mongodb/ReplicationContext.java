@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.util.Clock;
 
 /**
  * @author Randall Hauch
@@ -23,7 +22,6 @@ public class ReplicationContext extends ConnectionContext {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final Filters filters;
     private final SourceInfo source;
-    private final Clock clock = Clock.system();
     private final TopicSelector topicSelector;
     private final boolean emitTombstoneOnDelete;
 
@@ -59,10 +57,6 @@ public class ReplicationContext extends ConnectionContext {
 
     public SourceInfo source() {
         return source;
-    }
-
-    public Clock clock() {
-        return clock;
     }
 
     public boolean isEmitTombstoneOnDelete() {
