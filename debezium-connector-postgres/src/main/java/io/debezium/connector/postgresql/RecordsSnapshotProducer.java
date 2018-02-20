@@ -34,6 +34,7 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
+import io.debezium.jdbc.JdbcValueConverters.SpecialValue;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
@@ -294,7 +295,8 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                     return rs.getString(colIdx);
                 case PgOid.NUMERIC:
                     final String s = rs.getString(colIdx);
-                    return "NaN".equals(s) ? null : rs.getBigDecimal(colIdx);
+                    final SpecialValue v = PostgresValueConverter.toSpecialValue(s);
+                    return v != null ? v : rs.getBigDecimal(colIdx);
                 default:
                     return rs.getObject(colIdx);
             }
