@@ -85,8 +85,8 @@ public abstract class AbstractRecordsProducerTest {
     protected static final String INSERT_TEXT_TYPES_STMT = "INSERT INTO text_table(j, jb, x, u) " +
                                                            "VALUES ('{\"bar\": \"baz\"}'::json, '{\"bar\": \"baz\"}'::jsonb, " +
                                                            "'<foo>bar</foo><foo>bar</foo>'::xml, 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'::UUID)";
-    protected static final String INSERT_STRING_TYPES_STMT = "INSERT INTO string_table (vc, vcv, ch, c, t) " +
-                                                             "VALUES ('aa', 'bb', 'cdef', 'abc', 'some text')";
+    protected static final String INSERT_STRING_TYPES_STMT = "INSERT INTO string_table (vc, vcv, ch, c, t, b) " +
+                                                             "VALUES ('aa', 'bb', 'cdef', 'abc', 'some text', E'\\\\000\\\\001\\\\002'::bytea)";
     protected static final String INSERT_NUMERIC_TYPES_STMT = "INSERT INTO numeric_table (si, i, bi, r, db, ss, bs, b) " +
                                                               "VALUES (1, 123456, 1234567890123, 3.3, 4.44, 1, 123, true)";
     protected static final String INSERT_NUMERIC_DECIMAL_TYPES_STMT = "INSERT INTO numeric_decimal_table (d, dzs, dvs, n, nzs, nvs) " +
@@ -163,7 +163,8 @@ public abstract class AbstractRecordsProducerTest {
                             new SchemaAndValueField("vcv", Schema.OPTIONAL_STRING_SCHEMA, "bb"),
                             new SchemaAndValueField("ch", Schema.OPTIONAL_STRING_SCHEMA, "cdef"),
                             new SchemaAndValueField("c", Schema.OPTIONAL_STRING_SCHEMA, "abc"),
-                            new SchemaAndValueField("t", Schema.OPTIONAL_STRING_SCHEMA, "some text"));
+                            new SchemaAndValueField("t", Schema.OPTIONAL_STRING_SCHEMA, "some text"),
+                            new SchemaAndValueField("b", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap(new byte[] {0, 1, 2})));
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForTextTypes() {

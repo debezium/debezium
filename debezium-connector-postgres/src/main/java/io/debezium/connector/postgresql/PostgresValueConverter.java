@@ -114,6 +114,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return Decimal.builder(column.scale());
             case PgOid.NUMERIC:
                 return numericSchema(column).optional();
+            case PgOid.BYTEA:
+                return SchemaBuilder.bytes().optional();
             case PgOid.INT2_ARRAY:
                 return SchemaBuilder.array(SchemaBuilder.OPTIONAL_INT16_SCHEMA);
             case PgOid.INT4_ARRAY:
@@ -224,6 +226,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 case PRECISE:
                     return (data) -> convertDecimal(column, fieldDefn, data);
                 }
+            case PgOid.BYTEA:
+                return data -> convertBinary(column, fieldDefn, data);
             case PgOid.INT2_ARRAY:
             case PgOid.INT4_ARRAY:
             case PgOid.INT8_ARRAY:
