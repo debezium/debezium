@@ -47,7 +47,7 @@ import io.debezium.util.Testing;
 public class MongoDbConnectorIT extends AbstractConnectorTest {
 
     private Configuration config;
-    private ReplicationContext context;
+    private MongoDbTaskContext context;
 
     @Before
     public void beforeEach() {
@@ -62,7 +62,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         try {
             stopConnector();
         } finally {
-            if (context != null) context.shutdown();
+            if (context != null) context.getConnectionContext().shutdown();
         }
     }
 
@@ -116,7 +116,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         config = TestHelper.getConfiguration();
 
         // Add data to the databases so that the databases will be listed ...
-        context = new ReplicationContext(config);
+        context = new MongoDbTaskContext(config);
         storeDocuments("dbval", "validationColl1", "simple_objects.json");
         storeDocuments("dbval2", "validationColl2", "restaurants1.json");
 
@@ -155,7 +155,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
                               .build();
 
         // Set up the replication context for connections ...
-        context = new ReplicationContext(config);
+        context = new MongoDbTaskContext(config);
 
         // Cleanup database
         TestHelper.cleanDatabase(primary(), "dbit");
@@ -342,8 +342,8 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
     }
 
     protected MongoPrimary primary() {
-        ReplicaSet replicaSet = ReplicaSet.parse(context.hosts());
-        return context.primaryFor(replicaSet, connectionErrorHandler(3));
+        ReplicaSet replicaSet = ReplicaSet.parse(context.getConnectionContext().hosts());
+        return context.getConnectionContext().primaryFor(replicaSet, connectionErrorHandler(3));
     }
 
     protected void storeDocuments(String dbName, String collectionName, String pathOnClasspath) {
@@ -402,7 +402,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
                               .build();
 
         // Set up the replication context for connections ...
-        context = new ReplicationContext(config);
+        context = new MongoDbTaskContext(config);
 
         primary().executeBlocking("Try SSL connection", mongo -> {
             mongo.getDatabase("dbit");

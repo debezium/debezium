@@ -9,7 +9,7 @@ package io.debezium.connector.postgresql;
 import java.sql.SQLException;
 
 import io.debezium.annotation.ThreadSafe;
-import io.debezium.connector.common.ConnectorTaskContext;
+import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 
@@ -20,7 +20,7 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 @ThreadSafe
-public class PostgresTaskContext extends ConnectorTaskContext {
+public class PostgresTaskContext extends CdcSourceTaskContext {
 
     private final PostgresConnectorConfig config;
     private final TopicSelector topicSelector;

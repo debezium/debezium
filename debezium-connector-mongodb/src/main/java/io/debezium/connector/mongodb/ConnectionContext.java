@@ -25,7 +25,6 @@ import com.mongodb.ReplicaSetStatus;
 import com.mongodb.ServerAddress;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.common.ConnectorTaskContext;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.util.Clock;
 import io.debezium.util.DelayStrategy;
@@ -35,7 +34,7 @@ import io.debezium.util.Metronome;
  * @author Randall Hauch
  *
  */
-public class ConnectionContext extends ConnectorTaskContext implements AutoCloseable {
+public class ConnectionContext implements AutoCloseable {
 
     /**
      * A pause between failed MongoDB operations to prevent CPU throttling and DoS of
@@ -54,8 +53,6 @@ public class ConnectionContext extends ConnectorTaskContext implements AutoClose
      * @param config the configuration
      */
     public ConnectionContext(Configuration config) {
-        super("MongoDB", config.getString(MongoDbConnectorConfig.LOGICAL_NAME));
-
         this.config = config;
 
         this.useHostsAsSeeds = config.getBoolean(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS);
@@ -143,10 +140,6 @@ public class ConnectionContext extends ConnectorTaskContext implements AutoClose
 
     public int maxNumberOfCopyThreads() {
         return config.getInteger(MongoDbConnectorConfig.MAX_COPY_THREADS);
-    }
-
-    public String serverName() {
-        return config.getString(MongoDbConnectorConfig.LOGICAL_NAME);
     }
 
     /**

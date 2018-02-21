@@ -57,7 +57,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
     // These are all effectively constants between start(...) and stop(...)
     private volatile ChangeEventQueue<SourceRecord> queue;
     private volatile String taskName;
-    private volatile ReplicationContext replContext;
+    private volatile MongoDbTaskContext taskContext;
     private volatile Throwable replicatorError;
 
     @Override
@@ -74,9 +74,9 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
 
         // Read the configuration and set up the replication context ...
         this.taskName = "task" + config.getInteger(MongoDbConnectorConfig.TASK_ID);
-        final ReplicationContext replicationContext = new ReplicationContext(config);
-        this.replContext = replicationContext;
-        PreviousContext previousLogContext = replicationContext.configureLoggingContext(taskName);
+        final MongoDbTaskContext taskContext = new MongoDbTaskContext(config);
+        this.taskContext = taskContext;
+        PreviousContext previousLogContext = taskContext.configureLoggingContext(taskName);
 
         try {
             // Read from the configuration the information about the replica sets we are to watch ...
@@ -98,7 +98,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
                     .build();
 
             // Get the offsets for each of replica set partition ...
-            SourceInfo source = replicationContext.source();
+            SourceInfo source = taskContext.source();
             Collection<Map<String, String>> partitions = new ArrayList<>();
             replicaSets.onEachReplicaSet(replicaSet -> {
                 String replicaSetName = replicaSet.replicaSetName(); // may be null for standalone servers
@@ -110,19 +110,19 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
 
             // Set up a replicator for each replica set ...
             final int numThreads = replicaSets.replicaSetCount();
-            final ExecutorService executor = Threads.newFixedThreadPool(MongoDbConnector.class, replicationContext.serverName(), "replicator", numThreads);
+            final ExecutorService executor = Threads.newFixedThreadPool(MongoDbConnector.class, taskContext.serverName(), "replicator", numThreads);
             AtomicInteger stillRunning = new AtomicInteger(numThreads);
             logger.info("Ignoring unnamed replica sets: {}", replicaSets.unnamedReplicaSets());
             logger.info("Starting {} thread(s) to replicate replica sets: {}", numThreads, replicaSets);
             replicaSets.validReplicaSets().forEach(replicaSet -> {
                 // Create a replicator for this replica set ...
-                Replicator replicator = new Replicator(replicationContext, replicaSet, queue::enqueue, this::failedReplicator);
+                Replicator replicator = new Replicator(taskContext, replicaSet, queue::enqueue, this::failedReplicator);
                 replicators.add(replicator);
                 // and submit it for execution ...
                 executor.submit(() -> {
                     try {
                         // Configure the logging to use the replica set name ...
-                        replicationContext.configureLoggingContext(replicaSet.replicaSetName());
+                        taskContext.configureLoggingContext(replicaSet.replicaSetName());
                         // Run the replicator, which should run forever until it is stopped ...
                         replicator.run();
                     } finally {
@@ -134,7 +134,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
                                 try {
                                     executor.shutdown();
                                 } finally {
-                                    replicationContext.shutdown();
+                                    taskContext.getConnectionContext().shutdown();
                                 }
                             }
                         }
@@ -159,7 +159,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
 
     @Override
     public void stop() {
-        PreviousContext previousLogContext = this.replContext.configureLoggingContext(taskName);
+        PreviousContext previousLogContext = this.taskContext.configureLoggingContext(taskName);
         try {
             // Signal to the 'poll()' method that it should stop what its doing ...
             if (this.running.compareAndSet(true, false)) {
@@ -186,7 +186,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
     }
 
     private LoggingContext.PreviousContext getLoggingContext() {
-        return replContext.configureLoggingContext(CONTEXT_NAME);
+        return taskContext.configureLoggingContext(CONTEXT_NAME);
     }
 
     private void failedReplicator(Throwable t) {
@@ -209,7 +209,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
                 }
             });
             if (!summaryByReplicaSet.isEmpty()) {
-                PreviousContext prevContext = replContext.configureLoggingContext("task");
+                PreviousContext prevContext = taskContext.configureLoggingContext("task");
                 try {
                     summaryByReplicaSet.forEach((rsName, summary) -> {
                         logger.info("{} records sent for replica set '{}', last offset: {}",

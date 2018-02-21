@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.connector.common.ConnectorTaskContext;
+import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.mysql.MySqlConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.jdbc.JdbcConnection;
@@ -33,7 +33,7 @@ import io.debezium.util.Strings;
  *
  * @author Randall Hauch
  */
-public class MySqlJdbcContext extends ConnectorTaskContext implements AutoCloseable {
+public class MySqlJdbcContext extends CdcSourceTaskContext implements AutoCloseable {
 
     protected static final String MYSQL_CONNECTION_URL = "jdbc:mysql://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false&useSSL=${useSSL}&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=convertToNull";
     protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(MYSQL_CONNECTION_URL);
