@@ -34,6 +34,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private volatile MySqlTaskContext taskContext;
+    private volatile MySqlJdbcContext connectionContext;
     private volatile ChainedReader readers;
 
     /**
@@ -54,6 +55,8 @@ public final class MySqlConnectorTask extends BaseSourceTask {
     public synchronized void start(Configuration config) {
         // Create and start the task context ...
         this.taskContext = new MySqlTaskContext(config);
+        this.connectionContext = taskContext.getConnectionContext();
+
         PreviousContext prevLoggingContext = this.taskContext.configureLoggingContext("task");
         try {
             this.taskContext.start();
@@ -279,7 +282,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
         String gtidStr = taskContext.source().gtidSet();
         if (gtidStr != null) {
             if (gtidStr.trim().isEmpty()) return true; // start at beginning ...
-            String availableGtidStr = taskContext.knownGtidSet();
+            String availableGtidStr = connectionContext.knownGtidSet();
             if (availableGtidStr == null || availableGtidStr.trim().isEmpty()) {
                 // Last offsets had GTIDs but the server does not use them ...
                 logger.info("Connector used GTIDs previously, but MySQL does not know of any GTIDs or they are not enabled");
@@ -305,7 +308,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
         List<String> logNames = new ArrayList<>();
         try {
             logger.info("Step 0: Get all known binlogs from MySQL");
-            taskContext.jdbc().query("SHOW BINARY LOGS", rs -> {
+            connectionContext.jdbc().query("SHOW BINARY LOGS", rs -> {
                 while (rs.next()) {
                     logNames.add(rs.getString(1));
                 }
@@ -333,7 +336,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
         List<String> logNames = new ArrayList<>();
         try {
             logger.info("Checking all known binlogs from MySQL");
-            taskContext.jdbc().query("SHOW BINARY LOGS", rs -> {
+            connectionContext.jdbc().query("SHOW BINARY LOGS", rs -> {
                 while (rs.next()) {
                     logNames.add(rs.getString(1));
                 }
@@ -354,7 +357,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
     protected boolean isGtidModeEnabled() {
         AtomicReference<String> mode = new AtomicReference<String>("off");
         try {
-            taskContext.jdbc().query("SHOW GLOBAL VARIABLES LIKE 'GTID_MODE'", rs -> {
+            connectionContext.jdbc().query("SHOW GLOBAL VARIABLES LIKE 'GTID_MODE'", rs -> {
                 if (rs.next()) {
                     mode.set(rs.getString(1));
                 }
@@ -374,7 +377,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
     protected boolean isRowBinlogEnabled() {
         AtomicReference<String> mode = new AtomicReference<String>("");
         try {
-            taskContext.jdbc().query("SHOW GLOBAL VARIABLES LIKE 'binlog_format'", rs -> {
+            connectionContext.jdbc().query("SHOW GLOBAL VARIABLES LIKE 'binlog_format'", rs -> {
                 if (rs.next()) {
                     mode.set(rs.getString(2));
                 }

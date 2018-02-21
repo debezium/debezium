@@ -87,6 +87,7 @@ public class BinlogReader extends AbstractReader {
     private volatile Map<String, ?> lastOffset = null;
     private com.github.shyiko.mysql.binlog.GtidSet gtidSet;
     private Heartbeat heartbeat;
+    private MySqlJdbcContext connectionContext;
 
     public static class BinlogPosition {
         final String filename;
@@ -146,22 +147,23 @@ public class BinlogReader extends AbstractReader {
     public BinlogReader(String name, MySqlTaskContext context) {
         super(name, context);
 
+        connectionContext = context.getConnectionContext();
         source = context.source();
         recordMakers = context.makeRecord();
         recordSchemaChangesInSourceRecords = context.includeSchemaChangeRecords();
         clock = context.getClock();
-        eventDeserializationFailureHandlingMode = context.eventDeserializationFailureHandlingMode();
-        inconsistentSchemaHandlingMode = context.inconsistentSchemaHandlingMode();
+        eventDeserializationFailureHandlingMode = connectionContext.eventDeserializationFailureHandlingMode();
+        inconsistentSchemaHandlingMode = connectionContext.inconsistentSchemaHandlingMode();
 
         // Use exponential delay to log the progress frequently at first, but the quickly tapering off to once an hour...
         pollOutputDelay = ElapsedTimeStrategy.exponential(clock, INITIAL_POLL_PERIOD_IN_MILLIS, MAX_POLL_PERIOD_IN_MILLIS);
 
         // Set up the log reader ...
-        client = new BinaryLogClient(context.hostname(), context.port(), context.username(), context.password());
+        client = new BinaryLogClient(connectionContext.hostname(), connectionContext.port(), connectionContext.username(), connectionContext.password());
         // BinaryLogClient will overwrite thread names later
         client.setThreadFactory(Threads.threadFactory(MySqlConnector.class, context.serverName(), "binlog-client", false));
         client.setServerId(context.serverId());
-        client.setSSLMode(sslModeFor(context.sslMode()));
+        client.setSSLMode(sslModeFor(connectionContext.sslMode()));
         client.setKeepAlive(context.config().getBoolean(MySqlConnectorConfig.KEEP_ALIVE));
         client.registerEventListener(context.bufferSizeForBinlogReader() == 0
                 ? this::handleEvent
@@ -258,7 +260,7 @@ public class BinlogReader extends AbstractReader {
         eventHandlers.put(EventType.XID, this::handleTransactionCompletion);
 
         // Get the current GtidSet from MySQL so we can get a filtered/merged GtidSet based off of the last Debezium checkpoint.
-        String availableServerGtidStr = context.knownGtidSet();
+        String availableServerGtidStr = connectionContext.knownGtidSet();
         if (availableServerGtidStr != null && !availableServerGtidStr.trim().isEmpty()) {
             // The server is using GTIDs, so enable the handler ...
             eventHandlers.put(EventType.GTID, this::handleGtidEvent);
@@ -313,15 +315,15 @@ public class BinlogReader extends AbstractReader {
                 if (duration > (0.9 * context.timeoutInMilliseconds())) {
                     double actualSeconds = TimeUnit.MILLISECONDS.toSeconds(duration);
                     throw new ConnectException("Timed out after " + actualSeconds + " seconds while waiting to connect to MySQL at " +
-                            context.hostname() + ":" + context.port() + " with user '" + context.username() + "'", e);
+                            connectionContext.hostname() + ":" + connectionContext.port() + " with user '" + connectionContext.username() + "'", e);
                 }
                 // Otherwise, we were told to shutdown, so we don't care about the timeout exception
             } catch (AuthenticationException e) {
                 throw new ConnectException("Failed to authenticate to the MySQL database at " +
-                        context.hostname() + ":" + context.port() + " with user '" + context.username() + "'", e);
+                        connectionContext.hostname() + ":" + connectionContext.port() + " with user '" + connectionContext.username() + "'", e);
             } catch (Throwable e) {
                 throw new ConnectException("Unable to connect to the MySQL database at " +
-                        context.hostname() + ":" + context.port() + " with user '" + context.username() + "': " + e.getMessage(), e);
+                        connectionContext.hostname() + ":" + connectionContext.port() + " with user '" + connectionContext.username() + "': " + e.getMessage(), e);
             }
         }
     }
@@ -913,7 +915,7 @@ public class BinlogReader extends AbstractReader {
             context.configureLoggingContext("binlog");
 
             // The event row number will be used when processing the first event ...
-            logger.info("Connected to MySQL binlog at {}:{}, starting at {}", context.hostname(), context.port(), source);
+            logger.info("Connected to MySQL binlog at {}:{}, starting at {}", connectionContext.hostname(), connectionContext.port(), source);
         }
 
         @Override

@@ -214,13 +214,13 @@ public class SnapshotReader extends AbstractReader {
     protected void execute() {
         context.configureLoggingContext("snapshot");
         final AtomicReference<String> sql = new AtomicReference<>();
-        final JdbcConnection mysql = context.jdbc();
+        final JdbcConnection mysql = connectionContext.jdbc();
         final MySqlSchema schema = context.dbSchema();
         final Filters filters = schema.filters();
         final SourceInfo source = context.source();
         final Clock clock = context.getClock();
         final long ts = clock.currentTimeInMillis();
-        logger.info("Starting snapshot for {} with user '{}'", context.connectionString(), mysql.username());
+        logger.info("Starting snapshot for {} with user '{}'", connectionContext.connectionString(), mysql.username());
         logRolesForCurrentUser(mysql);
         logServerInformation(mysql);
         boolean isLocked = false;
@@ -249,8 +249,8 @@ public class SnapshotReader extends AbstractReader {
             mysql.execute(sql.get());
 
             // Generate the DDL statements that set the charset-related system variables ...
-            Map<String, String> systemVariables = context.readMySqlCharsetSystemVariables(sql);
-            String setSystemVariablesStatement = context.setStatementFor(systemVariables);
+            Map<String, String> systemVariables = connectionContext.readMySqlCharsetSystemVariables(sql);
+            String setSystemVariablesStatement = connectionContext.setStatementFor(systemVariables);
             AtomicBoolean interrupted = new AtomicBoolean(false);
             long lockAcquired = 0L;
             int step = 1;
@@ -357,7 +357,7 @@ public class SnapshotReader extends AbstractReader {
                     // We were not able to acquire the global read lock, so instead we have to obtain a read lock on each table.
                     // This requires different privileges than normal, and also means we can't unlock the tables without
                     // implicitly committing our transaction ...
-                    if (!context.userHasPrivileges("LOCK TABLES")) {
+                    if (!connectionContext.userHasPrivileges("LOCK TABLES")) {
                         // We don't have the right privileges
                         throw new ConnectException("User does not have the 'LOCK TABLES' privilege required to obtain a "
                                 + "consistent snapshot by preventing concurrent writes to tables.");
@@ -840,7 +840,7 @@ public class SnapshotReader extends AbstractReader {
         for (String table : tableList.split(",")) {
             snapshotSelectOverridesByTable.put(
                 TableId.parse(table),
-                context.config.getString(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table)
+                context.config().getString(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table)
             );
         }
 
