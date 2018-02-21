@@ -7,40 +7,36 @@ package io.debezium.connector.mongodb;
 
 import java.util.function.Predicate;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.connector.common.CdcSourceTaskContext;
 
 /**
  * @author Randall Hauch
  *
  */
-public class ReplicationContext extends ConnectionContext {
+public class MongoDbTaskContext extends CdcSourceTaskContext {
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
     private final Filters filters;
     private final SourceInfo source;
     private final TopicSelector topicSelector;
     private final boolean emitTombstoneOnDelete;
+    private final String serverName;
+    private final ConnectionContext connectionContext;
 
     /**
      * @param config the configuration
      */
-    public ReplicationContext(Configuration config) {
-        super(config);
+    public MongoDbTaskContext(Configuration config) {
+        super("MongoDB", config.getString(MongoDbConnectorConfig.LOGICAL_NAME));
 
         final String serverName = config.getString(MongoDbConnectorConfig.LOGICAL_NAME);
         this.filters = new Filters(config);
         this.source = new SourceInfo(serverName);
         this.topicSelector = TopicSelector.defaultSelector(serverName);
         this.emitTombstoneOnDelete = config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE);
-    }
-
-    @Override
-    protected Logger logger() {
-        return logger;
+        this.serverName = config.getString(MongoDbConnectorConfig.LOGICAL_NAME);
+        this.connectionContext = new ConnectionContext(config);
     }
 
     public TopicSelector topicSelector() {
@@ -61,5 +57,13 @@ public class ReplicationContext extends ConnectionContext {
 
     public boolean isEmitTombstoneOnDelete() {
         return emitTombstoneOnDelete;
+    }
+
+    public String serverName() {
+        return serverName;
+    }
+
+    public ConnectionContext getConnectionContext() {
+        return connectionContext;
     }
 }

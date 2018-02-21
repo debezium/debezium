@@ -37,7 +37,7 @@ public class ReplicaSetDiscovery {
     public static final String ADMIN_DATABASE_NAME = "admin";
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
-    private final ReplicationContext context;
+    private final MongoDbTaskContext context;
     private final String seedAddresses;
 
     /**
@@ -45,9 +45,9 @@ public class ReplicaSetDiscovery {
      *
      * @param context the replication context; may not be null
      */
-    public ReplicaSetDiscovery(ReplicationContext context) {
+    public ReplicaSetDiscovery(MongoDbTaskContext context) {
         this.context = context;
-        this.seedAddresses = context.hosts();
+        this.seedAddresses = context.getConnectionContext().hosts();
     }
 
     /**
@@ -57,7 +57,7 @@ public class ReplicaSetDiscovery {
      * @return the information about the replica sets; never null but possibly empty
      */
     public ReplicaSets getReplicaSets() {
-        MongoClient client = context.clientFor(seedAddresses);
+        MongoClient client = context.getConnectionContext().clientFor(seedAddresses);
         Set<ReplicaSet> replicaSetSpecs = new HashSet<>();
 
         // First see if the addresses are for a config server replica set ...

@@ -11,17 +11,17 @@ import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 
 /**
- * Contains contextual information and objects scoped to the lifecycle of a {@link SourceTask}.
+ * Contains contextual information and objects scoped to the lifecycle of Debezium's {@link SourceTask} implementations.
  *
  * @author Gunnar Morling
  */
-public class ConnectorTaskContext {
+public class CdcSourceTaskContext {
 
     private final String connectorType;
     private final String connectorName;
     private final Clock clock;
 
-    public ConnectorTaskContext(String connectorType, String connectorName) {
+    public CdcSourceTaskContext(String connectorType, String connectorName) {
         this.connectorType = connectorType;
         this.connectorName = connectorName;
 
