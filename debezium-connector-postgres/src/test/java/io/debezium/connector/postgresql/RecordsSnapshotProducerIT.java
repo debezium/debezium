@@ -11,7 +11,6 @@ import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
-import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -39,11 +38,19 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     private PostgresTaskContext context;
 
     @Before
-    public void before() throws SQLException {
+    public void before() throws Exception {
         TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("init_postgis.ddl");
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL("postgis_create_tables.ddl");
 
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
-        context = new PostgresTaskContext(config, new PostgresSchema(config));
+        TopicSelector selector = TopicSelector.create(config);
+        context = new PostgresTaskContext(
+                config,
+                new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
+                selector
+        );
     }
 
     @After
@@ -57,8 +64,6 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     public void shouldGenerateSnapshotsForDefaultDatatypes() throws Exception {
         snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER), false);
 
-        TestHelper.executeDDL("postgres_create_tables.ddl");
-        TestHelper.executeDDL("postgis_create_tables.ddl");
         TestConsumer consumer = testConsumer(ALL_STMTS.size(), "public", "Quoted_\"");
 
         //insert data for each of different supported types
@@ -66,7 +71,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         TestHelper.execute(statementsBuilder);
 
         //then start the producer and validate all records are there
-        snapshotProducer.start(consumer);
+        snapshotProducer.start(consumer, e -> {});
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
         Map<String, List<SchemaAndValueField>> expectedValuesByTableName = super.schemaAndValuesByTableName();
@@ -81,6 +86,18 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     public void shouldGenerateSnapshotAndContinueStreaming() throws Exception {
+        // PostGIS must not be used
+        TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
+        TopicSelector selector = TopicSelector.create(config);
+        context = new PostgresTaskContext(
+                config,
+                new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
+                selector
+        );
+
         String insertStmt = "INSERT INTO s1.a (aa) VALUES (1);" +
                             "INSERT INTO s2.a (aa) VALUES (1);";
 
@@ -93,7 +110,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER), true);
         TestConsumer consumer = testConsumer(2, "s1", "s2");
-        snapshotProducer.start(consumer);
+        snapshotProducer.start(consumer, e -> {});
 
         // first make sure we get the initial records from both schemas...
         consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
@@ -122,7 +139,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         int expectedRecordsCount = 6;
         consumer = testConsumer(expectedRecordsCount, "s1", "s2");
         snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER), true);
-        snapshotProducer.start(consumer);
+        snapshotProducer.start(consumer, e -> {});
         consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
 
         AtomicInteger counter = new AtomicInteger(0);
@@ -163,12 +180,16 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 TestHelper.defaultConfig()
                         .with(PostgresConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS)
                         .build());
-        context = new PostgresTaskContext(config, new PostgresSchema(config));
+
+        TopicSelector selector = TopicSelector.create(config);
+        context = new PostgresTaskContext(
+                config,
+                new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
+                selector
+        );
 
         snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER), false);
 
-        TestHelper.executeDDL("postgres_create_tables.ddl");
-        TestHelper.executeDDL("postgis_create_tables.ddl");
         TestConsumer consumer = testConsumer(ALL_STMTS.size(), "public", "Quoted_\"");
 
         //insert data for each of different supported types
@@ -176,7 +197,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         TestHelper.execute(statementsBuilder);
 
         //then start the producer and validate all records are there
-        snapshotProducer.start(consumer);
+        snapshotProducer.start(consumer, e -> {});
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
         Map<String, List<SchemaAndValueField>> expectedValuesByTableName = super.schemaAndValuesByTableNameAdaptiveTimeMicroseconds();

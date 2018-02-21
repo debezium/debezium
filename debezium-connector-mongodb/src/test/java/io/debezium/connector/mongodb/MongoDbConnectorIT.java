@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -16,7 +17,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
-import com.mongodb.util.JSON;
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -29,9 +29,9 @@ import org.junit.Test;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.InsertOneOptions;
+import com.mongodb.util.JSON;
 
-import static org.fest.assertions.Assertions.assertThat;
-
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.data.Envelope;
@@ -47,7 +47,7 @@ import io.debezium.util.Testing;
 public class MongoDbConnectorIT extends AbstractConnectorTest {
 
     private Configuration config;
-    private ReplicationContext context;
+    private MongoDbTaskContext context;
 
     @Before
     public void beforeEach() {
@@ -62,7 +62,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         try {
             stopConnector();
         } finally {
-            if (context != null) context.shutdown();
+            if (context != null) context.getConnectionContext().shutdown();
         }
     }
 
@@ -108,21 +108,18 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.SSL_ENABLED);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.SSL_ALLOW_INVALID_HOSTNAMES);
+        assertNoConfigurationErrors(result, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
     }
 
     @Test
     public void shouldValidateAcceptableConfiguration() {
-        config = Configuration.create()
-                              .with(MongoDbConnectorConfig.HOSTS, System.getProperty("connector.mongodb.hosts"))
-                              .with(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS, System.getProperty("connector.mongodb.members.auto.discover"))
-                              .with(MongoDbConnectorConfig.LOGICAL_NAME, System.getProperty("connector.mongodb.name"))
-                              .build();
-        
+        config = TestHelper.getConfiguration();
+
         // Add data to the databases so that the databases will be listed ...
-        context = new ReplicationContext(config);
+        context = new MongoDbTaskContext(config);
         storeDocuments("dbval", "validationColl1", "simple_objects.json");
         storeDocuments("dbval2", "validationColl2", "restaurants1.json");
-        
+
         MongoDbConnector connector = new MongoDbConnector();
         Config result = connector.validate(config.asMap());
 
@@ -144,24 +141,24 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.SSL_ENABLED);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.SSL_ALLOW_INVALID_HOSTNAMES);
+        assertNoConfigurationErrors(result, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
     }
 
     @Test
     public void shouldConsumeAllEventsFromDatabase() throws InterruptedException, IOException {
 
         // Use the DB configuration to define the connector's configuration ...
-        config = Configuration.create()
-                              .with(MongoDbConnectorConfig.HOSTS, System.getProperty("connector.mongodb.hosts"))
-                              .with(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS,
-                                    System.getProperty("connector.mongodb.members.auto.discover"))
-                              .with(MongoDbConnectorConfig.LOGICAL_NAME, System.getProperty("connector.mongodb.name"))
+        config = TestHelper.getConfiguration().edit()
                               .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                               .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
                               .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
                               .build();
 
         // Set up the replication context for connections ...
-        context = new ReplicationContext(config);
+        context = new MongoDbTaskContext(config);
+
+        // Cleanup database
+        TestHelper.cleanDatabase(primary(), "dbit");
 
         // Before starting the connector, add data to the databases ...
         storeDocuments("dbit", "simpletons", "simple_objects.json");
@@ -174,6 +171,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
         SourceRecords records = consumeRecordsByTopic(12);
+        records.topics().forEach(System.out::println);
         assertThat(records.recordsForTopic("mongo.dbit.simpletons").size()).isEqualTo(6);
         assertThat(records.recordsForTopic("mongo.dbit.restaurants").size()).isEqualTo(6);
         assertThat(records.topics().size()).isEqualTo(2);
@@ -267,7 +265,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             id.set(doc.getObjectId("_id").toString());
             Testing.debug("Document ID: " + id.get());
         });
-        
+
         primary().execute("update", mongo->{
             MongoDatabase db1 = mongo.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection("arbitrary");
@@ -282,7 +280,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             doc = coll.find().first();
             Testing.debug("Document: " + doc);
         });
-        
+
         // Wait until we can consume the 1 insert and 1 update ...
         SourceRecords insertAndUpdate = consumeRecordsByTopic(2);
         assertThat(insertAndUpdate.recordsForTopic("mongo.dbit.arbitrary").size()).isEqualTo(2);
@@ -344,8 +342,8 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
     }
 
     protected MongoPrimary primary() {
-        ReplicaSet replicaSet = ReplicaSet.parse(context.hosts());
-        return context.primaryFor(replicaSet, connectionErrorHandler(3));
+        ReplicaSet replicaSet = ReplicaSet.parse(context.getConnectionContext().hosts());
+        return context.getConnectionContext().primaryFor(replicaSet, connectionErrorHandler(3));
     }
 
     protected void storeDocuments(String dbName, String collectionName, String pathOnClasspath) {
@@ -395,11 +393,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
     @Test(expected = ConnectException.class)
     public void shouldUseSSL() throws InterruptedException, IOException {
         // Use the DB configuration to define the connector's configuration ...
-        config = Configuration.create()
-                              .with(MongoDbConnectorConfig.HOSTS, System.getProperty("connector.mongodb.hosts"))
-                              .with(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS,
-                                    System.getProperty("connector.mongodb.members.auto.discover"))
-                              .with(MongoDbConnectorConfig.LOGICAL_NAME, System.getProperty("connector.mongodb.name"))
+        config = TestHelper.getConfiguration().edit()
                               .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                               .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
                               .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
@@ -408,7 +402,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
                               .build();
 
         // Set up the replication context for connections ...
-        context = new ReplicationContext(config);
+        context = new MongoDbTaskContext(config);
 
         primary().executeBlocking("Try SSL connection", mongo -> {
             mongo.getDatabase("dbit");

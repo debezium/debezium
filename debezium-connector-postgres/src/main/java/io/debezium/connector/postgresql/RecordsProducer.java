@@ -11,8 +11,7 @@ import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.data.Envelope;
-import io.debezium.relational.TableSchema;
+import io.debezium.function.BlockingConsumer;
 import io.debezium.util.Clock;
 
 /**
@@ -40,7 +39,7 @@ public abstract class RecordsProducer {
      *
      * @param recordsConsumer a consumer of {@link ChangeEvent} instances, may not be null
      */
-    protected abstract void start(Consumer<ChangeEvent> recordsConsumer);
+    protected abstract void start(BlockingConsumer<ChangeEvent> recordsConsumer, Consumer<Throwable> failureConsumer);
 
     /**
      * Notification that offsets have been committed to Kafka up to the given LSN.
@@ -61,14 +60,6 @@ public abstract class RecordsProducer {
     }
 
     protected Clock clock() {
-        return taskContext.clock();
-    }
-
-    protected Envelope createEnvelope(TableSchema tableSchema, String topicName) {
-        return Envelope.defineSchema()
-                       .withName(schema().validateSchemaName(topicName + ".Envelope"))
-                       .withRecord(tableSchema.valueSchema())
-                       .withSource(SourceInfo.SCHEMA)
-                       .build();
+        return taskContext.getClock();
     }
 }

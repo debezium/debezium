@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mongodb;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
@@ -14,7 +16,7 @@ import org.bson.Document;
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.fest.assertions.Assertions.assertThat;
+import io.debezium.connector.AbstractSourceInfo;
 
 /**
  * @author Randall Hauch
@@ -209,4 +211,8 @@ public class SourceInfoTest {
         assertThat(struct.getBoolean(SourceInfo.INITIAL_SYNC)).isEqualTo(true);
     }
 
+    @Test
+    public void versionIsPresent() {
+        assertThat(source.offsetStructForEvent("rs", null).getString(AbstractSourceInfo.DEBEZIUM_VERSION_KEY)).isEqualTo(Module.version());
+    }
 }

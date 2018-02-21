@@ -22,9 +22,11 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.data.Envelope;
 import io.debezium.data.SchemaUtil;
 import io.debezium.relational.mapping.ColumnMapper;
 import io.debezium.relational.mapping.ColumnMappers;
+import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * Builder that constructs {@link TableSchema} instances for {@link Table} definitions.
@@ -45,19 +47,21 @@ public class TableSchemaBuilder {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TableSchemaBuilder.class);
 
-    private final Function<String, String> schemaNameValidator;
+    private final SchemaNameAdjuster schemaNameAdjuster;
     private final ValueConverterProvider valueConverterProvider;
+    private final Schema sourceInfoSchema;
 
     /**
      * Create a new instance of the builder.
      *
      * @param valueConverterProvider the provider for obtaining {@link ValueConverter}s and {@link SchemaBuilder}s; may not be
      *            null
-     * @param schemaNameValidator the validation function for schema names; may not be null
+     * @param schemaNameAdjuster the adjuster for schema names; may not be null
      */
-    public TableSchemaBuilder(ValueConverterProvider valueConverterProvider, Function<String, String> schemaNameValidator) {
-        this.schemaNameValidator = schemaNameValidator;
+    public TableSchemaBuilder(ValueConverterProvider valueConverterProvider, SchemaNameAdjuster schemaNameAdjuster, Schema sourceInfoSchema) {
+        this.schemaNameAdjuster = schemaNameAdjuster;
         this.valueConverterProvider = valueConverterProvider;
+        this.sourceInfoSchema = sourceInfoSchema;
     }
 
     /**
@@ -70,38 +74,22 @@ public class TableSchemaBuilder {
      *
      * @param schemaPrefix the prefix added to the table identifier to construct the schema names; may be null if there is no
      *            prefix
-     * @param table the table definition; may not be null
-     * @return the table schema that can be used for sending rows of data for this table to Kafka Connect; never null
-     */
-    public TableSchema create(String schemaPrefix, Table table) {
-        return create(schemaPrefix, table, null, null);
-    }
-
-    /**
-     * Create a {@link TableSchema} from the given {@link Table table definition}. The resulting TableSchema will have a
-     * {@link TableSchema#keySchema() key schema} that contains all of the columns that make up the table's primary key,
-     * and a {@link TableSchema#valueSchema() value schema} that contains only those columns that are not in the table's primary
-     * key.
-     * <p>
-     * This is equivalent to calling {@code create(table,false)}.
-     *
-     * @param schemaPrefix the prefix added to the table identifier to construct the schema names; may be null if there is no
-     *            prefix
+     * @param envelopSchemaName the name of the schema of the built table's envelope
      * @param table the table definition; may not be null
      * @param filter the filter that specifies whether columns in the table should be included; may be null if all columns
      *            are to be included
      * @param mappers the mapping functions for columns; may be null if none of the columns are to be mapped to different values
      * @return the table schema that can be used for sending rows of data for this table to Kafka Connect; never null
      */
-    public TableSchema create(String schemaPrefix, Table table, Predicate<ColumnId> filter, ColumnMappers mappers) {
+    public TableSchema create(String schemaPrefix, String envelopSchemaName, Table table, Predicate<ColumnId> filter, ColumnMappers mappers) {
         if (schemaPrefix == null) schemaPrefix = "";
         // Build the schemas ...
         final TableId tableId = table.id();
         final String tableIdStr = tableId.toString();
         final String schemaNamePrefix = schemaPrefix + tableIdStr;
         LOGGER.debug("Mapping table '{}' to schemas under '{}'", tableId, schemaNamePrefix);
-        SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(schemaNameValidator.apply(schemaNamePrefix + ".Value"));
-        SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(schemaNameValidator.apply(schemaNamePrefix + ".Key"));
+        SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(schemaNameAdjuster.adjust(schemaNamePrefix + ".Value"));
+        SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(schemaNameAdjuster.adjust(schemaNamePrefix + ".Key"));
         AtomicBoolean hasPrimaryKey = new AtomicBoolean(false);
         table.columns().forEach(column -> {
             if (table.isPrimaryKeyColumn(column.name())) {
@@ -123,12 +111,19 @@ public class TableSchemaBuilder {
             LOGGER.debug("Mapped columns for table '{}' to schema: {}", tableId, SchemaUtil.asDetailedString(valSchema));
         }
 
+        Envelope envelope = Envelope.defineSchema()
+                .withName(schemaNameAdjuster.adjust(envelopSchemaName))
+                .withRecord(valSchema)
+                .withSource(sourceInfoSchema)
+                .build();
+
+
         // Create the generators ...
         Function<Object[], Object> keyGenerator = createKeyGenerator(keySchema, tableId, table.primaryKeyColumns());
         Function<Object[], Struct> valueGenerator = createValueGenerator(valSchema, tableId, table.columns(), filter, mappers);
 
         // And the table schema ...
-        return new TableSchema(keySchema, keyGenerator, valSchema, valueGenerator);
+        return new TableSchema(keySchema, keyGenerator, envelope, valSchema, valueGenerator);
     }
 
     /**

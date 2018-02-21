@@ -12,6 +12,7 @@ import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
@@ -19,7 +20,7 @@ import io.debezium.config.Field.ValidationOutput;
 /**
  * The configuration properties.
  */
-public class MongoDbConnectorConfig {
+public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     private static final String DATABASE_LIST_NAME = "database.list";
     private static final String COLLECTION_LIST_NAME = "collection.list";
@@ -101,33 +102,6 @@ public class MongoDbConnectorConfig {
                                                       .withValidation(Field::isPositiveInteger)
                                                       .withDescription("Maximum number of threads used to perform an intial sync of the collections in a replica set. "
                                                               + "Defaults to 1.");
-
-    public static final Field MAX_QUEUE_SIZE = Field.create("max.queue.size")
-                                                    .withDisplayName("Change event buffer size")
-                                                    .withType(Type.INT)
-                                                    .withWidth(Width.SHORT)
-                                                    .withImportance(Importance.MEDIUM)
-                                                    .withDefault(2048)
-                                                    .withValidation(MongoDbConnectorConfig::validateMaxQueueSize)
-                                                    .withDescription("Maximum size of the queue for change events read from the database log but not yet recorded or forwarded. Defaults to 2048, and should always be larger than the maximum batch size.");
-
-    public static final Field MAX_BATCH_SIZE = Field.create("max.batch.size")
-                                                    .withDisplayName("Change event batch size")
-                                                    .withType(Type.INT)
-                                                    .withWidth(Width.SHORT)
-                                                    .withImportance(Importance.MEDIUM)
-                                                    .withDefault(1024)
-                                                    .withValidation(Field::isPositiveInteger)
-                                                    .withDescription("Maximum size of each batch of source records. Defaults to 1024.");
-
-    public static final Field POLL_INTERVAL_MS = Field.create("poll.interval.ms")
-                                                      .withDisplayName("Poll interval (ms)")
-                                                      .withType(Type.LONG)
-                                                      .withWidth(Width.SHORT)
-                                                      .withImportance(Importance.MEDIUM)
-                                                      .withDefault(TimeUnit.SECONDS.toMillis(1))
-                                                      .withValidation(Field::isPositiveInteger)
-                                                      .withDescription("Frequency in milliseconds to wait after processing no events for new change events to appear. Defaults to 1 second (1000 ms).");
 
     public static final Field CONNECT_BACKOFF_INITIAL_DELAY_MS = Field.create("connect.backoff.initial.delay.ms")
                                                                       .withDisplayName("Initial delay before reconnection (ms)")
@@ -227,8 +201,9 @@ public class MongoDbConnectorConfig {
 
     public static Field.Set ALL_FIELDS = Field.setOf(USER, PASSWORD, HOSTS, LOGICAL_NAME,
                                                      SSL_ENABLED, SSL_ALLOW_INVALID_HOSTNAMES,
-                                                     MAX_COPY_THREADS, MAX_QUEUE_SIZE, MAX_BATCH_SIZE,
-                                                     POLL_INTERVAL_MS,
+                                                     MAX_COPY_THREADS, CommonConnectorConfig.MAX_QUEUE_SIZE,
+                                                     CommonConnectorConfig.MAX_BATCH_SIZE,
+                                                     CommonConnectorConfig.POLL_INTERVAL_MS,
                                                      MAX_FAILED_CONNECTIONS,
                                                      CONNECT_BACKOFF_INITIAL_DELAY_MS,
                                                      CONNECT_BACKOFF_MAX_DELAY_MS,
@@ -236,17 +211,22 @@ public class MongoDbConnectorConfig {
                                                      COLLECTION_BLACKLIST,
                                                      AUTO_DISCOVER_MEMBERS,
                                                      DATABASE_WHITELIST,
-                                                     DATABASE_BLACKLIST);
+                                                     DATABASE_BLACKLIST,
+                                                     CommonConnectorConfig.TOMBSTONES_ON_DELETE);
 
     protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS;
+
+    public MongoDbConnectorConfig(Configuration config) {
+        super(config);
+    }
 
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
         Field.group(config, "MongoDB", HOSTS, USER, PASSWORD, LOGICAL_NAME, CONNECT_BACKOFF_INITIAL_DELAY_MS,
                     CONNECT_BACKOFF_MAX_DELAY_MS, MAX_FAILED_CONNECTIONS, AUTO_DISCOVER_MEMBERS,
                     SSL_ENABLED, SSL_ALLOW_INVALID_HOSTNAMES);
-        Field.group(config, "Events", DATABASE_WHITELIST, DATABASE_BLACKLIST, COLLECTION_WHITELIST, COLLECTION_BLACKLIST);
-        Field.group(config, "Connector", MAX_COPY_THREADS, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS);
+        Field.group(config, "Events", DATABASE_WHITELIST, DATABASE_BLACKLIST, COLLECTION_WHITELIST, COLLECTION_BLACKLIST, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
+        Field.group(config, "Connector", MAX_COPY_THREADS, CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS);
         return config;
     }
 
@@ -259,23 +239,6 @@ public class MongoDbConnectorConfig {
         int count = 0;
         if (ReplicaSets.parse(hosts) == null) {
             problems.accept(field, hosts, "Invalid host specification");
-            ++count;
-        }
-        return count;
-    }
-
-    private static int validateMaxQueueSize(Configuration config, Field field, ValidationOutput problems) {
-        int maxQueueSize = config.getInteger(field);
-        int maxBatchSize = config.getInteger(MAX_BATCH_SIZE);
-        int count = 0;
-        if (maxQueueSize <= 0) {
-            maxBatchSize = maxQueueSize / 2;
-            problems.accept(field, maxQueueSize, "A positive queue size is required");
-            ++count;
-        }
-        if (maxQueueSize <= maxBatchSize) {
-            maxBatchSize = maxQueueSize / 2;
-            problems.accept(field, maxQueueSize, "Must be larger than the maximum batch size");
             ++count;
         }
         return count;

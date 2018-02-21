@@ -22,6 +22,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -42,6 +43,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
+import io.debezium.util.Threads;
 
 /**
  * A component that performs a snapshot of a MySQL server, and records the schema changes in {@link MySqlSchema}.
@@ -57,8 +59,8 @@ public class SnapshotReader extends AbstractReader {
 
     private final boolean includeData;
     private RecordRecorder recorder;
-    private volatile Thread thread;
     private final SnapshotReaderMetrics metrics;
+    private ExecutorService executorService;
 
     private final MySqlConnectorConfig.SnapshotLockingMode snapshotLockingMode;
 
@@ -73,7 +75,7 @@ public class SnapshotReader extends AbstractReader {
         this.includeData = context.snapshotMode().includeData();
         this.snapshotLockingMode = context.lockingMode();
         recorder = this::recordRowAsRead;
-        metrics = new SnapshotReaderMetrics(context.clock());
+        metrics = new SnapshotReaderMetrics(context.getClock());
     }
 
     /**
@@ -109,20 +111,21 @@ public class SnapshotReader extends AbstractReader {
      */
     @Override
     protected void doStart() {
-        thread = new Thread(this::execute, "mysql-snapshot-" + context.serverName());
-        thread.start();
+        executorService = Threads.newSingleThreadExecutor(MySqlConnector.class, context.serverName(), "snapshot");
+        executorService.execute(this::execute);
     }
 
     @Override
     protected void doStop() {
         logger.debug("Stopping snapshot reader");
+        cleanupResources();
         // The parent class will change the isRunning() state, and this class' execute() uses that and will stop automatically
     }
 
     @Override
     protected void doCleanup() {
         try {
-            this.thread = null;
+            executorService.shutdown();
             logger.debug("Completed writing all snapshot records");
         } finally {
             metrics.unregister(logger);
@@ -198,13 +201,13 @@ public class SnapshotReader extends AbstractReader {
     protected void execute() {
         context.configureLoggingContext("snapshot");
         final AtomicReference<String> sql = new AtomicReference<>();
-        final JdbcConnection mysql = context.jdbc();
+        final JdbcConnection mysql = connectionContext.jdbc();
         final MySqlSchema schema = context.dbSchema();
         final Filters filters = schema.filters();
         final SourceInfo source = context.source();
-        final Clock clock = context.clock();
+        final Clock clock = context.getClock();
         final long ts = clock.currentTimeInMillis();
-        logger.info("Starting snapshot for {} with user '{}' with locking mode '{}'", context.connectionString(), mysql.username(), context.lockingMode().getValue());
+        logger.info("Starting snapshot for {} with user '{}' with locking mode '{}'", connectionContext.connectionString(), mysql.username(), context.lockingMode().getValue());
         logRolesForCurrentUser(mysql);
         logServerInformation(mysql);
         boolean isLocked = false;
@@ -233,8 +236,8 @@ public class SnapshotReader extends AbstractReader {
             mysql.execute(sql.get());
 
             // Generate the DDL statements that set the charset-related system variables ...
-            Map<String, String> systemVariables = context.readMySqlCharsetSystemVariables(sql);
-            String setSystemVariablesStatement = context.setStatementFor(systemVariables);
+            Map<String, String> systemVariables = connectionContext.readMySqlCharsetSystemVariables(sql);
+            String setSystemVariablesStatement = connectionContext.setStatementFor(systemVariables);
             AtomicBoolean interrupted = new AtomicBoolean(false);
             long lockAcquired = 0L;
             int step = 1;
@@ -344,7 +347,7 @@ public class SnapshotReader extends AbstractReader {
                         // We were not able to acquire the global read lock, so instead we have to obtain a read lock on each table.
                         // This requires different privileges than normal, and also means we can't unlock the tables without
                         // implicitly committing our transaction ...
-                        if (!context.userHasPrivileges("LOCK TABLES")) {
+                        if (!connectionContext.userHasPrivileges("LOCK TABLES")) {
                             // We don't have the right privileges
                             throw new ConnectException("User does not have the 'LOCK TABLES' privilege required to obtain a "
                                 + "consistent snapshot by preventing concurrent writes to tables.");
@@ -377,45 +380,53 @@ public class SnapshotReader extends AbstractReader {
                 // ------
                 // Transform the current schema so that it reflects the *current* state of the MySQL server's contents.
                 // First, get the DROP TABLE and CREATE TABLE statement (with keys and constraint definitions) for our tables ...
-                logger.info("Step {}: generating DROP and CREATE statements to reflect current database schemas:", step++);
-                schema.applyDdl(source, null, setSystemVariablesStatement, this::enqueueSchemaChanges);
 
-                // Add DROP TABLE statements for all tables that we knew about AND those tables found in the databases ...
-                Set<TableId> allTableIds = new HashSet<>(schema.tables().tableIds());
-                allTableIds.addAll(tableIds);
-                allTableIds.stream()
-                           .filter(id -> isRunning()) // ignore all subsequent tables if this reader is stopped
-                           .forEach(tableId -> schema.applyDdl(source, tableId.schema(),
-                                                               "DROP TABLE IF EXISTS " + quote(tableId),
-                                                               this::enqueueSchemaChanges));
+                try {
+                    logger.info("Step {}: generating DROP and CREATE statements to reflect current database schemas:", step++);
+                    schema.applyDdl(source, null, setSystemVariablesStatement, this::enqueueSchemaChanges);
 
-                // Add a DROP DATABASE statement for each database that we no longer know about ...
-                schema.tables().tableIds().stream().map(TableId::catalog)
-                      .filter(Predicates.not(readableDatabaseNames::contains))
-                      .filter(id -> isRunning()) // ignore all subsequent tables if this reader is stopped
-                      .forEach(missingDbName -> schema.applyDdl(source, missingDbName,
-                                                                "DROP DATABASE IF EXISTS " + quote(missingDbName),
-                                                                this::enqueueSchemaChanges));
+                    // Add DROP TABLE statements for all tables that we knew about AND those tables found in the databases ...
+                    Set<TableId> allTableIds = new HashSet<>(schema.tables().tableIds());
+                    allTableIds.addAll(tableIds);
+                    allTableIds.stream()
+                               .filter(id -> isRunning()) // ignore all subsequent tables if this reader is stopped
+                               .forEach(tableId -> schema.applyDdl(source, tableId.schema(),
+                                                                   "DROP TABLE IF EXISTS " + quote(tableId),
+                                                                   this::enqueueSchemaChanges));
 
-                // Now process all of our tables for each database ...
-                for (Map.Entry<String, List<TableId>> entry : tableIdsByDbName.entrySet()) {
-                    if (!isRunning()) break;
-                    String dbName = entry.getKey();
-                    // First drop, create, and then use the named database ...
-                    schema.applyDdl(source, dbName, "DROP DATABASE IF EXISTS " + quote(dbName), this::enqueueSchemaChanges);
-                    schema.applyDdl(source, dbName, "CREATE DATABASE " + quote(dbName), this::enqueueSchemaChanges);
-                    schema.applyDdl(source, dbName, "USE " + quote(dbName), this::enqueueSchemaChanges);
-                    for (TableId tableId : entry.getValue()) {
+                    // Add a DROP DATABASE statement for each database that we no longer know about ...
+                    schema.tables().tableIds().stream().map(TableId::catalog)
+                          .filter(Predicates.not(readableDatabaseNames::contains))
+                          .filter(id -> isRunning()) // ignore all subsequent tables if this reader is stopped
+                          .forEach(missingDbName -> schema.applyDdl(source, missingDbName,
+                                                                    "DROP DATABASE IF EXISTS " + quote(missingDbName),
+                                                                    this::enqueueSchemaChanges));
+
+                    // Now process all of our tables for each database ...
+                    for (Map.Entry<String, List<TableId>> entry : tableIdsByDbName.entrySet()) {
                         if (!isRunning()) break;
-                        sql.set("SHOW CREATE TABLE " + quote(tableId));
-                        mysql.query(sql.get(), rs -> {
-                            if (rs.next()) {
-                                schema.applyDdl(source, dbName, rs.getString(2), this::enqueueSchemaChanges);
-                            }
-                        });
+                        String dbName = entry.getKey();
+                        // First drop, create, and then use the named database ...
+                        schema.applyDdl(source, dbName, "DROP DATABASE IF EXISTS " + quote(dbName), this::enqueueSchemaChanges);
+                        schema.applyDdl(source, dbName, "CREATE DATABASE " + quote(dbName), this::enqueueSchemaChanges);
+                        schema.applyDdl(source, dbName, "USE " + quote(dbName), this::enqueueSchemaChanges);
+                        for (TableId tableId : entry.getValue()) {
+                            if (!isRunning()) break;
+                            sql.set("SHOW CREATE TABLE " + quote(tableId));
+                            mysql.query(sql.get(), rs -> {
+                                if (rs.next()) {
+                                    schema.applyDdl(source, dbName, rs.getString(2), this::enqueueSchemaChanges);
+                                }
+                            });
+                        }
                     }
+                    context.makeRecord().regenerate();
                 }
-                context.makeRecord().regenerate();
+                // most likely, something went wrong while writing the history topic
+                catch(Exception e) {
+                    interrupted.set(true);
+                    throw e;
+                }
 
                 // ------
                 // STEP 7
@@ -583,7 +594,7 @@ public class SnapshotReader extends AbstractReader {
                 step++;
             } finally {
                 // No matter what, we always want to do these steps if necessary ...
-
+                boolean rolledBack = false;
                 // ------
                 // STEP 9
                 // ------
@@ -596,20 +607,22 @@ public class SnapshotReader extends AbstractReader {
                         sql.set("ROLLBACK");
                         mysql.execute(sql.get());
                         metrics.abortSnapshot();
-                        return;
+                        rolledBack = true;
                     }
-                    // Otherwise, commit our transaction
-                    logger.info("Step {}: committing transaction", step++);
-                    sql.set("COMMIT");
-                    mysql.execute(sql.get());
-                    metrics.completeSnapshot();
+                    else {
+                        // Otherwise, commit our transaction
+                        logger.info("Step {}: committing transaction", step++);
+                        sql.set("COMMIT");
+                        mysql.execute(sql.get());
+                        metrics.completeSnapshot();
+                    }
                 }
 
                 // -------
                 // STEP 10
                 // -------
                 // Release the read lock(s) if we have not yet done so. Locks are not released when committing/rolling back ...
-                if (isLocked) {
+                if (isLocked && !rolledBack) {
                     if (tableLocks) {
                         logger.info("Step {}: releasing table read locks to enable MySQL writes", step++);
                     } else {
@@ -818,7 +831,7 @@ public class SnapshotReader extends AbstractReader {
         for (String table : tableList.split(",")) {
             snapshotSelectOverridesByTable.put(
                 TableId.parse(table),
-                context.config.getString(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table)
+                context.config().getString(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table)
             );
         }
 

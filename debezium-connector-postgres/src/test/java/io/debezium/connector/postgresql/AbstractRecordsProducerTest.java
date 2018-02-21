@@ -22,6 +22,7 @@ import java.time.LocalTime;
 import java.time.Month;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -54,6 +55,7 @@ import io.debezium.data.Xml;
 import io.debezium.data.geometry.Geography;
 import io.debezium.data.geometry.Geometry;
 import io.debezium.data.geometry.Point;
+import io.debezium.function.BlockingConsumer;
 import io.debezium.relational.TableId;
 import io.debezium.time.Date;
 import io.debezium.time.MicroDuration;
@@ -83,22 +85,26 @@ public abstract class AbstractRecordsProducerTest {
     protected static final String INSERT_TEXT_TYPES_STMT = "INSERT INTO text_table(j, jb, x, u) " +
                                                            "VALUES ('{\"bar\": \"baz\"}'::json, '{\"bar\": \"baz\"}'::jsonb, " +
                                                            "'<foo>bar</foo><foo>bar</foo>'::xml, 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'::UUID)";
-    protected static final String INSERT_STRING_TYPES_STMT = "INSERT INTO string_table (vc, vcv, ch, c, t) " +
-                                                             "VALUES ('aa', 'bb', 'cdef', 'abc', 'some text')";
+    protected static final String INSERT_STRING_TYPES_STMT = "INSERT INTO string_table (vc, vcv, ch, c, t, b) " +
+                                                             "VALUES ('aa', 'bb', 'cdef', 'abc', 'some text', E'\\\\000\\\\001\\\\002'::bytea)";
     protected static final String INSERT_NUMERIC_TYPES_STMT = "INSERT INTO numeric_table (si, i, bi, r, db, ss, bs, b) " +
                                                               "VALUES (1, 123456, 1234567890123, 3.3, 4.44, 1, 123, true)";
+    protected static final String INSERT_FP_TYPES_NO_DECIMAL_STMT = "INSERT INTO numeric_table (si, i, bi, r, db, ss, bs, b) " +
+                                                                    "VALUES (1, 123456, 1234567890123, 3, 4, 1, 123, true)";
     protected static final String INSERT_NUMERIC_DECIMAL_TYPES_STMT = "INSERT INTO numeric_decimal_table (d, dzs, dvs, n, nzs, nvs) " +
-            "VALUES (1.1, 10.11, 10.1111, 22.22, 22.2, 22.2222)";
+                                                                      "VALUES (1.1, 10.11, 10.1111, 22.22, 22.2, 22.2222)";
+    protected static final String INSERT_NUMERIC_DECIMAL_TYPES_NO_DECIMAL_STMT = "INSERT INTO numeric_decimal_table (d, dzs, dvs, n, nzs, nvs) " +
+                                                                                 "VALUES (1, 10, 10, 22, 22, 22)";
 
     protected static final String INSERT_TSTZRANGE_TYPES_STMT = "INSERT INTO tstzrange_table (unbounded_exclusive_range, bounded_inclusive_range) " +
             "VALUES ('[2017-06-05 11:29:12.549426+00,)', '[2017-06-05 11:29:12.549426+00, 2017-06-05 12:34:56.789012+00]')";
 
 
-    protected static final String INSERT_ARRAY_TYPES_STMT = "INSERT INTO array_table (int_array, bigint_array, text_array, char_array, varchar_array, date_array) " +
-                                                             "VALUES ('{1,2,3}', '{1550166368505037572}', '{\"one\",\"two\",\"three\"}', '{\"cone\",\"ctwo\",\"cthree\"}', '{\"vcone\",\"vctwo\",\"vcthree\"}', '{2016-11-04,2016-11-05,2016-11-06}')";
+    protected static final String INSERT_ARRAY_TYPES_STMT = "INSERT INTO array_table (int_array, bigint_array, text_array, char_array, varchar_array, date_array, numeric_array, varnumeric_array) " +
+                                                             "VALUES ('{1,2,3}', '{1550166368505037572}', '{\"one\",\"two\",\"three\"}', '{\"cone\",\"ctwo\",\"cthree\"}', '{\"vcone\",\"vctwo\",\"vcthree\"}', '{2016-11-04,2016-11-05,2016-11-06}', '{1.2,3.4,5.6}', '{1.1,2.22,3.333}')";
 
-    protected static final String INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT = "INSERT INTO array_table_with_nulls (int_array, bigint_array, text_array, date_array) " +
-            "VALUES (null, null, null, null)";
+    protected static final String INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT = "INSERT INTO array_table_with_nulls (int_array, bigint_array, text_array, date_array, numeric_array, varnumeric_array) " +
+            "VALUES (null, null, null, null, null, null)";
 
     protected static final String INSERT_POSTGIS_TYPES_STMT = "INSERT INTO public.postgis_table (p, ml) " +
             "VALUES ('SRID=3187;POINT(174.9479 -36.7208)'::postgis.geometry, 'MULTILINESTRING((169.1321 -44.7032, 167.8974 -44.6414))'::postgis.geography)";
@@ -117,7 +123,7 @@ public abstract class AbstractRecordsProducerTest {
                                                                  INSERT_BIN_TYPES_STMT, INSERT_GEOM_TYPES_STMT, INSERT_TEXT_TYPES_STMT,
                                                                  INSERT_CASH_TYPES_STMT, INSERT_STRING_TYPES_STMT, INSERT_ARRAY_TYPES_STMT,
                                                                  INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT, INSERT_QUOTED_TYPES_STMT,
-                                                                 INSERT_POSTGIS_TYPES_STMT));
+                                                                 INSERT_POSTGIS_TYPES_STMT, INSERT_POSTGIS_ARRAY_TYPES_STMT));
 
     protected List<SchemaAndValueField> schemasAndValuesForNumericType() {
         return Arrays.asList(new SchemaAndValueField("si", SchemaBuilder.OPTIONAL_INT16_SCHEMA, (short) 1),
@@ -125,6 +131,17 @@ public abstract class AbstractRecordsProducerTest {
                              new SchemaAndValueField("bi", SchemaBuilder.OPTIONAL_INT64_SCHEMA, 1234567890123L),
                              new SchemaAndValueField("r", Schema.OPTIONAL_FLOAT32_SCHEMA, 3.3f),
                              new SchemaAndValueField("db", Schema.OPTIONAL_FLOAT64_SCHEMA, 4.44d),
+                             new SchemaAndValueField("ss", Schema.INT16_SCHEMA, (short) 1),
+                             new SchemaAndValueField("bs", Schema.INT64_SCHEMA, 123L),
+                             new SchemaAndValueField("b", Schema.OPTIONAL_BOOLEAN_SCHEMA, Boolean.TRUE));
+    }
+
+    protected List<SchemaAndValueField> schemasAndValuesForFpTypeWithoutDecimals() {
+        return Arrays.asList(new SchemaAndValueField("si", SchemaBuilder.OPTIONAL_INT16_SCHEMA, (short) 1),
+                             new SchemaAndValueField("i", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 123456),
+                             new SchemaAndValueField("bi", SchemaBuilder.OPTIONAL_INT64_SCHEMA, 1234567890123L),
+                             new SchemaAndValueField("r", Schema.OPTIONAL_FLOAT32_SCHEMA, 3.0f),
+                             new SchemaAndValueField("db", Schema.OPTIONAL_FLOAT64_SCHEMA, 4.0d),
                              new SchemaAndValueField("ss", Schema.INT16_SCHEMA, (short) 1),
                              new SchemaAndValueField("bs", Schema.INT64_SCHEMA, 123L),
                              new SchemaAndValueField("b", Schema.OPTIONAL_BOOLEAN_SCHEMA, Boolean.TRUE));
@@ -140,6 +157,21 @@ public abstract class AbstractRecordsProducerTest {
      // DBZ-351 new SchemaAndValueField("dzs", Decimal.builder(0).optional().build(), new BigDecimal("10")),
                 new SchemaAndValueField("dvs", VariableScaleDecimal.builder().optional().build(), dvs),
                 new SchemaAndValueField("n", Decimal.builder(4).optional().build(), new BigDecimal("22.2200")),
+     // DBZ-351 new SchemaAndValueField("nzs", Decimal.builder(0).optional().build(), new BigDecimal("22")),
+                new SchemaAndValueField("nvs", VariableScaleDecimal.builder().optional().build(), nvs)
+        );
+    }
+
+    protected List<SchemaAndValueField> schemasAndValuesForNumericDecimalTypeWithoutDecimals() {
+        final Struct dvs = new Struct(VariableScaleDecimal.schema());
+        dvs.put("scale", 1).put("value", new BigDecimal("10.0").unscaledValue().toByteArray());
+        final Struct nvs = new Struct(VariableScaleDecimal.schema());
+        nvs.put("scale", 1).put("value", new BigDecimal("22.0").unscaledValue().toByteArray());
+        return Arrays.asList(
+                new SchemaAndValueField("d", Decimal.builder(2).optional().build(), new BigDecimal("1.00")),
+     // DBZ-351 new SchemaAndValueField("dzs", Decimal.builder(0).optional().build(), new BigDecimal("10")),
+                new SchemaAndValueField("dvs", VariableScaleDecimal.builder().optional().build(), dvs),
+                new SchemaAndValueField("n", Decimal.builder(4).optional().build(), new BigDecimal("22.0000")),
      // DBZ-351 new SchemaAndValueField("nzs", Decimal.builder(0).optional().build(), new BigDecimal("22")),
                 new SchemaAndValueField("nvs", VariableScaleDecimal.builder().optional().build(), nvs)
         );
@@ -161,7 +193,8 @@ public abstract class AbstractRecordsProducerTest {
                             new SchemaAndValueField("vcv", Schema.OPTIONAL_STRING_SCHEMA, "bb"),
                             new SchemaAndValueField("ch", Schema.OPTIONAL_STRING_SCHEMA, "cdef"),
                             new SchemaAndValueField("c", Schema.OPTIONAL_STRING_SCHEMA, "abc"),
-                            new SchemaAndValueField("t", Schema.OPTIONAL_STRING_SCHEMA, "some text"));
+                            new SchemaAndValueField("t", Schema.OPTIONAL_STRING_SCHEMA, "some text"),
+                            new SchemaAndValueField("b", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap(new byte[] {0, 1, 2})));
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForTextTypes() {
@@ -240,6 +273,18 @@ public abstract class AbstractRecordsProducerTest {
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForArrayTypes() {
+        Struct element;
+        final List<Struct> varnumArray = new ArrayList<>();
+        element = new Struct(VariableScaleDecimal.schema());
+        element.put("scale", 1).put("value", new BigDecimal("1.1").unscaledValue().toByteArray());
+        varnumArray.add(element);
+        element = new Struct(VariableScaleDecimal.schema());
+        element.put("scale", 2).put("value", new BigDecimal("2.22").unscaledValue().toByteArray());
+        varnumArray.add(element);
+        element = new Struct(VariableScaleDecimal.schema());
+        element.put("scale", 3).put("value", new BigDecimal("3.333").unscaledValue().toByteArray());
+        varnumArray.add(element);
+
        return Arrays.asList(new SchemaAndValueField("int_array", SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(),
                                 Arrays.asList(1, 2, 3)),
                             new SchemaAndValueField("bigint_array", SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(),
@@ -255,7 +300,15 @@ public abstract class AbstractRecordsProducerTest {
                                         (int)LocalDate.of(2016, Month.NOVEMBER, 4).toEpochDay(),
                                         (int)LocalDate.of(2016, Month.NOVEMBER, 5).toEpochDay(),
                                         (int)LocalDate.of(2016, Month.NOVEMBER, 6).toEpochDay()
-                                ))
+                                )),
+                            new SchemaAndValueField("numeric_array", SchemaBuilder.array(Decimal.builder(2).optional().build()).optional().build(),
+                                    Arrays.asList(
+                                            new BigDecimal("1.20"),
+                                            new BigDecimal("3.40"),
+                                            new BigDecimal("5.60")
+                                    )),
+                            new SchemaAndValueField("varnumeric_array", SchemaBuilder.array(VariableScaleDecimal.builder().optional().build()).optional().build(),
+                                    varnumArray)
                             );
     }
 
@@ -266,7 +319,8 @@ public abstract class AbstractRecordsProducerTest {
                 new SchemaAndValueField("text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null),
                 new SchemaAndValueField("char_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null),
                 new SchemaAndValueField("varchar_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null),
-                new SchemaAndValueField("date_array", SchemaBuilder.array(Date.builder().optional().schema()).optional().build(), null)
+                new SchemaAndValueField("date_array", SchemaBuilder.array(Date.builder().optional().schema()).optional().build(), null),
+                new SchemaAndValueField("numeric_array", SchemaBuilder.array(Decimal.builder(2).optional().build()).optional().build(), null)
         );
     }
 
@@ -285,23 +339,18 @@ public abstract class AbstractRecordsProducerTest {
     }
 
     protected List<SchemaAndValueField> schemaAndValuesForPostgisArrayTypes() {
-        // Geometry arrays aren't supported yet, currently they're interpreted as unknown bytestreams.
+        Schema geomSchema = Geometry.builder().build();
         return Arrays.asList(
-                new SchemaAndValueField("ga", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap("Top.Collections.Pictures.Astronomy.Galaxies".getBytes()))
+                // geometries are encoded here as HexEWKB
+                new SchemaAndValueField("ga", SchemaBuilder.array(geomSchema).optional().build(),
+                        Arrays.asList(
+                                // 'GEOMETRYCOLLECTION EMPTY'::postgis.geometry
+                                Geometry.createValue(geomSchema, DatatypeConverter.parseHexBinary("010700000000000000"), null),
+                                // 'POLYGON((166.51 -46.64, 178.52 -46.64, 178.52 -34.45, 166.51 -34.45, 166.51 -46.64))'::postgis.geometry
+                                Geometry.createValue(geomSchema, DatatypeConverter.parseHexBinary("01030000000100000005000000B81E85EB51D0644052B81E85EB5147C0713D0AD7A350664052B81E85EB5147C0713D0AD7A35066409A999999993941C0B81E85EB51D064409A999999993941C0B81E85EB51D0644052B81E85EB5147C0"), null)
+                        )
+                )
         );
-
-//        Schema geomSchema = Geometry.builder().optional().build();
-//        return Arrays.asList(
-//                // geometries are encoded here as HexEWKB
-//                new SchemaAndValueField("ga", SchemaBuilder.array(geomSchema).optional().build(),
-//                        Arrays.asList(
-//                                // 'GEOMETRYCOLLECTION EMPTY'::postgis.geometry
-//                                Geometry.createValue(geomSchema, PostgisGeometry.hex2bin("010700000000000000"), null),
-//                                // 'POLYGON((166.51 -46.64, 178.52 -46.64, 178.52 -34.45, 166.51 -34.45, 166.51 -46.64))'::postgis.geometry
-//                                Geometry.createValue(geomSchema, PostgisGeometry.hex2bin("01030000000100000005000000B81E85EB51D0644052B81E85EB5147C0713D0AD7A350664052B81E85EB5147C0713D0AD7A35066409A999999993941C0B81E85EB51D064409A999999993941C0B81E85EB51D0644052B81E85EB5147C0"), 4326)
-//                        )
-//                )
-//        );
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForQuotedTypes() {
@@ -330,7 +379,9 @@ public abstract class AbstractRecordsProducerTest {
                              new SchemaAndValueField("i", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap("0-393-04002-X".getBytes())),
                              new SchemaAndValueField("n", Schema.OPTIONAL_STRING_SCHEMA, null));
 
-    }protected List<SchemaAndValueField> schemasAndValuesForTable(String insertTableStatement) {
+    }
+
+    protected List<SchemaAndValueField> schemasAndValuesForTable(String insertTableStatement) {
         switch (insertTableStatement) {
             case INSERT_NUMERIC_TYPES_STMT:
                 return schemasAndValuesForNumericType();
@@ -442,6 +493,15 @@ public abstract class AbstractRecordsProducerTest {
             // assert the value type; for List all implementation types (e.g. immutable ones) are acceptable
             if(actualValue instanceof List) {
                 assertTrue("Incorrect value type for " + fieldName, value instanceof List);
+                final List<?> actualValueList = (List<?>)actualValue;
+                final List<?> valueList = (List<?>)value;
+                assertEquals("List size don't match for " + fieldName, valueList.size(), actualValueList.size());
+                if (!valueList.isEmpty() && valueList.iterator().next() instanceof Struct) {
+                    for (int i = 0; i < valueList.size(); i++) {
+                        assertStruct((Struct)valueList.get(i), (Struct)actualValueList.get(i));
+                    }
+                    return;
+                }
             }
             else {
                 assertEquals("Incorrect value type for " + fieldName, value.getClass(), actualValue.getClass());
@@ -491,7 +551,7 @@ public abstract class AbstractRecordsProducerTest {
          return new TestConsumer(expectedRecordsCount, topicPrefixes);
     }
 
-    protected static class TestConsumer implements Consumer<ChangeEvent> {
+    protected static class TestConsumer implements BlockingConsumer<ChangeEvent> {
         private final ConcurrentLinkedQueue<SourceRecord> records;
         private final VariableLatch latch;
         private final List<String> topicPrefixes;

@@ -16,6 +16,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -23,11 +24,11 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.data.Envelope;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
@@ -46,6 +47,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     private RecordsStreamProducer recordsProducer;
     private TestConsumer consumer;
+    private final Consumer<Throwable> blackHole = t -> {};
 
     @Rule
     public TestRule conditionalFail = new ConditionalFail();
@@ -53,16 +55,16 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Before
     public void before() throws Exception {
         TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("init_postgis.ddl");
         String statements =
-                "CREATE SCHEMA public;" +
+                "CREATE SCHEMA IF NOT EXISTS public;" +
                 "DROP TABLE IF EXISTS test_table;" +
                 "CREATE TABLE test_table (pk SERIAL, text TEXT, PRIMARY KEY(pk));" +
                 "CREATE TABLE table_with_interval (id SERIAL PRIMARY KEY, title VARCHAR(512) NOT NULL, time_limit INTERVAL DEFAULT '60 days'::INTERVAL NOT NULL);" +
                 "INSERT INTO test_table(text) VALUES ('insert');";
         TestHelper.execute(statements);
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true).build());
-        PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config));
-        recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.serverName()));
+        setupRecordsProducer(config);
     }
 
     @After
@@ -77,14 +79,22 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
         consumer = testConsumer(1);
-        recordsProducer.start(consumer);
+        recordsProducer.start(consumer, blackHole);
 
         //numerical types
         assertInsert(INSERT_NUMERIC_TYPES_STMT, schemasAndValuesForNumericType());
 
+        //floating-point without decimals
+        consumer.expects(1);
+        assertInsert(INSERT_FP_TYPES_NO_DECIMAL_STMT, 2, schemasAndValuesForFpTypeWithoutDecimals());
+
         //numerical decimal types
         consumer.expects(1);
         assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT, schemasAndValuesForNumericDecimalType());
+
+        //numerical decimal types without decimals
+        consumer.expects(1);
+        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_NO_DECIMAL_STMT, 2, schemasAndValuesForNumericDecimalTypeWithoutDecimals());
 
         // string types
         consumer.expects(1);
@@ -119,12 +129,12 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertInsert(INSERT_CUSTOM_TYPES_STMT, schemasAndValuesForCustomTypes());
     }
 
-    @Test(timeout=30000)
+    @Test(timeout = 30000)
     public void shouldReceiveChangesForInsertsWithPostgisTypes() throws Exception {
         TestHelper.executeDDL("postgis_create_tables.ddl");
         consumer = testConsumer(1, "public"); // spatial_ref_sys produces a tonne of records in the postgis schema
         consumer.setIgnoreExtraRecords(true);
-        recordsProducer.start(consumer);
+        recordsProducer.start(consumer, blackHole);
 
         // need to wait for all the spatial_ref_sys to flow through and be ignored.
         // this exceeds the normal 2s timeout.
@@ -145,14 +155,12 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertInsert(INSERT_POSTGIS_TYPES_STMT, schemaAndValuesForPostgisTypes());
     }
 
-    // Geometry arrays are waiting on better array support
-    @Test(timeout=30000)
-    @Ignore
+    @Test(timeout = 30000)
     public void shouldReceiveChangesForInsertsWithPostgisArrayTypes() throws Exception {
         TestHelper.executeDDL("postgis_create_tables.ddl");
         consumer = testConsumer(1, "public"); // spatial_ref_sys produces a tonne of records in the postgis schema
         consumer.setIgnoreExtraRecords(true);
-        recordsProducer.start(consumer);
+        recordsProducer.start(consumer, blackHole);
 
         // need to wait for all the spatial_ref_sys to flow through and be ignored.
         // this exceeds the normal 2s timeout.
@@ -180,7 +188,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
         consumer = testConsumer(1);
-        recordsProducer.start(consumer);
+        recordsProducer.start(consumer, blackHole);
 
         // Quoted column name
         assertInsert(INSERT_QUOTED_TYPES_STMT, schemasAndValuesForQuotedTypes());
@@ -191,7 +199,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
         consumer = testConsumer(1);
-        recordsProducer.start(consumer);
+        recordsProducer.start(consumer, blackHole);
 
         assertInsert(INSERT_ARRAY_TYPES_STMT, schemasAndValuesForArrayTypes());
     }
@@ -202,7 +210,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
         consumer = testConsumer(1);
-        recordsProducer.start(consumer);
+        recordsProducer.start(consumer, blackHole);
 
         assertInsert(INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT, schemasAndValuesForArrayTypesWithNullValues());
     }
@@ -213,7 +221,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                            "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
                            "INSERT INTO s1.a (aa) VALUES (11);";
         consumer = testConsumer(1);
-        recordsProducer.start(consumer);
+        recordsProducer.start(consumer, blackHole);
         executeAndWait(statement);
         assertRecordInserted("s1.a", PK_FIELD, 1);
     }
@@ -224,7 +232,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                            "ALTER TABLE test_table RENAME TO renamed_test_table;" +
                            "INSERT INTO renamed_test_table (text) VALUES ('new');";
         consumer = testConsumer(1);
-        recordsProducer.start(consumer);
+        recordsProducer.start(consumer, blackHole);
         executeAndWait(statement);
         assertRecordInserted("public.renamed_test_table", PK_FIELD, 2);
     }
@@ -232,7 +240,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     public void shouldReceiveChangesForUpdates() throws Exception {
         consumer = testConsumer(1);
-        recordsProducer.start(consumer);
+        recordsProducer.start(consumer, blackHole);
         executeAndWait("UPDATE test_table set text='update' WHERE pk=1");
 
         // the update record should be the last record
@@ -272,7 +280,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                             "UPDATE test_table SET uvc ='aa' WHERE pk = 1;";
 
         consumer = testConsumer(1);
-        recordsProducer.start(consumer);
+        recordsProducer.start(consumer, blackHole);
         executeAndWait(statements);
 
         // the update should be the last record
@@ -343,7 +351,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     public void shouldReceiveChangesForUpdatesWithPKChanges() throws Exception {
         consumer = testConsumer(3);
-        recordsProducer.start(consumer);
+        recordsProducer.start(consumer, blackHole);
         executeAndWait("UPDATE test_table SET text = 'update', pk = 2");
 
         String topicName = topicName("public.test_table");
@@ -365,12 +373,39 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("DBZ-582")
+    public void shouldReceiveChangesForUpdatesWithPKChangesWithoutTombstone() throws Exception {
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                .build()
+        );
+        setupRecordsProducer(config);
+        consumer = testConsumer(2);
+        recordsProducer.start(consumer, blackHole);
+
+        executeAndWait("UPDATE test_table SET text = 'update', pk = 2");
+
+        String topicName = topicName("public.test_table");
+
+        // first should be a delete of the old pk
+        SourceRecord deleteRecord = consumer.remove();
+        assertEquals(topicName, deleteRecord.topic());
+        VerifyRecord.isValidDelete(deleteRecord, PK_FIELD, 1);
+
+        // followed by insert of the new value
+        SourceRecord insertRecord = consumer.remove();
+        assertEquals(topicName, insertRecord.topic());
+        VerifyRecord.isValidInsert(insertRecord, PK_FIELD, 2);
+    }
+
+    @Test
     public void shouldReceiveChangesForDefaultValues() throws Exception {
         String statements = "ALTER TABLE test_table REPLICA IDENTITY FULL;" +
                             "ALTER TABLE test_table ADD COLUMN default_column TEXT DEFAULT 'default';" +
                             "INSERT INTO test_table (text) VALUES ('update');";
         consumer = testConsumer(1);
-        recordsProducer.start(consumer);
+        recordsProducer.start(consumer, blackHole);
         executeAndWait(statements);
 
         SourceRecord insertRecord = consumer.remove();
@@ -390,7 +425,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                             "UPDATE test_table SET num_val = 123.45 WHERE pk = 1;";
 
         consumer = testConsumer(1);
-        recordsProducer.start(consumer);
+        recordsProducer.start(consumer, blackHole);
         executeAndWait(statements);
 
         // the update should be the last record
@@ -473,7 +508,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         String statements = "INSERT INTO test_table (text) VALUES ('insert2');" +
                             "DELETE FROM test_table WHERE pk > 0;";
         consumer = testConsumer(5);
-        recordsProducer.start(consumer);
+        recordsProducer.start(consumer, blackHole);
         executeAndWait(statements);
 
 
@@ -503,17 +538,49 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("DBZ-582")
+    public void shouldReceiveChangesForDeletesWithoutTombstone() throws Exception {
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                .build()
+        );
+        setupRecordsProducer(config);
+
+        // add a new entry and remove both
+        String statements = "INSERT INTO test_table (text) VALUES ('insert2');" +
+                            "DELETE FROM test_table WHERE pk > 0;";
+        consumer = testConsumer(3);
+        recordsProducer.start(consumer, blackHole);
+        executeAndWait(statements);
+
+
+        String topicPrefix = "public.test_table";
+        String topicName = topicName(topicPrefix);
+        assertRecordInserted(topicPrefix, PK_FIELD, 2);
+
+        // first entry removed
+        SourceRecord record = consumer.remove();
+        assertEquals(topicName, record.topic());
+        VerifyRecord.isValidDelete(record, PK_FIELD, 1);
+
+        // second entry removed
+        record = consumer.remove();
+        assertEquals(topicName, record.topic());
+        VerifyRecord.isValidDelete(record, PK_FIELD, 2);
+    }
+
+    @Test
     public void shouldReceiveNumericTypeAsDouble() throws Exception {
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, PostgresConnectorConfig.DecimalHandlingMode.DOUBLE)
                 .build());
-        PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config));
-        recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.serverName()));
+        setupRecordsProducer(config);
 
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
         consumer = testConsumer(1);
-        recordsProducer.start(consumer);
+        recordsProducer.start(consumer, blackHole);
 
         assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT, schemasAndValuesForImpreciseNumericDecimalType());
     }
@@ -527,7 +594,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 "DELETE FROM table_with_interval WHERE id = 1;";
 
         consumer = testConsumer(4);
-        recordsProducer.start(consumer);
+        recordsProducer.start(consumer, blackHole);
         executeAndWait(statements);
 
         final String topicPrefix = "public.table_with_interval";
@@ -551,23 +618,38 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @FixFor("DBZ-501")
     public void shouldNotStartAfterStop() throws Exception {
         recordsProducer.stop();
-        recordsProducer.start(consumer);
+        recordsProducer.start(consumer, blackHole);
 
         // Need to remove record created in @Before
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true).build());
-        PostgresTaskContext context = new PostgresTaskContext(config, new PostgresSchema(config));
-        recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.serverName()));
+        setupRecordsProducer(config);
 
         consumer = testConsumer(1);
-        recordsProducer.start(consumer);
+        recordsProducer.start(consumer, blackHole);
+    }
+
+    private void setupRecordsProducer(PostgresConnectorConfig config) {
+        TopicSelector selector = TopicSelector.create(config);
+
+        PostgresTaskContext context = new PostgresTaskContext(
+                config,
+                new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
+                selector
+        );
+
+        recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.serverName()));
     }
 
     private void assertInsert(String statement, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {
+        assertInsert(statement, 1, expectedSchemaAndValuesByColumn);
+    }
+
+    private void assertInsert(String statement, int pk, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {
         TableId table = tableIdFromInsertStmt(statement);
         String expectedTopicName = table.schema() + "." + table.table();
         try {
             executeAndWait(statement);
-            SourceRecord record = assertRecordInserted(expectedTopicName, PK_FIELD, 1);
+            SourceRecord record = assertRecordInserted(expectedTopicName, PK_FIELD, pk);
             assertRecordOffset(record, false, false);
             assertRecordSchemaAndValues(expectedSchemaAndValuesByColumn, record, Envelope.FieldName.AFTER);
         } catch (Exception e) {

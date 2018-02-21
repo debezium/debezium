@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
+import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.PGConnection;
 import org.postgresql.replication.LogSequenceNumber;
 import org.postgresql.replication.PGReplicationStream;
@@ -24,6 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
+import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcConnectionException;
 
@@ -42,6 +44,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private final Configuration originalConfig;
     private final Integer statusUpdateIntervalMillis;
     private final MessageDecoder messageDecoder;
+    private final TypeRegistry typeRegistry;
 
     private long defaultStartingPos;
 
@@ -53,13 +56,15 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * @param plugin decoder matching the server side plug-in used for streaming changes; may not be null
      * @param dropSlotOnClose whether the replication slot should be dropped once the connection is closed
      * @param statusUpdateIntervalMillis the number of milli-seconds at which the replication connection should periodically send status
+     * @param typeRegistry registry with PostgreSQL types
      * updates to the server
      */
     private PostgresReplicationConnection(Configuration config,
                                          String slotName,
                                          PostgresConnectorConfig.LogicalDecoder plugin,
                                          boolean dropSlotOnClose,
-                                         Integer statusUpdateIntervalMillis) {
+                                         Integer statusUpdateIntervalMillis,
+                                         TypeRegistry typeRegistry) {
         super(config, PostgresConnection.FACTORY, null ,PostgresReplicationConnection::defaultSettings);
 
         this.originalConfig = config;
@@ -68,6 +73,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.dropSlotOnClose = dropSlotOnClose;
         this.statusUpdateIntervalMillis = statusUpdateIntervalMillis;
         this.messageDecoder = plugin.messageDecoder();
+        this.typeRegistry = typeRegistry;
 
         try {
             initReplicationSlot();
@@ -162,6 +168,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 LOGGER.warn("Could not register for streaming with metadata in messages, falling back to messages without metadata");
                 s = startPgReplicationStream(lsn, messageDecoder::optionsWithoutMetadata);
                 messageDecoder.setContainsMetadata(false);
+            } else if (e.getMessage().matches("(?s)ERROR: requested WAL segment .* has already been removed.*")) {
+                LOGGER.error("Cannot rewind to last processed WAL position", e);
+                throw new ConnectException("The offset to start reading from has been removed from the database write-ahead log. Create a new snapshot and consider setting of PostgreSQL parameter wal_keep_segments = 0.");
             } else {
                 throw e;
             }
@@ -176,7 +185,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             private volatile LogSequenceNumber lastReceivedLSN;
 
             @Override
-            public void read(ReplicationMessageProcessor processor) throws SQLException {
+            public void read(ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
                 ByteBuffer read = stream.read();
                 // the lsn we started from is inclusive, so we need to avoid sending back the same message twice
                 if (lsnLong >= stream.getLastReceiveLSN().asLong()) {
@@ -186,7 +195,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             }
 
             @Override
-            public void readPending(ReplicationMessageProcessor processor) throws SQLException {
+            public void readPending(ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
                 ByteBuffer read = stream.readPending();
                 // the lsn we started from is inclusive, so we need to avoid sending back the same message twice
                 if (read == null ||  lsnLong >= stream.getLastReceiveLSN().asLong()) {
@@ -195,9 +204,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 deserializeMessages(read, processor);
             }
 
-            private void deserializeMessages(ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException {
+            private void deserializeMessages(ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
                 lastReceivedLSN = stream.getLastReceiveLSN();
-                messageDecoder.processMessage(buffer, processor);
+                messageDecoder.processMessage(buffer, processor, typeRegistry);
             }
 
             @Override
@@ -301,6 +310,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         private PostgresConnectorConfig.LogicalDecoder plugin = PostgresConnectorConfig.LogicalDecoder.DECODERBUFS;
         private boolean dropSlotOnClose = DEFAULT_DROP_SLOT_ON_CLOSE;
         private Integer statusUpdateIntervalMillis;
+        private TypeRegistry typeRegistry;
 
         protected ReplicationConnectionBuilder(Configuration config) {
             assert config != null;
@@ -336,7 +346,13 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         @Override
         public ReplicationConnection build() {
             assert plugin != null : "Decoding plugin name is not set";
-            return new PostgresReplicationConnection(config, slotName, plugin, dropSlotOnClose, statusUpdateIntervalMillis);
+            return new PostgresReplicationConnection(config, slotName, plugin, dropSlotOnClose, statusUpdateIntervalMillis, typeRegistry);
+        }
+
+        @Override
+        public Builder withTypeRegistry(TypeRegistry typeRegistry) {
+            this.typeRegistry = typeRegistry;
+            return this;
         }
     }
 }

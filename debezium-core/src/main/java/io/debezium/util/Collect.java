@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -161,7 +162,6 @@ public class Collect {
         return map;
     }
 
-
     public static <K, V> Map<K, V> linkMapOf(K key, V value) {
         Map<K, V> map = new LinkedHashMap<>();
         map.put(key, value);
@@ -190,6 +190,57 @@ public class Collect {
         map.put(key3, value3);
         map.put(key4, value4);
         return map;
+    }
+
+    public static Properties propertiesOf(String key, String value) {
+        Properties props = new Properties();
+        props.put(key, value);
+        return props;
+    }
+
+    public static Properties propertiesOf(String key1, String value1, String key2, String value2) {
+        Properties props = new Properties();
+        props.put(key1, value1);
+        props.put(key2, value2);
+        return props;
+    }
+
+    public static Properties propertiesOf(String key1, String value1, String key2, String value2, String key3, String value3) {
+        Properties props = new Properties();
+        props.put(key1, value1);
+        props.put(key2, value2);
+        props.put(key3, value3);
+        return props;
+    }
+
+    public static Properties propertiesOf(String key1, String value1, String key2, String value2, String key3, String value3, String key4, String value4) {
+        Properties props = new Properties();
+        props.put(key1, value1);
+        props.put(key2, value2);
+        props.put(key3, value3);
+        props.put(key4, value4);
+        return props;
+    }
+
+    public static Properties propertiesOf(String key1, String value1, String key2, String value2, String key3, String value3, String key4, String value4, String key5, String value5) {
+        Properties props = new Properties();
+        props.put(key1, value1);
+        props.put(key2, value2);
+        props.put(key3, value3);
+        props.put(key4, value4);
+        props.put(key5, value5);
+        return props;
+    }
+
+    public static Properties propertiesOf(String key1, String value1, String key2, String value2, String key3, String value3, String key4, String value4, String key5, String value5, String key6, String value6) {
+        Properties props = new Properties();
+        props.put(key1, value1);
+        props.put(key2, value2);
+        props.put(key3, value3);
+        props.put(key4, value4);
+        props.put(key5, value5);
+        props.put(key6, value6);
+        return props;
     }
 
     /**

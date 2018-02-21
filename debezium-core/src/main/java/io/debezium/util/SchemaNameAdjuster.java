@@ -17,9 +17,10 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.ThreadSafe;
 
 /**
- * A validator for Avro schema fullnames. Avro <a href="http://avro.apache.org/docs/current/spec.html#names">rules for
- * fullnames</a> are as follows:
- * 
+ * A adjuster for the names of change data message schemas. Currently, this solely implements the rules required for
+ * using these schemas in Avro messages. Avro <a href="http://avro.apache.org/docs/current/spec.html#names">rules for
+ * schema fullnames</a> are as follows:
+ *
  * <li>Each has a fullname that is composed of two parts; a name and a namespace. Equality of names is defined on the
  * fullname.</li>
  * <li>The name portion of a fullname, record field names, and enum symbols must start with a Latin letter or underscore
@@ -29,22 +30,22 @@ import io.debezium.annotation.ThreadSafe;
  * <li>Equality of names (including field names and enum symbols) as well as fullnames is case-sensitive.</li>
  * </ul>
  * <p>
- * An {@link AvroValidator} can determine if the supplied fullname follows these Avro rules.
- * 
+ * A {@code SchemaNameAdjuster} can determine if the supplied fullname follows these Avro rules.
+ *
  * @author Randall Hauch
  */
 @FunctionalInterface
 @ThreadSafe
-public interface AvroValidator {
+public interface SchemaNameAdjuster {
 
     /**
      * Convert the proposed string to a valid Avro fullname, replacing all invalid characters with the underscore ('_')
      * character.
-     * 
+     *
      * @param proposedName the proposed fullname; may not be null
      * @return the valid fullname for Avro; never null
      */
-    String validate(String proposedName);
+    String adjust(String proposedName);
 
     /**
      * Function used to determine the replacement for a character that is not valid per Avro rules.
@@ -54,7 +55,7 @@ public interface AvroValidator {
     public static interface ReplacementFunction {
         /**
          * Determine the replacement string for the invalid character.
-         * 
+         *
          * @param invalid the invalid character
          * @return the replacement string; may not be null
          */
@@ -69,7 +70,7 @@ public interface AvroValidator {
     public static interface ReplacementOccurred {
         /**
          * Accept that the original value was not Avro-compatible and was replaced.
-         * 
+         *
          * @param original the original value
          * @param replacement the replacement value
          * @param conflictsWithOriginal the other original value that resulted in the same replacement; may be null if there is
@@ -80,7 +81,7 @@ public interface AvroValidator {
         /**
          * Create a new function that calls this function only the first time it sees each unique original, and ignores
          * subsequent calls for originals it has already seen.
-         * 
+         *
          * @return the new function; never null
          */
         default ReplacementOccurred firstTimeOnly() {
@@ -104,7 +105,7 @@ public interface AvroValidator {
 
         /**
          * Create a new function that calls this function and then calls the next function.
-         * 
+         *
          * @param next the function to call after this function; may be null
          * @return the new function; never null
          */
@@ -117,28 +118,28 @@ public interface AvroValidator {
         }
     }
 
-    public static final AvroValidator DEFAULT = create(LoggerFactory.getLogger(AvroValidator.class));
+    public static final SchemaNameAdjuster DEFAULT = create(LoggerFactory.getLogger(SchemaNameAdjuster.class));
 
     /**
-     * Create a stateful Avro fullname validator that logs a warning the first time an invalid fullname is seen and replaced
+     * Create a stateful Avro fullname adjuster that logs a warning the first time an invalid fullname is seen and replaced
      * with a valid fullname and throws an exception. This method replaces all invalid characters with the underscore character
      * ('_').
-     * 
+     *
      * @return the validator; never null
      */
-    public static AvroValidator defaultValidator() {
+    public static SchemaNameAdjuster defaultAdjuster() {
         return DEFAULT;
     }
 
     /**
-     * Create a stateful Avro fullname validator that logs a warning the first time an invalid fullname is seen and replaced
+     * Create a stateful Avro fullname adjuster that logs a warning the first time an invalid fullname is seen and replaced
      * with a valid fullname, and throws an error if the replacement conflicts with that of a different original. This method
      * replaces all invalid characters with the underscore character ('_').
-     * 
+     *
      * @param logger the logger to use; may not be null
      * @return the validator; never null
      */
-    public static AvroValidator create(Logger logger) {
+    public static SchemaNameAdjuster create(Logger logger) {
         return create(logger, (original, replacement, conflict) -> {
             String msg = "The Kafka Connect schema name '" + original +
                     "' is not a valid Avro schema name and its replacement '" + replacement +
@@ -148,14 +149,14 @@ public interface AvroValidator {
     }
 
     /**
-     * Create a stateful Avro fullname validator that logs a warning the first time an invalid fullname is seen and replaced
+     * Create a stateful Avro fullname adjuster that logs a warning the first time an invalid fullname is seen and replaced
      * with a valid fullname. This method replaces all invalid characters with the underscore character ('_').
-     * 
+     *
      * @param logger the logger to use; may not be null
      * @param uponConflict the function to be called when there is a conflict and after that conflict is logged; may be null
      * @return the validator; never null
      */
-    public static AvroValidator create(Logger logger, ReplacementOccurred uponConflict) {
+    public static SchemaNameAdjuster create(Logger logger, ReplacementOccurred uponConflict) {
         ReplacementOccurred handler = (original, replacement, conflictsWith) -> {
             if (conflictsWith != null) {
                 logger.error("The Kafka Connect schema name '{}' is not a valid Avro schema name and its replacement '{}' conflicts with another different schema '{}'",
@@ -172,57 +173,57 @@ public interface AvroValidator {
     }
 
     /**
-     * Create a stateful Avro fullname validator that calls the supplied {@link ReplacementOccurred} function when an invalid
+     * Create a stateful Avro fullname adjuster that calls the supplied {@link ReplacementOccurred} function when an invalid
      * fullname is seen and replaced with a valid fullname. This method replaces all invalid characters with the underscore
      * character ('_').
-     * 
+     *
      * @param uponReplacement the function called each time the original fullname is replaced; may be null
-     * @return the validator; never null
+     * @return the adjuster; never null
      */
-    public static AvroValidator create(ReplacementOccurred uponReplacement) {
+    public static SchemaNameAdjuster create(ReplacementOccurred uponReplacement) {
         return create("_", uponReplacement);
     }
 
     /**
-     * Create a stateful Avro fullname validator that calls the supplied {@link ReplacementOccurred} function when an invalid
+     * Create a stateful Avro fullname adjuster that calls the supplied {@link ReplacementOccurred} function when an invalid
      * fullname is seen and replaced with a valid fullname.
-     * 
+     *
      * @param replacement the character that should be used to replace all invalid characters
      * @param uponReplacement the function called each time the original fullname is replaced; may be null
-     * @return the validator; never null
+     * @return the adjuster; never null
      */
-    public static AvroValidator create(char replacement, ReplacementOccurred uponReplacement) {
+    public static SchemaNameAdjuster create(char replacement, ReplacementOccurred uponReplacement) {
         String replacementStr = "" + replacement;
         return (original) -> validFullname(original, c -> replacementStr, uponReplacement);
     }
 
     /**
-     * Create a stateful Avro fullname validator that calls the supplied {@link ReplacementOccurred} function when an invalid
+     * Create a stateful Avro fullname adjuster that calls the supplied {@link ReplacementOccurred} function when an invalid
      * fullname is seen and replaced with a valid fullname.
-     * 
+     *
      * @param replacement the character sequence that should be used to replace all invalid characters
      * @param uponReplacement the function called each time the original fullname is replaced; may be null
-     * @return the validator; never null
+     * @return the adjuster; never null
      */
-    public static AvroValidator create(String replacement, ReplacementOccurred uponReplacement) {
+    public static SchemaNameAdjuster create(String replacement, ReplacementOccurred uponReplacement) {
         return (original) -> validFullname(original, c -> replacement, uponReplacement);
     }
 
     /**
-     * Create a stateful Avro fullname validator that calls the supplied {@link ReplacementOccurred} function when an invalid
+     * Create a stateful Avro fullname adjuster that calls the supplied {@link ReplacementOccurred} function when an invalid
      * fullname is seen and replaced with a valid fullname.
-     * 
+     *
      * @param function the replacement function
      * @param uponReplacement the function called each time the original fullname is replaced; may be null
-     * @return the validator; never null
+     * @return the adjuster; never null
      */
-    public static AvroValidator create(ReplacementFunction function, ReplacementOccurred uponReplacement) {
+    public static SchemaNameAdjuster create(ReplacementFunction function, ReplacementOccurred uponReplacement) {
         return (original) -> validFullname(original, function, uponReplacement);
     }
 
     /**
      * Determine if the supplied string is a valid Avro namespace.
-     * 
+     *
      * @param fullname the name to be used as an Avro fullname; may not be null
      * @return {@code true} if the fullname satisfies Avro rules, or {@code false} otherwise
      */
@@ -239,7 +240,7 @@ public interface AvroValidator {
 
     /**
      * Determine if the supplied character is a valid first character for Avro fullnames.
-     * 
+     *
      * @param c the character
      * @return {@code true} if the character is a valid first character of an Avro fullname, or {@code false} otherwise
      * @see #isValidFullname(String)
@@ -250,7 +251,7 @@ public interface AvroValidator {
 
     /**
      * Determine if the supplied character is a valid non-first character for Avro fullnames.
-     * 
+     *
      * @param c the character
      * @return {@code true} if the character is a valid non-first character of an Avro fullname, or {@code false} otherwise
      * @see #isValidFullname(String)
@@ -261,7 +262,7 @@ public interface AvroValidator {
 
     /**
      * Convert the proposed string to a valid Avro fullname, replacing all invalid characters with the underscore ('_') character.
-     * 
+     *
      * @param proposedName the proposed fullname; may not be null
      * @return the valid fullname for Avro; never null
      */
@@ -271,7 +272,7 @@ public interface AvroValidator {
 
     /**
      * Convert the proposed string to a valid Avro fullname, replacing all invalid characters with the supplied string.
-     * 
+     *
      * @param proposedName the proposed fullname; may not be null
      * @param replacement the character sequence that should be used to replace all invalid characters
      * @return the valid fullname for Avro; never null
@@ -282,7 +283,7 @@ public interface AvroValidator {
 
     /**
      * Convert the proposed string to a valid Avro fullname, using the supplied function to replace all invalid characters.
-     * 
+     *
      * @param proposedName the proposed fullname; may not be null
      * @param replacement the character sequence that should be used to replace all invalid characters
      * @return the valid fullname for Avro; never null
@@ -293,7 +294,7 @@ public interface AvroValidator {
 
     /**
      * Convert the proposed string to a valid Avro fullname, using the supplied function to replace all invalid characters.
-     * 
+     *
      * @param proposedName the proposed fullname; may not be null
      * @param replacement the character sequence that should be used to replace all invalid characters
      * @param uponReplacement the function to be called every time the proposed name is invalid and replaced; may be null

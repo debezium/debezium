@@ -11,11 +11,24 @@ import io.debezium.relational.TableId;
 /**
  * Generator of topic names for {@link io.debezium.relational.Table table ids} used by the Postgres connector to determine
  * which Kafka topics contain which messages
- * 
+ *
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 public interface TopicSelector {
-            
+
+    public static TopicSelector create(PostgresConnectorConfig config) {
+        PostgresConnectorConfig.TopicSelectionStrategy topicSelectionStrategy = config.topicSelectionStrategy();
+
+        switch (topicSelectionStrategy) {
+            case TOPIC_PER_SCHEMA:
+                return TopicSelector.topicPerSchema(config.serverName());
+            case TOPIC_PER_TABLE:
+                return TopicSelector.topicPerTable(config.serverName());
+            default:
+                throw new IllegalArgumentException("Unknown topic selection strategy: " + topicSelectionStrategy);
+        }
+    }
+
     /**
      * Generates a topic name for each table, based on the table schema, table name and a prefix
      *
@@ -23,9 +36,9 @@ public interface TopicSelector {
      * @return a {@link TopicSelector} instance, never {@code null}
      */
     static TopicSelector topicPerTable(String prefix) {
-        return tableId -> String.join(".", prefix, tableId.schema(), tableId.table());     
+        return tableId -> String.join(".", prefix, tableId.schema(), tableId.table());
     }
-     
+
     /**
      * Generates a topic name for each table, based on the table schema and a prefix
      *
@@ -35,10 +48,10 @@ public interface TopicSelector {
     static TopicSelector topicPerSchema(String prefix) {
         return tableId -> String.join(".", prefix, tableId.schema());
     }
-    
+
     /**
      * Returns the name of the Kafka topic for a given table identifier
-     * 
+     *
      * @param tableId the table identifier, never {@code null}
      * @return the name of the Kafka topic, never {@code null}
      */

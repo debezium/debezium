@@ -7,77 +7,65 @@
 package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
-import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.apache.kafka.connect.source.SourceTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
-import io.debezium.config.ConfigurationDefaults;
+import io.debezium.config.Field;
+import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
-import io.debezium.time.Temporals;
-import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
-import io.debezium.util.Metronome;
-import io.debezium.util.Threads;
-import io.debezium.util.Threads.Timer;
 
 /**
  * Kafka connect source task which uses Postgres logical decoding over a streaming replication connection to process DB changes.
  *
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
-public class PostgresConnectorTask extends SourceTask {
+public class PostgresConnectorTask extends BaseSourceTask {
 
     private static final String CONTEXT_NAME = "postgres-connector-task";
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final AtomicBoolean running = new AtomicBoolean(false);
 
     private PostgresTaskContext taskContext;
-    private BlockingQueue<ChangeEvent> queue;
-    private int maxBatchSize;
     private RecordsProducer producer;
-    private Metronome metronome;
-    private Duration pollInterval;
     private volatile long lastProcessedLsn;
 
+    /**
+     * A queue with change events filled by the snapshot and streaming producers, consumed
+     * by Kafka Connect via this task.
+     */
+    private ChangeEventQueue<ChangeEvent> changeEventQueue;
+
     @Override
-    public void start(Map<String, String> props) {
+    public void start(Configuration config) {
         if (running.get()) {
             // already running
             return;
         }
 
-        if (context == null) {
-            throw new ConnectException("Unexpected null context");
-        }
+        PostgresConnectorConfig connectorConfig = new PostgresConnectorConfig(config);
 
-        // Validate the configuration ...
-        PostgresConnectorConfig config = new PostgresConnectorConfig(Configuration.from(props));
-        if (!config.validateAndRecord(logger::error)) {
-            throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
+        // Create type registry
+        TypeRegistry typeRegistry;
+        try (final PostgresConnection connection = new PostgresConnection(connectorConfig.jdbcConfig())) {
+            typeRegistry = connection.getTypeRegistry();
         }
 
         // create the task context and schema...
-        PostgresSchema schema = new PostgresSchema(config);
-        this.taskContext = new PostgresTaskContext(config, schema);
+        TopicSelector topicSelector = TopicSelector.create(connectorConfig);
+        PostgresSchema schema = new PostgresSchema(connectorConfig, typeRegistry, topicSelector);
+        this.taskContext = new PostgresTaskContext(connectorConfig, schema, topicSelector);
 
-        // create the queue in which records will be produced
-        this.queue = new LinkedBlockingDeque<>(config.maxQueueSize());
-        this.maxBatchSize = config.maxBatchSize();
-
-        SourceInfo sourceInfo = new SourceInfo(config.serverName());
+        SourceInfo sourceInfo = new SourceInfo(connectorConfig.serverName());
         Map<String, Object> existingOffset = context.offsetStorageReader().offset(sourceInfo.partition());
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
@@ -88,27 +76,27 @@ public class PostgresConnectorTask extends SourceTask {
 
             if (existingOffset == null) {
                 logger.info("No previous offset found");
-                if (config.snapshotNeverAllowed()) {
+                if (connectorConfig.snapshotNeverAllowed()) {
                     logger.info("Snapshots are not allowed as per configuration, starting streaming logical changes only");
                     producer = new RecordsStreamProducer(taskContext, sourceInfo);
                 } else {
                     // otherwise we always want to take a snapshot at startup
-                    createSnapshotProducer(taskContext, sourceInfo, config.initialOnlySnapshot());
+                    createSnapshotProducer(taskContext, sourceInfo, connectorConfig.initialOnlySnapshot());
                 }
             } else {
                 sourceInfo.load(existingOffset);
                 logger.info("Found previous offset {}", sourceInfo);
                 if (sourceInfo.isSnapshotInEffect()) {
-                    if (config.snapshotNeverAllowed()) {
+                    if (connectorConfig.snapshotNeverAllowed()) {
                         // No snapshots are allowed
                         String msg = "The connector previously stopped while taking a snapshot, but now the connector is configured "
                                      + "to never allow snapshots. Reconfigure the connector to use snapshots initially or when needed.";
                         throw new ConnectException(msg);
                     } else {
                         logger.info("Found previous incomplete snapshot");
-                        createSnapshotProducer(taskContext, sourceInfo, config.initialOnlySnapshot());
+                        createSnapshotProducer(taskContext, sourceInfo, connectorConfig.initialOnlySnapshot());
                     }
-                } else if (config.alwaysTakeSnapshot()) {
+                } else if (connectorConfig.alwaysTakeSnapshot()) {
                     logger.info("Taking a new snapshot as per configuration");
                     producer = new RecordsSnapshotProducer(taskContext, sourceInfo, true);
                 } else {
@@ -118,28 +106,17 @@ public class PostgresConnectorTask extends SourceTask {
                 }
             }
 
-            metronome = Metronome.sleeper(config.pollIntervalMs(), TimeUnit.MILLISECONDS, Clock.SYSTEM);
-            pollInterval = Duration.ofMillis(config.pollIntervalMs());
-            producer.start(this::enqueueRecord);
+            changeEventQueue = new ChangeEventQueue.Builder<ChangeEvent>()
+                .pollInterval(connectorConfig.getPollInterval())
+                .maxBatchSize(connectorConfig.getMaxBatchSize())
+                .maxQueueSize(connectorConfig.getMaxQueueSize())
+                .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
+                .build();
+
+            producer.start(changeEventQueue::enqueue, changeEventQueue::producerFailure);
             running.compareAndSet(false, true);
         }  catch (SQLException e) {
             throw new ConnectException(e);
-        } finally {
-            previousContext.restore();
-        }
-    }
-
-    private void enqueueRecord(ChangeEvent record) {
-        LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
-        try {
-            queue.put(record);
-            if (logger.isDebugEnabled()) {
-                logger.debug("Placed source record '{}' into queue", record);
-            }
-        } catch (InterruptedException e) {
-            logger.debug("received interrupt request");
-            // clear the interrupted status
-            Thread.interrupted();
         } finally {
             previousContext.restore();
         }
@@ -164,43 +141,19 @@ public class PostgresConnectorTask extends SourceTask {
 
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
-        LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
-        try {
-            logger.debug("polling records...");
-            List<ChangeEvent> events = new ArrayList<>();
-            final Timer timeout = Threads.timer(Clock.SYSTEM, Temporals.max(pollInterval, ConfigurationDefaults.RETURN_CONTROL_INTERVAL));
-            while (running.get() && queue.drainTo(events, maxBatchSize) == 0) {
-                if (taskContext.getTaskFailure() != null) {
-                    throw new ConnectException(taskContext.getTaskFailure());
-                }
-                try {
-                    logger.debug("no records available yet, sleeping a bit...");
-                    // no records yet, so wait a bit
-                    metronome.pause();
-                    if (timeout.expired()) {
-                        break;
-                    }
-                    logger.debug("checking for more records...");
-                } catch (InterruptedException e) {
-                    // we've been requested to stop polling
-                    Thread.interrupted();
+        List<ChangeEvent> events = changeEventQueue.poll();
+
+        if (events.size() > 0) {
+            for (int i = events.size() - 1; i >= 0; i--) {
+                SourceRecord r = events.get(i).getRecord();
+                if (events.get(i).isLastOfLsn()) {
+                    Map<String, ?> offset = r.sourceOffset();
+                    lastProcessedLsn = (Long)offset.get(SourceInfo.LSN_KEY);
                     break;
                 }
             }
-            if (events.size() > 0) {
-                for (int i = events.size() - 1; i >= 0; i--) {
-                    SourceRecord r = events.get(i).getRecord();
-                    if (events.get(i).isLastOfLsn()) {
-                        Map<String, ?> offset = r.sourceOffset();
-                        lastProcessedLsn = (Long)offset.get(SourceInfo.LSN_KEY);
-                        break;
-                    }
-                }
-            }
-            return events.stream().map(ChangeEvent::getRecord).collect(Collectors.toList());
-        } finally {
-            previousContext.restore();
         }
+        return events.stream().map(ChangeEvent::getRecord).collect(Collectors.toList());
     }
 
     @Override
@@ -213,5 +166,10 @@ public class PostgresConnectorTask extends SourceTask {
     @Override
     public String version() {
         return Module.version();
+    }
+
+    @Override
+    protected Iterable<Field> getAllConfigurationFields() {
+        return PostgresConnectorConfig.ALL_FIELDS;
     }
 }

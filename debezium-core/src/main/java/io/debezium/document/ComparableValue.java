@@ -203,6 +203,7 @@ final class ComparableValue implements Value {
             double raw = ((Double) value).doubleValue();
             if (isValidFloat(raw)) return Float.valueOf((float) raw);
         }
+        if (value instanceof Number) return ((Number)value).floatValue();
         return null;
     }
 

@@ -275,7 +275,7 @@ public class MySqlTaskContextTest {
         context = new MySqlTaskContext(config, false);
         context.start();
 
-        context.jdbc().config().forEach((k, v) -> {
+        context.getConnectionContext().jdbc().config().forEach((k, v) -> {
             assertThat(k).doesNotMatch("^history");
         });
     }

@@ -7,12 +7,12 @@ package io.debezium.connector.mongodb;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonTimestamp;
@@ -21,8 +21,9 @@ import org.bson.types.BSONTimestamp;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.util.AvroValidator;
+import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.util.Collect;
+import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * Information about the source of information, which includes the partitions and offsets within those partitions. The MongoDB
@@ -34,14 +35,14 @@ import io.debezium.util.Collect;
  * The {@link #partition(String) source partition} information identifies the particular MongoDB replica set and the connector's
  * logical name of the MongoDB server. A JSON-like representation of the source partition for a database named "customers" hosted
  * in a MongoDB replica set named "myMongoServer" is as follows:
- * 
+ *
  * <pre>
  * {
  *     "server_id" : "myMongoServer",
  *     "replicaSetName" : "rs0"
  * }
  * </pre>
- * 
+ *
  * <p>
  * The {@link #lastOffset(String) source offset} information describes the position within a particular partition of each record.
  * Since each event in MongoDB's oplog is identified by a {@link BSONTimestamp} that tracks the time and the order of the
@@ -50,7 +51,7 @@ import io.debezium.util.Collect;
  * included in the offset.) And, if an initial sync is in progress, the offset will include the {@code initsync} field.
  * <p>
  * Here's a JSON-like representation of an example timestamp:
- * 
+ *
  * <pre>
  * {
  *         "sec" = 1422998530,
@@ -59,11 +60,11 @@ import io.debezium.util.Collect;
  *         "initsync" = true
  * }
  * </pre>
- * 
+ *
  * @author Randall Hauch
  */
 @NotThreadSafe
-public final class SourceInfo {
+public final class SourceInfo extends AbstractSourceInfo {
 
     public static final int SCHEMA_VERSION = 1;
 
@@ -83,8 +84,8 @@ public final class SourceInfo {
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition(String)} and {@link #lastOffset}
      * information.
      */
-    private final Schema SOURCE_SCHEMA = SchemaBuilder.struct()
-                                                      .name(AvroValidator.defaultValidator().validate("io.debezium.connector.mongo.Source"))
+    private final Schema SOURCE_SCHEMA = schemaBuilder()
+                                                      .name(SchemaNameAdjuster.defaultAdjuster().adjust("io.debezium.connector.mongo.Source"))
                                                       .version(SCHEMA_VERSION)
                                                       .field(SERVER_NAME, Schema.STRING_SCHEMA)
                                                       .field(REPLICA_SET_NAME, Schema.STRING_SCHEMA)
@@ -133,7 +134,7 @@ public final class SourceInfo {
 
     /**
      * Get the replica set name for the given partition.
-     * 
+     *
      * @param partition the partition map
      * @return the replica set name (when the partition is valid), or {@code null} if the partition is null or has no replica
      *         set name entry
@@ -145,17 +146,18 @@ public final class SourceInfo {
     private final String serverName;
 
     public SourceInfo(String serverName) {
-        this.serverName = serverName;
-        assert this.serverName != null;
+        super(Module.version());
+        this.serverName = Objects.requireNonNull(serverName);
     }
 
     /**
      * Get a {@link Schema} representation of the source {@link #partition(String) partition} and {@link #lastOffset(String)
      * offset} information.
-     * 
+     *
      * @return the source partition and offset {@link Schema}; never null
      * @see #offsetStructForEvent(String, Document)
      */
+    @Override
     public Schema schema() {
         return SOURCE_SCHEMA;
     }
@@ -163,7 +165,7 @@ public final class SourceInfo {
     /**
      * Get the Kafka Connect detail about the source "partition" for the given database in the replica set. If the database is
      * not known, this method records the new partition.
-     * 
+     *
      * @param replicaSetName the name of the replica set name for which the partition is to be obtained; may not be null
      * @return the source partition information; never null
      */
@@ -176,7 +178,7 @@ public final class SourceInfo {
 
     /**
      * Get the MongoDB timestamp of the last offset position for the replica set.
-     * 
+     *
      * @param replicaSetName the name of the replica set name for which the new offset is to be obtained; may not be null
      * @return the timestamp of the last offset, or the beginning of time if there is none
      */
@@ -189,7 +191,7 @@ public final class SourceInfo {
      * Get the Kafka Connect detail about the source "offset" for the named database, which describes the given position in the
      * database where we have last read. If the database has not yet been seen, this records the starting position
      * for that database. However, if there is a position for the database, the offset representation is returned.
-     * 
+     *
      * @param replicaSetName the name of the replica set name for which the new offset is to be obtained; may not be null
      * @return a copy of the current offset for the database; never null
      */
@@ -210,7 +212,7 @@ public final class SourceInfo {
     /**
      * Get a {@link Struct} representation of the source {@link #partition(String) partition} and {@link #lastOffset(String)
      * offset} information where we have last read. The Struct complies with the {@link #schema} for the MongoDB connector.
-     * 
+     *
      * @param replicaSetName the name of the replica set name for which the new offset is to be obtained; may not be null
      * @param collectionId the event's collection identifier; may not be null
      * @return the source partition and offset {@link Struct}; never null
@@ -224,7 +226,7 @@ public final class SourceInfo {
     /**
      * Get a {@link Struct} representation of the source {@link #partition(String) partition} and {@link #lastOffset(String)
      * offset} information. The Struct complies with the {@link #schema} for the MongoDB connector.
-     * 
+     *
      * @param replicaSetName the name of the replica set name for which the new offset is to be obtained; may not be null
      * @param oplogEvent the replica set oplog event that was last read; may be null if the position is the start of
      *            the oplog
@@ -246,7 +248,7 @@ public final class SourceInfo {
 
     /**
      * Utility to extract the {@link BsonTimestamp timestamp} value from the event.
-     * 
+     *
      * @param oplogEvent the event
      * @return the timestamp, or null if the event is null or there is no {@code ts} field
      */
@@ -256,7 +258,7 @@ public final class SourceInfo {
 
     private Struct offsetStructFor(String replicaSetName, String namespace, Position position, boolean isInitialSync) {
         if (position == null) position = INITIAL_POSITION;
-        Struct result = new Struct(SOURCE_SCHEMA);
+        Struct result = super.struct();
         result.put(SERVER_NAME, serverName);
         result.put(REPLICA_SET_NAME, replicaSetName);
         result.put(NAMESPACE, namespace);
@@ -271,7 +273,7 @@ public final class SourceInfo {
 
     /**
      * Determine whether we have previously recorded a MongoDB timestamp for the replica set.
-     * 
+     *
      * @param replicaSetName the name of the replica set name; may not be null
      * @return {@code true} if an offset has been recorded for the replica set, or {@code false} if the replica set has not
      *         yet been seen
@@ -283,7 +285,7 @@ public final class SourceInfo {
     /**
      * Set the source offset, as read from Kafka Connect, for the given replica set. This method does nothing if the supplied map
      * is null.
-     * 
+     *
      * @param replicaSetName the name of the replica set name for which the new offset is to be obtained; may not be null
      * @param sourceOffset the previously-recorded Kafka Connect source offset; may be null
      * @return {@code true} if the offset was recorded, or {@code false} if the source offset is null
@@ -303,7 +305,7 @@ public final class SourceInfo {
     /**
      * Set the source offset, as read from Kafka Connect, for the given replica set. This method does nothing if the supplied map
      * is null.
-     * 
+     *
      * @param partition the partition information; may not be null
      * @param sourceOffset the previously-recorded Kafka Connect source offset; may be null
      * @return {@code true} if the offset was recorded, or {@code false} if the source offset is null
@@ -316,7 +318,7 @@ public final class SourceInfo {
 
     /**
      * Record that an initial sync has started for the given replica set.
-     * 
+     *
      * @param replicaSetName the name of the replica set; never null
      */
     public void startInitialSync(String replicaSetName) {
@@ -325,7 +327,7 @@ public final class SourceInfo {
 
     /**
      * Record that an initial sync has stopped for the given replica set.
-     * 
+     *
      * @param replicaSetName the name of the replica set; never null
      */
     public void stopInitialSync(String replicaSetName) {
@@ -334,7 +336,7 @@ public final class SourceInfo {
 
     /**
      * Determine if the initial sync for the given replica set is still ongoing.
-     * 
+     *
      * @param replicaSetName the name of the replica set; never null
      * @return {@code true} if the initial sync for this replica is still ongoing or was not completed before restarting, or
      *         {@code false} if there is currently no initial sync operation for this replica set

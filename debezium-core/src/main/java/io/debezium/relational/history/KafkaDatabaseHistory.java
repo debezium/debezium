@@ -6,14 +6,20 @@
 package io.debezium.relational.history;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Config;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -23,10 +29,12 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
+import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -46,6 +54,13 @@ import io.debezium.util.Collect;
  */
 @NotThreadSafe
 public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
+
+    /**
+     * The name of broker property defining default replication factor for topics without the explicit setting.
+     *
+     * @see kafka.server.KafkaConfig.DefaultReplicationFactorProp
+     */
+    private static final String DEFAULT_TOPIC_REPLICATION_FACTOR_PROP_NAME = "default.replication.factor";
 
     public static final Field TOPIC = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.topic")
                                            .withDisplayName("Database history topic name")
@@ -91,6 +106,8 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
 
     private static final String CONSUMER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "consumer.";
     private static final String PRODUCER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "producer.";
+
+    private static final Duration KAFKA_QUERY_TIMEOUT = Duration.ofSeconds(3);
 
     /**
      * The one and only partition of the history topic.
@@ -141,6 +158,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                                     .withDefault(ProducerConfig.BUFFER_MEMORY_CONFIG, 1024 * 1024) // 1MB
                                     .withDefault(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
                                     .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
+                                    .withDefault(ProducerConfig.MAX_BLOCK_MS_CONFIG, 10_000) // wait at most this if we can't reach Kafka
                                     .build();
         logger.info("KafkaDatabaseHistory Consumer config: " + consumerConfig.withMaskedPasswords());
         logger.info("KafkaDatabaseHistory Producer config: " + producerConfig.withMaskedPasswords());
@@ -301,7 +319,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     @Override
     public String toString() {
         if (topicName != null) {
-            return "Kakfa topic " + topicName + ":" + PARTITION
+            return "Kafka topic " + topicName + ":" + PARTITION
                     + " using brokers at " + producerConfig.getString(BOOTSTRAP_SERVERS);
         }
         return "Kafka topic";
@@ -309,5 +327,45 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
 
     protected static String consumerConfigPropertyName(String kafkaConsumerPropertyName) {
         return CONSUMER_PREFIX + kafkaConsumerPropertyName;
+    }
+
+    @Override
+    public void initializeStorage() {
+        super.initializeStorage();
+        final AdminClient admin = AdminClient.create(this.producerConfig.asProperties());
+        try {
+            // Find default replication factor
+            Config brokerConfig = getKafkaBrokerConfig(admin);
+            final short replicationFactor = Short.parseShort(brokerConfig.get(DEFAULT_TOPIC_REPLICATION_FACTOR_PROP_NAME).value());
+
+            // Create topic
+            final NewTopic topic = new NewTopic(topicName, (short)1, replicationFactor);
+            topic.configs(Collect.hashMapOf("cleanup.policy", "delete", "retention.ms", Long.toString(Long.MAX_VALUE)));
+            admin.createTopics(Collections.singleton(topic));
+
+            logger.info("Database history topic '{}' created", topic);
+        }
+        catch (Exception e) {
+            throw new ConnectException("Creation of database history topic failed, please create the topic manually", e);
+        }
+    }
+
+    private Config getKafkaBrokerConfig(AdminClient admin) throws Exception {
+        final Collection<Node> nodes = admin.describeCluster().nodes().get(KAFKA_QUERY_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+        if (nodes.isEmpty()) {
+            throw new ConnectException("No brokers available to obtain default settings");
+        }
+
+        String nodeId = nodes.iterator().next().idString();
+        Set<ConfigResource> resources = Collections.singleton(new ConfigResource(ConfigResource.Type.BROKER, nodeId));
+        final Map<ConfigResource, Config> configs = admin.describeConfigs(resources).all().get(
+                KAFKA_QUERY_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS
+        );
+
+        if (configs.isEmpty()) {
+            throw new ConnectException("No configs have been received");
+        }
+
+        return configs.values().iterator().next();
     }
 }

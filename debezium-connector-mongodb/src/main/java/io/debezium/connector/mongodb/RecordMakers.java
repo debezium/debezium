@@ -9,10 +9,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
-import com.mongodb.DBCollection;
-import com.mongodb.MongoClient;
-import com.mongodb.util.JSONSerializers;
-import com.mongodb.util.ObjectSerializer;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -23,16 +19,21 @@ import org.bson.json.JsonWriterSettings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mongodb.DBCollection;
+import com.mongodb.MongoClient;
+import com.mongodb.util.JSONSerializers;
+import com.mongodb.util.ObjectSerializer;
+
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.data.Json;
 import io.debezium.function.BlockingConsumer;
-import io.debezium.util.AvroValidator;
+import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * A component that makes {@link SourceRecord}s for {@link CollectionId collections} and submits them to a consumer.
- * 
+ *
  * @author Randall Hauch
  */
 @ThreadSafe
@@ -47,38 +48,40 @@ public class RecordMakers {
     }
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
-    private final AvroValidator schemaNameValidator = AvroValidator.create(logger);
+    private final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(logger);
     private final SourceInfo source;
     private final TopicSelector topicSelector;
     private final Map<CollectionId, RecordsForCollection> recordMakerByCollectionId = new HashMap<>();
     private final Function<Document, String> valueTransformer;
     private final BlockingConsumer<SourceRecord> recorder;
+    private final boolean emitTombstonesOnDelete;
 
     /**
      * Create the record makers using the supplied components.
-     * 
+     *
      * @param source the connector's source information; may not be null
      * @param topicSelector the selector for topic names; may not be null
      * @param recorder the potentially blocking consumer function to be called for each generated record; may not be null
      */
-    public RecordMakers(SourceInfo source, TopicSelector topicSelector, BlockingConsumer<SourceRecord> recorder) {
+    public RecordMakers(SourceInfo source, TopicSelector topicSelector, BlockingConsumer<SourceRecord> recorder, boolean emitTombstonesOnDelete) {
         this.source = source;
         this.topicSelector = topicSelector;
         JsonWriterSettings writerSettings = new JsonWriterSettings(JsonMode.STRICT, "", ""); // most compact JSON
         this.valueTransformer = (doc) -> doc.toJson(writerSettings);
         this.recorder = recorder;
+        this.emitTombstonesOnDelete = emitTombstonesOnDelete;
     }
 
     /**
      * Obtain the record maker for the given table, using the specified columns and sending records to the given consumer.
-     * 
+     *
      * @param collectionId the identifier of the collection for which records are to be produced; may not be null
      * @return the table-specific record maker; may be null if the table is not included in the connector
      */
     public RecordsForCollection forCollection(CollectionId collectionId) {
         return recordMakerByCollectionId.computeIfAbsent(collectionId, id -> {
             String topicName = topicSelector.getTopic(collectionId);
-            return new RecordsForCollection(collectionId, source, topicName, schemaNameValidator, valueTransformer, recorder);
+            return new RecordsForCollection(collectionId, source, topicName, schemaNameAdjuster, valueTransformer, recorder, emitTombstonesOnDelete);
         });
     }
 
@@ -95,20 +98,21 @@ public class RecordMakers {
         private final Schema valueSchema;
         private final Function<Document, String> valueTransformer;
         private final BlockingConsumer<SourceRecord> recorder;
+        private final boolean emitTombstonesOnDelete;
 
-        protected RecordsForCollection(CollectionId collectionId, SourceInfo source, String topicName, AvroValidator validator,
-                Function<Document, String> valueTransformer, BlockingConsumer<SourceRecord> recorder) {
+        protected RecordsForCollection(CollectionId collectionId, SourceInfo source, String topicName, SchemaNameAdjuster adjuster,
+                Function<Document, String> valueTransformer, BlockingConsumer<SourceRecord> recorder, boolean emitTombstonesOnDelete) {
             this.sourcePartition = source.partition(collectionId.replicaSetName());
             this.collectionId = collectionId;
             this.replicaSetName = this.collectionId.replicaSetName();
             this.source = source;
             this.topicName = topicName;
             this.keySchema = SchemaBuilder.struct()
-                                          .name(validator.validate(topicName + ".Key"))
+                                          .name(adjuster.adjust(topicName + ".Key"))
                                           .field("id", Schema.STRING_SCHEMA)
                                           .build();
             this.valueSchema = SchemaBuilder.struct()
-                                            .name(validator.validate(topicName + ".Envelope"))
+                                            .name(adjuster.adjust(topicName + ".Envelope"))
                                             .field(FieldName.AFTER, Json.builder().optional().build())
                                             .field("patch", Json.builder().optional().build())
                                             .field(FieldName.SOURCE, source.schema())
@@ -118,11 +122,12 @@ public class RecordMakers {
             JsonWriterSettings writerSettings = new JsonWriterSettings(JsonMode.STRICT, "", ""); // most compact JSON
             this.valueTransformer = (doc) -> doc.toJson(writerSettings, MongoClient.getDefaultCodecRegistry().get(Document.class));
             this.recorder = recorder;
+            this.emitTombstonesOnDelete = emitTombstonesOnDelete;
         }
 
         /**
          * Get the identifier of the collection to which this producer applies.
-         * 
+         *
          * @return the collection ID; never null
          */
         public CollectionId collectionId() {
@@ -131,7 +136,7 @@ public class RecordMakers {
 
         /**
          * Generate and record one or more source records to describe the given object.
-         * 
+         *
          * @param id the identifier of the collection in which the document exists; may not be null
          * @param object the document; may not be null
          * @param timestamp the timestamp at which this operation is occurring
@@ -146,10 +151,9 @@ public class RecordMakers {
             assert objId != null;
             return createRecords(sourceValue, offset, Operation.READ, objId, object, timestamp);
         }
-
         /**
          * Generate and record one or more source records to describe the given event.
-         * 
+         *
          * @param oplogEvent the event; may not be null
          * @param timestamp the timestamp at which this operation is occurring
          * @return the number of source records that were generated; will be 0 or more
@@ -197,7 +201,7 @@ public class RecordMakers {
             SourceRecord record = new SourceRecord(sourcePartition, offset, topicName, partition, keySchema, key, valueSchema, value);
             recorder.accept(record);
 
-            if (operation == Operation.DELETE) {
+            if (operation == Operation.DELETE && emitTombstonesOnDelete) {
                 // Also generate a tombstone event ...
                 record = new SourceRecord(sourcePartition, offset, topicName, partition, keySchema, key, null, null);
                 recorder.accept(record);

@@ -29,6 +29,7 @@ import com.mongodb.util.JSONSerializers;
 import io.debezium.connector.mongodb.RecordMakers.RecordsForCollection;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
+import io.debezium.doc.FixFor;
 
 /**
  * @author Randall Hauch
@@ -45,13 +46,16 @@ public class RecordMakersTest {
     private RecordMakers recordMakers;
     private TopicSelector topicSelector;
     private List<SourceRecord> produced;
+    private boolean emitTombstonesOnDelete;
+
 
     @Before
     public void beforeEach() {
         source = new SourceInfo(SERVER_NAME);
         topicSelector = TopicSelector.defaultSelector(PREFIX);
         produced = new ArrayList<>();
-        recordMakers = new RecordMakers(source, topicSelector, produced::add);
+        emitTombstonesOnDelete = true;
+        recordMakers = new RecordMakers(source, topicSelector, produced::add, emitTombstonesOnDelete);
     }
 
     @Test
@@ -159,6 +163,39 @@ public class RecordMakersTest {
         assertThat(key2.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
         assertThat(tombstone.value()).isNull();
         assertThat(tombstone.valueSchema()).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-582")
+    public void shouldGenerateRecordForDeleteEventWithoutTombstone() throws InterruptedException {
+        RecordMakers recordMakers = new RecordMakers(source, topicSelector, produced::add, false);
+
+        BsonTimestamp ts = new BsonTimestamp(1000, 1);
+        CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
+        ObjectId objId = new ObjectId();
+        Document obj = new Document("_id", objId);
+        Document event = new Document().append("o", obj)
+                .append("ns", "dbA.c1")
+                .append("ts", ts)
+                .append("h", new Long(12345678))
+                .append("op", "d");
+        RecordsForCollection records = recordMakers.forCollection(collectionId);
+        records.recordEvent(event, 1002);
+        assertThat(produced.size()).isEqualTo(1);
+
+        SourceRecord record = produced.get(0);
+        Struct key = (Struct) record.key();
+        Struct value = (Struct) record.value();
+        assertThat(key.schema()).isSameAs(record.keySchema());
+        assertThat(key.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
+        assertThat(value.schema()).isSameAs(record.valueSchema());
+        assertThat(value.getString(FieldName.AFTER)).isNull();
+        assertThat(value.getString("patch")).isNull();
+        assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.DELETE.code());
+        assertThat(value.getInt64(FieldName.TIMESTAMP)).isEqualTo(1002L);
+        Struct actualSource = value.getStruct(FieldName.SOURCE);
+        Struct expectedSource = source.lastOffsetStruct("rs0", collectionId);
+        assertThat(actualSource).isEqualTo(expectedSource);
     }
 
     @Test

@@ -912,7 +912,7 @@ public abstract class ConnectorOutputTest {
             // Get ready to run the connector one or more times ...
             do {
                 // Each time create a thread that will stop our connector if we don't get enough results
-                Thread timeoutThread = Threads.timeout(spec.name() + "-timeout",
+                Thread timeoutThread = Threads.timeout(spec.name() + "-connector-output",
                                                        connectorTimeoutInSeconds, TimeUnit.SECONDS,
                                                        timeSinceLastRecord,
                                                        engine::stop);

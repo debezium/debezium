@@ -13,12 +13,13 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.apache.kafka.connect.source.SourceTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
+import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.util.LoggingContext.PreviousContext;
 
@@ -29,10 +30,11 @@ import io.debezium.util.LoggingContext.PreviousContext;
  * @author Randall Hauch
  */
 @NotThreadSafe
-public final class MySqlConnectorTask extends SourceTask {
+public final class MySqlConnectorTask extends BaseSourceTask {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private volatile MySqlTaskContext taskContext;
+    private volatile MySqlJdbcContext connectionContext;
     private volatile ChainedReader readers;
 
     /**
@@ -50,19 +52,11 @@ public final class MySqlConnectorTask extends SourceTask {
     }
 
     @Override
-    public synchronized void start(Map<String, String> props) {
-        if (context == null) {
-            throw new ConnectException("Unexpected null context");
-        }
-
-        // Validate the configuration ...
-        final Configuration config = Configuration.from(props);
-        if (!config.validateAndRecord(MySqlConnectorConfig.ALL_FIELDS, logger::error)) {
-            throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
-        }
-
+    public synchronized void start(Configuration config) {
         // Create and start the task context ...
         this.taskContext = new MySqlTaskContext(config);
+        this.connectionContext = taskContext.getConnectionContext();
+
         PreviousContext prevLoggingContext = this.taskContext.configureLoggingContext("task");
         try {
             this.taskContext.start();
@@ -94,6 +88,7 @@ public final class MySqlConnectorTask extends SourceTask {
                         String msg = "The db history topic is missing. You may attempt to recover it by reconfiguring the connector to " + SnapshotMode.SCHEMA_ONLY_RECOVERY;
                         throw new ConnectException(msg);
                     }
+                    taskContext.initializeHistoryStorage();
                 } else {
 
                     // Before anything else, recover the database history to the specified binlog coordinates ...
@@ -128,6 +123,7 @@ public final class MySqlConnectorTask extends SourceTask {
 
             } else {
                 // We have no recorded offsets ...
+                taskContext.initializeHistoryStorage();
                 if (taskContext.isSnapshotNeverAllowed()) {
                     // We're not allowed to take a snapshot, so instead we have to assume that the binlog contains the
                     // full history of the database.
@@ -161,27 +157,27 @@ public final class MySqlConnectorTask extends SourceTask {
             // Check whether the row-level binlog is enabled ...
             final boolean rowBinlogEnabled = isRowBinlogEnabled();
 
+            ChainedReader.Builder chainedReaderBuilder = new ChainedReader.Builder();
+
             // Set up the readers, with a callback to `completeReaders` so that we know when it is finished ...
-            readers = new ChainedReader();
-            readers.uponCompletion(this::completeReaders);
             BinlogReader binlogReader = new BinlogReader("binlog", taskContext);
             if (startWithSnapshot) {
                 // We're supposed to start with a snapshot, so set that up ...
                 SnapshotReader snapshotReader = new SnapshotReader("snapshot", taskContext);
                 if (snapshotEventsAreInserts) snapshotReader.generateInsertEvents();
-                readers.add(snapshotReader);
+                chainedReaderBuilder.addReader(snapshotReader);
 
                 if (taskContext.isInitialSnapshotOnly()) {
                     logger.warn("This connector will only perform a snapshot, and will stop after that completes.");
-                    readers.add(new BlockingReader("blocker"));
-                    readers.uponCompletion("Connector configured to only perform snapshot, and snapshot completed successfully. Connector will terminate.");
+                    chainedReaderBuilder.addReader(new BlockingReader("blocker"));
+                    chainedReaderBuilder.completionMessage("Connector configured to only perform snapshot, and snapshot completed successfully. Connector will terminate.");
                 } else {
                     if (!rowBinlogEnabled) {
                         throw new ConnectException("The MySQL server is not configured to use a row-level binlog, which is "
                                 + "required for this connector to work properly. Change the MySQL configuration to use a "
                                 + "row-level binlog and restart the connector.");
                     }
-                    readers.add(binlogReader);
+                    chainedReaderBuilder.addReader(binlogReader);
                 }
             } else {
                 if (!rowBinlogEnabled) {
@@ -189,8 +185,11 @@ public final class MySqlConnectorTask extends SourceTask {
                             "The MySQL server does not appear to be using a row-level binlog, which is required for this connector to work properly. Enable this mode and restart the connector.");
                 }
                 // We're going to start by reading the binlog ...
-                readers.add(binlogReader);
+                chainedReaderBuilder.addReader(binlogReader);
             }
+
+            readers = chainedReaderBuilder.build();
+            readers.uponCompletion(this::completeReaders);
 
             // And finally initialize and start the chain of readers ...
             this.readers.initialize();
@@ -248,6 +247,11 @@ public final class MySqlConnectorTask extends SourceTask {
         }
     }
 
+    @Override
+    protected Iterable<Field> getAllConfigurationFields() {
+        return MySqlConnectorConfig.ALL_FIELDS;
+    }
+
     /**
      * When the task is {@link #stop() stopped}, the readers may have additional work to perform before they actually
      * stop and before all their records have been consumed via the {@link #poll()} method. This method signals that
@@ -277,7 +281,7 @@ public final class MySqlConnectorTask extends SourceTask {
         String gtidStr = taskContext.source().gtidSet();
         if (gtidStr != null) {
             if (gtidStr.trim().isEmpty()) return true; // start at beginning ...
-            String availableGtidStr = taskContext.knownGtidSet();
+            String availableGtidStr = connectionContext.knownGtidSet();
             if (availableGtidStr == null || availableGtidStr.trim().isEmpty()) {
                 // Last offsets had GTIDs but the server does not use them ...
                 logger.info("Connector used GTIDs previously, but MySQL does not know of any GTIDs or they are not enabled");
@@ -303,7 +307,7 @@ public final class MySqlConnectorTask extends SourceTask {
         List<String> logNames = new ArrayList<>();
         try {
             logger.info("Step 0: Get all known binlogs from MySQL");
-            taskContext.jdbc().query("SHOW BINARY LOGS", rs -> {
+            connectionContext.jdbc().query("SHOW BINARY LOGS", rs -> {
                 while (rs.next()) {
                     logNames.add(rs.getString(1));
                 }
@@ -331,7 +335,7 @@ public final class MySqlConnectorTask extends SourceTask {
         List<String> logNames = new ArrayList<>();
         try {
             logger.info("Checking all known binlogs from MySQL");
-            taskContext.jdbc().query("SHOW BINARY LOGS", rs -> {
+            connectionContext.jdbc().query("SHOW BINARY LOGS", rs -> {
                 while (rs.next()) {
                     logNames.add(rs.getString(1));
                 }
@@ -352,7 +356,7 @@ public final class MySqlConnectorTask extends SourceTask {
     protected boolean isGtidModeEnabled() {
         AtomicReference<String> mode = new AtomicReference<String>("off");
         try {
-            taskContext.jdbc().query("SHOW GLOBAL VARIABLES LIKE 'GTID_MODE'", rs -> {
+            connectionContext.jdbc().query("SHOW GLOBAL VARIABLES LIKE 'GTID_MODE'", rs -> {
                 if (rs.next()) {
                     mode.set(rs.getString(1));
                 }
@@ -372,7 +376,7 @@ public final class MySqlConnectorTask extends SourceTask {
     protected boolean isRowBinlogEnabled() {
         AtomicReference<String> mode = new AtomicReference<String>("");
         try {
-            taskContext.jdbc().query("SHOW GLOBAL VARIABLES LIKE 'binlog_format'", rs -> {
+            connectionContext.jdbc().query("SHOW GLOBAL VARIABLES LIKE 'binlog_format'", rs -> {
                 if (rs.next()) {
                     mode.set(rs.getString(2));
                 }

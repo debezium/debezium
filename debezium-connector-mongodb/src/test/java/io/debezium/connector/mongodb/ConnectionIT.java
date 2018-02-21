@@ -12,6 +12,7 @@ import java.util.concurrent.TimeUnit;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
 import org.bson.conversions.Bson;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.mongodb.CursorType;
@@ -27,6 +28,11 @@ import static org.fest.assertions.Assertions.assertThat;
 import io.debezium.util.Testing;
 
 public class ConnectionIT extends AbstractMongoIT {
+
+    @Before
+    public void setUp() {
+        TestHelper.cleanDatabase(primary, "dbA");
+    }
 
     @Test
     public void shouldCreateMovieDatabase() {

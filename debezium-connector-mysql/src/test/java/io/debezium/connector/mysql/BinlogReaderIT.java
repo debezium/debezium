@@ -10,27 +10,33 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.nio.file.Path;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.MySqlConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.data.Envelope;
 import io.debezium.data.KeyValueStore;
 import io.debezium.data.KeyValueStore.Collection;
 import io.debezium.data.SchemaChangeHistory;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Testing;
 
@@ -120,10 +126,11 @@ public class BinlogReaderIT {
 
         // Poll for records ...
         // Testing.Print.enable();
-        int expected = 9 + 9 + 4 + 5; // only the inserts for our 4 tables in this database
+        int expected = 9 + 9 + 4 + 5 + 1; // only the inserts for our 4 tables in this database and 1 create table
         int consumed = consumeAtLeast(expected);
         assertThat(consumed).isGreaterThanOrEqualTo(expected);
 
+        store.sourceRecords().forEach(System.out::println);
         // There should be no schema changes ...
         assertThat(schemaChanges.recordCount()).isEqualTo(0);
 
@@ -349,6 +356,62 @@ public class BinlogReaderIT {
         assertThat(c5Time.toNanos()).isEqualTo(-3020398999999000L);
         assertTrue(c5Time.isNegative());
         assertThat(c5Time).isEqualTo(Duration.ofHours(-838).minusMinutes(59).minusSeconds(58).minusNanos(999999000));
+    }
+
+    @Test(expected = ConnectException.class)
+    public void shouldFailOnSchemaInconsistency() throws Exception {
+        inconsistentSchema(null);
+        consumeAtLeast(2);
+    }
+
+    @Test
+    public void shouldWarnOnSchemaInconsistency() throws Exception {
+        inconsistentSchema(EventProcessingFailureHandlingMode.WARN);
+        int consumed = consumeAtLeast(2, 2, TimeUnit.SECONDS);
+        assertThat(consumed).isZero();
+    }
+
+    @Test
+    public void shouldIgnoreOnSchemaInconsistency() throws Exception {
+        inconsistentSchema(EventProcessingFailureHandlingMode.IGNORE);
+        int consumed = consumeAtLeast(2, 2, TimeUnit.SECONDS);
+        assertThat(consumed).isZero();
+    }
+
+    private void inconsistentSchema(EventProcessingFailureHandlingMode mode) throws InterruptedException, SQLException {
+        if (mode == null) {
+            config = simpleConfig().build();
+        } else {
+            config = simpleConfig()
+                    .with(MySqlConnectorConfig.INCONSISTENT_SCHEMA_HANDLING_MODE, mode)
+                    .build();
+        }
+
+        context = new MySqlTaskContext(config);
+        context.start();
+        context.source().setBinlogStartPoint("",0L); // start from beginning
+        context.initializeHistory();
+        reader = new BinlogReader("binlog", context);
+
+        // Start reading the binlog ...
+        reader.start();
+
+        // Poll for records ...
+        // Testing.Print.enable();
+        int expected = 9 + 9 + 4 + 5 + 1; // only the inserts for our 4 tables in this database and 1 create table
+        int consumed = consumeAtLeast(expected);
+        assertThat(consumed).isGreaterThanOrEqualTo(expected);
+
+        reader.stop();
+        reader.start();
+        reader.context.dbSchema().applyDdl(context.source(), DATABASE.getDatabaseName(), "DROP TABLE customers", null);
+        try (
+                final MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());
+                final JdbcConnection connection = db.connect();
+                final Connection jdbc = connection.connection();
+                final Statement statement = jdbc.createStatement()) {
+            statement.executeUpdate("INSERT INTO customers VALUES (default,'John','Lazy','john.lazy@acme.com')");
+        }
     }
 
     private Duration toDuration(String duration) {

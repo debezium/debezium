@@ -29,7 +29,7 @@ public class MongoClientsIT {
 
     @BeforeClass
     public static void beforeAll() {
-        Configuration config = Configuration.fromSystemProperties("connector.");
+        Configuration config = TestHelper.getConfiguration();
         String host = config.getString(MongoDbConnectorConfig.HOSTS);
         addresses = MongoUtil.parseAddresses(host);
     }

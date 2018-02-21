@@ -35,8 +35,8 @@ import io.debezium.relational.ddl.DdlChanges.DatabaseStatementStringConsumer;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.text.ParsingException;
-import io.debezium.util.AvroValidator;
 import io.debezium.util.Collect;
+import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * Component that records the schema history for databases hosted by a MySQL database server. The schema information includes
@@ -60,9 +60,10 @@ import io.debezium.util.Collect;
 public class MySqlSchema {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
-    private final AvroValidator schemaNameValidator = AvroValidator.create(logger);
+    private final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(logger);
     private final Set<String> ignoredQueryStatements = Collect.unmodifiableSet("BEGIN", "END", "FLUSH PRIVILEGES");
     private final MySqlDdlParser ddlParser;
+    private final TopicSelector topicSelector;
     private final SchemasByTableId tableSchemaByTableId;
     private final Filters filters;
     private final DatabaseHistory dbHistory;
@@ -86,12 +87,13 @@ public class MySqlSchema {
      *          may be null if not needed
      * @param tableIdCaseInsensitive true if table lookup ignores letter case
      */
-    public MySqlSchema(Configuration config, String serverName, Predicate<String> gtidFilter, boolean tableIdCaseInsensitive) {
+    public MySqlSchema(Configuration config, String serverName, Predicate<String> gtidFilter, boolean tableIdCaseInsensitive, TopicSelector topicSelector) {
         this.filters = new Filters(config);
         this.ddlParser = new MySqlDdlParser(false);
         this.tables = new Tables(tableIdCaseInsensitive);
         this.ddlChanges = new DdlChanges(this.ddlParser.terminator());
         this.ddlParser.addListener(ddlChanges);
+        this.topicSelector = topicSelector;
         this.tableIdCaseInsensitive = tableIdCaseInsensitive;
 
         // Use MySQL-specific converters and schemas for values ...
@@ -104,7 +106,7 @@ public class MySqlSchema {
         BigIntUnsignedHandlingMode bigIntUnsignedHandlingMode = BigIntUnsignedHandlingMode.parse(bigIntUnsignedHandlingModeStr);
         BigIntUnsignedMode bigIntUnsignedMode = bigIntUnsignedHandlingMode.asBigIntUnsignedMode();
         MySqlValueConverters valueConverters = new MySqlValueConverters(decimalMode, timePrecisionMode, bigIntUnsignedMode);
-        this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameValidator::validate);
+        this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameAdjuster, SourceInfo.SCHEMA);
 
         // Set up the server name and schema prefix ...
         if (serverName != null) serverName = serverName.trim();
@@ -189,7 +191,7 @@ public class MySqlSchema {
      *         or if the table has been excluded by the filters
      */
     public Table tableFor(TableId id) {
-        return filters.tableFilter().test(id) ? tables.forTable(id) : null;
+        return isTableMonitored(id) ? tables.forTable(id) : null;
     }
 
     /**
@@ -204,7 +206,17 @@ public class MySqlSchema {
      *         or if the table has been excluded by the filters
      */
     public TableSchema schemaFor(TableId id) {
-        return filters.tableFilter().test(id) ? tableSchemaByTableId.get(id) : null;
+        return isTableMonitored(id) ? tableSchemaByTableId.get(id) : null;
+    }
+
+    /**
+     * Decide whether events should be captured for a given table
+     *
+     * @param id the fully-qualified table identifier; may be null
+     * @return true if events from the table are captured
+     */
+    public boolean isTableMonitored(TableId id) {
+        return filters.tableFilter().test(id);
     }
 
     /**
@@ -265,6 +277,13 @@ public class MySqlSchema {
     }
 
     /**
+     * Initialize permanent storage for database history
+     */
+    public void intializeHistoryStorage() {
+        dbHistory.initializeStorage();
+    }
+
+    /**
      * Discard any currently-cached schemas and rebuild them using the filters.
      */
     protected void refreshSchemas() {
@@ -272,7 +291,7 @@ public class MySqlSchema {
         // Create TableSchema instances for any existing table ...
         this.tables.tableIds().forEach(id -> {
             Table table = this.tables.forTable(id);
-            TableSchema schema = schemaBuilder.create(schemaPrefix, table, filters.columnFilter(), filters.columnMappers());
+            TableSchema schema = schemaBuilder.create(schemaPrefix, getEnvelopeSchemaName(table), table, filters.columnFilter(), filters.columnMappers());
             tableSchemaByTableId.put(id, schema);
         });
     }
@@ -362,11 +381,15 @@ public class MySqlSchema {
             if (table == null) { // removed
                 tableSchemaByTableId.remove(tableId);
             } else {
-                TableSchema schema = schemaBuilder.create(schemaPrefix, table, filters.columnFilter(), filters.columnMappers());
+                TableSchema schema = schemaBuilder.create(schemaPrefix, getEnvelopeSchemaName(table), table, filters.columnFilter(), filters.columnMappers());
                 tableSchemaByTableId.put(tableId, schema);
             }
         });
         return true;
+    }
+
+    private String getEnvelopeSchemaName(Table table) {
+        return topicSelector.getTopic(table.id()) + ".Envelope";
     }
 
     /**

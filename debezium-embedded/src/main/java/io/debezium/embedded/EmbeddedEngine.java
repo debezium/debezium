@@ -5,6 +5,7 @@
  */
 package io.debezium.embedded;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -43,6 +44,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.embedded.spi.OffsetCommitPolicy;
 import io.debezium.util.Clock;
 import io.debezium.util.VariableLatch;
 
@@ -153,6 +155,13 @@ public final class EmbeddedEngine implements Runnable {
                                                                       + "data to be committed in a future attempt.")
                                                               .withDefault(5000L)
                                                               .withValidation(Field::isPositiveInteger);
+
+    public static final Field OFFSET_COMMIT_POLICY = Field.create("offset.commit.policy")
+                                                          .withDescription("The fully-qualified class name of the commit policy type. This class must implement the interface "
+                                                                      + OffsetCommitPolicy.class.getName()
+                                                                      + ". The default is a periodic commity policy based upon time intervals.")
+                                                          .withDefault(OffsetCommitPolicy.PeriodicCommitOffsetPolicy.class.getName())
+                                                          .withValidation(Field::isClassName);
 
     protected static final Field INTERNAL_KEY_CONVERTER_CLASS = Field.create("internal.key.converter")
                                                                      .withDescription("The Converter class that should be used to serialize and deserialize key data for offsets.")
@@ -391,6 +400,14 @@ public final class EmbeddedEngine implements Runnable {
         Builder using(ConnectorCallback connectorCallback);
 
         /**
+         * During the engine's {@link EmbeddedEngine#run()} method, decide when the offsets
+         * should be committed into the {@link OffsetBackingStore}.
+         * @param policy
+         * @return this builder object so methods can be chained together; never null
+         */
+        Builder using(OffsetCommitPolicy policy);
+
+        /**
          * Build a new connector with the information previously supplied to this builder.
          *
          * @return the embedded connector; never null
@@ -413,6 +430,7 @@ public final class EmbeddedEngine implements Runnable {
             private Clock clock;
             private CompletionCallback completionCallback;
             private ConnectorCallback connectorCallback;
+            private OffsetCommitPolicy offsetCommitPolicy = null;
 
             @Override
             public Builder using(Configuration config) {
@@ -445,6 +463,12 @@ public final class EmbeddedEngine implements Runnable {
             }
 
             @Override
+            public Builder using(OffsetCommitPolicy offsetCommitPolicy) {
+                this.offsetCommitPolicy = offsetCommitPolicy;
+                return this;
+            }
+
+            @Override
             public Builder notifying(Consumer<SourceRecord> consumer) {
                 this.consumer = consumer;
                 return this;
@@ -456,7 +480,8 @@ public final class EmbeddedEngine implements Runnable {
                 if (clock == null) clock = Clock.system();
                 Objects.requireNonNull(config, "A connector configuration must be specified.");
                 Objects.requireNonNull(consumer, "A connector consumer must be specified.");
-                return new EmbeddedEngine(config, classLoader, clock, consumer, completionCallback, connectorCallback);
+                return new EmbeddedEngine(config, classLoader, clock,
+                        consumer, completionCallback, connectorCallback, offsetCommitPolicy);
             }
 
         };
@@ -477,9 +502,11 @@ public final class EmbeddedEngine implements Runnable {
     private final CompletionResult completionResult;
     private long recordsSinceLastCommit = 0;
     private long timeSinceLastCommitMillis = 0;
+    private OffsetCommitPolicy offsetCommitPolicy;
 
     private EmbeddedEngine(Configuration config, ClassLoader classLoader, Clock clock, Consumer<SourceRecord> consumer,
-                           CompletionCallback completionCallback, ConnectorCallback connectorCallback) {
+                           CompletionCallback completionCallback, ConnectorCallback connectorCallback,
+                           OffsetCommitPolicy offsetCommitPolicy) {
         this.config = config;
         this.consumer = consumer;
         this.classLoader = classLoader;
@@ -489,6 +516,8 @@ public final class EmbeddedEngine implements Runnable {
         };
         this.connectorCallback = connectorCallback;
         this.completionResult = new CompletionResult();
+        this.offsetCommitPolicy = offsetCommitPolicy;
+
         assert this.config != null;
         assert this.consumer != null;
         assert this.classLoader != null;
@@ -604,8 +633,9 @@ public final class EmbeddedEngine implements Runnable {
                 }
 
                 // Set up the offset commit policy ...
-                long offsetPeriodMs = config.getLong(OFFSET_FLUSH_INTERVAL_MS);
-                OffsetCommitPolicy offsetCommitPolicy = OffsetCommitPolicy.periodic(offsetPeriodMs, TimeUnit.MILLISECONDS);
+                if (offsetCommitPolicy == null) {
+                    offsetCommitPolicy = config.getInstance(EmbeddedEngine.OFFSET_COMMIT_POLICY, OffsetCommitPolicy.class, config);
+                }
 
                 // Initialize the connector using a context that does NOT respond to requests to reconfigure tasks ...
                 ConnectorContext context = new ConnectorContext() {
@@ -776,8 +806,7 @@ public final class EmbeddedEngine implements Runnable {
     protected void maybeFlush(OffsetStorageWriter offsetWriter, OffsetCommitPolicy policy, long commitTimeoutMs,
                               SourceTask task) {
         // Determine if we need to commit to offset storage ...
-        if (policy.performCommit(recordsSinceLastCommit, timeSinceLastCommitMillis,
-                                 TimeUnit.MILLISECONDS)) {
+        if (policy.performCommit(recordsSinceLastCommit, Duration.ofMillis(timeSinceLastCommitMillis))) {
             commitOffsets(offsetWriter, commitTimeoutMs, task);
         }
     }

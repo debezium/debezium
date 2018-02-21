@@ -21,7 +21,7 @@ import org.junit.Test;
 
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.time.Date;
-import io.debezium.util.AvroValidator;
+import io.debezium.util.SchemaNameAdjuster;
 
 public class TableSchemaBuilderTest {
 
@@ -36,11 +36,11 @@ public class TableSchemaBuilderTest {
     private Column c5;
     private Column c6;
     private TableSchema schema;
-    private AvroValidator validator;
+    private SchemaNameAdjuster adjuster;
 
     @Before
     public void beforeEach() {
-        validator = AvroValidator.create((original,replacement, conflict)->{
+        adjuster = SchemaNameAdjuster.create((original,replacement, conflict)->{
             fail("Should not have come across an invalid schema name");
         });
         schema = null;
@@ -95,19 +95,22 @@ public class TableSchemaBuilderTest {
 
     @Test(expected = NullPointerException.class)
     public void shouldFailToBuildTableSchemaFromNullTable() {
-        new TableSchemaBuilder(new JdbcValueConverters(),validator::validate).create(prefix,null);
+        new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build())
+                .create(prefix, "sometopic", null, null, null);
     }
 
     @Test
     public void shouldBuildTableSchemaFromTable() {
-        schema = new TableSchemaBuilder(new JdbcValueConverters(),validator::validate).create(prefix,table);
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build())
+                .create(prefix, "sometopic", table, null, null);
         assertThat(schema).isNotNull();
     }
 
     @Test
     public void shouldBuildTableSchemaFromTableWithoutPrimaryKey() {
         table = table.edit().setPrimaryKeyNames().create();
-        schema = new TableSchemaBuilder(new JdbcValueConverters(),validator::validate).create(prefix,table);
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build())
+                .create(prefix, "sometopic", table, null, null);
         assertThat(schema).isNotNull();
         // Check the keys ...
         assertThat(schema.keySchema()).isNull();

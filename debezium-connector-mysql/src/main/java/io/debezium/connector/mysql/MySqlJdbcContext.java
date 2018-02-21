@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.connector.mysql.MySqlConnectorConfig.EventDeserializationFailureHandlingMode;
+import io.debezium.connector.mysql.MySqlConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcConnection.ConnectionFactory;
@@ -39,11 +39,13 @@ public class MySqlJdbcContext implements AutoCloseable {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     protected final Configuration config;
+    private final MySqlConnectorConfig connectorConfig;
     protected final JdbcConnection jdbc;
     private final Map<String, String> originalSystemProperties = new HashMap<>();
 
     public MySqlJdbcContext(Configuration config) {
         this.config = config; // must be set before most methods are used
+        this.connectorConfig = new MySqlConnectorConfig(config);
 
         // Set up the JDBC connection without actually connecting, with extra MySQL-specific properties
         // to give us better JDBC database metadata behavior, including using UTF-8 for the client-side character encoding
@@ -61,6 +63,10 @@ public class MySqlJdbcContext implements AutoCloseable {
 
     public Configuration config() {
         return config;
+    }
+
+    public MySqlConnectorConfig getConnectorConfig() {
+        return connectorConfig;
     }
 
     public JdbcConnection jdbc() {
@@ -96,9 +102,14 @@ public class MySqlJdbcContext implements AutoCloseable {
         return sslMode() != SecureConnectionMode.DISABLED;
     }
 
-    public EventDeserializationFailureHandlingMode eventDeserializationFailureHandlingMode() {
+    public EventProcessingFailureHandlingMode eventDeserializationFailureHandlingMode() {
         String mode = config.getString(MySqlConnectorConfig.EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE);
-        return EventDeserializationFailureHandlingMode.parse(mode);
+        return EventProcessingFailureHandlingMode.parse(mode);
+    }
+
+    public EventProcessingFailureHandlingMode inconsistentSchemaHandlingMode() {
+        String mode = config.getString(MySqlConnectorConfig.INCONSISTENT_SCHEMA_HANDLING_MODE);
+        return EventProcessingFailureHandlingMode.parse(mode);
     }
 
     public void start() {

@@ -28,7 +28,7 @@ import io.debezium.config.Configuration;
 public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest {
 
     private static final String STATEMENTS =
-            "CREATE SCHEMA over;" + 
+            "CREATE SCHEMA over;" +
             "CREATE TABLE over.t1 (pk INT, PRIMARY KEY(pk));" +
             "CREATE TABLE over.t2 (pk INT, PRIMARY KEY(pk));" +
             "INSERT INTO over.t1 VALUES (1);" +
@@ -51,7 +51,12 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
         TestHelper.dropAllSchemas();
 
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(overrides).build());
-        context = new PostgresTaskContext(config, new PostgresSchema(config));
+        TopicSelector selector = TopicSelector.create(config);
+        context = new PostgresTaskContext(
+                config,
+                new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
+                selector
+        );
     }
 
     @After
@@ -74,7 +79,7 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
         TestHelper.execute(STATEMENTS);
         TestConsumer consumer = testConsumer(expectedRecordsCount, "over");
 
-        snapshotProducer.start(consumer);
+        snapshotProducer.start(consumer, e -> {});
         consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
 
         final Map<String, List<SourceRecord>> recordsByTopic = recordsByTopic(expectedRecordsCount, consumer);
@@ -96,7 +101,7 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
         TestHelper.execute(STATEMENTS);
         TestConsumer consumer = testConsumer(expectedRecordsCount, "over");
 
-        snapshotProducer.start(consumer);
+        snapshotProducer.start(consumer, e -> {});
         consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
 
         final Map<String, List<SourceRecord>> recordsByTopic = recordsByTopic(expectedRecordsCount, consumer);

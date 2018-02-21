@@ -16,6 +16,7 @@ import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.MessageDecoder;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
 import io.debezium.document.Array;
@@ -40,7 +41,7 @@ public class Wal2JsonMessageDecoder implements MessageDecoder {
     private boolean containsMetadata = false;
 
     @Override
-    public void processMessage(ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException {
+    public void processMessage(ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException {
         try {
             if (!buffer.hasArray()) {
                 throw new IllegalStateException("Invalid buffer received from PG server during streaming replication");
@@ -57,7 +58,7 @@ public class Wal2JsonMessageDecoder implements MessageDecoder {
             Iterator<Entry> it = changes.iterator();
             while (it.hasNext()) {
                 Value value = it.next().getValue();
-                processor.process(new Wal2JsonReplicationMessage(txId, commitTime, value.asDocument(), containsMetadata, !it.hasNext()));
+                processor.process(new Wal2JsonReplicationMessage(txId, commitTime, value.asDocument(), containsMetadata, !it.hasNext(), typeRegistry));
             }
         } catch (final IOException e) {
             throw new ConnectException(e);

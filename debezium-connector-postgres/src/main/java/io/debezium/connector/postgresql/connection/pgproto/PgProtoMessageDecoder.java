@@ -14,13 +14,14 @@ import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 
+import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.MessageDecoder;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
 import io.debezium.connector.postgresql.proto.PgProto;
 import io.debezium.connector.postgresql.proto.PgProto.RowMessage;
 
 /**
- * ProtoBuf deserialization of message sent by <a href="https://github.com/debezium/postgres-decoderbufs">Postgres Decoderbufs</>.
+ * ProtoBuf deserialization of message sent by <a href="https://github.com/debezium/postgres-decoderbufs">Postgres Decoderbufs</a>.
  * Only one message is delivered for processing.
  *
  * @author Jiri Pechanec
@@ -29,7 +30,7 @@ import io.debezium.connector.postgresql.proto.PgProto.RowMessage;
 public class PgProtoMessageDecoder implements MessageDecoder {
 
     @Override
-    public void processMessage(final ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException {
+    public void processMessage(final ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException {
         try {
             if (!buffer.hasArray()) {
                 throw new IllegalStateException(
@@ -44,7 +45,7 @@ public class PgProtoMessageDecoder implements MessageDecoder {
                         message.getNewTupleCount(),
                         message.getNewTypeinfoCount()));
             }
-            processor.process(new PgProtoReplicationMessage(message));
+            processor.process(new PgProtoReplicationMessage(message, typeRegistry));
         } catch (InvalidProtocolBufferException e) {
             throw new ConnectException(e);
         }

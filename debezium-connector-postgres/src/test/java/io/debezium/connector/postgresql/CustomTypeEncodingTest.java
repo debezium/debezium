@@ -24,5 +24,4 @@ public class CustomTypeEncodingTest {
         final BigDecimal decodedValue = VariableScaleDecimal.toLogical(struct);
         assertEquals("Number should be same after serde", testValue, decodedValue);
     }
-
 }

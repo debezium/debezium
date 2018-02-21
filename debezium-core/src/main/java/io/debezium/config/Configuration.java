@@ -11,6 +11,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.net.URL;
+import java.time.Duration;
+import java.time.temporal.TemporalUnit;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1364,6 +1366,18 @@ public interface Configuration {
     }
 
     /**
+     *
+     * Gets the duration value associated with the given key.
+     *
+     * @param field the field
+     * @param unit the temporal unit of the duration value
+     * @return the duration value associated with the given key
+     */
+    default Duration getDuration(Field field, TemporalUnit unit) {
+        return Duration.of(getLong(field), unit);
+    }
+
+    /**
      * Get an instance of the class given by the value in the configuration associated with the given key.
      *
      * @param key the key for the configuration property
@@ -1385,23 +1399,22 @@ public interface Configuration {
      * @return the new instance, or null if there is no such key-value pair in the configuration or if there is a key-value
      *         configuration but the value could not be converted to an existing class with a zero-argument constructor
      */
-    @SuppressWarnings("unchecked")
     default <T> T getInstance(String key, Class<T> type, Supplier<ClassLoader> classloaderSupplier) {
-        String className = getString(key);
-        if (className != null) {
-            ClassLoader classloader = classloaderSupplier != null ? classloaderSupplier.get() : getClass().getClassLoader();
-            try {
-                Class<? extends T> clazz = (Class<? extends T>) classloader.loadClass(className);
-                return clazz.newInstance();
-            } catch (ClassNotFoundException e) {
-                LoggerFactory.getLogger(getClass()).error("Unable to find class {}", className, e);
-            } catch (InstantiationException e) {
-                LoggerFactory.getLogger(getClass()).error("Unable to instantiate class {}", className, e);
-            } catch (IllegalAccessException e) {
-                LoggerFactory.getLogger(getClass()).error("Unable to access class {}", className, e);
-            }
-        }
-        return null;
+        return Instantiator.getInstance(getString(key), classloaderSupplier, null);
+    }
+
+    /**
+     * Get an instance of the class given by the value in the configuration associated with the given key.
+     * The instance is created using {@code Instance(Configuration)} constructor.
+     *
+     * @param key the key for the configuration property
+     * @param clazz the Class of which the resulting object is expected to be an instance of; may not be null
+     * @param the {@link Configuration} object that is passed as a parameter to the constructor
+     * @return the new instance, or null if there is no such key-value pair in the configuration or if there is a key-value
+     *         configuration but the value could not be converted to an existing class with a zero-argument constructor
+     */
+    default <T> T getInstance(String key, Class<T> clazz, Configuration configuration) {
+        return Instantiator.getInstance(getString(key), () -> getClass().getClassLoader(), configuration);
     }
 
     /**
@@ -1426,23 +1439,22 @@ public interface Configuration {
      * @return the new instance, or null if there is no such key-value pair in the configuration or if there is a key-value
      *         configuration but the value could not be converted to an existing class with a zero-argument constructor
      */
-    @SuppressWarnings("unchecked")
     default <T> T getInstance(Field field, Class<T> type, Supplier<ClassLoader> classloaderSupplier) {
-        String className = getString(field);
-        if (className != null) {
-            ClassLoader classloader = classloaderSupplier != null ? classloaderSupplier.get() : getClass().getClassLoader();
-            try {
-                Class<? extends T> clazz = (Class<? extends T>) classloader.loadClass(className);
-                return clazz.newInstance();
-            } catch (ClassNotFoundException e) {
-                LoggerFactory.getLogger(getClass()).error("Unable to find class {}", className, e);
-            } catch (InstantiationException e) {
-                LoggerFactory.getLogger(getClass()).error("Unable to instantiate class {}", className, e);
-            } catch (IllegalAccessException e) {
-                LoggerFactory.getLogger(getClass()).error("Unable to access class {}", className, e);
-            }
-        }
-        return null;
+        return Instantiator.getInstance(getString(field), classloaderSupplier, null);
+    }
+
+    /**
+     * Get an instance of the class given by the value in the configuration associated with the given field.
+     * The instance is created using {@code Instance(Configuration)} constructor.
+     *
+     * @param field the field for the configuration property
+     * @param clazz the Class of which the resulting object is expected to be an instance of; may not be null
+     * @param the {@link Configuration} object that is passed as a parameter to the constructor
+     * @return the new instance, or null if there is no such key-value pair in the configuration or if there is a key-value
+     *         configuration but the value could not be converted to an existing class with a zero-argument constructor
+     */
+    default <T> T getInstance(Field field, Class<T> clazz, Configuration configuration) {
+        return Instantiator.getInstance(getString(field), () -> getClass().getClassLoader(), configuration);
     }
 
     /**
