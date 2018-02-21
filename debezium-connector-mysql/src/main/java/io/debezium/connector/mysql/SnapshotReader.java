@@ -73,7 +73,7 @@ public class SnapshotReader extends AbstractReader {
     public SnapshotReader(String name, MySqlTaskContext context) {
         super(name, context);
         this.includeData = context.snapshotMode().includeData();
-        this.snapshotLockingMode = context.lockingMode();
+        this.snapshotLockingMode = context.snapShotLockingMode();
         recorder = this::recordRowAsRead;
         metrics = new SnapshotReaderMetrics(context.getClock());
     }
@@ -207,7 +207,7 @@ public class SnapshotReader extends AbstractReader {
         final SourceInfo source = context.source();
         final Clock clock = context.getClock();
         final long ts = clock.currentTimeInMillis();
-        logger.info("Starting snapshot for {} with user '{}' with locking mode '{}'", connectionContext.connectionString(), mysql.username(), context.lockingMode().getValue());
+        logger.info("Starting snapshot for {} with user '{}' with locking mode '{}'", connectionContext.connectionString(), mysql.username(), snapshotLockingMode.getValue());
         logRolesForCurrentUser(mysql);
         logServerInformation(mysql);
         boolean isLocked = false;

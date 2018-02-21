@@ -235,7 +235,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         return SnapshotMode.parse(value, MySqlConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
     }
 
-    public MySqlConnectorConfig.SnapshotLockingMode lockingMode() {
+    public MySqlConnectorConfig.SnapshotLockingMode snapShotLockingMode() {
         String value = config.getString(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
         return MySqlConnectorConfig.SnapshotLockingMode.parse(value, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE.defaultValueAsString());
     }

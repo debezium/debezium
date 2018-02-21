@@ -745,16 +745,16 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                            + "The 'never' mode should be used with care, and only when the binlog is known to contain all history.");
 
     public static final Field SNAPSHOT_LOCKING_MODE = Field.create("snapshot.locking_mode")
-                                                    .withDisplayName("Locking mode")
-                                                    .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.MINIMAL)
-                                                    .withWidth(Width.SHORT)
-                                                    .withImportance(Importance.LOW)
-                                                    .withDescription("The criteria for running a snapshot upon startup of the connector. "
-                                                        + "Options include: "
-                                                        + "'default' TODO Change this name..."
-                                                        + "'minimal' (the default) TODO this is the old default, 'minimal locking mode'"
-                                                        + "'none' TODO uses no table locks, could result in inconsistent snapshots.  Only should be used with schema_only/schema_only_recovery snapshot modes?"
-                                                    );
+                                                           .withDisplayName("Locking mode")
+                                                           .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.MINIMAL)
+                                                           .withWidth(Width.SHORT)
+                                                           .withImportance(Importance.LOW)
+                                                           .withDescription("The criteria for running a snapshot upon startup of the connector. "
+                                                                   + "Options include: "
+                                                                   + "'default' TODO Change this name..."
+                                                                   + "'minimal' (the default) TODO this is the old default, 'minimal locking mode'"
+                                                                   + "'none' TODO uses no table locks, could result in inconsistent snapshots.  Only should be used with schema_only/schema_only_recovery snapshot modes?"
+                                                           );
 
     public static final Field TIME_PRECISION_MODE = Field.create("time.precision.mode")
                                                          .withDisplayName("Time Precision")
