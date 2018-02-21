@@ -204,7 +204,7 @@ public class SnapshotReader extends AbstractReader {
         final SourceInfo source = context.source();
         final Clock clock = context.clock();
         final long ts = clock.currentTimeInMillis();
-        logger.info("Starting snapshot for {} with user '{}'", context.connectionString(), mysql.username());
+        logger.info("Starting snapshot for {} with user '{}' with locking mode '{}'", context.connectionString(), mysql.username(), context.lockingMode().getValue());
         logRolesForCurrentUser(mysql);
         logServerInformation(mysql);
         boolean isLocked = false;
