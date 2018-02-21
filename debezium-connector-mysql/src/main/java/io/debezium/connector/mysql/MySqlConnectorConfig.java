@@ -253,6 +253,57 @@ public class MySqlConnectorConfig {
     }
 
     /**
+     * Represents locking mode during snapshots.
+     *
+     *
+     * XXX Replaces Minimal Blocking configuration values.
+     */
+    public static enum LockingMode implements EnumeratedValue {
+        STANDARD("standard"),
+        MINIMAL("minimal"),
+        NONE("none");
+
+        private final String value;
+
+        LockingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static LockingMode parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+            for (LockingMode option : LockingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static LockingMode parse(String value, String defaultValue) {
+            LockingMode mode = parse(value);
+            if (mode == null && defaultValue != null) mode = parse(defaultValue);
+            return mode;
+        }
+    }
+
+    /**
      * The set of predefined SecureConnectionMode options or aliases.
      */
     public static enum SecureConnectionMode implements EnumeratedValue {
@@ -721,6 +772,19 @@ public class MySqlConnectorConfig {
                                                            + "'never' to specify the connector should never run a snapshot and that upon first startup the connector should read from the beginning of the binlog. "
                                                            + "The 'never' mode should be used with care, and only when the binlog is known to contain all history.");
 
+    public static final Field LOCKING_MODE = Field.create("snapshot.locking_mode")
+                                                    .withDisplayName("Locking mode")
+                                                    .withEnum(LockingMode.class, LockingMode.MINIMAL)
+                                                    .withWidth(Width.SHORT)
+                                                    .withImportance(Importance.LOW)
+                                                    .withDescription("The criteria for running a snapshot upon startup of the connector. "
+                                                        + "Options include: "
+                                                        + "'default' TODO Change this name..."
+                                                        + "'minimal' (the default) TODO this is the old default, 'minimal locking mode'"
+                                                        + "'none' TODO uses no table locks, could result in inconsistent snapshots.  Only should be used with schema_only/schema_only_recovery snapshot modes?"
+                                                    );
+
+    // XXX Remove?
     public static final Field SNAPSHOT_MINIMAL_LOCKING = Field.create("snapshot.minimal.locks")
                                                               .withDisplayName("Use shortest database locking for snapshots")
                                                               .withType(Type.BOOLEAN)

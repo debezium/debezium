@@ -168,7 +168,6 @@ public final class MySqlConnectorTask extends SourceTask {
             if (startWithSnapshot) {
                 // We're supposed to start with a snapshot, so set that up ...
                 SnapshotReader snapshotReader = new SnapshotReader("snapshot", taskContext);
-                snapshotReader.useMinimalBlocking(taskContext.useMinimalSnapshotLocking());
                 if (snapshotEventsAreInserts) snapshotReader.generateInsertEvents();
                 readers.add(snapshotReader);
 
