@@ -38,6 +38,7 @@ public abstract class AbstractReader implements Reader {
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     private final String name;
     protected final MySqlTaskContext context;
+    protected final MySqlJdbcContext connectionContext;
     private final BlockingQueue<SourceRecord> records;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicBoolean success = new AtomicBoolean(false);
@@ -57,9 +58,10 @@ public abstract class AbstractReader implements Reader {
     public AbstractReader(String name, MySqlTaskContext context) {
         this.name = name;
         this.context = context;
-        this.records = new LinkedBlockingDeque<>(context.getConnectorConfig().getMaxQueueSize());
-        this.maxBatchSize = context.getConnectorConfig().getMaxBatchSize();
-        this.pollInterval = context.getConnectorConfig().getPollInterval();
+        this.connectionContext = context.getConnectionContext();
+        this.records = new LinkedBlockingDeque<>(connectionContext.getConnectorConfig().getMaxQueueSize());
+        this.maxBatchSize = connectionContext.getConnectorConfig().getMaxBatchSize();
+        this.pollInterval = connectionContext.getConnectorConfig().getPollInterval();
         this.metronome = Metronome.parker(pollInterval, Clock.SYSTEM);
     }
 
