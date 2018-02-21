@@ -784,20 +784,6 @@ public class MySqlConnectorConfig {
                                                         + "'none' TODO uses no table locks, could result in inconsistent snapshots.  Only should be used with schema_only/schema_only_recovery snapshot modes?"
                                                     );
 
-    // XXX Remove?
-    public static final Field SNAPSHOT_MINIMAL_LOCKING = Field.create("snapshot.minimal.locks")
-                                                              .withDisplayName("Use shortest database locking for snapshots")
-                                                              .withType(Type.BOOLEAN)
-                                                              .withWidth(Width.SHORT)
-                                                              .withImportance(Importance.LOW)
-                                                              .withDescription("Controls how long the connector holds onto the global read lock while it is performing a snapshot. The default is 'true', "
-                                                                      + "which means the connector holds the global read lock (and thus prevents any updates) for just the initial portion of the snapshot "
-                                                                      + "while the database schemas and other metadata are being read. The remaining work in a snapshot involves selecting all rows from "
-                                                                      + "each table, and this can be done using the snapshot process' REPEATABLE READ transaction even when the lock is no longer held and "
-                                                                      + "other operations are updating the database. However, in some cases it may be desirable to block all writes for the entire duration "
-                                                                      + "of the snapshot; in such cases set this property to 'false'.")
-                                                              .withDefault(true);
-
     public static final Field TIME_PRECISION_MODE = Field.create("time.precision.mode")
                                                          .withDisplayName("Time Precision")
                                                          .withEnum(TemporalPrecisionMode.class, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS)
@@ -888,7 +874,7 @@ public class MySqlConnectorConfig {
                                                      BUFFER_SIZE_FOR_BINLOG_READER, DATABASE_HISTORY, INCLUDE_SCHEMA_CHANGES,
                                                      TABLE_WHITELIST, TABLE_BLACKLIST, TABLES_IGNORE_BUILTIN,
                                                      DATABASE_WHITELIST, DATABASE_BLACKLIST,
-                                                     COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING,
+                                                     COLUMN_BLACKLIST, SNAPSHOT_MODE, LOCKING_MODE,
                                                      GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
                                                      GTID_SOURCE_FILTER_DML_EVENTS,
                                                      TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
@@ -925,7 +911,7 @@ public class MySqlConnectorConfig {
                     GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS, BUFFER_SIZE_FOR_BINLOG_READER,
                     EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
-                    SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
+                    SNAPSHOT_MODE, LOCKING_MODE, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                     BIGINT_UNSIGNED_HANDLING_MODE);
         return config;
     }
