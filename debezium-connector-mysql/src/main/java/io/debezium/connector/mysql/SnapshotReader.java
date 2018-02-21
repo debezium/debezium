@@ -60,7 +60,7 @@ public class SnapshotReader extends AbstractReader {
     private volatile Thread thread;
     private final SnapshotReaderMetrics metrics;
 
-    private final MySqlConnectorConfig.LockingMode lockingMode;
+    private final MySqlConnectorConfig.SnapshotLockingMode snapshotLockingMode;
 
     /**
      * Create a snapshot reader.
@@ -71,7 +71,7 @@ public class SnapshotReader extends AbstractReader {
     public SnapshotReader(String name, MySqlTaskContext context) {
         super(name, context);
         this.includeData = context.snapshotMode().includeData();
-        this.lockingMode = context.lockingMode();
+        this.snapshotLockingMode = context.lockingMode();
         recorder = this::recordRowAsRead;
         metrics = new SnapshotReaderMetrics(context.clock());
     }
@@ -247,7 +247,7 @@ public class SnapshotReader extends AbstractReader {
                 // for all databases with a global read lock, and it prevents ALL updates while we have this lock.
                 // It also ensures that everything we do while we have this lock will be consistent.
                 if (!isRunning()) return;
-                if (!lockingMode.equals(MySqlConnectorConfig.LockingMode.NONE)) {
+                if (!snapshotLockingMode.equals(MySqlConnectorConfig.SnapshotLockingMode.NONE)) {
                     try {
                         logger.info("Step 1: flush and obtain global read lock to prevent writes to database");
                         sql.set("FLUSH TABLES WITH READ LOCK");
@@ -337,7 +337,7 @@ public class SnapshotReader extends AbstractReader {
                 logger.info("\tsnapshot continuing with database(s): {}", includedDatabaseNames);
 
                 if (!isLocked) {
-                    if (!lockingMode.equals(MySqlConnectorConfig.LockingMode.NONE)) {
+                    if (!snapshotLockingMode.equals(MySqlConnectorConfig.SnapshotLockingMode.NONE)) {
                         // ------------------------------------
                         // LOCK TABLES and READ BINLOG POSITION
                         // ------------------------------------
@@ -420,7 +420,7 @@ public class SnapshotReader extends AbstractReader {
                 // ------
                 // STEP 7
                 // ------
-                if (lockingMode.equals(MySqlConnectorConfig.LockingMode.MINIMAL) && isLocked) {
+                if (snapshotLockingMode.equals(MySqlConnectorConfig.SnapshotLockingMode.MINIMAL) && isLocked) {
                     if (tableLocks) {
                         // We could not acquire a global read lock and instead had to obtain individual table-level read locks
                         // using 'FLUSH TABLE <tableName> WITH READ LOCK'. However, if we were to do this, the 'UNLOCK TABLES'

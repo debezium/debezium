@@ -254,18 +254,16 @@ public class MySqlConnectorConfig {
 
     /**
      * Represents locking mode during snapshots.
-     *
-     *
-     * XXX Replaces Minimal Blocking configuration values.
+     * TODO - Fill in details.
      */
-    public static enum LockingMode implements EnumeratedValue {
+    public static enum SnapshotLockingMode implements EnumeratedValue {
         STANDARD("standard"),
         MINIMAL("minimal"),
         NONE("none");
 
         private final String value;
 
-        LockingMode(String value) {
+        private SnapshotLockingMode(String value) {
             this.value = value;
         }
 
@@ -280,10 +278,10 @@ public class MySqlConnectorConfig {
          * @param value the configuration property value; may not be null
          * @return the matching option, or null if no match is found
          */
-        public static LockingMode parse(String value) {
+        public static SnapshotLockingMode parse(String value) {
             if (value == null) return null;
             value = value.trim();
-            for (LockingMode option : LockingMode.values()) {
+            for (SnapshotLockingMode option : SnapshotLockingMode.values()) {
                 if (option.getValue().equalsIgnoreCase(value)) return option;
             }
             return null;
@@ -296,8 +294,8 @@ public class MySqlConnectorConfig {
          * @param defaultValue the default value; may be null
          * @return the matching option, or null if no match is found and the non-null default is invalid
          */
-        public static LockingMode parse(String value, String defaultValue) {
-            LockingMode mode = parse(value);
+        public static SnapshotLockingMode parse(String value, String defaultValue) {
+            SnapshotLockingMode mode = parse(value);
             if (mode == null && defaultValue != null) mode = parse(defaultValue);
             return mode;
         }
@@ -772,9 +770,9 @@ public class MySqlConnectorConfig {
                                                            + "'never' to specify the connector should never run a snapshot and that upon first startup the connector should read from the beginning of the binlog. "
                                                            + "The 'never' mode should be used with care, and only when the binlog is known to contain all history.");
 
-    public static final Field LOCKING_MODE = Field.create("snapshot.locking_mode")
+    public static final Field SNAPSHOT_LOCKING_MODE = Field.create("snapshot.locking_mode")
                                                     .withDisplayName("Locking mode")
-                                                    .withEnum(LockingMode.class, LockingMode.MINIMAL)
+                                                    .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.MINIMAL)
                                                     .withWidth(Width.SHORT)
                                                     .withImportance(Importance.LOW)
                                                     .withDescription("The criteria for running a snapshot upon startup of the connector. "
@@ -874,7 +872,7 @@ public class MySqlConnectorConfig {
                                                      BUFFER_SIZE_FOR_BINLOG_READER, DATABASE_HISTORY, INCLUDE_SCHEMA_CHANGES,
                                                      TABLE_WHITELIST, TABLE_BLACKLIST, TABLES_IGNORE_BUILTIN,
                                                      DATABASE_WHITELIST, DATABASE_BLACKLIST,
-                                                     COLUMN_BLACKLIST, SNAPSHOT_MODE, LOCKING_MODE,
+                                                     COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE,
                                                      GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
                                                      GTID_SOURCE_FILTER_DML_EVENTS,
                                                      TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
@@ -911,7 +909,7 @@ public class MySqlConnectorConfig {
                     GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS, BUFFER_SIZE_FOR_BINLOG_READER,
                     EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS,
-                    SNAPSHOT_MODE, LOCKING_MODE, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
+                    SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                     BIGINT_UNSIGNED_HANDLING_MODE);
         return config;
     }

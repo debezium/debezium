@@ -75,7 +75,7 @@ public class SnapshotReaderIT {
     protected Configuration.Builder simpleConfig() {
         return DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(MySqlConnectorConfig.LOCKING_MODE, MySqlConnectorConfig.LockingMode.MINIMAL);
+                .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, MySqlConnectorConfig.SnapshotLockingMode.MINIMAL);
     }
 
     @Test
