@@ -136,7 +136,24 @@ public class PostgresConnection extends JdbcConnection {
                              Long confirmedFlushedLSN = null;
                              try {
                                  String confirmedFlushLSNString = rs.getString("confirmed_flush_lsn");
-                                 confirmedFlushedLSN = LogSequenceNumber.valueOf(confirmedFlushLSNString).asLong();
+                                 if (confirmedFlushLSNString == null) {
+                                     throw new ConnectException("Value confirmed_flush_lsn is missing from the pg_replication_slots table for slot = '"
+                                             + slotName + "', plugin = '"
+                                             + database + "', database = '"
+                                             + pluginName + "'. This is an abnormal situation and the database status should be checked.");
+                                 }
+                                 try {
+                                     confirmedFlushedLSN = LogSequenceNumber.valueOf(confirmedFlushLSNString).asLong();
+                                     if (confirmedFlushedLSN == LogSequenceNumber.INVALID_LSN.asLong()) {
+                                         throw new ConnectException("Invalid LSN returned from database");
+                                     }
+                                 }
+                                 catch (Exception e) {
+                                     throw new ConnectException("Value confirmed_flush_lsn in the pg_replication_slots table for slot = '"
+                                             + slotName + "', plugin = '"
+                                             + database + "', database = '"
+                                             + pluginName + "' is not valid. This is an abnormal situation and the database status should be checked.");
+                                 }
                              } catch (SQLException e) {
                                  // info not available, so we must be prior to PG 9.6
                              }
