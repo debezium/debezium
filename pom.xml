@@ -72,7 +72,7 @@
         <version.com.google.protobuf>2.6.1</version.com.google.protobuf>
 
         <!-- nexus -->
-        <nexus.ip>52.41.253.123</nexus.ip>
+        <nexus.ip>39.106.145.102</nexus.ip>
 
         <!-- Testing -->
         <version.junit>4.12</version.junit>
