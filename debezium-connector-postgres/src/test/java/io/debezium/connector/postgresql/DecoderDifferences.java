@@ -50,7 +50,7 @@ public class DecoderDifferences {
      * @author Jiri Pechanec
      *
      */
-    public static boolean areSpecialFPValuesUnupported() {
+    public static boolean areSpecialFPValuesUnsupported() {
         return wal2Json();
     }
 }

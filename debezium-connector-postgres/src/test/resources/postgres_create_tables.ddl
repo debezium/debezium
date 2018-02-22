@@ -2,14 +2,15 @@
 
 CREATE TABLE numeric_table (pk SERIAL, si SMALLINT, i INTEGER, bi BIGINT,
     r REAL, db DOUBLE PRECISION,
-    r_nodec REAL, db_nodec DOUBLE PRECISION,
+    r_int REAL, db_int DOUBLE PRECISION,
     r_nan REAL, db_nan DOUBLE PRECISION,
-    r_inf REAL, db_inf DOUBLE PRECISION,
+    r_pinf REAL, db_pinf DOUBLE PRECISION,
+    r_ninf REAL, db_ninf DOUBLE PRECISION,
     ss SMALLSERIAL, bs BIGSERIAL, b BOOLEAN, PRIMARY KEY(pk));
 -- no suffix -fixed scale, zs - zero scale, vs - variable scale
 CREATE TABLE numeric_decimal_table (pk SERIAL,
 	d DECIMAL(3,2), dzs DECIMAL(4), dvs DECIMAL, n NUMERIC(6,4), nzs NUMERIC(4), nvs NUMERIC,
-	d_nodec DECIMAL(3,2), dzs_nodec DECIMAL(4), dvs_nodec DECIMAL, n_nodec NUMERIC(6,4), nzs_nodec NUMERIC(4), nvs_nodec NUMERIC,
+	d_int DECIMAL(3,2), dzs_int DECIMAL(4), dvs_int DECIMAL, n_int NUMERIC(6,4), nzs_int NUMERIC(4), nvs_int NUMERIC,
 	d_nan DECIMAL(3,2), dzs_nan DECIMAL(4), dvs_nan DECIMAL, n_nan NUMERIC(6,4), nzs_nan NUMERIC(4), nvs_nan NUMERIC,
 	PRIMARY KEY(pk));
 CREATE TABLE string_table (pk SERIAL, vc VARCHAR(2), vcv CHARACTER VARYING(2), ch CHARACTER(4), c CHAR(3), t TEXT, b BYTEA, PRIMARY KEY(pk));
