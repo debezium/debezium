@@ -46,6 +46,12 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
         PRECISE("precise"),
 
         /**
+         * Represent {@code DECIMAL} and {@code NUMERIC} values as a custom {@link DebeziumDecimal} values, which are
+         * represented in change events as a struct. This is precise, it supports also special values but is difficult to use.
+         */
+        DEBEZIUM("debezium"),
+
+        /**
          * Represent {@code DECIMAL} and {@code NUMERIC} values as precise {@code double} values. This may be less precise
          * but is far easier to use.
          */
@@ -66,6 +72,8 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
             switch (this) {
                 case DOUBLE:
                     return DecimalMode.DOUBLE;
+                case DEBEZIUM:
+                    return DecimalMode.DEBEZIUM;
                 case PRECISE:
                 default:
                     return DecimalMode.PRECISE;
@@ -602,6 +610,7 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                                                         .withImportance(Importance.MEDIUM)
                                                         .withDescription("Specify how DECIMAL and NUMERIC columns should be represented in change events, including:"
                                                                 + "'precise' (the default) uses java.math.BigDecimal to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; "
+                                                                + "'debezium' uses DebeziumDecimal custom type to represent values (including the special ones like NaN or Infinity) which are encoded in the change events using a binary representation or a symbolic string for special values using Debezium's 'io.debezium.data.FixedScaleDecimal' type; "
                                                                 + "'double' represents values using Java's 'double', which may not offer the precision but will be far easier to use in consumers.");
 
     public static final Field STATUS_UPDATE_INTERVAL_MS = Field.create("status.update.interval.ms")

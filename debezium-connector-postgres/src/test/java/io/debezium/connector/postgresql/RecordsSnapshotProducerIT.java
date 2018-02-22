@@ -22,6 +22,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.connector.postgresql.PostgresConnectorConfig.DecimalHandlingMode;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
@@ -206,6 +207,47 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         // check the offset information for each record
         while (!consumer.isEmpty()) {
             SourceRecord record = consumer.remove();
+            assertRecordOffset(record, true, consumer.isEmpty());
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-606")
+    public void shouldGenerateSnapshotsForDecimalDatatypesUsingDebeziumDecimal() throws Exception {
+        // PostGIS must not be used
+        TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        PostgresConnectorConfig config = new PostgresConnectorConfig(
+                TestHelper.defaultConfig()
+                        .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DEBEZIUM)
+                        .build());
+
+        TopicSelector selector = TopicSelector.create(config);
+        context = new PostgresTaskContext(
+                config,
+                new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
+                selector
+        );
+
+        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER), false);
+
+        TestConsumer consumer = testConsumer(1, "public", "Quoted_\"");
+
+        //insert data for each of different supported types
+        TestHelper.execute(INSERT_NUMERIC_DECIMAL_TYPES_STMT);
+
+        //then start the producer and validate all records are there
+        snapshotProducer.start(consumer, e -> {});
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        Map<String, List<SchemaAndValueField>> expectedValuesByTableName = super.schemaAndValuesByTableNameDebeziumDecimals();
+        consumer.process(record -> assertReadRecord(record, expectedValuesByTableName));
+
+        // check the offset information for each record
+        while (!consumer.isEmpty()) {
+            SourceRecord record = consumer.remove();
+            System.out.println(record.sourceOffset());
             assertRecordOffset(record, true, consumer.isEmpty());
         }
     }
