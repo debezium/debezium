@@ -26,16 +26,19 @@ import io.debezium.annotation.ThreadSafe;
 @ThreadSafe
 final class JacksonReader implements DocumentReader, ArrayReader {
 
-    public static final JacksonReader INSTANCE = new JacksonReader();
+    public static final JacksonReader DEFAULT_INSTANCE = new JacksonReader(false);
+    public static final JacksonReader FLOAT_NUMBERS_AS_TEXT_INSTANCE = new JacksonReader(true);
 
     private static final JsonFactory factory;
+    private final boolean handleFloatNumbersAsText;
 
     static {
         factory = new JsonFactory();
         factory.enable(JsonParser.Feature.ALLOW_COMMENTS);
     }
 
-    private JacksonReader() {
+    private JacksonReader(boolean handleFloatNumbersAsText) {
+        this.handleFloatNumbersAsText = handleFloatNumbersAsText;
     }
 
     @Override
@@ -141,13 +144,28 @@ final class JacksonReader implements DocumentReader, ArrayReader {
                 case VALUE_NUMBER_INT:
                     switch (parser.getNumberType()) {
                         case FLOAT:
-                            doc.setNumber(fieldName, parser.getFloatValue());
+                            if (handleFloatNumbersAsText) {
+                                doc.setString(fieldName, parser.getText());
+                            }
+                            else {
+                                doc.setNumber(fieldName, parser.getFloatValue());
+                            }
                             break;
                         case DOUBLE:
-                            doc.setNumber(fieldName, parser.getDoubleValue());
+                            if (handleFloatNumbersAsText) {
+                                doc.setString(fieldName, parser.getText());
+                            }
+                            else {
+                                doc.setNumber(fieldName, parser.getDoubleValue());
+                            }
                             break;
                         case BIG_DECIMAL:
-                            doc.setNumber(fieldName, parser.getDecimalValue());
+                            if (handleFloatNumbersAsText) {
+                                doc.setString(fieldName, parser.getText());
+                            }
+                            else {
+                                doc.setNumber(fieldName, parser.getDecimalValue());
+                            }
                             break;
                         case INT:
                             doc.setNumber(fieldName, parser.getIntValue());
@@ -211,13 +229,28 @@ final class JacksonReader implements DocumentReader, ArrayReader {
                 case VALUE_NUMBER_INT:
                     switch (parser.getNumberType()) {
                         case FLOAT:
-                            array.add(parser.getFloatValue());
+                            if (handleFloatNumbersAsText) {
+                                array.add(parser.getText());
+                            }
+                            else {
+                                array.add(parser.getFloatValue());
+                            }
                             break;
                         case DOUBLE:
-                            array.add(parser.getDoubleValue());
+                            if (handleFloatNumbersAsText) {
+                                array.add(parser.getText());
+                            }
+                            else {
+                                array.add(parser.getDoubleValue());
+                            }
                             break;
                         case BIG_DECIMAL:
-                            array.add(parser.getDecimalValue());
+                            if (handleFloatNumbersAsText) {
+                                array.add(parser.getText());
+                            }
+                            else {
+                                array.add(parser.getDecimalValue());
+                            }
                             break;
                         case INT:
                             array.add(parser.getIntValue());

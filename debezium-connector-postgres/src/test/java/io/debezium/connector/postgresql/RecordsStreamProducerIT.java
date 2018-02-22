@@ -478,7 +478,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         VerifyRecord.isValidInsert(updatedRecord, PK_FIELD, 5);
         assertRecordSchemaAndValues(
-                Collections.singletonList(new SchemaAndValueField("num_val", Decimal.builder(0).optional().build(), new BigDecimal("1238.0"))), updatedRecord, Envelope.FieldName.AFTER);
+                Collections.singletonList(new SchemaAndValueField("num_val", Decimal.builder(0).optional().build(), new BigDecimal("1238"))), updatedRecord, Envelope.FieldName.AFTER);
 
         statements = "ALTER TABLE test_table ALTER COLUMN num_val TYPE DECIMAL;" +
                 "INSERT INTO test_table (pk,num_val) VALUES (6,1225.1);";

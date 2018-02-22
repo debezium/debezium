@@ -166,7 +166,7 @@ public abstract class AbstractRecordsProducerTest {
         dvs_int.put("scale", 0).put("value", new BigDecimal("10").unscaledValue().toByteArray());
         final Struct nvs_int = new Struct(VariableScaleDecimal.schema());
         nvs_int.put("scale", 0).put("value", new BigDecimal("22").unscaledValue().toByteArray());
-        return Arrays.asList(
+        final List<SchemaAndValueField> fields = Arrays.asList(
                 new SchemaAndValueField("d", Decimal.builder(2).optional().build(), new BigDecimal("1.10")),
                 new SchemaAndValueField("dzs", Decimal.builder(0).optional().build(), new BigDecimal("10")),
                 new SchemaAndValueField("dvs", VariableScaleDecimal.optionalSchema(), dvs),
@@ -176,12 +176,19 @@ public abstract class AbstractRecordsProducerTest {
                 new SchemaAndValueField("d_int", Decimal.builder(2).optional().build(), new BigDecimal("1.00")),
                 new SchemaAndValueField("dvs_int", VariableScaleDecimal.optionalSchema(), dvs_int),
                 new SchemaAndValueField("n_int", Decimal.builder(4).optional().build(), new BigDecimal("22.0000")),
-                new SchemaAndValueField("nvs_int", VariableScaleDecimal.optionalSchema(), nvs_int),
-                new SchemaAndValueField("d_nan", Decimal.builder(2).optional().build(), BigDecimal.ZERO),
-                new SchemaAndValueField("dvs_nan", VariableScaleDecimal.optionalSchema(), VariableScaleDecimal.ZERO),
-                new SchemaAndValueField("n_nan", Decimal.builder(4).optional().build(), BigDecimal.ZERO),
-                new SchemaAndValueField("nvs_nan", VariableScaleDecimal.optionalSchema(), VariableScaleDecimal.ZERO)
+                new SchemaAndValueField("nvs_int", VariableScaleDecimal.optionalSchema(), nvs_int)
         );
+        if (!DecoderDifferences.areSpecialFPValuesUnsupported()) {
+            fields.addAll(Arrays.asList(
+                    new SchemaAndValueField("d_nan", Decimal.builder(2).optional().build(), BigDecimal.ZERO),
+                    new SchemaAndValueField("dzs_nan", Decimal.builder(0).optional().build(), BigDecimal.ZERO),
+                    new SchemaAndValueField("dvs_nan", VariableScaleDecimal.optionalSchema(), VariableScaleDecimal.ZERO),
+                    new SchemaAndValueField("n_nan", Decimal.builder(4).optional().build(), BigDecimal.ZERO),
+                    new SchemaAndValueField("nzs_nan", Decimal.builder(2).optional().build(), BigDecimal.ZERO),
+                    new SchemaAndValueField("nvs_nan", VariableScaleDecimal.optionalSchema(), VariableScaleDecimal.ZERO)
+            ));
+        }
+        return fields;
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForDebeziumNumericDecimalType() {

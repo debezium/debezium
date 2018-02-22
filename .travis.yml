@@ -33,8 +33,8 @@ after_install:
   - docker ps -a
 
 script: 
-  - mvn clean install -Passembly
-  - mvn install -pl debezium-connector-postgres -Pwal2json-decoder
+  - mvn clean install -Passembly -Dversion.postgres.server=9.6-devel
+  - mvn install -pl debezium-connector-postgres -Pwal2json-decoder -Dversion.postgres.server=9.6-devel
 
 notifications:
   webhooks:
