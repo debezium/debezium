@@ -6,6 +6,7 @@
 
 package io.debezium.connector.postgresql.connection.wal2json;
 
+import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,6 +34,7 @@ import io.debezium.connector.postgresql.RecordsStreamProducer.PgConnectionSuppli
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.AbstractReplicationMessageColumn;
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
+import io.debezium.data.DebeziumDecimal;
 import io.debezium.document.Array;
 import io.debezium.document.Document;
 import io.debezium.document.Value;
@@ -215,16 +217,24 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
 
             case "real":
             case "float4":
-                return rawValue.asFloat();
+                return rawValue.isNumber() ? rawValue.asFloat() : Float.valueOf(rawValue.asString());
 
             case "double precision":
             case "float8":
-                return rawValue.asDouble();
+                return rawValue.isNumber() ? rawValue.asDouble() : Double.valueOf(rawValue.asString());
 
             case "numeric":
             case "decimal":
-                // TODO: Support for Decimal/Numeric types with correct scale+precision
-                return rawValue.asDouble();
+                if (rawValue.isInteger()) {
+                    return new DebeziumDecimal(new BigDecimal(rawValue.asInteger()));
+                }
+                else if (rawValue.isLong()) {
+                    return new DebeziumDecimal(new BigDecimal(rawValue.asLong()));
+                }
+                else if (rawValue.isBigInteger()) {
+                    return new DebeziumDecimal(new BigDecimal(rawValue.asBigInteger()));
+                }
+                return DebeziumDecimal.valueOf(rawValue.asString());
 
             case "character":
             case "char":

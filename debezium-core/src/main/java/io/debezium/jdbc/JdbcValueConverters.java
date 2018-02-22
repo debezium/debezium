@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.data.Bits;
+import io.debezium.data.DebeziumDecimal;
 import io.debezium.data.Xml;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
@@ -911,6 +912,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
             // Includes BigDecimal and other numeric values ...
             Number value = (Number) data;
             return Double.valueOf(value.doubleValue());
+        }
+        if (data instanceof DebeziumDecimal) {
+            return ((DebeziumDecimal)data).toDouble();
         }
         if (data instanceof Boolean) {
             return NumberConversions.getDouble((Boolean) data);

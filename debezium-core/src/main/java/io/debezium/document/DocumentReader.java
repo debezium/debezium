@@ -30,7 +30,16 @@ public interface DocumentReader {
      * @return the shared default reader instance; never null
      */
     static DocumentReader defaultReader() {
-        return JacksonReader.INSTANCE;
+        return JacksonReader.DEFAULT_INSTANCE;
+    }
+
+    /**
+     * Get {@link DocumentReader} instance that returns fp numbers as text.
+     *
+     * @return the shared default reader instance; never null
+     */
+    static DocumentReader floatNumbersAsTextReader() {
+        return JacksonReader.FLOAT_NUMBERS_AS_TEXT_INSTANCE;
     }
 
     /**

@@ -48,7 +48,7 @@ public class Wal2JsonMessageDecoder implements MessageDecoder {
             }
             final byte[] source = buffer.array();
             final byte[] content = Arrays.copyOfRange(source, buffer.arrayOffset(), source.length);
-            final Document message = DocumentReader.defaultReader().read(content);
+            final Document message = DocumentReader.floatNumbersAsTextReader().read(content);
             LOGGER.debug("Message arrived for decoding {}", message);
             final int txId = message.getInteger("xid");
             final String timestamp = message.getString("timestamp");

@@ -83,6 +83,23 @@ public class DebeziumDecimal {
    }
 
    /**
+    * @return value converted into double including special values
+    */
+   public double toDouble() {
+       if (specialValue != null) {
+           switch (specialValue) {
+           case NaN:
+               return Double.NaN;
+           case PositiveInfinity:
+               return Double.POSITIVE_INFINITY;
+           case NegativeInfinity:
+               return Double.NEGATIVE_INFINITY;
+           }
+       }
+       return decimalValue.doubleValue();
+   }
+
+   /**
      * Converts a value from its logical format (BigDecimal) to it encoded format - a struct containing
      * either the special value or the binary representation of the number
      * 
