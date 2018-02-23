@@ -73,7 +73,8 @@ public class SnapshotReader extends AbstractReader {
     public SnapshotReader(String name, MySqlTaskContext context) {
         super(name, context);
         this.includeData = context.snapshotMode().includeData();
-        this.snapshotLockingMode = context.snapShotLockingMode();
+        // TODO - Either I'm being dense, or casting is the only way to get access to this getter?
+        this.snapshotLockingMode = ((MySqlConnectorConfig )(context.config())).getSnapshotLockingMode();
         recorder = this::recordRowAsRead;
         metrics = new SnapshotReaderMetrics(context.getClock());
     }

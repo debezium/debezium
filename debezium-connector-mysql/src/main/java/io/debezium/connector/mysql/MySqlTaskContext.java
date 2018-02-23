@@ -235,11 +235,6 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         return SnapshotMode.parse(value, MySqlConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
     }
 
-    public MySqlConnectorConfig.SnapshotLockingMode snapShotLockingMode() {
-        String value = config.getString(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
-        return MySqlConnectorConfig.SnapshotLockingMode.parse(value, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE.defaultValueAsString());
-    }
-
     public String getSnapshotSelectOverrides() {
         return config.getString(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
     }
