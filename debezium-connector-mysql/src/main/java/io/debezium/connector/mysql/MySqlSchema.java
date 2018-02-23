@@ -364,7 +364,7 @@ public class MySqlSchema {
                 // schema change records.
                 try {
                     if (!storeOnlyMonitoredTablesDdl || changes.stream().anyMatch(filters().tableFilter()::test)) {
-                        dbHistory.record(source.partition(), source.offset(), databaseName, tables, ddlStatements);
+                        dbHistory.record(source.partition(), source.offset(), databaseName, ddlStatements);
                     } else {
                         logger.debug("Changes for DDL '{}' were filtered and not recorded in database history", ddlStatements);
                     }

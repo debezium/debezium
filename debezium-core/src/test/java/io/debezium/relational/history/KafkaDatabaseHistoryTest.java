@@ -132,7 +132,7 @@ public class KafkaDatabaseHistoryTest {
         ddl = "CREATE TABLE foo ( name VARCHAR(255) NOT NULL PRIMARY KEY); \n" +
                 "CREATE TABLE customers ( id INTEGER NOT NULL PRIMARY KEY, name VARCHAR(100) NOT NULL ); \n" +
                 "CREATE TABLE products ( productId INTEGER NOT NULL PRIMARY KEY, desc VARCHAR(255) NOT NULL); \n";
-        history.record(source, position, "db1", tables1, ddl);
+        history.record(source, position, "db1", ddl);
 
         // Parse the DDL statement 3x and each time update a different Tables object ...
         ddlParser.parse(ddl, tables1);
@@ -145,7 +145,7 @@ public class KafkaDatabaseHistoryTest {
         // Record a drop statement and parse it for 2 of our 3 Tables...
         setLogPosition(39);
         ddl = "DROP TABLE foo;";
-        history.record(source, position, "db1", tables2, ddl);
+        history.record(source, position, "db1", ddl);
         ddlParser.parse(ddl, tables2);
         assertThat(tables2.size()).isEqualTo(2);
         ddlParser.parse(ddl, tables3);
@@ -154,7 +154,7 @@ public class KafkaDatabaseHistoryTest {
         // Record another DDL statement and parse it for 1 of our 3 Tables...
         setLogPosition(10003);
         ddl = "CREATE TABLE suppliers ( supplierId INTEGER NOT NULL PRIMARY KEY, name VARCHAR(255) NOT NULL);";
-        history.record(source, position, "db1", tables3, ddl);
+        history.record(source, position, "db1", ddl);
         ddlParser.parse(ddl, tables3);
         assertThat(tables3.size()).isEqualTo(3);
 
