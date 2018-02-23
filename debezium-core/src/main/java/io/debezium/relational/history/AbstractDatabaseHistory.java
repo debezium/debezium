@@ -51,7 +51,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     }
 
     @Override
-    public final void record(Map<String, ?> source, Map<String, ?> position, String databaseName, Tables schema, String ddl)
+    public final void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String ddl)
             throws DatabaseHistoryException {
             storeRecord(new HistoryRecord(source, position, databaseName, ddl));
     }
