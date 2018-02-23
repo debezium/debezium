@@ -78,7 +78,7 @@ public abstract class AbstractEmbeddedEngine implements EmbeddedEngine {
     private final ClassLoader classLoader;
     private final Consumer<SourceRecord> consumer;
     private final CompletionCallback completionCallback;
-    private final ConnectorCallback connectorCallback;
+    private final Optional<ConnectorCallback> connectorCallback;
     private final AtomicReference<Thread> runningThread = new AtomicReference<>();
     private final VariableLatch latch = new VariableLatch(0);
     private final Converter keyConverter;
@@ -88,6 +88,15 @@ public abstract class AbstractEmbeddedEngine implements EmbeddedEngine {
     private long recordsSinceLastCommit = 0;
     private long timeOfLastCommitMillis = 0;
     private OffsetCommitPolicy offsetCommitPolicy;
+
+    private final String connectorClassName;
+    private final long commitTimeoutMs;
+    private SourceConnector connector;
+    private OffsetStorageWriter offsetWriter;
+    private SourceTask task;
+    private OffsetBackingStore offsetStore;
+
+    private Throwable handlerError;
 
     public AbstractEmbeddedEngine(Configuration config, ClassLoader classLoader, Clock clock, Consumer<SourceRecord> consumer,
                            CompletionCallback completionCallback, ConnectorCallback connectorCallback,
@@ -99,7 +108,7 @@ public abstract class AbstractEmbeddedEngine implements EmbeddedEngine {
         this.completionCallback = completionCallback != null ? completionCallback : (success, msg, error) -> {
             if (!success) logger.error(msg, error);
         };
-        this.connectorCallback = connectorCallback;
+        this.connectorCallback = Optional.ofNullable(connectorCallback);
         this.completionResult = new CompletionResult();
         this.offsetCommitPolicy = offsetCommitPolicy;
 
@@ -123,6 +132,9 @@ public abstract class AbstractEmbeddedEngine implements EmbeddedEngine {
         embeddedConfig.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
         embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
         workerConfig = new EmbeddedConfig(embeddedConfig);
+
+        connectorClassName = config.getString(CONNECTOR_CLASS);
+        commitTimeoutMs = config.getLong(OFFSET_COMMIT_TIMEOUT_MS);
     }
 
     /**
@@ -154,6 +166,134 @@ public abstract class AbstractEmbeddedEngine implements EmbeddedEngine {
     }
 
     /**
+     * Initialize all engine components and start the connector
+     */
+    protected void doStart() {
+        final String engineName = config.getString(ENGINE_NAME);
+
+        if (!config.validateAndRecord(CONNECTOR_FIELDS, logger::error)) {
+            fail("Failed to start connector with invalid configuration (see logs for actual errors)");
+            return;
+        }
+
+        // Instantiate the connector ...
+        try {
+            @SuppressWarnings("unchecked")
+            Class<? extends SourceConnector> connectorClass = (Class<SourceConnector>) classLoader.loadClass(connectorClassName);
+            connector = connectorClass.newInstance();
+        } catch (Throwable t) {
+            fail("Unable to instantiate connector class '" + connectorClassName + "'", t);
+            return;
+        }
+
+        // Instantiate the offset store ...
+        final String offsetStoreClassName = config.getString(OFFSET_STORAGE);
+        try {
+            @SuppressWarnings("unchecked")
+            Class<? extends OffsetBackingStore> offsetStoreClass = (Class<OffsetBackingStore>) classLoader.loadClass(offsetStoreClassName);
+            offsetStore = offsetStoreClass.newInstance();
+        } catch (Throwable t) {
+            fail("Unable to instantiate OffsetBackingStore class '" + offsetStoreClassName + "'", t);
+            return;
+        }
+
+        // Initialize the offset store ...
+        try {
+            offsetStore.configure(workerConfig);
+            offsetStore.start();
+        } catch (Throwable t) {
+            fail("Unable to configure and start the '" + offsetStoreClassName + "' offset backing store", t);
+            return;
+        }
+
+        // Set up the offset commit policy ...
+        if (offsetCommitPolicy == null) {
+            offsetCommitPolicy = config.getInstance(EmbeddedEngine.OFFSET_COMMIT_POLICY, OffsetCommitPolicy.class, config);
+        }
+        // Initialize the connector using a context that does NOT respond to requests to reconfigure tasks ...
+        ConnectorContext context = new ConnectorContext() {
+
+            @Override
+            public void requestTaskReconfiguration() {
+                // Do nothing ...
+            }
+
+            @Override
+            public void raiseError(Exception e) {
+                fail(e.getMessage(), e);
+            }
+
+        };
+        connector.initialize(context);
+        offsetWriter = new OffsetStorageWriter(offsetStore, engineName,
+                keyConverter, valueConverter);
+        OffsetStorageReader offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName,
+                keyConverter, valueConverter);
+
+        // Start the connector with the given properties and get the task configurations ...
+        connector.start(config.asMap());
+        connectorCallback.ifPresent(ConnectorCallback::connectorStarted);
+        List<Map<String, String>> taskConfigs = connector.taskConfigs(1);
+        Class<? extends Task> taskClass = connector.taskClass();
+        try {
+            task = (SourceTask) taskClass.newInstance();
+        } catch (IllegalAccessException | InstantiationException t) {
+            fail("Unable to instantiate connector's task class '" + taskClass.getName() + "'", t);
+            return;
+        }
+        try {
+            SourceTaskContext taskContext = () -> offsetReader;
+            task.initialize(taskContext);
+            task.start(taskConfigs.get(0));
+            connectorCallback.ifPresent(ConnectorCallback::taskStarted);
+        } catch (Throwable t) {
+            // Mask the passwords ...
+            Configuration config = Configuration.from(taskConfigs.get(0)).withMaskedPasswords();
+            String msg = "Unable to initialize and start connector's task class '" + taskClass.getName() + "' with config: "
+                    + config;
+            fail(msg, t);
+            return;
+        }
+
+        recordsSinceLastCommit = 0;
+        handlerError = null;
+        timeOfLastCommitMillis = clock.currentTimeInMillis();
+    }
+
+    /**
+     * Stop the task
+     */
+    protected void doStopTask() {
+        logger.debug("Stopping the task and engine");
+        task.stop();
+        connectorCallback.ifPresent(ConnectorCallback::taskStopped);
+        // Always commit offsets that were captured from the source records we actually processed ...
+        commitOffsets(offsetWriter, commitTimeoutMs, task);
+        if (handlerError == null) {
+            // We stopped normally ...
+            succeed("Connector '" + connectorClassName + "' completed normally.");
+        }
+    }
+
+    /**
+     * Stop the connector
+     */
+    protected void doStopConnector() {
+        try {
+            offsetStore.stop();
+        } catch (Throwable t) {
+            fail("Error while trying to stop the offset store", t);
+        } finally {
+            try {
+                connector.stop();
+                connectorCallback.ifPresent(ConnectorCallback::connectorStopped);
+            } catch (Throwable t) {
+                fail("Error while trying to stop connector class '" + connectorClassName + "'", t);
+            }
+        }
+    }
+
+    /**
      * Run this embedded connector and deliver database changes to the registered {@link Consumer}. This method blocks until
      * the connector is stopped.
      * <p>
@@ -173,105 +313,15 @@ public abstract class AbstractEmbeddedEngine implements EmbeddedEngine {
     @Override
     public void run() {
         if (runningThread.compareAndSet(null, Thread.currentThread())) {
-
-            final String engineName = config.getString(ENGINE_NAME);
-            final String connectorClassName = config.getString(CONNECTOR_CLASS);
-            final Optional<ConnectorCallback> connectorCallback = Optional.ofNullable(this.connectorCallback);
             // Only one thread can be in this part of the method at a time ...
             latch.countUp();
+
             try {
-                if (!config.validateAndRecord(CONNECTOR_FIELDS, logger::error)) {
-                    fail("Failed to start connector with invalid configuration (see logs for actual errors)");
+                doStart();
+                if (completionResult.hasError()) {
                     return;
                 }
-
-                // Instantiate the connector ...
-                SourceConnector connector = null;
                 try {
-                    @SuppressWarnings("unchecked")
-                    Class<? extends SourceConnector> connectorClass = (Class<SourceConnector>) classLoader.loadClass(connectorClassName);
-                    connector = connectorClass.newInstance();
-                } catch (Throwable t) {
-                    fail("Unable to instantiate connector class '" + connectorClassName + "'", t);
-                    return;
-                }
-
-                // Instantiate the offset store ...
-                final String offsetStoreClassName = config.getString(OFFSET_STORAGE);
-                OffsetBackingStore offsetStore = null;
-                try {
-                    @SuppressWarnings("unchecked")
-                    Class<? extends OffsetBackingStore> offsetStoreClass = (Class<OffsetBackingStore>) classLoader.loadClass(offsetStoreClassName);
-                    offsetStore = offsetStoreClass.newInstance();
-                } catch (Throwable t) {
-                    fail("Unable to instantiate OffsetBackingStore class '" + offsetStoreClassName + "'", t);
-                    return;
-                }
-
-                // Initialize the offset store ...
-                try {
-                    offsetStore.configure(workerConfig);
-                    offsetStore.start();
-                } catch (Throwable t) {
-                    fail("Unable to configure and start the '" + offsetStoreClassName + "' offset backing store", t);
-                    return;
-                }
-
-                // Set up the offset commit policy ...
-                if (offsetCommitPolicy == null) {
-                    offsetCommitPolicy = config.getInstance(EmbeddedEngine.OFFSET_COMMIT_POLICY, OffsetCommitPolicy.class, config);
-                }
-
-                // Initialize the connector using a context that does NOT respond to requests to reconfigure tasks ...
-                ConnectorContext context = new ConnectorContext() {
-
-                    @Override
-                    public void requestTaskReconfiguration() {
-                        // Do nothing ...
-                    }
-
-                    @Override
-                    public void raiseError(Exception e) {
-                        fail(e.getMessage(), e);
-                    }
-
-                };
-                connector.initialize(context);
-                OffsetStorageWriter offsetWriter = new OffsetStorageWriter(offsetStore, engineName,
-                        keyConverter, valueConverter);
-                OffsetStorageReader offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName,
-                        keyConverter, valueConverter);
-                long commitTimeoutMs = config.getLong(OFFSET_COMMIT_TIMEOUT_MS);
-
-                try {
-                    // Start the connector with the given properties and get the task configurations ...
-                    connector.start(config.asMap());
-                    connectorCallback.ifPresent(ConnectorCallback::connectorStarted);
-                    List<Map<String, String>> taskConfigs = connector.taskConfigs(1);
-                    Class<? extends Task> taskClass = connector.taskClass();
-                    SourceTask task = null;
-                    try {
-                        task = (SourceTask) taskClass.newInstance();
-                    } catch (IllegalAccessException | InstantiationException t) {
-                        fail("Unable to instantiate connector's task class '" + taskClass.getName() + "'", t);
-                        return;
-                    }
-                    try {
-                        SourceTaskContext taskContext = () -> offsetReader;
-                        task.initialize(taskContext);
-                        task.start(taskConfigs.get(0));
-                        connectorCallback.ifPresent(ConnectorCallback::taskStarted);
-                    } catch (Throwable t) {
-                        // Mask the passwords ...
-                        Configuration config = Configuration.from(taskConfigs.get(0)).withMaskedPasswords();
-                        String msg = "Unable to initialize and start connector's task class '" + taskClass.getName() + "' with config: "
-                                + config;
-                        fail(msg, t);
-                        return;
-                    }
-
-                    recordsSinceLastCommit = 0;
-                    Throwable handlerError = null;
                     try {
                         timeOfLastCommitMillis = clock.currentTimeInMillis();
                         boolean keepProcessing = true;
@@ -340,16 +390,7 @@ public abstract class AbstractEmbeddedEngine implements EmbeddedEngine {
                                  handlerError);
                         }
                         try {
-                            // First stop the task ...
-                            logger.debug("Stopping the task and engine");
-                            task.stop();
-                            connectorCallback.ifPresent(ConnectorCallback::taskStopped);
-                            // Always commit offsets that were captured from the source records we actually processed ...
-                            commitOffsets(offsetWriter, commitTimeoutMs, task);
-                            if (handlerError == null) {
-                                // We stopped normally ...
-                                succeed("Connector '" + connectorClassName + "' completed normally.");
-                            }
+                            doStopTask();
                         } catch (Throwable t) {
                             fail("Error while trying to stop the task and commit the offsets", t);
                         }
@@ -357,19 +398,7 @@ public abstract class AbstractEmbeddedEngine implements EmbeddedEngine {
                 } catch (Throwable t) {
                     fail("Error while trying to run connector class '" + connectorClassName + "'", t);
                 } finally {
-                    // Close the offset storage and finally the connector ...
-                    try {
-                        offsetStore.stop();
-                    } catch (Throwable t) {
-                        fail("Error while trying to stop the offset store", t);
-                    } finally {
-                        try {
-                            connector.stop();
-                            connectorCallback.ifPresent(ConnectorCallback::connectorStopped);
-                        } catch (Throwable t) {
-                            fail("Error while trying to stop connector class '" + connectorClassName + "'", t);
-                        }
-                    }
+                    doStopConnector();
                 }
             } finally {
                 latch.countDown();
