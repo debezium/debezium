@@ -26,7 +26,7 @@ import org.apache.kafka.connect.storage.OffsetBackingStore;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.embedded.internal.EmbeddedEngineImpl;
+import io.debezium.embedded.internal.BatchSendingEmbeddedEngine;
 import io.debezium.embedded.spi.OffsetCommitPolicy;
 import io.debezium.util.Clock;
 
@@ -442,7 +442,7 @@ public interface EmbeddedEngine extends Runnable {
                 if (clock == null) clock = Clock.system();
                 Objects.requireNonNull(config, "A connector configuration must be specified.");
                 Objects.requireNonNull(consumer, "A connector consumer must be specified.");
-                return new EmbeddedEngineImpl(config, classLoader, clock,
+                return new BatchSendingEmbeddedEngine(config, classLoader, clock,
                         consumer, completionCallback, connectorCallback, offsetCommitPolicy);
             }
 

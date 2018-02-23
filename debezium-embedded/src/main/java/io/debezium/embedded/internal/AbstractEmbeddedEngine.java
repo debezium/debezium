@@ -44,13 +44,13 @@ import io.debezium.util.Clock;
 import io.debezium.util.VariableLatch;
 
 /**
- * A default implementation of EmbeddedEngine
+ * A base class for of EmbeddedEngine implementations
  *
  * @author Randall Hauch, Jiri Pechanec
  *
  */
 @ThreadSafe
-public class EmbeddedEngineImpl implements EmbeddedEngine {
+public abstract class AbstractEmbeddedEngine implements EmbeddedEngine {
 
     public static final Field INTERNAL_KEY_CONVERTER_CLASS = Field.create("internal.key.converter")
                                                                      .withDescription("The Converter class that should be used to serialize and deserialize key data for offsets.")
@@ -89,7 +89,7 @@ public class EmbeddedEngineImpl implements EmbeddedEngine {
     private long timeOfLastCommitMillis = 0;
     private OffsetCommitPolicy offsetCommitPolicy;
 
-    public EmbeddedEngineImpl(Configuration config, ClassLoader classLoader, Clock clock, Consumer<SourceRecord> consumer,
+    public AbstractEmbeddedEngine(Configuration config, ClassLoader classLoader, Clock clock, Consumer<SourceRecord> consumer,
                            CompletionCallback completionCallback, ConnectorCallback connectorCallback,
                            OffsetCommitPolicy offsetCommitPolicy) {
         this.config = config;
