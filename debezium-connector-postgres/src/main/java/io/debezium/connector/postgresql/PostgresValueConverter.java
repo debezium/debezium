@@ -33,7 +33,6 @@ import org.postgresql.util.PGobject;
 import io.debezium.connector.postgresql.proto.PgProto;
 import io.debezium.data.Bits;
 import io.debezium.data.DebeziumDecimal;
-import io.debezium.data.FixedScaleDecimal;
 import io.debezium.data.Json;
 import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
@@ -206,8 +205,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return SchemaBuilder.float64();
             case PRECISE:
                 return isVariableScaleDecimal(column) ? VariableScaleDecimal.builder() : Decimal.builder(column.scale());
-            case DEBEZIUM:
-                return isVariableScaleDecimal(column) ? VariableScaleDecimal.builder() : FixedScaleDecimal.builder(column.scale());
+            case STRING:
+                return SchemaBuilder.string();
             default:
                 throw new IllegalArgumentException("Unknown decimalMode");
         }
@@ -243,7 +242,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 case DOUBLE:
                     return (data) -> convertDouble(column, fieldDefn, data);
                 case PRECISE:
-                case DEBEZIUM:
+                case STRING:
                     return (data) -> convertDecimal(column, fieldDefn, data, decimalMode);
                 }
             case PgOid.BYTEA:
@@ -337,14 +336,12 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
 
         if (!value.getDecimalValue().isPresent()) {
-            if (mode != DecimalMode.DEBEZIUM) {
+            if (mode != DecimalMode.STRING) {
                 logger.warn("Got a special value (NaN/Infinity) for Decimal type but current mode is not handle it. "
-                        + "If you need to support it then set decimal handling mode to 'debezium'.");
-                return isVariableScaleDecimal(column) ? VariableScaleDecimal.fromLogical(fieldDefn.schema(), new DebeziumDecimal(BigDecimal.ZERO)) : BigDecimal.ZERO;
+                        + "If you need to support it then set decimal handling mode to 'string'.");
+                return isVariableScaleDecimal(column) ? VariableScaleDecimal.fromLogical(fieldDefn.schema(), DebeziumDecimal.ZERO) : BigDecimal.ZERO;
             }
-            return isVariableScaleDecimal(column) ?
-                    VariableScaleDecimal.fromLogical(fieldDefn.schema(), value) :
-                    FixedScaleDecimal.fromLogical(fieldDefn.schema(), value);
+            return value.toString();
         }
 
         newDecimal = value.getDecimalValue().get();
@@ -356,12 +353,11 @@ public class PostgresValueConverter extends JdbcValueConverters {
             if (newDecimal.scale() < 0) {
                 newDecimal = newDecimal.setScale(0);
             }
-            return VariableScaleDecimal.fromLogical(fieldDefn.schema(), new DebeziumDecimal(newDecimal));
+            if (mode != DecimalMode.STRING) {
+                return VariableScaleDecimal.fromLogical(fieldDefn.schema(), new DebeziumDecimal(newDecimal));
+            }
         }
-        if (mode != DecimalMode.DEBEZIUM) {
-            return newDecimal;
-        }
-        return FixedScaleDecimal.fromLogical(fieldDefn.schema(), new DebeziumDecimal(newDecimal));
+        return mode != DecimalMode.STRING ? newDecimal : (new DebeziumDecimal(newDecimal)).toString();
     }
 
     @Override

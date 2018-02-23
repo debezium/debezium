@@ -14,7 +14,6 @@ import org.apache.kafka.connect.data.Struct;
 import org.junit.Test;
 
 import io.debezium.data.DebeziumDecimal;
-import io.debezium.data.FixedScaleDecimal;
 import io.debezium.data.VariableScaleDecimal;
 
 public class CustomTypeEncodingTest {
@@ -25,29 +24,5 @@ public class CustomTypeEncodingTest {
         final Struct struct = VariableScaleDecimal.fromLogical(VariableScaleDecimal.schema(), new DebeziumDecimal(testValue));
         final BigDecimal decodedValue = VariableScaleDecimal.toLogical(struct).getDecimalValue().get();
         assertEquals("Number should be same after serde", testValue, decodedValue);
-    }
-
-    @Test
-    public void testSpecialVariableScaleDecimal() {
-        final DebeziumDecimal testValue = DebeziumDecimal.POSITIVE_INF;
-        final Struct struct = VariableScaleDecimal.fromLogical(VariableScaleDecimal.schema(), testValue);
-        final DebeziumDecimal decodedValue = VariableScaleDecimal.toLogical(struct);
-        assertEquals("Special value should be same after serde", testValue, decodedValue);
-    }
-
-    @Test
-    public void testFixedScaleDecimal() {
-        final BigDecimal testValue = new BigDecimal("138.456");
-        final Struct struct = FixedScaleDecimal.fromLogical(FixedScaleDecimal.schema(3), new DebeziumDecimal(testValue));
-        final BigDecimal decodedValue = FixedScaleDecimal.toLogical(FixedScaleDecimal.schema(3), struct).getDecimalValue().get();
-        assertEquals("Number should be same after serde", testValue, decodedValue);
-    }
-
-    @Test
-    public void testSpecialFixedScaleDecimal() {
-        final DebeziumDecimal testValue = DebeziumDecimal.NOT_A_NUMBER;
-        final Struct struct = FixedScaleDecimal.fromLogical(FixedScaleDecimal.schema(3), testValue);
-        final DebeziumDecimal decodedValue = FixedScaleDecimal.toLogical(FixedScaleDecimal.schema(3), struct);
-        assertEquals("Special value should be same after serde", testValue, decodedValue);
     }
 }

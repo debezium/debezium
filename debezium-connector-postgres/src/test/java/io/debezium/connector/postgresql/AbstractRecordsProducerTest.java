@@ -48,8 +48,6 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Assert;
 
 import io.debezium.data.Bits;
-import io.debezium.data.DebeziumDecimal;
-import io.debezium.data.FixedScaleDecimal;
 import io.debezium.data.Json;
 import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
@@ -166,7 +164,7 @@ public abstract class AbstractRecordsProducerTest {
         dvs_int.put("scale", 0).put("value", new BigDecimal("10").unscaledValue().toByteArray());
         final Struct nvs_int = new Struct(VariableScaleDecimal.schema());
         nvs_int.put("scale", 0).put("value", new BigDecimal("22").unscaledValue().toByteArray());
-        final List<SchemaAndValueField> fields = Arrays.asList(
+        final List<SchemaAndValueField> fields = new ArrayList<SchemaAndValueField>(Arrays.asList(
                 new SchemaAndValueField("d", Decimal.builder(2).optional().build(), new BigDecimal("1.10")),
                 new SchemaAndValueField("dzs", Decimal.builder(0).optional().build(), new BigDecimal("10")),
                 new SchemaAndValueField("dvs", VariableScaleDecimal.optionalSchema(), dvs),
@@ -177,14 +175,14 @@ public abstract class AbstractRecordsProducerTest {
                 new SchemaAndValueField("dvs_int", VariableScaleDecimal.optionalSchema(), dvs_int),
                 new SchemaAndValueField("n_int", Decimal.builder(4).optional().build(), new BigDecimal("22.0000")),
                 new SchemaAndValueField("nvs_int", VariableScaleDecimal.optionalSchema(), nvs_int)
-        );
+        ));
         if (!DecoderDifferences.areSpecialFPValuesUnsupported()) {
             fields.addAll(Arrays.asList(
                     new SchemaAndValueField("d_nan", Decimal.builder(2).optional().build(), BigDecimal.ZERO),
                     new SchemaAndValueField("dzs_nan", Decimal.builder(0).optional().build(), BigDecimal.ZERO),
                     new SchemaAndValueField("dvs_nan", VariableScaleDecimal.optionalSchema(), VariableScaleDecimal.ZERO),
                     new SchemaAndValueField("n_nan", Decimal.builder(4).optional().build(), BigDecimal.ZERO),
-                    new SchemaAndValueField("nzs_nan", Decimal.builder(2).optional().build(), BigDecimal.ZERO),
+                    new SchemaAndValueField("nzs_nan", Decimal.builder(0).optional().build(), BigDecimal.ZERO),
                     new SchemaAndValueField("nvs_nan", VariableScaleDecimal.optionalSchema(), VariableScaleDecimal.ZERO)
             ));
         }
@@ -192,36 +190,28 @@ public abstract class AbstractRecordsProducerTest {
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForDebeziumNumericDecimalType() {
-        final Struct dvs = new Struct(VariableScaleDecimal.schema());
-        dvs.put("scale", 4).put("value", new BigDecimal("10.1111").unscaledValue().toByteArray());
-        final Struct nvs = new Struct(VariableScaleDecimal.schema());
-        nvs.put("scale", 4).put("value", new BigDecimal("22.2222").unscaledValue().toByteArray());
-        final Struct dvs_int = new Struct(VariableScaleDecimal.schema());
-        dvs_int.put("scale", 0).put("value", new BigDecimal("10").unscaledValue().toByteArray());
-        final Struct nvs_int = new Struct(VariableScaleDecimal.schema());
-        nvs_int.put("scale", 0).put("value", new BigDecimal("22").unscaledValue().toByteArray());
         final List<SchemaAndValueField> fields = new ArrayList<SchemaAndValueField>(Arrays.asList(
-                new SchemaAndValueField("d", FixedScaleDecimal.optionalSchema(2), FixedScaleDecimal.fromLogical(FixedScaleDecimal.optionalSchema(2), DebeziumDecimal.valueOf("1.10"))),
-                new SchemaAndValueField("dzs", FixedScaleDecimal.optionalSchema(0), FixedScaleDecimal.fromLogical(FixedScaleDecimal.optionalSchema(0), DebeziumDecimal.valueOf("10"))),
-                new SchemaAndValueField("dvs", VariableScaleDecimal.optionalSchema(), dvs),
-                new SchemaAndValueField("n", FixedScaleDecimal.optionalSchema(4), FixedScaleDecimal.fromLogical(FixedScaleDecimal.optionalSchema(4), DebeziumDecimal.valueOf("22.2200"))),
-                new SchemaAndValueField("nzs", FixedScaleDecimal.optionalSchema(0), FixedScaleDecimal.fromLogical(FixedScaleDecimal.optionalSchema(0), DebeziumDecimal.valueOf("22"))),
-                new SchemaAndValueField("nvs", VariableScaleDecimal.optionalSchema(), nvs),
-                new SchemaAndValueField("d_int", FixedScaleDecimal.optionalSchema(2), FixedScaleDecimal.fromLogical(FixedScaleDecimal.optionalSchema(2), DebeziumDecimal.valueOf("1.00"))),
-                new SchemaAndValueField("dzs_int", FixedScaleDecimal.optionalSchema(0), FixedScaleDecimal.fromLogical(FixedScaleDecimal.optionalSchema(0), DebeziumDecimal.valueOf("10"))),
-                new SchemaAndValueField("dvs_int", VariableScaleDecimal.optionalSchema(), dvs_int),
-                new SchemaAndValueField("n_int", FixedScaleDecimal.optionalSchema(4), FixedScaleDecimal.fromLogical(FixedScaleDecimal.optionalSchema(4), DebeziumDecimal.valueOf("22.0000"))),
-                new SchemaAndValueField("nzs_int", FixedScaleDecimal.optionalSchema(0), FixedScaleDecimal.fromLogical(FixedScaleDecimal.optionalSchema(0), DebeziumDecimal.valueOf("22"))),
-                new SchemaAndValueField("nvs_int",VariableScaleDecimal.optionalSchema(), nvs_int)
+                new SchemaAndValueField("d", Schema.OPTIONAL_STRING_SCHEMA, "1.10"),
+                new SchemaAndValueField("dzs", Schema.OPTIONAL_STRING_SCHEMA, "10"),
+                new SchemaAndValueField("dvs", Schema.OPTIONAL_STRING_SCHEMA, "10.1111"),
+                new SchemaAndValueField("n", Schema.OPTIONAL_STRING_SCHEMA, "22.2200"),
+                new SchemaAndValueField("nzs", Schema.OPTIONAL_STRING_SCHEMA, "22"),
+                new SchemaAndValueField("nvs", Schema.OPTIONAL_STRING_SCHEMA, "22.2222"),
+                new SchemaAndValueField("d_int", Schema.OPTIONAL_STRING_SCHEMA, "1.00"),
+                new SchemaAndValueField("dzs_int", Schema.OPTIONAL_STRING_SCHEMA, "10"),
+                new SchemaAndValueField("dvs_int", Schema.OPTIONAL_STRING_SCHEMA, "10"),
+                new SchemaAndValueField("n_int", Schema.OPTIONAL_STRING_SCHEMA, "22.0000"),
+                new SchemaAndValueField("nzs_int", Schema.OPTIONAL_STRING_SCHEMA, "22"),
+                new SchemaAndValueField("nvs_int", Schema.OPTIONAL_STRING_SCHEMA, "22")
         ));
         if (!DecoderDifferences.areSpecialFPValuesUnsupported()) {
             fields.addAll(Arrays.asList(
-                    new SchemaAndValueField("d_nan", FixedScaleDecimal.optionalSchema(2), FixedScaleDecimal.fromLogical(FixedScaleDecimal.optionalSchema(2), DebeziumDecimal.NOT_A_NUMBER)),
-                    new SchemaAndValueField("dzs_nan", FixedScaleDecimal.optionalSchema(0), FixedScaleDecimal.fromLogical(FixedScaleDecimal.optionalSchema(0), DebeziumDecimal.NOT_A_NUMBER)),
-                    new SchemaAndValueField("dvs_nan", VariableScaleDecimal.optionalSchema(), VariableScaleDecimal.fromLogical(VariableScaleDecimal.optionalSchema(), DebeziumDecimal.NOT_A_NUMBER)),
-                    new SchemaAndValueField("n_nan", FixedScaleDecimal.optionalSchema(4), FixedScaleDecimal.fromLogical(FixedScaleDecimal.optionalSchema(4), DebeziumDecimal.NOT_A_NUMBER)),
-                    new SchemaAndValueField("nzs_nan", FixedScaleDecimal.optionalSchema(0), FixedScaleDecimal.fromLogical(FixedScaleDecimal.optionalSchema(0), DebeziumDecimal.NOT_A_NUMBER)),
-                    new SchemaAndValueField("nvs_nan", VariableScaleDecimal.optionalSchema(), VariableScaleDecimal.fromLogical(VariableScaleDecimal.optionalSchema(), DebeziumDecimal.NOT_A_NUMBER))
+                    new SchemaAndValueField("d_nan", Schema.OPTIONAL_STRING_SCHEMA, "NaN"),
+                    new SchemaAndValueField("dzs_nan", Schema.OPTIONAL_STRING_SCHEMA, "NaN"),
+                    new SchemaAndValueField("dvs_nan", Schema.OPTIONAL_STRING_SCHEMA, "NaN"),
+                    new SchemaAndValueField("n_nan", Schema.OPTIONAL_STRING_SCHEMA, "NaN"),
+                    new SchemaAndValueField("nzs_nan", Schema.OPTIONAL_STRING_SCHEMA, "NaN"),
+                    new SchemaAndValueField("nvs_nan", Schema.OPTIONAL_STRING_SCHEMA, "NaN")
             ));
         }
         return fields;

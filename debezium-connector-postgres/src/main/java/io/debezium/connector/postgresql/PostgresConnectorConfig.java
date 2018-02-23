@@ -46,10 +46,10 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
         PRECISE("precise"),
 
         /**
-         * Represent {@code DECIMAL} and {@code NUMERIC} values as a custom {@link DebeziumDecimal} values, which are
-         * represented in change events as a struct. This is precise, it supports also special values but is difficult to use.
+         * Represent {@code DECIMAL} and {@code NUMERIC} values as a string values. This is precise, it supports also special values
+         * but the type information is lost.
          */
-        DEBEZIUM("debezium"),
+        STRING("string"),
 
         /**
          * Represent {@code DECIMAL} and {@code NUMERIC} values as precise {@code double} values. This may be less precise
@@ -72,8 +72,8 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
             switch (this) {
                 case DOUBLE:
                     return DecimalMode.DOUBLE;
-                case DEBEZIUM:
-                    return DecimalMode.DEBEZIUM;
+                case STRING:
+                    return DecimalMode.STRING;
                 case PRECISE:
                 default:
                     return DecimalMode.PRECISE;
@@ -610,7 +610,7 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                                                         .withImportance(Importance.MEDIUM)
                                                         .withDescription("Specify how DECIMAL and NUMERIC columns should be represented in change events, including:"
                                                                 + "'precise' (the default) uses java.math.BigDecimal to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; "
-                                                                + "'debezium' uses DebeziumDecimal custom type to represent values (including the special ones like NaN or Infinity) which are encoded in the change events using a binary representation or a symbolic string for special values using Debezium's 'io.debezium.data.FixedScaleDecimal' type; "
+                                                                + "'string' uses string to represent values (including the special ones like NaN or Infinity); "
                                                                 + "'double' represents values using Java's 'double', which may not offer the precision but will be far easier to use in consumers.");
 
     public static final Field STATUS_UPDATE_INTERVAL_MS = Field.create("status.update.interval.ms")

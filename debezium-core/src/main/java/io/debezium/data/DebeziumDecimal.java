@@ -33,7 +33,6 @@ public class DebeziumDecimal {
         NegativeInfinity;
     }
 
-    public static final String SPECIAL_FIELD = "special";
     public static final String VALUE_FIELD = "value";
 
     public static DebeziumDecimal ZERO = new DebeziumDecimal(BigDecimal.ZERO);
@@ -100,9 +99,20 @@ public class DebeziumDecimal {
    }
 
    /**
-     * Converts a value from its logical format (BigDecimal) to it encoded format - a struct containing
+    * Returns a {@link SchemaBuilder} for a base schema builder for Debezium Decimal types. You can use the resulting SchemaBuilder
+    * to set additional schema settings such as required/optional, default value, and documentation.
+    *
+    * @return the schema builder
+    */
+   static SchemaBuilder builder() {
+       return SchemaBuilder.struct()
+               .field(VALUE_FIELD, Schema.BYTES_SCHEMA);
+   }
+
+   /**
+     * Converts a value from its logical format (BigDecimal) to its encoded format - a struct containing
      * either the special value or the binary representation of the number
-     * 
+     *
      * @param struct the strut to put data in
      * @return the encoded value
      */
@@ -110,37 +120,28 @@ public class DebeziumDecimal {
         if (decimalValue != null) {
             struct.put(VALUE_FIELD, decimalValue.unscaledValue().toByteArray());
         }
-        else if (specialValue != null) {
-            struct.put(SPECIAL_FIELD, specialValue.name());
-        }
         return struct;
     }
 
     /**
-     * Returns a {@link SchemaBuilder} for a base schema builder for Debezium Decimal types. You can use the resulting SchemaBuilder
-     * to set additional schema settings such as required/optional, default value, and documentation.
-     * 
-     * @return the schema builder
-     */
-    static SchemaBuilder builder() {
-        return SchemaBuilder.struct()
-                .field(SPECIAL_FIELD, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(VALUE_FIELD, Schema.OPTIONAL_BYTES_SCHEMA);
-    }
-
-    /**
      * Decodes a part of the encoded value
-     * 
+     *
      * @param value the encoded value
      * @return the decoded value
      */
     static DebeziumDecimal toLogical(Struct value, Function<BigInteger, BigDecimal> valueProducer) {
-        final String s = value.getString(SPECIAL_FIELD);
-        if (s != null) {
-            return new DebeziumDecimal(SpecialValue.valueOf(s));
-        }
         final BigInteger unscaledValue = new BigInteger((byte[])value.getBytes(VALUE_FIELD));
         return new DebeziumDecimal(valueProducer.apply(unscaledValue));
+    }
+
+    /**
+     * Converts a value from its logical format (BigDecimal/special) to its string representation
+     *
+     * @param struct the strut to put data in
+     * @return the encoded value
+     */
+    public String toString() {
+        return decimalValue != null ? decimalValue.toString() : specialValue.name();
     }
 
     @Override
