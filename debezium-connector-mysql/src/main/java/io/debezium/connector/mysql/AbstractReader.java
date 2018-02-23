@@ -59,9 +59,9 @@ public abstract class AbstractReader implements Reader {
         this.name = name;
         this.context = context;
         this.connectionContext = context.getConnectionContext();
-        this.records = new LinkedBlockingDeque<>(connectionContext.getConnectorConfig().getMaxQueueSize());
-        this.maxBatchSize = connectionContext.getConnectorConfig().getMaxBatchSize();
-        this.pollInterval = connectionContext.getConnectorConfig().getPollInterval();
+        this.records = new LinkedBlockingDeque<>(context.getConnectorConfig().getMaxQueueSize());
+        this.maxBatchSize = context.getConnectorConfig().getMaxBatchSize();
+        this.pollInterval = context.getConnectorConfig().getPollInterval();
         this.metronome = Metronome.parker(pollInterval, Clock.SYSTEM);
     }
 

@@ -41,9 +41,9 @@ public class MySqlTaskContextIT extends MySqlTaskContextTest {
         assertThat(context.serverName()).isEqualTo(serverName);
 
         assertThat("" + context.includeSchemaChangeRecords()).isEqualTo(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES.defaultValueAsString());
-        assertThat("" + context.getConnectionContext().getConnectorConfig().getMaxBatchSize()).isEqualTo(MySqlConnectorConfig.MAX_BATCH_SIZE.defaultValueAsString());
-        assertThat("" + context.getConnectionContext().getConnectorConfig().getMaxQueueSize()).isEqualTo(MySqlConnectorConfig.MAX_QUEUE_SIZE.defaultValueAsString());
-        assertThat("" + context.getConnectionContext().getConnectorConfig().getPollInterval().toMillis()).isEqualTo(MySqlConnectorConfig.POLL_INTERVAL_MS.defaultValueAsString());
+        assertThat("" + context.getConnectorConfig().getMaxBatchSize()).isEqualTo(MySqlConnectorConfig.MAX_BATCH_SIZE.defaultValueAsString());
+        assertThat("" + context.getConnectorConfig().getMaxQueueSize()).isEqualTo(MySqlConnectorConfig.MAX_QUEUE_SIZE.defaultValueAsString());
+        assertThat("" + context.getConnectorConfig().getPollInterval().toMillis()).isEqualTo(MySqlConnectorConfig.POLL_INTERVAL_MS.defaultValueAsString());
         assertThat("" + context.snapshotMode().getValue()).isEqualTo(MySqlConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
 
         // Snapshot default is 'initial' ...
