@@ -65,7 +65,7 @@ import io.debezium.util.NumberConversions;
 public class JdbcValueConverters implements ValueConverterProvider {
 
     public enum DecimalMode {
-        PRECISE, DOUBLE, DEBEZIUM;
+        PRECISE, DOUBLE, STRING;
     }
 
     public enum BigIntUnsignedMode {
@@ -171,7 +171,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                         // values are fixed-precision decimal values with exact precision.
                         // Use Kafka Connect's arbitrary precision decimal type and use the column's specified scale ...
                         return Decimal.builder(column.scale());
-                    case DEBEZIUM:
+                    case STRING:
                         throw new ConnectException("Unsupported decimal mode");
                 }
 
@@ -279,7 +279,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                         return (data) -> convertDouble(column, fieldDefn, data);
                     case PRECISE:
                         return (data) -> convertNumeric(column, fieldDefn, data);
-                    case DEBEZIUM:
+                    case STRING:
                         throw new ConnectException("Unsupported decimal mode");
                 }
             case Types.DECIMAL:
@@ -288,7 +288,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                         return (data) -> convertDouble(column, fieldDefn, data);
                     case PRECISE:
                         return (data) -> convertDecimal(column, fieldDefn, data);
-                    case DEBEZIUM:
+                    case STRING:
                         throw new ConnectException("Unsupported decimal mode");
                 }
 

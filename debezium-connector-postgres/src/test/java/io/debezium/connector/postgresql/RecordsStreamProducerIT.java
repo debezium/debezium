@@ -578,9 +578,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveNumericTypeAsDebeziumDecimal() throws Exception {
+    public void shouldReceiveNumericTypeAsString() throws Exception {
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, PostgresConnectorConfig.DecimalHandlingMode.DEBEZIUM)
+                .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, PostgresConnectorConfig.DecimalHandlingMode.STRING)
                 .build());
         setupRecordsProducer(config);
 

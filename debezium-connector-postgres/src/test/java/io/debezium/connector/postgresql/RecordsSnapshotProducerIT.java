@@ -220,7 +220,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         PostgresConnectorConfig config = new PostgresConnectorConfig(
                 TestHelper.defaultConfig()
-                        .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DEBEZIUM)
+                        .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING)
                         .build());
 
         TopicSelector selector = TopicSelector.create(config);
