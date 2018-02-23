@@ -75,6 +75,7 @@
 
         <!-- Connectors -->
         <version.com.google.protobuf>2.6.1</version.com.google.protobuf>
+        <version.io.reactivex.rxjava2>2.1.9</version.io.reactivex.rxjava2>
 
         <!-- Testing -->
         <version.junit>4.12</version.junit>
@@ -114,6 +115,7 @@
         <module>debezium-assembly-descriptors</module>
         <module>debezium-core</module>
         <module>debezium-embedded</module>
+        <module>debezium-reactive</module>
         <module>debezium-connector-mysql</module>
         <module>debezium-connector-postgres</module>
         <module>debezium-connector-mongodb</module>
@@ -275,6 +277,13 @@
                 <groupId>log4j</groupId>
                 <artifactId>log4j</artifactId>
                 <version>${version.log4j}</version>
+            </dependency>
+
+            <!-- Reactive module -->
+            <dependency>
+                <groupId>io.reactivex.rxjava2</groupId>
+                <artifactId>rxjava</artifactId>
+                <version>${version.io.reactivex.rxjava2}</version>
             </dependency>
 
             <!-- Test dependencies -->
