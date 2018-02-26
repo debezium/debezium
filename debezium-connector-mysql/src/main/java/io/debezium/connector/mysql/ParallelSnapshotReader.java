@@ -99,24 +99,20 @@ public class ParallelSnapshotReader implements Reader {
 
     @Override
     public void stop() {
-        boolean error = false;
-        try {
-            logger.info("Stopping the {} reader", oldTablesReader.name());
-            oldTablesReader.stop();
-        } catch (Throwable t) {
-            logger.error("Unexpected error stopping the {} reader", oldTablesReader.name());
-            error = true;
-        }
+        if (running.compareAndSet(true, false)) {
+            try {
+                logger.info("Stopping the {} reader", oldTablesReader.name());
+                oldTablesReader.stop();
+            } catch (Throwable t) {
+                logger.error("Unexpected error stopping the {} reader", oldTablesReader.name());
+            }
 
-        try {
-            logger.info("Stopping the {} reader", newTablesReader.name());
-            newTablesReader.stop();
-        } catch (Throwable t) {
-            logger.error("Unexpected error stopping the {} reader", newTablesReader.name());
-            error = true;
-        }
-        if (!error) {
-            running.set(false);
+            try {
+                logger.info("Stopping the {} reader", newTablesReader.name());
+                newTablesReader.stop();
+            } catch (Throwable t) {
+                logger.error("Unexpected error stopping the {} reader", newTablesReader.name());
+            }
         }
     }
 
@@ -157,20 +153,18 @@ public class ParallelSnapshotReader implements Reader {
      */
 
     /*package local*/ static class ParallelHaltingPredicate implements Predicate<SourceRecord> {
-
-        // todo maybe this should eventually be configured, but for now the time diff were are interested in
-        // is hard coded in as 5 minutes.
-        private static final long DEFAULT_DURATION_MS = 5 * 60 * 1000;
-
         private volatile AtomicBoolean thisReaderNearEnd;
         private volatile AtomicBoolean otherReaderNearEnd;
 
         // The minimum duration we must be within before we attempt to halt.
         private final Duration minHaltingDuration;
+        // todo maybe this should eventually be configured, but for now the time diff were are interested in
+        // is hard coded in as 5 minutes.
+        private static final Duration DEFAULT_MIN_HALTING_DURATION = Duration.ofMinutes(5);
 
         /*package local*/ ParallelHaltingPredicate(AtomicBoolean thisReaderNearEndRef,
                                                    AtomicBoolean otherReaderNearEndRef) {
-            this(thisReaderNearEndRef, otherReaderNearEndRef, Duration.ofMillis(DEFAULT_DURATION_MS));
+            this(thisReaderNearEndRef, otherReaderNearEndRef, DEFAULT_MIN_HALTING_DURATION);
         }
 
         /*package local*/ ParallelHaltingPredicate(AtomicBoolean thisReaderNearEndRef,
