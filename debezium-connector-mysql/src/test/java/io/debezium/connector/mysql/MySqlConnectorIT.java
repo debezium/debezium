@@ -11,10 +11,12 @@ import static org.junit.Assert.fail;
 import java.nio.file.Path;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotLockingMode;
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
@@ -229,6 +231,211 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, KafkaDatabaseHistory.TOPIC);
         assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS);
         assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS);
+    }
+
+    /**
+     * Validates that if you use the deprecated snapshot.minimal.locking configuration value is set to true
+     * and its replacement snapshot.locking.mode is set to minimal, configuration validates as acceptable.
+     */
+    @Test
+    public void shouldValidateLockingModeWithMinimalLocksEnabledConfiguration() {
+        Configuration config = DATABASE.defaultJdbcConfigBuilder()
+            .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
+            .with(MySqlConnectorConfig.SERVER_ID, 18765)
+            .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+            .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
+            .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
+            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+            // Conflicting properties under test:
+            .with(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING, true)
+            .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, "minimal")
+            .build();
+
+        MySqlConnector connector = new MySqlConnector();
+        Config result = connector.validate(config.asMap());
+
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.HOSTNAME);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.PORT);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.USER);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.PASSWORD);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SERVER_NAME);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SERVER_ID);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLES_IGNORE_BUILTIN);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_WHITELIST);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_BLACKLIST);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_WHITELIST);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_BLACKLIST);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_BLACKLIST);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.CONNECTION_TIMEOUT_MS);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.KEEP_ALIVE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_QUEUE_SIZE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_BATCH_SIZE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.POLL_INTERVAL_MS);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_HISTORY);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_MODE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_MODE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_KEYSTORE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.DECIMAL_HANDLING_MODE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.TIME_PRECISION_MODE);
+        assertNoConfigurationErrors(result, KafkaDatabaseHistory.BOOTSTRAP_SERVERS);
+        assertNoConfigurationErrors(result, KafkaDatabaseHistory.TOPIC);
+        assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS);
+        assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
+    }
+
+    /**
+     * Validates that if you use the deprecated snapshot.minimal.locking configuration value in conflict
+     * with its replacement snapshot.locking.mode an error will be generated.
+     *
+     * If SNAPSHOT_MINIMAL_LOCKING = false, SNAPSHOT_LOCKING_MODE must be 'minimal'
+     */
+    @Test
+    public void shouldFailToValidateConflictingLockingModeConfiguration() {
+        Configuration config = DATABASE.defaultJdbcConfigBuilder()
+            .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
+            .with(MySqlConnectorConfig.SERVER_ID, 18765)
+            .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+            .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
+            .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
+            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+
+            // Conflicting properties under test:
+            .with(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING, false)
+            .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, "none")
+            .build();
+
+        MySqlConnector connector = new MySqlConnector();
+        Config result = connector.validate(config.asMap());
+        assertConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
+    }
+
+    /**
+     * Validates that if you use the deprecated snapshot.minimal.locking configuration value in conflict
+     * with its replacement snapshot.locking.mode an error will be generated.
+     *
+     * If SNAPSHOT_MINIMAL_LOCKING = true, SNAPSHOT_LOCKING_MODE must be 'minimal'
+     */
+    @Test
+    public void shouldFailToValidateConflictingLockingModeExtendedConfiguration() {
+        Configuration config = DATABASE.defaultJdbcConfigBuilder()
+            .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
+            .with(MySqlConnectorConfig.SERVER_ID, 18765)
+            .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+            .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
+            .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
+            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+
+            // Conflicting properties under test:
+            .with(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING, true)
+            .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, "extended")
+            .build();
+
+        MySqlConnector connector = new MySqlConnector();
+        Config result = connector.validate(config.asMap());
+        assertConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
+    }
+
+    /**
+     * Validates that if you use the deprecated snapshot.minimal.locking configuration value in conflict
+     * with its replacement snapshot.locking.mode an error will be generated.
+     *
+     * If SNAPSHOT_MINIMAL_LOCKING = true, SNAPSHOT_LOCKING_MODE must be 'minimal'
+     */
+    @Test
+    public void shouldFailToValidateConflictingLockingModeNoneConfiguration() {
+        Configuration config = DATABASE.defaultJdbcConfigBuilder()
+            .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
+            .with(MySqlConnectorConfig.SERVER_ID, 18765)
+            .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+            .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
+            .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
+            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+
+            // Conflicting properties under test:
+            .with(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING, true)
+            .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, "none")
+            .build();
+
+        MySqlConnector connector = new MySqlConnector();
+        Config result = connector.validate(config.asMap());
+        assertConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
+    }
+
+    /**
+     * Validates that SNAPSHOT_LOCKING_MODE 'none' is valid with SNAPSHOT_MODE values of
+     * 'none', 'schema_only', 'schema_only_recovery'
+     */
+    @Test
+    public void shouldValidateLockingModeNoneWithValidSnapshotModeConfiguration() {
+        final List<String> acceptableValues = new ArrayList<String>() {
+            {
+                add(SnapshotMode.NEVER.getValue());
+                add(SnapshotMode.SCHEMA_ONLY.getValue());
+                add(SnapshotMode.SCHEMA_ONLY_RECOVERY.getValue());
+            }
+        };
+
+        // Loop over all known valid values
+        for (final String acceptableValue: acceptableValues) {
+            Configuration config = DATABASE.defaultJdbcConfigBuilder()
+                .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
+                .with(MySqlConnectorConfig.SERVER_ID, 18765)
+                .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+                .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
+                .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+
+                // Conflicting properties under test:
+                .with(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING, false)
+                .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, SnapshotLockingMode.NONE.getValue())
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, acceptableValue)
+                .build();
+
+            MySqlConnector connector = new MySqlConnector();
+            Config result = connector.validate(config.asMap());
+            assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
+        }
+    }
+
+    /**
+     * Validates that SNAPSHOT_LOCKING_MODE 'none' is invalid with SNAPSHOT_MODE values of
+     * 'when_needed', 'initial', 'initial_recovery'
+     */
+    @Test
+    public void shouldNotValidateLockingModeNoneWithInvalidSnapshotModeConfiguration() {
+        final List<String> invalidValues = new ArrayList<String>() {
+            {
+                add(SnapshotMode.WHEN_NEEDED.getValue());
+                add(SnapshotMode.INITIAL.getValue());
+                add(SnapshotMode.INITIAL_ONLY.getValue());
+            }
+        };
+
+        // Loop over all known valid values
+        for (final String invalidValue: invalidValues) {
+            Configuration config = DATABASE.defaultJdbcConfigBuilder()
+                .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
+                .with(MySqlConnectorConfig.SERVER_ID, 18765)
+                .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+                .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
+                .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+
+                // Conflicting properties under test:
+                .with(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING, false)
+                .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, SnapshotLockingMode.NONE.getValue())
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, invalidValue)
+                .build();
+
+            MySqlConnector connector = new MySqlConnector();
+            Config result = connector.validate(config.asMap());
+            assertConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
+        }
     }
 
     @Test

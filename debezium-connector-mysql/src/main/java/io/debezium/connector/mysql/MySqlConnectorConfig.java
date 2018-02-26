@@ -6,8 +6,10 @@
 package io.debezium.connector.mysql;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -1006,12 +1008,11 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
         return 0;
     }
 
-    // TODO - Better error messages + tests.
     private static int validateSnapshotLockingMode(Configuration config, Field field, ValidationOutput problems) {
         // Grab configured values
         final String lockingModeValueStr = config.getString(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
         final String snapshotModeValueStr = config.getString(MySqlConnectorConfig.SNAPSHOT_MODE);
-        final boolean minimalLocksValue = config.getBoolean(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING);;
+        final boolean minimalLocksEnabled = config.getBoolean(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING);
 
         // Convert into appropriate enum values
         final SnapshotLockingMode lockingModeValue = SnapshotLockingMode.parse(lockingModeValueStr);
@@ -1023,16 +1024,20 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
             return 1;
         }
 
-        // Validate that if deprecated snapshot.minimal.locks is set to true, and locking mode is NOT minimal
-        if (minimalLocksValue && lockingModeValue != SnapshotLockingMode.MINIMAL ) {
+        // Validate that if deprecated snapshot.minimal.locks is set to 'true', locking mode must be 'minimal'
+        if (minimalLocksEnabled && lockingModeValue != SnapshotLockingMode.MINIMAL ) {
             // Then display a validation error.
-            problems.accept(SNAPSHOT_LOCKING_MODE, lockingModeValue, "Deprecated configuration value TODO conflicts with configured value for option " + SNAPSHOT_LOCKING_MODE.name());
+            problems.accept(SNAPSHOT_LOCKING_MODE, lockingModeValue, "Deprecated configuration " + SNAPSHOT_MINIMAL_LOCKING.name() + " conflicts with configured value.");
             return 1;
         }
 
-        // If value is NONE then ensure that Snapshot mode is SCHEMA_ONLY or SCHEMA_ONLY_RECOVERY
-        if (lockingModeValue == SnapshotLockingMode.NONE && snapshotModeValue != SnapshotMode.SCHEMA_ONLY && snapshotModeValue != SnapshotMode.SCHEMA_ONLY_RECOVERY) {
-            problems.accept(SNAPSHOT_LOCKING_MODE, lockingModeValue, "LockingMode can only be set to NONE when SnapshotMode is set to Schema or Schema Only.");
+        // A value of SNAPSHOT_LOCKING_MODE 'none' is only valid when SNAPSHOT_MODE is configured to not include data.
+        if (lockingModeValue == SnapshotLockingMode.NONE && snapshotModeValue.includeData()) {
+            final String acceptableValues = Arrays.stream(SnapshotMode.values())
+                .filter(value -> !value.includeData())
+                .map(SnapshotMode::getValue)
+                .collect(Collectors.joining(", "));
+            problems.accept(SNAPSHOT_LOCKING_MODE, lockingModeValue, "Can only be set to 'none' when " + SNAPSHOT_MODE.name() + " is set to [" + acceptableValues + "]");
             return 1;
         }
 
