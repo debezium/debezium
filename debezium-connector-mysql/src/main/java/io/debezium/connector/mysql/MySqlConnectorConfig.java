@@ -254,12 +254,31 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
     }
 
     /**
-     * Represents locking mode during snapshots.
-     * TODO - Fill in details.
+     * The set of predefined Snapshot Locking Mode options.
      */
     public static enum SnapshotLockingMode implements EnumeratedValue {
+
+        /**
+         * This mode will block all writes for the entire duration of the snapshot.
+         *
+         * Replaces deprecated configuration option snapshot.locking.minimal with a value of false.
+         */
         EXTENDED("extended"),
+
+        /**
+         * The connector holds the global read lock for just the initial portion of the snapshot while the connector reads the database
+         * schemas and other metadata. The remaining work in a snapshot involves selecting all rows from each table, and this can be done
+         * in a consistent fashion using the REPEATABLE READ transaction even when the global read lock is no longer held and while other
+         * MySQL clients are updating the database.
+         *
+         * Replaces deprecated configuration option snapshot.locking.minimal with a value of true.
+         */
         MINIMAL("minimal"),
+
+        /**
+         * This mode will avoid using ANY table locks during the snapshot process.  This mode can only be used with SnapShotMode
+         * set to schema_only or schema_only_recovery.
+         */
         NONE("none");
 
         private final String value;
@@ -748,13 +767,13 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
      * @deprecated Replaced with SNAPSHOT_LOCKING_MODE
      */
     @Deprecated
-    // TODO fill-in deprecated description.
     public static final Field SNAPSHOT_MINIMAL_LOCKING = Field.create("snapshot.minimal.locks")
                                                               .withDisplayName("Use shortest database locking for snapshots")
                                                               .withType(Type.BOOLEAN)
                                                               .withWidth(Width.SHORT)
                                                               .withImportance(Importance.LOW)
-                                                              .withDescription("Controls how long the connector holds onto the global read lock while it is performing a snapshot. The default is 'true', "
+                                                              .withDescription("NOTE: This option has been deprecated in favor of snapshot.locking.mode. \n"
+                                                                      + "Controls how long the connector holds onto the global read lock while it is performing a snapshot. The default is 'true', "
                                                                       + "which means the connector holds the global read lock (and thus prevents any updates) for just the initial portion of the snapshot "
                                                                       + "while the database schemas and other metadata are being read. The remaining work in a snapshot involves selecting all rows from "
                                                                       + "each table, and this can be done using the snapshot process' REPEATABLE READ transaction even when the lock is no longer held and "
@@ -762,18 +781,18 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                                       + "of the snapshot; in such cases set this property to 'false'.")
                                                               .withDefault(true);
 
-    // TODO fill-in descriptions.
     public static final Field SNAPSHOT_LOCKING_MODE = Field.create("snapshot.locking.mode")
                                                            .withDisplayName("Snapshot locking mode")
                                                            .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.MINIMAL)
                                                            .withWidth(Width.SHORT)
                                                            .withImportance(Importance.LOW)
-                                                           .withDescription("The criteria for running a snapshot upon startup of the connector. "
-                                                                   + "Options include: "
-                                                                   + "'standard' TODO Change this name..."
-                                                                   + "'minimal' (the default) TODO this is the old default, 'minimal locking mode'"
-                                                                   + "'none' TODO uses no table locks, could result in inconsistent snapshots.  Only should be used with schema_only/schema_only_recovery snapshot modes?"
-                                                           )
+                                                           .withDescription("Controls how long the connector holds onto the global read lock while it is performing a snapshot. The default is 'minimal', "
+                                                               + "which means the connector holds the global read lock (and thus prevents any updates) for just the initial portion of the snapshot "
+                                                               + "while the database schemas and other metadata are being read. The remaining work in a snapshot involves selecting all rows from "
+                                                               + "each table, and this can be done using the snapshot process' REPEATABLE READ transaction even when the lock is no longer held and "
+                                                               + "other operations are updating the database. However, in some cases it may be desirable to block all writes for the entire duration "
+                                                               + "of the snapshot; in such cases set this property to 'extended'.  Using a value 'none' will prevent the connector from acquiring any "
+                                                               + "table locks during the snapshot process. This mode can only be used in combination with snapshot.mode values of 'schema_only' or 'schema_only_recovery'.")
                                                            .withValidation(MySqlConnectorConfig::validateSnapshotLockingMode);
 
     public static final Field TIME_PRECISION_MODE = Field.create("time.precision.mode")
@@ -989,8 +1008,6 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
 
     // TODO - Better error messages + tests.
     private static int validateSnapshotLockingMode(Configuration config, Field field, ValidationOutput problems) {
-        // TODO Should we cast Configuration => MysqlConnectorConfig and use our getters?
-
         // Grab configured values
         final String lockingModeValueStr = config.getString(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
         final String snapshotModeValueStr = config.getString(MySqlConnectorConfig.SNAPSHOT_MODE);
