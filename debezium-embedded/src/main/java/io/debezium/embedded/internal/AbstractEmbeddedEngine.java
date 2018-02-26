@@ -72,31 +72,32 @@ public abstract class AbstractEmbeddedEngine implements EmbeddedEngine {
                                                                         OFFSET_FLUSH_INTERVAL_MS, OFFSET_COMMIT_TIMEOUT_MS,
                                                                         INTERNAL_KEY_CONVERTER_CLASS, INTERNAL_VALUE_CONVERTER_CLASS);
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
+    protected final Logger logger = LoggerFactory.getLogger(getClass());
     private final Configuration config;
     private final Clock clock;
     private final ClassLoader classLoader;
-    private final Consumer<SourceRecord> consumer;
-    private final CompletionCallback completionCallback;
+    protected final Consumer<SourceRecord> consumer;
+    protected final CompletionCallback completionCallback;
     private final Optional<ConnectorCallback> connectorCallback;
-    private final AtomicReference<Thread> runningThread = new AtomicReference<>();
-    private final VariableLatch latch = new VariableLatch(0);
+    protected final AtomicReference<Thread> runningThread = new AtomicReference<>();
+    protected final VariableLatch latch = new VariableLatch(0);
     private final Converter keyConverter;
     private final Converter valueConverter;
     private final WorkerConfig workerConfig;
-    private final CompletionResult completionResult;
-    private long recordsSinceLastCommit = 0;
-    private long timeOfLastCommitMillis = 0;
-    private OffsetCommitPolicy offsetCommitPolicy;
 
-    private final String connectorClassName;
-    private final long commitTimeoutMs;
+    protected final CompletionResult completionResult;
+    protected long recordsSinceLastCommit = 0;
+    private long timeOfLastCommitMillis = 0;
+    protected OffsetCommitPolicy offsetCommitPolicy;
+
+    protected final String connectorClassName;
+    protected final long commitTimeoutMs;
     private SourceConnector connector;
-    private OffsetStorageWriter offsetWriter;
-    private SourceTask task;
+    protected OffsetStorageWriter offsetWriter;
+    protected SourceTask task;
     private OffsetBackingStore offsetStore;
 
-    private Throwable handlerError;
+    protected Throwable handlerError;
 
     public AbstractEmbeddedEngine(Configuration config, ClassLoader classLoader, Clock clock, Consumer<SourceRecord> consumer,
                            CompletionCallback completionCallback, ConnectorCallback connectorCallback,
@@ -150,7 +151,7 @@ public abstract class AbstractEmbeddedEngine implements EmbeddedEngine {
         fail(msg, null);
     }
 
-    private void fail(String msg, Throwable error) {
+    protected void fail(String msg, Throwable error) {
         if (completionResult.hasError()) {
             // there's already a recorded failure, so keep the original one and simply log this one
             logger.error(msg, error);
@@ -168,7 +169,7 @@ public abstract class AbstractEmbeddedEngine implements EmbeddedEngine {
     /**
      * Initialize all engine components and start the connector
      */
-    protected void doStart() {
+    public void doStart() {
         final String engineName = config.getString(ENGINE_NAME);
 
         if (!config.validateAndRecord(CONNECTOR_FIELDS, logger::error)) {
@@ -263,7 +264,7 @@ public abstract class AbstractEmbeddedEngine implements EmbeddedEngine {
     /**
      * Stop the task
      */
-    protected void doStopTask() {
+    public void doStopTask() {
         logger.debug("Stopping the task and engine");
         task.stop();
         connectorCallback.ifPresent(ConnectorCallback::taskStopped);
@@ -278,7 +279,7 @@ public abstract class AbstractEmbeddedEngine implements EmbeddedEngine {
     /**
      * Stop the connector
      */
-    protected void doStopConnector() {
+    public void doStopConnector() {
         try {
             offsetStore.stop();
         } catch (Throwable t) {
@@ -294,6 +295,7 @@ public abstract class AbstractEmbeddedEngine implements EmbeddedEngine {
     }
 
     /**
+<<<<<<< e2fc0bdf4cc335e1653acf3b25690b15b3eea529
      * Run this embedded connector and deliver database changes to the registered {@link Consumer}. This method blocks until
      * the connector is stopped.
      * <p>
@@ -410,6 +412,8 @@ public abstract class AbstractEmbeddedEngine implements EmbeddedEngine {
     }
 
     /**
+=======
+>>>>>>> DBZ-566 Reactive engine and converters added
      * Determine if we should flush offsets to storage, and if so then attempt to flush offsets.
      *
      * @param offsetWriter the offset storage writer; may not be null
@@ -506,6 +510,13 @@ public abstract class AbstractEmbeddedEngine implements EmbeddedEngine {
     @Override
     public String toString() {
         return "EmbeddedConnector{id=" + config.getString(ENGINE_NAME) + '}';
+    }
+
+    protected List<SourceRecord> readRecordsFromConnector() throws InterruptedException {
+        logger.debug("Embedded engine is polling task for records on thread " + runningThread.get());
+        List<SourceRecord> changeRecords = task.poll(); // blocks until there are values ...
+        logger.debug("Embedded engine returned from polling task for records");
+        return changeRecords;
     }
 
     public static class EmbeddedConfig extends WorkerConfig {

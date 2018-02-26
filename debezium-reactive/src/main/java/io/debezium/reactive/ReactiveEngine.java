@@ -5,12 +5,12 @@
  */
 package io.debezium.reactive;
 
-import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.config.Configuration;
 import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.embedded.spi.OffsetCommitPolicy;
+import io.debezium.reactive.internal.ReactiveEngineBuilderImpl;
 import io.debezium.util.Clock;
 import io.reactivex.Flowable;
 
@@ -44,7 +44,7 @@ public interface ReactiveEngine<T> {
 
         Builder<T> withOffsetCommitPolicy(OffsetCommitPolicy policy);
 
-        Builder<T> withSerializer(Serializer<T> serializer);
+        Builder<T> withConverter(Class<? extends Converter<T>> converter);
 
         ReactiveEngine<T> build();
     }
@@ -53,7 +53,7 @@ public interface ReactiveEngine<T> {
      * @return default implementation of reactive engine Builder
      */
     public static <T> Builder<T> create() {
-        return null;
+        return new ReactiveEngineBuilderImpl<T>();
     }
 
     /**

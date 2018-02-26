@@ -8,9 +8,9 @@ package io.debezium.reactive;
 import org.apache.kafka.connect.source.SourceRecord;
 
 /**
- * A class that encapsulates {@link SourceRecord} and associates the {@link #completed()} operation with it.
+ * A class that encapsulates {@link SourceRecord} and associates the {@link #complete()} operation with it.
  * It is expected that the consumer will receive the event from the pipeline and when the event is
- * durably processed it will signal this fact back to engine using {@link #completed()} call.
+ * durably processed it will signal this fact back to engine using {@link #complete()} call.
  *
  * @author Jiri Pechanec
  *
@@ -27,5 +27,5 @@ public interface DebeziumEvent<T> {
      * an exception whenever the consumer tries to read a new event when an uncommitted event exists
      * or when the pipeline processing is finished without calling it.
      */
-    public void completed();
+    public void complete();
 }
