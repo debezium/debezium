@@ -7,8 +7,10 @@ package io.debezium.connector.mysql;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Random;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -1018,16 +1020,30 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
         final SnapshotLockingMode lockingModeValue = SnapshotLockingMode.parse(lockingModeValueStr);
         final SnapshotMode snapshotModeValue = SnapshotMode.parse(snapshotModeValueStr);
 
-        // Validate the configured value is a valid option
+        // Sanity check, validate the configured value is a valid option.
         if (lockingModeValue == null) {
             problems.accept(SNAPSHOT_LOCKING_MODE, lockingModeValue, "Must be a valid snapshot.locking.mode value");
             return 1;
         }
 
         // Validate that if deprecated snapshot.minimal.locks is set to 'true', locking mode must be 'minimal'
-        if (minimalLocksEnabled && lockingModeValue != SnapshotLockingMode.MINIMAL ) {
+        final Set<SnapshotLockingMode> validMinimalLockingModes = new HashSet<SnapshotLockingMode>() {
+            {
+                add(SnapshotLockingMode.MINIMAL);
+                add(SnapshotLockingMode.NONE);
+            }
+        };
+
+        // If minimal locks is enabled, we must have locking mode set to minimal or none.
+        if (minimalLocksEnabled && !validMinimalLockingModes.contains(lockingModeValue)) {
             // Then display a validation error.
-            problems.accept(SNAPSHOT_LOCKING_MODE, lockingModeValue, "Deprecated configuration " + SNAPSHOT_MINIMAL_LOCKING.name() + " conflicts with configured value.");
+            problems.accept(SNAPSHOT_LOCKING_MODE, lockingModeValue, "Deprecated configuration " + SNAPSHOT_MINIMAL_LOCKING.name() + " in conflict. If " + SNAPSHOT_MINIMAL_LOCKING.name() + "is 'true', " + SNAPSHOT_LOCKING_MODE.name() + " must be ['minimal', 'none'].");
+            return 1;
+
+        // If minimal locks is disbaled, we must be set to extended.
+        } else if (!minimalLocksEnabled && lockingModeValue != SnapshotLockingMode.EXTENDED) {
+            // Then display a validation error.
+            problems.accept(SNAPSHOT_LOCKING_MODE, lockingModeValue, "Deprecated configuration " + SNAPSHOT_MINIMAL_LOCKING.name() + " in conflict. If " + SNAPSHOT_MINIMAL_LOCKING.name() + "is 'false', " + SNAPSHOT_LOCKING_MODE.name() + " must be '" + SnapshotLockingMode.EXTENDED.value + "'.");
             return 1;
         }
 

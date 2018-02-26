@@ -391,7 +391,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
 
                 // Conflicting properties under test:
-                .with(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING, false)
                 .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, SnapshotLockingMode.NONE.getValue())
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, acceptableValue)
                 .build();
