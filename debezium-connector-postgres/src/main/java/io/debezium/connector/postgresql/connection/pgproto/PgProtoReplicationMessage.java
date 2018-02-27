@@ -152,7 +152,7 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                 }
                 else if (datumMessage.hasDatumString()) {
                     final String s = datumMessage.getDatumString();
-                    return PostgresValueConverter.toSpecialValue(s).orElse(new SpecialValueDecimal(new BigDecimal(s)));
+                    return PostgresValueConverter.toSpecialValue(s).orElseGet(() -> new SpecialValueDecimal(new BigDecimal(s)));
                 }
                 return null;
             case PgOid.CHAR:
