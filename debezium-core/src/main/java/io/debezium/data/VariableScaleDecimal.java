@@ -23,7 +23,7 @@ public class VariableScaleDecimal {
     public static final String LOGICAL_NAME = "io.debezium.data.VariableScaleDecimal";
     public static final String VALUE_FIELD = "value";
     public static final String SCALE_FIELD = "scale";
-    public static final Struct ZERO = fromLogical(schema(), DebeziumDecimal.ZERO);
+    public static final Struct ZERO = fromLogical(schema(), SpecialValueDecimal.ZERO);
     /**
      * Returns a {@link SchemaBuilder} for a VariableScaleDecimal. You can use the resulting SchemaBuilder
      * to set additional schema settings such as required/optional, default value, and documentation.
@@ -68,7 +68,7 @@ public class VariableScaleDecimal {
      *
      * @return the encoded value
      */
-    public static Struct fromLogical(Schema schema, DebeziumDecimal value) {
+    public static Struct fromLogical(Schema schema, SpecialValueDecimal value) {
         Struct result = new Struct(schema);
         final BigDecimal decimalValue = value.getDecimalValue().orElse(null);
         assert decimalValue != null : "Unable to encode special value";
@@ -83,7 +83,7 @@ public class VariableScaleDecimal {
      * @param value the encoded value
      * @return the decoded value
      */
-    public static DebeziumDecimal toLogical(final Struct value) {
-        return new DebeziumDecimal(new BigDecimal(new BigInteger((byte[])value.getBytes(VALUE_FIELD)), value.getInt32(SCALE_FIELD)));
+    public static SpecialValueDecimal toLogical(final Struct value) {
+        return new SpecialValueDecimal(new BigDecimal(new BigInteger((byte[])value.getBytes(VALUE_FIELD)), value.getInt32(SCALE_FIELD)));
     }
 }

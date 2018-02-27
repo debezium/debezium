@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 import org.apache.kafka.connect.data.Struct;
 import org.junit.Test;
 
-import io.debezium.data.DebeziumDecimal;
+import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
 
 public class CustomTypeEncodingTest {
@@ -21,7 +21,7 @@ public class CustomTypeEncodingTest {
     @Test
     public void testVariableScaleDecimal() {
         final BigDecimal testValue = new BigDecimal("138.456");
-        final Struct struct = VariableScaleDecimal.fromLogical(VariableScaleDecimal.schema(), new DebeziumDecimal(testValue));
+        final Struct struct = VariableScaleDecimal.fromLogical(VariableScaleDecimal.schema(), new SpecialValueDecimal(testValue));
         final BigDecimal decodedValue = VariableScaleDecimal.toLogical(struct).getDecimalValue().get();
         assertEquals("Number should be same after serde", testValue, decodedValue);
     }

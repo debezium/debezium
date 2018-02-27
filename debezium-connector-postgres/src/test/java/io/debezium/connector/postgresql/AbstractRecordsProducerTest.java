@@ -140,8 +140,9 @@ public abstract class AbstractRecordsProducerTest {
                                                                  INSERT_POSTGIS_TYPES_STMT, INSERT_POSTGIS_ARRAY_TYPES_STMT));
 
     protected List<SchemaAndValueField> schemasAndValuesForNumericType() {
-        final List<SchemaAndValueField> fields = new ArrayList<SchemaAndValueField>(
-                Arrays.asList(new SchemaAndValueField("si", SchemaBuilder.OPTIONAL_INT16_SCHEMA, (short) 1),
+        final List<SchemaAndValueField> fields = new ArrayList<SchemaAndValueField>();
+
+        fields.addAll(Arrays.asList(new SchemaAndValueField("si", SchemaBuilder.OPTIONAL_INT16_SCHEMA, (short) 1),
                              new SchemaAndValueField("i", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 123456),
                              new SchemaAndValueField("bi", SchemaBuilder.OPTIONAL_INT64_SCHEMA, 1234567890123L),
                              new SchemaAndValueField("r", Schema.OPTIONAL_FLOAT32_SCHEMA, 3.3f),
@@ -165,7 +166,7 @@ public abstract class AbstractRecordsProducerTest {
         return fields;
     }
 
-    protected List<SchemaAndValueField> schemasAndValuesForNumericDecimalType() {
+    protected List<SchemaAndValueField> schemasAndValuesForBigDecimalEncodedNumericTypes() {
         final Struct dvs = new Struct(VariableScaleDecimal.schema());
         dvs.put("scale", 4).put("value", new BigDecimal("10.1111").unscaledValue().toByteArray());
         final Struct nvs = new Struct(VariableScaleDecimal.schema());
@@ -189,7 +190,7 @@ public abstract class AbstractRecordsProducerTest {
         return fields;
     }
 
-    protected List<SchemaAndValueField> schemasAndValuesForDebeziumNumericDecimalType() {
+    protected List<SchemaAndValueField> schemasAndValuesForStringEncodedNumericTypes() {
         final List<SchemaAndValueField> fields = new ArrayList<SchemaAndValueField>(Arrays.asList(
                 new SchemaAndValueField("d", Schema.OPTIONAL_STRING_SCHEMA, "1.10"),
                 new SchemaAndValueField("dzs", Schema.OPTIONAL_STRING_SCHEMA, "10"),
@@ -217,7 +218,7 @@ public abstract class AbstractRecordsProducerTest {
         return fields;
     }
 
-    protected List<SchemaAndValueField> schemasAndValuesForImpreciseNumericDecimalType() {
+    protected List<SchemaAndValueField> schemasAndValuesForDoubleEncodedNumericTypes() {
         return Arrays.asList(
                 new SchemaAndValueField("d", Schema.OPTIONAL_FLOAT64_SCHEMA, 1.1d),
                 new SchemaAndValueField("dzs", Schema.OPTIONAL_FLOAT64_SCHEMA, 10d),
@@ -407,9 +408,9 @@ public abstract class AbstractRecordsProducerTest {
                 this::schemasAndValuesForTableAdaptiveTimeMicroseconds));
     }
 
-    protected Map<String, List<SchemaAndValueField>> schemaAndValuesByTableNameDebeziumDecimals() {
+    protected Map<String, List<SchemaAndValueField>> schemaAndValuesByTableNameStringEncodedDecimals() {
         return ALL_STMTS.stream().collect(Collectors.toMap(AbstractRecordsProducerTest::tableNameFromInsertStmt,
-                this::schemasAndValuesForTableDebeziumDecimals));
+                this::schemasAndValuesForNumericTypesUsingStringEncoding));
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForTableAdaptiveTimeMicroseconds(String insertTableStatement) {
@@ -419,9 +420,9 @@ public abstract class AbstractRecordsProducerTest {
         return schemasAndValuesForTable(insertTableStatement);
     }
 
-    protected List<SchemaAndValueField> schemasAndValuesForTableDebeziumDecimals(String insertTableStatement) {
+    protected List<SchemaAndValueField> schemasAndValuesForNumericTypesUsingStringEncoding(String insertTableStatement) {
         if (insertTableStatement.equals(INSERT_NUMERIC_DECIMAL_TYPES_STMT_NO_NAN)) {
-            return schemasAndValuesForDebeziumNumericDecimalType();
+            return schemasAndValuesForStringEncodedNumericTypes();
         }
         return schemasAndValuesForTable(insertTableStatement);
     }
@@ -438,7 +439,7 @@ public abstract class AbstractRecordsProducerTest {
             case INSERT_NUMERIC_TYPES_STMT:
                 return schemasAndValuesForNumericType();
             case INSERT_NUMERIC_DECIMAL_TYPES_STMT_NO_NAN:
-                return schemasAndValuesForNumericDecimalType();
+                return schemasAndValuesForBigDecimalEncodedNumericTypes();
             case INSERT_BIN_TYPES_STMT:
                 return schemaAndValuesForBinTypes();
             case INSERT_CASH_TYPES_STMT:

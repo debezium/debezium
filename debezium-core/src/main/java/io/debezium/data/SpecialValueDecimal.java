@@ -8,16 +8,16 @@ package io.debezium.data;
 
 import java.math.BigDecimal;
 import java.util.Optional;
-import java.util.function.Consumer;
 
 /**
  * Extension of plain a {@link BigDecimal} type that adds support for new features
- * like special values handling - NaN, infinity; 
+ * like special values handling - NaN, infinity;
  *
  * @author Jiri Pechanec
  *
  */
-public class DebeziumDecimal {
+public class SpecialValueDecimal {
+
     /**
      * Special values for floating-point and numeric types
      */
@@ -27,20 +27,20 @@ public class DebeziumDecimal {
         NEGATIVE_INFINITY;
     }
 
-    public static DebeziumDecimal ZERO = new DebeziumDecimal(BigDecimal.ZERO);
-    public static DebeziumDecimal NOT_A_NUMBER = new DebeziumDecimal(SpecialValue.NAN);
-    public static DebeziumDecimal POSITIVE_INF = new DebeziumDecimal(SpecialValue.POSITIVE_INFINITY);
-    public static DebeziumDecimal NEGATIVE_INF = new DebeziumDecimal(SpecialValue.NEGATIVE_INFINITY);
+    public static SpecialValueDecimal ZERO = new SpecialValueDecimal(BigDecimal.ZERO);
+    public static SpecialValueDecimal NOT_A_NUMBER = new SpecialValueDecimal(SpecialValue.NAN);
+    public static SpecialValueDecimal POSITIVE_INF = new SpecialValueDecimal(SpecialValue.POSITIVE_INFINITY);
+    public static SpecialValueDecimal NEGATIVE_INF = new SpecialValueDecimal(SpecialValue.NEGATIVE_INFINITY);
 
     private final BigDecimal decimalValue;
     private final SpecialValue specialValue;
 
-    public DebeziumDecimal(BigDecimal value) {
+    public SpecialValueDecimal(BigDecimal value) {
         this.decimalValue = value;
         this.specialValue = null;
     }
 
-    private DebeziumDecimal(SpecialValue specialValue) {
+    private SpecialValueDecimal(SpecialValue specialValue) {
         this.specialValue = specialValue;
         this.decimalValue = null;
     }
@@ -53,24 +53,14 @@ public class DebeziumDecimal {
         return Optional.ofNullable(decimalValue);
     }
 
-    /**
-    *
-    * @param consumer - executed when this instance contains a plain {@link BigDecimal}
-    */
-   public void forDecimalValue(Consumer<BigDecimal> consumer) {
-       if (decimalValue != null) {
-           consumer.accept(decimalValue);
-       }
-   }
-
    /**
     * Factory method for creating instances from numbers in string format
     *
-    * @param decimal - a string containing valid decimal number
-    * @return {@link DebeziumDecimal} containing converted {@link BigDecimal}
+    * @param decimal a string containing valid decimal number
+    * @return {@link SpecialValueDecimal} containing converted {@link BigDecimal}
     */
-   public static DebeziumDecimal valueOf(String decimal) {
-       return new DebeziumDecimal(new BigDecimal(decimal));
+   public static SpecialValueDecimal valueOf(String decimal) {
+       return new SpecialValueDecimal(new BigDecimal(decimal));
    }
 
    /**
@@ -96,6 +86,7 @@ public class DebeziumDecimal {
      * @param struct the strut to put data in
      * @return the encoded value
      */
+    @Override
     public String toString() {
         return decimalValue != null ? decimalValue.toString() : specialValue.name();
     }
@@ -117,7 +108,7 @@ public class DebeziumDecimal {
             return false;
         if (getClass() != obj.getClass())
             return false;
-        DebeziumDecimal other = (DebeziumDecimal) obj;
+        SpecialValueDecimal other = (SpecialValueDecimal) obj;
         if (decimalValue == null) {
             if (other.decimalValue != null)
                 return false;
