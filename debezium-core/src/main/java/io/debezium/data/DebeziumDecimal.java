@@ -7,14 +7,8 @@
 package io.debezium.data;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.util.Optional;
 import java.util.function.Consumer;
-import java.util.function.Function;
-
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.kafka.connect.data.Struct;
 
 /**
  * Extension of plain a {@link BigDecimal} type that adds support for new features
@@ -28,17 +22,15 @@ public class DebeziumDecimal {
      * Special values for floating-point and numeric types
      */
     private static enum SpecialValue {
-        NaN,
-        PositiveInfinity,
-        NegativeInfinity;
+        NAN,
+        POSITIVE_INFINITY,
+        NEGATIVE_INFINITY;
     }
 
-    public static final String VALUE_FIELD = "value";
-
     public static DebeziumDecimal ZERO = new DebeziumDecimal(BigDecimal.ZERO);
-    public static DebeziumDecimal NOT_A_NUMBER = new DebeziumDecimal(SpecialValue.NaN);
-    public static DebeziumDecimal POSITIVE_INF = new DebeziumDecimal(SpecialValue.PositiveInfinity);
-    public static DebeziumDecimal NEGATIVE_INF = new DebeziumDecimal(SpecialValue.NegativeInfinity);
+    public static DebeziumDecimal NOT_A_NUMBER = new DebeziumDecimal(SpecialValue.NAN);
+    public static DebeziumDecimal POSITIVE_INF = new DebeziumDecimal(SpecialValue.POSITIVE_INFINITY);
+    public static DebeziumDecimal NEGATIVE_INF = new DebeziumDecimal(SpecialValue.NEGATIVE_INFINITY);
 
     private final BigDecimal decimalValue;
     private final SpecialValue specialValue;
@@ -63,7 +55,7 @@ public class DebeziumDecimal {
 
     /**
     *
-    * @param consumer - executed when this instance contains a plain {@link Decimal}
+    * @param consumer - executed when this instance contains a plain {@link BigDecimal}
     */
    public void forDecimalValue(Consumer<BigDecimal> consumer) {
        if (decimalValue != null) {
@@ -87,52 +79,16 @@ public class DebeziumDecimal {
    public double toDouble() {
        if (specialValue != null) {
            switch (specialValue) {
-           case NaN:
+           case NAN:
                return Double.NaN;
-           case PositiveInfinity:
+           case POSITIVE_INFINITY:
                return Double.POSITIVE_INFINITY;
-           case NegativeInfinity:
+           case NEGATIVE_INFINITY:
                return Double.NEGATIVE_INFINITY;
            }
        }
        return decimalValue.doubleValue();
    }
-
-   /**
-    * Returns a {@link SchemaBuilder} for a base schema builder for Debezium Decimal types. You can use the resulting SchemaBuilder
-    * to set additional schema settings such as required/optional, default value, and documentation.
-    *
-    * @return the schema builder
-    */
-   static SchemaBuilder builder() {
-       return SchemaBuilder.struct()
-               .field(VALUE_FIELD, Schema.BYTES_SCHEMA);
-   }
-
-   /**
-     * Converts a value from its logical format (BigDecimal) to its encoded format - a struct containing
-     * either the special value or the binary representation of the number
-     *
-     * @param struct the strut to put data in
-     * @return the encoded value
-     */
-    Struct fromLogical(Struct struct) {
-        if (decimalValue != null) {
-            struct.put(VALUE_FIELD, decimalValue.unscaledValue().toByteArray());
-        }
-        return struct;
-    }
-
-    /**
-     * Decodes a part of the encoded value
-     *
-     * @param value the encoded value
-     * @return the decoded value
-     */
-    static DebeziumDecimal toLogical(Struct value, Function<BigInteger, BigDecimal> valueProducer) {
-        final BigInteger unscaledValue = new BigInteger((byte[])value.getBytes(VALUE_FIELD));
-        return new DebeziumDecimal(valueProducer.apply(unscaledValue));
-    }
 
     /**
      * Converts a value from its logical format (BigDecimal/special) to its string representation

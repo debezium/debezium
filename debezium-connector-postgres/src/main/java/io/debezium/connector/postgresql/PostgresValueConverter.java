@@ -26,6 +26,7 @@ import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.geometric.PGpoint;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
@@ -337,9 +338,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
         if (!value.getDecimalValue().isPresent()) {
             if (mode != DecimalMode.STRING) {
-                logger.warn("Got a special value (NaN/Infinity) for Decimal type but current mode is not handle it. "
+                throw new ConnectException("Got a special value (NaN/Infinity) for Decimal type in column " + column.name() + " but current mode does not handle it. "
                         + "If you need to support it then set decimal handling mode to 'string'.");
-                return isVariableScaleDecimal(column) ? VariableScaleDecimal.fromLogical(fieldDefn.schema(), DebeziumDecimal.ZERO) : BigDecimal.ZERO;
             }
             return value.toString();
         }

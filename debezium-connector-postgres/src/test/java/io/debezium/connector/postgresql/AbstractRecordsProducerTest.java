@@ -101,6 +101,16 @@ public abstract class AbstractRecordsProducerTest {
                     + "'NaN', 'NaN', 'NaN', 'NaN', 'NaN', 'NaN'"
             + ")";
 
+    protected static final String INSERT_NUMERIC_DECIMAL_TYPES_STMT_NO_NAN =
+            "INSERT INTO numeric_decimal_table (d, dzs, dvs, n, nzs, nvs, "
+                    + "d_int, dzs_int, dvs_int, n_int, nzs_int, nvs_int, "
+                    + "d_nan, dzs_nan, dvs_nan, n_nan, nzs_nan, nvs_nan"
+                    + ") "
+            + "VALUES (1.1, 10.11, 10.1111, 22.22, 22.2, 22.2222, "
+                    + "1, 10, 10, 22, 22, 22, "
+                    + "null, null, null, null, null, null"
+            + ")";
+
     protected static final String INSERT_TSTZRANGE_TYPES_STMT = "INSERT INTO tstzrange_table (unbounded_exclusive_range, bounded_inclusive_range) " +
             "VALUES ('[2017-06-05 11:29:12.549426+00,)', '[2017-06-05 11:29:12.549426+00, 2017-06-05 12:34:56.789012+00]')";
 
@@ -122,7 +132,7 @@ public abstract class AbstractRecordsProducerTest {
     protected static final String INSERT_CUSTOM_TYPES_STMT = "INSERT INTO custom_table (lt, i, n) " +
             "VALUES ('Top.Collections.Pictures.Astronomy.Galaxies', '978-0-393-04002-9', NULL)";
 
-    protected static final Set<String> ALL_STMTS = new HashSet<>(Arrays.asList(INSERT_NUMERIC_TYPES_STMT, INSERT_NUMERIC_DECIMAL_TYPES_STMT,
+    protected static final Set<String> ALL_STMTS = new HashSet<>(Arrays.asList(INSERT_NUMERIC_TYPES_STMT, INSERT_NUMERIC_DECIMAL_TYPES_STMT_NO_NAN,
                                                                  INSERT_DATE_TIME_TYPES_STMT,
                                                                  INSERT_BIN_TYPES_STMT, INSERT_GEOM_TYPES_STMT, INSERT_TEXT_TYPES_STMT,
                                                                  INSERT_CASH_TYPES_STMT, INSERT_STRING_TYPES_STMT, INSERT_ARRAY_TYPES_STMT,
@@ -176,16 +186,6 @@ public abstract class AbstractRecordsProducerTest {
                 new SchemaAndValueField("n_int", Decimal.builder(4).optional().build(), new BigDecimal("22.0000")),
                 new SchemaAndValueField("nvs_int", VariableScaleDecimal.optionalSchema(), nvs_int)
         ));
-        if (!DecoderDifferences.areSpecialFPValuesUnsupported()) {
-            fields.addAll(Arrays.asList(
-                    new SchemaAndValueField("d_nan", Decimal.builder(2).optional().build(), BigDecimal.ZERO),
-                    new SchemaAndValueField("dzs_nan", Decimal.builder(0).optional().build(), BigDecimal.ZERO),
-                    new SchemaAndValueField("dvs_nan", VariableScaleDecimal.optionalSchema(), VariableScaleDecimal.ZERO),
-                    new SchemaAndValueField("n_nan", Decimal.builder(4).optional().build(), BigDecimal.ZERO),
-                    new SchemaAndValueField("nzs_nan", Decimal.builder(0).optional().build(), BigDecimal.ZERO),
-                    new SchemaAndValueField("nvs_nan", VariableScaleDecimal.optionalSchema(), VariableScaleDecimal.ZERO)
-            ));
-        }
         return fields;
     }
 
@@ -206,12 +206,12 @@ public abstract class AbstractRecordsProducerTest {
         ));
         if (!DecoderDifferences.areSpecialFPValuesUnsupported()) {
             fields.addAll(Arrays.asList(
-                    new SchemaAndValueField("d_nan", Schema.OPTIONAL_STRING_SCHEMA, "NaN"),
-                    new SchemaAndValueField("dzs_nan", Schema.OPTIONAL_STRING_SCHEMA, "NaN"),
-                    new SchemaAndValueField("dvs_nan", Schema.OPTIONAL_STRING_SCHEMA, "NaN"),
-                    new SchemaAndValueField("n_nan", Schema.OPTIONAL_STRING_SCHEMA, "NaN"),
-                    new SchemaAndValueField("nzs_nan", Schema.OPTIONAL_STRING_SCHEMA, "NaN"),
-                    new SchemaAndValueField("nvs_nan", Schema.OPTIONAL_STRING_SCHEMA, "NaN")
+                    new SchemaAndValueField("d_nan", Schema.OPTIONAL_STRING_SCHEMA, "NAN"),
+                    new SchemaAndValueField("dzs_nan", Schema.OPTIONAL_STRING_SCHEMA, "NAN"),
+                    new SchemaAndValueField("dvs_nan", Schema.OPTIONAL_STRING_SCHEMA, "NAN"),
+                    new SchemaAndValueField("n_nan", Schema.OPTIONAL_STRING_SCHEMA, "NAN"),
+                    new SchemaAndValueField("nzs_nan", Schema.OPTIONAL_STRING_SCHEMA, "NAN"),
+                    new SchemaAndValueField("nvs_nan", Schema.OPTIONAL_STRING_SCHEMA, "NAN")
             ));
         }
         return fields;
@@ -420,7 +420,7 @@ public abstract class AbstractRecordsProducerTest {
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForTableDebeziumDecimals(String insertTableStatement) {
-        if (insertTableStatement.equals(INSERT_NUMERIC_DECIMAL_TYPES_STMT)) {
+        if (insertTableStatement.equals(INSERT_NUMERIC_DECIMAL_TYPES_STMT_NO_NAN)) {
             return schemasAndValuesForDebeziumNumericDecimalType();
         }
         return schemasAndValuesForTable(insertTableStatement);
@@ -437,7 +437,7 @@ public abstract class AbstractRecordsProducerTest {
         switch (insertTableStatement) {
             case INSERT_NUMERIC_TYPES_STMT:
                 return schemasAndValuesForNumericType();
-            case INSERT_NUMERIC_DECIMAL_TYPES_STMT:
+            case INSERT_NUMERIC_DECIMAL_TYPES_STMT_NO_NAN:
                 return schemasAndValuesForNumericDecimalType();
             case INSERT_BIN_TYPES_STMT:
                 return schemaAndValuesForBinTypes();

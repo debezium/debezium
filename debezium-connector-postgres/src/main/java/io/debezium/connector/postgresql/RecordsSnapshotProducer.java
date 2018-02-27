@@ -295,6 +295,9 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                     return rs.getString(colIdx);
                 case PgOid.NUMERIC:
                     final String s = rs.getString(colIdx);
+                    if (s == null) {
+                        return s;
+                    }
                     final DebeziumDecimal v = PostgresValueConverter.toSpecialValue(s);
                     return v != null ? v : new DebeziumDecimal(rs.getBigDecimal(colIdx));
                 default:

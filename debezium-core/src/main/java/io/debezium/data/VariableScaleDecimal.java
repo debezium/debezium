@@ -7,6 +7,7 @@
 package io.debezium.data;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -20,6 +21,7 @@ import org.apache.kafka.connect.data.Struct;
  */
 public class VariableScaleDecimal {
     public static final String LOGICAL_NAME = "io.debezium.data.VariableScaleDecimal";
+    public static final String VALUE_FIELD = "value";
     public static final String SCALE_FIELD = "scale";
     public static final Struct ZERO = fromLogical(schema(), DebeziumDecimal.ZERO);
     /**
@@ -29,11 +31,12 @@ public class VariableScaleDecimal {
      * @return the schema builder
      */
     public static SchemaBuilder builder() {
-        return DebeziumDecimal.builder()
+        return SchemaBuilder.struct()
                 .name(LOGICAL_NAME)
                 .version(1)
                 .doc("Variable scaled decimal")
-                .field(SCALE_FIELD, Schema.OPTIONAL_INT32_SCHEMA);
+                .field(SCALE_FIELD, Schema.INT32_SCHEMA)
+                .field(VALUE_FIELD, Schema.BYTES_SCHEMA);
     }
 
     /**
@@ -57,18 +60,20 @@ public class VariableScaleDecimal {
     }
 
     /**
-     * Converts a value from its logical format (BigDecimal or SpecialValue) to its encoded format - a struct containing
-     * the scale of the number and a binary representation of the number or special value.
+     * Converts a value from its logical format (BigDecimal) to its encoded format - a struct containing
+     * the scale of the number and a binary representation of the number.
      *
-     * @param value the value or the  decimal
-     * @param special value of the number
+     * @param schema of the encoded value
+     * @param value the value or the decimal
      *
      * @return the encoded value
      */
     public static Struct fromLogical(Schema schema, DebeziumDecimal value) {
         Struct result = new Struct(schema);
-        value.fromLogical(result);
-        value.forDecimalValue(x -> result.put(SCALE_FIELD, x.scale()));
+        final BigDecimal decimalValue = value.getDecimalValue().orElse(null);
+        assert decimalValue != null : "Unable to encode special value";
+        result.put(VALUE_FIELD, decimalValue.unscaledValue().toByteArray());
+        result.put(SCALE_FIELD, decimalValue.scale());
         return result;
     }
 
@@ -79,6 +84,6 @@ public class VariableScaleDecimal {
      * @return the decoded value
      */
     public static DebeziumDecimal toLogical(final Struct value) {
-        return DebeziumDecimal.toLogical(value, (x) -> new BigDecimal(x, value.getInt32(SCALE_FIELD)));
+        return new DebeziumDecimal(new BigDecimal(new BigInteger((byte[])value.getBytes(VALUE_FIELD)), value.getInt32(SCALE_FIELD)));
     }
 }
