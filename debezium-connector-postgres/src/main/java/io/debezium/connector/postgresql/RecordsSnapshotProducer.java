@@ -299,11 +299,14 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                         return s;
                     }
 
-                    return PostgresValueConverter.toSpecialValue(s).orElse(new SpecialValueDecimal(rs.getBigDecimal(colIdx)));
+                    Optional<SpecialValueDecimal> value = PostgresValueConverter.toSpecialValue(s);
+                    return value.isPresent() ? value.get() : new SpecialValueDecimal(rs.getBigDecimal(colIdx));
+
                 default:
                     return rs.getObject(colIdx);
             }
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             // not a known type
             return rs.getObject(colIdx);
         }
