@@ -9,11 +9,5 @@ import io.debezium.pipeline.spi.SnapshotResult;
 
 public interface SnapshotChangeEventSource extends ChangeEventSource {
 
-    SnapshotResult execute(SnapshotContext context);
-
-    public interface SnapshotContext {
-
-        // TODO can we get rid of this in the favor of Thread.isInterrupted()?
-        boolean isAborted();
-    }
+    SnapshotResult execute() throws InterruptedException;
 }
