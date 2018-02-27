@@ -55,6 +55,7 @@ public class OracleConnectorConfig extends CommonConnectorConfig {
             .withType(Type.STRING)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
+            .withValidation(Field::isRequired)
             .withDescription("Name of the XStream Out server to connect to.");
 
     /**
