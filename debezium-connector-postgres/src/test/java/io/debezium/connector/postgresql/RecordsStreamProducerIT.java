@@ -86,7 +86,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         //numerical decimal types
         consumer.expects(1);
-        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT, schemasAndValuesForNumericDecimalType());
+        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT_NO_NAN, schemasAndValuesForNumericDecimalType());
 
         // string types
         consumer.expects(1);
