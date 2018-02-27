@@ -34,7 +34,7 @@ import io.debezium.connector.postgresql.RecordsStreamProducer.PgConnectionSuppli
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.AbstractReplicationMessageColumn;
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
-import io.debezium.data.DebeziumDecimal;
+import io.debezium.data.SpecialValueDecimal;
 import io.debezium.document.Array;
 import io.debezium.document.Document;
 import io.debezium.document.Value;
@@ -226,15 +226,15 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
             case "numeric":
             case "decimal":
                 if (rawValue.isInteger()) {
-                    return new DebeziumDecimal(new BigDecimal(rawValue.asInteger()));
+                    return new SpecialValueDecimal(new BigDecimal(rawValue.asInteger()));
                 }
                 else if (rawValue.isLong()) {
-                    return new DebeziumDecimal(new BigDecimal(rawValue.asLong()));
+                    return new SpecialValueDecimal(new BigDecimal(rawValue.asLong()));
                 }
                 else if (rawValue.isBigInteger()) {
-                    return new DebeziumDecimal(new BigDecimal(rawValue.asBigInteger()));
+                    return new SpecialValueDecimal(new BigDecimal(rawValue.asBigInteger()));
                 }
-                return DebeziumDecimal.valueOf(rawValue.asString());
+                return SpecialValueDecimal.valueOf(rawValue.asString());
 
             case "character":
             case "char":

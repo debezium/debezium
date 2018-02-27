@@ -19,6 +19,7 @@ import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -33,8 +34,8 @@ import org.postgresql.util.PGobject;
 
 import io.debezium.connector.postgresql.proto.PgProto;
 import io.debezium.data.Bits;
-import io.debezium.data.DebeziumDecimal;
 import io.debezium.data.Json;
+import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.geometry.Geography;
@@ -322,42 +323,50 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     protected Object convertDecimal(Column column, Field fieldDefn, Object data, DecimalMode mode) {
-        DebeziumDecimal value;
+        SpecialValueDecimal value;
         BigDecimal newDecimal;
 
-        if (data == null || !(data instanceof DebeziumDecimal)) {
+        if (data instanceof SpecialValueDecimal) {
+            value = (SpecialValueDecimal)data;
+        }
+        else {
             newDecimal = (BigDecimal)super.convertDecimal(column, fieldDefn, data);
+
             if (newDecimal == null) {
                 return newDecimal;
             }
-            value = new DebeziumDecimal(newDecimal);
-        }
-        else {
-            value = (DebeziumDecimal)data;
+
+            value = new SpecialValueDecimal(newDecimal);
         }
 
+        // special values (NaN, Infinity) can only be expressed when using "string" encoding
         if (!value.getDecimalValue().isPresent()) {
-            if (mode != DecimalMode.STRING) {
+            if (mode == DecimalMode.STRING) {
+                return value.toString();
+            }
+            else {
                 throw new ConnectException("Got a special value (NaN/Infinity) for Decimal type in column " + column.name() + " but current mode does not handle it. "
                         + "If you need to support it then set decimal handling mode to 'string'.");
             }
-            return value.toString();
         }
 
         newDecimal = value.getDecimalValue().get();
         if (column.scale() > newDecimal.scale()) {
           newDecimal = newDecimal.setScale(column.scale());
         }
+
         if (isVariableScaleDecimal(column)) {
             newDecimal = newDecimal.stripTrailingZeros();
             if (newDecimal.scale() < 0) {
                 newDecimal = newDecimal.setScale(0);
             }
-            if (mode != DecimalMode.STRING) {
-                return VariableScaleDecimal.fromLogical(fieldDefn.schema(), new DebeziumDecimal(newDecimal));
+
+            if (mode == DecimalMode.PRECISE) {
+                return VariableScaleDecimal.fromLogical(fieldDefn.schema(), new SpecialValueDecimal(newDecimal));
             }
         }
-        return mode != DecimalMode.STRING ? newDecimal : (new DebeziumDecimal(newDecimal)).toString();
+
+        return mode == DecimalMode.PRECISE ? newDecimal : (new SpecialValueDecimal(newDecimal)).toString();
     }
 
     @Override
@@ -617,15 +626,16 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 || (column.scale() == -1 && column.length() == -1);
     }
 
-    public static DebeziumDecimal toSpecialValue(String value) {
+    public static Optional<SpecialValueDecimal> toSpecialValue(String value) {
         switch (value) {
-        case N_A_N:
-            return DebeziumDecimal.NOT_A_NUMBER;
-        case POSITIVE_INFINITY:
-            return DebeziumDecimal.POSITIVE_INF;
-        case NEGATIVE_INFINITY:
-            return DebeziumDecimal.NEGATIVE_INF;
+            case N_A_N:
+                return Optional.of(SpecialValueDecimal.NOT_A_NUMBER);
+            case POSITIVE_INFINITY:
+                return Optional.of(SpecialValueDecimal.POSITIVE_INF);
+            case NEGATIVE_INFINITY:
+                return Optional.of(SpecialValueDecimal.NEGATIVE_INF);
         }
-        return null;
+
+        return Optional.empty();
     }
 }

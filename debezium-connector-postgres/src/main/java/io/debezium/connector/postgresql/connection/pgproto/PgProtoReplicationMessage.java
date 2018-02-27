@@ -30,7 +30,7 @@ import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.AbstractReplicationMessageColumn;
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.connector.postgresql.proto.PgProto;
-import io.debezium.data.DebeziumDecimal;
+import io.debezium.data.SpecialValueDecimal;
 import io.debezium.util.Strings;
 
 /**
@@ -152,8 +152,7 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                 }
                 else if (datumMessage.hasDatumString()) {
                     final String s = datumMessage.getDatumString();
-                    final DebeziumDecimal v = PostgresValueConverter.toSpecialValue(s);
-                    return v != null ? v : new DebeziumDecimal(new BigDecimal(s));
+                    return PostgresValueConverter.toSpecialValue(s).orElse(new SpecialValueDecimal(new BigDecimal(s)));
                 }
                 return null;
             case PgOid.CHAR:

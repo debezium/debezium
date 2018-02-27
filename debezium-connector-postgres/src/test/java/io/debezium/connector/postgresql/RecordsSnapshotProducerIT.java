@@ -213,7 +213,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     @FixFor("DBZ-606")
-    public void shouldGenerateSnapshotsForDecimalDatatypesUsingDebeziumDecimal() throws Exception {
+    public void shouldGenerateSnapshotsForDecimalDatatypesUsingStringEncoding() throws Exception {
         // PostGIS must not be used
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -241,13 +241,12 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         snapshotProducer.start(consumer, e -> {});
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
-        Map<String, List<SchemaAndValueField>> expectedValuesByTableName = super.schemaAndValuesByTableNameDebeziumDecimals();
+        Map<String, List<SchemaAndValueField>> expectedValuesByTableName = super.schemaAndValuesByTableNameStringEncodedDecimals();
         consumer.process(record -> assertReadRecord(record, expectedValuesByTableName));
 
         // check the offset information for each record
         while (!consumer.isEmpty()) {
             SourceRecord record = consumer.remove();
-            System.out.println(record.sourceOffset());
             assertRecordOffset(record, true, consumer.isEmpty());
         }
     }

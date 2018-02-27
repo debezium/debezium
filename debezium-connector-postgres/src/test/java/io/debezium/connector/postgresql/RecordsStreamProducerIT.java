@@ -86,7 +86,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         //numerical decimal types
         consumer.expects(1);
-        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT_NO_NAN, schemasAndValuesForNumericDecimalType());
+        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT_NO_NAN, schemasAndValuesForBigDecimalEncodedNumericTypes());
 
         // string types
         consumer.expects(1);
@@ -574,10 +574,11 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(1);
         recordsProducer.start(consumer, blackHole);
 
-        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT, schemasAndValuesForImpreciseNumericDecimalType());
+        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT, schemasAndValuesForDoubleEncodedNumericTypes());
     }
 
     @Test
+    @FixFor("DBZ-611")
     public void shouldReceiveNumericTypeAsString() throws Exception {
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, PostgresConnectorConfig.DecimalHandlingMode.STRING)
@@ -589,7 +590,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(1);
         recordsProducer.start(consumer, blackHole);
 
-        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT, schemasAndValuesForDebeziumNumericDecimalType());
+        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT, schemasAndValuesForStringEncodedNumericTypes());
     }
 
     @Test
