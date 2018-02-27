@@ -5,15 +5,15 @@
  */
 package io.debezium.time;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneOffset;
 
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 /**
  * @author Randall Hauch
@@ -98,9 +98,10 @@ public class ConversionsTest {
     @Test
     public void shouldReturnLocalDateTimeInstanceWhenConvertingUtilTimeToLocalDateTime() {
         LocalDateTime now = LocalDateTime.now();
-        java.util.Date date = new java.util.Date(now.getYear()-1900,now.getMonthValue()-1,now.getDayOfMonth(),
-                                                 now.getHour(),now.getMinute(),now.getSecond()); // 0 nanos!
-        assertThat(Conversions.toLocalDateTime(date)).isEqualTo(now.withNano(0));
+        java.util.Date date = new java.util.Date(now.getYear() - 1900,now.getMonthValue() - 1, now.getDayOfMonth(),
+                                                 now.getHour(), now.getMinute(), now.getSecond()); // 0 nanos!
+//        System.out.println(Conversions.toLocalDateTime(date).toInstant(ZoneOffset.UTC).getEpochSecond());
+        assertThat(Conversions.toLocalDateTime(date).atOffset(ZoneOffset.UTC).toInstant()).isEqualTo(date.toInstant());
     }
 
     @SuppressWarnings("deprecation")
