@@ -7,24 +7,13 @@ package io.debezium.pipeline.spi;
 
 public class SnapshotResult {
 
-    private final SnapshotResultStatus status;
     private final OffsetContext offset;
 
-    public SnapshotResult(SnapshotResultStatus status, OffsetContext offset) {
-        this.status = status;
+    public SnapshotResult(OffsetContext offset) {
         this.offset = offset;
-    }
-
-    public SnapshotResultStatus getStatus() {
-        return status;
     }
 
     public OffsetContext getOffset() {
         return offset;
-    }
-
-    public static enum SnapshotResultStatus {
-        COMPLETED,
-        ABORTED;
     }
 }

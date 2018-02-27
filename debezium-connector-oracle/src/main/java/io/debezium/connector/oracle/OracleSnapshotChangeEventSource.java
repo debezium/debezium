@@ -18,7 +18,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.spi.SnapshotResult;
-import io.debezium.pipeline.spi.SnapshotResult.SnapshotResultStatus;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
@@ -44,7 +43,7 @@ public class OracleSnapshotChangeEventSource implements SnapshotChangeEventSourc
     }
 
     @Override
-    public SnapshotResult execute(SnapshotContext context) {
+    public SnapshotResult execute() throws InterruptedException {
         Connection connection = null;
 
         try {
@@ -62,8 +61,8 @@ public class OracleSnapshotChangeEventSource implements SnapshotChangeEventSourc
             Set<TableId> tableNames = jdbcConnection.readTableNames(catalogName, "%DEBEZIUM%", null, new String[] {"TABLE"} );
 
             for (TableId tableId : tableNames) {
-                if (context.isAborted()) {
-                    return new SnapshotResult(SnapshotResultStatus.ABORTED, null);
+                if (Thread.currentThread().isInterrupted()) {
+                    throw new InterruptedException("Aborting snapshot");
                 }
 
                 LOGGER.debug("Locking table {}", tableId);
@@ -82,8 +81,8 @@ public class OracleSnapshotChangeEventSource implements SnapshotChangeEventSourc
             jdbcConnection.readSchema(tables, catalogName, "%DEBEZIUM%", null, null, false);
 
             for (TableId tableId : tableNames) {
-                if (context.isAborted()) {
-                    return new SnapshotResult(SnapshotResultStatus.ABORTED, null);
+                if (Thread.currentThread().isInterrupted()) {
+                    throw new InterruptedException("Aborting snapshot");
                 }
 
                 LOGGER.debug("Capturing structure of table {}", tableId);
@@ -104,7 +103,7 @@ public class OracleSnapshotChangeEventSource implements SnapshotChangeEventSourc
             OracleOffsetContext offset = new OracleOffsetContext(connectorConfig.getLogicalName());
             offset.setPosition(convertScnToPosition(scn));
 
-            return new SnapshotResult(SnapshotResultStatus.COMPLETED, offset);
+            return new SnapshotResult(offset);
         }
         catch(SQLException e) {
             throw new RuntimeException(e);
