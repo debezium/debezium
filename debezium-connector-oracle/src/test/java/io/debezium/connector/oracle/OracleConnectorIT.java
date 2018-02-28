@@ -89,6 +89,10 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         connection.execute("COMMIT");
         expectedRecordCount += 3; // deletion + tombstone + insert with new id
 
+        connection.execute("DELETE debezium.customer WHERE id = 2");
+        connection.execute("COMMIT");
+        expectedRecordCount += 2; // deletion + tombstone
+
         SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
 
         List<SourceRecord> testTableRecords = records.recordsForTopic("server1.ORCLPDB1.DEBEZIUM.CUSTOMER");
@@ -132,6 +136,16 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(after.get("NAME")).isEqualTo("Bruce");
         assertThat(after.get("SCORE")).isEqualTo(BigDecimal.valueOf(2345.67));
         assertThat(after.get("REGISTERED")).isEqualTo(toMicroSecondsSinceEpoch(LocalDateTime.of(2018, 3, 23, 0, 0, 0)));
+
+        // delete
+        VerifyRecord.isValidDelete(testTableRecords.get(5));
+        before = (Struct) ((Struct)testTableRecords.get(5).value()).get("before");
+        assertThat(before.get("ID")).isEqualTo(BigDecimal.valueOf(2));
+        assertThat(before.get("NAME")).isEqualTo("Bruce");
+        assertThat(before.get("SCORE")).isEqualTo(BigDecimal.valueOf(2345.67));
+        assertThat(before.get("REGISTERED")).isEqualTo(toMicroSecondsSinceEpoch(LocalDateTime.of(2018, 3, 23, 0, 0, 0)));
+
+        VerifyRecord.isValidTombstone(testTableRecords.get(6));
     }
 
     @Test

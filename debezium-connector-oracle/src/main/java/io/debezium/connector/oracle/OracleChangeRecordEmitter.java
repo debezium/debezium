@@ -38,48 +38,72 @@ public class OracleChangeRecordEmitter implements ChangeRecordEmitter {
         TableSchema tableSchema = (TableSchema) schema;
         Operation operation = getOperation();
 
-        if (operation == Operation.CREATE) {
-            Object[] columnValues = getColumnValues(lcr.getNewValues());
-            Object key = tableSchema.keyFromColumnData(columnValues);
-            Struct value = tableSchema.valueFromColumnData(columnValues);
-            Struct envelope = tableSchema.getEnvelopeSchema().create(value, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
-
-            receiver.changeRecord(operation, key, envelope, offsetContext);
+        switch(operation) {
+            case CREATE:
+                emitCreateRecord(offsetContext, receiver, tableSchema, operation);
+                break;
+            case UPDATE:
+                emitUpdateRecord(offsetContext, receiver, tableSchema, operation);
+                break;
+            case DELETE:
+                emitDeleteRecord(offsetContext, receiver, tableSchema, operation);
+                break;
+            default:
+                throw new IllegalArgumentException("Unsupported operation: " + operation);
         }
-        else if (operation == Operation.UPDATE) {
-            Object[] newColumnValues = getColumnValues(lcr.getNewValues());
-            Object[] oldColumnValues = getColumnValues(lcr.getOldValues());
+    }
 
-            Object oldKey = tableSchema.keyFromColumnData(oldColumnValues);
-            Object newKey = tableSchema.keyFromColumnData(newColumnValues);
+    private void emitCreateRecord(OffsetContext offsetContext, Receiver receiver, TableSchema tableSchema, Operation operation)
+            throws InterruptedException {
+        Object[] columnValues = getColumnValues(lcr.getNewValues());
+        Object key = tableSchema.keyFromColumnData(columnValues);
+        Struct value = tableSchema.valueFromColumnData(columnValues);
+        Struct envelope = tableSchema.getEnvelopeSchema().create(value, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
 
-            Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
-            Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
+        receiver.changeRecord(operation, key, envelope, offsetContext);
+    }
 
-            // regular update
-            if (Objects.equals(oldKey, newKey)) {
-                Struct envelope = tableSchema.getEnvelopeSchema().update(oldValue, newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
-                receiver.changeRecord(operation, newKey, envelope, offsetContext);
-            }
-            // PK update -> emit as delete and re-insert with new key
-            else {
-                Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
-                receiver.changeRecord(Operation.DELETE, oldKey, envelope, offsetContext);
+    private void emitUpdateRecord(OffsetContext offsetContext, Receiver receiver, TableSchema tableSchema, Operation operation)
+            throws InterruptedException {
+        Object[] newColumnValues = getColumnValues(lcr.getNewValues());
+        Object[] oldColumnValues = getColumnValues(lcr.getOldValues());
 
-                envelope = tableSchema.getEnvelopeSchema().create(newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
-                receiver.changeRecord(operation, oldKey, envelope, offsetContext);
-            }
+        Object oldKey = tableSchema.keyFromColumnData(oldColumnValues);
+        Object newKey = tableSchema.keyFromColumnData(newColumnValues);
+
+        Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
+        Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
+
+        // regular update
+        if (Objects.equals(oldKey, newKey)) {
+            Struct envelope = tableSchema.getEnvelopeSchema().update(oldValue, newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
+            receiver.changeRecord(operation, newKey, envelope, offsetContext);
         }
-        else if (operation == Operation.DELETE) {
-            throw new UnsupportedOperationException("Not yet implemented");
+        // PK update -> emit as delete and re-insert with new key
+        else {
+            Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
+            receiver.changeRecord(Operation.DELETE, oldKey, envelope, offsetContext);
+
+            envelope = tableSchema.getEnvelopeSchema().create(newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
+            receiver.changeRecord(operation, oldKey, envelope, offsetContext);
         }
+    }
+
+    private void emitDeleteRecord(OffsetContext offsetContext, Receiver receiver, TableSchema tableSchema, Operation operation)
+            throws InterruptedException {
+        Object[] oldColumnValues = getColumnValues(lcr.getOldValues());
+        Object oldKey = tableSchema.keyFromColumnData(oldColumnValues);
+        Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
+
+        Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
+        receiver.changeRecord(operation, oldKey, envelope, offsetContext);
     }
 
     private Operation getOperation() {
         switch(lcr.getCommandType()) {
-            case "INSERT": return Operation.CREATE;
-            case "DELETE": return Operation.DELETE;
-            case "UPDATE": return Operation.UPDATE;
+            case RowLCR.INSERT: return Operation.CREATE;
+            case RowLCR.DELETE: return Operation.DELETE;
+            case RowLCR.UPDATE: return Operation.UPDATE;
             default: throw new IllegalArgumentException("Received event of unexpected command type: " + lcr);
         }
     }
