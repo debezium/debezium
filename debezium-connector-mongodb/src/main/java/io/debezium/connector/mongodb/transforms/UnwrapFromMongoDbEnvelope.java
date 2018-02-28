@@ -50,7 +50,12 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
             // update
             if (patchRecord.value() != null) {
                 valueDocument = BsonDocument.parse(patchRecord.value().toString());
-                valueDocument = valueDocument.getDocument("$set");
+                if(valueDocument.containsKey("string") && !valueDocument.containsKey("$set")){
+                    valueDocument = valueDocument.getDocument("string");
+                }
+                if(valueDocument.containsKey("$set")){
+                    valueDocument = valueDocument.getDocument("$set");
+                }
 
                 if (!valueDocument.containsKey("id")) {
                     valueDocument.append("id", keyDocument.get("id"));
