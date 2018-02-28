@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.oracle;
 
+import java.util.Objects;
+
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.data.Envelope.Operation;
@@ -43,11 +45,30 @@ public class OracleChangeRecordEmitter implements ChangeRecordEmitter {
             Struct envelope = tableSchema.getEnvelopeSchema().create(value, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
 
             receiver.changeRecord(operation, key, envelope, offsetContext);
-
         }
         else if (operation == Operation.UPDATE) {
-            throw new UnsupportedOperationException("Not yet implemented");
-            // TODO handle PK change
+            Object[] newColumnValues = getColumnValues(lcr.getNewValues());
+            Object[] oldColumnValues = getColumnValues(lcr.getOldValues());
+
+            Object oldKey = tableSchema.keyFromColumnData(oldColumnValues);
+            Object newKey = tableSchema.keyFromColumnData(newColumnValues);
+
+            Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
+            Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
+
+            // regular update
+            if (Objects.equals(oldKey, newKey)) {
+                Struct envelope = tableSchema.getEnvelopeSchema().update(oldValue, newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
+                receiver.changeRecord(operation, newKey, envelope, offsetContext);
+            }
+            // PK update -> emit as delete and re-insert with new key
+            else {
+                Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
+                receiver.changeRecord(Operation.DELETE, oldKey, envelope, offsetContext);
+
+                envelope = tableSchema.getEnvelopeSchema().create(newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
+                receiver.changeRecord(operation, oldKey, envelope, offsetContext);
+            }
         }
         else if (operation == Operation.DELETE) {
             throw new UnsupportedOperationException("Not yet implemented");

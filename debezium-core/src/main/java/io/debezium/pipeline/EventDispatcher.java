@@ -5,11 +5,14 @@
  */
 package io.debezium.pipeline;
 
+import java.util.Objects;
 import java.util.function.Supplier;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.data.Envelope.Operation;
@@ -34,6 +37,8 @@ import io.debezium.schema.TopicSelector;
  * @author Gunnar Morling
  */
 public class EventDispatcher {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(EventDispatcher.class);
 
     private final ErrorHandler errorHandler;
     private final TopicSelector topicSelector;
@@ -105,13 +110,11 @@ public class EventDispatcher {
         }
 
         @Override
-        public void changeRecord(Operation operation, Object key,
-            Struct value, OffsetContext offsetContext) throws InterruptedException {
+        public void changeRecord(Operation operation, Object key, Struct value, OffsetContext offsetContext) throws InterruptedException {
+            Objects.requireNonNull(key, "key must not be null");
+            Objects.requireNonNull(value, "key must not be null");
 
-            if (key == null || value == null) {
-                // TODO raise exception?
-                return;
-            }
+            LOGGER.trace( "Received change record for {} operation on key {}", operation, key);
 
             Schema keySchema = dataCollectionSchema.keySchema();
             String topicName = topicSelector.topicNameFor(dataCollectionId);
@@ -130,7 +133,7 @@ public class EventDispatcher {
                         record.kafkaPartition(),
                         record.keySchema(),
                         record.key(),
-                        dataCollectionSchema.getEnvelopeSchema().schema(),
+                        null, // value schema
                         null, // value
                         record.timestamp()
                 );
