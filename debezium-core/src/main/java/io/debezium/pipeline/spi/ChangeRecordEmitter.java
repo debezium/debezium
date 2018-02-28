@@ -11,7 +11,7 @@ import io.debezium.data.Envelope.Operation;
 import io.debezium.schema.DataCollectionSchema;
 
 /**
- * Emits change one or more change records - specific to a given {@link DataCollectionSchema}.
+ * Emits one or more change records - specific to a given {@link DataCollectionSchema}.
  *
  * @author Gunnar Morling
  */
