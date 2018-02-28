@@ -211,9 +211,15 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 }
                 return org.apache.kafka.connect.data.Timestamp.builder();
             case Types.TIME_WITH_TIMEZONE:
-                return ZonedTime.builder();
+                if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
+                    return ZonedTime.builder();
+                }
+                return org.apache.kafka.connect.data.Time.builder();
             case Types.TIMESTAMP_WITH_TIMEZONE:
-                return ZonedTimestamp.builder();
+                if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
+                    return ZonedTimestamp.builder();
+                }
+                return org.apache.kafka.connect.data.Timestamp.builder();
 
             // Other types ...
             case Types.ROWID:
@@ -321,9 +327,15 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 }
                 return (data) -> convertTimestampToEpochMillisAsDate(column, fieldDefn, data);
             case Types.TIME_WITH_TIMEZONE:
-                return (data) -> convertTimeWithZone(column, fieldDefn, data);
+                if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
+                    return (data) -> convertTimeWithZone(column, fieldDefn, data);
+                }
+                return (data) -> convertTimeToMillisPastMidnightAsDate(column, fieldDefn, data);
             case Types.TIMESTAMP_WITH_TIMEZONE:
-                return (data) -> convertTimestampWithZone(column, fieldDefn, data);
+                if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
+                    return (data) -> convertTimestampWithZone(column, fieldDefn, data);
+                }
+                return (data) -> convertTimestampToEpochMillisAsDate(column, fieldDefn, data);
 
             // Other types ...
             case Types.ROWID:
