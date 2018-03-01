@@ -44,6 +44,12 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
         PRECISE("precise"),
 
         /**
+         * Represent {@code DECIMAL} and {@code NUMERIC} values as a string values. This is precise, it supports also special values
+         * but the type information is lost.
+         */
+        STRING("string"),
+
+        /**
          * Represent {@code DECIMAL} and {@code NUMERIC} values as precise {@code double} values. This may be less precise
          * but is far easier to use.
          */
@@ -64,6 +70,8 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
             switch (this) {
                 case DOUBLE:
                     return DecimalMode.DOUBLE;
+                case STRING:
+                    return DecimalMode.STRING;
                 case PRECISE:
                 default:
                     return DecimalMode.PRECISE;
@@ -816,6 +824,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                            .withImportance(Importance.MEDIUM)
                                                            .withDescription("Specify how DECIMAL and NUMERIC columns should be represented in change events, including:"
                                                                    + "'precise' (the default) uses java.math.BigDecimal to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; "
+                                                                   + "'string' uses string to represent values (including the special ones like NaN or Infinity); "
                                                                    + "'double' represents values using Java's 'double', which may not offer the precision but will be far easier to use in consumers.");
 
     public static final Field BIGINT_UNSIGNED_HANDLING_MODE = Field.create("bigint.unsigned.handling.mode")

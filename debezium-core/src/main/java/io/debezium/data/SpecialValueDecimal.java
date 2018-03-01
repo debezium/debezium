@@ -6,8 +6,15 @@
 
 package io.debezium.data;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Optional;
+
+import org.apache.kafka.connect.data.Decimal;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.errors.ConnectException;
+
+import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 
 /**
  * Extension of plain a {@link BigDecimal} type that adds support for new features
@@ -16,7 +23,9 @@ import java.util.Optional;
  * @author Jiri Pechanec
  *
  */
-public class SpecialValueDecimal {
+public class SpecialValueDecimal implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     /**
      * Special values for floating-point and numeric types
@@ -118,5 +127,49 @@ public class SpecialValueDecimal {
         if (specialValue != other.specialValue)
             return false;
         return true;
+    }
+
+    /**
+     * Returns a {@link SchemaBuilder} for a decimal numbers depending on {@link JdbcValueConverters.DecimalMode}.
+     * You can use the resulting SchemaBuilder
+     * to set additional schema settings such as required/optional, default value, and documentation.
+     *
+     * @param mode - the mode in which the number should be encoded
+     * @param scale - scale of the decimal
+     * @return the schema builder
+     */
+    public static SchemaBuilder builder(DecimalMode mode, int scale) {
+        switch (mode) {
+        case DOUBLE:
+            return SchemaBuilder.float64();
+        case PRECISE:
+            return Decimal.builder(scale);
+        case STRING:
+            return SchemaBuilder.string();
+        }
+        throw new IllegalArgumentException("Unknown decimalMode");
+    }
+
+    public static Object fromLogical(SpecialValueDecimal value, DecimalMode mode, String columnName) {
+        if (value.getDecimalValue().isPresent()) {
+            switch (mode) {
+            case DOUBLE:
+                return value.getDecimalValue().get().doubleValue();
+            case PRECISE:
+                return value.getDecimalValue().get();
+            case STRING:
+                return value.getDecimalValue().get().toString();
+            }
+            throw new IllegalArgumentException("Unknown decimalMode");
+        }
+
+        // special values (NaN, Infinity) can only be expressed when using "string" encoding
+        if (mode == DecimalMode.STRING) {
+            return value.toString();
+        }
+        else {
+            throw new ConnectException("Got a special value (NaN/Infinity) for Decimal type in column " + columnName + " but current mode does not handle it. "
+                    + "If you need to support it then set decimal handling mode to 'string'.");
+        }
     }
 }

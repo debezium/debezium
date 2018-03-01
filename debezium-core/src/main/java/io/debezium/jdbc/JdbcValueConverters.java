@@ -23,10 +23,8 @@ import java.time.temporal.TemporalAdjuster;
 import java.util.BitSet;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -164,16 +162,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 return SchemaBuilder.float64();
             case Types.NUMERIC:
             case Types.DECIMAL:
-                switch (decimalMode) {
-                    case DOUBLE:
-                        return SchemaBuilder.float64();
-                    case PRECISE:
-                        // values are fixed-precision decimal values with exact precision.
-                        // Use Kafka Connect's arbitrary precision decimal type and use the column's specified scale ...
-                        return Decimal.builder(column.scale());
-                    case STRING:
-                        throw new ConnectException("Unsupported decimal mode");
-                }
+                return SpecialValueDecimal.builder(decimalMode, column.scale());
 
                 // Fixed-length string values
             case Types.CHAR:
@@ -274,23 +263,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
             case Types.REAL:
                 return (data) -> convertReal(column, fieldDefn, data);
             case Types.NUMERIC:
-                switch (decimalMode) {
-                    case DOUBLE:
-                        return (data) -> convertDouble(column, fieldDefn, data);
-                    case PRECISE:
-                        return (data) -> convertNumeric(column, fieldDefn, data);
-                    case STRING:
-                        throw new ConnectException("Unsupported decimal mode");
-                }
+                return (data) -> convertNumeric(column, fieldDefn, data);
             case Types.DECIMAL:
-                switch (decimalMode) {
-                    case DOUBLE:
-                        return (data) -> convertDouble(column, fieldDefn, data);
-                    case PRECISE:
-                        return (data) -> convertDecimal(column, fieldDefn, data);
-                    case STRING:
-                        throw new ConnectException("Unsupported decimal mode");
-                }
+                return (data) -> convertDecimal(column, fieldDefn, data);
 
                 // String values
             case Types.CHAR: // variable-length
@@ -974,6 +949,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertDecimal(Column column, Field fieldDefn, Object data) {
+        if (data instanceof SpecialValueDecimal) {
+            return SpecialValueDecimal.fromLogical((SpecialValueDecimal)data, decimalMode, column.name());
+        }
+        Object decimal = toBigDecimal(column, fieldDefn, data);
+        if (decimal instanceof BigDecimal) {
+            return SpecialValueDecimal.fromLogical(new SpecialValueDecimal((BigDecimal)decimal), decimalMode, column.name());
+        }
+        return decimal;
+    }
+
+    protected Object toBigDecimal(Column column, Field fieldDefn, Object data) {
         if (data == null) {
             data = fieldDefn.schema().defaultValue();
         }

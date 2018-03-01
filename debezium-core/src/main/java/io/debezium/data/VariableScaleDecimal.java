@@ -24,6 +24,7 @@ public class VariableScaleDecimal {
     public static final String VALUE_FIELD = "value";
     public static final String SCALE_FIELD = "scale";
     public static final Struct ZERO = fromLogical(schema(), SpecialValueDecimal.ZERO);
+
     /**
      * Returns a {@link SchemaBuilder} for a VariableScaleDecimal. You can use the resulting SchemaBuilder
      * to set additional schema settings such as required/optional, default value, and documentation.

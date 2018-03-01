@@ -812,6 +812,83 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-611")
+    public void shouldConsumeDecimalAsStringFromBinlog() throws SQLException, InterruptedException {
+        // Use the DB configuration to define the connector's configuration ...
+        config = DATABASE.defaultConfig()
+                              .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("dbz_147_decimalvalues"))
+                              .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                              .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.toString())
+                              .with(MySqlConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING)
+                              .build();
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        // Testing.Debug.enable();
+        int numCreateDatabase = 1;
+        int numCreateTables = 9; // still read DDL for all tables
+        int numDataRecords = 1;
+        SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords);
+        stopConnector();
+        assertThat(records).isNotNull();
+        assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(numCreateDatabase + numCreateTables);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_147_decimalvalues")).size()).isEqualTo(1);
+        assertThat(records.topics().size()).isEqualTo(2); // rather than 1+numCreateTables
+
+        // Check that all records are valid, can be serialized and deserialized ...
+        records.forEach(this::validate);
+        records.forEach(record -> {
+            Struct value = (Struct) record.value();
+            if (record.topic().endsWith("dbz_147_decimalvalues")) {
+                Struct after = value.getStruct(Envelope.FieldName.AFTER);
+                Object decimalValue = after.get("decimal_value");
+                assertThat(decimalValue).isInstanceOf(String.class);
+                assertThat(decimalValue).isEqualTo("12345.67");
+            }
+        });
+    }
+
+    @Test
+    @FixFor("DBZ-611")
+    public void shouldConsumeDecimalAsStringFromSnapshot() throws SQLException, InterruptedException {
+        // Use the DB configuration to define the connector's configuration ...
+        config = DATABASE.defaultConfig()
+                              .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("dbz_147_decimalvalues"))
+                              .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                              .with(MySqlConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING)
+                              .build();
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        // Testing.Debug.enable();
+        int ddlRecords = 6;
+        int numDataRecords = 1;
+        SourceRecords records = consumeRecordsByTopic(ddlRecords + numDataRecords);
+        stopConnector();
+        assertThat(records).isNotNull();
+        assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(ddlRecords);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_147_decimalvalues")).size()).isEqualTo(1);
+        assertThat(records.topics().size()).isEqualTo(2); // rather than 1+numCreateTables
+
+        // Check that all records are valid, can be serialized and deserialized ...
+        records.forEach(this::validate);
+        records.forEach(record -> {
+            Struct value = (Struct) record.value();
+            if (record.topic().endsWith("dbz_147_decimalvalues")) {
+                Struct after = value.getStruct(Envelope.FieldName.AFTER);
+                Object decimalValue = after.get("decimal_value");
+                assertThat(decimalValue).isInstanceOf(String.class);
+                assertThat(decimalValue).isEqualTo("12345.67");
+            }
+        });
+    }
+    @Test
     @FixFor("DBZ-342")
     public void shouldReturnTimeColumnsAsMilliSecondsInAdaptivePrecisionMode() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...

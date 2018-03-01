@@ -7,6 +7,8 @@ package io.debezium.connector.mysql;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -15,15 +17,17 @@ import java.time.OffsetDateTime;
 import java.time.Year;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.Duration;
 import java.util.Calendar;
 import java.util.Map;
+
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.event.deserialization.DeleteRowsEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.event.deserialization.UpdateRowsEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.event.deserialization.WriteRowsEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.io.ByteArrayInputStream;
+
+import io.debezium.data.SpecialValueDecimal;
 
 /**
  * Custom deserializers for the MySQL Binlog Client library.
@@ -168,6 +172,12 @@ class RowDeserializers {
         protected Serializable deserializeYear(ByteArrayInputStream inputStream) throws IOException {
             return RowDeserializers.deserializeYear(inputStream);
         }
+
+        @Override
+        protected Serializable deserializeNewDecimal(int meta, ByteArrayInputStream inputStream) throws IOException {
+            final BigDecimal r = (BigDecimal)super.deserializeNewDecimal(meta, inputStream);
+            return r == null ? r : new SpecialValueDecimal(r);
+        }
     }
 
     /**
@@ -229,6 +239,12 @@ class RowDeserializers {
         @Override
         protected Serializable deserializeYear(ByteArrayInputStream inputStream) throws IOException {
             return RowDeserializers.deserializeYear(inputStream);
+        }
+
+        @Override
+        protected Serializable deserializeNewDecimal(int meta, ByteArrayInputStream inputStream) throws IOException {
+            final BigDecimal r = (BigDecimal)super.deserializeNewDecimal(meta, inputStream);
+            return r == null ? r : new SpecialValueDecimal(r);
         }
     }
 
