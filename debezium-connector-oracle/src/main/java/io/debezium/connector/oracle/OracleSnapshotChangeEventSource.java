@@ -43,7 +43,7 @@ public class OracleSnapshotChangeEventSource implements SnapshotChangeEventSourc
     }
 
     @Override
-    public SnapshotResult execute() throws InterruptedException {
+    public SnapshotResult execute(ChangeEventSourceContext context) throws InterruptedException {
         Connection connection = null;
 
         try {
@@ -61,8 +61,8 @@ public class OracleSnapshotChangeEventSource implements SnapshotChangeEventSourc
             Set<TableId> tableNames = jdbcConnection.readTableNames(catalogName, "%DEBEZIUM%", null, new String[] {"TABLE"} );
 
             for (TableId tableId : tableNames) {
-                if (Thread.currentThread().isInterrupted()) {
-                    throw new InterruptedException("Aborting snapshot");
+                if (!context.isRunning()) {
+                    return SnapshotResult.aborted();
                 }
 
                 LOGGER.debug("Locking table {}", tableId);
@@ -81,8 +81,8 @@ public class OracleSnapshotChangeEventSource implements SnapshotChangeEventSourc
             jdbcConnection.readSchema(tables, catalogName, "%DEBEZIUM%", null, null, false);
 
             for (TableId tableId : tableNames) {
-                if (Thread.currentThread().isInterrupted()) {
-                    throw new InterruptedException("Aborting snapshot");
+                if (!context.isRunning()) {
+                    return SnapshotResult.aborted();
                 }
 
                 LOGGER.debug("Capturing structure of table {}", tableId);
@@ -103,7 +103,7 @@ public class OracleSnapshotChangeEventSource implements SnapshotChangeEventSourc
             OracleOffsetContext offset = new OracleOffsetContext(connectorConfig.getLogicalName());
             offset.setPosition(convertScnToPosition(scn));
 
-            return new SnapshotResult(offset);
+            return SnapshotResult.completed(offset);
         }
         catch(SQLException e) {
             throw new RuntimeException(e);

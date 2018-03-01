@@ -40,7 +40,7 @@ public class TestHelper {
 
         builder.with(OracleConnectorConfig.LOGICAL_NAME, "server1")
                 .with(OracleConnectorConfig.PDB_NAME, "ORCLPDB1")
-                .with(OracleConnectorConfig.XSTREAM_SERVER_NAME, "XOUT2");
+                .with(OracleConnectorConfig.XSTREAM_SERVER_NAME, "dbzxout");
 
         return builder;
     }
