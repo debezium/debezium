@@ -226,7 +226,8 @@ public class SnapshotReader extends AbstractReader {
         boolean isLocked = false;
         boolean isTxnStarted = false;
         boolean tableLocks = false;
-        boolean noTableLocksRequested = context.isSnapshotSansTableLocking();
+        boolean noTableLocksRequested = context.locklessSnapshotingRequested();
+        logger.info("Lockless snapshot mode:{}",noTableLocksRequested);
         try {
             metrics.startSnapshot();
 

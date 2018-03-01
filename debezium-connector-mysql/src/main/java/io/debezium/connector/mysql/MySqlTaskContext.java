@@ -48,11 +48,10 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
      */
     private final boolean tableIdCaseInsensitive;
 
-    public boolean isSnapshotSansTableLocking() {
-        return snapshotSansTableLocking;
+    public boolean locklessSnapshotingRequested() {
+        return config.getBoolean(MySqlConnectorConfig.SNAPSHOT_SANS_TABLE_LOCKING);
     }
 
-    private final boolean snapshotSansTableLocking;
 
     public MySqlTaskContext(Configuration config) {
         this(config, null);
@@ -92,7 +91,6 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         // Set up the DDL filter
         final String ddlFilter = config.getString(DatabaseHistory.DDL_FILTER);
         this.ddlFilter = (ddlFilter != null) ? Predicates.includes(ddlFilter) : (x -> false);
-        this.snapshotSansTableLocking = config.getBoolean(MySqlConnectorConfig.SNAPSHOT_SANS_TABLE_LOCKING);
     }
 
     public Configuration config() {
