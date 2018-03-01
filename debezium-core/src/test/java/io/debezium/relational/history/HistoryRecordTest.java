@@ -5,13 +5,13 @@
  */
 package io.debezium.relational.history;
 
-import java.util.Map;
-
-import org.junit.Before;
-import org.junit.Test;
-
 import static org.fest.assertions.Assertions.assertThat;
 
+import java.util.Map;
+
+import org.junit.Test;
+
+import io.debezium.document.DocumentReader;
 import io.debezium.util.Collect;
 
 /**
@@ -19,67 +19,32 @@ import io.debezium.util.Collect;
  *
  */
 public class HistoryRecordTest {
-    
-    private Map<String,Object> source1;
-    private Map<String,Object> position1;
-    private HistoryRecord record1;
-    private Map<String,Object> source2;
-    private Map<String,Object> position2;
-    private HistoryRecord record2;
-    private Map<String,Object> source3;
-    private Map<String,Object> position3;
-    private HistoryRecord record3;
-
-    @Before
-    public void beforeEach() {
-        source1 = Collect.linkMapOf("server", "abc");
-        position1 = Collect.linkMapOf("file", "x.log", "position", 100L, "entry", 1);
-        record1 = new HistoryRecord(source1, position1, "db", "CREATE TABLE foo ( first VARCHAR(22) NOT NULL );");
-        
-        source2 = Collect.linkMapOf("server", "abc");
-        position2 = Collect.linkMapOf("file", "x.log", "position", 300L, "entry", 2);
-        record2 = new HistoryRecord(source2, position2, "db", "DROP TABLE foo;");
-        
-        source3 = Collect.linkMapOf("server", "xyx");
-        position3 = Collect.linkMapOf("file", "y.log", "position", 10000L, "entry", 1);
-        record3 = new HistoryRecord(source3, position3, "other", "DROP TABLE foo;");
-    }
-    
-    @Test
-    public void shouldConsiderOneSourceTheSame() {
-        assertThat(record1.hasSameSource(record1)).isTrue();
-        assertThat(record2.hasSameSource(record2)).isTrue();
-        assertThat(record3.hasSameSource(record3)).isTrue();
-    }
 
     @Test
-    public void shouldConsiderTwoDifferentSourcesNotSame() {
-        assertThat(record1.hasSameSource(null)).isFalse();
-        assertThat(record1.hasSameSource(record3)).isFalse();
-        assertThat(record2.hasSameSource(record3)).isFalse();
-    }
+    public void canSerializeAndDeserializeHistoryRecord() throws Exception {
+        Map<String,Object> source = Collect.linkMapOf("server", "abc");
+        Map<String,Object> position = Collect.linkMapOf("file", "x.log", "positionInt", 100, "positionLong", Long.MAX_VALUE, "entry", 1);
+        String databaseName = "db";
+        String ddl = "CREATE TABLE foo ( first VARCHAR(22) NOT NULL );";
 
-    @Test
-    public void shouldConsiderTwoDifferentSourcesTheSame() {
-        assertThat(record1.hasSameSource(record2)).isTrue();
-    }
+        HistoryRecord record = new HistoryRecord(source, position, databaseName, ddl);
 
-    @Test
-    public void shouldConsiderOneDatabaseTheSame() {
-        assertThat(record1.hasSameDatabase(record1)).isTrue();
-    }
+        String serialized = record.toString();
+        DocumentReader reader = DocumentReader.defaultReader();
+        HistoryRecord deserialized = new HistoryRecord(reader.read(serialized));
 
-    @Test
-    public void shouldConsiderTwoDifferentDatabasesNotSame() {
-        assertThat(record1.hasSameDatabase(record3)).isFalse();
-        assertThat(record2.hasSameDatabase(record3)).isFalse();
-    }
+        assertThat(deserialized.source()).isNotNull();
+        assertThat(deserialized.source().get("server")).isEqualTo("abc");
 
-    @Test
-    public void shouldCorrectlyComparePositions() {
-        assertThat(record1.isAtOrBefore(record1)).isTrue();
-        assertThat(record2.isAtOrBefore(record2)).isTrue();
-        assertThat(record1.isAtOrBefore(record2)).isTrue();
-        assertThat(record2.isAtOrBefore(record1)).isFalse();
+        assertThat(deserialized.position()).isNotNull();
+        assertThat(deserialized.position().get("file")).isEqualTo("x.log");
+        assertThat(deserialized.position().get("positionInt")).isEqualTo(100);
+        assertThat(deserialized.position().get("positionLong")).isEqualTo(Long.MAX_VALUE);
+        assertThat(deserialized.position().get("entry")).isEqualTo(1);
+
+        assertThat(deserialized.databaseName()).isEqualTo(databaseName);
+        assertThat(deserialized.ddl()).isEqualTo(ddl);
+
+        System.out.println(record);
     }
 }
