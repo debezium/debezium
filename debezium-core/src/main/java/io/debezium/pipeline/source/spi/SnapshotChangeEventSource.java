@@ -16,13 +16,15 @@ import io.debezium.pipeline.spi.SnapshotResult;
 public interface SnapshotChangeEventSource extends ChangeEventSource {
 
     /**
-     * Executes this source. Implementations should regularly check the current thread's interrupted status. If the
-     * thread is interrupted, they should abort their processing and perform any clean-up needed, such as rolling back
-     * pending transactions, releasing locks etc.
+     * Executes this source. Implementations should regularly check via the given context if they should stop. If that's
+     * the case, they should abort their processing and perform any clean-up needed, such as rolling back pending
+     * transactions, releasing locks etc.
      *
-     * @return an indicator to the position at which the snapshot was aken
+     * @param context
+     *            contextual information for this source's execution
+     * @return an indicator to the position at which the snapshot was taken
      * @throws InterruptedException
      *             in case the snapshot was aborted before completion
      */
-    SnapshotResult execute() throws InterruptedException;
+    SnapshotResult execute(ChangeEventSourceContext context) throws InterruptedException;
 }
