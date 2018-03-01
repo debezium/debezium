@@ -27,7 +27,6 @@ import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.geometric.PGpoint;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
@@ -201,17 +200,11 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
     }
 
-    private SchemaBuilder numericSchema(final Column column) {
-        switch (decimalMode) {
-            case DOUBLE:
-                return SchemaBuilder.float64();
-            case PRECISE:
-                return isVariableScaleDecimal(column) ? VariableScaleDecimal.builder() : Decimal.builder(column.scale());
-            case STRING:
-                return SchemaBuilder.string();
-            default:
-                throw new IllegalArgumentException("Unknown decimalMode");
+    private SchemaBuilder numericSchema(Column column) {
+        if (decimalMode == DecimalMode.PRECISE && isVariableScaleDecimal(column)) {
+            return VariableScaleDecimal.builder();
         }
+        return SpecialValueDecimal.builder(decimalMode, column.scale());
     }
 
     @Override
@@ -240,13 +233,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.MONEY:
                 return data -> convertMoney(column, fieldDefn, data);
             case PgOid.NUMERIC:
-                switch (decimalMode) {
-                case DOUBLE:
-                    return (data) -> convertDouble(column, fieldDefn, data);
-                case PRECISE:
-                case STRING:
-                    return (data) -> convertDecimal(column, fieldDefn, data, decimalMode);
-                }
+                return (data) -> convertDecimal(column, fieldDefn, data, decimalMode);
             case PgOid.BYTEA:
                 return data -> convertBinary(column, fieldDefn, data);
             case PgOid.INT2_ARRAY:
@@ -328,26 +315,18 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
         if (data instanceof SpecialValueDecimal) {
             value = (SpecialValueDecimal)data;
+
+            if (!value.getDecimalValue().isPresent()) {
+                return SpecialValueDecimal.fromLogical(value, mode, column.name());
+            }
         }
         else {
-            newDecimal = (BigDecimal)super.convertDecimal(column, fieldDefn, data);
+            final Object o = toBigDecimal(column, fieldDefn, data);
 
-            if (newDecimal == null) {
-                return newDecimal;
+            if (o == null || !(o instanceof BigDecimal)) {
+                return o;
             }
-
-            value = new SpecialValueDecimal(newDecimal);
-        }
-
-        // special values (NaN, Infinity) can only be expressed when using "string" encoding
-        if (!value.getDecimalValue().isPresent()) {
-            if (mode == DecimalMode.STRING) {
-                return value.toString();
-            }
-            else {
-                throw new ConnectException("Got a special value (NaN/Infinity) for Decimal type in column " + column.name() + " but current mode does not handle it. "
-                        + "If you need to support it then set decimal handling mode to 'string'.");
-            }
+            value = new SpecialValueDecimal((BigDecimal)o);
         }
 
         newDecimal = value.getDecimalValue().get();
@@ -355,18 +334,16 @@ public class PostgresValueConverter extends JdbcValueConverters {
           newDecimal = newDecimal.setScale(column.scale());
         }
 
-        if (isVariableScaleDecimal(column)) {
+        if (isVariableScaleDecimal(column) && mode == DecimalMode.PRECISE) {
             newDecimal = newDecimal.stripTrailingZeros();
             if (newDecimal.scale() < 0) {
                 newDecimal = newDecimal.setScale(0);
             }
 
-            if (mode == DecimalMode.PRECISE) {
-                return VariableScaleDecimal.fromLogical(fieldDefn.schema(), new SpecialValueDecimal(newDecimal));
-            }
+            return VariableScaleDecimal.fromLogical(fieldDefn.schema(), new SpecialValueDecimal(newDecimal));
         }
 
-        return mode == DecimalMode.PRECISE ? newDecimal : (new SpecialValueDecimal(newDecimal)).toString();
+        return SpecialValueDecimal.fromLogical(new SpecialValueDecimal(newDecimal), mode, column.name());
     }
 
     @Override
