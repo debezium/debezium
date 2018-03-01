@@ -17,6 +17,7 @@
     <description>Debezium is an open source change data capture platform</description>
     <packaging>pom</packaging>
     <url>http://debezium.io</url>
+
     <scm>
         <connection>scm:git:git@github.com:debezium/debezium.git</connection>
         <developerConnection>scm:git:git@github.com:debezium/debezium.git</developerConnection>
@@ -90,7 +91,7 @@
         <version.protoc.maven.plugin>3.0.0.1</version.protoc.maven.plugin>
 
         <!-- Data pipeline internal dependency-->
-        <version.datapipeline>0.5.1.5-SNAPSHOT</version.datapipeline>
+        <version.datapipeline>0.5.2-SNAPSHOT</version.datapipeline>
         <!-- Dockerfiles -->
         <docker.maintainer>Debezium community</docker.maintainer>
 
@@ -137,6 +138,18 @@
     </distributionManagement>
     <repositories>
         <repository>
+            <id>datapipeline-snapshot</id>
+            <url>http://${nexus.ip}:8081/nexus/content/repositories/snapshots</url>
+            <snapshots>
+                <enabled>true</enabled>
+                <updatePolicy>never</updatePolicy>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>datapipeline-release</id>
+            <url>http://${nexus.ip}:8081/nexus/content/repositories/releases</url>
+        </repository>
+        <repository>
             <id>confluent</id>
             <name>Confluent</name>
             <url>http://packages.confluent.io/maven/</url>
@@ -144,14 +157,6 @@
             <!--<enabled>true</enabled>-->
             <!--<updatePolicy>never</updatePolicy>-->
             <!--</snapshots>-->
-        </repository>
-        <repository>
-            <id>datapipeline</id>
-            <url>http://${nexus.ip}:8081/nexus/content/repositories/snapshots</url>
-            <snapshots>
-                <enabled>true</enabled>
-                <updatePolicy>never</updatePolicy>
-            </snapshots>
         </repository>
         <repository>
             <id>ossrh</id>

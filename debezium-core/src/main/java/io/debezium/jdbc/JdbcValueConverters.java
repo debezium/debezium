@@ -5,6 +5,12 @@
  */
 package io.debezium.jdbc;
 
+import org.apache.kafka.connect.data.Decimal;
+import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -19,12 +25,6 @@ import java.time.ZoneOffset;
 import java.time.temporal.TemporalAdjuster;
 import java.util.BitSet;
 import java.util.concurrent.TimeUnit;
-
-import org.apache.kafka.connect.data.Decimal;
-import org.apache.kafka.connect.data.Field;
-import org.apache.kafka.connect.data.SchemaBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.data.Bits;
@@ -52,7 +52,7 @@ import io.debezium.time.ZonedTimestamp;
  * don't have timezones (e.g., {@link java.sql.Timestamp}) by assuming a default time zone offset for values that don't have
  * (but are expected to have) timezones. Again, when the values are highly-correlated with the expected SQL/JDBC types, this
  * default timezone offset will not be needed.
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable
@@ -92,7 +92,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * Create a new instance, and specify the time zone offset that should be used only when converting values without timezone
      * information to values that require timezones. This default offset should not be needed when values are highly-correlated
      * with the expected SQL/JDBC types.
-     * 
+     *
      * @param decimalMode how {@code DECIMAL} and {@code NUMERIC} values should be treated; may be null if
      *            {@link DecimalMode#PRECISE} is to be used
      * @param adaptiveTimePrecision {@code true} if the time, date, and timestamp values should be based upon the precision of the
@@ -193,15 +193,23 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 return org.apache.kafka.connect.data.Date.builder();
             case Types.TIME:
                 if (adaptiveTimePrecision) {
-                    if (column.length() <= 3) return Time.builder();
-                    if (column.length() <= 6) return MicroTime.builder();
+                    if (column.length() <= 3) {
+                        return Time.builder();
+                    }
+                    if (column.length() <= 6) {
+                        return MicroTime.builder();
+                    }
                     return NanoTime.builder();
                 }
                 return org.apache.kafka.connect.data.Time.builder();
             case Types.TIMESTAMP:
                 if (adaptiveTimePrecision) {
-                    if (column.length() <= 3 || !adaptiveTimePrecision) return Timestamp.builder();
-                    if (column.length() <= 6) return MicroTimestamp.builder();
+                    if (column.length() <= 3 || !adaptiveTimePrecision) {
+                        return Timestamp.builder();
+                    }
+                    if (column.length() <= 6) {
+                        return MicroTimestamp.builder();
+                    }
                     return NanoTimestamp.builder();
                 }
                 return org.apache.kafka.connect.data.Timestamp.builder();
@@ -300,15 +308,23 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 return (data) -> convertDateToEpochDaysAsDate(column, fieldDefn, data);
             case Types.TIME:
                 if (adaptiveTimePrecision) {
-                    if (column.length() <= 3) return (data) -> convertTimeToMillisPastMidnight(column, fieldDefn, data);
-                    if (column.length() <= 6) return (data) -> convertTimeToMicrosPastMidnight(column, fieldDefn, data);
+                    if (column.length() <= 3) {
+                        return (data) -> convertTimeToMillisPastMidnight(column, fieldDefn, data);
+                    }
+                    if (column.length() <= 6) {
+                        return (data) -> convertTimeToMicrosPastMidnight(column, fieldDefn, data);
+                    }
                     return (data) -> convertTimeToNanosPastMidnight(column, fieldDefn, data);
                 }
                 return (data) -> convertTimeToMillisPastMidnightAsDate(column, fieldDefn, data);
             case Types.TIMESTAMP:
                 if (adaptiveTimePrecision) {
-                    if (column.length() <= 3) return (data) -> convertTimestampToEpochMillis(column, fieldDefn, data);
-                    if (column.length() <= 6) return (data) -> convertTimestampToEpochMicros(column, fieldDefn, data);
+                    if (column.length() <= 3) {
+                        return (data) -> convertTimestampToEpochMillis(column, fieldDefn, data);
+                    }
+                    if (column.length() <= 6) {
+                        return (data) -> convertTimestampToEpochMicros(column, fieldDefn, data);
+                    }
                     return (data) -> convertTimestampToEpochNanos(column, fieldDefn, data);
                 }
                 return (data) -> convertTimestampToEpochMillisAsDate(column, fieldDefn, data);
@@ -351,7 +367,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * <p>
      * This method handles several types of objects, including {@link OffsetDateTime}, {@link java.sql.Timestamp},
      * {@link java.util.Date}, {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -363,7 +379,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
             data = OffsetDateTime.of(LocalDate.ofEpochDay(0), LocalTime.MIDNIGHT, defaultOffset); // return epoch
         }
         try {
@@ -382,7 +400,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * This method handles several types of objects, including {@link OffsetTime}, {@link java.sql.Time}, {@link java.util.Date},
      * {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}. If any of the types have date components, those date
      * components are ignored.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -394,7 +412,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
             data = OffsetTime.of(LocalTime.MIDNIGHT, defaultOffset); // return epoch time
         }
         try {
@@ -411,7 +431,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * Per the JDBC specification, databases should return {@link java.sql.Timestamp} instances, which have date and time info
      * but no time zone info. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such
      * as {@link java.util.Date}, {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -423,7 +443,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
             return 0L; // return epoch
         }
         try {
@@ -440,7 +462,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * Per the JDBC specification, databases should return {@link java.sql.Timestamp} instances, which have date and time info
      * but no time zone info. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such
      * as {@link java.util.Date}, {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -452,7 +474,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
             return 0L; // return epoch
         }
         try {
@@ -469,7 +493,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * Per the JDBC specification, databases should return {@link java.sql.Timestamp} instances, which have date and time info
      * but no time zone info. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such
      * as {@link java.util.Date}, {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -481,7 +505,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
             return 0L; // return epoch
         }
         try {
@@ -498,7 +524,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * Per the JDBC specification, databases should return {@link java.sql.Timestamp} instances, which have date and time info
      * but no time zone info. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such
      * as {@link java.util.Date}, {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -510,7 +536,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
             return new java.util.Date(0L); // return epoch
         }
         try {
@@ -528,7 +556,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * time zones. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such as
      * {@link java.util.Date}, {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}. If any of the types might
      * have date components, those date components are ignored.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -540,7 +568,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
             return 0; // return epoch
         }
         try {
@@ -558,7 +588,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * time zones. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such as
      * {@link java.util.Date}, {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}. If any of the types might
      * have date components, those date components are ignored.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -570,7 +600,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
             return 0L; // return epoch
         }
         try {
@@ -588,7 +620,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * time zones. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such as
      * {@link java.util.Date}, {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}. If any of the types might
      * have date components, those date components are ignored.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -600,7 +632,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
             return 0L; // return epoch
         }
         try {
@@ -618,7 +652,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * time zones. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such as
      * {@link java.util.Date}, {@link java.time.LocalTime}, and {@link java.time.LocalDateTime}. If any of the types might
      * have date components, those date components are ignored.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -630,7 +664,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
             return 0L; // return epoch
         }
         try {
@@ -647,7 +683,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * time zones. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such as
      * {@link java.util.Date}, {@link java.time.LocalDate}, and {@link java.time.LocalDateTime}. If any of the types might
      * have time components, those time components are ignored.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type
@@ -659,14 +695,16 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
             return 0; // return epoch
         }
         try {
             return Date.toEpochDay(data, adjuster);
         } catch (IllegalArgumentException e) {
             logger.warn("Unexpected JDBC DATE value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
-                        fieldDefn.schema(), data.getClass(), data);
+                    fieldDefn.schema(), data.getClass(), data);
             return handleUnknownData(column, fieldDefn, data);
         }
     }
@@ -679,7 +717,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * time zones. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such as
      * {@link java.util.Date}, {@link java.time.LocalDate}, and {@link java.time.LocalDateTime}. If any of the types might
      * have time components, those time components are ignored.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type
@@ -691,7 +729,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
             return new java.util.Date(0L); // return epoch
         }
         try {
@@ -700,7 +740,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
             return new java.util.Date(epochMillis);
         } catch (IllegalArgumentException e) {
             logger.warn("Unexpected JDBC DATE value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
-                        fieldDefn.schema(), data.getClass(), data);
+                    fieldDefn.schema(), data.getClass(), data);
             return null;
         }
     }
@@ -713,7 +753,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * time zones. This method handles {@link java.sql.Date} objects plus any other standard date-related objects such as
      * {@link java.util.Date}, {@link java.time.LocalDate}, and {@link java.time.LocalDateTime}. If any of the types might
      * have time components, those time components are ignored.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -725,7 +765,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
             data = new byte[0];
         }
         if (data instanceof char[]) {
@@ -745,7 +787,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
     /**
      * Handle the unexpected value from a row with a column type of {@link Types#BLOB}, {@link Types#BINARY},
      * {@link Types#VARBINARY}, {@link Types#LONGVARBINARY}.
-     * 
+     *
      * @param value the binary value for which no conversion was found; never null
      * @param fieldDefn the field definition in the Kafka Connect schema; never null
      * @return the converted value, or null if the conversion could not be made and the column allows nulls
@@ -754,13 +796,13 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected byte[] unexpectedBinary(Object value, Field fieldDefn) {
         logger.warn("Unexpected JDBC BINARY value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
-                    fieldDefn.schema(), value.getClass(), value);
+                fieldDefn.schema(), value.getClass(), value);
         return null;
     }
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#TINYINT}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -773,7 +815,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#SMALLINT}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -785,10 +827,14 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
             return new Short((short) 0);
         }
-        if (data instanceof Short) return data;
+        if (data instanceof Short) {
+            return data;
+        }
         if (data instanceof Number) {
             Number value = (Number) data;
             return new Short(value.shortValue());
@@ -801,7 +847,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#INTEGER}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -813,10 +859,14 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
             return 0;
         }
-        if (data instanceof Integer) return data;
+        if (data instanceof Integer) {
+            return data;
+        }
         if (data instanceof Number) {
             Number value = (Number) data;
             return new Integer(value.intValue());
@@ -829,7 +879,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#INTEGER}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -841,10 +891,14 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
             return 0L;
         }
-        if (data instanceof Long) return data;
+        if (data instanceof Long) {
+            return data;
+        }
         if (data instanceof Number) {
             Number value = (Number) data;
             return new Long(value.longValue());
@@ -857,7 +911,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#FLOAT}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -870,7 +924,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#DOUBLE}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -882,10 +936,14 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
             return 0.0d;
         }
-        if (data instanceof Double) return data;
+        if (data instanceof Double) {
+            return data;
+        }
         if (data instanceof Number) {
             // Includes BigDecimal and other numeric values ...
             Number value = (Number) data;
@@ -899,7 +957,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#REAL}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -911,10 +969,14 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
             return 0.0f;
         }
-        if (data instanceof Float) return data;
+        if (data instanceof Float) {
+            return data;
+        }
         if (data instanceof Number) {
             // Includes BigDecimal and other numeric values ...
             Number value = (Number) data;
@@ -928,7 +990,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#NUMERIC}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -940,25 +1002,27 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
             return new BigDecimal(0);
         }
         BigDecimal decimal = null;
-        if (data instanceof BigDecimal)
+        if (data instanceof BigDecimal) {
             decimal = (BigDecimal) data;
-        else if (data instanceof Boolean)
+        } else if (data instanceof Boolean) {
             decimal = new BigDecimal(((Boolean) data).booleanValue() ? 1 : 0);
-        else if (data instanceof Short)
+        } else if (data instanceof Short) {
             decimal = new BigDecimal(((Short) data).intValue());
-        else if (data instanceof Integer)
+        } else if (data instanceof Integer) {
             decimal = new BigDecimal(((Integer) data).intValue());
-        else if (data instanceof Long)
+        } else if (data instanceof Long) {
             decimal = BigDecimal.valueOf(((Long) data).longValue());
-        else if (data instanceof Float)
+        } else if (data instanceof Float) {
             decimal = BigDecimal.valueOf(((Float) data).doubleValue());
-        else if (data instanceof Double)
+        } else if (data instanceof Double) {
             decimal = BigDecimal.valueOf(((Double) data).doubleValue());
-        else {
+        } else {
             return handleUnknownData(column, fieldDefn, data);
         }
         return decimal;
@@ -966,7 +1030,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#NUMERIC}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -978,25 +1042,27 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
             return new BigDecimal(0);
         }
         BigDecimal decimal = null;
-        if (data instanceof BigDecimal)
+        if (data instanceof BigDecimal) {
             decimal = (BigDecimal) data;
-        else if (data instanceof Boolean)
+        } else if (data instanceof Boolean) {
             decimal = new BigDecimal(((Boolean) data).booleanValue() ? 1 : 0);
-        else if (data instanceof Short)
+        } else if (data instanceof Short) {
             decimal = new BigDecimal(((Short) data).intValue());
-        else if (data instanceof Integer)
+        } else if (data instanceof Integer) {
             decimal = new BigDecimal(((Integer) data).intValue());
-        else if (data instanceof Long)
+        } else if (data instanceof Long) {
             decimal = BigDecimal.valueOf(((Long) data).longValue());
-        else if (data instanceof Float)
+        } else if (data instanceof Float) {
             decimal = BigDecimal.valueOf(((Float) data).doubleValue());
-        else if (data instanceof Double)
+        } else if (data instanceof Double) {
             decimal = BigDecimal.valueOf(((Double) data).doubleValue());
-        else {
+        } else {
             return handleUnknownData(column, fieldDefn, data);
         }
         return decimal;
@@ -1006,7 +1072,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * Converts a value object for an expected JDBC type of {@link Types#CHAR}, {@link Types#VARCHAR},
      * {@link Types#LONGVARCHAR}, {@link Types#CLOB}, {@link Types#NCHAR}, {@link Types#NVARCHAR}, {@link Types#LONGNVARCHAR},
      * {@link Types#NCLOB}, {@link Types#DATALINK}, and {@link Types#SQLXML}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -1018,7 +1084,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
             return "";
         }
         if (data instanceof SQLXML) {
@@ -1034,7 +1102,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#ROWID}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -1046,7 +1114,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
             return ByteBuffer.wrap(new byte[0]);
         }
         if (data instanceof java.sql.RowId) {
@@ -1058,7 +1128,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#BIT}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -1070,13 +1140,23 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
             return false;
         }
-        if (data instanceof Boolean) return data;
-        if (data instanceof Short) return ((Short) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
-        if (data instanceof Integer) return ((Integer) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
-        if (data instanceof Long) return ((Long) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
+        if (data instanceof Boolean) {
+            return data;
+        }
+        if (data instanceof Short) {
+            return ((Short) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
+        }
+        if (data instanceof Integer) {
+            return ((Integer) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
+        }
+        if (data instanceof Long) {
+            return ((Long) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
+        }
         if (data instanceof BitSet) {
             BitSet value = (BitSet) data;
             return value.get(0);
@@ -1086,7 +1166,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#BIT} of length 2+.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -1099,12 +1179,14 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
             return false;
         }
         if (data instanceof Boolean) {
             Boolean value = (Boolean) data;
-            return new byte[] { value.booleanValue() ? (byte) 1 : (byte) 0 };
+            return new byte[] {value.booleanValue() ? (byte) 1 : (byte) 0};
         }
         if (data instanceof Short) {
             Short value = (Short) data;
@@ -1172,7 +1254,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * {@link ByteOrder#LITTLE_ENDIAN little-endian}.
      * <p>
      * By default, this method returns {@link ByteOrder#LITTLE_ENDIAN}.
-     * 
+     *
      * @return little endian or big endian; never null
      */
     protected ByteOrder byteOrderOfBitType() {
@@ -1181,7 +1263,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#BOOLEAN}.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -1193,19 +1275,29 @@ public class JdbcValueConverters implements ValueConverterProvider {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
-            if (column.isOptional()) return null;
+            if (column.isOptional()) {
+                return null;
+            }
             return false;
         }
-        if (data instanceof Boolean) return data;
-        if (data instanceof Short) return ((Short) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
-        if (data instanceof Integer) return ((Integer) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
-        if (data instanceof Long) return ((Long) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
+        if (data instanceof Boolean) {
+            return data;
+        }
+        if (data instanceof Short) {
+            return ((Short) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
+        }
+        if (data instanceof Integer) {
+            return ((Integer) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
+        }
+        if (data instanceof Long) {
+            return ((Long) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
+        }
         return handleUnknownData(column, fieldDefn, data);
     }
 
     /**
      * Convert an unknown data value.
-     * 
+     *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
      * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
@@ -1214,10 +1306,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object handleUnknownData(Column column, Field fieldDefn, Object data) {
         if (column.isOptional() || fieldDefn.schema().isOptional()) {
-            Class<?> dataClass = data.getClass();
-            logger.warn("Unexpected value for JDBC type {} and column {}: class={}", column.jdbcType(), column,
-                        dataClass.isArray() ? dataClass.getSimpleName() : dataClass.getName()); // don't include value in case its
-                                                                                                // sensitive
+            // don't include value in case its sensitive
+            logger.warn("Unexpected value for JDBC type {} and column {}", column.jdbcType(), column);
             return null;
         }
         throw new IllegalArgumentException("Unexpected value for JDBC type " + column.jdbcType() + " and column " + column +
