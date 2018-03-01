@@ -13,15 +13,15 @@ package io.debezium.pipeline.source.spi;
 public interface StreamingChangeEventSource extends ChangeEventSource {
 
     /**
-     * Starts this source. Implementations must return immediately, spawning a separate executor, thread or similar
-     * which runs their event handler.
-     */
-    void start();
-
-    /**
-     * Stops this source.
+     * Executes this source. Implementations should regularly check via the given context if they should stop. If that's
+     * the case, they should abort their processing and perform any clean-up needed, such as rolling back pending
+     * transactions, releasing locks etc.
      *
-     * @throws InterruptedException in case stopping was interrupted.
+     * @param context
+     *            contextual information for this source's execution
+     * @return an indicator to the position at which the snapshot was taken
+     * @throws InterruptedException
+     *             in case the snapshot was aborted before completion
      */
-    void stop() throws InterruptedException;
+    void execute(ChangeEventSourceContext context) throws InterruptedException;
 }

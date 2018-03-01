@@ -24,6 +24,11 @@ import oracle.streams.RowLCR;
 import oracle.streams.StreamsException;
 import oracle.streams.XStreamLCRCallbackHandler;
 
+/**
+ * Handler for Oracle DDL and DML events. Just forwards events to the {@link EventDispatcher}.
+ *
+ * @author Gunnar Morling
+ */
 class LcrEventHandler implements XStreamLCRCallbackHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleStreamingChangeEventSource.class);
@@ -44,8 +49,6 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
     @Override
     public void processLCR(LCR lcr) throws StreamsException {
-        LOGGER.debug("Processing event {}", lcr);
-
         offsetContext.setPosition(lcr.getPosition());
         offsetContext.setTransactionId(lcr.getTransactionId());
         offsetContext.setSourceTime(lcr.getSourceTime().timestampValue().toInstant());
@@ -58,49 +61,47 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                 dispatchSchemaChangeEvent((DDLLCR) lcr);
             }
         }
-        catch(Exception e) {
-            LOGGER.error("Exception occurred when handling event {}", lcr);
-            errorHandler.setProducerThrowable(e);
-        }
-    }
-
-    private void dispatchDataChangeEvent(RowLCR lcr) {
-        try {
-            if(RowLCR.COMMIT.equals(lcr.getCommandType())) {
-                return;
-            }
-
-            TableId tableId = getTableId(lcr);
-
-            dispatcher.dispatchDataChangeEvent(
-                    offsetContext,
-                    tableId,
-                    () -> new OracleChangeRecordEmitter(lcr, schema.getTable(tableId), clock),
-                    DataChangeEvent::new
-            );
-        }
+        // nothing to be done here if interrupted; the event loop will be stopped in the streaming source
         catch (InterruptedException e) {
             Thread.interrupted();
+            LOGGER.info("Received signal to stop, event loop will halt");
         }
     }
 
-    private void dispatchSchemaChangeEvent(DDLLCR ddlLcr) {
-        try {
-            TableId tableId = getTableId(ddlLcr);
-            dispatcher.dispatchSchemaChangeEvent(
-                    tableId,
-                    (tid, r) -> {
-                        SchemaChangeEventType eventType = getSchemaChangeEventType(ddlLcr);
-                        if (eventType != null) {
-                            Table table = new OracleDdlParser().parseCreateTable(tid, ddlLcr.getDDLText());
-                            r.schemaChangeEvent(new SchemaChangeEvent(ddlLcr.getDDLText(), table, eventType));
-                        }
+    private void dispatchDataChangeEvent(RowLCR lcr) throws InterruptedException {
+        LOGGER.debug("Processing DML event {}", lcr);
+
+        if(RowLCR.COMMIT.equals(lcr.getCommandType())) {
+            return;
+        }
+
+        TableId tableId = getTableId(lcr);
+
+        dispatcher.dispatchDataChangeEvent(
+                offsetContext,
+                tableId,
+                () -> new OracleChangeRecordEmitter(lcr, schema.getTable(tableId), clock),
+                DataChangeEvent::new
+        );
+    }
+
+    private void dispatchSchemaChangeEvent(DDLLCR ddlLcr) throws InterruptedException {
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Processing DDL event {}", ddlLcr.getDDLText());
+        }
+
+        TableId tableId = getTableId(ddlLcr);
+
+        dispatcher.dispatchSchemaChangeEvent(
+                tableId,
+                (tid, r) -> {
+                    SchemaChangeEventType eventType = getSchemaChangeEventType(ddlLcr);
+                    if (eventType != null) {
+                        Table table = new OracleDdlParser().parseCreateTable(tid, ddlLcr.getDDLText());
+                        r.schemaChangeEvent(new SchemaChangeEvent(ddlLcr.getDDLText(), table, eventType));
                     }
-            );
-        }
-        catch (InterruptedException e) {
-            Thread.interrupted();
-        }
+                }
+        );
     }
 
     private SchemaChangeEventType getSchemaChangeEventType(DDLLCR ddlLcr) {

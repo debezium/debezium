@@ -5,6 +5,7 @@
  */
 package io.debezium.pipeline;
 
+import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -12,14 +13,14 @@ import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.annotation.GuardedBy;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
+import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
-import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.SnapshotResult;
+import io.debezium.pipeline.spi.SnapshotResult.SnapshotResultStatus;
 import io.debezium.util.Threads;
 
 /**
@@ -32,15 +33,13 @@ public class ChangeEventSourceCoordinator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ChangeEventSourceCoordinator.class);
 
+    private static final Duration SHUTDOWN_WAIT_TIMEOUT = Duration.ofSeconds(60);
+
     private final ErrorHandler errorHandler;
     private final ChangeEventSourceFactory changeEventSourceFactory;
     private final ExecutorService executor;
 
-    @GuardedBy("this")
-    private StreamingChangeEventSource streamingSource;
-
-    @GuardedBy("this")
-    private boolean running = true;
+    private volatile boolean running;
 
     public ChangeEventSourceCoordinator(ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType, String logicalName, ChangeEventSourceFactory changeEventSourceFactory) {
         this.errorHandler = errorHandler;
@@ -49,32 +48,29 @@ public class ChangeEventSourceCoordinator {
     }
 
     public synchronized void start() {
-        SnapshotChangeEventSource snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource();
+        running = true;
 
         // run the snapshot source on a separate thread so start() won't block
         executor.submit(() -> {
             try {
-                SnapshotResult snapshotResult = snapshotSource.execute();
+                ChangeEventSourceContext context = new ChangeEventSourceContextImpl();
 
-                // if the snapshot source has reacted to interruption before, we woudn't get here
-                startStreamingEventSource(snapshotResult.getOffset());
+                SnapshotChangeEventSource snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource();
+                SnapshotResult snapshotResult = snapshotSource.execute(context);
+
+                if (running && snapshotResult.getStatus() == SnapshotResultStatus.COMPLETED) {
+                    StreamingChangeEventSource streamingSource = changeEventSourceFactory.getStreamingChangeEventSource(snapshotResult.getOffset());
+                    streamingSource.execute(context);
+                }
             }
-            catch(Exception e) {
+            catch (InterruptedException e) {
+                Thread.interrupted();
+                LOGGER.warn("Coordinator was interrupted", e);
+            }
+            catch (Exception e) {
                 errorHandler.setProducerThrowable(e);
             }
         });
-    }
-
-    /**
-     * Starts the streaming source at the given offset, but only if the connector hasn't been stopped before.
-     * It's expected that {@link StreamingChangeEventSource#start()} returns quickly, setting of its own asynchronous
-     * event handling loop.
-     */
-    private synchronized void startStreamingEventSource(OffsetContext offset) {
-        if (running) {
-            streamingSource = changeEventSourceFactory.getStreamingChangeEventSource(offset);
-            streamingSource.start();
-        }
     }
 
     /**
@@ -83,18 +79,22 @@ public class ChangeEventSourceCoordinator {
     public synchronized void stop() throws InterruptedException {
         running = false;
 
-        // stop the streaming source if it's running
-        if (streamingSource != null) {
-            try {
-                streamingSource.stop();
-            }
-            catch(InterruptedException e) {
-                Thread.interrupted();
-                LOGGER.error("Interrupted while stopping streaming event source", e);
-            }
-        }
+        executor.shutdown();
+        boolean isShutdown = executor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
 
-        executor.shutdownNow();
-        executor.awaitTermination(60, TimeUnit.SECONDS);
+        if (!isShutdown) {
+            LOGGER.warn("Coordinator didn't stop in the expected time, shutting down executor now");
+
+            executor.shutdownNow();
+            executor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+        }
+    }
+
+    private class ChangeEventSourceContextImpl implements ChangeEventSourceContext {
+
+        @Override
+        public boolean isRunning() {
+            return running;
+        }
     }
 }
