@@ -73,6 +73,9 @@ public class OracleSnapshotChangeEventSource implements SnapshotChangeEventSourc
             Long scn = rs.getLong(1);
             rs.close();
 
+            OracleOffsetContext offset = new OracleOffsetContext(connectorConfig.getLogicalName());
+            offset.setScn(scn);
+
             Tables tables = new Tables();
             jdbcConnection.readSchema(tables, catalogName, "%DEBEZIUM%", null, null, false);
 
@@ -93,11 +96,8 @@ public class OracleSnapshotChangeEventSource implements SnapshotChangeEventSourc
                 String ddl = ((Clob)res).getSubString(1, (int) ((Clob)res).length());
                 rs.close();
 
-                schema.applySchemaChange(new SchemaChangeEvent(ddl, table, SchemaChangeEventType.CREATE));
+                schema.applySchemaChange(new SchemaChangeEvent(offset.getPartition(), offset.getOffset(), catalogName, ddl, table, SchemaChangeEventType.CREATE, true));
             }
-
-            OracleOffsetContext offset = new OracleOffsetContext(connectorConfig.getLogicalName());
-            offset.setScn(scn);
 
             return SnapshotResult.completed(offset);
         }
