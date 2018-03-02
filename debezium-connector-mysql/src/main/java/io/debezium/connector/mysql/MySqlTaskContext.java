@@ -48,6 +48,11 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
      */
     private final boolean tableIdCaseInsensitive;
 
+    public boolean locklessSnapshotingRequested() {
+        return config.getBoolean(MySqlConnectorConfig.SNAPSHOT_SANS_TABLE_LOCKING);
+    }
+
+
     public MySqlTaskContext(Configuration config) {
         this(config, null);
     }

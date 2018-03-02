@@ -700,6 +700,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                               .withType(Type.BOOLEAN)
                                                               .withWidth(Width.SHORT)
                                                               .withImportance(Importance.LOW)
+                                                              .withValidation(MySqlConnectorConfig::validateSnapshotSansTableLockingSetForDataIncludedModeOnly)
                                                               .withDescription("Controls how long the connector holds onto the global read lock while it is performing a snapshot. The default is 'true', "
                                                                       + "which means the connector holds the global read lock (and thus prevents any updates) for just the initial portion of the snapshot "
                                                                       + "while the database schemas and other metadata are being read. The remaining work in a snapshot involves selecting all rows from "
@@ -707,6 +708,17 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                                       + "other operations are updating the database. However, in some cases it may be desirable to block all writes for the entire duration "
                                                                       + "of the snapshot; in such cases set this property to 'false'.")
                                                               .withDefault(true);
+
+    public static final Field SNAPSHOT_SANS_TABLE_LOCKING = Field.create("snapshot.sans.table.locks")
+                                                                .withDisplayName("Snapshot Data without Table Lock")
+                                                                .withType(Type.BOOLEAN)
+                                                                .withWidth(Width.SHORT)
+                                                                .withImportance(Importance.LOW)
+                                                                .withDescription("Specifies whether tables should be locked for snapshoting when no global locks are available."
+                                                                + "Particularly true for hosted environments like RDS or Aurora where obtaining global locks is disabled."
+                                                                + "Set this flag to 'true' if you want data to be snapshoted without tables being blocked")
+                                                                .withDefault(false);
+
 
     public static final Field TIME_PRECISION_MODE = Field.create("time.precision.mode")
                                                          .withDisplayName("Time Precision")
@@ -811,7 +823,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                      Heartbeat.HEARTBEAT_TOPICS_PREFIX, DATABASE_HISTORY, INCLUDE_SCHEMA_CHANGES,
                                                      TABLE_WHITELIST, TABLE_BLACKLIST, TABLES_IGNORE_BUILTIN,
                                                      DATABASE_WHITELIST, DATABASE_BLACKLIST,
-                                                     COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING,
+                                                     COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING,SNAPSHOT_SANS_TABLE_LOCKING,
                                                      GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
                                                      GTID_SOURCE_FILTER_DML_EVENTS,
                                                      TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
@@ -856,7 +868,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                     CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
-                    SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
+                    SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING,SNAPSHOT_SANS_TABLE_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                     BIGINT_UNSIGNED_HANDLING_MODE);
         return config;
     }
@@ -900,6 +912,21 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
             return 1;
         }
 
+        return 0;
+    }
+
+    private static int validateSnapshotSansTableLockingSetForDataIncludedModeOnly(Configuration config, Field field, ValidationOutput problems) {
+        String mode = config.getString(MySqlConnectorConfig.SNAPSHOT_MODE);
+        Boolean tablesNotToBeLocked = config.getBoolean(MySqlConnectorConfig.SNAPSHOT_SANS_TABLE_LOCKING);
+
+        if (tablesNotToBeLocked) {
+            if (mode.equals(SnapshotMode.SCHEMA_ONLY.getValue())
+                    || mode.equals(SnapshotMode.SCHEMA_ONLY_RECOVERY.getValue())
+                    || mode.equals(SnapshotMode.NEVER.getValue())){
+                problems.accept(SNAPSHOT_SANS_TABLE_LOCKING, tablesNotToBeLocked, "Cannot be true when no data is to be snapshoted ");
+                return 1;
+            }
+        }
         return 0;
     }
 

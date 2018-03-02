@@ -226,6 +226,8 @@ public class SnapshotReader extends AbstractReader {
         boolean isLocked = false;
         boolean isTxnStarted = false;
         boolean tableLocks = false;
+        boolean noTableLocksRequested = context.locklessSnapshotingRequested();
+        logger.info("Lockless snapshot mode:{}",noTableLocksRequested);
         try {
             metrics.startSnapshot();
 
@@ -351,33 +353,37 @@ public class SnapshotReader extends AbstractReader {
                 logger.info("\tsnapshot continuing with database(s): {}", includedDatabaseNames);
 
                 if (!isLocked) {
-                    // ------------------------------------
-                    // LOCK TABLES and READ BINLOG POSITION
-                    // ------------------------------------
-                    // We were not able to acquire the global read lock, so instead we have to obtain a read lock on each table.
-                    // This requires different privileges than normal, and also means we can't unlock the tables without
-                    // implicitly committing our transaction ...
-                    if (!connectionContext.userHasPrivileges("LOCK TABLES")) {
-                        // We don't have the right privileges
-                        throw new ConnectException("User does not have the 'LOCK TABLES' privilege required to obtain a "
-                                + "consistent snapshot by preventing concurrent writes to tables.");
-                    }
-                    // We have the required privileges, so try to lock all of the tables we're interested in ...
-                    logger.info("Step {}: flush and obtain read lock for {} tables (preventing writes)", step++, tableIds.size());
-                    String tableList = tableIds.stream()
-                            .map(tid -> quote(tid))
-                            .reduce((r, element) -> r+ "," + element)
-                            .orElse(null);
-                    if (tableList != null) {
-                        sql.set("FLUSH TABLES " + tableList + " WITH READ LOCK");
-                        mysql.execute(sql.get());
-                    }
-                    lockAcquired = clock.currentTimeInMillis();
-                    metrics.globalLockAcquired();
-                    isLocked = true;
-                    tableLocks = true;
+                    if (noTableLocksRequested)
+                        logger.info("Step {}: No Table lock mode requested.", step++);
+                    else {
+                        // ------------------------------------
+                        // LOCK TABLES and READ BINLOG POSITION
+                        // ------------------------------------
+                        // We were not able to acquire the global read lock, so instead we have to obtain a read lock on each table.
+                        // This requires different privileges than normal, and also means we can't unlock the tables without
+                        // implicitly committing our transaction ...
+                        if (!connectionContext.userHasPrivileges("LOCK TABLES")) {
+                            // We don't have the right privileges
+                            throw new ConnectException("User does not have the 'LOCK TABLES' privilege required to obtain a "
+                                    + "consistent snapshot by preventing concurrent writes to tables.");
+                        }
+                        // We have the required privileges, so try to lock all of the tables we're interested in ...
+                        logger.info("Step {}: flush and obtain read lock for {} tables (preventing writes)", step++, tableIds.size());
+                        String tableList = tableIds.stream()
+                                .map(tid -> quote(tid))
+                                .reduce((r, element) -> r + "," + element)
+                                .orElse(null);
+                        if (tableList != null) {
+                            sql.set("FLUSH TABLES " + tableList + " WITH READ LOCK");
+                            mysql.execute(sql.get());
+                        }
+                        lockAcquired = clock.currentTimeInMillis();
+                        metrics.globalLockAcquired();
+                        isLocked = true;
+                        tableLocks = true;
 
-                    // Our tables are locked, so read the binlog position ...
+                        // Our tables are locked, so read the binlog position ...
+                    }
                     readBinlogPosition(step++, source, mysql, sql);
                 }
 
@@ -440,31 +446,35 @@ public class SnapshotReader extends AbstractReader {
                 // ------
                 // STEP 7
                 // ------
-                if (minimalBlocking && isLocked) {
-                    if (tableLocks) {
-                        // We could not acquire a global read lock and instead had to obtain individual table-level read locks
-                        // using 'FLUSH TABLE <tableName> WITH READ LOCK'. However, if we were to do this, the 'UNLOCK TABLES'
-                        // would implicitly commit our active transaction, and this would break our consistent snapshot logic.
-                        // Therefore, we cannot unlock the tables here!
-                        // https://dev.mysql.com/doc/refman/5.7/en/flush.html
-                        logger.info("Step {}: tables were locked explicitly, but to get a consistent snapshot we cannot "
-                                + "release the locks until we've read all tables.", step++);
-                    } else {
-                        // We are doing minimal blocking via a global read lock, so we should release the global read lock now.
-                        // All subsequent SELECT should still use the MVCC snapshot obtained when we started our transaction
-                        // (since we started it "...with consistent snapshot"). So, since we're only doing very simple SELECT
-                        // without WHERE predicates, we can release the lock now ...
-                        logger.info("Step {}: releasing global read lock to enable MySQL writes", step);
-                        sql.set("UNLOCK TABLES");
-                        mysql.execute(sql.get());
-                        isLocked = false;
-                        long lockReleased = clock.currentTimeInMillis();
-                        metrics.globalLockReleased();
-                        logger.info("Step {}: blocked writes to MySQL for a total of {}", step++,
+                if (isLocked) {
+                    if (minimalBlocking) {
+                        if (tableLocks) {
+                            // We could not acquire a global read lock and instead had to obtain individual table-level read locks
+                            // using 'FLUSH TABLE <tableName> WITH READ LOCK'. However, if we were to do this, the 'UNLOCK TABLES'
+                            // would implicitly commit our active transaction, and this would break our consistent snapshot logic.
+                            // Therefore, we cannot unlock the tables here!
+                            // https://dev.mysql.com/doc/refman/5.7/en/flush.html
+                            logger.info("Step {}: tables were locked explicitly, but to get a consistent snapshot we cannot "
+                                    + "release the locks until we've read all tables.", step++);
+                        } else {
+                            // We are doing minimal blocking via a global read lock, so we should release the global read lock now.
+                            // All subsequent SELECT should still use the MVCC snapshot obtained when we started our transaction
+                            // (since we started it "...with consistent snapshot"). So, since we're only doing very simple SELECT
+                            // without WHERE predicates, we can release the lock now ...
+                            logger.info("Step {}: releasing global read lock to enable MySQL writes", step);
+                            sql.set("UNLOCK TABLES");
+                            mysql.execute(sql.get());
+                            isLocked = false;
+                            long lockReleased = clock.currentTimeInMillis();
+                            metrics.globalLockReleased();
+                            logger.info("Step {}: blocked writes to MySQL for a total of {}", step++,
                                     Strings.duration(lockReleased - lockAcquired));
+                        }
                     }
                 }
-
+                else
+                    // We could not acquire a global read lock and neither were table locks requested. A no-op basically
+                    logger.info("Step {}: No table locks were acquired. Moving onto next step", step++);
                 // ------
                 // STEP 8
                 // ------
@@ -631,23 +641,27 @@ public class SnapshotReader extends AbstractReader {
                 // STEP 10
                 // -------
                 // Release the read lock(s) if we have not yet done so. Locks are not released when committing/rolling back ...
-                if (isLocked && !rolledBack) {
-                    if (tableLocks) {
-                        logger.info("Step {}: releasing table read locks to enable MySQL writes", step++);
-                    } else {
-                        logger.info("Step {}: releasing global read lock to enable MySQL writes", step++);
-                    }
-                    sql.set("UNLOCK TABLES");
-                    mysql.execute(sql.get());
-                    isLocked = false;
-                    long lockReleased = clock.currentTimeInMillis();
-                    metrics.globalLockReleased();
-                    if (tableLocks) {
-                        logger.info("Writes to MySQL prevented for a total of {}", Strings.duration(lockReleased - lockAcquired));
-                    } else {
-                        logger.info("Writes to MySQL tables prevented for a total of {}", Strings.duration(lockReleased - lockAcquired));
+                if (isLocked) {
+                    if (!rolledBack) {
+                        if (tableLocks) {
+                            logger.info("Step {}: releasing table read locks to enable MySQL writes", step++);
+                        } else {
+                            logger.info("Step {}: releasing global read lock to enable MySQL writes", step++);
+                        }
+                        sql.set("UNLOCK TABLES");
+                        mysql.execute(sql.get());
+                        isLocked = false;
+                        long lockReleased = clock.currentTimeInMillis();
+                        metrics.globalLockReleased();
+                        if (tableLocks) {
+                            logger.info("Writes to MySQL prevented for a total of {}", Strings.duration(lockReleased - lockAcquired));
+                        } else {
+                            logger.info("Writes to MySQL tables prevented for a total of {}", Strings.duration(lockReleased - lockAcquired));
+                        }
                     }
                 }
+                else
+                    logger.info("Step {}: No global/table level locks acquired. Nothing to release", step++);
             }
 
             if (!isRunning()) {
