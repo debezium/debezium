@@ -5,37 +5,68 @@
  */
 package io.debezium.schema;
 
+import java.util.Collections;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import io.debezium.relational.Table;
 
 public class SchemaChangeEvent {
 
+    private final String database;
     private final String ddl;
-    private final Table table;
+    private final Set<Table> tables;
     private final SchemaChangeEventType type;
+    private final Map<String, ?> partition;
+    private final Map<String, ?> offset;
+    private final boolean isFromSnapshot;
 
-    public SchemaChangeEvent(String ddl, Table table, SchemaChangeEventType type) {
+    public SchemaChangeEvent(Map<String, ?> partition, Map<String, ?> offset, String database, String ddl, Table table, SchemaChangeEventType type, boolean isFromSnapshot) {
+        this(partition, offset, database, ddl, table != null ? Collections.singleton(table) : null, type, isFromSnapshot);
+    }
+
+    public SchemaChangeEvent(Map<String, ?> partition, Map<String, ?> offset, String database, String ddl, Set<Table> tables, SchemaChangeEventType type, boolean isFromSnapshot) {
+        this.partition = Objects.requireNonNull(partition, "partition must not be null");
+        this.offset = Objects.requireNonNull(offset, "offset must not be null");
+        this.database = Objects.requireNonNull(database, "database must not be null");
         this.ddl = Objects.requireNonNull(ddl, "ddl must not be null");
-        this.table = Objects.requireNonNull(table, "table must not be null");
+        this.tables = Objects.requireNonNull(tables, "tables must not be null");
         this.type = Objects.requireNonNull(type, "type must not be null");
+        this.isFromSnapshot = isFromSnapshot;
+    }
+
+    public Map<String, ?> getPartition() {
+        return partition;
+    }
+
+    public Map<String, ?> getOffset() {
+        return offset;
+    }
+
+    public String getDatabase() {
+        return database;
     }
 
     public String getDdl() {
         return ddl;
     }
 
-    public Table getTable() {
-        return table;
+    public Set<Table> getTables() {
+        return tables;
     }
 
     public SchemaChangeEventType getType() {
         return type;
     }
 
+    public boolean isFromSnapshot() {
+        return isFromSnapshot;
+    }
+
     @Override
     public String toString() {
-        return "SchemaChangeEvent [ddl=" + ddl + ", table=" + table + ", type=" + type + "]";
+        return "SchemaChangeEvent [ddl=" + ddl + ", tables=" + tables + ", type=" + type + "]";
     }
 
     public static enum SchemaChangeEventType {

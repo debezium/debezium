@@ -40,14 +40,12 @@ public class EventDispatcher {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EventDispatcher.class);
 
-    private final ErrorHandler errorHandler;
     private final TopicSelector topicSelector;
     private final DatabaseSchema schema;
     private final ChangeEventQueue<Object> queue;
 
-    public EventDispatcher(ErrorHandler errorHandler, TopicSelector topicSelector, DatabaseSchema schema,
+    public EventDispatcher(TopicSelector topicSelector, DatabaseSchema schema,
             ChangeEventQueue<Object> queue) {
-        this.errorHandler = errorHandler;
         this.topicSelector = topicSelector;
         this.schema = schema;
         this.queue = queue;
@@ -60,7 +58,7 @@ public class EventDispatcher {
      * receiving coordinator creates {@link SourceRecord}s for all emitted events and passes them to the given
      * {@link ChangeEventCreator} for converting them into data change events.
      */
-    public void dispatchDataChangeEvent(OffsetContext offsetContext, DataCollectionId dataCollectionId, Supplier<ChangeRecordEmitter> changeRecordEmitter, ChangeEventCreator changeEventCreator) throws InterruptedException {
+    public void dispatchDataChangeEvent(DataCollectionId dataCollectionId, Supplier<ChangeRecordEmitter> changeRecordEmitter, ChangeEventCreator changeEventCreator) throws InterruptedException {
         // TODO Handle Heartbeat
 
         // TODO Handle JMX
@@ -76,23 +74,21 @@ public class EventDispatcher {
 
         // TODO handle as per inconsistent schema info option
         if(dataCollectionSchema == null) {
-            errorHandler.setProducerThrowable(new IllegalArgumentException("No metadata registered for captured table " + dataCollectionId));
-            return;
+            throw new IllegalArgumentException("No metadata registered for captured table " + dataCollectionId);
         }
 
         changeRecordEmitter.get().emitChangeRecords(
-            offsetContext,
             dataCollectionSchema,
             new ChangeRecordReceiver(dataCollectionId, changeEventCreator, dataCollectionSchema)
         );
     }
 
-    public void dispatchSchemaChangeEvent(TableId tableId, SchemaChangeEventEmitter schemaChangeEventEmitter) throws InterruptedException {
+    public void dispatchSchemaChangeEvent(TableId tableId, Supplier<SchemaChangeEventEmitter> schemaChangeEventEmitter) throws InterruptedException {
         // TODO
         boolean tableIncluded = true;
 
         if(tableIncluded) {
-            schemaChangeEventEmitter.emitSchemaChangeEvent(tableId, new SchemaChangeEventReceiver());
+            schemaChangeEventEmitter.get().emitSchemaChangeEvent(new SchemaChangeEventReceiver());
         }
     }
 

@@ -9,11 +9,16 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
+import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.document.Document;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.relational.history.KafkaDatabaseHistory;
 
 public class OracleConnectorConfig extends CommonConnectorConfig {
 
@@ -41,6 +46,21 @@ public class OracleConnectorConfig extends CommonConnectorConfig {
             .withValidation(Field::isRequired)
             .withDescription("The name of the database the connector should be monitoring. When working with a "
                     + "multi-tenant set-up, must be set to the CDB name.");
+
+    /**
+     * The database history class is hidden in the {@link #configDef()} since that is designed to work with a user interface,
+     * and in these situations using Kafka is the only way to go.
+     */
+    public static final Field DATABASE_HISTORY = Field.create("database.history")
+            .withDisplayName("Database history class")
+            .withType(Type.CLASS)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withInvisibleRecommender()
+            .withDescription("The name of the DatabaseHistory class that should be used to store and recover database schema changes. "
+                    + "The configuration properties for the history are prefixed with the '"
+                    + DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING + "' string.")
+            .withDefault(KafkaDatabaseHistory.class.getName());
 
     public static final Field PDB_NAME = Field.create(DATABASE_CONFIG_PREFIX + "pdb.name")
             .withDisplayName("PDB name")
@@ -102,5 +122,36 @@ public class OracleConnectorConfig extends CommonConnectorConfig {
 
     public String getXoutServerName() {
         return xoutServerName;
+    }
+
+    /**
+     * Returns a configured (but not yet started) instance of the database history.
+     */
+    public DatabaseHistory getDatabaseHistory() {
+        Configuration config = getConfig();
+
+        DatabaseHistory databaseHistory = config.getInstance(OracleConnectorConfig.DATABASE_HISTORY, DatabaseHistory.class);
+        if (databaseHistory == null) {
+            throw new ConnectException("Unable to instantiate the database history class " +
+                    config.getString(OracleConnectorConfig.DATABASE_HISTORY));
+        }
+
+        // Do not remove the prefix from the subset of config properties ...
+        Configuration dbHistoryConfig = config.subset(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING, false)
+                                              .edit()
+                                              .withDefault(DatabaseHistory.NAME, getLogicalName() + "-dbhistory")
+                                              .build();
+
+        // Set up a history record comparator that uses the GTID filter ...
+        HistoryRecordComparator historyComparator = new HistoryRecordComparator() {
+            @Override
+            protected boolean isPositionAtOrBefore(Document recorded, Document desired) {
+                throw new UnsupportedOperationException();
+//                return SourceInfo.isPositionAtOrBefore(recorded, desired, gtidFilter);
+            }
+        };
+        databaseHistory.configure(dbHistoryConfig, historyComparator); // validates
+
+        return databaseHistory;
     }
 }

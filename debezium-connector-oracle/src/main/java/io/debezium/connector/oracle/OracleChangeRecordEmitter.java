@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle;
 
 import io.debezium.data.Envelope.Operation;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.relational.Table;
 import io.debezium.util.Clock;
@@ -22,8 +23,8 @@ public class OracleChangeRecordEmitter extends RelationalChangeRecordEmitter {
     private final RowLCR lcr;
     private final Table table;
 
-    public OracleChangeRecordEmitter(RowLCR lcr, Table table, Clock clock) {
-        super(clock);
+    public OracleChangeRecordEmitter(OffsetContext offset, RowLCR lcr, Table table, Clock clock) {
+        super(offset, clock);
 
         this.lcr = lcr;
         this.table = table;

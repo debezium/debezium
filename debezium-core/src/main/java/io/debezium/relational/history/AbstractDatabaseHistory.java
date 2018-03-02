@@ -53,13 +53,20 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     @Override
     public final void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String ddl)
             throws DatabaseHistoryException {
-            storeRecord(new HistoryRecord(source, position, databaseName, ddl));
+
+        record(source, position, databaseName, ddl, null);
+    }
+
+    @Override
+    public final void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String ddl, TableChanges changes)
+            throws DatabaseHistoryException {
+            storeRecord(new HistoryRecord(source, position, databaseName, ddl, changes));
     }
 
     @Override
     public final void recover(Map<String, ?> source, Map<String, ?> position, Tables schema, DdlParser ddlParser) {
         logger.debug("Recovering DDL history for source partition {} and offset {}", source, position);
-        HistoryRecord stopPoint = new HistoryRecord(source, position, null, null);
+        HistoryRecord stopPoint = new HistoryRecord(source, position, null, null, null);
         recoverRecords(recovered -> {
             if (comparator.isAtOrBefore(recovered, stopPoint)) {
                 String ddl = recovered.ddl();

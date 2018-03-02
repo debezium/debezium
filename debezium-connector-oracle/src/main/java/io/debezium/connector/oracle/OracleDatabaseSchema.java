@@ -17,9 +17,12 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
+import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.TableChanges;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.schema.DataCollectionSchema;
 import io.debezium.schema.SchemaChangeEvent;
+import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.schema.TopicSelector;
 import io.debezium.util.SchemaNameAdjuster;
 
@@ -34,23 +37,36 @@ public class OracleDatabaseSchema implements RelationalDatabaseSchema {
     private final Tables tables;
     private final Map<TableId, TableSchema> schemas;
     private final TableSchemaBuilder tableSchemaBuilder;
+    private final DatabaseHistory databaseHistory;
 
-    public OracleDatabaseSchema(SchemaNameAdjuster schemaNameAdjuster, TopicSelector topicSelector) {
+    public OracleDatabaseSchema(OracleConnectorConfig connectorConfig, SchemaNameAdjuster schemaNameAdjuster, TopicSelector topicSelector) {
         this.topicSelector = topicSelector;
 
         this.tables = new Tables();
         this.schemas = new HashMap<>();
         this.tableSchemaBuilder = new TableSchemaBuilder(new OracleValueConverters(), schemaNameAdjuster, SourceInfo.SCHEMA);
+        this.databaseHistory = connectorConfig.getDatabaseHistory();
+        this.databaseHistory.start();
     }
 
     @Override
     public void applySchemaChange(SchemaChangeEvent schemaChange) {
         LOGGER.debug("Applying schema change event {}", schemaChange);
 
-        Table table = schemaChange.getTable();
+        // just a single table per DDL event for Oracle
+        Table table = schemaChange.getTables().iterator().next();
 
         tables.overwriteTable(table);
         schemas.put(table.id(), tableSchemaBuilder.create(null, getEnvelopeSchemaName(table), table, null, null));
+
+        TableChanges tableChanges = null;
+        if (schemaChange.getType() == SchemaChangeEventType.CREATE && !schemaChange.isFromSnapshot()) {
+            tableChanges = new TableChanges();
+            tableChanges.create(table);
+        }
+
+        databaseHistory.record(schemaChange.getPartition(), schemaChange.getOffset(), schemaChange.getDatabase(),
+                schemaChange.getDdl(), tableChanges);
     }
 
     private String getEnvelopeSchemaName(Table table) {

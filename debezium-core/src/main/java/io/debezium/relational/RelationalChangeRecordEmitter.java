@@ -22,33 +22,35 @@ import io.debezium.util.Clock;
  */
 public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitter {
 
+    private final OffsetContext offsetContext;
     private final Clock clock;
 
-    public RelationalChangeRecordEmitter(Clock clock) {
+    public RelationalChangeRecordEmitter(OffsetContext offsetContext, Clock clock) {
+        this.offsetContext = offsetContext;
         this.clock = clock;
     }
 
     @Override
-    public void emitChangeRecords(OffsetContext offsetContext, DataCollectionSchema schema, Receiver receiver) throws InterruptedException {
+    public void emitChangeRecords(DataCollectionSchema schema, Receiver receiver) throws InterruptedException {
         TableSchema tableSchema = (TableSchema) schema;
         Operation operation = getOperation();
 
         switch(operation) {
             case CREATE:
-                emitCreateRecord(offsetContext, receiver, tableSchema, operation);
+                emitCreateRecord(receiver, tableSchema, operation);
                 break;
             case UPDATE:
-                emitUpdateRecord(offsetContext, receiver, tableSchema, operation);
+                emitUpdateRecord(receiver, tableSchema, operation);
                 break;
             case DELETE:
-                emitDeleteRecord(offsetContext, receiver, tableSchema, operation);
+                emitDeleteRecord(receiver, tableSchema, operation);
                 break;
             default:
                 throw new IllegalArgumentException("Unsupported operation: " + operation);
         }
     }
 
-    private void emitCreateRecord(OffsetContext offsetContext, Receiver receiver, TableSchema tableSchema, Operation operation)
+    private void emitCreateRecord(Receiver receiver, TableSchema tableSchema, Operation operation)
             throws InterruptedException {
         Object[] newColumnValues = getNewColumnValues();
         Object newKey = tableSchema.keyFromColumnData(newColumnValues);
@@ -58,7 +60,7 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
         receiver.changeRecord(operation, newKey, envelope, offsetContext);
     }
 
-    private void emitUpdateRecord(OffsetContext offsetContext, Receiver receiver, TableSchema tableSchema, Operation operation)
+    private void emitUpdateRecord(Receiver receiver, TableSchema tableSchema, Operation operation)
             throws InterruptedException {
         Object[] oldColumnValues = getOldColumnValues();
         Object[] newColumnValues = getNewColumnValues();
@@ -84,7 +86,7 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
         }
     }
 
-    private void emitDeleteRecord(OffsetContext offsetContext, Receiver receiver, TableSchema tableSchema, Operation operation)
+    private void emitDeleteRecord(Receiver receiver, TableSchema tableSchema, Operation operation)
             throws InterruptedException {
         Object[] oldColumnValues = getOldColumnValues();
         Object oldKey = tableSchema.keyFromColumnData(oldColumnValues);
