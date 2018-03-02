@@ -5,7 +5,6 @@
  */
 package io.debezium.pipeline.spi;
 
-import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionSchema;
 import io.debezium.schema.SchemaChangeEvent;
 
@@ -16,7 +15,7 @@ import io.debezium.schema.SchemaChangeEvent;
  */
 public interface SchemaChangeEventEmitter {
 
-    void emitSchemaChangeEvent(TableId tableId, Receiver receiver) throws InterruptedException;
+    void emitSchemaChangeEvent(Receiver receiver) throws InterruptedException;
 
     public interface Receiver {
         void schemaChangeEvent(SchemaChangeEvent event) throws InterruptedException;

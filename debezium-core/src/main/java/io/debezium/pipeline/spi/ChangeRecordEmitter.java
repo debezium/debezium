@@ -17,7 +17,7 @@ import io.debezium.schema.DataCollectionSchema;
  */
 public interface ChangeRecordEmitter {
 
-    void emitChangeRecords(OffsetContext offsetContext, DataCollectionSchema schema, Receiver receiver) throws InterruptedException;
+    void emitChangeRecords(DataCollectionSchema schema, Receiver receiver) throws InterruptedException;
 
     public interface Receiver {
         void changeRecord(Operation operation, Object key, Struct value, OffsetContext offsetManager) throws InterruptedException;

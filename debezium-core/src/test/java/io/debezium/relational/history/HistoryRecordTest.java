@@ -27,7 +27,7 @@ public class HistoryRecordTest {
         String databaseName = "db";
         String ddl = "CREATE TABLE foo ( first VARCHAR(22) NOT NULL );";
 
-        HistoryRecord record = new HistoryRecord(source, position, databaseName, ddl);
+        HistoryRecord record = new HistoryRecord(source, position, databaseName, ddl, null);
 
         String serialized = record.toString();
         DocumentReader reader = DocumentReader.defaultReader();

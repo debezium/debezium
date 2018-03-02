@@ -99,6 +99,8 @@ public interface DatabaseHistory {
      */
     void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String ddl) throws DatabaseHistoryException;
 
+    void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String ddl, TableChanges changes) throws DatabaseHistoryException;
+
     /**
      * Recover the {@link Tables database schema} to a known point in its history. Note that it is possible to recover the
      * database schema to a point in history that is earlier than what has been {@link #record(Map, Map, String, Tables, String)

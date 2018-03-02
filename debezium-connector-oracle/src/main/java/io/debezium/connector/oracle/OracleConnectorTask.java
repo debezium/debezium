@@ -74,9 +74,9 @@ public class OracleConnectorTask extends BaseSourceTask {
 
         jdbcConnection = new OracleConnection(jdbcConfig, new OracleConnectionFactory());
         SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
-        OracleDatabaseSchema schema = new OracleDatabaseSchema(schemaNameAdjuster, topicSelector);
+        OracleDatabaseSchema schema = new OracleDatabaseSchema(connectorConfig, schemaNameAdjuster, topicSelector);
 
-        EventDispatcher dispatcher = new EventDispatcher(errorHandler, topicSelector, schema, queue);
+        EventDispatcher dispatcher = new EventDispatcher(topicSelector, schema, queue);
 
         coordinator = new ChangeEventSourceCoordinator(
                 errorHandler,

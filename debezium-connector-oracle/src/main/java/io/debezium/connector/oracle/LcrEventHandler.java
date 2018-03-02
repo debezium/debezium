@@ -14,10 +14,7 @@ import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.relational.RelationalDatabaseSchema;
-import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.schema.SchemaChangeEvent;
-import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.util.Clock;
 import oracle.streams.ChunkColumnValue;
 import oracle.streams.DDLLCR;
@@ -90,9 +87,8 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         TableId tableId = getTableId(lcr);
 
         dispatcher.dispatchDataChangeEvent(
-                offsetContext,
                 tableId,
-                () -> new OracleChangeRecordEmitter(lcr, schema.getTable(tableId), clock),
+                () -> new OracleChangeRecordEmitter(offsetContext, lcr, schema.getTable(tableId), clock),
                 DataChangeEvent::new
         );
     }
@@ -106,23 +102,8 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
         dispatcher.dispatchSchemaChangeEvent(
                 tableId,
-                (tid, r) -> {
-                    SchemaChangeEventType eventType = getSchemaChangeEventType(ddlLcr);
-                    if (eventType != null) {
-                        Table table = new OracleDdlParser().parseCreateTable(tid, ddlLcr.getDDLText());
-                        r.schemaChangeEvent(new SchemaChangeEvent(ddlLcr.getDDLText(), table, eventType));
-                    }
-                }
+                () -> new OracleSchemaChangeEventEmitter(offsetContext, tableId, ddlLcr)
         );
-    }
-
-    private SchemaChangeEventType getSchemaChangeEventType(DDLLCR ddlLcr) {
-        switch(ddlLcr.getCommandType()) {
-            case "CREATE TABLE": return SchemaChangeEventType.CREATE;
-            case "ALTER TABLE": throw new UnsupportedOperationException("ALTER TABLE not yet implemented");
-            case "DROP TABLE": throw new UnsupportedOperationException("DROP TABLE not yet implemented");
-            default: return null;
-        }
     }
 
     private TableId getTableId(LCR lcr) {
