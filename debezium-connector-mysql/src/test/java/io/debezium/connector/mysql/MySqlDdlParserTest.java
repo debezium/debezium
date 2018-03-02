@@ -1431,7 +1431,7 @@ public class MySqlDdlParserTest {
     public void parsePartitionWithEngine() {
         String ddl =
                 "CREATE TABLE flat_view_request_log (id INT NOT NULL, myvalue INT DEFAULT -10, PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=latin1 PARTITION BY RANGE (to_days(`CreationDate`))" +
-                        " ( PARTITION p_2018_01_17 VALUES LESS THAN ('2018-01-17') ENGINE = InnoDB, PARTITION p_2018_01_18 VALUES LESS THAN ('2018-01-18'), PARTITION p_max VALUES LESS THAN MAXVALUE);";
+                        " ( PARTITION p_2018_01_17 VALUES LESS THAN ('2018-01-17') ENGINE = InnoDB, PARTITION p_2018_01_18 VALUES LESS THAN ('2018-01-18') ENGINE = InnoDB, PARTITION p_max VALUES LESS THAN MAXVALUE ENGINE = InnoDB);";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
     }
