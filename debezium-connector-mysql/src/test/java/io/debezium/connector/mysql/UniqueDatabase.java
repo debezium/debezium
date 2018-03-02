@@ -11,6 +11,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
@@ -33,6 +34,8 @@ import io.debezium.relational.history.FileDatabaseHistory;
  *
  */
 public class UniqueDatabase {
+    private static final ZoneOffset TIMEZONE = ZoneOffset.of("-11:00");
+
     private static final String DEFAULT_DATABASE = "mysql";
     private static final String[] CREATE_DATABASE_DDL = new String[] {
             "CREATE DATABASE $DBNAME$;",
@@ -180,5 +183,12 @@ public class UniqueDatabase {
      */
     public String getIdentifier() {
         return identifier;
+    }
+
+    /**
+     * @return timezone in which the database is located
+     */
+    public ZoneOffset timezone() {
+        return TIMEZONE;
     }
 }

@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -108,7 +109,6 @@ final class Conversions {
         throw new IllegalArgumentException("Unable to convert to LocalTime from unexpected value '" + obj + "' of type " + obj.getClass().getName());
     }
 
-    @SuppressWarnings("deprecation")
     protected static LocalDateTime toLocalDateTime(Object obj) {
         if ( obj == null ) {
             return null;
@@ -135,15 +135,8 @@ final class Conversions {
         }
         if ( obj instanceof java.util.Date) {
             java.util.Date date = (java.util.Date)obj;
-            long millis = (int)(date.getTime() % Conversions.MILLISECONDS_PER_SECOND);
-            int nanosOfSecond = (int)(millis * Conversions.NANOSECONDS_PER_MILLISECOND);
-            return LocalDateTime.of(date.getYear() + 1900,
-                                    date.getMonth() + 1,
-                                    date.getDate(),
-                                    date.getHours(),
-                                    date.getMinutes(),
-                                    date.getSeconds(),
-                                    nanosOfSecond);
+            // TODO - this should be synced with io.debezium.jdbc.JdbcValueConverters.defaultOffset and io.debezium.connector.mysql.MySqlTaskContext.getTimezone()
+            return LocalDateTime.ofInstant(date.toInstant(), ZoneOffset.UTC);
         }
         throw new IllegalArgumentException("Unable to convert to LocalTime from unexpected value '" + obj + "' of type " + obj.getClass().getName());
     }

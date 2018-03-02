@@ -213,20 +213,20 @@ public class BinlogReader extends AbstractReader {
         eventDeserializer.setEventDataDeserializer(EventType.STOP, new StopEventDataDeserializer());
         eventDeserializer.setEventDataDeserializer(EventType.GTID, new GtidEventDataDeserializer());
         eventDeserializer.setEventDataDeserializer(EventType.WRITE_ROWS,
-                                                   new RowDeserializers.WriteRowsDeserializer(tableMapEventByTableId));
+                                                   new RowDeserializers.WriteRowsDeserializer(tableMapEventByTableId, context.getTimezone()));
         eventDeserializer.setEventDataDeserializer(EventType.UPDATE_ROWS,
-                                                   new RowDeserializers.UpdateRowsDeserializer(tableMapEventByTableId));
+                                                   new RowDeserializers.UpdateRowsDeserializer(tableMapEventByTableId, context.getTimezone()));
         eventDeserializer.setEventDataDeserializer(EventType.DELETE_ROWS,
-                                                   new RowDeserializers.DeleteRowsDeserializer(tableMapEventByTableId));
+                                                   new RowDeserializers.DeleteRowsDeserializer(tableMapEventByTableId, context.getTimezone()));
         eventDeserializer.setEventDataDeserializer(EventType.EXT_WRITE_ROWS,
                                                    new RowDeserializers.WriteRowsDeserializer(
-                                                           tableMapEventByTableId).setMayContainExtraInformation(true));
+                                                           tableMapEventByTableId, context.getTimezone()).setMayContainExtraInformation(true));
         eventDeserializer.setEventDataDeserializer(EventType.EXT_UPDATE_ROWS,
                                                    new RowDeserializers.UpdateRowsDeserializer(
-                                                           tableMapEventByTableId).setMayContainExtraInformation(true));
+                                                           tableMapEventByTableId, context.getTimezone()).setMayContainExtraInformation(true));
         eventDeserializer.setEventDataDeserializer(EventType.EXT_DELETE_ROWS,
                                                    new RowDeserializers.DeleteRowsDeserializer(
-                                                           tableMapEventByTableId).setMayContainExtraInformation(true));
+                                                           tableMapEventByTableId, context.getTimezone()).setMayContainExtraInformation(true));
         client.setEventDeserializer(eventDeserializer);
 
         // Set up for JMX ...

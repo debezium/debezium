@@ -230,7 +230,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                         LocalDate.of(1970, 1, 1).atTime(0, 0),
                         TimeZone.getDefault().toZoneId()
                 ).getOffset();
-                assertThat(c4DateTime.getOffset()).isEqualTo(expectedOffset);
+                assertThat(c4DateTime.getOffset()).isEqualTo(ZoneOffset.UTC);
 
                 // In case the timestamp string not in our timezone, convert to UTC so we can compare ...
                 c4DateTime = c4DateTime.withOffsetSameInstant(ZoneOffset.of("Z"));
@@ -490,7 +490,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                         LocalDate.of(1970, 1, 1).atTime(0, 0),
                         TimeZone.getDefault().toZoneId()
                 ).getOffset();
-                assertThat(c4DateTime.getOffset()).isEqualTo(expectedOffset);
+                assertThat(c4DateTime.getOffset()).isEqualTo(ZoneOffset.UTC);
 
                 // In case the timestamp string not in our timezone, convert to UTC so we can compare ...
                 c4DateTime = c4DateTime.withOffsetSameInstant(ZoneOffset.of("Z"));
@@ -545,6 +545,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
     public void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig().build();
+
         // Start the connector ...
         start(MySqlConnector.class, config);
 
@@ -613,9 +614,11 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 // c3 DATETIME(2),
                 // c4 TIMESTAMP(2)
                 //
+                // Instant in UTC - 2014-09-09 04:51:04.777
+                // Instant in US/Samoa - 2014-09-08 17:51:04.777
                 // {"c1" : "16321", "c2" : "17:51:04.777", "c3" : "1410198664780", "c4" : "2014-09-08T17:51:04.78-05:00"}
 
-                // '2014-09-08'
+                // '2014-09-08' - date type is not dependent on timezone so no shift is needed
                 Integer c1 = after.getInt32("c1"); // epoch days
                 LocalDate c1Date = LocalDate.ofEpochDay(c1);
                 assertThat(c1Date.getYear()).isEqualTo(2014);
@@ -623,7 +626,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c1Date.getDayOfMonth()).isEqualTo(8);
                 assertThat(io.debezium.time.Date.toEpochDay(c1Date, ADJUSTER)).isEqualTo(c1);
 
-                // '17:51:04.777'
+                // '17:51:04.777' - time is Duration so no timeshift is needed
                 Long c2 = after.getInt64("c2");
                 Duration c2Time = Duration.ofNanos(c2 * 1_000);
                 assertThat(c2Time.toHours()).isEqualTo(17);
@@ -633,17 +636,17 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c2Time.toNanos()).isEqualTo(64264780000000L);
                 assertThat(c2Time).isEqualTo(Duration.ofHours(17).plusMinutes(51).plusSeconds(4).plusMillis(780));
 
-                // '2014-09-08 17:51:04.777'
+                // '2014-09-08 17:51:04.777' -> '2014-09-09 04:51:04.78'
                 Long c3 = after.getInt64("c3"); // epoch millis
                 long c3Seconds = c3 / 1000;
                 long c3Millis = c3 % 1000;
                 LocalDateTime c3DateTime = LocalDateTime.ofEpochSecond(c3Seconds,
-                                                                       (int) TimeUnit.MILLISECONDS.toNanos(c3Millis),
-                                                                       ZoneOffset.UTC);
+                        (int) TimeUnit.MILLISECONDS.toNanos(c3Millis),
+                        ZoneOffset.UTC);
                 assertThat(c3DateTime.getYear()).isEqualTo(2014);
                 assertThat(c3DateTime.getMonth()).isEqualTo(Month.SEPTEMBER);
-                assertThat(c3DateTime.getDayOfMonth()).isEqualTo(8);
-                assertThat(c3DateTime.getHour()).isEqualTo(17);
+                assertThat(c3DateTime.getDayOfMonth()).isEqualTo(9);
+                assertThat(c3DateTime.getHour()).isEqualTo(4);
                 assertThat(c3DateTime.getMinute()).isEqualTo(51);
                 assertThat(c3DateTime.getSecond()).isEqualTo(4);
                 assertThat(c3DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
@@ -652,19 +655,13 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 // '2014-09-08 17:51:04.777'
                 String c4 = after.getString("c4"); // timestamp
 
-                ZoneOffset localOffset = ZonedDateTime.of(
-                        LocalDate.of(2014, 9, 8).atTime(0, 0),
-                        TimeZone.getDefault().toZoneId()
-                ).getOffset();
-
                 OffsetDateTime c4DateTime = OffsetDateTime.parse(c4, ZonedTimestamp.FORMATTER);
                 // In case the timestamp string not in our timezone, convert to ours so we can compare ...
-                c4DateTime = c4DateTime.withOffsetSameInstant(localOffset);
                 assertThat(c4DateTime.getYear()).isEqualTo(2014);
                 assertThat(c4DateTime.getMonth()).isEqualTo(Month.SEPTEMBER);
-                assertThat(c4DateTime.getDayOfMonth()).isEqualTo(8);
+                assertThat(c4DateTime.getDayOfMonth()).isEqualTo(9);
                 // Difference depends upon whether the zone we're in is also using DST as it is on the date in question ...
-                assertThat(c4DateTime.getHour() == 16 || c4DateTime.getHour() == 17).isTrue();
+                assertThat(c4DateTime.getHour()).isEqualTo(4);
                 assertThat(c4DateTime.getMinute()).isEqualTo(51);
                 assertThat(c4DateTime.getSecond()).isEqualTo(4);
                 assertThat(c4DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
@@ -856,7 +853,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         // '2014-09-08 17:51:04.777'
         // MySQL container is in UTC and the test time is during summer time period
         ZonedDateTime expectedTimestamp = ZonedDateTime.ofInstant(
-                LocalDateTime.parse("2014-09-08T17:51:04.780").atZone(ZoneId.of("UTC")).toInstant(),
+                LocalDateTime.parse("2014-09-08T17:51:04.780").atZone(ZoneId.of("US/Samoa")).toInstant(),
                 ZoneId.systemDefault());
         ZoneId defaultZoneId = ZoneId.systemDefault();
         ZonedDateTime c4DateTime = ZonedDateTime.parse(c4, ZonedTimestamp.FORMATTER).withZoneSameInstant(defaultZoneId);

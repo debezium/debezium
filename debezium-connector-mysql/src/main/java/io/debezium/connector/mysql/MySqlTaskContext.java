@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import java.time.ZoneId;
 import java.util.Map;
 import java.util.function.Predicate;
 
@@ -337,5 +338,12 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
 
     public boolean isTableIdCaseInsensitive() {
         return tableIdCaseInsensitive;
+    }
+
+    /**
+     * @return timezone for output date/time fields
+     */
+    public ZoneId getTimezone() {
+        return ZoneId.of("UTC");
     }
 }

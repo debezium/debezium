@@ -7,6 +7,7 @@ package io.debezium.connector.mysql;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -15,9 +16,9 @@ import java.time.OffsetDateTime;
 import java.time.Year;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.Duration;
 import java.util.Calendar;
 import java.util.Map;
+
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.event.deserialization.DeleteRowsEventDataDeserializer;
@@ -52,9 +53,11 @@ class RowDeserializers {
      * {@link OffsetDateTime} objects, respectively.
      */
     public static class DeleteRowsDeserializer extends DeleteRowsEventDataDeserializer {
+        private final ZoneId timezone;
 
-        public DeleteRowsDeserializer(Map<Long, TableMapEventData> tableMapEventByTableId) {
+        public DeleteRowsDeserializer(Map<Long, TableMapEventData> tableMapEventByTableId, ZoneId timezone) {
             super(tableMapEventByTableId);
+            this.timezone = timezone;
         }
 
         @Override
@@ -94,12 +97,12 @@ class RowDeserializers {
 
         @Override
         protected Serializable deserializeTimestamp(ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeTimestamp(inputStream);
+            return RowDeserializers.deserializeTimestamp(inputStream, timezone);
         }
 
         @Override
         protected Serializable deserializeTimestampV2(int meta, ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeTimestampV2(meta, inputStream);
+            return RowDeserializers.deserializeTimestampV2(meta, inputStream, timezone);
         }
         
         @Override
@@ -114,9 +117,11 @@ class RowDeserializers {
      * {@link OffsetDateTime} objects, respectively.
      */
     public static class UpdateRowsDeserializer extends UpdateRowsEventDataDeserializer {
+        private final ZoneId timezone;
 
-        public UpdateRowsDeserializer(Map<Long, TableMapEventData> tableMapEventByTableId) {
+        public UpdateRowsDeserializer(Map<Long, TableMapEventData> tableMapEventByTableId, ZoneId timezone) {
             super(tableMapEventByTableId);
+            this.timezone = timezone;
         }
 
         @Override
@@ -156,12 +161,12 @@ class RowDeserializers {
 
         @Override
         protected Serializable deserializeTimestamp(ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeTimestamp(inputStream);
+            return RowDeserializers.deserializeTimestamp(inputStream, timezone);
         }
 
         @Override
         protected Serializable deserializeTimestampV2(int meta, ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeTimestampV2(meta, inputStream);
+            return RowDeserializers.deserializeTimestampV2(meta, inputStream, timezone);
         }
 
         @Override
@@ -176,9 +181,11 @@ class RowDeserializers {
      * {@link OffsetDateTime} objects, respectively.
      */
     public static class WriteRowsDeserializer extends WriteRowsEventDataDeserializer {
+        private final ZoneId timezone;
 
-        public WriteRowsDeserializer(Map<Long, TableMapEventData> tableMapEventByTableId) {
+        public WriteRowsDeserializer(Map<Long, TableMapEventData> tableMapEventByTableId, ZoneId timezone) {
             super(tableMapEventByTableId);
+            this.timezone = timezone;
         }
 
         @Override
@@ -218,12 +225,12 @@ class RowDeserializers {
 
         @Override
         protected Serializable deserializeTimestamp(ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeTimestamp(inputStream);
+            return RowDeserializers.deserializeTimestamp(inputStream, timezone);
         }
 
         @Override
         protected Serializable deserializeTimestampV2(int meta, ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeTimestampV2(meta, inputStream);
+            return RowDeserializers.deserializeTimestampV2(meta, inputStream, timezone);
         }
 
         @Override
@@ -424,13 +431,14 @@ class RowDeserializers {
      * be in the local timezone.
      * 
      * @param inputStream the binary stream containing the raw binlog event data for the value
+     * @param timezone to be used on output
      * @return the {@link OffsetDateTime} object
      * @throws IOException if there is an error reading from the binlog event data
      */
-    protected static Serializable deserializeTimestamp(ByteArrayInputStream inputStream) throws IOException {
+    protected static Serializable deserializeTimestamp(ByteArrayInputStream inputStream, ZoneId timezone) throws IOException {
         long epochSecond = inputStream.readLong(4);
         int nanoSeconds = 0; // no fractional seconds
-        return ZonedDateTime.ofInstant(Instant.ofEpochSecond(epochSecond, nanoSeconds), ZoneId.systemDefault());
+        return ZonedDateTime.ofInstant(Instant.ofEpochSecond(epochSecond, nanoSeconds), timezone);
     }
 
     /**
@@ -440,13 +448,14 @@ class RowDeserializers {
      * 
      * @param meta the {@code meta} value containing the fractional second precision, or {@code fsp}
      * @param inputStream the binary stream containing the raw binlog event data for the value
+     * @param timezone to be used on output
      * @return the {@link OffsetDateTime} object
      * @throws IOException if there is an error reading from the binlog event data
      */
-    protected static Serializable deserializeTimestampV2(int meta, ByteArrayInputStream inputStream) throws IOException {
+    protected static Serializable deserializeTimestampV2(int meta, ByteArrayInputStream inputStream, ZoneId timezone) throws IOException {
         long epochSecond = bigEndianLong(inputStream.read(4), 0, 4);
         int nanoSeconds = deserializeFractionalSecondsInNanos(meta, inputStream);
-        return ZonedDateTime.ofInstant(Instant.ofEpochSecond(epochSecond, nanoSeconds), ZoneId.systemDefault());
+        return ZonedDateTime.ofInstant(Instant.ofEpochSecond(epochSecond, nanoSeconds), timezone);
     }
 
     /**
