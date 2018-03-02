@@ -502,6 +502,10 @@ public class MySqlDdlParser extends DdlParser {
         if (tokens.canConsume('(')) {
             do {
                 parsePartitionDefinition(start, table);
+                if(tokens.canConsume("ENGINE")) {
+                        tokens.canConsume('=');
+                        tokens.consume();
+                    }
             } while (tokens.canConsume(','));
             tokens.consume(')');
         }
@@ -514,15 +518,6 @@ public class MySqlDdlParser extends DdlParser {
             if (tokens.canConsume("LESS", "THAN")) {
                 if (!tokens.canConsume("MAXVALUE")) {
                     consumeExpression(start);
-                    if(tokens.canConsume("ENGINE")) {
-                        tokens.canConsume('=');
-                        tokens.consume();
-                    }
-                } else {
-                    if(tokens.canConsume("ENGINE")) {
-                        tokens.canConsume('=');
-                        tokens.consume();
-                    }
                 }
             } else {
                 tokens.consume("IN");
