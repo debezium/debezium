@@ -15,10 +15,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.document.Array;
 import io.debezium.function.Predicates;
 import io.debezium.relational.Tables;
-import io.debezium.text.ParsingException;
 import io.debezium.relational.ddl.DdlParser;
+import io.debezium.relational.history.TableChanges.TableChange;
+import io.debezium.relational.history.TableChanges.TableChangeType;
+import io.debezium.text.ParsingException;
 
 /**
  * @author Randall Hauch
@@ -54,24 +57,43 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     public final void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String ddl)
             throws DatabaseHistoryException {
 
-        record(source, position, databaseName, ddl, null);
+        record(source, position, databaseName, null, ddl, null);
     }
 
     @Override
-    public final void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String ddl, TableChanges changes)
+    public final void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String schemaName, String ddl, TableChanges changes)
             throws DatabaseHistoryException {
-            storeRecord(new HistoryRecord(source, position, databaseName, ddl, changes));
+            storeRecord(new HistoryRecord(source, position, databaseName, schemaName, ddl, changes));
     }
 
     @Override
     public final void recover(Map<String, ?> source, Map<String, ?> position, Tables schema, DdlParser ddlParser) {
         logger.debug("Recovering DDL history for source partition {} and offset {}", source, position);
-        HistoryRecord stopPoint = new HistoryRecord(source, position, null, null, null);
+        HistoryRecord stopPoint = new HistoryRecord(source, position, null, null, null, null);
         recoverRecords(recovered -> {
             if (comparator.isAtOrBefore(recovered, stopPoint)) {
+                Array tableChanges = recovered.tableChanges();
                 String ddl = recovered.ddl();
-                if (ddl != null) {
-                    ddlParser.setCurrentSchema(recovered.databaseName()); // may be null
+
+                if (tableChanges != null) {
+                    TableChanges changes = TableChanges.fromArray(tableChanges);
+                    for (TableChange entry : changes) {
+                        if (entry.getType() == TableChangeType.CREATE || entry.getType() == TableChangeType.ALTER) {
+                            schema.overwriteTable(entry.getTable());
+                        }
+                        // DROP
+                        else {
+                            schema.removeTable(entry.getId());
+                        }
+                    }
+                }
+                else if (ddl != null) {
+                    if (recovered.databaseName() != null) {
+                        ddlParser.setCurrentDatabase(recovered.databaseName()); // may be null
+                    }
+                    if (recovered.schemaName() != null) {
+                        ddlParser.setCurrentSchema(recovered.schemaName()); // may be null
+                    }
                     Optional<Pattern> filteredBy = ddlFilter.apply(ddl);
                     if (filteredBy.isPresent()) {
                         logger.info("a DDL '{}' was filtered out of processing by regular expression '{}", ddl, filteredBy.get());

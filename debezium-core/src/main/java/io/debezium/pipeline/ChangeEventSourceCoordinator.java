@@ -19,6 +19,7 @@ import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContex
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.pipeline.spi.SnapshotResult.SnapshotResultStatus;
 import io.debezium.util.Threads;
@@ -35,13 +36,16 @@ public class ChangeEventSourceCoordinator {
 
     private static final Duration SHUTDOWN_WAIT_TIMEOUT = Duration.ofSeconds(60);
 
+    private final OffsetContext previousOffset;
     private final ErrorHandler errorHandler;
     private final ChangeEventSourceFactory changeEventSourceFactory;
     private final ExecutorService executor;
 
     private volatile boolean running;
 
-    public ChangeEventSourceCoordinator(ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType, String logicalName, ChangeEventSourceFactory changeEventSourceFactory) {
+
+    public ChangeEventSourceCoordinator(OffsetContext previousOffset, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType, String logicalName, ChangeEventSourceFactory changeEventSourceFactory) {
+        this.previousOffset = previousOffset;
         this.errorHandler = errorHandler;
         this.changeEventSourceFactory = changeEventSourceFactory;
         this.executor = Threads.newSingleThreadExecutor(connectorType, logicalName, "change-event-source-coordinator");
@@ -55,7 +59,7 @@ public class ChangeEventSourceCoordinator {
             try {
                 ChangeEventSourceContext context = new ChangeEventSourceContextImpl();
 
-                SnapshotChangeEventSource snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource();
+                SnapshotChangeEventSource snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource(previousOffset);
                 SnapshotResult snapshotResult = snapshotSource.execute(context);
 
                 if (running && snapshotResult.getStatus() == SnapshotResultStatus.COMPLETED) {

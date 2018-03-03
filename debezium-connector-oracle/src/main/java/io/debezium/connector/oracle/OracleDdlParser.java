@@ -21,29 +21,71 @@ import io.debezium.connector.oracle.parser.PlSqlParser.Column_nameContext;
 import io.debezium.connector.oracle.parser.PlSqlParser.Create_tableContext;
 import io.debezium.connector.oracle.parser.PlSqlParser.Out_of_line_constraintContext;
 import io.debezium.connector.oracle.parser.PlSqlParser.Precision_partContext;
+import io.debezium.connector.oracle.parser.PlSqlParser.Tableview_nameContext;
+import io.debezium.connector.oracle.parser.PlSqlParser.Unit_statementContext;
 import io.debezium.connector.oracle.parser.PlSqlParserBaseListener;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
+import io.debezium.relational.SystemVariables;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
+import io.debezium.relational.Tables;
+import io.debezium.relational.ddl.DdlChanges;
+import io.debezium.relational.ddl.DdlParser;
 
-public class OracleDdlParser {
+public class OracleDdlParser implements DdlParser {
 
-    public Table parseCreateTable(TableId tableId, String createTableDdl) {
-        if (!createTableDdl.endsWith(";")) {
-            createTableDdl = createTableDdl + ";";
+    private String catalogName;
+    private String schemaName;
+
+    @Override
+    public void setCurrentDatabase(String databaseName) {
+        this.catalogName = databaseName;
+    }
+
+    @Override
+    public void setCurrentSchema(String schemaName) {
+        this.schemaName = schemaName;
+    }
+
+    @Override
+    public DdlChanges getDdlChanges() {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public String terminator() {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public SystemVariables systemVariables() {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public void parse(String ddlContent, Tables databaseTables) {
+        if (!ddlContent.endsWith(";")) {
+            ddlContent = ddlContent + ";";
         }
 
-        PlSqlLexer lexer = new PlSqlLexer(new ANTLRInputStream(toUpperCase(createTableDdl)));
-        CommonTokenStream tokens = new CommonTokenStream(lexer);
-        PlSqlParser parser = new PlSqlParser(tokens);
+        try {
+            PlSqlLexer lexer = new PlSqlLexer(new ANTLRInputStream(toUpperCase(ddlContent)));
+            CommonTokenStream tokens = new CommonTokenStream(lexer);
+            PlSqlParser parser = new PlSqlParser(tokens);
 
-        Create_tableContext ast = parser.create_table();
-        CreateTableListener listener = new CreateTableListener(tableId);
-        ParseTreeWalker.DEFAULT.walk(listener, ast);
+            Unit_statementContext ast = parser.unit_statement();
+            CreateTableListener createTablelistener = new CreateTableListener();
+            ParseTreeWalker.DEFAULT.walk(createTablelistener, ast);
 
-        return listener.getTable();
+            if (createTablelistener.getTable() != null) {
+                databaseTables.overwriteTable(createTablelistener.getTable());
+            }
+        }
+        catch(Exception e) {
+            throw new IllegalArgumentException("Couldn't parse DDL statement " + ddlContent, e);
+        }
     }
 
     // TODO excluded quoted identifiers
@@ -51,17 +93,33 @@ public class OracleDdlParser {
         return ddl.toUpperCase(Locale.ENGLISH);
     }
 
-    private static class CreateTableListener extends PlSqlParserBaseListener {
+    private class CreateTableListener extends PlSqlParserBaseListener {
 
-        private final TableEditor editor;
-
-        public CreateTableListener(TableId tableId) {
-            editor = Table.editor();
-            editor.tableId(tableId);
-        }
+        private TableEditor editor;
 
         public Table getTable() {
-            return editor.create();
+            return editor != null ? editor.create() : null;
+        }
+
+        @Override
+        public void enterCreate_table(Create_tableContext ctx) {
+            if (ctx.relational_table() == null) {
+                throw new IllegalArgumentException("Only relational tables are supported");
+            }
+
+            editor = Table.editor();
+            editor.tableId(new TableId(catalogName, schemaName, getTableName(ctx.tableview_name())));
+
+            super.enterCreate_table(ctx);
+        }
+
+        private String getTableName(Tableview_nameContext tableview_name) {
+            if (tableview_name.id_expression() != null) {
+                return tableview_name.id_expression().getText();
+            }
+            else {
+                return tableview_name.identifier().id_expression().getText();
+            }
         }
 
         @Override

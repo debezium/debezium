@@ -19,6 +19,7 @@ import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.KafkaDatabaseHistory;
+import oracle.streams.StreamsException;
 
 public class OracleConnectorConfig extends CommonConnectorConfig {
 
@@ -142,12 +143,10 @@ public class OracleConnectorConfig extends CommonConnectorConfig {
                                               .withDefault(DatabaseHistory.NAME, getLogicalName() + "-dbhistory")
                                               .build();
 
-        // Set up a history record comparator that uses the GTID filter ...
         HistoryRecordComparator historyComparator = new HistoryRecordComparator() {
             @Override
             protected boolean isPositionAtOrBefore(Document recorded, Document desired) {
-                throw new UnsupportedOperationException();
-//                return SourceInfo.isPositionAtOrBefore(recorded, desired, gtidFilter);
+                return (recorded.getLong("scn")).compareTo(desired.getLong("scn")) < 1;
             }
         };
         databaseHistory.configure(dbHistoryConfig, historyComparator); // validates
