@@ -14,7 +14,22 @@ import io.debezium.pipeline.spi.OffsetContext;
  */
 public interface ChangeEventSourceFactory {
 
-    SnapshotChangeEventSource getSnapshotChangeEventSource();
+    /**
+     * Returns a snapshot change event source that may emit change events for schema and/or data changes. Depending on
+     * the snapshot mode, a given source may decide to do nothing at all if a previous offset is given. In this case it
+     * should return that given offset context from its
+     * {@link StreamingChangeEventSource#execute(io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext)}
+     * method.
+     *
+     * @param offsetContext
+     *            A context representing a restored offset from an earlier run of this connector. May be {@code null}.
+     *
+     * @return A snapshot change event source
+     */
+    SnapshotChangeEventSource getSnapshotChangeEventSource(OffsetContext offsetContext);
 
+    /**
+     * Returns a streaming change event source that starts streaming at the given offset.
+     */
     StreamingChangeEventSource getStreamingChangeEventSource(OffsetContext offsetContext);
 }

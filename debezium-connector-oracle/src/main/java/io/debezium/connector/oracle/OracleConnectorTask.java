@@ -6,7 +6,9 @@
 package io.debezium.connector.oracle;
 
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -35,12 +37,14 @@ public class OracleConnectorTask extends BaseSourceTask {
         RUNNING, STOPPED;
     }
 
+    private final AtomicReference<State> state = new AtomicReference<State>(State.STOPPED);
+
     private volatile OracleTaskContext taskContext;
     private volatile ChangeEventQueue<Object> queue;
     private volatile OracleConnection jdbcConnection;
     private volatile ChangeEventSourceCoordinator coordinator;
     private volatile ErrorHandler errorHandler;
-    private final AtomicReference<State> state = new AtomicReference<State>(State.STOPPED);
+    private volatile OracleDatabaseSchema schema;
 
     @Override
     public String version() {
@@ -74,11 +78,18 @@ public class OracleConnectorTask extends BaseSourceTask {
 
         jdbcConnection = new OracleConnection(jdbcConfig, new OracleConnectionFactory());
         SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
-        OracleDatabaseSchema schema = new OracleDatabaseSchema(connectorConfig, schemaNameAdjuster, topicSelector);
+
+        this.schema = new OracleDatabaseSchema(connectorConfig, schemaNameAdjuster, topicSelector);
+
+        OracleOffsetContext previousOffset = getPreviousOffset(connectorConfig);
+        if (previousOffset != null) {
+            schema.recover(previousOffset);
+        }
 
         EventDispatcher dispatcher = new EventDispatcher(topicSelector, schema, queue);
 
         coordinator = new ChangeEventSourceCoordinator(
+                previousOffset,
                 errorHandler,
                 OracleConnector.class,
                 connectorConfig.getLogicalName(),
@@ -86,6 +97,24 @@ public class OracleConnectorTask extends BaseSourceTask {
         );
 
         coordinator.start();
+    }
+
+    private OracleOffsetContext getPreviousOffset(OracleConnectorConfig connectorConfig) {
+        OracleOffsetContext offsetContext = new OracleOffsetContext(connectorConfig.getLogicalName());
+
+        Map<String, Object> previousOffset = context.offsetStorageReader()
+                .offsets(Collections.singleton(offsetContext.getPartition()))
+                .get(offsetContext.getPartition());
+
+        if (previousOffset != null) {
+            long scn = (long) previousOffset.get(SourceInfo.SCN_KEY);
+            offsetContext.setScn(scn);
+            LOGGER.info("Found previous offset {}", offsetContext);
+
+            return offsetContext;
+        }
+
+        return null;
     }
 
     @Override
@@ -137,6 +166,8 @@ public class OracleConnectorTask extends BaseSourceTask {
         catch (SQLException e) {
             LOGGER.error("Exception while closing JDBC connection", e);
         }
+
+        schema.close();
     }
 
     @Override

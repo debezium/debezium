@@ -33,8 +33,8 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory 
     }
 
     @Override
-    public SnapshotChangeEventSource getSnapshotChangeEventSource() {
-        return new OracleSnapshotChangeEventSource(configuration, jdbcConnection, schema);
+    public SnapshotChangeEventSource getSnapshotChangeEventSource(OffsetContext offsetContext) {
+        return new OracleSnapshotChangeEventSource(configuration, (OracleOffsetContext) offsetContext, jdbcConnection, schema);
     }
 
     @Override

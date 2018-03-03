@@ -11,6 +11,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -45,8 +46,24 @@ public class OracleDatabaseSchema implements RelationalDatabaseSchema {
         this.tables = new Tables();
         this.schemas = new HashMap<>();
         this.tableSchemaBuilder = new TableSchemaBuilder(new OracleValueConverters(), schemaNameAdjuster, SourceInfo.SCHEMA);
+
         this.databaseHistory = connectorConfig.getDatabaseHistory();
         this.databaseHistory.start();
+    }
+
+    @Override
+    public void recover(OffsetContext offset) {
+        databaseHistory.recover(offset.getPartition(), offset.getOffset(), tables, new OracleDdlParser());
+
+        for (TableId tableId : tables.tableIds()) {
+            Table table = tables.forTable(tableId);
+            schemas.put(table.id(), tableSchemaBuilder.create(null, getEnvelopeSchemaName(table), table, null, null));
+        }
+    }
+
+    @Override
+    public void close() {
+        databaseHistory.stop();
     }
 
     @Override
@@ -60,13 +77,13 @@ public class OracleDatabaseSchema implements RelationalDatabaseSchema {
         schemas.put(table.id(), tableSchemaBuilder.create(null, getEnvelopeSchemaName(table), table, null, null));
 
         TableChanges tableChanges = null;
-        if (schemaChange.getType() == SchemaChangeEventType.CREATE && !schemaChange.isFromSnapshot()) {
+        if (schemaChange.getType() == SchemaChangeEventType.CREATE && schemaChange.isFromSnapshot()) {
             tableChanges = new TableChanges();
             tableChanges.create(table);
         }
 
         databaseHistory.record(schemaChange.getPartition(), schemaChange.getOffset(), schemaChange.getDatabase(),
-                schemaChange.getDdl(), tableChanges);
+                schemaChange.getSchema(), schemaChange.getDdl(), tableChanges);
     }
 
     private String getEnvelopeSchemaName(Table table) {

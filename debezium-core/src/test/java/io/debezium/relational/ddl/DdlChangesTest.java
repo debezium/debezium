@@ -5,12 +5,11 @@
  */
 package io.debezium.relational.ddl;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParserListener.EventType;

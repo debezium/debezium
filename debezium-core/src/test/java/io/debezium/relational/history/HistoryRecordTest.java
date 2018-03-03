@@ -7,11 +7,15 @@ package io.debezium.relational.history;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import java.sql.Types;
 import java.util.Map;
 
 import org.junit.Test;
 
 import io.debezium.document.DocumentReader;
+import io.debezium.relational.Column;
+import io.debezium.relational.Table;
+import io.debezium.relational.TableId;
 import io.debezium.util.Collect;
 
 /**
@@ -25,9 +29,24 @@ public class HistoryRecordTest {
         Map<String,Object> source = Collect.linkMapOf("server", "abc");
         Map<String,Object> position = Collect.linkMapOf("file", "x.log", "positionInt", 100, "positionLong", Long.MAX_VALUE, "entry", 1);
         String databaseName = "db";
+        String schemaName = "myschema";
         String ddl = "CREATE TABLE foo ( first VARCHAR(22) NOT NULL );";
 
-        HistoryRecord record = new HistoryRecord(source, position, databaseName, ddl, null);
+        Table table = Table.editor()
+            .tableId(new TableId(databaseName, schemaName, "foo"))
+            .addColumn(Column.editor()
+                    .name("first")
+                    .jdbcType(Types.VARCHAR)
+                    .type("VARCHAR")
+                    .length(22)
+                    .optional(false)
+                    .create())
+            .setPrimaryKeyNames("first")
+            .create();
+
+        TableChanges tableChanges = new TableChanges().create(table);
+
+        HistoryRecord record = new HistoryRecord(source, position, databaseName, schemaName, ddl, tableChanges);
 
         String serialized = record.toString();
         DocumentReader reader = DocumentReader.defaultReader();
@@ -43,8 +62,11 @@ public class HistoryRecordTest {
         assertThat(deserialized.position().get("entry")).isEqualTo(1);
 
         assertThat(deserialized.databaseName()).isEqualTo(databaseName);
+        assertThat(deserialized.schemaName()).isEqualTo(schemaName);
         assertThat(deserialized.ddl()).isEqualTo(ddl);
 
         System.out.println(record);
+        assertThat((Object)TableChanges.fromArray(deserialized.tableChanges())).isEqualTo(tableChanges);
+
     }
 }
