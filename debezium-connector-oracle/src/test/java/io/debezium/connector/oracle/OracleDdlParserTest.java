@@ -21,6 +21,7 @@ import io.debezium.connector.oracle.parser.PlSqlParser.Unit_statementContext;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.relational.Tables;
 
 public class OracleDdlParserTest {
 
@@ -35,8 +36,14 @@ public class OracleDdlParserTest {
                 ");";
 
         OracleDdlParser parser = new OracleDdlParser();
+        parser.setCurrentDatabase("ORCLPDB1");
+        parser.setCurrentSchema("DEBEZIUM");
 
-        Table table = parser.parseCreateTable(new TableId("ORCLPDB1", "DEBEZIUM", "CUSTOMER"), ddl);
+        Tables tables = new Tables();
+        parser.parse(ddl, tables);
+        Table table = tables.forTable(new TableId("ORCLPDB1", "DEBEZIUM", "CUSTOMER"));
+
+        assertThat(table).isNotNull();
 
         Column id = table.columnWithName("ID");
         assertThat(id.isOptional()).isFalse();

@@ -5,9 +5,15 @@
  */
 package io.debezium.schema;
 
+import io.debezium.pipeline.spi.OffsetContext;
+
 public interface DatabaseSchema {
 
     void applySchemaChange(SchemaChangeEvent schemaChange);
+
+    void recover(OffsetContext offset);
+
+    void close();
 
     DataCollectionSchema getDataCollectionSchema(DataCollectionId id);
 }

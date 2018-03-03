@@ -29,17 +29,25 @@ public class OracleSnapshotChangeEventSource implements SnapshotChangeEventSourc
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleSnapshotChangeEventSource.class);
 
     private final OracleConnectorConfig connectorConfig;
+    private final OracleOffsetContext previousOffset;
     private final OracleConnection jdbcConnection;
     private final DatabaseSchema schema;
 
-    public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, OracleConnection jdbcConnection, DatabaseSchema schema) {
+    public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext previousOffset, OracleConnection jdbcConnection, DatabaseSchema schema) {
         this.connectorConfig = connectorConfig;
+        this.previousOffset = previousOffset;
         this.jdbcConnection = jdbcConnection;
         this.schema = schema;
     }
 
     @Override
     public SnapshotResult execute(ChangeEventSourceContext context) throws InterruptedException {
+        // for now, just simple schema snapshotting is supported which just needs to be done once
+        if (previousOffset != null) {
+            LOGGER.debug("Found previous offset, skipping snapshotting");
+            return SnapshotResult.completed(previousOffset);
+        }
+
         Connection connection = null;
 
         try {
@@ -96,7 +104,8 @@ public class OracleSnapshotChangeEventSource implements SnapshotChangeEventSourc
                 String ddl = ((Clob)res).getSubString(1, (int) ((Clob)res).length());
                 rs.close();
 
-                schema.applySchemaChange(new SchemaChangeEvent(offset.getPartition(), offset.getOffset(), catalogName, ddl, table, SchemaChangeEventType.CREATE, true));
+                schema.applySchemaChange(new SchemaChangeEvent(offset.getPartition(), offset.getOffset(), catalogName,
+                        tableId.schema(), ddl, table, SchemaChangeEventType.CREATE, true));
             }
 
             return SnapshotResult.completed(offset);

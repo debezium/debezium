@@ -49,7 +49,15 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
     @Override
     public void processLCR(LCR lcr) throws StreamsException {
-        offsetContext.setScn(convertPositionToScn(lcr.getPosition()));
+        long scn = convertPositionToScn(lcr.getPosition());
+
+        // After a restart it may happen we get the event with the last processed SCN again
+        if (scn <= offsetContext.getScn()) {
+            LOGGER.debug("Ignoring change event with already processed SCN {}", scn);
+            return;
+        }
+
+        offsetContext.setScn(scn);
         offsetContext.setTransactionId(lcr.getTransactionId());
         offsetContext.setSourceTime(lcr.getSourceTime().timestampValue().toInstant());
 
@@ -65,6 +73,10 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         catch (InterruptedException e) {
             Thread.interrupted();
             LOGGER.info("Received signal to stop, event loop will halt");
+        }
+        // XStream's receiveLCRCallback() doesn't reliably propagate exceptions, so we do that ourselves here
+        catch (Exception e) {
+            errorHandler.setProducerThrowable(e);
         }
     }
 

@@ -24,11 +24,11 @@ import io.debezium.text.TokenStream.Marker;
  * <p>
  * See the <a href="http://savage.net.au/SQL/sql-2003-2.bnf.html">BNF Grammar for ISO/IEC 9075-2:2003</a> for the grammar
  * supported by this parser.
- * 
+ *
  * @author Randall Hauch
  */
 @NotThreadSafe
-public class DdlParserSql2003 extends DdlParser {
+public class DdlParserSql2003 extends LegacyDdlParser {
 
     /**
      * Create a new DDL parser for SQL-2003 that does not include view definitions.
@@ -566,7 +566,7 @@ public class DdlParserSql2003 extends DdlParser {
                 table.addColumn(Column.editor().name(name).create());
             });
         }
-        
+
         // Update the table definition ...
         databaseTables.overwriteTable(table.create());
         signalCreateView(tableId, start);
