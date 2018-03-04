@@ -14,8 +14,10 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.util.Clock;
 import oracle.jdbc.OracleConnection;
+import oracle.sql.NUMBER;
 import oracle.streams.StreamsException;
 import oracle.streams.XStreamOut;
+import oracle.streams.XStreamUtility;
 
 /**
  * A {@link StreamingChangeEventSource} based on Oracle's XStream API. The XStream event handler loop is executed in a
@@ -52,7 +54,7 @@ public class OracleStreamingChangeEventSource implements StreamingChangeEventSou
         try {
             // 1. connect
             xsOut = XStreamOut.attach((OracleConnection) jdbcConnection.connection(), xStreamServerName,
-                    offsetContext.getPosition(), 1, 1, XStreamOut.DEFAULT_MODE);
+                    convertScnToPosition(offsetContext.getScn()), 1, 1, XStreamOut.DEFAULT_MODE);
 
             LcrEventHandler handler = new LcrEventHandler(errorHandler, dispatcher, clock, schema, offsetContext);
 
@@ -75,6 +77,15 @@ public class OracleStreamingChangeEventSource implements StreamingChangeEventSou
                     LOGGER.error("Couldn't detach from XStream outbound server " + xStreamServerName, e);
                 }
             }
+        }
+    }
+
+    private byte[] convertScnToPosition(long scn) {
+        try {
+            return XStreamUtility.convertSCNToPosition(new NUMBER(scn), XStreamUtility.POS_VERSION_V2);
+        }
+        catch (StreamsException e) {
+            throw new RuntimeException(e);
         }
     }
 }
