@@ -36,7 +36,7 @@ public class OracleOffsetContext implements OffsetContext {
 
     @Override
     public Map<String, ?> getOffset() {
-        return Collections.singletonMap(SourceInfo.POSITION_KEY, sourceInfo.getPosition());
+        return Collections.singletonMap(SourceInfo.SCN_KEY, sourceInfo.getScn());
     }
 
     @Override
@@ -49,12 +49,12 @@ public class OracleOffsetContext implements OffsetContext {
         return sourceInfo.struct();
     }
 
-    public void setPosition(byte[] position) {
-        sourceInfo.setPosition(position);
+    public void setScn(long scn) {
+        sourceInfo.setScn(scn);
     }
 
-    public byte[] getPosition() {
-        return sourceInfo.getPosition();
+    public long getScn() {
+        return sourceInfo.getScn();
     }
 
     public void setTransactionId(String transactionId) {

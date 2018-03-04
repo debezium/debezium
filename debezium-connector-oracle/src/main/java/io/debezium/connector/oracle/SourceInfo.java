@@ -17,7 +17,7 @@ public class SourceInfo extends AbstractSourceInfo {
     public static final String SERVER_NAME_KEY = "name";
     public static final String TXID_KEY = "txId";
     public static final String TIMESTAMP_KEY = "ts_sec";
-    public static final String POSITION_KEY = "position";
+    public static final String SCN_KEY = "scn";
     public static final String SNAPSHOT_KEY = "snapshot";
 
     public static final Schema SCHEMA = schemaBuilder()
@@ -25,12 +25,12 @@ public class SourceInfo extends AbstractSourceInfo {
             .field(SERVER_NAME_KEY, Schema.STRING_SCHEMA)
             .field(TIMESTAMP_KEY, Schema.OPTIONAL_INT64_SCHEMA)
             .field(TXID_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-            .field(POSITION_KEY, Schema.OPTIONAL_BYTES_SCHEMA)
+            .field(SCN_KEY, Schema.OPTIONAL_INT64_SCHEMA)
             .field(SNAPSHOT_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
             .build();
 
     private final String serverName;
-    private byte[] position;
+    private long scn;
     private String transactionId;
     private Instant sourceTime;
 
@@ -50,7 +50,7 @@ public class SourceInfo extends AbstractSourceInfo {
                 .put(SERVER_NAME_KEY, serverName)
                 .put(TIMESTAMP_KEY, sourceTime.toEpochMilli())
                 .put(TXID_KEY, transactionId)
-                .put(POSITION_KEY, position)
+                .put(SCN_KEY, scn)
                 .put(SNAPSHOT_KEY, false);
     }
 
@@ -58,12 +58,12 @@ public class SourceInfo extends AbstractSourceInfo {
         return serverName;
     }
 
-    public byte[] getPosition() {
-        return position;
+    public long getScn() {
+        return scn;
     }
 
-    public void setPosition(byte[] position) {
-        this.position = position;
+    public void setScn(long scn) {
+        this.scn = scn;
     }
 
     public String getTransactionId() {
