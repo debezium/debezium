@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.oracle;
 
+import java.sql.SQLException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,6 +25,7 @@ import oracle.streams.LCR;
 import oracle.streams.RowLCR;
 import oracle.streams.StreamsException;
 import oracle.streams.XStreamLCRCallbackHandler;
+import oracle.streams.XStreamUtility;
 
 /**
  * Handler for Oracle DDL and DML events. Just forwards events to the {@link EventDispatcher}.
@@ -49,7 +52,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
     @Override
     public void processLCR(LCR lcr) throws StreamsException {
-        offsetContext.setPosition(lcr.getPosition());
+        offsetContext.setScn(convertPositionToScn(lcr.getPosition()));
         offsetContext.setTransactionId(lcr.getTransactionId());
         offsetContext.setSourceTime(lcr.getSourceTime().timestampValue().toInstant());
 
@@ -65,6 +68,15 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         catch (InterruptedException e) {
             Thread.interrupted();
             LOGGER.info("Received signal to stop, event loop will halt");
+        }
+    }
+
+    private long convertPositionToScn(byte[] position) {
+        try {
+            return XStreamUtility.getSCNFromPosition(position).longValue();
+        }
+        catch (SQLException | StreamsException e) {
+            throw new RuntimeException(e);
         }
     }
 

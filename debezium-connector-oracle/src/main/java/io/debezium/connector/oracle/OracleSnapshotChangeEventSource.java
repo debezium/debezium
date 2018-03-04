@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle;
 
-import java.math.BigDecimal;
 import java.sql.Clob;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -24,9 +23,6 @@ import io.debezium.relational.Tables;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
-import oracle.sql.NUMBER;
-import oracle.streams.StreamsException;
-import oracle.streams.XStreamUtility;
 
 public class OracleSnapshotChangeEventSource implements SnapshotChangeEventSource {
 
@@ -74,7 +70,7 @@ public class OracleSnapshotChangeEventSource implements SnapshotChangeEventSourc
             if (!rs.next()) {
                 throw new IllegalStateException("Couldn't get SCN");
             }
-            BigDecimal scn = rs.getBigDecimal(1);
+            Long scn = rs.getLong(1);
             rs.close();
 
             Tables tables = new Tables();
@@ -101,7 +97,7 @@ public class OracleSnapshotChangeEventSource implements SnapshotChangeEventSourc
             }
 
             OracleOffsetContext offset = new OracleOffsetContext(connectorConfig.getLogicalName());
-            offset.setPosition(convertScnToPosition(scn));
+            offset.setScn(scn);
 
             return SnapshotResult.completed(offset);
         }
@@ -114,15 +110,6 @@ public class OracleSnapshotChangeEventSource implements SnapshotChangeEventSourc
             if (connectorConfig.getPdbName() != null) {
                 jdbcConnection.resetSessionToCdb();
             }
-        }
-    }
-
-    private byte[] convertScnToPosition(BigDecimal scn) {
-        try {
-            return XStreamUtility.convertSCNToPosition(new NUMBER(scn), XStreamUtility.POS_VERSION_V2);
-        }
-        catch (StreamsException | SQLException e) {
-            throw new RuntimeException(e);
         }
     }
 
