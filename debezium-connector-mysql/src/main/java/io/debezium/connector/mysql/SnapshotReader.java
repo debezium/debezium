@@ -57,11 +57,12 @@ public class SnapshotReader extends AbstractReader {
      */
     private static final Pattern TIME_FIELD_PATTERN = Pattern.compile("(\\-?[0-9]*):([0-9]*):([0-9]*)(\\.([0-9]*))?");
 
-    private boolean minimalBlocking = true;
     private final boolean includeData;
     private RecordRecorder recorder;
     private final SnapshotReaderMetrics metrics;
     private ExecutorService executorService;
+
+    private final MySqlConnectorConfig.SnapshotLockingMode snapshotLockingMode;
 
     /**
      * Create a snapshot reader.
@@ -72,23 +73,9 @@ public class SnapshotReader extends AbstractReader {
     public SnapshotReader(String name, MySqlTaskContext context) {
         super(name, context);
         this.includeData = context.snapshotMode().includeData();
+        this.snapshotLockingMode = context.getConnectorConfig().getSnapshotLockingMode();
         recorder = this::recordRowAsRead;
         metrics = new SnapshotReaderMetrics(context.getClock());
-    }
-
-    /**
-     * Set whether this reader's {@link #execute() execution} should block other transactions as minimally as possible by
-     * releasing the read lock as early as possible. Although the snapshot process should obtain a consistent snapshot even
-     * when releasing the lock as early as possible, it may be desirable to explicitly hold onto the read lock until execution
-     * completes. In such cases, holding onto the lock will prevent all updates to the database during the snapshot process.
-     *
-     * @param minimalBlocking {@code true} if the lock is to be released as early as possible, or {@code false} if the lock
-     *            is to be held for the entire {@link #execute() execution}
-     * @return this object for method chaining; never null
-     */
-    public SnapshotReader useMinimalBlocking(boolean minimalBlocking) {
-        this.minimalBlocking = minimalBlocking;
-        return this;
     }
 
     /**
@@ -220,7 +207,7 @@ public class SnapshotReader extends AbstractReader {
         final SourceInfo source = context.source();
         final Clock clock = context.getClock();
         final long ts = clock.currentTimeInMillis();
-        logger.info("Starting snapshot for {} with user '{}'", connectionContext.connectionString(), mysql.username());
+        logger.info("Starting snapshot for {} with user '{}' with locking mode '{}'", connectionContext.connectionString(), mysql.username(), snapshotLockingMode.getValue());
         logRolesForCurrentUser(mysql);
         logServerInformation(mysql);
         boolean isLocked = false;
@@ -263,17 +250,19 @@ public class SnapshotReader extends AbstractReader {
                 // for all databases with a global read lock, and it prevents ALL updates while we have this lock.
                 // It also ensures that everything we do while we have this lock will be consistent.
                 if (!isRunning()) return;
-                try {
-                    logger.info("Step 1: flush and obtain global read lock to prevent writes to database");
-                    sql.set("FLUSH TABLES WITH READ LOCK");
-                    mysql.execute(sql.get());
-                    lockAcquired = clock.currentTimeInMillis();
-                    metrics.globalLockAcquired();
-                    isLocked = true;
-                } catch (SQLException e) {
-                    logger.info("Step 1: unable to flush and acquire global read lock, will use table read locks after reading table names");
-                    // Continue anyway, since RDS (among others) don't allow setting a global lock
-                    assert !isLocked;
+                if (!snapshotLockingMode.equals(MySqlConnectorConfig.SnapshotLockingMode.NONE)) {
+                    try {
+                        logger.info("Step 1: flush and obtain global read lock to prevent writes to database");
+                        sql.set("FLUSH TABLES WITH READ LOCK");
+                        mysql.execute(sql.get());
+                        lockAcquired = clock.currentTimeInMillis();
+                        metrics.globalLockAcquired();
+                        isLocked = true;
+                    } catch (SQLException e) {
+                        logger.info("Step 1: unable to flush and acquire global read lock, will use table read locks after reading table names");
+                        // Continue anyway, since RDS (among others) don't allow setting a global lock
+                        assert !isLocked;
+                    }
                 }
 
                 // ------
@@ -351,31 +340,33 @@ public class SnapshotReader extends AbstractReader {
                 logger.info("\tsnapshot continuing with database(s): {}", includedDatabaseNames);
 
                 if (!isLocked) {
-                    // ------------------------------------
-                    // LOCK TABLES and READ BINLOG POSITION
-                    // ------------------------------------
-                    // We were not able to acquire the global read lock, so instead we have to obtain a read lock on each table.
-                    // This requires different privileges than normal, and also means we can't unlock the tables without
-                    // implicitly committing our transaction ...
-                    if (!connectionContext.userHasPrivileges("LOCK TABLES")) {
-                        // We don't have the right privileges
-                        throw new ConnectException("User does not have the 'LOCK TABLES' privilege required to obtain a "
+                    if (!snapshotLockingMode.equals(MySqlConnectorConfig.SnapshotLockingMode.NONE)) {
+                        // ------------------------------------
+                        // LOCK TABLES and READ BINLOG POSITION
+                        // ------------------------------------
+                        // We were not able to acquire the global read lock, so instead we have to obtain a read lock on each table.
+                        // This requires different privileges than normal, and also means we can't unlock the tables without
+                        // implicitly committing our transaction ...
+                        if (!connectionContext.userHasPrivileges("LOCK TABLES")) {
+                            // We don't have the right privileges
+                            throw new ConnectException("User does not have the 'LOCK TABLES' privilege required to obtain a "
                                 + "consistent snapshot by preventing concurrent writes to tables.");
-                    }
-                    // We have the required privileges, so try to lock all of the tables we're interested in ...
-                    logger.info("Step {}: flush and obtain read lock for {} tables (preventing writes)", step++, tableIds.size());
-                    String tableList = tableIds.stream()
+                        }
+                        // We have the required privileges, so try to lock all of the tables we're interested in ...
+                        logger.info("Step {}: flush and obtain read lock for {} tables (preventing writes)", step++, tableIds.size());
+                        String tableList = tableIds.stream()
                             .map(tid -> quote(tid))
-                            .reduce((r, element) -> r+ "," + element)
+                            .reduce((r, element) -> r + "," + element)
                             .orElse(null);
-                    if (tableList != null) {
-                        sql.set("FLUSH TABLES " + tableList + " WITH READ LOCK");
-                        mysql.execute(sql.get());
+                        if (tableList != null) {
+                            sql.set("FLUSH TABLES " + tableList + " WITH READ LOCK");
+                            mysql.execute(sql.get());
+                        }
+                        lockAcquired = clock.currentTimeInMillis();
+                        metrics.globalLockAcquired();
+                        isLocked = true;
+                        tableLocks = true;
                     }
-                    lockAcquired = clock.currentTimeInMillis();
-                    metrics.globalLockAcquired();
-                    isLocked = true;
-                    tableLocks = true;
 
                     // Our tables are locked, so read the binlog position ...
                     readBinlogPosition(step++, source, mysql, sql);
@@ -440,7 +431,7 @@ public class SnapshotReader extends AbstractReader {
                 // ------
                 // STEP 7
                 // ------
-                if (minimalBlocking && isLocked) {
+                if (snapshotLockingMode.equals(MySqlConnectorConfig.SnapshotLockingMode.MINIMAL) && isLocked) {
                     if (tableLocks) {
                         // We could not acquire a global read lock and instead had to obtain individual table-level read locks
                         // using 'FLUSH TABLE <tableName> WITH READ LOCK'. However, if we were to do this, the 'UNLOCK TABLES'

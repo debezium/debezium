@@ -74,7 +74,8 @@ public class SnapshotReaderIT {
 
     protected Configuration.Builder simpleConfig() {
         return DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, MySqlConnectorConfig.SnapshotLockingMode.MINIMAL);
     }
 
     @Test
@@ -86,7 +87,6 @@ public class SnapshotReaderIT {
         reader = new SnapshotReader("snapshot", context);
         reader.uponCompletion(completed::countDown);
         reader.generateInsertEvents();
-        reader.useMinimalBlocking(true);
 
         // Start the snapshot ...
         reader.start();
@@ -183,7 +183,6 @@ public class SnapshotReaderIT {
         reader = new SnapshotReader("snapshot", context);
         reader.uponCompletion(completed::countDown);
         reader.generateReadEvents();
-        reader.useMinimalBlocking(true);
 
         // Start the snapshot ...
         reader.start();
@@ -287,7 +286,6 @@ public class SnapshotReaderIT {
         reader = new SnapshotReader("snapshot", context);
         reader.uponCompletion(completed::countDown);
         reader.generateInsertEvents();
-        reader.useMinimalBlocking(true);
 
         // Start the snapshot ...
         reader.start();
@@ -386,7 +384,6 @@ public class SnapshotReaderIT {
         reader = new SnapshotReader("snapshot", context);
         reader.uponCompletion(completed::countDown);
         reader.generateInsertEvents();
-        reader.useMinimalBlocking(true);
 
         // Start the snapshot ...
         reader.start();
@@ -416,7 +413,6 @@ public class SnapshotReaderIT {
         reader = new SnapshotReader("snapshot", context);
         reader.uponCompletion(completed::countDown);
         reader.generateInsertEvents();
-        reader.useMinimalBlocking(true);
 
         // Start the snapshot ...
         reader.start();
@@ -458,7 +454,6 @@ public class SnapshotReaderIT {
         reader = new SnapshotReader("snapshot", context);
         reader.uponCompletion(completed::countDown);
         reader.generateInsertEvents();
-        reader.useMinimalBlocking(true);
 
         // Start the snapshot ...
         reader.start();
