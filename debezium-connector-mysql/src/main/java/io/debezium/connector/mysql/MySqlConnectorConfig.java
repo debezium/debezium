@@ -7,10 +7,8 @@ package io.debezium.connector.mysql;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Objects;
 import java.util.Random;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
