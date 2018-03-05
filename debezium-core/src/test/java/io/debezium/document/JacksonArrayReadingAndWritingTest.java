@@ -20,7 +20,7 @@ public class JacksonArrayReadingAndWritingTest implements Testing {
     private Array array;
     private Array after;
     private JacksonWriter writer = JacksonWriter.INSTANCE;
-    private JacksonReader reader = JacksonReader.INSTANCE;
+    private JacksonReader reader = JacksonReader.DEFAULT_INSTANCE;
     
     @Before
     public void beforeEach() {

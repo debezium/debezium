@@ -30,7 +30,7 @@ public interface ArrayReader {
      * @return the shared default reader instance; never null
      */
     static ArrayReader defaultReader() {
-        return JacksonReader.INSTANCE;
+        return JacksonReader.DEFAULT_INSTANCE;
     }
 
     /**

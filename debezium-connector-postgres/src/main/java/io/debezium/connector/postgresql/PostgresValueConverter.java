@@ -19,6 +19,7 @@ import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -26,6 +27,7 @@ import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.geometric.PGpoint;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
@@ -33,6 +35,7 @@ import org.postgresql.util.PGobject;
 import io.debezium.connector.postgresql.proto.PgProto;
 import io.debezium.data.Bits;
 import io.debezium.data.Json;
+import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.geometry.Geography;
@@ -68,6 +71,21 @@ public class PostgresValueConverter extends JdbcValueConverters {
      * length - 131089
      */
     private static final int VARIABLE_SCALE_DECIMAL_LENGTH = 131089;
+
+    /**
+     * A string denoting not-a- number for FP and Numeric types
+     */
+    public static final String N_A_N = "NaN";
+
+    /**
+     * A string denoting positive infinity for FP and Numeric types
+     */
+    public static final String POSITIVE_INFINITY = "Infinity";
+
+    /**
+     * A string denoting negative infinity for FP and Numeric types
+     */
+    public static final String NEGATIVE_INFINITY = "-Infinity";
 
     /**
      * {@code true} if fields of data type not know should be handle as opaque binary;
@@ -189,6 +207,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return SchemaBuilder.float64();
             case PRECISE:
                 return isVariableScaleDecimal(column) ? VariableScaleDecimal.builder() : Decimal.builder(column.scale());
+            case STRING:
+                return SchemaBuilder.string();
             default:
                 throw new IllegalArgumentException("Unknown decimalMode");
         }
@@ -224,7 +244,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 case DOUBLE:
                     return (data) -> convertDouble(column, fieldDefn, data);
                 case PRECISE:
-                    return (data) -> convertDecimal(column, fieldDefn, data);
+                case STRING:
+                    return (data) -> convertDecimal(column, fieldDefn, data, decimalMode);
                 }
             case PgOid.BYTEA:
                 return data -> convertBinary(column, fieldDefn, data);
@@ -301,19 +322,51 @@ public class PostgresValueConverter extends JdbcValueConverters {
         return data -> convertArray(column, fieldDefn, elementConverter, data);
     }
 
-    @Override
-    protected Object convertDecimal(Column column, Field fieldDefn, Object data) {
-        BigDecimal newDecimal = (BigDecimal) super.convertDecimal(column, fieldDefn, data);
-        if (newDecimal == null) {
-            return newDecimal;
+    protected Object convertDecimal(Column column, Field fieldDefn, Object data, DecimalMode mode) {
+        SpecialValueDecimal value;
+        BigDecimal newDecimal;
+
+        if (data instanceof SpecialValueDecimal) {
+            value = (SpecialValueDecimal)data;
         }
+        else {
+            newDecimal = (BigDecimal)super.convertDecimal(column, fieldDefn, data);
+
+            if (newDecimal == null) {
+                return newDecimal;
+            }
+
+            value = new SpecialValueDecimal(newDecimal);
+        }
+
+        // special values (NaN, Infinity) can only be expressed when using "string" encoding
+        if (!value.getDecimalValue().isPresent()) {
+            if (mode == DecimalMode.STRING) {
+                return value.toString();
+            }
+            else {
+                throw new ConnectException("Got a special value (NaN/Infinity) for Decimal type in column " + column.name() + " but current mode does not handle it. "
+                        + "If you need to support it then set decimal handling mode to 'string'.");
+            }
+        }
+
+        newDecimal = value.getDecimalValue().get();
         if (column.scale() > newDecimal.scale()) {
           newDecimal = newDecimal.setScale(column.scale());
         }
+
         if (isVariableScaleDecimal(column)) {
-            return VariableScaleDecimal.fromLogical(fieldDefn.schema(), newDecimal);
+            newDecimal = newDecimal.stripTrailingZeros();
+            if (newDecimal.scale() < 0) {
+                newDecimal = newDecimal.setScale(0);
+            }
+
+            if (mode == DecimalMode.PRECISE) {
+                return VariableScaleDecimal.fromLogical(fieldDefn.schema(), new SpecialValueDecimal(newDecimal));
+            }
         }
-        return newDecimal;
+
+        return mode == DecimalMode.PRECISE ? newDecimal : (new SpecialValueDecimal(newDecimal)).toString();
     }
 
     @Override
@@ -571,5 +624,18 @@ public class PostgresValueConverter extends JdbcValueConverters {
     private boolean isVariableScaleDecimal(final Column column) {
         return (column.scale() == 0 && column.length() == VARIABLE_SCALE_DECIMAL_LENGTH)
                 || (column.scale() == -1 && column.length() == -1);
+    }
+
+    public static Optional<SpecialValueDecimal> toSpecialValue(String value) {
+        switch (value) {
+            case N_A_N:
+                return Optional.of(SpecialValueDecimal.NOT_A_NUMBER);
+            case POSITIVE_INFINITY:
+                return Optional.of(SpecialValueDecimal.POSITIVE_INF);
+            case NEGATIVE_INFINITY:
+                return Optional.of(SpecialValueDecimal.NEGATIVE_INF);
+        }
+
+        return Optional.empty();
     }
 }

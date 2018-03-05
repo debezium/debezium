@@ -502,6 +502,10 @@ public class MySqlDdlParser extends DdlParser {
         if (tokens.canConsume('(')) {
             do {
                 parsePartitionDefinition(start, table);
+                if(tokens.canConsume("ENGINE")) {
+                        tokens.canConsume('=');
+                        tokens.consume();
+                    }
             } while (tokens.canConsume(','));
             tokens.consume(')');
         }

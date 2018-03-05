@@ -26,11 +26,13 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.data.Bits;
+import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.Xml;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
@@ -63,7 +65,7 @@ import io.debezium.util.NumberConversions;
 public class JdbcValueConverters implements ValueConverterProvider {
 
     public enum DecimalMode {
-        PRECISE, DOUBLE;
+        PRECISE, DOUBLE, STRING;
     }
 
     public enum BigIntUnsignedMode {
@@ -169,6 +171,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
                         // values are fixed-precision decimal values with exact precision.
                         // Use Kafka Connect's arbitrary precision decimal type and use the column's specified scale ...
                         return Decimal.builder(column.scale());
+                    case STRING:
+                        throw new ConnectException("Unsupported decimal mode");
                 }
 
                 // Fixed-length string values
@@ -275,6 +279,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
                         return (data) -> convertDouble(column, fieldDefn, data);
                     case PRECISE:
                         return (data) -> convertNumeric(column, fieldDefn, data);
+                    case STRING:
+                        throw new ConnectException("Unsupported decimal mode");
                 }
             case Types.DECIMAL:
                 switch (decimalMode) {
@@ -282,6 +288,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
                         return (data) -> convertDouble(column, fieldDefn, data);
                     case PRECISE:
                         return (data) -> convertDecimal(column, fieldDefn, data);
+                    case STRING:
+                        throw new ConnectException("Unsupported decimal mode");
                 }
 
                 // String values
@@ -905,6 +913,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
             Number value = (Number) data;
             return Double.valueOf(value.doubleValue());
         }
+        if (data instanceof SpecialValueDecimal) {
+            return ((SpecialValueDecimal)data).toDouble();
+        }
         if (data instanceof Boolean) {
             return NumberConversions.getDouble((Boolean) data);
         }
@@ -950,36 +961,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertNumeric(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) {
-                return null;
-            }
-            else {
-                return BigDecimal.ZERO;
-            }
-        }
-        BigDecimal decimal = null;
-        if (data instanceof BigDecimal)
-            decimal = (BigDecimal) data;
-        else if (data instanceof Boolean)
-            decimal = NumberConversions.getBigDecimal((Boolean) data);
-        else if (data instanceof Short)
-            decimal = new BigDecimal(((Short) data).intValue());
-        else if (data instanceof Integer)
-            decimal = new BigDecimal(((Integer) data).intValue());
-        else if (data instanceof Long)
-            decimal = BigDecimal.valueOf(((Long) data).longValue());
-        else if (data instanceof Float)
-            decimal = BigDecimal.valueOf(((Float) data).doubleValue());
-        else if (data instanceof Double)
-            decimal = BigDecimal.valueOf(((Double) data).doubleValue());
-        else {
-            return handleUnknownData(column, fieldDefn, data);
-        }
-        return decimal;
+        return convertDecimal(column, fieldDefn, data);
     }
 
     /**

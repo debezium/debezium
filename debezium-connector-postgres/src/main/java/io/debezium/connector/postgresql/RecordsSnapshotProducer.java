@@ -33,6 +33,7 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.data.Envelope;
+import io.debezium.data.SpecialValueDecimal;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -292,10 +293,20 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                     return new PGmoney(rs.getString(colIdx)).val;
                 case PgOid.BIT:
                     return rs.getString(colIdx);
+                case PgOid.NUMERIC:
+                    final String s = rs.getString(colIdx);
+                    if (s == null) {
+                        return s;
+                    }
+
+                    Optional<SpecialValueDecimal> value = PostgresValueConverter.toSpecialValue(s);
+                    return value.isPresent() ? value.get() : new SpecialValueDecimal(rs.getBigDecimal(colIdx));
+
                 default:
                     return rs.getObject(colIdx);
             }
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             // not a known type
             return rs.getObject(colIdx);
         }

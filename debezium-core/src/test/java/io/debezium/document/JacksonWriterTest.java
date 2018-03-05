@@ -20,7 +20,7 @@ public class JacksonWriterTest implements Testing {
     private Document doc;
     private Document after;
     private JacksonWriter writer = JacksonWriter.INSTANCE;
-    private JacksonReader reader = JacksonReader.INSTANCE;
+    private JacksonReader reader = JacksonReader.DEFAULT_INSTANCE;
     
     @Before
     public void beforeEach() {

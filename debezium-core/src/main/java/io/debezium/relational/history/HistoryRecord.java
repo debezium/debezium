@@ -38,36 +38,20 @@ public class HistoryRecord {
         return this.doc;
     }
 
-    public boolean isAtOrBefore(HistoryRecord other) {
-        if (other == this) return true;
-        return this.position().compareToUsingSimilarFields(other.position()) <= 0
-                && source().equals(other.source());
-    }
-
     protected Document source() {
-        return doc.getDocument("source");
+        return doc.getDocument(Fields.SOURCE);
     }
 
     protected Document position() {
-        return doc.getDocument("position");
+        return doc.getDocument(Fields.POSITION);
     }
 
     protected String databaseName() {
-        return doc.getString("databaseName");
+        return doc.getString(Fields.DATABASE_NAME);
     }
 
     protected String ddl() {
-        return doc.getString("ddl");
-    }
-
-    protected boolean hasSameSource(HistoryRecord other) {
-        if (this == other) return true;
-        return other != null && source().equals(other.source());
-    }
-
-    protected boolean hasSameDatabase(HistoryRecord other) {
-        if (this == other) return true;
-        return other != null && databaseName().equals(other.databaseName());
+        return doc.getString(Fields.DDL_STATEMENTS);
     }
 
     @Override

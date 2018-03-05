@@ -84,17 +84,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         //numerical types
         assertInsert(INSERT_NUMERIC_TYPES_STMT, schemasAndValuesForNumericType());
 
-        //floating-point without decimals
-        consumer.expects(1);
-        assertInsert(INSERT_FP_TYPES_NO_DECIMAL_STMT, 2, schemasAndValuesForFpTypeWithoutDecimals());
-
         //numerical decimal types
         consumer.expects(1);
-        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT, schemasAndValuesForNumericDecimalType());
-
-        //numerical decimal types without decimals
-        consumer.expects(1);
-        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_NO_DECIMAL_STMT, 2, schemasAndValuesForNumericDecimalTypeWithoutDecimals());
+        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT_NO_NAN, schemasAndValuesForBigDecimalEncodedNumericTypes());
 
         // string types
         consumer.expects(1);
@@ -486,7 +478,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         VerifyRecord.isValidInsert(updatedRecord, PK_FIELD, 5);
         assertRecordSchemaAndValues(
-                Collections.singletonList(new SchemaAndValueField("num_val", Decimal.builder(0).optional().build(), new BigDecimal("1238.0"))), updatedRecord, Envelope.FieldName.AFTER);
+                Collections.singletonList(new SchemaAndValueField("num_val", Decimal.builder(0).optional().build(), new BigDecimal("1238"))), updatedRecord, Envelope.FieldName.AFTER);
 
         statements = "ALTER TABLE test_table ALTER COLUMN num_val TYPE DECIMAL;" +
                 "INSERT INTO test_table (pk,num_val) VALUES (6,1225.1);";
@@ -582,7 +574,23 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(1);
         recordsProducer.start(consumer, blackHole);
 
-        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT, schemasAndValuesForImpreciseNumericDecimalType());
+        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT, schemasAndValuesForDoubleEncodedNumericTypes());
+    }
+
+    @Test
+    @FixFor("DBZ-611")
+    public void shouldReceiveNumericTypeAsString() throws Exception {
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, PostgresConnectorConfig.DecimalHandlingMode.STRING)
+                .build());
+        setupRecordsProducer(config);
+
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer, blackHole);
+
+        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT, schemasAndValuesForStringEncodedNumericTypes());
     }
 
     @Test

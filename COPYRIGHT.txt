@@ -32,6 +32,7 @@ Prannoy Mittal
 Raf Liwoch
 Ramesh Reddy
 Randall Hauch
+René Kerner
 Sairam Polavarapu
 Sanne Grinovero
 Satyajit Vegesna
