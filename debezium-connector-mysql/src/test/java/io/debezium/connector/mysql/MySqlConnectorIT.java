@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -235,7 +236,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
     /**
      * Validates that if you use the deprecated snapshot.minimal.locking configuration value is set to true
-     * and its replacement snapshot.locking.mode is set to minimal, configuration validates as acceptable.
+     * and its replacement snapshot.locking.mode is not explicitly defined, configuration validates as acceptable.
      */
     @Test
     public void shouldValidateLockingModeWithMinimalLocksEnabledConfiguration() {
@@ -246,53 +247,40 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
             .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
             .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-            // Conflicting properties under test:
+            // Explicitly configure minimal locking enabled, but do not set snapshot.locking.mode
             .with(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING, true)
-            .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, "minimal")
             .build();
 
         MySqlConnector connector = new MySqlConnector();
         Config result = connector.validate(config.asMap());
-
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.HOSTNAME);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.PORT);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.USER);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.PASSWORD);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SERVER_NAME);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SERVER_ID);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLES_IGNORE_BUILTIN);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_WHITELIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_BLACKLIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_WHITELIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_BLACKLIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_BLACKLIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.CONNECTION_TIMEOUT_MS);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.KEEP_ALIVE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_QUEUE_SIZE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_BATCH_SIZE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.POLL_INTERVAL_MS);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_HISTORY);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_MODE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_MODE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_KEYSTORE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.DECIMAL_HANDLING_MODE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.TIME_PRECISION_MODE);
-        assertNoConfigurationErrors(result, KafkaDatabaseHistory.BOOTSTRAP_SERVERS);
-        assertNoConfigurationErrors(result, KafkaDatabaseHistory.TOPIC);
-        assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS);
-        assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
     }
 
     /**
-     * Validates that if you use the deprecated snapshot.minimal.locking configuration value in conflict
-     * with its replacement snapshot.locking.mode an error will be generated.
-     *
-     * If SNAPSHOT_MINIMAL_LOCKING = false, SNAPSHOT_LOCKING_MODE must be 'minimal'
+     * Validates that if you use the deprecated snapshot.minimal.locking configuration value is set to fa;se
+     * and its replacement snapshot.locking.mode is not explicitly defined, configuration validates as acceptable.
+     */
+    @Test
+    public void shouldValidateLockingModeWithOutMinimalLocksEnabledConfiguration() {
+        Configuration config = DATABASE.defaultJdbcConfigBuilder()
+            .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
+            .with(MySqlConnectorConfig.SERVER_ID, 18765)
+            .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+            .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
+            .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
+            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+            // Explicitly configure minimal locking disabled, but do not set snapshot.locking.mode
+            .with(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING, false)
+            .build();
+
+        MySqlConnector connector = new MySqlConnector();
+        Config result = connector.validate(config.asMap());
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
+    }
+
+    /**
+     * Validates that if you use the deprecated snapshot.minimal.locking configuration value
+     * AND set its replacement snapshot.locking.mode an error will be generated.
      */
     @Test
     public void shouldFailToValidateConflictingLockingModeConfiguration() {
@@ -315,10 +303,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     /**
-     * Validates that if you use the deprecated snapshot.minimal.locking configuration value in conflict
-     * with its replacement snapshot.locking.mode an error will be generated.
-     *
-     * If SNAPSHOT_MINIMAL_LOCKING = true, SNAPSHOT_LOCKING_MODE must be 'minimal'
+     * Validates that if you use the deprecated snapshot.minimal.locking configuration value
+     * AND set its replacement snapshot.locking.mode an error will be generated.
      */
     @Test
     public void shouldFailToValidateConflictingLockingModeExtendedConfiguration() {
@@ -341,10 +327,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     /**
-     * Validates that if you use the deprecated snapshot.minimal.locking configuration value in conflict
-     * with its replacement snapshot.locking.mode an error will be generated.
-     *
-     * If SNAPSHOT_MINIMAL_LOCKING = true, SNAPSHOT_LOCKING_MODE must be 'minimal'
+     * Validates that if you use the deprecated snapshot.minimal.locking configuration value
+     * AND set its replacement snapshot.locking.mode an error will be generated.
      */
     @Test
     public void shouldFailToValidateConflictingLockingModeNoneConfiguration() {
@@ -372,13 +356,11 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
      */
     @Test
     public void shouldValidateLockingModeNoneWithValidSnapshotModeConfiguration() {
-        final List<String> acceptableValues = new ArrayList<String>() {
-            {
-                add(SnapshotMode.NEVER.getValue());
-                add(SnapshotMode.SCHEMA_ONLY.getValue());
-                add(SnapshotMode.SCHEMA_ONLY_RECOVERY.getValue());
-            }
-        };
+        final List<String> acceptableValues = Arrays.asList(
+            SnapshotMode.NEVER.getValue(),
+            SnapshotMode.SCHEMA_ONLY.getValue(),
+            SnapshotMode.SCHEMA_ONLY_RECOVERY.getValue()
+        );
 
         // Loop over all known valid values
         for (final String acceptableValue: acceptableValues) {
@@ -407,13 +389,11 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
      */
     @Test
     public void shouldNotValidateLockingModeNoneWithInvalidSnapshotModeConfiguration() {
-        final List<String> invalidValues = new ArrayList<String>() {
-            {
-                add(SnapshotMode.WHEN_NEEDED.getValue());
-                add(SnapshotMode.INITIAL.getValue());
-                add(SnapshotMode.INITIAL_ONLY.getValue());
-            }
-        };
+        final List<String> invalidValues = Arrays.asList(
+            SnapshotMode.WHEN_NEEDED.getValue(),
+            SnapshotMode.INITIAL.getValue(),
+            SnapshotMode.INITIAL_ONLY.getValue()
+        );
 
         // Loop over all known valid values
         for (final String invalidValue: invalidValues) {

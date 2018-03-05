@@ -928,23 +928,26 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                                 DatabaseHistory.DDL_FILTER);
 
     private final SnapshotLockingMode snapshotLockingMode;
-    @Deprecated
-    private final boolean snapshotMinimalLocking;
 
     public MySqlConnectorConfig(Configuration config) {
         super(config);
 
-        this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
-        this.snapshotMinimalLocking = config.getBoolean(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING);
+        // If deprectated snapshot.minimal.locking property is explicitly configured
+        if (config.hasKey(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING.name())) {
+            // Coerce it into its replacement appropriate snapshot.locking.mode value
+            if (config.getBoolean(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING)) {
+                this.snapshotLockingMode = SnapshotLockingMode.MINIMAL;
+            } else {
+                this.snapshotLockingMode = SnapshotLockingMode.EXTENDED;
+            }
+        } else {
+            // Otherwise use configured snapshot.locking.mode configuration.
+            this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
+        }
     }
 
     public SnapshotLockingMode getSnapshotLockingMode() {
         return this.snapshotLockingMode;
-    }
-
-    @Deprecated
-    public boolean getSnapshotMinimalLocking() {
-        return this.snapshotMinimalLocking;
     }
 
     protected static ConfigDef configDef() {
@@ -1010,15 +1013,51 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
         return 0;
     }
 
+    /**
+     * Validate the new snapshot.locking.mode configuration, which replaces snapshot.minimal.locking.
+     *
+     * If minimal.locking is explicitly defined and locking.mode is NOT explicitly defined:
+     *   - coerce minimal.locking into the new snap.locking.mode property.
+     *
+     * If minimal.locking is NOT explicitly defined and locking.mode IS explicitly defined:
+     *   - use new locking.mode property.
+     *
+     * If BOTH minimal.locking and locking.mode ARE defined:
+     *   - Throw a validation error.
+     */
     private static int validateSnapshotLockingMode(Configuration config, Field field, ValidationOutput problems) {
-        // Grab configured values
-        final String lockingModeValueStr = config.getString(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
-        final String snapshotModeValueStr = config.getString(MySqlConnectorConfig.SNAPSHOT_MODE);
-        final boolean minimalLocksEnabled = config.getBoolean(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING);
+        // Determine which configurations are explicitly defined
+        final boolean isMinimalLockingExplicitlyDefined = config.hasKey(SNAPSHOT_MINIMAL_LOCKING.name());
+        final boolean isSnapshotModeExplicitlyDefined = config.hasKey(SNAPSHOT_LOCKING_MODE.name());
 
-        // Convert into appropriate enum values
-        final SnapshotLockingMode lockingModeValue = SnapshotLockingMode.parse(lockingModeValueStr);
-        final SnapshotMode snapshotModeValue = SnapshotMode.parse(snapshotModeValueStr);
+        // If both configuration options are explicitly defined, we'll throw a validation error.
+        if (isMinimalLockingExplicitlyDefined && isSnapshotModeExplicitlyDefined) {
+            // Then display a validation error.
+            problems.accept(SNAPSHOT_MINIMAL_LOCKING,
+                            config.getBoolean(SNAPSHOT_MINIMAL_LOCKING),
+                            "Deprecated configuration " + SNAPSHOT_MINIMAL_LOCKING.name() + " in conflict. Cannot use both " + SNAPSHOT_MINIMAL_LOCKING.name() + " and " + SNAPSHOT_LOCKING_MODE.name() + " configuration options.");
+            return 1;
+        }
+
+        // Determine what value to use for SnapshotLockingMode
+        final SnapshotLockingMode lockingModeValue;
+
+        // if minimalLocking is defined
+        if (isMinimalLockingExplicitlyDefined) {
+            // Grab the configured minimal locks configuration option
+            final boolean minimalLocksEnabled = config.getBoolean(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING);
+
+            // Coerce minimal locking => snapshot mode.
+            if (minimalLocksEnabled) {
+                lockingModeValue = SnapshotLockingMode.MINIMAL;
+            } else {
+                lockingModeValue = SnapshotLockingMode.EXTENDED;
+            }
+        } else {
+            // Otherwise use SnapshotLockingMode
+            // Grab explicitly configured value
+            lockingModeValue = SnapshotLockingMode.parse(config.getString(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE));
+        }
 
         // Sanity check, validate the configured value is a valid option.
         if (lockingModeValue == null) {
@@ -1026,26 +1065,8 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
             return 1;
         }
 
-        // Validate that if deprecated snapshot.minimal.locks is set to 'true', locking mode must be 'minimal'
-        final Set<SnapshotLockingMode> validMinimalLockingModes = new HashSet<SnapshotLockingMode>() {
-            {
-                add(SnapshotLockingMode.MINIMAL);
-                add(SnapshotLockingMode.NONE);
-            }
-        };
-
-        // If minimal locks is enabled, we must have locking mode set to minimal or none.
-        if (minimalLocksEnabled && !validMinimalLockingModes.contains(lockingModeValue)) {
-            // Then display a validation error.
-            problems.accept(SNAPSHOT_LOCKING_MODE, lockingModeValue, "Deprecated configuration " + SNAPSHOT_MINIMAL_LOCKING.name() + " in conflict. If " + SNAPSHOT_MINIMAL_LOCKING.name() + "is 'true', " + SNAPSHOT_LOCKING_MODE.name() + " must be ['minimal', 'none'].");
-            return 1;
-
-        // If minimal locks is disbaled, we must be set to extended.
-        } else if (!minimalLocksEnabled && lockingModeValue != SnapshotLockingMode.EXTENDED) {
-            // Then display a validation error.
-            problems.accept(SNAPSHOT_LOCKING_MODE, lockingModeValue, "Deprecated configuration " + SNAPSHOT_MINIMAL_LOCKING.name() + " in conflict. If " + SNAPSHOT_MINIMAL_LOCKING.name() + "is 'false', " + SNAPSHOT_LOCKING_MODE.name() + " must be '" + SnapshotLockingMode.EXTENDED.value + "'.");
-            return 1;
-        }
+        // Determine the snapshot mode defined.
+        final SnapshotMode snapshotModeValue = SnapshotMode.parse(config.getString(MySqlConnectorConfig.SNAPSHOT_MODE));
 
         // A value of SNAPSHOT_LOCKING_MODE 'none' is only valid when SNAPSHOT_MODE is configured to not include data.
         if (lockingModeValue == SnapshotLockingMode.NONE && snapshotModeValue.includeData()) {
