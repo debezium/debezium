@@ -130,7 +130,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.MONEY:
                 return Decimal.builder(column.scale());
             case PgOid.NUMERIC:
-                return numericSchema(column).optional();
+                return numericSchema(column);
             case PgOid.BYTEA:
                 return SchemaBuilder.bytes();
             case PgOid.INT2_ARRAY:
@@ -304,8 +304,14 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 .scale(column.scale())
                 .length(column.length())
                 .create();
-        final Field elementField = new Field(elementColumnName, 0, schemaBuilder(elementColumn).build());
+
+        Schema elementSchema = schemaBuilder(elementColumn)
+                .optional()
+                .build();
+
+        final Field elementField = new Field(elementColumnName, 0, elementSchema);
         final ValueConverter elementConverter = converter(elementColumn, elementField);
+
         return data -> convertArray(column, fieldDefn, elementConverter, data);
     }
 
