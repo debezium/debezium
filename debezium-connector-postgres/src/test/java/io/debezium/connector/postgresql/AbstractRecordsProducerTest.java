@@ -92,21 +92,21 @@ public abstract class AbstractRecordsProducerTest {
              "VALUES (1, 123456, 1234567890123, 3.3, 4.44, 3, 4, 'NaN', 'NaN', 'Infinity', 'Infinity', '-Infinity', '-Infinity', 1, 123, true)";
 
     protected static final String INSERT_NUMERIC_DECIMAL_TYPES_STMT =
-            "INSERT INTO numeric_decimal_table (d, dzs, dvs, n, nzs, nvs, "
+            "INSERT INTO numeric_decimal_table (d, dzs, dvs, d_nn, n, nzs, nvs, "
                     + "d_int, dzs_int, dvs_int, n_int, nzs_int, nvs_int, "
                     + "d_nan, dzs_nan, dvs_nan, n_nan, nzs_nan, nvs_nan"
                     + ") "
-            + "VALUES (1.1, 10.11, 10.1111, 22.22, 22.2, 22.2222, "
+            + "VALUES (1.1, 10.11, 10.1111, 3.30, 22.22, 22.2, 22.2222, "
                     + "1, 10, 10, 22, 22, 22, "
                     + "'NaN', 'NaN', 'NaN', 'NaN', 'NaN', 'NaN'"
             + ")";
 
     protected static final String INSERT_NUMERIC_DECIMAL_TYPES_STMT_NO_NAN =
-            "INSERT INTO numeric_decimal_table (d, dzs, dvs, n, nzs, nvs, "
+            "INSERT INTO numeric_decimal_table (d, dzs, dvs, d_nn, n, nzs, nvs, "
                     + "d_int, dzs_int, dvs_int, n_int, nzs_int, nvs_int, "
                     + "d_nan, dzs_nan, dvs_nan, n_nan, nzs_nan, nvs_nan"
                     + ") "
-            + "VALUES (1.1, 10.11, 10.1111, 22.22, 22.2, 22.2222, "
+            + "VALUES (1.1, 10.11, 10.1111, 3.30, 22.22, 22.2, 22.2222, "
                     + "1, 10, 10, 22, 22, 22, "
                     + "null, null, null, null, null, null"
             + ")";
@@ -179,6 +179,7 @@ public abstract class AbstractRecordsProducerTest {
                 new SchemaAndValueField("d", Decimal.builder(2).optional().build(), new BigDecimal("1.10")),
                 new SchemaAndValueField("dzs", Decimal.builder(0).optional().build(), new BigDecimal("10")),
                 new SchemaAndValueField("dvs", VariableScaleDecimal.optionalSchema(), dvs),
+                new SchemaAndValueField("d_nn", Decimal.builder(2).build(), new BigDecimal("3.30")),
                 new SchemaAndValueField("n", Decimal.builder(4).optional().build(), new BigDecimal("22.2200")),
                 new SchemaAndValueField("nzs", Decimal.builder(0).optional().build(), new BigDecimal("22")),
                 new SchemaAndValueField("nvs", VariableScaleDecimal.optionalSchema(), nvs),
