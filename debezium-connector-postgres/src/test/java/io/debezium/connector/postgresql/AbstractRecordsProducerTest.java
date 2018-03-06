@@ -219,14 +219,25 @@ public abstract class AbstractRecordsProducerTest {
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForDoubleEncodedNumericTypes() {
-        return Arrays.asList(
+        final List<SchemaAndValueField> fields = new ArrayList<SchemaAndValueField>(Arrays.asList(
                 new SchemaAndValueField("d", Schema.OPTIONAL_FLOAT64_SCHEMA, 1.1d),
                 new SchemaAndValueField("dzs", Schema.OPTIONAL_FLOAT64_SCHEMA, 10d),
                 new SchemaAndValueField("dvs", Schema.OPTIONAL_FLOAT64_SCHEMA, 10.1111d),
                 new SchemaAndValueField("n", Schema.OPTIONAL_FLOAT64_SCHEMA, 22.22d),
                 new SchemaAndValueField("nzs", Schema.OPTIONAL_FLOAT64_SCHEMA, 22d),
                 new SchemaAndValueField("nvs", Schema.OPTIONAL_FLOAT64_SCHEMA, 22.2222d)
-        );
+        ));
+        if (!DecoderDifferences.areSpecialFPValuesUnsupported()) {
+            fields.addAll(Arrays.asList(
+                    new SchemaAndValueField("d_nan", Schema.OPTIONAL_FLOAT64_SCHEMA, Double.NaN),
+                    new SchemaAndValueField("dzs_nan", Schema.OPTIONAL_FLOAT64_SCHEMA, Double.NaN),
+                    new SchemaAndValueField("dvs_nan", Schema.OPTIONAL_FLOAT64_SCHEMA, Double.NaN),
+                    new SchemaAndValueField("n_nan", Schema.OPTIONAL_FLOAT64_SCHEMA, Double.NaN),
+                    new SchemaAndValueField("nzs_nan", Schema.OPTIONAL_FLOAT64_SCHEMA, Double.NaN),
+                    new SchemaAndValueField("nvs_nan", Schema.OPTIONAL_FLOAT64_SCHEMA, Double.NaN)
+            ));
+        }
+        return fields;
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForStringTypes() {

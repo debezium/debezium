@@ -14,7 +14,6 @@ import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.errors.ConnectException;
 
-import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 
 /**
@@ -165,10 +164,12 @@ public class SpecialValueDecimal implements Serializable {
         }
 
         // special values (NaN, Infinity) can only be expressed when using "string" encoding
-        if (mode == DecimalMode.STRING) {
+        switch (mode) {
+        case STRING:
             return value.toString();
-        }
-        else {
+        case DOUBLE:
+            return value.toDouble();
+        default:
             throw new ConnectException("Got a special value (NaN/Infinity) for Decimal type in column " + columnName + " but current mode does not handle it. "
                     + "If you need to support it then set decimal handling mode to 'string'.");
         }
