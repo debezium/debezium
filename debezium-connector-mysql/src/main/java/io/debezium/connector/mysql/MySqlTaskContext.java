@@ -36,6 +36,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
 
     private final MySqlJdbcContext connectionContext;
     private final Configuration config;
+    private final MySqlConnectorConfig connectorConfig;
     private final SourceInfo source;
     private final MySqlSchema dbSchema;
     private final TopicSelector topicSelector;
@@ -56,6 +57,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         super("MySQL", config.getString(MySqlConnectorConfig.SERVER_NAME));
 
         this.config = config;
+        this.connectorConfig = new MySqlConnectorConfig(config);
         this.connectionContext = new MySqlJdbcContext(config);
 
         // Set up the topic selector ...
@@ -90,6 +92,10 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
 
     public Configuration config() {
         return config;
+    }
+
+    public MySqlConnectorConfig getConnectorConfig() {
+        return this.connectorConfig;
     }
 
     public MySqlJdbcContext getConnectionContext() {
@@ -233,10 +239,6 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
     protected SnapshotMode snapshotMode() {
         String value = config.getString(MySqlConnectorConfig.SNAPSHOT_MODE);
         return SnapshotMode.parse(value, MySqlConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
-    }
-
-    public boolean useMinimalSnapshotLocking() {
-        return config.getBoolean(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING);
     }
 
     public String getSnapshotSelectOverrides() {
