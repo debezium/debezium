@@ -132,7 +132,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.NUMERIC:
                 return numericSchema(column).optional();
             case PgOid.BYTEA:
-                return SchemaBuilder.bytes().optional();
+                return SchemaBuilder.bytes();
             case PgOid.INT2_ARRAY:
                 return SchemaBuilder.array(SchemaBuilder.OPTIONAL_INT16_SCHEMA);
             case PgOid.INT4_ARRAY:
