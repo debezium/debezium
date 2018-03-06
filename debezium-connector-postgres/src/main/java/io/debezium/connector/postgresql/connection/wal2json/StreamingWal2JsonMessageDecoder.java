@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql.connection.wal2json;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -106,7 +107,7 @@ public class StreamingWal2JsonMessageDecoder implements MessageDecoder {
     private long commitTime;
 
     @Override
-    public void processMessage(ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException {
+    public void processMessage(ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry, ZoneOffset serverTimezone) throws SQLException, InterruptedException {
         try {
             if (!buffer.hasArray()) {
                 throw new IllegalStateException("Invalid buffer received from PG server during streaming replication");
@@ -145,14 +146,14 @@ public class StreamingWal2JsonMessageDecoder implements MessageDecoder {
                 }
                 else if (firstChar == COMMA) {
                     // following changes, they have an extra comma at the start of message
-                    doProcessMessage(processor, typeRegistry, currentChunk, false);
+                    doProcessMessage(processor, typeRegistry, currentChunk, serverTimezone, false);
                     replaceFirstNonWhiteChar(content, SPACE);
                     currentChunk = content;
                 }
                 else if (firstChar == RIGHT_BRACKET) {
                     // No more changes
                     if (currentChunk != null) {
-                        doProcessMessage(processor, typeRegistry, currentChunk, true);
+                        doProcessMessage(processor, typeRegistry, currentChunk, serverTimezone, true);
                     }
                     messageInProgress = false;
                 }
@@ -197,12 +198,12 @@ public class StreamingWal2JsonMessageDecoder implements MessageDecoder {
         return (c >= TAB && c <= CR) || c == SPACE;
     }
 
-    private void doProcessMessage(ReplicationMessageProcessor processor, TypeRegistry typeRegistry, byte[] content, boolean lastMessage)
+    private void doProcessMessage(ReplicationMessageProcessor processor, TypeRegistry typeRegistry, byte[] content, ZoneOffset serverTimezone, boolean lastMessage)
             throws IOException, SQLException, InterruptedException {
         final Document change = DocumentReader.floatNumbersAsTextReader().read(content);
 
         LOGGER.trace("Change arrived for decoding {}", change);
-        processor.process(new Wal2JsonReplicationMessage(txId, commitTime, change, containsMetadata, lastMessage, typeRegistry));
+        processor.process(new Wal2JsonReplicationMessage(txId, commitTime, change, containsMetadata, lastMessage, typeRegistry, serverTimezone));
     }
 
     @Override

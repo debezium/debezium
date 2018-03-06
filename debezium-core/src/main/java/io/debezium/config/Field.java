@@ -5,6 +5,8 @@
  */
 package io.debezium.config;
 
+import java.time.DateTimeException;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -1189,4 +1191,15 @@ public final class Field {
         return 0;
     }
 
+    public static int isZoneOffset(Configuration config, Field field, ValidationOutput problems) {
+        String value = config.getString(field);
+        if (value == null) return 0;
+        try {
+            ZoneOffset.of(value);
+        } catch (DateTimeException e) {
+            problems.accept(field, value, "A zone offset string representation is expected");
+            return 1;
+        }
+        return 0;
+    }
 }

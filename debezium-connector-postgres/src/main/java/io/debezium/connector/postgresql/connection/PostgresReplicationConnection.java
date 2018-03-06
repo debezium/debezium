@@ -10,6 +10,7 @@ import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
+import java.time.ZoneOffset;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
@@ -45,6 +46,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private final Integer statusUpdateIntervalMillis;
     private final MessageDecoder messageDecoder;
     private final TypeRegistry typeRegistry;
+    private final ZoneOffset serverTimezone;
 
     private long defaultStartingPos;
 
@@ -64,8 +66,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                          PostgresConnectorConfig.LogicalDecoder plugin,
                                          boolean dropSlotOnClose,
                                          Integer statusUpdateIntervalMillis,
-                                         TypeRegistry typeRegistry) {
-        super(config, PostgresConnection.FACTORY, null, PostgresReplicationConnection::defaultSettings);
+                                         TypeRegistry typeRegistry,
+                                         ZoneOffset serverTimezone) {
+        super(config, PostgresConnection.FACTORY, null ,PostgresReplicationConnection::defaultSettings);
 
         this.originalConfig = config;
         this.slotName = slotName;
@@ -74,6 +77,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.statusUpdateIntervalMillis = statusUpdateIntervalMillis;
         this.messageDecoder = plugin.messageDecoder();
         this.typeRegistry = typeRegistry;
+        this.serverTimezone = serverTimezone;
 
         try {
             initReplicationSlot();
@@ -215,7 +219,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
             private void deserializeMessages(ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
                 lastReceivedLSN = stream.getLastReceiveLSN();
-                messageDecoder.processMessage(buffer, processor, typeRegistry);
+                messageDecoder.processMessage(buffer, processor, typeRegistry, serverTimezone);
             }
 
             @Override
@@ -324,6 +328,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         private boolean dropSlotOnClose = DEFAULT_DROP_SLOT_ON_CLOSE;
         private Integer statusUpdateIntervalMillis;
         private TypeRegistry typeRegistry;
+        private ZoneOffset serverTimezone;
 
         protected ReplicationConnectionBuilder(Configuration config) {
             assert config != null;
@@ -359,12 +364,18 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         @Override
         public ReplicationConnection build() {
             assert plugin != null : "Decoding plugin name is not set";
-            return new PostgresReplicationConnection(config, slotName, plugin, dropSlotOnClose, statusUpdateIntervalMillis, typeRegistry);
+            return new PostgresReplicationConnection(config, slotName, plugin, dropSlotOnClose, statusUpdateIntervalMillis, typeRegistry, serverTimezone);
         }
 
         @Override
         public Builder withTypeRegistry(TypeRegistry typeRegistry) {
             this.typeRegistry = typeRegistry;
+            return this;
+        }
+
+        @Override
+        public Builder withServerTimezone(ZoneOffset serverTimezone) {
+            this.serverTimezone = serverTimezone;
             return this;
         }
     }

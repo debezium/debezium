@@ -16,6 +16,7 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -266,8 +267,8 @@ public class BinlogReaderIT {
         assertThat(sourceRecords.size()).isEqualTo(1);
         // MySQL container is in UTC and the test time is during summer time period
         ZonedDateTime expectedTimestamp = ZonedDateTime.ofInstant(
-                LocalDateTime.parse("2014-09-08T17:51:04.780").atZone(ZoneId.of("UTC")).toInstant(),
-                ZoneId.systemDefault());
+                LocalDateTime.parse("2014-09-09T04:51:04.780").atZone(ZoneId.of("UTC")).toInstant(),
+                ZoneId.ofOffset("", ZoneOffset.UTC));
         String expectedTimestampString = expectedTimestamp.format(ZonedTimestamp.FORMATTER);
         SourceRecord sourceRecord = sourceRecords.get(0);
         Struct value = (Struct) sourceRecord.value();

@@ -8,6 +8,9 @@ package io.debezium.connector.postgresql.connection.wal2json;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -38,6 +41,7 @@ import io.debezium.data.SpecialValueDecimal;
 import io.debezium.document.Array;
 import io.debezium.document.Document;
 import io.debezium.document.Value;
+import io.debezium.time.Conversions;
 import io.debezium.util.Strings;
 
 /**
@@ -55,14 +59,16 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
     private final boolean hasMetadata;
     private final boolean lastEventForLsn;
     private final TypeRegistry typeRegistry;
+    private final ZoneOffset serverTimezone;
 
-    public Wal2JsonReplicationMessage(long txId, long commitTime, Document rawMessage, boolean hasMetadata, boolean lastEventForLsn, TypeRegistry typeRegistry) {
+    public Wal2JsonReplicationMessage(long txId, long commitTime, Document rawMessage, boolean hasMetadata, boolean lastEventForLsn, TypeRegistry typeRegistry, ZoneOffset serverTimezone) {
         this.txId = txId;
         this.commitTime = commitTime;
         this.rawMessage = rawMessage;
         this.hasMetadata = hasMetadata;
         this.lastEventForLsn = lastEventForLsn;
         this.typeRegistry = typeRegistry;
+        this.serverTimezone = serverTimezone;
     }
 
     @Override
@@ -253,7 +259,9 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
 
             case "timestamp":
             case "timestamp without time zone":
-                return DateTimeFormat.get().timestamp(rawValue.asString());
+                final LocalDateTime serverLocal = Conversions.fromNanosToLocalDateTimeUTC(DateTimeFormat.get().timestamp(rawValue.asString()));
+                final Instant utc = serverLocal.atOffset(serverTimezone).toInstant();
+                return Conversions.toEpochNanos(utc);
 
             case "time":
             case "time without time zone":

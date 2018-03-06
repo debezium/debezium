@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql.connection.wal2json;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Iterator;
 
@@ -42,7 +43,7 @@ public class NonStreamingWal2JsonMessageDecoder implements MessageDecoder {
     private boolean containsMetadata = false;
 
     @Override
-    public void processMessage(ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException {
+    public void processMessage(ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry, ZoneOffset serverTimezone) throws SQLException, InterruptedException {
         try {
             if (!buffer.hasArray()) {
                 throw new IllegalStateException("Invalid buffer received from PG server during streaming replication");
@@ -59,7 +60,7 @@ public class NonStreamingWal2JsonMessageDecoder implements MessageDecoder {
             Iterator<Entry> it = changes.iterator();
             while (it.hasNext()) {
                 Value value = it.next().getValue();
-                processor.process(new Wal2JsonReplicationMessage(txId, commitTime, value.asDocument(), containsMetadata, !it.hasNext(), typeRegistry));
+                processor.process(new Wal2JsonReplicationMessage(txId, commitTime, value.asDocument(), containsMetadata, !it.hasNext(), typeRegistry, serverTimezone));
             }
         } catch (final IOException e) {
             throw new ConnectException(e);
