@@ -185,10 +185,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
                     return Geography.builder();
                 }
                 else if (oidValue == typeRegistry.geometryArrayOid()) {
-                    return SchemaBuilder.array(Geometry.builder().optional().build()).optional();
+                    return SchemaBuilder.array(Geometry.builder().optional().build());
                 }
                 else if (oidValue == typeRegistry.geographyArrayOid()) {
-                    return SchemaBuilder.array(Geography.builder().optional().build()).optional();
+                    return SchemaBuilder.array(Geography.builder().optional().build());
                 }
                 final SchemaBuilder jdbcSchemaBuilder = super.schemaBuilder(column);
                 if (jdbcSchemaBuilder == null) {
