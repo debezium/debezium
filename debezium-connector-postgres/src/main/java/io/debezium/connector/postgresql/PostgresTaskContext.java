@@ -60,6 +60,7 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
                                     .dropSlotOnClose(config.dropSlotOnStop())
                                     .statusUpdateIntervalMillis(config.statusUpdateIntervalMillis())
                                     .withTypeRegistry(schema.getTypeRegistry())
+                                    .withServerTimezone(config.serverZoneOffset())
                                     .build();
     }
 

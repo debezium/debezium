@@ -7,6 +7,7 @@
 package io.debezium.connector.postgresql.connection;
 
 import java.sql.SQLException;
+import java.time.ZoneOffset;
 
 import org.postgresql.replication.LogSequenceNumber;
 import org.postgresql.replication.PGReplicationStream;
@@ -129,10 +130,13 @@ public interface ReplicationConnection extends AutoCloseable {
 
         Builder withTypeRegistry(TypeRegistry typeRegistry);
 
+        Builder withServerTimezone(ZoneOffset serverTimezone);
+
         /**
          * Creates a new {@link ReplicationConnection} instance
          * @return a connection, never null
          */
         ReplicationConnection build();
+
     }
 }

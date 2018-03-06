@@ -9,6 +9,9 @@ package io.debezium.connector.postgresql.connection.pgproto;
 import java.math.BigDecimal;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +34,7 @@ import io.debezium.connector.postgresql.connection.AbstractReplicationMessageCol
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.connector.postgresql.proto.PgProto;
 import io.debezium.data.SpecialValueDecimal;
+import io.debezium.time.Conversions;
 import io.debezium.util.Strings;
 
 /**
@@ -44,10 +48,12 @@ class PgProtoReplicationMessage implements ReplicationMessage {
 
     private final PgProto.RowMessage rawMessage;
     private final TypeRegistry typeRegistry;
+    private final ZoneOffset serverTimezone;
 
-    public PgProtoReplicationMessage(PgProto.RowMessage rawMessage, TypeRegistry typeRegistry) {
+    public PgProtoReplicationMessage(PgProto.RowMessage rawMessage, TypeRegistry typeRegistry, ZoneOffset serverTimezone) {
         this.rawMessage = rawMessage;
         this.typeRegistry = typeRegistry;
+        this.serverTimezone = serverTimezone;
     }
 
     @Override
@@ -169,6 +175,14 @@ class PgProtoReplicationMessage implements ReplicationMessage {
             case PgOid.DATE:
                 return datumMessage.hasDatumInt32() ? (long) datumMessage.getDatumInt32() : null;
             case PgOid.TIMESTAMP:
+                if (!datumMessage.hasDatumInt64()) {
+                    return null;
+                }
+                // these types are sent by the plugin as LONG - microseconds since Unix Epoch
+                // but we'll convert them to nanos which is the smallest unit
+                final LocalDateTime serverLocal = Conversions.toLocalDateTimeUTC(datumMessage.getDatumInt64());
+                final Instant utc = serverLocal.atOffset(serverTimezone).toInstant();
+                return Conversions.toEpochNanos(utc);
             case PgOid.TIMESTAMPTZ:
             case PgOid.TIME:
                 if (!datumMessage.hasDatumInt64()) {

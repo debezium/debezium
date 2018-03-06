@@ -45,7 +45,9 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         TestHelper.executeDDL("postgres_create_tables.ddl");
         TestHelper.executeDDL("postgis_create_tables.ddl");
 
-        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SERVER_ZONE_OFFSET, TestHelper.databaseTimeZone())
+                .build());
         TopicSelector selector = TopicSelector.create(config);
         context = new PostgresTaskContext(
                 config,
@@ -180,6 +182,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         PostgresConnectorConfig config = new PostgresConnectorConfig(
                 TestHelper.defaultConfig()
                         .with(PostgresConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS)
+                        .with(PostgresConnectorConfig.SERVER_ZONE_OFFSET, TestHelper.databaseTimeZone())
                         .build());
 
         TopicSelector selector = TopicSelector.create(config);

@@ -6,9 +6,11 @@
 package io.debezium.time;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -16,9 +18,10 @@ import java.util.concurrent.TimeUnit;
  * 
  * @author Randall Hauch
  */
-final class Conversions {
+public final class Conversions {
 
     static final long MILLISECONDS_PER_SECOND = TimeUnit.SECONDS.toMillis(1);
+    static final long MICROSECONDS_PER_SECOND = TimeUnit.SECONDS.toMicros(1);
     static final long MICROSECONDS_PER_MILLISECOND = TimeUnit.MILLISECONDS.toMicros(1);
     static final long NANOSECONDS_PER_MILLISECOND = TimeUnit.MILLISECONDS.toNanos(1);
     static final long NANOSECONDS_PER_MICROSECOND = TimeUnit.MICROSECONDS.toNanos(1);
@@ -184,4 +187,47 @@ final class Conversions {
         return epochDay * Conversions.NANOSECONDS_PER_DAY;
     }
 
+    /**
+     * Get the UTC-based {@link LocalDateTime} for given microseconds epoch
+     *
+     * @param microseconds - timestamp in microseconds
+     * @return timestamp in UTC timezone
+     */
+    public static LocalDateTime toLocalDateTimeUTC(long microseconds) {
+        long seconds = microseconds / MICROSECONDS_PER_SECOND;
+        // typecasting is safe as microseconds and nanoseconds in second fit in int range
+        int microsecondsOfSecond = (int)(microseconds % MICROSECONDS_PER_SECOND);
+        if (microsecondsOfSecond < 0) {
+            seconds--;
+            microsecondsOfSecond = (int)Conversions.MICROSECONDS_PER_SECOND + microsecondsOfSecond;
+        }
+        return LocalDateTime.ofEpochSecond(seconds, (int)(microsecondsOfSecond * NANOSECONDS_PER_MICROSECOND), ZoneOffset.UTC);
+    }
+
+    /**
+     * Get the UTC-based {@link LocalDateTime} for given nanoseconds epoch
+     *
+     * @param nanoseconds - timestamp in nanoseconds
+     * @return timestamp in UTC timezone
+     */
+    public static LocalDateTime fromNanosToLocalDateTimeUTC(long nanoseconds) {
+        long seconds = nanoseconds / NANOSECONDS_PER_SECOND;
+        // typecasting is safe as microseconds and nanoseconds in second fit in int range
+        int nanosecondsOfSecond = (int)(nanoseconds % NANOSECONDS_PER_SECOND);
+        if (nanosecondsOfSecond < 0) {
+            seconds--;
+            nanosecondsOfSecond = (int)Conversions.NANOSECONDS_PER_SECOND + nanosecondsOfSecond;
+        }
+        return LocalDateTime.ofEpochSecond(seconds, nanosecondsOfSecond, ZoneOffset.UTC);
+    }
+
+    /**
+     * Get the number of nanoseconds past epoch of the given {@link Instant}.
+     * 
+     * @param instant the Java instant value
+     * @return the epoch nanoseconds
+     */
+    public static long toEpochNanos(Instant instant) {
+        return TimeUnit.NANOSECONDS.convert(instant.getEpochSecond() * MICROSECONDS_PER_SECOND + instant.getNano() / NANOSECONDS_PER_MICROSECOND, TimeUnit.MICROSECONDS);
+    }
 }

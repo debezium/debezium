@@ -7,6 +7,7 @@
 package io.debezium.connector.postgresql;
 
 import java.math.BigDecimal;
+import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -653,6 +654,15 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                                                                 + "'string' uses string to represent values (including the special ones like NaN or Infinity); "
                                                                 + "'double' represents values using Java's 'double', which may not offer the precision but will be far easier to use in consumers.");
 
+    public static final Field SERVER_ZONE_OFFSET = Field.create("server.zone.offset")
+            .withDisplayName("Timezone offset of database server")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withValidation(Field::isZoneOffset)
+            .withDescription("Specifies timezone offset of the timezone where database server is located. "
+                    + "This value is used to create timestamps without timezones to the value as defined by server timezone.");
+
     public static final Field STATUS_UPDATE_INTERVAL_MS = Field.create("status.update.interval.ms")
             .withDisplayName("Status update interval (ms)")
             .withType(Type.INT) // Postgres doesn't accept long for this value
@@ -702,7 +712,8 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                                                      SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD,
                                                      SSL_ROOT_CERT, SSL_CLIENT_KEY, SNAPSHOT_LOCK_TIMEOUT_MS, ROWS_FETCH_SIZE, SSL_SOCKET_FACTORY,
                                                      STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, INCLUDE_UNKNOWN_DATATYPES,
-                                                     SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
+                                                     SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, CommonConnectorConfig.TOMBSTONES_ON_DELETE,
+                                                     SERVER_ZONE_OFFSET);
 
     private final Configuration config;
     private final String serverName;
@@ -752,6 +763,10 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
 
     protected Integer statusUpdateIntervalMillis() {
         return config.getInteger(STATUS_UPDATE_INTERVAL_MS, null);
+    }
+
+    protected ZoneOffset serverZoneOffset() {
+        return ZoneOffset.of(config.getString(SERVER_ZONE_OFFSET, "Z"));
     }
 
     protected TemporalPrecisionMode temporalPrecisionMode() {
@@ -840,7 +855,7 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                     DROP_SLOT_ON_STOP, SSL_SOCKET_FACTORY, STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE);
         Field.group(config, "Events", SCHEMA_WHITELIST, SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
                     COLUMN_BLACKLIST, INCLUDE_UNKNOWN_DATATYPES, SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
-                    CommonConnectorConfig.TOMBSTONES_ON_DELETE);
+                    CommonConnectorConfig.TOMBSTONES_ON_DELETE, SERVER_ZONE_OFFSET);
         Field.group(config, "Connector", TOPIC_SELECTION_STRATEGY, CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     SNAPSHOT_MODE, SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, ROWS_FETCH_SIZE);
         return config;

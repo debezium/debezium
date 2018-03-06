@@ -12,8 +12,10 @@ import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoField;
@@ -277,6 +279,8 @@ public class MySqlValueConverters extends JdbcValueConverters {
             case Types.TIME:
                 if (adaptiveTimeMicrosecondsPrecisionMode)
                     return data -> convertDurationToMicroseconds(column, fieldDefn, data);
+            case Types.TIMESTAMP:
+                return ((ValueConverter)(data-> convertTimestampToUTC(column, fieldDefn, data))).and(super.converter(column, fieldDefn));
             default:
                 break;
         }
@@ -802,5 +806,15 @@ public class MySqlValueConverters extends JdbcValueConverters {
             return handleUnknownData(column, fieldDefn, data);
         }
         return handleUnknownData(column, fieldDefn, data);
+    }
+
+    protected Object convertTimestampToUTC(Column column, Field fieldDefn, Object data) {
+        if (data == null) {
+            return null;
+        }
+        if (!(data instanceof Timestamp)) {
+            return data;
+        }
+        return LocalDateTime.ofInstant(((Timestamp)data).toInstant(), ZoneOffset.UTC);
     }
 }

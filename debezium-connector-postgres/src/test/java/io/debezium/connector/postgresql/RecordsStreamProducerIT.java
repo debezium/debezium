@@ -63,7 +63,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 "CREATE TABLE table_with_interval (id SERIAL PRIMARY KEY, title VARCHAR(512) NOT NULL, time_limit INTERVAL DEFAULT '60 days'::INTERVAL NOT NULL);" +
                 "INSERT INTO test_table(text) VALUES ('insert');";
         TestHelper.execute(statements);
-        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true).build());
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with(PostgresConnectorConfig.SERVER_ZONE_OFFSET, TestHelper.databaseTimeZone())
+                .build());
         setupRecordsProducer(config);
     }
 
@@ -644,7 +647,6 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
                 selector
         );
-
         recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.serverName()));
     }
 

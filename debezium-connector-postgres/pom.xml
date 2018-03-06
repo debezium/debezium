@@ -23,9 +23,10 @@
         <postgres.db.name>postgres</postgres.db.name>
         <postgres.encoding>UTF8</postgres.encoding>
         <postgres.system.lang>en_US.utf8</postgres.system.lang>
-        <docker.filter>debezium/postgres:${version.postgres.server}</docker.filter>
+        <postgres.image>debezium/postgres:${version.postgres.server}</postgres.image>
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
+        <docker.initimage>ln -fs /usr/share/zoneinfo/US/Samoa /etc/localtime &amp;&amp; echo timezone=US/Samoa >> /usr/share/postgresql/postgresql.conf.sample</docker.initimage>
 
         <protobuf.output.directory>${project.basedir}/generated-sources</protobuf.output.directory>
     </properties>
@@ -130,7 +131,7 @@
                     <images>
                         <image>
                             <!-- A Docker image using the Postgres Server with the DBZ decoderbufs plugin -->
-                            <name>${docker.filter}</name>  
+                            <name>debezium/postgres-server-test-database</name>
                             <run>
                                 <namingStrategy>none</namingStrategy>
                                 <env>
@@ -153,6 +154,10 @@
                                     <log>(?s)PostgreSQL init process complete.*database system is ready to accept connections</log>
                                 </wait>
                             </run>
+                            <build>
+                                <from>${postgres.image}</from>
+                                 <runCmds>${docker.initimage}</runCmds>
+                            </build>
                         </image>
                     </images>
                 </configuration>
@@ -165,6 +170,7 @@
                         <id>start</id>
                         <phase>pre-integration-test</phase>
                         <goals>
+                            <goal>build</goal>
                             <goal>start</goal>
                         </goals>
                     </execution>

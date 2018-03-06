@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql.connection;
 
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
+import java.time.ZoneOffset;
 
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 
@@ -29,8 +30,9 @@ public interface MessageDecoder {
      * @param buffer - binary representation of replication message
      * @param processor - message processing on arrival
      * @param typeRegistry - registry with known types
+     * @param serverTimezone - a timezone in which the database server is located
      */
-    void processMessage(final ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException;
+    void processMessage(final ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry, ZoneOffset serverTimezone) throws SQLException, InterruptedException;
 
     /**
      * Allows MessageDecoder to configure options with which the replication stream is started.
