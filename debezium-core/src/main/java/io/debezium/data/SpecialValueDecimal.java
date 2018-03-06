@@ -14,6 +14,7 @@ import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.errors.ConnectException;
 
+import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 
 /**
@@ -130,12 +131,12 @@ public class SpecialValueDecimal implements Serializable {
     }
 
     /**
-     * Returns a {@link SchemaBuilder} for a decimal numbers depending on {@link JdbcValueConverters.DecimalMode}.
-     * You can use the resulting SchemaBuilder
-     * to set additional schema settings such as required/optional, default value, and documentation.
+     * Returns a {@link SchemaBuilder} for a decimal number depending on {@link JdbcValueConverters.DecimalMode}. You
+     * can use the resulting schema builder to set additional schema settings such as required/optional, default value,
+     * and documentation.
      *
-     * @param mode - the mode in which the number should be encoded
-     * @param scale - scale of the decimal
+     * @param mode the mode in which the number should be encoded
+     * @param scale scale of the decimal
      * @return the schema builder
      */
     public static SchemaBuilder builder(DecimalMode mode, int scale) {
