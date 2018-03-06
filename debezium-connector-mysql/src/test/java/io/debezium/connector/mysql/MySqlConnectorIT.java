@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotLockingMode;
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
@@ -28,6 +27,7 @@ import org.junit.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
+import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotLockingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
@@ -238,6 +238,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
      * and its replacement snapshot.locking.mode is not explicitly defined, configuration validates as acceptable.
      */
     @Test
+    @FixFor("DBZ-602")
     public void shouldValidateLockingModeWithMinimalLocksEnabledConfiguration() {
         Configuration config = DATABASE.defaultJdbcConfigBuilder()
             .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
@@ -253,13 +254,16 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         MySqlConnector connector = new MySqlConnector();
         Config result = connector.validate(config.asMap());
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
+
+        assertThat(new MySqlConnectorConfig(config).getSnapshotLockingMode()).isEqualTo(SnapshotLockingMode.MINIMAL);
     }
 
     /**
-     * Validates that if you use the deprecated snapshot.minimal.locking configuration value is set to fa;se
+     * Validates that if you use the deprecated snapshot.minimal.locking configuration value is set to false
      * and its replacement snapshot.locking.mode is not explicitly defined, configuration validates as acceptable.
      */
     @Test
+    @FixFor("DBZ-602")
     public void shouldValidateLockingModeWithOutMinimalLocksEnabledConfiguration() {
         Configuration config = DATABASE.defaultJdbcConfigBuilder()
             .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
@@ -275,6 +279,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         MySqlConnector connector = new MySqlConnector();
         Config result = connector.validate(config.asMap());
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
+
+        assertThat(new MySqlConnectorConfig(config).getSnapshotLockingMode()).isEqualTo(SnapshotLockingMode.EXTENDED);
     }
 
     /**
@@ -282,6 +288,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
      * AND set its replacement snapshot.locking.mode an error will be generated.
      */
     @Test
+    @FixFor("DBZ-602")
     public void shouldFailToValidateConflictingLockingModeConfiguration() {
         Configuration config = DATABASE.defaultJdbcConfigBuilder()
             .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
@@ -306,6 +313,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
      * AND set its replacement snapshot.locking.mode an error will be generated.
      */
     @Test
+    @FixFor("DBZ-602")
     public void shouldFailToValidateConflictingLockingModeExtendedConfiguration() {
         Configuration config = DATABASE.defaultJdbcConfigBuilder()
             .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
@@ -330,6 +338,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
      * AND set its replacement snapshot.locking.mode an error will be generated.
      */
     @Test
+    @FixFor("DBZ-602")
     public void shouldFailToValidateConflictingLockingModeNoneConfiguration() {
         Configuration config = DATABASE.defaultJdbcConfigBuilder()
             .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
@@ -354,6 +363,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
      * 'none', 'schema_only', 'schema_only_recovery'
      */
     @Test
+    @FixFor("DBZ-602")
     public void shouldValidateLockingModeNoneWithValidSnapshotModeConfiguration() {
         final List<String> acceptableValues = Arrays.asList(
             SnapshotMode.NEVER.getValue(),
@@ -379,6 +389,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             MySqlConnector connector = new MySqlConnector();
             Config result = connector.validate(config.asMap());
             assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
+
+            assertThat(new MySqlConnectorConfig(config).getSnapshotLockingMode()).isEqualTo(SnapshotLockingMode.NONE);
         }
     }
 
@@ -387,6 +399,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
      * 'when_needed', 'initial', 'initial_recovery'
      */
     @Test
+    @FixFor("DBZ-602")
     public void shouldNotValidateLockingModeNoneWithInvalidSnapshotModeConfiguration() {
         final List<String> invalidValues = Arrays.asList(
             SnapshotMode.WHEN_NEEDED.getValue(),

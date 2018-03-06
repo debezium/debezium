@@ -793,8 +793,9 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                                + "while the database schemas and other metadata are being read. The remaining work in a snapshot involves selecting all rows from "
                                                                + "each table, and this can be done using the snapshot process' REPEATABLE READ transaction even when the lock is no longer held and "
                                                                + "other operations are updating the database. However, in some cases it may be desirable to block all writes for the entire duration "
-                                                               + "of the snapshot; in such cases set this property to 'extended'.  Using a value 'none' will prevent the connector from acquiring any "
-                                                               + "table locks during the snapshot process. This mode can only be used in combination with snapshot.mode values of 'schema_only' or 'schema_only_recovery'.")
+                                                               + "of the snapshot; in such cases set this property to 'extended'. Using a value of 'none' will prevent the connector from acquiring any "
+                                                               + "table locks during the snapshot process. This mode can only be used in combination with snapshot.mode values of 'schema_only' or "
+                                                               + "'schema_only_recovery' and is only safe to use if no schema changes are happening while the snapshot is taken.")
                                                            .withValidation(MySqlConnectorConfig::validateSnapshotLockingMode);
 
     public static final Field TIME_PRECISION_MODE = Field.create("time.precision.mode")
@@ -930,7 +931,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
     public MySqlConnectorConfig(Configuration config) {
         super(config);
 
-        // If deprectated snapshot.minimal.locking property is explicitly configured
+        // If deprecated snapshot.minimal.locking property is explicitly configured
         if (config.hasKey(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING.name())) {
             // Coerce it into its replacement appropriate snapshot.locking.mode value
             if (config.getBoolean(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING)) {
