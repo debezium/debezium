@@ -5,16 +5,12 @@
  */
 package io.debezium.connector.mysql;
 
-import static org.fest.assertions.Assertions.assertThat;
-import static org.junit.Assert.fail;
-
-import java.nio.file.Path;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-
+import io.debezium.config.Configuration;
+import io.debezium.data.KeyValueStore;
+import io.debezium.data.KeyValueStore.Collection;
+import io.debezium.data.SchemaChangeHistory;
+import io.debezium.data.VerifyRecord;
+import io.debezium.util.Testing;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -22,12 +18,19 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import io.debezium.config.Configuration;
-import io.debezium.data.KeyValueStore;
-import io.debezium.data.KeyValueStore.Collection;
-import io.debezium.data.SchemaChangeHistory;
-import io.debezium.data.VerifyRecord;
-import io.debezium.util.Testing;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+
+import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.fail;
 
 /**
  * @author Randall Hauch
@@ -94,6 +97,7 @@ public class SnapshotReaderIT {
         // Poll for records ...
         // Testing.Print.enable();
         List<SourceRecord> records = null;
+//        Testing.Print.enable();
         KeyValueStore store = KeyValueStore.createForTopicsBeginningWith(DATABASE.getServerName() + ".");
         SchemaChangeHistory schemaChanges = new SchemaChangeHistory(DATABASE.getServerName());
         while ((records = reader.poll()) != null) {
@@ -105,7 +109,8 @@ public class SnapshotReaderIT {
         }
         // The last poll should always return null ...
         assertThat(records).isNull();
-
+        Testing.print("values:"+store.databases());
+        Testing.print("collections:"+store.collections());
         // There should be no schema changes ...
         assertThat(schemaChanges.recordCount()).isEqualTo(0);
 
@@ -445,6 +450,73 @@ public class SnapshotReaderIT {
         } else {
             fail("failed to complete the snapshot within 10 seconds");
         }
+    }
+
+    @Test
+    public void shouldSnapshotTablesInOrderSpecifiedInTablesWhitelist() throws Exception{
+        config = simpleConfig()
+                .with(MySqlConnectorConfig.TABLE_WHITELIST, "connector_test_ro_(.*).orders,connector_test_ro_(.*).Products,connector_test_ro_(.*).products_on_hand,connector_test_ro_(.*).dbz_342_timetest")
+                .build();
+        context = new MySqlTaskContext(config);
+        context.start();
+        reader = new SnapshotReader("snapshot", context);
+        reader.uponCompletion(completed::countDown);
+        reader.generateInsertEvents();
+
+        // Start the snapshot ...
+        reader.start();
+
+        // Poll for records ...
+        List<SourceRecord> records;
+        LinkedHashSet<String> tablesInOrder = new LinkedHashSet<>();
+        LinkedHashSet<String> tablesInOrderExpected = getTableNamesInSpecifiedOrder("orders", "Products", "products_on_hand", "dbz_342_timetest");
+        while ((records = reader.poll()) != null) {
+            records.forEach(record -> {
+                VerifyRecord.isValid(record);
+                if (Optional.ofNullable(((Struct) record.value())).isPresent())
+                    tablesInOrder.add(getTableNameFromSourceRecord.apply(record));
+
+            });
+        }
+        assertArrayEquals(tablesInOrder.toArray(), tablesInOrderExpected.toArray());
+    }
+
+    @Test
+    public void shouldSnapshotTablesInLexicographicalOrder() throws Exception{
+        config = simpleConfig()
+                .build();
+        context = new MySqlTaskContext(config);
+        context.start();
+        reader = new SnapshotReader("snapshot", context);
+        reader.uponCompletion(completed::countDown);
+        reader.generateInsertEvents();
+
+        // Start the snapshot ...
+        reader.start();
+
+        // Poll for records ...
+//        Testing.Print.enable();
+        List<SourceRecord> records;
+        LinkedHashSet<String> tablesInOrder = new LinkedHashSet<>();
+        LinkedHashSet<String> tablesInOrderExpected = getTableNamesInSpecifiedOrder("Products", "customers", "dbz_342_timetest", "orders", "products_on_hand");
+        while ((records = reader.poll()) != null) {
+            records.forEach(record -> {
+                VerifyRecord.isValid(record);
+                if (Optional.ofNullable(((Struct) record.value())).isPresent())
+                    tablesInOrder.add(getTableNameFromSourceRecord.apply(record));
+
+            });
+        }
+        assertArrayEquals(tablesInOrder.toArray(), tablesInOrderExpected.toArray());
+    }
+
+    private Function<SourceRecord, String> getTableNameFromSourceRecord = sourceRecord -> ((Struct) sourceRecord.value()).getStruct("source").getString("table");
+
+    private LinkedHashSet<String> getTableNamesInSpecifiedOrder(String ... tables){
+        LinkedHashSet<String> tablesInOrderExpected = new LinkedHashSet<>();
+        for (String table : tables)
+            tablesInOrderExpected.add(table);
+        return tablesInOrderExpected;
     }
     
     public void shouldCreateSnapshotSchemaOnly() throws Exception {
