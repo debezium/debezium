@@ -2,6 +2,39 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 0.7.4
+March 7th, 2018 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12336214)
+
+### New features since 0.7.3
+
+* Provide MySQL snapshot mode that does not require table locks [DBZ-602](https://issues.jboss.org/browse/DBZ-602)
+* Add support for columns of type "bytea" [DBZ-605](https://issues.jboss.org/browse/DBZ-605)
+* Add string as an option for decimal.handling.mode [DBZ-611](https://issues.jboss.org/browse/DBZ-611)
+* Support CREATE TABLE statements with PARTITION ... ENGINE=InnoDB [DBZ-641](https://issues.jboss.org/browse/DBZ-641)
+* Document VariableScaleDecimal in PG connector docs [DBZ-631](https://issues.jboss.org/browse/DBZ-631)
+* Propagate schema validator by passing AvroValidator instance instead of Function<String, String> [DBZ-626](https://issues.jboss.org/browse/DBZ-626)
+* Move `MAX_QUEUE_SIZE`, `MAX_BATCH_SIZE` and `POLL_INTERVAL_MS` to CommonConnectorConfig [DBZ-628](https://issues.jboss.org/browse/DBZ-628)
+* Unify common start-up logic across connectors [DBZ-630](https://issues.jboss.org/browse/DBZ-630)
+* Removing unused code from database history classes [DBZ-632](https://issues.jboss.org/browse/DBZ-632)
+
+
+### Breaking changes since 0.7.3
+
+`NUMERIC` and geo-spatial schema types were optional regardless of database column configuration. This was fixed in [DBZ-635](https://issues.jboss.org/browse/DBZ-635)
+
+### Fixes and changes since 0.7.3
+
+* Numeric datatype is transferred with lost precision [DBZ-351](https://issues.jboss.org/browse/DBZ-351)
+* Cannot Serialize NaN value(numeric field) in Postgres [DBZ-606](https://issues.jboss.org/browse/DBZ-606)
+* Decimal datatype DDL issues [DBZ-615](https://issues.jboss.org/browse/DBZ-615)
+* Avoid NPE if `confirmed_flush_lsn` is null [DBZ-623](https://issues.jboss.org/browse/DBZ-623)
+* REAL column values are omitted if value is an exact integer [DBZ-625](https://issues.jboss.org/browse/DBZ-625)
+* Fix intermittent error in BinlogReaderIT [DBZ-629](https://issues.jboss.org/browse/DBZ-629)
+* Schema for NUMERIC and geo-spatial array columns shouldn't be optional by default [DBZ-635](https://issues.jboss.org/browse/DBZ-635)
+* Fix typo in README of debezium/connect-base image [DBZ-636](https://issues.jboss.org/browse/DBZ-636)
+* Avoid repeated creation of Envelope schema [DBZ-620](https://issues.jboss.org/browse/DBZ-620)
+
+
 ## 0.7.3
 February 14th, 2018 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12336643)
 
