@@ -20,7 +20,8 @@ March 7th, 2018 [Detailed release notes](https://issues.jboss.org/secure/Release
 
 ### Breaking changes since 0.7.3
 
-`NUMERIC` and geo-spatial schema types were optional regardless of database column configuration. This was fixed in [DBZ-635](https://issues.jboss.org/browse/DBZ-635)
+`NUMERIC` and geo-spatial schema types were optional regardless of database column configuration. This was fixed in [DBZ-635](https://issues.jboss.org/browse/DBZ-635).
+PostgresSQL decoder plug-in now uses text to transfer decimal values insted of double - [DBZ-351](https://issues.jboss.org/browse/DBZ-351). Debezium is backward compatible with the old version. It is thus necessary first to upgrade Debezium and after that upgrade logical decoder plug-in.
 
 ### Fixes and changes since 0.7.3
 
