@@ -47,11 +47,29 @@ public final class Strings {
      * @param input the input string
      * @param splitter the function that splits the input into multiple items; may not be null
      * @param factory the factory for creating string items into filter matches; may not be null
-     * @return the list of objects included in the list; never null
+     * @return the set of objects included in the list; never null
      */
-    public static <T> Set<T> listOf(String input, Function<String, String[]> splitter, Function<String, T> factory) {
+    public static <T> Set<T> setOf(String input, Function<String, String[]> splitter, Function<String, T> factory) {
         if (input == null) return Collections.emptySet();
         Set<T> matches = new HashSet<>();
+        for (String item : splitter.apply(input)) {
+            T obj = factory.apply(item);
+            if (obj != null) matches.add(obj);
+        }
+        return matches;
+    }
+
+    /**
+     * Generate the list of values that are included in the list.
+     *
+     * @param input the input string
+     * @param splitter the function that splits the input into multiple items; may not be null
+     * @param factory the factory for creating string items into filter matches; may not be null
+     * @return the list of objects included in the list; never null
+     */
+    public static <T> List<T> listOf(String input, Function<String, String[]> splitter, Function<String, T> factory) {
+        if (input == null) return Collections.emptyList();
+        List<T> matches = new ArrayList<T>();
         for (String item : splitter.apply(input)) {
             T obj = factory.apply(item);
             if (obj != null) matches.add(obj);
@@ -65,10 +83,10 @@ public final class Strings {
      * @param input the input string
      * @param delimiter the character used to delimit the items in the input
      * @param factory the factory for creating string items into filter matches; may not be null
-     * @return the list of objects included in the list; never null
+     * @return the set of objects included in the list; never null
      */
-    public static <T> Set<T> listOf(String input, char delimiter, Function<String, T> factory) {
-        return listOf(input, (str) -> str.split("[" + delimiter + "]"), factory);
+    public static <T> Set<T> setOf(String input, char delimiter, Function<String, T> factory) {
+        return setOf(input, (str) -> str.split("[" + delimiter + "]"), factory);
     }
 
     /**
@@ -76,10 +94,10 @@ public final class Strings {
      *
      * @param input the input string
      * @param factory the factory for creating string items into filter matches; may not be null
-     * @return the list of objects included in the list; never null
+     * @return the set of objects included in the list; never null
      */
-    public static <T> Set<T> listOf(String input, Function<String, T> factory) {
-        return listOf(input, ',', factory);
+    public static <T> Set<T> setOf(String input, Function<String, T> factory) {
+        return setOf(input, ',', factory);
     }
 
     /**
@@ -91,11 +109,26 @@ public final class Strings {
      * @throws PatternSyntaxException if the input includes an invalid regular expression
      */
     public static Set<Pattern> setOfRegex(String input) {
-        return listOf(input, RegExSplitter::split, Pattern::compile);
+        return setOf(input, RegExSplitter::split, Pattern::compile);
     }
 
     /**
      * Generate the set of regular expression {@link Pattern}s that are specified in the string containing comma-separated
+     * regular expressions.
+     *
+     * @param input the input string with comma-separated regular expressions. Comma can be escaped with backslash.
+     * @param regexFlags the flags for {@link Pattern#compile(String, int) compiling regular expressions}
+     * @return the set of regular expression {@link Pattern}s included in the set; never null
+     * @throws PatternSyntaxException if the input includes an invalid regular expression
+     * @throws IllegalArgumentException if bit values other than those corresponding to the defined
+     *             match flags are set in {@code regexFlags}
+     */
+    public static Set<Pattern> setOfRegex(String input, int regexFlags) {
+        return setOf(input, RegExSplitter::split, (str) -> Pattern.compile(str, regexFlags));
+    }
+
+    /**
+     * Generate the list of regular expression {@link Pattern}s that are specified in the string containing comma-separated
      * regular expressions.
      *
      * @param input the input string with comma-separated regular expressions. Comma can be escaped with backslash.
@@ -105,7 +138,7 @@ public final class Strings {
      * @throws IllegalArgumentException if bit values other than those corresponding to the defined
      *             match flags are set in {@code regexFlags}
      */
-    public static Set<Pattern> listOfRegex(String input, int regexFlags) {
+    public static List<Pattern> listOfRegex(String input, int regexFlags) {
         return listOf(input, RegExSplitter::split, (str) -> Pattern.compile(str, regexFlags));
     }
 
