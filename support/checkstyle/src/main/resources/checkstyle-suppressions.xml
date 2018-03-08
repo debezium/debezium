@@ -11,5 +11,5 @@
     <!--exclude any protobuf generated files-->
     <suppress checks="." files=".[\\/]io[\\/]debezium[\\/]connector[\\/]postgresql[\\/]proto[\\/].*\.java$"/>
     <!--exclude any antlr generated files-->
-    <suppress checks="." files=".[\\/]io[\\/]debezium[\\/]connector[\\/]mysql[\\/]antlr[\\/]generated[\\/].*\.java$"/>
+    <suppress checks="." files=".[\\/]io[\\/]debezium[\\/]ddl[\\/]parser[\\/]mysql[\\/]generated[\\/].*\.java$"/>
 </suppressions>
