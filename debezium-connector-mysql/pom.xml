@@ -17,6 +17,10 @@
             <artifactId>debezium-core</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-ddl-parser</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.github.shyiko</groupId>
             <artifactId>mysql-binlog-connector-java</artifactId>
         </dependency>
@@ -38,11 +42,6 @@
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.antlr</groupId>
-            <artifactId>antlr4-runtime</artifactId>
-            <version>${antlr.version}</version>
         </dependency>
 
         <!-- Testing -->
@@ -110,9 +109,6 @@
         <docker.skip>false</docker.skip>
         <docker.initimage>ln -s /usr/share/zoneinfo/US/Samoa /etc/localtime</docker.initimage>
 
-        <!-- ANTLR properties -->
-        <antlr.version>4.7</antlr.version>
-        <antlr.source.dir>${project.basedir}/src/main/resources/antlr4</antlr.source.dir>
     </properties>
     <build>
         <plugins>
@@ -338,21 +334,6 @@
                         <id>verify</id>
                         <goals>
                             <goal>verify</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.antlr</groupId>
-                <artifactId>antlr4-maven-plugin</artifactId>
-                <version>${antlr.version}</version>
-                <configuration>
-                    <sourceDirectory>${antlr.source.dir}</sourceDirectory>
-                </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>antlr4</goal>
                         </goals>
                     </execution>
                 </executions>
