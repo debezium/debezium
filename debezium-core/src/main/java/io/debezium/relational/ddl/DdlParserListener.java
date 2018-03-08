@@ -9,11 +9,11 @@ import io.debezium.annotation.Immutable;
 import io.debezium.relational.TableId;
 
 /**
- * An interface that can listen to various actions of a {@link DdlParser}. Every kind of {@link Event} has a {@link EventType
+ * An interface that can listen to various actions of a {@link LegacyDdlParser}. Every kind of {@link Event} has a {@link EventType
  * type} that makes it easier to implement a {@link DdlParserListener} using a {@code switch} statement. However, each kind of
  * {@link Event} also may have additional data associated with it.
  * <p>
- * Clearly not all DDL statements processed by a {@link DdlParser parser} will result in an {@link Event event}.
+ * Clearly not all DDL statements processed by a {@link LegacyDdlParser parser} will result in an {@link Event event}.
  * 
  * @author Randall Hauch
  */
