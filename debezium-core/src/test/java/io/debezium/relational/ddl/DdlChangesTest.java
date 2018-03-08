@@ -18,7 +18,7 @@ import io.debezium.relational.ddl.DdlParserListener.EventType;
 public class DdlChangesTest {
 
     private DdlChanges changes;
-    private DdlParser parser;
+    private LegacyDdlParser parser;
     private Tables tables;
 
     @Before

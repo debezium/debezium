@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.function.Predicates;
 import io.debezium.relational.Tables;
-import io.debezium.relational.ddl.DdlParser;
+import io.debezium.relational.ddl.LegacyDdlParser;
 import io.debezium.text.ParsingException;
 
 /**
@@ -57,7 +57,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     }
 
     @Override
-    public final void recover(Map<String, ?> source, Map<String, ?> position, Tables schema, DdlParser ddlParser) {
+    public final void recover(Map<String, ?> source, Map<String, ?> position, Tables schema, LegacyDdlParser ddlParser) {
         logger.debug("Recovering DDL history for source partition {} and offset {}", source, position);
         HistoryRecord stopPoint = new HistoryRecord(source, position, null, null);
         recoverRecords(recovered -> {
