@@ -22,11 +22,11 @@ import io.debezium.text.TokenStream.Marker;
  * A parser of SQL data types. Callers set up a parser and register patterns that describe the possible lists of data type tokens,
  * and then repeatedly {@link #parse(TokenStream, Consumer) parse} {@link TokenStream streams of tokens} looking for matches.
  * <p>
- * This is typically used within a {@link DdlParser} implementation to parse and identify data types appearing within a stream
+ * This is typically used within a {@link LegacyDdlParser} implementation to parse and identify data types appearing within a stream
  * of DDL content.
  * 
  * @author Randall Hauch
- * @see DdlParser
+ * @see LegacyDdlParser
  */
 @ThreadSafe
 public class DataTypeParser {

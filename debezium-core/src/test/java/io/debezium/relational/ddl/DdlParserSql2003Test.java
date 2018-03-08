@@ -19,7 +19,7 @@ import io.debezium.relational.Tables;
 
 public class DdlParserSql2003Test {
 
-    private DdlParser parser;
+    private LegacyDdlParser parser;
     private Tables tables;
 
     @Before

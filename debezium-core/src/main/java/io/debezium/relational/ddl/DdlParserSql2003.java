@@ -28,7 +28,7 @@ import io.debezium.text.TokenStream.Marker;
  * @author Randall Hauch
  */
 @NotThreadSafe
-public class DdlParserSql2003 extends DdlParser {
+public class DdlParserSql2003 extends LegacyDdlParser {
 
     /**
      * Create a new DDL parser for SQL-2003 that does not include view definitions.
