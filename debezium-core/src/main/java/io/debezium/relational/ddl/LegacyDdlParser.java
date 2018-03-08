@@ -5,9 +5,21 @@
  */
 package io.debezium.relational.ddl;
 
+import io.debezium.annotation.NotThreadSafe;
+import io.debezium.relational.Column;
+import io.debezium.relational.Table;
+import io.debezium.relational.TableId;
+import io.debezium.relational.Tables;
+import io.debezium.relational.ddl.DdlParserListener.TableCreatedEvent;
+import io.debezium.text.MultipleParsingExceptions;
+import io.debezium.text.ParsingException;
+import io.debezium.text.Position;
+import io.debezium.text.TokenStream;
+import io.debezium.text.TokenStream.Marker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.math.BigDecimal;
-import java.sql.Types;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -16,29 +28,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import io.debezium.annotation.NotThreadSafe;
-import io.debezium.relational.Column;
-import io.debezium.relational.ColumnEditor;
-import io.debezium.relational.Table;
-import io.debezium.relational.TableId;
-import io.debezium.relational.Tables;
-import io.debezium.relational.ddl.DdlParserListener.DatabaseAlteredEvent;
-import io.debezium.relational.ddl.DdlParserListener.DatabaseCreatedEvent;
-import io.debezium.relational.ddl.DdlParserListener.TableAlteredEvent;
-import io.debezium.relational.ddl.DdlParserListener.TableCreatedEvent;
-import io.debezium.relational.ddl.DdlParserListener.TableDroppedEvent;
-import io.debezium.relational.ddl.DdlParserListener.TableIndexCreatedEvent;
-import io.debezium.relational.ddl.DdlParserListener.TableIndexDroppedEvent;
-import io.debezium.text.MultipleParsingExceptions;
-import io.debezium.text.ParsingException;
-import io.debezium.text.Position;
-import io.debezium.text.TokenStream;
-import io.debezium.text.TokenStream.Marker;
 
 /**
  * A parser for DDL statements.
@@ -48,7 +37,7 @@ import io.debezium.text.TokenStream.Marker;
  * @author Barry LaFond
  */
 @NotThreadSafe
-public class LegacyDdlParser implements DdlParser {
+public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
 
     protected static interface TokenSet {
         void add(String token);
@@ -62,14 +51,10 @@ public class LegacyDdlParser implements DdlParser {
 
     private final Set<String> keywords = new HashSet<>();
     private final Set<String> statementStarts = new HashSet<>();
-    private final String terminator;
-    private String currentSchema = null;
-    protected final boolean skipViews;
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     protected final DataTypeParser dataTypeParser = new DataTypeParser();
     protected Tables databaseTables;
     protected TokenStream tokens;
-    private final List<DdlParserListener> listeners = new CopyOnWriteArrayList<>();
 
     /**
      * Create a new parser that uses the supplied {@link DataTypeParser}, but that does not include view definitions.
@@ -87,38 +72,10 @@ public class LegacyDdlParser implements DdlParser {
      * @param includeViews {@code true} if view definitions should be included, or {@code false} if they should be skipped
      */
     public LegacyDdlParser(String terminator, boolean includeViews) {
-        this.terminator = terminator != null ? terminator : ";";
-        this.skipViews = !includeViews;
+        super(terminator, includeViews);
         initializeDataTypes(dataTypeParser);
         initializeKeywords(keywords::add);
         initializeStatementStarts(statementStarts::add);
-    }
-
-    /**
-     * Add a listener. This method should not be called more than once with the same listener object, since the result will be
-     * that object will be called multiple times for each event.
-     *
-     * @param listener the listener; if null nothing is done
-     */
-    public void addListener(DdlParserListener listener) {
-        if (listener != null) listeners.add(listener);
-    }
-
-    /**
-     * Remove an existing listener.
-     *
-     * @param listener the listener; if null nothing is done
-     * @return {@code true} if the listener was removed, or {@code false} otherwise
-     */
-    public boolean removeListener(DdlParserListener listener) {
-        return listener != null ? listeners.remove(listener) : false;
-    }
-
-    /**
-     * Remove all existing listeners.
-     */
-    public void removeListeners() {
-        listeners.clear();
     }
 
     protected void initializeDataTypes(DataTypeParser dataTypeParser) {
@@ -129,14 +86,6 @@ public class LegacyDdlParser implements DdlParser {
 
     protected void initializeStatementStarts(TokenSet statementStartTokens) {
         statementStartTokens.add("CREATE", "ALTER", "DROP", "INSERT", "SET", "GRANT", "REVOKE");
-    }
-
-    /**
-     * The token used to terminate a DDL statement.
-     * @return the terminating token; never null
-     */
-    public final String terminator() {
-        return terminator;
     }
 
     /**
@@ -152,34 +101,8 @@ public class LegacyDdlParser implements DdlParser {
     protected int determineTokenType(int type, String token) {
         if (statementStarts.contains(token)) type |= DdlTokenizer.STATEMENT_KEY;
         if (keywords.contains(token)) type |= DdlTokenizer.KEYWORD;
-        if (terminator.equals(token)) type |= DdlTokenizer.STATEMENT_TERMINATOR;
+        if (terminator().equals(token)) type |= DdlTokenizer.STATEMENT_TERMINATOR;
         return type;
-    }
-
-    /**
-     * Set the name of the current schema used when {@link #resolveTableId(String, String) resolving} {@link TableId}s.
-     *
-     * @param name the name of the current schema; may be null
-     */
-    @Override
-    public void setCurrentSchema(String name) {
-        this.currentSchema = name;
-    }
-
-    // this parser doesn't distinguish between database name and schema name; what's stored as "database name"
-    // in history records is used as "schema" here
-    @Override
-    public void setCurrentDatabase(String databaseName) {
-        this.currentSchema = databaseName;
-    }
-
-    /**
-     * Get the name of the current schema.
-     *
-     * @return the current schema name, or null if the current schema name has not been {@link #setCurrentSchema(String) set}
-     */
-    public String currentSchema() {
-        return currentSchema;
     }
 
     /**
@@ -237,27 +160,6 @@ public class LegacyDdlParser implements DdlParser {
             if (id != null) ids.add(id);
         }
         return ids;
-    }
-
-    /**
-     * Create a {@link TableId} from the supplied schema and table names. By default, this method uses the supplied schema name
-     * as the TableId's catalog, which often matches the catalog name in JDBC database metadata.
-     *
-     * @param schemaName the name of the schema; may be null if not specified
-     * @param tableName the name of the table; should not be null
-     * @return the table identifier; never null
-     */
-    protected TableId resolveTableId(String schemaName, String tableName) {
-        return new TableId(schemaName, null, tableName);
-    }
-
-    /**
-     * Determine whether parsing should exclude comments from the token stream. By default, this method returns {@code true}.
-     *
-     * @return {@code true} if comments should be skipped/excluded, or {@code false} if they should not be skipped
-     */
-    protected boolean skipComments() {
-        return true;
     }
 
     /**
@@ -386,24 +288,13 @@ public class LegacyDdlParser implements DdlParser {
     }
 
     /**
-     * Signal an event to all listeners.
-     *
-     * @param event the event; may not be null
-     */
-    protected void signalEvent(DdlParserListener.Event event) {
-        if (event != null && !listeners.isEmpty()) {
-            listeners.forEach(listener -> listener.handle(event));
-        }
-    }
-
-    /**
      * Signal a create database event to all listeners.
      *
      * @param databaseName the database name; may not be null
      * @param statementStart the start of the statement; may not be null
      */
     protected void signalCreateDatabase(String databaseName, Marker statementStart) {
-        signalEvent(new DatabaseCreatedEvent(databaseName, statement(statementStart)));
+        signalCreateDatabase(databaseName, statement(statementStart));
     }
 
     /**
@@ -414,7 +305,7 @@ public class LegacyDdlParser implements DdlParser {
      * @param statementStart the start of the statement; may not be null
      */
     protected void signalAlterDatabase(String databaseName, String previousDatabaseName, Marker statementStart) {
-        signalEvent(new DatabaseAlteredEvent(databaseName, previousDatabaseName, statement(statementStart)));
+        signalAlterDatabase(databaseName, previousDatabaseName, statement(statementStart));
     }
 
     /**
@@ -424,7 +315,7 @@ public class LegacyDdlParser implements DdlParser {
      * @param statementStart the start of the statement; may not be null
      */
     protected void signalDropDatabase(String databaseName, Marker statementStart) {
-        signalEvent(new DatabaseCreatedEvent(databaseName, statement(statementStart)));
+        signalDropDatabase(databaseName, statement(statementStart));
     }
 
     /**
@@ -434,7 +325,7 @@ public class LegacyDdlParser implements DdlParser {
      * @param statementStart the start of the statement; may not be null
      */
     protected void signalCreateTable(TableId id, Marker statementStart) {
-        signalEvent(new TableCreatedEvent(id, statement(statementStart), false));
+        signalCreateTable(id, statement(statementStart));
     }
 
     /**
@@ -445,18 +336,7 @@ public class LegacyDdlParser implements DdlParser {
      * @param statementStart the start of the statement; may not be null
      */
     protected void signalAlterTable(TableId id, TableId previousId, Marker statementStart) {
-        signalEvent(new TableAlteredEvent(id, previousId, statement(statementStart), false));
-    }
-
-    /**
-     * Signal an alter table event to all listeners.
-     *
-     * @param id the table identifier; may not be null
-     * @param previousId the previous name of the view if it was renamed, or null if it was not renamed
-     * @param statement the DDL statement; may not be null
-     */
-    protected void signalAlterTable(TableId id, TableId previousId, String statement) {
-        signalEvent(new TableAlteredEvent(id, previousId, statement, false));
+        signalAlterTable(id, previousId, statement(statementStart));
     }
 
     /**
@@ -466,17 +346,7 @@ public class LegacyDdlParser implements DdlParser {
      * @param statementStart the start of the statement; may not be null
      */
     protected void signalDropTable(TableId id, Marker statementStart) {
-        signalEvent(new TableDroppedEvent(id, statement(statementStart), false));
-    }
-
-    /**
-     * Signal a drop table event to all listeners.
-     *
-     * @param id the table identifier; may not be null
-     * @param statement the statement; may not be null
-     */
-    protected void signalDropTable(TableId id, String statement) {
-        signalEvent(new TableDroppedEvent(id, statement, false));
+        signalDropTable(id, statement(statementStart));
     }
 
     /**
@@ -497,7 +367,7 @@ public class LegacyDdlParser implements DdlParser {
      * @param statementStart the start of the statement; may not be null
      */
     protected void signalAlterView(TableId id, TableId previousId, Marker statementStart) {
-        signalEvent(new TableAlteredEvent(id, previousId, statement(statementStart), true));
+        signalAlterView(id, previousId, statement(statementStart));
     }
 
     /**
@@ -507,17 +377,7 @@ public class LegacyDdlParser implements DdlParser {
      * @param statementStart the start of the statement; may not be null
      */
     protected void signalDropView(TableId id, Marker statementStart) {
-        signalEvent(new TableDroppedEvent(id, statement(statementStart), true));
-    }
-
-    /**
-     * Signal a drop view event to all listeners.
-     *
-     * @param id the table identifier; may not be null
-     * @param statement the statement; may not be null
-     */
-    protected void signalDropView(TableId id, String statement) {
-        signalEvent(new TableDroppedEvent(id, statement, true));
+        signalDropView(id, statement(statementStart));
     }
 
     /**
@@ -528,7 +388,7 @@ public class LegacyDdlParser implements DdlParser {
      * @param statementStart the start of the statement; may not be null
      */
     protected void signalCreateIndex(String indexName, TableId id, Marker statementStart) {
-        signalEvent(new TableIndexCreatedEvent(indexName,id, statement(statementStart)));
+        signalCreateIndex(indexName, id, statement(statementStart));
     }
 
     /**
@@ -539,7 +399,7 @@ public class LegacyDdlParser implements DdlParser {
      * @param statementStart the start of the statement; may not be null
      */
     protected void signalDropIndex(String indexName, TableId id, Marker statementStart) {
-        signalEvent(new TableIndexDroppedEvent(indexName,id, statement(statementStart)));
+        signalDropIndex(indexName, id, statement(statementStart));
     }
 
     protected void debugParsed(Marker statementStart) {
@@ -558,10 +418,6 @@ public class LegacyDdlParser implements DdlParser {
 
     protected String statement(Marker statementStart) {
         return removeLineFeeds(tokens.getContentFrom(statementStart));
-    }
-
-    private String removeLineFeeds(String input) {
-        return input.replaceAll("[\\n|\\t]", "");
     }
 
     /**
@@ -682,32 +538,6 @@ public class LegacyDdlParser implements DdlParser {
             throw new ParsingException(position, msg + " at line " + position.line() + ", column " + position.column());
         }
         throw new MultipleParsingExceptions(msg + " at line " + position.line() + ", column " + position.column(), errors);
-    }
-
-    /**
-     * Utility method to accumulate a parsing exception.
-     * @param e the parsing exception
-     * @param list the list of previous parsing exceptions; may be null
-     * @return the list of previous and current parsing exceptions; if {@code e} is null then always {@code list}, but otherwise non-null list
-     */
-    protected Collection<ParsingException> accumulateParsingFailure(ParsingException e, Collection<ParsingException> list) {
-        if (e == null) return list;
-        if (list == null) list = new ArrayList<ParsingException>();
-        list.add(e);
-        return list;
-    }
-
-    /**
-     * Utility method to accumulate a parsing exception.
-     * @param e the multiple parsing exceptions
-     * @param list the list of previous parsing exceptions; may be null
-     * @return the list of previous and current parsing exceptions; if {@code e} is null then always {@code list}, but otherwise non-null list
-     */
-    protected Collection<ParsingException> accumulateParsingFailure(MultipleParsingExceptions e, Collection<ParsingException> list) {
-        if (e == null) return list;
-        if (list == null) list = new ArrayList<ParsingException>();
-        list.addAll(e.getErrors());
-        return list;
     }
 
     protected Object parseLiteral(Marker start) {
@@ -865,75 +695,6 @@ public class LegacyDdlParser implements DdlParser {
         });
         tokens.rewind(startOfFrom);
         return columnsByName;
-    }
-
-    protected Column createColumnFromConstant(String columnName, String constantValue) {
-        ColumnEditor column = Column.editor().name(columnName);
-        try {
-            if (constantValue.startsWith("'") || constantValue.startsWith("\"")) {
-                column.type("CHAR");
-                column.jdbcType(Types.CHAR);
-                column.length(constantValue.length() - 2);
-            } else if (constantValue.equalsIgnoreCase("TRUE") || constantValue.equalsIgnoreCase("FALSE")) {
-                column.type("BOOLEAN");
-                column.jdbcType(Types.BOOLEAN);
-            } else {
-                setTypeInfoForConstant(constantValue, column);
-            }
-        } catch (Throwable t) {
-            logger.debug("Unable to create an artificial column for the constant: " + constantValue);
-        }
-        return column.create();
-    }
-
-    protected void setTypeInfoForConstant(String constantValue, ColumnEditor column) {
-        try {
-            Integer.parseInt(constantValue);
-            column.type("INTEGER");
-            column.jdbcType(Types.INTEGER);
-        } catch (NumberFormatException e) {}
-        try {
-            Long.parseLong(constantValue);
-            column.type("BIGINT");
-            column.jdbcType(Types.BIGINT);
-        } catch (NumberFormatException e) {}
-        try {
-            Float.parseFloat(constantValue);
-            column.type("FLOAT");
-            column.jdbcType(Types.FLOAT);
-        } catch (NumberFormatException e) {}
-        try {
-            Double.parseDouble(constantValue);
-            column.type("DOUBLE");
-            column.jdbcType(Types.DOUBLE);
-            int precision = 0;
-            int scale = 0;
-            boolean foundDecimalPoint = false;
-            for (int i = 0; i < constantValue.length(); i++) {
-                char c = constantValue.charAt(i);
-                if (c == '+' || c == '-') {
-                    continue;
-                } else if (c == '.') {
-                    foundDecimalPoint = true;
-                } else if (Character.isDigit(c)) {
-                    if (foundDecimalPoint)
-                        ++scale;
-                    else
-                        ++precision;
-                } else {
-                    break;
-                }
-            }
-            column.length(precision);
-            column.scale(scale);
-        } catch (NumberFormatException e) {}
-        try {
-            BigDecimal decimal = new BigDecimal(constantValue);
-            column.type("DECIMAL");
-            column.jdbcType(Types.DECIMAL);
-            column.length(decimal.precision());
-            column.scale(decimal.precision());
-        } catch (NumberFormatException e) {}
     }
 
     protected String determineTypeNameForConstant(long value) {
