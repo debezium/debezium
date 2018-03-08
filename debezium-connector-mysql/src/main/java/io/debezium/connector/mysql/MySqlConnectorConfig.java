@@ -6,10 +6,8 @@
 package io.debezium.connector.mysql;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
 import java.util.Objects;
 import java.util.Random;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -1073,7 +1071,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
             return 1;
         }
 
-        // Determine the snapshot mode defined.
+        /*// Determine the snapshot mode defined.
         final SnapshotMode snapshotModeValue = SnapshotMode.parse(config.getString(MySqlConnectorConfig.SNAPSHOT_MODE));
 
         // A value of SNAPSHOT_LOCKING_MODE 'none' is only valid when SNAPSHOT_MODE is configured to not include data.
@@ -1084,7 +1082,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                 .collect(Collectors.joining(", "));
             problems.accept(SNAPSHOT_LOCKING_MODE, lockingModeValue, "Can only be set to 'none' when " + SNAPSHOT_MODE.name() + " is set to [" + acceptableValues + "]");
             return 1;
-        }
+        }*/
 
         // Everything checks out ok.
         return 0;
