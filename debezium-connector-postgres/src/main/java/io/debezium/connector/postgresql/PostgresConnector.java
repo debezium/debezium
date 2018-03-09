@@ -12,15 +12,14 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
-import org.apache.kafka.connect.source.SourceConnector;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.BaseConnector;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 
 /**
@@ -32,10 +31,7 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
  * 
  * @author Horia Chiorean
  */
-public class PostgresConnector extends SourceConnector {
-    
-    private Logger logger = LoggerFactory.getLogger(getClass());
-    private Map<String, String> props;
+public class PostgresConnector extends BaseConnector {
 
     public PostgresConnector() {
     }
@@ -48,11 +44,6 @@ public class PostgresConnector extends SourceConnector {
     @Override
     public Class<? extends Task> taskClass() {
         return PostgresConnectorTask.class;
-    }
-
-    @Override
-    public void start(Map<String, String> props) {
-        this.props = props;
     }
 
     @Override

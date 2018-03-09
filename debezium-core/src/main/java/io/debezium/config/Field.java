@@ -1123,6 +1123,22 @@ public final class Field {
         return 1;
     }
 
+    public static int isOne(Configuration config, Field field, ValidationOutput problems) {
+        String value = config.getString(field);
+        if (value == null) {
+            return 0;
+        }
+        try {
+            if (Integer.parseInt(value) == 1) {
+                return 0;
+            }
+        }
+        catch (Throwable e) {
+        }
+        problems.accept(field, value, "Only 1 is allowed");
+        return 1;
+    }
+
     public static int isNonNegativeInteger(Configuration config, Field field, ValidationOutput problems) {
         String value = config.getString(field);
         if (value == null) return 0;

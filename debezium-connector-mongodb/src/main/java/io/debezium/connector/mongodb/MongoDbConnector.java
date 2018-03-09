@@ -17,7 +17,6 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,6 +24,7 @@ import com.mongodb.MongoClient;
 import com.mongodb.MongoException;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.BaseConnector;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext.PreviousContext;
 import io.debezium.util.Threads;
@@ -74,7 +74,7 @@ import io.debezium.util.Threads;
  *
  * @author Randall Hauch
  */
-public class MongoDbConnector extends SourceConnector {
+public class MongoDbConnector extends BaseConnector {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -99,7 +99,8 @@ public class MongoDbConnector extends SourceConnector {
 
     @Override
     public void start(Map<String, String> props) {
-        // Validate the configuration ...
+        super.start(props);
+
         final Configuration config = Configuration.from(props);
         if (!config.validateAndRecord(MongoDbConnectorConfig.ALL_FIELDS, logger::error)) {
             throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");

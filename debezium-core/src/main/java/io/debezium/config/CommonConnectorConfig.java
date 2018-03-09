@@ -23,6 +23,14 @@ public class CommonConnectorConfig {
     public static final int DEFAULT_MAX_BATCH_SIZE = 2048;
     public static final long DEFAULT_POLL_INTERVAL_MILLIS = 500;
 
+    public static final Field TASKS_MAX = Field.create("tasks.max")
+            .withDisplayName("Maximum tasks per connector")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Maximum tasks that can be started by connector, only '1' is allowed")
+            .withValidation(Field::isOne);
+
     public static final Field TOMBSTONES_ON_DELETE = Field.create("tombstones.on.delete")
             .withDisplayName("Change the behaviour of Debezium with regards to delete operations")
             .withType(Type.BOOLEAN)
@@ -61,6 +69,8 @@ public class CommonConnectorConfig {
             .withDescription("Frequency in milliseconds to wait for new change events to appear after receiving no events. Defaults to " + DEFAULT_POLL_INTERVAL_MILLIS + "ms.")
             .withDefault(DEFAULT_POLL_INTERVAL_MILLIS)
             .withValidation(Field::isPositiveInteger);
+
+    public static Field.Set CONNECT_FIELDS = Field.setOf(TASKS_MAX);
 
     private final boolean emitTombstoneOnDelete;
     private final int maxQueueSize;
