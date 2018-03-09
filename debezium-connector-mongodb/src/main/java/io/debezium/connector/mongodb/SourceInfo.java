@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonTimestamp;
@@ -93,7 +94,7 @@ public final class SourceInfo extends AbstractSourceInfo {
                                                       .field(TIMESTAMP, Schema.INT32_SCHEMA)
                                                       .field(ORDER, Schema.INT32_SCHEMA)
                                                       .field(OPERATION_ID, Schema.OPTIONAL_INT64_SCHEMA)
-                                                      .field(INITIAL_SYNC, Schema.OPTIONAL_BOOLEAN_SCHEMA)
+                                                      .field(INITIAL_SYNC, SchemaBuilder.bool().optional().defaultValue(false).build())
                                                       .build();
 
     private final ConcurrentMap<String, Map<String, String>> sourcePartitionsByReplicaSetName = new ConcurrentHashMap<>();

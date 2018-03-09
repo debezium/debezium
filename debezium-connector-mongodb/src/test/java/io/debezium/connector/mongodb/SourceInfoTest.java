@@ -10,6 +10,7 @@ import static org.fest.assertions.Assertions.assertThat;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
@@ -44,7 +45,7 @@ public class SourceInfoTest {
         assertThat(schema.field(SourceInfo.TIMESTAMP).schema()).isEqualTo(Schema.INT32_SCHEMA);
         assertThat(schema.field(SourceInfo.ORDER).schema()).isEqualTo(Schema.INT32_SCHEMA);
         assertThat(schema.field(SourceInfo.OPERATION_ID).schema()).isEqualTo(Schema.OPTIONAL_INT64_SCHEMA);
-        assertThat(schema.field(SourceInfo.INITIAL_SYNC).schema()).isEqualTo(Schema.OPTIONAL_BOOLEAN_SCHEMA);
+        assertThat(schema.field(SourceInfo.INITIAL_SYNC).schema()).isEqualTo(SchemaBuilder.bool().optional().defaultValue(false).build());
     }
 
     @Test

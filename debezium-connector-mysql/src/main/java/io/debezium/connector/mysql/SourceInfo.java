@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 
@@ -122,7 +123,7 @@ final class SourceInfo extends AbstractSourceInfo {
                                                      .field(BINLOG_FILENAME_OFFSET_KEY, Schema.STRING_SCHEMA)
                                                      .field(BINLOG_POSITION_OFFSET_KEY, Schema.INT64_SCHEMA)
                                                      .field(BINLOG_ROW_IN_EVENT_OFFSET_KEY, Schema.INT32_SCHEMA)
-                                                     .field(SNAPSHOT_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
+                                                     .field(SNAPSHOT_KEY, SchemaBuilder.bool().optional().defaultValue(false).build())
                                                      .field(THREAD_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                      .field(DB_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(TABLE_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
