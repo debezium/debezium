@@ -13,6 +13,8 @@ import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mongodb.MongoInterruptedException;
+
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 
@@ -65,11 +67,21 @@ public final class ReplicaSetMonitorThread implements Runnable {
                     // At least one of the replica sets been added or been removed ...
                     try {
                         onChange.accept(replicaSets);
-                    } catch (Throwable t) {
+                    }
+                    catch (MongoInterruptedException t) {
+                        logger.error("Interrupted while calling the function with the new replica set specifications", t);
+                        Thread.currentThread().interrupt();
+                    }
+                    catch (Throwable t) {
                         logger.error("Error while calling the function with the new replica set specifications", t);
                     }
                 }
-            } catch (Throwable t) {
+            }
+            catch (MongoInterruptedException t) {
+                logger.error("interrupted while trying to get information about the replica sets", t);
+                Thread.currentThread().interrupt();
+            }
+            catch (Throwable t) {
                 logger.error("Error while trying to get information about the replica sets", t);
             }
             // Check again whether we are running before we pause ...
@@ -77,7 +89,7 @@ public final class ReplicaSetMonitorThread implements Runnable {
                 try {
                     metronome.pause();
                 } catch (InterruptedException e) {
-                    Thread.interrupted();
+                    Thread.currentThread().interrupt();
                 }
             }
         }
