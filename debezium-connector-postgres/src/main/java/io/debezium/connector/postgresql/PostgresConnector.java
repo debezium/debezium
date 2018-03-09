@@ -20,6 +20,7 @@ import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 
@@ -53,6 +54,9 @@ public class PostgresConnector extends SourceConnector {
     @Override
     public void start(Map<String, String> props) {
         this.props = props;
+
+        // Validate the configuration ...
+        CommonConnectorConfig.validateConnectConfig(props);
     }
 
     @Override

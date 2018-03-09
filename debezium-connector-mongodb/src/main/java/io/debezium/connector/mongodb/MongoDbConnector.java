@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoException;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext.PreviousContext;
@@ -100,6 +101,8 @@ public class MongoDbConnector extends SourceConnector {
     @Override
     public void start(Map<String, String> props) {
         // Validate the configuration ...
+        CommonConnectorConfig.validateConnectConfig(props);
+
         final Configuration config = Configuration.from(props);
         if (!config.validateAndRecord(MongoDbConnectorConfig.ALL_FIELDS, logger::error)) {
             throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
