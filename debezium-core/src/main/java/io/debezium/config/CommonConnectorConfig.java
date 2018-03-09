@@ -7,14 +7,10 @@ package io.debezium.config;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
-import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
-import org.apache.kafka.connect.errors.ConnectException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Configuration options common to all Debezium connectors.
@@ -22,8 +18,6 @@ import org.slf4j.LoggerFactory;
  * @author Gunnar Morling
  */
 public class CommonConnectorConfig {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(CommonConnectorConfig.class);
 
     public static final int DEFAULT_MAX_QUEUE_SIZE = 8192;
     public static final int DEFAULT_MAX_BATCH_SIZE = 2048;
@@ -34,8 +28,8 @@ public class CommonConnectorConfig {
             .withType(Type.INT)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDescription("Maximum tasks that can be started by connector, only '0' or '1' is allowd")
-            .withValidation(Field::isZeroOrOne);
+            .withDescription("Maximum tasks that can be started by connector, only '1' is allowed")
+            .withValidation(Field::isOne);
 
     public static final Field TOMBSTONES_ON_DELETE = Field.create("tombstones.on.delete")
             .withDisplayName("Change the behaviour of Debezium with regards to delete operations")
@@ -119,12 +113,5 @@ public class CommonConnectorConfig {
             ++count;
         }
         return count;
-    }
-
-    public static void validateConnectConfig(Map<String, String> props) {
-        final Configuration config = Configuration.from(props);
-        if (!config.validateAndRecord(CommonConnectorConfig.CONNECT_FIELDS, LOGGER::error)) {
-            throw new ConnectException("Error configuring a connector; check the logs for details");
-        }
     }
 }
