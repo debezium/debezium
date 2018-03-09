@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import com.mongodb.MongoClient;
 import com.mongodb.MongoException;
+import com.mongodb.MongoInterruptedException;
 import com.mongodb.ReplicaSetStatus;
 
 import io.debezium.annotation.ThreadSafe;
@@ -70,6 +71,11 @@ public class ReplicaSetDiscovery {
                 String replicaSetName = MongoUtil.replicaSetUsedIn(hostStr);
                 replicaSetSpecs.add(new ReplicaSet(hostStr, replicaSetName, shardName));
             });
+        }
+        catch (MongoInterruptedException e) {
+            logger.error("Interrupted while reading the '{}' collection in the '{}' database: {}",
+                         shardsCollection, CONFIG_DATABASE_NAME, e.getMessage(), e);
+            Thread.currentThread().interrupt();
         } catch (MongoException e) {
             logger.error("Error while reading the '{}' collection in the '{}' database: {}",
                          shardsCollection, CONFIG_DATABASE_NAME, e.getMessage(), e);
