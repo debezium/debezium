@@ -346,4 +346,16 @@ public abstract class AbstractDdlParser implements DdlParser {
         } catch (NumberFormatException e) {
         }
     }
+
+    protected void debugParsed(String statement) {
+        if (logger.isTraceEnabled()) {
+            logger.trace("PARSED:  {}", statement);
+        }
+    }
+
+    protected void debugSkipped(String statement) {
+        if (logger.isTraceEnabled()) {
+            logger.trace("SKIPPED: {}", statement);
+        }
+    }
 }
