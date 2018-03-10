@@ -403,17 +403,11 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
     }
 
     protected void debugParsed(Marker statementStart) {
-        if (logger.isTraceEnabled()) {
-            String statement = statement(statementStart);
-            logger.trace("PARSED:  {}", statement);
-        }
+        debugParsed(statement(statementStart));
     }
 
     protected void debugSkipped(Marker statementStart) {
-        if (logger.isTraceEnabled()) {
-            String statement = statement(statementStart);
-            logger.trace("SKIPPED: {}", statement);
-        }
+        debugSkipped(statement(statementStart));
     }
 
     protected String statement(Marker statementStart) {

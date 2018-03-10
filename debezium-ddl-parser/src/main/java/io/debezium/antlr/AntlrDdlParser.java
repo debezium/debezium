@@ -6,8 +6,10 @@
 
 package io.debezium.antlr;
 
+import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.AbstractDdlParser;
+import io.debezium.relational.ddl.DdlParserListener;
 import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
 import org.antlr.v4.runtime.CharStream;
@@ -100,5 +102,128 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     protected String statement(ParserRuleContext ctx) {
         Interval interval = new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex());
         return ctx.start.getInputStream().getText(interval);
+    }
+
+    /**
+     * Signal a create database event to all listeners.
+     *
+     * @param databaseName the database name; may not be null
+     * @param ctx the start of the statement; may not be null
+     */
+    protected void signalCreateDatabase(String databaseName, ParserRuleContext ctx) {
+        signalCreateDatabase(databaseName, statement(ctx));
+    }
+
+    /**
+     * Signal an alter database event to all listeners.
+     *
+     * @param databaseName the database name; may not be null
+     * @param previousDatabaseName the previous name of the database if it was renamed, or null if it was not renamed
+     * @param ctx the start of the statement; may not be null
+     */
+    protected void signalAlterDatabase(String databaseName, String previousDatabaseName, ParserRuleContext ctx) {
+        signalAlterDatabase(databaseName, previousDatabaseName, statement(ctx));
+    }
+
+    /**
+     * Signal a drop database event to all listeners.
+     *
+     * @param databaseName the database name; may not be null
+     * @param ctx the start of the statement; may not be null
+     */
+    protected void signalDropDatabase(String databaseName, ParserRuleContext ctx) {
+        signalDropDatabase(databaseName, statement(ctx));
+    }
+
+    /**
+     * Signal a create table event to all listeners.
+     *
+     * @param id the table identifier; may not be null
+     * @param ctx the start of the statement; may not be null
+     */
+    protected void signalCreateTable(TableId id, ParserRuleContext ctx) {
+        signalCreateTable(id, statement(ctx));
+    }
+
+    /**
+     * Signal an alter table event to all listeners.
+     *
+     * @param id the table identifier; may not be null
+     * @param previousId the previous name of the view if it was renamed, or null if it was not renamed
+     * @param ctx the start of the statement; may not be null
+     */
+    protected void signalAlterTable(TableId id, TableId previousId, ParserRuleContext ctx) {
+        signalAlterTable(id, previousId, statement(ctx));
+    }
+
+    /**
+     * Signal a drop table event to all listeners.
+     *
+     * @param id the table identifier; may not be null
+     * @param ctx the start of the statement; may not be null
+     */
+    protected void signalDropTable(TableId id, ParserRuleContext ctx) {
+        signalDropTable(id, statement(ctx));
+    }
+
+    /**
+     * Signal a create view event to all listeners.
+     *
+     * @param id the table identifier; may not be null
+     * @param ctx the start of the statement; may not be null
+     */
+    protected void signalCreateView(TableId id, ParserRuleContext ctx) {
+        signalEvent(new DdlParserListener.TableCreatedEvent(id, statement(ctx), true));
+    }
+
+    /**
+     * Signal an alter view event to all listeners.
+     *
+     * @param id the table identifier; may not be null
+     * @param previousId the previous name of the view if it was renamed, or null if it was not renamed
+     * @param ctx the start of the statement; may not be null
+     */
+    protected void signalAlterView(TableId id, TableId previousId, ParserRuleContext ctx) {
+        signalAlterView(id, previousId, statement(ctx));
+    }
+
+    /**
+     * Signal a drop view event to all listeners.
+     *
+     * @param id the table identifier; may not be null
+     * @param ctx the start of the statement; may not be null
+     */
+    protected void signalDropView(TableId id, ParserRuleContext ctx) {
+        signalDropView(id, statement(ctx));
+    }
+
+    /**
+     * Signal a create index event to all listeners.
+     *
+     * @param indexName the name of the index; may not be null
+     * @param id the table identifier; may be null if the index does not apply to a single table
+     * @param ctx the start of the statement; may not be null
+     */
+    protected void signalCreateIndex(String indexName, TableId id, ParserRuleContext ctx) {
+        signalCreateIndex(indexName, id, statement(ctx));
+    }
+
+    /**
+     * Signal a drop index event to all listeners.
+     *
+     * @param indexName the name of the index; may not be null
+     * @param id the table identifier; may not be null
+     * @param ctx the start of the statement; may not be null
+     */
+    protected void signalDropIndex(String indexName, TableId id, ParserRuleContext ctx) {
+        signalDropIndex(indexName, id, statement(ctx));
+    }
+
+    protected void debugParsed(ParserRuleContext ctx) {
+        debugParsed(statement(ctx));
+    }
+
+    protected void debugSkipped(ParserRuleContext ctx) {
+        debugSkipped(statement(ctx));
     }
 }
