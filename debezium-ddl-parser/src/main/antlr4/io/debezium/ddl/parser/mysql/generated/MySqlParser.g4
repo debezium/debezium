@@ -40,10 +40,14 @@ sqlStatements
     ;
     
 sqlStatement
-    : ddlStatement | dmlStatement | transactionStatement
-    | replicationStatement | preparedStatement
-    | administrationStatement | utilityStatement
+    : ddlStatement
     ;
+
+//sqlStatement
+//    : ddlStatement | dmlStatement | transactionStatement
+//    | replicationStatement | preparedStatement
+//    | administrationStatement | utilityStatement
+//    ;
 
 emptyStatement
     : SEMI
@@ -1970,9 +1974,9 @@ dataType
         TINYINT | SMALLINT | MEDIUMINT | INT | INTEGER | BIGINT
       ) 
       lengthOneDimension? UNSIGNED? ZEROFILL?                       #dimensionDataType
-    | typeName=(REAL | DOUBLE | FLOAT) 
+    | typeName=(REAL | DOUBLE | DOUBLE PRECISION | FLOAT)
       lengthTwoDimension? UNSIGNED? ZEROFILL?                       #dimensionDataType
-    | typeName=(DECIMAL | NUMERIC) 
+    | typeName=(DECIMAL | DEC | FIXED | NUMERIC)
       lengthTwoOptionalDimension? UNSIGNED? ZEROFILL?               #dimensionDataType
     | typeName=(
         DATE | TINYBLOB | BLOB | MEDIUMBLOB | LONGBLOB
@@ -1987,7 +1991,7 @@ dataType
       '(' STRING_LITERAL (',' STRING_LITERAL)* ')' BINARY? 
       (CHARACTER SET charsetName)? (COLLATE collationName)?         #collectionDataType
     | typeName=(
-        GEOMETRYCOLLECTION | LINESTRING | MULTILINESTRING 
+        GEOMETRYCOLLECTION | LINESTRING | MULTILINESTRING
         | MULTIPOINT | MULTIPOLYGON | POINT | POLYGON
       )                                                             #spatialDataType
     ;
