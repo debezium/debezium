@@ -12,6 +12,8 @@ import io.debezium.relational.ddl.SimpleDdlParserListener;
 import org.junit.Before;
 import org.junit.Test;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 /**
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
@@ -30,12 +32,34 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    public void shouldParseMultipleStatements() {
+        String ddl = "CREATE TABLE foo ( " + System.lineSeparator()
+                + " c1 INTEGER NOT NULL, " + System.lineSeparator()
+                + " c2 VARCHAR(22) " + System.lineSeparator()
+                + "); " + System.lineSeparator()
+                + "-- This is a comment" + System.lineSeparator()
+                + "DROP TABLE foo;" + System.lineSeparator();
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(0); // table created and dropped
+        listener.assertNext().createTableNamed("foo").ddlStartsWith("CREATE TABLE foo (");
+        listener.assertNext().dropTableNamed("foo").ddlMatches("DROP TABLE foo");
+    }
+
+    @Test
+    public void shouldParseAlterStatementsAfterCreate() {
+        String ddl1 = "CREATE TABLE foo ( c1 INTEGER NOT NULL, c2 VARCHAR(22) );" + System.lineSeparator();
+        String ddl2 = "ALTER TABLE foo ADD COLUMN c bigint;" + System.lineSeparator();
+        parser.parse(ddl1, tables);
+        parser.parse(ddl2, tables);
+        listener.assertNext().createTableNamed("foo").ddlStartsWith("CREATE TABLE foo (");
+        listener.assertNext().alterTableNamed("foo").ddlStartsWith("ALTER TABLE foo ADD COLUMN c");
+    }
+
+    @Test
     public void shouldParseAlterStatementsWithoutCreate() {
-        String ddl = "ALTER TABLE foo ADD COLUMN c bigint;" + System.lineSeparator()
-                + "ALTER TABLE foo2 ADD b bigint;";
+        String ddl = "ALTER TABLE foo ADD COLUMN c bigint;" + System.lineSeparator();
         parser.parse(ddl, tables);
         listener.assertNext().alterTableNamed("foo").ddlStartsWith("ALTER TABLE foo ADD COLUMN c");
-        listener.assertNext().alterTableNamed("foo2").ddlStartsWith("ALTER TABLE foo2 ADD b");
     }
 
 }
