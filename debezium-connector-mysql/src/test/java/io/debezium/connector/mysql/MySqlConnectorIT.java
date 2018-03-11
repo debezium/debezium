@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.connect.data.Struct;
@@ -363,6 +364,40 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
      * 'none', 'schema_only', 'schema_only_recovery'
      */
     @Test
+    @FixFor("DBZ-639")
+    public void shouldValidateLockingModeNoneWithValidSnapshotModeConfiguration() {
+        final List<String> acceptableValues = Arrays.stream(SnapshotMode.values())
+                .map(SnapshotMode::getValue)
+                .collect(Collectors.toList());
+
+        // Loop over all known valid values
+        for (final String acceptableValue: acceptableValues) {
+            Configuration config = DATABASE.defaultJdbcConfigBuilder()
+                    .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
+                    .with(MySqlConnectorConfig.SERVER_ID, 18765)
+                    .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+                    .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
+                    .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
+                    .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+
+                    // Conflicting properties under test:
+                    .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, SnapshotLockingMode.NONE.getValue())
+                    .with(MySqlConnectorConfig.SNAPSHOT_MODE, acceptableValue)
+                    .build();
+
+            MySqlConnector connector = new MySqlConnector();
+            Config result = connector.validate(config.asMap());
+            assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
+
+            assertThat(new MySqlConnectorConfig(config).getSnapshotLockingMode()).isEqualTo(SnapshotLockingMode.NONE);
+        }
+    }
+
+    /**
+     * Validates that SNAPSHOT_LOCKING_MODE 'none' is valid with SNAPSHOT_MODE values of
+     * 'none', 'schema_only', 'schema_only_recovery'
+     *//*
+    @Test
     @FixFor("DBZ-602")
     public void shouldValidateLockingModeNoneWithValidSnapshotModeConfiguration() {
         final List<String> acceptableValues = Arrays.asList(
@@ -394,10 +429,10 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         }
     }
 
-    /**
+    *//**
      * Validates that SNAPSHOT_LOCKING_MODE 'none' is invalid with SNAPSHOT_MODE values of
      * 'when_needed', 'initial', 'initial_recovery'
-     */
+     *//*
     @Test
     @FixFor("DBZ-602")
     public void shouldNotValidateLockingModeNoneWithInvalidSnapshotModeConfiguration() {
@@ -427,7 +462,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             Config result = connector.validate(config.asMap());
             assertConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
         }
-    }
+    }*/
 
     @Test
     public void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
