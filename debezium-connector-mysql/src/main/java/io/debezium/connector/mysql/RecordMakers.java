@@ -418,6 +418,12 @@ public class RecordMakers {
          * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
          */
         public int create(Object[] row, long ts, int rowNumber, int numberOfRows) throws InterruptedException {
+            int bytes = 0;
+            for (Object o : row) {
+              bytes += o.toString().getBytes().length;
+            }
+            source.increTotalBytes(bytes);
+            source.increTotalCount();
             return converter.insert(source, row, rowNumber, numberOfRows, includedColumns, ts, consumer);
         }
 
@@ -450,6 +456,12 @@ public class RecordMakers {
          * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
          */
         public int update(Object[] before, Object[] after, long ts, int rowNumber, int numberOfRows) throws InterruptedException {
+            int bytes = 0;
+            for (Object o : after) {
+              bytes += o.toString().getBytes().length;
+            }
+            source.increTotalBytes(bytes);
+            source.increTotalCount();
             return converter.update(source, before, after, rowNumber, numberOfRows, includedColumns, ts, consumer);
         }
 
