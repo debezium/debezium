@@ -139,8 +139,8 @@ final class SourceInfo {
                                                      .field(DpRecordConstants.SOURCE_ENTITY_SNAPSHOT_SIZE_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                      .field(DpRecordConstants.SOURCE_ENTITY_SNAPSHOT_RECORD_INDEX_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                      .field(DpRecordConstants.SOURCE_ENTITY_SNAPSHOT_LASTRECORD_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA).optional().defaultValue(null)
-                                                     .field(DpRecordConstants.SOURCE_ENTITY_TOTAL_BYTES_KEY, Schema.OPTIONAL_INT64_SCHEMA).optional().defaultValue(0)
-                                                     .field(DpRecordConstants.SOURCE_ENTITY_TOTAL_COUNT_KEY, Schema.OPTIONAL_INT64_SCHEMA).optional().defaultValue(0)
+                                                     .field(DpRecordConstants.SOURCE_ENTITY_TOTAL_BYTES_KEY, SchemaBuilder.int64().defaultValue(0L).build())
+                                                     .field(DpRecordConstants.SOURCE_ENTITY_TOTAL_COUNT_KEY, SchemaBuilder.int64().defaultValue(0L).build())
                                                      .build();
 
     private String currentGtidSet;
