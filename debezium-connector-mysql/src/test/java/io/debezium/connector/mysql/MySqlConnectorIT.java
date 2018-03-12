@@ -360,8 +360,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     /**
-     * Validates that SNAPSHOT_LOCKING_MODE 'none' is valid with SNAPSHOT_MODE values of
-     * 'none', 'schema_only', 'schema_only_recovery'
+     * Validates that SNAPSHOT_LOCKING_MODE 'none' is valid with all snapshot modes
      */
     @Test
     @FixFor("DBZ-639")
@@ -392,77 +391,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             assertThat(new MySqlConnectorConfig(config).getSnapshotLockingMode()).isEqualTo(SnapshotLockingMode.NONE);
         }
     }
-
-    /**
-     * Validates that SNAPSHOT_LOCKING_MODE 'none' is valid with SNAPSHOT_MODE values of
-     * 'none', 'schema_only', 'schema_only_recovery'
-     *//*
-    @Test
-    @FixFor("DBZ-602")
-    public void shouldValidateLockingModeNoneWithValidSnapshotModeConfiguration() {
-        final List<String> acceptableValues = Arrays.asList(
-            SnapshotMode.NEVER.getValue(),
-            SnapshotMode.SCHEMA_ONLY.getValue(),
-            SnapshotMode.SCHEMA_ONLY_RECOVERY.getValue()
-        );
-
-        // Loop over all known valid values
-        for (final String acceptableValue: acceptableValues) {
-            Configuration config = DATABASE.defaultJdbcConfigBuilder()
-                .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
-                .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
-                .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
-                .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
-                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-
-                // Conflicting properties under test:
-                .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, SnapshotLockingMode.NONE.getValue())
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, acceptableValue)
-                .build();
-
-            MySqlConnector connector = new MySqlConnector();
-            Config result = connector.validate(config.asMap());
-            assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
-
-            assertThat(new MySqlConnectorConfig(config).getSnapshotLockingMode()).isEqualTo(SnapshotLockingMode.NONE);
-        }
-    }
-
-    *//**
-     * Validates that SNAPSHOT_LOCKING_MODE 'none' is invalid with SNAPSHOT_MODE values of
-     * 'when_needed', 'initial', 'initial_recovery'
-     *//*
-    @Test
-    @FixFor("DBZ-602")
-    public void shouldNotValidateLockingModeNoneWithInvalidSnapshotModeConfiguration() {
-        final List<String> invalidValues = Arrays.asList(
-            SnapshotMode.WHEN_NEEDED.getValue(),
-            SnapshotMode.INITIAL.getValue(),
-            SnapshotMode.INITIAL_ONLY.getValue()
-        );
-
-        // Loop over all known valid values
-        for (final String invalidValue: invalidValues) {
-            Configuration config = DATABASE.defaultJdbcConfigBuilder()
-                .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
-                .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
-                .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
-                .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
-                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-
-                // Conflicting properties under test:
-                .with(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING, false)
-                .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, SnapshotLockingMode.NONE.getValue())
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, invalidValue)
-                .build();
-
-            MySqlConnector connector = new MySqlConnector();
-            Config result = connector.validate(config.asMap());
-            assertConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
-        }
-    }*/
 
     @Test
     public void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {

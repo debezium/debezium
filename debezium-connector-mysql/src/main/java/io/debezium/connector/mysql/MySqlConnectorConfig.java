@@ -1071,19 +1071,6 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
             return 1;
         }
 
-        /*// Determine the snapshot mode defined.
-        final SnapshotMode snapshotModeValue = SnapshotMode.parse(config.getString(MySqlConnectorConfig.SNAPSHOT_MODE));
-
-        // A value of SNAPSHOT_LOCKING_MODE 'none' is only valid when SNAPSHOT_MODE is configured to not include data.
-        if (lockingModeValue == SnapshotLockingMode.NONE && snapshotModeValue.includeData()) {
-            final String acceptableValues = Arrays.stream(SnapshotMode.values())
-                .filter(value -> !value.includeData())
-                .map(SnapshotMode::getValue)
-                .collect(Collectors.joining(", "));
-            problems.accept(SNAPSHOT_LOCKING_MODE, lockingModeValue, "Can only be set to 'none' when " + SNAPSHOT_MODE.name() + " is set to [" + acceptableValues + "]");
-            return 1;
-        }*/
-
         // Everything checks out ok.
         return 0;
     }
