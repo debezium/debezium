@@ -207,7 +207,7 @@ final class SourceInfo {
     }
 
     public void increTotalCount() {
-        this.totalCount ++;
+        this.totalCount++;
     }
 
     public void increTotalBytes(long bytes) {

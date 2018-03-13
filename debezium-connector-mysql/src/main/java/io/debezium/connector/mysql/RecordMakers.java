@@ -420,7 +420,9 @@ public class RecordMakers {
         public int create(Object[] row, long ts, int rowNumber, int numberOfRows) throws InterruptedException {
             int bytes = 0;
             for (Object o : row) {
-              bytes += o.toString().getBytes().length;
+              if (o != null) {
+                bytes += o.toString().getBytes().length;
+              }
             }
             source.increTotalBytes(bytes);
             source.increTotalCount();
@@ -458,7 +460,9 @@ public class RecordMakers {
         public int update(Object[] before, Object[] after, long ts, int rowNumber, int numberOfRows) throws InterruptedException {
             int bytes = 0;
             for (Object o : after) {
-              bytes += o.toString().getBytes().length;
+              if (o != null) {
+                bytes += o.toString().getBytes().length;
+              }
             }
             source.increTotalBytes(bytes);
             source.increTotalCount();
