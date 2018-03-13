@@ -48,16 +48,4 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-    <build>
-        <resources>
-            <!-- Apply the properties set in the POM to the resource files -->
-            <resource>
-                <filtering>true</filtering>
-                <directory>src/main/resources</directory>
-                <includes>
-                    <include>**/build.properties</include>
-                </includes>
-            </resource>
-        </resources>
-    </build>
 </project>

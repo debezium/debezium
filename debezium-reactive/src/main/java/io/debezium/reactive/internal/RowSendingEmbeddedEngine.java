@@ -19,7 +19,7 @@ import io.debezium.embedded.spi.OffsetCommitPolicy;
 import io.debezium.util.Clock;
 
 /**
- * A default implementation of EmbeddedEngine
+ * A an implementation of EmbeddedEngine that sends records one-by-one, not in batches
  *
  * @author Randall Hauch, Jiri Pechanec
  *

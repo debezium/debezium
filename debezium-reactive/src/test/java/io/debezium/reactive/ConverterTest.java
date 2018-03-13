@@ -7,11 +7,13 @@ package io.debezium.reactive;
 
 import java.io.IOException;
 
+import org.fest.assertions.Assertions;
 import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
+import io.debezium.reactive.converters.AsJson;
 import io.reactivex.Flowable;
 
 public class ConverterTest extends AbstractReactiveEngineTest {
@@ -23,8 +25,8 @@ public class ConverterTest extends AbstractReactiveEngineTest {
         ReactiveEngine.Builder<String> builder = ReactiveEngine.create();
         builder
             .withConfiguration(config)
-            .withOffsetCommitPolicy((x, y) -> false)
-            .withConverter(JsonConverter.class);
+            .withOffsetCommitPolicy((noOfMsg, timeSinceLastCommit) -> false)
+            .asType(AsJson.class);
         
         stream = builder.build().stream();
     }
@@ -34,9 +36,12 @@ public class ConverterTest extends AbstractReactiveEngineTest {
         stream
             .limit(EVENT_COUNT)
             .map(x -> {
-                final Document d = DocumentReader.defaultReader().read(x.getRecord()).getDocument("payload");
+                final Document key = DocumentReader.defaultReader().read(x.getKey()).getDocument("payload");
+                final Document value = DocumentReader.defaultReader().read(x.getValue()).getDocument("payload");
                 x.complete();
-                return (d.getInteger("batch") - 1) * BATCH_SIZE + d.getInteger("record");
+                int order = (value.getInteger("batch") - 1) * BATCH_SIZE + value.getInteger("record");
+                Assertions.assertThat(key.getInteger("id")).isEqualTo(order);
+                return order;
             })
             .test()
             .assertComplete()

@@ -1,0 +1,2 @@
+io.debezium.reactive.internal.converters.JsonConverter
+io.debezium.reactive.internal.converters.NoOpConverter

@@ -5,18 +5,18 @@
  */
 package io.debezium.reactive.internal;
 
+import java.util.Map;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
-import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.embedded.StopConnectorException;
-import io.debezium.reactive.Converter;
 import io.debezium.reactive.DebeziumEvent;
 import io.debezium.reactive.ReactiveEngine;
+import io.debezium.reactive.internal.converters.ConverterRegistry;
+import io.debezium.reactive.spi.Converter;
 import io.reactivex.Emitter;
 import io.reactivex.Flowable;
 
@@ -30,23 +30,36 @@ class ReactiveEngineImpl<T> implements ReactiveEngine<T> {
     private static final Logger LOGGER = LoggerFactory.getLogger(ReactiveEngineImpl.class);
 
     private final RowSendingEmbeddedEngine engine;
+    private final Converter<T> converter;
     private Consumer<SourceRecord> emitterConsumer; 
-    private DebeziumEventImpl<T> currentEvent;
-    private Function<SourceRecord, T> serializer;
+    private DebeziumEventImpl currentEvent;
 
-    private static class DebeziumEventImpl<T> implements DebeziumEvent<T> {
+    private class DebeziumEventImpl implements DebeziumEvent<T> {
 
-        private final T value;
+        private T key;
+        private T value;
         private final SourceRecord sourceRecord;
         private boolean completed = false;
+        private boolean keyConverted = false;
+        private boolean valueConverted = false;
 
-        private DebeziumEventImpl(T value, SourceRecord sourceRecord) {
-            this.value = value;
+        private DebeziumEventImpl(SourceRecord sourceRecord) {
             this.sourceRecord = sourceRecord;
         }
 
-        
-        public T getRecord() {
+        @Override
+        public T getKey() {
+            if (!keyConverted) {
+                key = converter.convertKey(sourceRecord);
+            }
+            return key;
+        }
+
+        @Override
+        public T getValue() {
+            if (!valueConverted) {
+                value = converter.convertValue(sourceRecord);
+            }
             return value;
         }
 
@@ -64,23 +77,16 @@ class ReactiveEngineImpl<T> implements ReactiveEngine<T> {
         }
     }
 
+    @SuppressWarnings("unchecked")
     ReactiveEngineImpl(ReactiveEngineBuilderImpl<T> builder) {
         this.engine = new RowSendingEmbeddedEngine(builder.getConfig(), builder.getClassLoader(), builder.getClock(),
                 x -> emitterConsumer.accept(x), null, null, builder.getOffsetCommitPolicy());
-        @SuppressWarnings("unchecked")
 
-        Function<SourceRecord, T> valueConverter = (x) -> (T)x;
-        try {
-            if (builder.getConverter() != null) {
-                final Converter<T> c = builder.getConverter().newInstance();
-                c.configure(builder.getConfig().asMap());
-                valueConverter = c::fromConnectData;
-            }
-        }
-        catch (InstantiationException | IllegalAccessException e) {
-            throw new ConnectException("Could not instantiate serializer " + builder.getConverter().getName());
-        }
-        this.serializer = valueConverter;
+        final Map<String, String> configs = builder.getConfig().asMap();
+        final ConverterRegistry registry = new ConverterRegistry(configs);
+
+        converter = (Converter<T>) registry.getConverter(builder.getAsType());
+
         LOGGER.info("Created a reactive engine from embedded engine '{}'", engine);
     }
 
@@ -104,7 +110,7 @@ class ReactiveEngineImpl<T> implements ReactiveEngine<T> {
                         }
                         emitterConsumer = record -> {
                             LOGGER.trace("Sending record '{}' to the pipeline", record);
-                            currentEvent = new DebeziumEventImpl<T>(serializer.apply(record), record);
+                            currentEvent = new DebeziumEventImpl(record);
                             emitter.onNext(currentEvent);
                         };
                         try {

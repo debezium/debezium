@@ -11,6 +11,7 @@ import io.debezium.config.Configuration;
 import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.embedded.spi.OffsetCommitPolicy;
 import io.debezium.reactive.internal.ReactiveEngineBuilderImpl;
+import io.debezium.reactive.spi.AsType;
 import io.debezium.util.Clock;
 import io.reactivex.Flowable;
 
@@ -44,7 +45,7 @@ public interface ReactiveEngine<T> {
 
         Builder<T> withOffsetCommitPolicy(OffsetCommitPolicy policy);
 
-        Builder<T> withConverter(Class<? extends Converter<T>> converter);
+        Builder<T> asType(Class<? extends AsType<T>> asType);
 
         ReactiveEngine<T> build();
     }

@@ -18,9 +18,16 @@ import org.apache.kafka.connect.source.SourceRecord;
 public interface DebeziumEvent<T> {
 
     /**
-     * @return Change data capture event as {@link SourceRecord} received from Debezium connector.
+     * @return A key for a change data capture event as {@link SourceRecord} received from Debezium connector.
+     * The key is converted to a requested type.
      */
-    public T getRecord();
+    public T getKey();
+
+    /**
+     * @return A value of a change data capture event as {@link SourceRecord} received from Debezium connector.
+     * The value is converted to a requested type.
+     */
+    public T getValue();
 
     /**
      * Must be called when consumer durably processes the event in the pipeline. The engine will throw

@@ -14,6 +14,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.reactive.converters.AsSourceRecord;
 import io.debezium.util.Testing;
 import io.reactivex.Flowable;
 
@@ -25,7 +26,8 @@ public class ReactiveEngineTest extends AbstractReactiveEngineTest {
         ReactiveEngine.Builder<SourceRecord> builder = ReactiveEngine.create();
         builder
             .withConfiguration(config)
-            .withOffsetCommitPolicy((x, y) -> false);
+            .withOffsetCommitPolicy((noOfMsg, timeSinceLastCommit) -> false)
+            .asType(AsSourceRecord.class);
         
         stream = builder.build().stream();
     }
@@ -36,7 +38,7 @@ public class ReactiveEngineTest extends AbstractReactiveEngineTest {
             .limit(EVENT_COUNT)
             .map(x -> {
                 x.complete();
-                return getRecordId(x.getRecord());
+                return getRecordId(x.getValue());
             })
             .test()
             .assertComplete()
@@ -53,7 +55,7 @@ public class ReactiveEngineTest extends AbstractReactiveEngineTest {
                     .limit(batchSize)
                     .map(x -> {
                         x.complete();
-                        return x.getRecord();
+                        return x.getValue();
                     })
                     .toList()
                     .blockingGet();
@@ -80,7 +82,7 @@ public class ReactiveEngineTest extends AbstractReactiveEngineTest {
         final int restCount = EVENT_COUNT - breakAt + 1;
         List<SourceRecord> events = stream.limit(restCount).map(x -> {
             x.complete();
-            return x.getRecord();
+            return x.getValue();
         }).toList().blockingGet();
         validateRecords(events, breakAt, restCount);
     }
@@ -90,12 +92,12 @@ public class ReactiveEngineTest extends AbstractReactiveEngineTest {
         final int breakAt = 3;
         stream
             .doOnNext(record -> {
-                if (getRecordId(record.getRecord()) == breakAt) {
+                if (getRecordId(record.getValue()) == breakAt) {
                     throw new RuntimeException("BUG");
                 }
             })
             .subscribe(x -> {
-                Testing.print(x.getRecord());
+                Testing.print(x.getValue());
                 x.complete();
             }, t -> {
                 Testing.print("Got error " + t.getMessage());
@@ -107,7 +109,7 @@ public class ReactiveEngineTest extends AbstractReactiveEngineTest {
                 .limit(restCount)
                 .map(x -> {
                     x.complete();
-                    return x.getRecord();
+                    return x.getValue();
                 })
                 .toList()
                 .blockingGet();

@@ -9,9 +9,9 @@ import java.util.Objects;
 
 import io.debezium.config.Configuration;
 import io.debezium.embedded.spi.OffsetCommitPolicy;
-import io.debezium.reactive.Converter;
 import io.debezium.reactive.ReactiveEngine;
 import io.debezium.reactive.ReactiveEngine.Builder;
+import io.debezium.reactive.spi.AsType;
 import io.debezium.util.Clock;
 
 /**
@@ -25,7 +25,7 @@ public class ReactiveEngineBuilderImpl<T> implements Builder<T> {
     private ClassLoader classLoader;
     private Clock clock;
     private OffsetCommitPolicy offsetCommitPolicy = null;
-    private Class<? extends Converter<T>> converter;
+    private Class<? extends AsType<T>> asType;
 
     @Override
     public Builder<T> withConfiguration(Configuration config) {
@@ -52,8 +52,8 @@ public class ReactiveEngineBuilderImpl<T> implements Builder<T> {
     }
 
     @Override
-    public Builder<T> withConverter(Class<? extends Converter<T>> converter) {
-        this.converter = converter;
+    public Builder<T> asType(Class<? extends AsType<T>> asType) {
+        this.asType = asType;
         return null;
     }
 
@@ -62,6 +62,7 @@ public class ReactiveEngineBuilderImpl<T> implements Builder<T> {
         if (classLoader == null) classLoader = getClass().getClassLoader();
         if (clock == null) clock = Clock.system();
         Objects.requireNonNull(config, "A connector configuration must be specified.");
+        Objects.requireNonNull(asType, "An event type format must be specified.");
 
         return new ReactiveEngineImpl<T>(this);
     }
@@ -82,7 +83,7 @@ public class ReactiveEngineBuilderImpl<T> implements Builder<T> {
         return offsetCommitPolicy;
     }
 
-    Class<? extends Converter<T>> getConverter() {
-        return converter;
+    Class<? extends AsType<T>> getAsType() {
+        return asType;
     }
 }
