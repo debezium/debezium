@@ -148,6 +148,20 @@ public class MySqlDdlParserTest {
         Column column = table.columnWithName("v1");
         assertThat(column.typeUsesCharset()).isTrue();
     }
+    
+    @Test
+    @FixFor("DBZ-646")
+    public void shouldParseTokuDBTable() {
+        String ddl = "CREATE TABLE foo ( " + System.lineSeparator()
+                + " c1 INTEGER NOT NULL, " + System.lineSeparator()
+                + " c2 VARCHAR(22) " + System.lineSeparator()
+                + ") engine=TokuDB `compression`=tokudb_zlib;";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        listener.assertNext().createTableNamed("foo").ddlStartsWith("CREATE TABLE foo (");
+        parser.parse("DROP TABLE foo", tables);
+        assertThat(tables.size()).isEqualTo(0);
+    }
 
     @Test
     public void shouldParseCreateUserTable() {
