@@ -7,6 +7,7 @@
 package io.debezium.antlr.mysql;
 
 import io.debezium.antlr.AntlrDdlParser;
+import io.debezium.antlr.ProxyParseTreeListener;
 import io.debezium.ddl.parser.mysql.generated.MySqlLexer;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
@@ -33,12 +34,22 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
     private Tables databaseTables;
 
+    private TableEditor tableEditor;
+    private ColumnEditor columnEditor;
+
     @Override
     protected void parse(MySqlParser parser, Tables databaseTables) {
         this.databaseTables = databaseTables;
         MySqlParser.RootContext root = parser.root();
 
-        ParseTreeWalker.DEFAULT.walk(new MySqlDdlParserListener(), root);
+        ProxyParseTreeListener proxyParseTreeListener = new ProxyParseTreeListener();
+        proxyParseTreeListener.add(new CreateTableParserListener());
+        proxyParseTreeListener.add(new DropTableParserListener());
+        proxyParseTreeListener.add(new AlterTableParserListener());
+        proxyParseTreeListener.add(new ColumnDefinitionParserListener());
+        proxyParseTreeListener.add(new ExitSqlStatementParserListener());
+
+        ParseTreeWalker.DEFAULT.walk(proxyParseTreeListener, root);
     }
 
     @Override
@@ -76,23 +87,79 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         return uidContext.getText();
     }
 
+    private void resolveColumnDataType(MySqlParser.DataTypeContext dataTypeContext) {
+        String dataTypeName;
+        int jdbcType = Types.NULL;
+        if (dataTypeContext instanceof MySqlParser.StringDataTypeContext) {
+            // CHAR | VARCHAR | TINYTEXT | TEXT | MEDIUMTEXT | LONGTEXT
+            MySqlParser.StringDataTypeContext stringDataTypeContext = (MySqlParser.StringDataTypeContext) dataTypeContext;
+            dataTypeName = stringDataTypeContext.typeName.getText();
+
+            if (stringDataTypeContext.lengthOneDimension() != null) {
+                Integer length = Integer.valueOf(stringDataTypeContext.lengthOneDimension().decimalLiteral().getText());
+                columnEditor.length(length);
+            }
+        } else if (dataTypeContext instanceof MySqlParser.DimensionDataTypeContext) {
+            // TINYINT | SMALLINT | MEDIUMINT | INT | INTEGER | BIGINT
+            // REAL | DOUBLE | FLOAT
+            // DECIMAL | NUMERIC | DEC | FIXED
+            // BIT | TIME | TIMESTAMP | DATETIME | BINARY | VARBINARY | YEAR
+            MySqlParser.DimensionDataTypeContext dimensionDataTypeContext = (MySqlParser.DimensionDataTypeContext) dataTypeContext;
+            dataTypeName = dimensionDataTypeContext.typeName.getText();
+
+            Integer length = null;
+            Integer scale = null;
+            if (dimensionDataTypeContext.lengthOneDimension() != null) {
+                length = Integer.valueOf(dimensionDataTypeContext.lengthOneDimension().decimalLiteral().getText());
+            }
+
+            if (dimensionDataTypeContext.lengthTwoDimension() != null) {
+                List<MySqlParser.DecimalLiteralContext> decimalLiterals = dimensionDataTypeContext.lengthTwoDimension().decimalLiteral();
+                length = Integer.valueOf(decimalLiterals.get(0).getText());
+                scale = Integer.valueOf(decimalLiterals.get(1).getText());
+            }
+
+            if (dimensionDataTypeContext.lengthTwoOptionalDimension() != null) {
+                List<MySqlParser.DecimalLiteralContext> decimalLiterals = dimensionDataTypeContext.lengthTwoOptionalDimension().decimalLiteral();
+                length = Integer.valueOf(decimalLiterals.get(0).getText());
+
+                if (decimalLiterals.size() > 1) {
+                    scale = Integer.valueOf(decimalLiterals.get(1).getText());
+                }
+            }
+            if (length != null) {
+                columnEditor.length(length);
+            }
+            if (scale != null) {
+                columnEditor.scale(scale);
+            }
+            // TODO: resolve jdbc type
+        } else if (dataTypeContext instanceof MySqlParser.SimpleDataTypeContext) {
+            // DATE | TINYBLOB | BLOB | MEDIUMBLOB | LONGBLOB | BOOL | BOOLEAN
+            dataTypeName = ((MySqlParser.SimpleDataTypeContext) dataTypeContext).typeName.getText();
+            // TODO: resolve jdbc type
+        } else if (dataTypeContext instanceof MySqlParser.CollectionDataTypeContext) {
+            // ENUM | SET
+            // do not care about charsetName or collationName
+            dataTypeName = ((MySqlParser.CollectionDataTypeContext) dataTypeContext).typeName.getText();
+            // TODO: resolve jdbc type
+        } else if (dataTypeContext instanceof MySqlParser.SpatialDataTypeContext) {
+            // GEOMETRYCOLLECTION | LINESTRING | MULTILINESTRING | MULTIPOINT | MULTIPOLYGON | POINT | POLYGON
+            dataTypeName = ((MySqlParser.SpatialDataTypeContext) dataTypeContext).typeName.getText();
+            // TODO: resolve jdbc type
+        } else {
+            throw new IllegalStateException("Not recognized instance of data type context for " + dataTypeContext.getText());
+        }
+
+        columnEditor.type(dataTypeName);
+        columnEditor.jdbcType(jdbcType);
+    }
+
     /**
-     * Parser listener for MySQL alter table queries.
-     *
-     * @author Roman Kuchár <kucharrom@gmail.com>.
+     * Parser listener for MySQL create table queries.
      */
-    // TODO: Do we want to split one big listener into a smaller ones?
-    // TODO: Can be used by some proxy listener described here: https://github.com/antlr/antlr4/issues/841
-    private class MySqlDdlParserListener extends MySqlParserBaseListener {
+    private class CreateTableParserListener extends MySqlParserBaseListener {
 
-        private TableEditor tableEditor;
-        private ColumnEditor columnEditor;
-        private int parsingColumnIndex = 0;
-        private List<ColumnEditor> columnEditors;
-
-        /*
-         * START - Listening event for create table statements
-         */
         @Override
         public void enterQueryCreateTable(MySqlParser.QueryCreateTableContext ctx) {
             TableId tableId = parseQualifiedTableId(ctx.tableName());
@@ -169,13 +236,13 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
             tableEditor.setPrimaryKeyNames(pkColumnNames);
             super.enterPrimaryKeyTableConstraint(ctx);
         }
-        /*
-         * END - Listening event for create table statements
-         */
+    }
 
-        /*
-         * Drop table listener
-         */
+    /**
+     * Parser listener for MySQL drop table queries.
+     */
+    private class DropTableParserListener extends MySqlParserBaseListener {
+
         @Override
         public void enterDropTable(MySqlParser.DropTableContext ctx) {
             Interval interval = new Interval(ctx.start.getStartIndex(), ctx.tables().start.getStartIndex() - 1);
@@ -188,14 +255,21 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
             });
             super.enterDropTable(ctx);
         }
+    }
 
-        /*
-         * START - Listening events for alter table statements
-         */
+    /**
+     * Parser listener for MySQL alter table queries.
+     */
+    private class AlterTableParserListener extends MySqlParserBaseListener {
+
+        private static final int STARTING_INDEX = 1;
+
+        private int parsingColumnIndex = STARTING_INDEX;
+        private List<ColumnEditor> columnEditors;
+
         @Override
         public void enterAlterTable(MySqlParser.AlterTableContext ctx) {
             TableId tableId = parseQualifiedTableId(ctx.tableName());
-            // TODO: should be table created if it does not exists in memory model?
             tableEditor = databaseTables.editOrCreateTable(tableId);
             super.enterAlterTable(ctx);
         }
@@ -204,7 +278,6 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         public void enterAlterByAddColumn(MySqlParser.AlterByAddColumnContext ctx) {
             String columnName = parseColumnName(ctx.uid(0));
             columnEditor = Column.editor().name(columnName);
-            // TODO: how can i set a column position and update other existing columns position?
             if (ctx.FIRST() != null) {
                 //TODO: this new column should have the first position in table
             } else if (ctx.AFTER() != null) {
@@ -222,6 +295,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 String columnName = parseColumnName(uidContext);
                 columnEditors.add(Column.editor().name(columnName));
             }
+            columnEditor = columnEditors.get(0);
             super.enterAlterByAddColumns(ctx);
         }
 
@@ -244,19 +318,32 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
             debugParsed(ctx.getParent());
             super.exitAlterTable(ctx);
         }
-        /*
-         * END - Listening events for alter table statements
-         */
 
-        /*
-         * START - Listening events for column definition
-         */
         @Override
-        public void enterColumnDefinition(MySqlParser.ColumnDefinitionContext ctx) {
+        public void exitColumnDefinition(MySqlParser.ColumnDefinitionContext ctx) {
             if (columnEditors != null) {
                 // column editor list is not null when a multiple columns are parsed in one statement
-                columnEditor = columnEditors.get(parsingColumnIndex++);
+                if (columnEditors.size() > parsingColumnIndex) {
+                    // assign next column editor to parse another column definition
+                    columnEditor = columnEditors.get(parsingColumnIndex++);
+                } else {
+                    // all columns parsed
+                    // reset global variables for next parsed statement
+                    columnEditors = null;
+                    parsingColumnIndex = STARTING_INDEX;
+                }
             }
+            super.exitColumnDefinition(ctx);
+        }
+    }
+
+    /**
+     * Parser listener for MySQL column definition queries.
+     */
+    private class ColumnDefinitionParserListener extends MySqlParserBaseListener {
+
+        @Override
+        public void enterColumnDefinition(MySqlParser.ColumnDefinitionContext ctx) {
             resolveColumnDataType(ctx.dataType());
             super.enterColumnDefinition(ctx);
         }
@@ -288,91 +375,20 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
             columnEditor.generated(true);
             super.enterAutoIncrementColumnConstraint(ctx);
         }
-        /*
-         * END - Listening events for column definition
-         */
+    }
 
-        /*
-         * Last caught event for sql statement
-         */
+    /**
+     * Parser listener for MySQL alter table queries.
+     */
+    private class ExitSqlStatementParserListener extends MySqlParserBaseListener {
+
         @Override
         public void exitSqlStatement(MySqlParser.SqlStatementContext ctx) {
             // reset global values for next statement that could be parsed with this instance
             tableEditor = null;
             columnEditor = null;
-            columnEditors = null;
-            parsingColumnIndex = 0;
             super.exitSqlStatement(ctx);
         }
-
-        private void resolveColumnDataType(MySqlParser.DataTypeContext dataTypeContext) {
-            String dataTypeName;
-            int jdbcType = Types.NULL;
-            if (dataTypeContext instanceof MySqlParser.StringDataTypeContext) {
-                // CHAR | VARCHAR | TINYTEXT | TEXT | MEDIUMTEXT | LONGTEXT
-                MySqlParser.StringDataTypeContext stringDataTypeContext = (MySqlParser.StringDataTypeContext) dataTypeContext;
-                dataTypeName = stringDataTypeContext.typeName.getText();
-
-                if (stringDataTypeContext.lengthOneDimension() != null) {
-                    Integer length = Integer.valueOf(stringDataTypeContext.lengthOneDimension().decimalLiteral().getText());
-                    columnEditor.length(length);
-                }
-            } else if (dataTypeContext instanceof MySqlParser.DimensionDataTypeContext) {
-                // TINYINT | SMALLINT | MEDIUMINT | INT | INTEGER | BIGINT
-                // REAL | DOUBLE | FLOAT
-                // DECIMAL | NUMERIC | DEC | FIXED
-                // BIT | TIME | TIMESTAMP | DATETIME | BINARY | VARBINARY | YEAR
-                MySqlParser.DimensionDataTypeContext dimensionDataTypeContext = (MySqlParser.DimensionDataTypeContext) dataTypeContext;
-                dataTypeName = dimensionDataTypeContext.typeName.getText();
-
-                Integer length = null;
-                Integer scale = null;
-                if (dimensionDataTypeContext.lengthOneDimension() != null) {
-                    length = Integer.valueOf(dimensionDataTypeContext.lengthOneDimension().decimalLiteral().getText());
-                }
-
-                if (dimensionDataTypeContext.lengthTwoDimension() != null) {
-                    List<MySqlParser.DecimalLiteralContext> decimalLiterals = dimensionDataTypeContext.lengthTwoDimension().decimalLiteral();
-                    length = Integer.valueOf(decimalLiterals.get(0).getText());
-                    scale = Integer.valueOf(decimalLiterals.get(1).getText());
-                }
-
-                if (dimensionDataTypeContext.lengthTwoOptionalDimension() != null) {
-                    List<MySqlParser.DecimalLiteralContext> decimalLiterals = dimensionDataTypeContext.lengthTwoOptionalDimension().decimalLiteral();
-                    length = Integer.valueOf(decimalLiterals.get(0).getText());
-
-                    if (decimalLiterals.size() > 1) {
-                        scale = Integer.valueOf(decimalLiterals.get(1).getText());
-                    }
-                }
-                if (length != null) {
-                    columnEditor.length(length);
-                }
-                if (scale != null) {
-                    columnEditor.scale(scale);
-                }
-                // TODO: resolve jdbc type
-            } else if (dataTypeContext instanceof MySqlParser.SimpleDataTypeContext) {
-                // DATE | TINYBLOB | BLOB | MEDIUMBLOB | LONGBLOB | BOOL | BOOLEAN
-                dataTypeName = ((MySqlParser.SimpleDataTypeContext) dataTypeContext).typeName.getText();
-                // TODO: resolve jdbc type
-            } else if (dataTypeContext instanceof MySqlParser.CollectionDataTypeContext) {
-                // ENUM | SET
-                // do not care about charsetName or collationName
-                dataTypeName = ((MySqlParser.CollectionDataTypeContext) dataTypeContext).typeName.getText();
-                // TODO: resolve jdbc type
-            } else if (dataTypeContext instanceof MySqlParser.SpatialDataTypeContext) {
-                // GEOMETRYCOLLECTION | LINESTRING | MULTILINESTRING | MULTIPOINT | MULTIPOLYGON | POINT | POLYGON
-                dataTypeName = ((MySqlParser.SpatialDataTypeContext) dataTypeContext).typeName.getText();
-                // TODO: resolve jdbc type
-            } else {
-                throw new IllegalStateException("Not recognized instance of data type context for " + dataTypeContext.getText());
-            }
-
-            columnEditor.type(dataTypeName);
-            columnEditor.jdbcType(jdbcType);
-        }
-
     }
 
 }
