@@ -211,7 +211,7 @@ final class SourceInfo {
     }
 
     public void increTotalBytes(long bytes) {
-        this.totalBytes += totalBytes;
+        this.totalBytes += bytes;
     }
 
   /**
