@@ -160,6 +160,20 @@ public class ChainedReaderTest {
         }
     }
 
+    @Test
+    public void shouldInitAndDestroyResources() {
+        MockReader r1 = new MockReader("r1", records());
+        MockReader r2 = new MockReader("r2", records());
+
+        reader = new ChainedReader.Builder().addReader(r1).addReader(r2).build();
+        reader.initialize();
+        assertThat(r1.mockResource).isNotNull();
+        assertThat(r2.mockResource).isNotNull();
+        reader.destroy();
+        assertThat(r1.mockResource).isNull();
+        assertThat(r2.mockResource).isNull();
+    }
+
     /**
      * A {@link Reader} that returns records until manually stopped.
      */
@@ -169,6 +183,7 @@ public class ChainedReaderTest {
         private final AtomicReference<Runnable> completionHandler = new AtomicReference<>();
         private final AtomicBoolean running = new AtomicBoolean();
         private final AtomicBoolean completed = new AtomicBoolean();
+        private Object mockResource;
 
         public MockReader(String name, Supplier<List<SourceRecord>> pollResultsSupplier) {
             this.name = name;
@@ -223,6 +238,16 @@ public class ChainedReaderTest {
         @Override
         public void uponCompletion(Runnable handler) {
             completionHandler.set(handler);
+        }
+
+        @Override
+        public void initialize() {
+            mockResource = new String();
+        }
+
+        @Override
+        public void destroy() {
+            mockResource = null;
         }
     }
 

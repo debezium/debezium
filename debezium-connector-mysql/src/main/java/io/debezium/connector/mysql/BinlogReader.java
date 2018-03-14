@@ -241,6 +241,11 @@ public class BinlogReader extends AbstractReader {
     }
 
     @Override
+    public void doDestroy() {
+        metrics.unregister(logger);
+    }
+
+    @Override
     protected void doStart() {
         // Register our event handlers ...
         eventHandlers.put(EventType.STOP, this::handleServerStop);
@@ -352,10 +357,6 @@ public class BinlogReader extends AbstractReader {
             cleanupResources();
         } catch (IOException e) {
             logger.error("Unexpected error when disconnecting from the MySQL binary log reader", e);
-        } finally {
-            // We unregister our JMX metrics now, which means we won't record metrics for records that
-            // may be processed between now and complete shutdown. That's okay.
-            metrics.unregister(logger);
         }
     }
 
