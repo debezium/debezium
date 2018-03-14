@@ -34,7 +34,8 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     @Override
     public void parse(String ddlContent, Tables databaseTables) {
 
-        CodePointCharStream ddlContentCharStream = CharStreams.fromString(removeLineFeeds(replaceOneLineComments(ddlContent)));
+//        CodePointCharStream ddlContentCharStream = CharStreams.fromString(removeLineFeeds(replaceOneLineComments(ddlContent)));
+        CodePointCharStream ddlContentCharStream = CharStreams.fromString(ddlContent);
         L lexer = createNewLexerInstance(new CaseChangingCharStream(ddlContentCharStream, isGrammarInUpperCase()));
         P parser = createNewParserInstance(new CommonTokenStream(lexer));
 
@@ -94,12 +95,12 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     protected abstract String replaceOneLineComments(String statement);
 
     /**
-     * Returns parsed ddl statement.
+     * Returns matched part of the getText for the context.
      *
-     * @param ctx the parser rule context which matches the whole ddl statement; may not be null
-     * @return parsed ddl statement.
+     * @param ctx the parser rule context; may not be null
+     * @return matched part of the getText
      */
-    protected String statement(ParserRuleContext ctx) {
+    protected String getText(ParserRuleContext ctx) {
         Interval interval = new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex());
         return ctx.start.getInputStream().getText(interval);
     }
@@ -111,7 +112,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param ctx the start of the statement; may not be null
      */
     protected void signalCreateDatabase(String databaseName, ParserRuleContext ctx) {
-        signalCreateDatabase(databaseName, statement(ctx));
+        signalCreateDatabase(databaseName, getText(ctx));
     }
 
     /**
@@ -122,7 +123,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param ctx the start of the statement; may not be null
      */
     protected void signalAlterDatabase(String databaseName, String previousDatabaseName, ParserRuleContext ctx) {
-        signalAlterDatabase(databaseName, previousDatabaseName, statement(ctx));
+        signalAlterDatabase(databaseName, previousDatabaseName, getText(ctx));
     }
 
     /**
@@ -132,7 +133,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param ctx the start of the statement; may not be null
      */
     protected void signalDropDatabase(String databaseName, ParserRuleContext ctx) {
-        signalDropDatabase(databaseName, statement(ctx));
+        signalDropDatabase(databaseName, getText(ctx));
     }
 
     /**
@@ -142,7 +143,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param ctx the start of the statement; may not be null
      */
     protected void signalCreateTable(TableId id, ParserRuleContext ctx) {
-        signalCreateTable(id, statement(ctx));
+        signalCreateTable(id, getText(ctx));
     }
 
     /**
@@ -153,7 +154,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param ctx the start of the statement; may not be null
      */
     protected void signalAlterTable(TableId id, TableId previousId, ParserRuleContext ctx) {
-        signalAlterTable(id, previousId, statement(ctx));
+        signalAlterTable(id, previousId, getText(ctx));
     }
 
     /**
@@ -163,7 +164,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param ctx the start of the statement; may not be null
      */
     protected void signalDropTable(TableId id, ParserRuleContext ctx) {
-        signalDropTable(id, statement(ctx));
+        signalDropTable(id, getText(ctx));
     }
 
     /**
@@ -173,7 +174,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param ctx the start of the statement; may not be null
      */
     protected void signalCreateView(TableId id, ParserRuleContext ctx) {
-        signalEvent(new DdlParserListener.TableCreatedEvent(id, statement(ctx), true));
+        signalEvent(new DdlParserListener.TableCreatedEvent(id, getText(ctx), true));
     }
 
     /**
@@ -184,7 +185,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param ctx the start of the statement; may not be null
      */
     protected void signalAlterView(TableId id, TableId previousId, ParserRuleContext ctx) {
-        signalAlterView(id, previousId, statement(ctx));
+        signalAlterView(id, previousId, getText(ctx));
     }
 
     /**
@@ -194,7 +195,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param ctx the start of the statement; may not be null
      */
     protected void signalDropView(TableId id, ParserRuleContext ctx) {
-        signalDropView(id, statement(ctx));
+        signalDropView(id, getText(ctx));
     }
 
     /**
@@ -205,7 +206,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param ctx the start of the statement; may not be null
      */
     protected void signalCreateIndex(String indexName, TableId id, ParserRuleContext ctx) {
-        signalCreateIndex(indexName, id, statement(ctx));
+        signalCreateIndex(indexName, id, getText(ctx));
     }
 
     /**
@@ -216,14 +217,14 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param ctx the start of the statement; may not be null
      */
     protected void signalDropIndex(String indexName, TableId id, ParserRuleContext ctx) {
-        signalDropIndex(indexName, id, statement(ctx));
+        signalDropIndex(indexName, id, getText(ctx));
     }
 
     protected void debugParsed(ParserRuleContext ctx) {
-        debugParsed(statement(ctx));
+        debugParsed(getText(ctx));
     }
 
     protected void debugSkipped(ParserRuleContext ctx) {
-        debugSkipped(statement(ctx));
+        debugSkipped(getText(ctx));
     }
 }
