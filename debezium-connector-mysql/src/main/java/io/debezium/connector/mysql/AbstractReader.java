@@ -82,6 +82,11 @@ public abstract class AbstractReader implements Reader {
     }
 
     @Override
+    public final void destroy() {
+        doDestroy();
+    }
+
+    @Override
     public void start() {
         if (this.running.compareAndSet(false, true)) {
             this.failure.set(null);
@@ -110,6 +115,15 @@ public abstract class AbstractReader implements Reader {
      * called once before {@link #doStart()}.
      */
     protected void doInitialize() {
+        // do nothing
+    }
+
+
+    /**
+     * The reader has been requested to de-initialize resources after stopping. This should only be
+     * called once after {@link #doStop()}.
+     */
+    protected void doDestroy() {
         // do nothing
     }
 
