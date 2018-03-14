@@ -5,6 +5,10 @@
  */
 package io.debezium.connector.mysql;
 
+import static com.datapipeline.clients.DpConnectorConfigKey.DPTASK_ID;
+
+import com.datapipeline.clients.metrics.DpMetricsManagerFactory;
+import com.dp.internal.bean.ProgressMetricsBean;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
@@ -33,7 +37,7 @@ public final class MySqlConnectorTask extends SourceTask {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private volatile MySqlTaskContext taskContext;
     private volatile ChainedReader readers;
-
+    private String dpTaskId;
     /**
      * Create an instance of the log reader that uses Kafka to store database schema history and the
      * {@link TopicSelector#defaultSelector(String) default topic selector} of "{@code <serverName>.<databaseName>.<tableName>}"
@@ -53,7 +57,7 @@ public final class MySqlConnectorTask extends SourceTask {
         if (context == null) {
             throw new ConnectException("Unexpected null context");
         }
-
+        dpTaskId = props.get(DPTASK_ID);
         // Validate the configuration ...
         final Configuration config = Configuration.from(props);
 //        if (!config.validateAndRecord(MySqlConnectorConfig.ALL_FIELDS, logger::error)) {
@@ -207,7 +211,11 @@ public final class MySqlConnectorTask extends SourceTask {
         PreviousContext prevLoggingContext = this.taskContext.configureLoggingContext("task");
         try {
             logger.trace("Polling for events");
-            return currentReader.poll();
+            List<SourceRecord> results = currentReader.poll();
+            if (results != null) {
+                DpMetricsManagerFactory.INSTANCE.get(dpTaskId, ProgressMetricsBean.From.SOURCE).update(results);
+            }
+          return results;
         } finally {
             prevLoggingContext.restore();
         }
@@ -223,6 +231,7 @@ public final class MySqlConnectorTask extends SourceTask {
                 if (readers != null) {
                     readers.stop();
                 }
+                DpMetricsManagerFactory.INSTANCE.remove(dpTaskId, ProgressMetricsBean.From.SOURCE);
             } finally {
                 prevLoggingContext.restore();
             }
