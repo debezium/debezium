@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.Arrays;
-import java.util.Iterator;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
@@ -19,11 +18,8 @@ import org.slf4j.LoggerFactory;
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.MessageDecoder;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
-import io.debezium.document.Array;
-import io.debezium.document.Array.Entry;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
-import io.debezium.document.Value;
 
 /**
  * JSON deserialization of a message sent by
@@ -39,6 +35,14 @@ public class Wal2JsonMessageDecoder implements MessageDecoder {
 
     private final DateTimeFormat dateTime = DateTimeFormat.get();
     private boolean containsMetadata = false;
+    private boolean messageInProgress = false;
+    private String bufferedContent;
+
+    private int txId;
+
+    private String timestamp;
+
+    private long commitTime;
 
     @Override
     public void processMessage(ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException {
@@ -47,22 +51,54 @@ public class Wal2JsonMessageDecoder implements MessageDecoder {
                 throw new IllegalStateException("Invalid buffer received from PG server during streaming replication");
             }
             final byte[] source = buffer.array();
-            final byte[] content = Arrays.copyOfRange(source, buffer.arrayOffset(), source.length);
-            final Document message = DocumentReader.floatNumbersAsTextReader().read(content);
-            LOGGER.debug("Message arrived for decoding {}", message);
-            final int txId = message.getInteger("xid");
-            final String timestamp = message.getString("timestamp");
-            final long commitTime = dateTime.systemTimestamp(timestamp);
-            final Array changes = message.getArray("change");
+            String content = new String(Arrays.copyOfRange(source, buffer.arrayOffset(), source.length)).trim();
+            LOGGER.debug("Chunk arrived from database {}", content);
 
-            Iterator<Entry> it = changes.iterator();
-            while (it.hasNext()) {
-                Value value = it.next().getValue();
-                processor.process(new Wal2JsonReplicationMessage(txId, commitTime, value.asDocument(), containsMetadata, !it.hasNext(), typeRegistry));
+            if (!messageInProgress) {
+                // We received the beginning of a transaction
+                if (!content.endsWith("}")) {
+                    // Chunks are enabled and we have an unfinished message
+                    content += "]}";
+                }
+                final Document message = DocumentReader.defaultReader().read(content + "]}");
+                txId = message.getInteger("xid");
+                timestamp = message.getString("timestamp");
+                commitTime = dateTime.systemTimestamp(timestamp);
+                messageInProgress = true;
+                bufferedContent = null;
+            }
+            else {
+                // We are receiving changes in chunks
+                if (content.startsWith("{")) {
+                    // First change
+                    bufferedContent = content;
+                }
+                else if (content.startsWith(",")) {
+                    // following changes
+                    doProcessMessage(processor, typeRegistry, bufferedContent, false);
+                    bufferedContent = content.substring(1);
+                }
+                else if (content.startsWith("]")) {
+                    // No more changes
+                    if (bufferedContent != null) {
+                        doProcessMessage(processor, typeRegistry, bufferedContent, true);
+                    }
+                    messageInProgress = false;
+                }
+                else {
+                    throw new ConnectException("Chunk arrived in unxepected state");
+                }
             }
         } catch (final IOException e) {
             throw new ConnectException(e);
         }
+    }
+
+    private void doProcessMessage(ReplicationMessageProcessor processor, TypeRegistry typeRegistry, String content, boolean lastMessage)
+            throws IOException, SQLException, InterruptedException {
+        final Document change = DocumentReader.floatNumbersAsTextReader().read(content);
+        LOGGER.debug("Change arrived for decoding {}", change);
+        processor.process(new Wal2JsonReplicationMessage(txId, commitTime, change, containsMetadata, lastMessage, typeRegistry));
     }
 
     @Override
@@ -75,7 +111,7 @@ public class Wal2JsonMessageDecoder implements MessageDecoder {
     public ChainedLogicalStreamBuilder optionsWithoutMetadata(ChainedLogicalStreamBuilder builder) {
         return builder
             .withSlotOption("pretty-print", 1)
-            .withSlotOption("write-in-chunks", 0)
+            .withSlotOption("write-in-chunks", 1)
             .withSlotOption("include-xids", 1)
             .withSlotOption("include-timestamp", 1);
     }
