@@ -358,4 +358,8 @@ public abstract class AbstractDdlParser implements DdlParser {
             logger.trace("SKIPPED: {}", statement);
         }
     }
+
+    protected void commnetParsed(String comment) {
+        logger.trace("COMMENT: {}", comment);
+    }
 }
