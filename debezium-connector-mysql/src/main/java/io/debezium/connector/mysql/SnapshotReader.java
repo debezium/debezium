@@ -105,6 +105,11 @@ public class SnapshotReader extends AbstractReader {
         metrics.register(context, logger);
     }
 
+    @Override
+    public void doDestroy() {
+        metrics.unregister(logger);
+    }
+
     /**
      * Start the snapshot and return immediately. Once started, the records read from the database can be retrieved using
      * {@link #poll()} until that method returns {@code null}.
@@ -124,12 +129,8 @@ public class SnapshotReader extends AbstractReader {
 
     @Override
     protected void doCleanup() {
-        try {
-            executorService.shutdown();
-            logger.debug("Completed writing all snapshot records");
-        } finally {
-            metrics.unregister(logger);
-        }
+        executorService.shutdown();
+        logger.debug("Completed writing all snapshot records");
     }
 
     protected Object readField(ResultSet rs, int fieldNo, Column actualColumn) throws SQLException {
