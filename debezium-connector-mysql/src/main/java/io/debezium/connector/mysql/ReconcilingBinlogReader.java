@@ -46,7 +46,6 @@ public class ReconcilingBinlogReader implements Reader {
                                    BinlogReader binlogReaderB) {
         this.binlogReaderA = binlogReaderA;
         this.binlogReaderB = binlogReaderB;
-        uponCompletion.set(new LogCompletionRunnable(null));
     }
 
     @Override
@@ -64,7 +63,7 @@ public class ReconcilingBinlogReader implements Reader {
 
     @Override
     public void uponCompletion(Runnable handler) {
-        uponCompletion.set(new LogCompletionRunnable(handler));
+        uponCompletion.set(handler);
     }
 
     @Override
@@ -130,23 +129,6 @@ public class ReconcilingBinlogReader implements Reader {
     private void checkLaggingLeadingInfo() {
         if (aReaderLeading == null) {
             throw new IllegalStateException("Cannot return leading or lagging readers until this reader has started.");
-        }
-    }
-
-    private class LogCompletionRunnable implements Runnable {
-
-        Runnable otherRunnable;
-
-        LogCompletionRunnable(Runnable otherRunnable) {
-            this.otherRunnable = otherRunnable;
-        }
-
-        @Override
-        public void run() {
-            if (otherRunnable != null) {
-                otherRunnable.run();
-            }
-            logger.info("Completed Reconciling Readers.");
         }
     }
 

@@ -209,8 +209,23 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                     throw new ConnectException(
                             "The MySQL server does not appear to be using a row-level binlog, which is required for this connector to work properly. Enable this mode and restart the connector.");
                 }
-                // We're going to start by reading the binlog ...
-                chainedReaderBuilder.addReader(binlogReader);
+
+                // if we are configured to run parallel snapshot and there are new tables
+                if (config.getBoolean(MySqlConnectorConfig.SNAPSHOT_PARALLEL) && newTablesInConfig()) {
+                    ParallelSnapshotReader parallelSnapshotReader = new ParallelSnapshotReader(config, taskContext, getNewFilters(offsets, config));
+                    ReconcilingBinlogReader reconcilingBinlogReader = parallelSnapshotReader.createReconcilingBinlogReader();
+                    MySqlTaskContext unifiedTaskContext = createAndStartTaskContext(config, getAllFilters(config));
+                    // take any final steps requires for reconciling the parallel readers
+                    reconcilingBinlogReader.uponCompletion(new CompleteReconciliation(unifiedTaskContext, reconcilingBinlogReader, source, config));
+                    BinlogReader unifiedBinlogReader = new BinlogReader("binlog", unifiedTaskContext, null);
+                    chainedReaderBuilder.addReader(parallelSnapshotReader);
+                    chainedReaderBuilder.addReader(reconcilingBinlogReader);
+                    chainedReaderBuilder.addReader(unifiedBinlogReader);
+                } else {
+                    // We're going to start by reading the binlog ...
+                    chainedReaderBuilder.addReader(binlogReader);
+                }
+
             }
 
             readers = chainedReaderBuilder.build();
@@ -238,6 +253,44 @@ public final class MySqlConnectorTask extends BaseSourceTask {
             throw new ConnectException(e);
         } finally {
             prevLoggingContext.restore();
+        }
+    }
+
+    private static class CompleteReconciliation implements Runnable {
+
+        private MySqlTaskContext unifiedBinlogReaderContext;
+        private ReconcilingBinlogReader reconcilingBinlogReader;
+        private SourceInfo sourceInfo;
+        private Configuration config;
+
+        private final Logger logger = LoggerFactory.getLogger(getClass());
+
+        /**
+         * Create a runnable to complete the Reconciliation process:
+         *  - update the context the final binlog reader will run in to the binlog offset
+         *    the Reconciling Reader reached.
+         *  - update the sourceInfo filter data to the config filter data, to signal the unification
+         *    of the new and old filter info into the connector.
+         * @param unifiedBinlogReaderContext the context the final, unified binlog reader will run in.
+         * @param reconcilingBinlogReader the {@link ReconcilingBinlogReader}
+         * @param sourceInfo the source info
+         * @param config the configuration
+         */
+        CompleteReconciliation(MySqlTaskContext unifiedBinlogReaderContext,
+                               ReconcilingBinlogReader reconcilingBinlogReader,
+                               SourceInfo sourceInfo,
+                               Configuration config) {
+            this.unifiedBinlogReaderContext = unifiedBinlogReaderContext;
+            this.reconcilingBinlogReader = reconcilingBinlogReader;
+            this.sourceInfo = sourceInfo;
+            this.config = config;
+        }
+
+        @Override
+        public void run() {
+            unifiedBinlogReaderContext.loadHistory(reconcilingBinlogReader.getLeadingReader().context.source());
+            sourceInfo.setFilterDataFromConfig(config);
+            logger.info("Completed Reconciliation of Parallel Readers");
         }
     }
 

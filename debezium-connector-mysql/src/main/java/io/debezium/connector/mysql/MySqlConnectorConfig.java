@@ -880,6 +880,16 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                                + "'schema_only_recovery' and is only safe to use if no schema changes are happening while the snapshot is taken.")
                                                            .withValidation(MySqlConnectorConfig::validateSnapshotLockingMode);
 
+    public static final Field SNAPSHOT_PARALLEL = Field.create("snapshot.parallel")
+                                                       .withDisplayName("Snapshot newly added tables in parallel to normal binlog reading")
+                                                       .withType(Type.BOOLEAN)
+                                                       .withWidth(Width.SHORT)
+                                                       .withImportance(Importance.LOW)
+                                                       .withDescription("BETA FEATURE: If new tables are added to the config, snapshot the new tables in parallel to reading the binlog for the "
+                                                               + "tables previously in the config. Once reading of the new tables is caught up to the present time, both old and new readers will "
+                                                               + "be temporarily halted and a new binlog reader will start that will read the binlog for all configured tables.")
+                                                       .withDefault(false);
+
     public static final Field TIME_PRECISION_MODE = Field.create("time.precision.mode")
                                                          .withDisplayName("Time Precision")
                                                          .withEnum(TemporalPrecisionMode.class, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS)
@@ -985,7 +995,8 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      Heartbeat.HEARTBEAT_TOPICS_PREFIX, DATABASE_HISTORY, INCLUDE_SCHEMA_CHANGES, INCLUDE_SQL_QUERY,
                                                      TABLE_WHITELIST, TABLE_BLACKLIST, TABLES_IGNORE_BUILTIN,
                                                      DATABASE_WHITELIST, DATABASE_BLACKLIST,
-                                                     COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, SNAPSHOT_LOCKING_MODE,
+                                                     COLUMN_BLACKLIST,
+                                                     SNAPSHOT_MODE, SNAPSHOT_PARALLEL, SNAPSHOT_MINIMAL_LOCKING, SNAPSHOT_LOCKING_MODE,
                                                      GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
                                                      GTID_SOURCE_FILTER_DML_EVENTS,
                                                      GTID_NEW_CHANNEL_POSITION,
@@ -1073,7 +1084,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                     CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
-                    SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
+                    SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE, SNAPSHOT_MINIMAL_LOCKING, SNAPSHOT_PARALLEL, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                     BIGINT_UNSIGNED_HANDLING_MODE, SNAPSHOT_DELAY_MS, DDL_PARSER_MODE);
         return config;
     }
