@@ -278,12 +278,6 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         public void enterAlterByAddColumn(MySqlParser.AlterByAddColumnContext ctx) {
             String columnName = parseColumnName(ctx.uid(0));
             columnEditor = Column.editor().name(columnName);
-            if (ctx.FIRST() != null) {
-                //TODO: this new column should have the first position in table
-            } else if (ctx.AFTER() != null) {
-                String afterColumn = parseColumnName(ctx.uid(1));
-                //TODO: this column should have position after the specified column
-            }
             super.exitAlterByAddColumn(ctx);
         }
 
@@ -301,7 +295,16 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
         @Override
         public void exitAlterByAddColumn(MySqlParser.AlterByAddColumnContext ctx) {
+            String columnName = columnEditor.name();
             tableEditor.addColumn(columnEditor.create());
+
+            if (ctx.FIRST() != null) {
+                //TODO: this new column should have the first position in table
+                tableEditor.reorderColumn(columnName, null);
+            } else if (ctx.AFTER() != null) {
+                String afterColumn = parseColumnName(ctx.uid(1));
+                tableEditor.reorderColumn(columnName, afterColumn);
+            }
             super.exitAlterByAddColumn(ctx);
         }
 
