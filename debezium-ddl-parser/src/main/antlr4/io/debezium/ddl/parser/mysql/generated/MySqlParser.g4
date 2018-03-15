@@ -38,16 +38,12 @@ sqlStatements
     : (sqlStatement MINUSMINUS? SEMI | emptyStatement)* 
     (sqlStatement (MINUSMINUS? SEMI)? | emptyStatement)
     ;
-    
-sqlStatement
-    : ddlStatement
-    ;
 
-//sqlStatement
-//    : ddlStatement | dmlStatement | transactionStatement
-//    | replicationStatement | preparedStatement
-//    | administrationStatement | utilityStatement
-//    ;
+sqlStatement
+    : ddlStatement | dmlStatement | transactionStatement
+    | replicationStatement | preparedStatement
+    | administrationStatement | utilityStatement
+    ;
 
 emptyStatement
     : SEMI
@@ -1974,7 +1970,7 @@ dataType
         TINYINT | SMALLINT | MEDIUMINT | INT | INTEGER | BIGINT
       ) 
       lengthOneDimension? UNSIGNED? ZEROFILL?                       #dimensionDataType
-    | typeName=(REAL | DOUBLE | DOUBLE PRECISION | FLOAT)
+    | typeName=(REAL | DOUBLE | DOUBLE_PRECISION | FLOAT)
       lengthTwoDimension? UNSIGNED? ZEROFILL?                       #dimensionDataType
     | typeName=(DECIMAL | DEC | FIXED | NUMERIC)
       lengthTwoOptionalDimension? UNSIGNED? ZEROFILL?               #dimensionDataType
