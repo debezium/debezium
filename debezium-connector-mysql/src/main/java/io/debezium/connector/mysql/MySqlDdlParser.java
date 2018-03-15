@@ -622,7 +622,9 @@ public class MySqlDdlParser extends DdlParser {
                     tokens.rewind(defnStart);
                 }
             }
-            if (tokens.canConsume("CONSTRAINT", TokenStream.ANY_VALUE, "UNIQUE") || tokens.canConsume("UNIQUE")) {
+            if (tokens.canConsume("CONSTRAINT", TokenStream.ANY_VALUE, "UNIQUE")
+                    || tokens.canConsume("CONSTRAINT", "UNIQUE")
+                    || tokens.canConsume("UNIQUE")) {
                 tokens.canConsumeAnyOf("KEY", "INDEX");
                 try {
                     if (!tokens.matches('(')) {
