@@ -464,6 +464,33 @@ public class MySqlDdlParserTest {
         assertThat(t3.columnWithName("col2").position()).isEqualTo(3);
     }
 
+    @FixFor("DBZ-660")
+    @Test
+    public void shouldParseAlterTableStatementAddConstraintUniqueKey() {
+        String ddl = "CREATE TABLE t ( col1 VARCHAR(25) ); ";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+
+        ddl = "ALTER TABLE t ADD CONSTRAINT UNIQUE KEY col_key ('col1');";
+        parser.parse(ddl, tables);
+
+        ddl = "ALTER TABLE t ADD CONSTRAINT UNIQUE KEY ('col1');";
+        parser.parse(ddl, tables);
+
+        ddl = "ALTER TABLE t ADD UNIQUE KEY col_key ('col1');";
+        parser.parse(ddl, tables);
+
+        ddl = "ALTER TABLE t ADD UNIQUE KEY ('col1');";
+        parser.parse(ddl, tables);
+
+        ddl = "ALTER TABLE t ADD CONSTRAINT 'xx' UNIQUE KEY col_key ('col1');";
+        parser.parse(ddl, tables);
+
+        ddl = "ALTER TABLE t ADD CONSTRAINT 'xx' UNIQUE KEY ('col1');";
+        parser.parse(ddl, tables);
+    }
+
+
     @Test
     public void shouldParseCreateTableWithEnumAndSetColumns() {
         String ddl = "CREATE TABLE t ( c1 ENUM('a','b','c') NOT NULL, c2 SET('a','b','c') NULL);";
