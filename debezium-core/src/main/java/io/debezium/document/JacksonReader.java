@@ -35,6 +35,7 @@ final class JacksonReader implements DocumentReader, ArrayReader {
     static {
         factory = new JsonFactory();
         factory.enable(JsonParser.Feature.ALLOW_COMMENTS);
+        factory.enable(JsonParser.Feature.ALLOW_UNQUOTED_CONTROL_CHARS);
     }
 
     private JacksonReader(boolean handleFloatNumbersAsText) {
