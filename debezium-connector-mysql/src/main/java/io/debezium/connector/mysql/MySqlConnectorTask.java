@@ -240,6 +240,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
 
                 if (readers != null) {
                     readers.stop();
+                    readers.destroy();
                 }
             } finally {
                 prevLoggingContext.restore();

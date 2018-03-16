@@ -85,6 +85,12 @@ public final class ChainedReader implements Reader {
     }
 
     @Override
+    public void destroy() {
+        // destroy all of the readers ...
+        readers.forEach(Reader::destroy);
+    }
+
+    @Override
     public synchronized void start() {
         if (running.compareAndSet(false, true)) {
             completed.set(false);
@@ -204,4 +210,5 @@ public final class ChainedReader implements Reader {
         Reader reader = currentReader.get();
         return reader != null ? reader.name() : "chained";
     }
+
 }
