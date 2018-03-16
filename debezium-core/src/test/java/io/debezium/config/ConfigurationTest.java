@@ -135,4 +135,12 @@ public class ConfigurationTest {
         Predicate<String> ddlFilter = Predicates.includes(defaultDdlFilter);
         assertThat(ddlFilter.test("INSERT INTO mysql.rds_heartbeat2(id, value) values (1,1510678117058) ON DUPLICATE KEY UPDATE value = 1510678117058")).isTrue();
     }
+
+    @Test
+    @FixFor("DBZ-661")
+    public void defaultDddlFilterShouldFilterOutFlushRelayLogs() {
+        String defaultDdlFilter = Configuration.create().build().getString(DatabaseHistory.DDL_FILTER);
+        Predicate<String> ddlFilter = Predicates.includes(defaultDdlFilter);
+        assertThat(ddlFilter.test("FLUSH RELAY LOGS")).isTrue();
+    }
 }
