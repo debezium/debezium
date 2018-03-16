@@ -210,17 +210,20 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                             "The MySQL server does not appear to be using a row-level binlog, which is required for this connector to work properly. Enable this mode and restart the connector.");
                 }
 
-                // if we are configured to run parallel snapshot and there are new tables
-                if (config.getBoolean(MySqlConnectorConfig.SNAPSHOT_PARALLEL) && newTablesInConfig()) {
-                    ParallelSnapshotReader parallelSnapshotReader = new ParallelSnapshotReader(config, taskContext, getNewFilters(offsets, config));
-                    ReconcilingBinlogReader reconcilingBinlogReader = parallelSnapshotReader.createReconcilingBinlogReader();
-                    MySqlTaskContext unifiedTaskContext = createAndStartTaskContext(config, getAllFilters(config));
-                    // take any final steps requires for reconciling the parallel readers
-                    reconcilingBinlogReader.uponCompletion(new CompleteReconciliation(unifiedTaskContext, reconcilingBinlogReader, source, config));
-                    BinlogReader unifiedBinlogReader = new BinlogReader("binlog", unifiedTaskContext, null);
-                    chainedReaderBuilder.addReader(parallelSnapshotReader);
-                    chainedReaderBuilder.addReader(reconcilingBinlogReader);
-                    chainedReaderBuilder.addReader(unifiedBinlogReader);
+                // if there are new tables
+                if (newTablesInConfig()) {
+                    // and we are configured to run a parallel snapshot
+                    if (taskContext.snapshotNewTables() == MySqlConnectorConfig.SnapshotNewTables.PARALLEL) {
+                        ParallelSnapshotReader parallelSnapshotReader = new ParallelSnapshotReader(config, taskContext, getNewFilters(offsets, config));
+                        ReconcilingBinlogReader reconcilingBinlogReader = parallelSnapshotReader.createReconcilingBinlogReader();
+                        MySqlTaskContext unifiedTaskContext = createAndStartTaskContext(config, getAllFilters(config));
+                        // take any final steps requires for reconciling the parallel readers
+                        reconcilingBinlogReader.uponCompletion(new CompleteReconciliation(unifiedTaskContext, reconcilingBinlogReader, source, config));
+                        BinlogReader unifiedBinlogReader = new BinlogReader("binlog", unifiedTaskContext, null);
+                        chainedReaderBuilder.addReader(parallelSnapshotReader);
+                        chainedReaderBuilder.addReader(reconcilingBinlogReader);
+                        chainedReaderBuilder.addReader(unifiedBinlogReader);
+                    }
                 } else {
                     // We're going to start by reading the binlog ...
                     chainedReaderBuilder.addReader(binlogReader);

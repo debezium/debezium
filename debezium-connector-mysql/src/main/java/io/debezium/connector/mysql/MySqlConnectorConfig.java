@@ -191,6 +191,57 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
         }
     }
 
+    public static enum SnapshotNewTables implements EnumeratedValue {
+        /**
+         * Do not snapshot new tables
+         */
+        OFF("off"),
+
+        /**
+         * Snapshot new tables in parallel to normal binlog reading.
+         */
+        PARALLEL("parallel");
+
+        private final String value;
+
+        private SnapshotNewTables(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static SnapshotNewTables parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+            for (SnapshotNewTables option : SnapshotNewTables.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static SnapshotNewTables parse(String value, String defaultValue) {
+            SnapshotNewTables snapshotNewTables = parse(value);
+            if (snapshotNewTables == null && defaultValue != null) snapshotNewTables = parse(defaultValue);
+            return snapshotNewTables;
+        }
+    }
+
     /**
      * The set of predefined Snapshot Locking Mode options.
      */
@@ -880,15 +931,18 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                                + "'schema_only_recovery' and is only safe to use if no schema changes are happening while the snapshot is taken.")
                                                            .withValidation(MySqlConnectorConfig::validateSnapshotLockingMode);
 
-    public static final Field SNAPSHOT_PARALLEL = Field.create("snapshot.parallel")
-                                                       .withDisplayName("Snapshot newly added tables in parallel to normal binlog reading")
-                                                       .withType(Type.BOOLEAN)
+    public static final Field SNAPSHOT_NEW_TABLES = Field.create("snapshot.new.tables")
+                                                       .withDisplayName("Snapshot newly added tables")
+                                                       .withEnum(SnapshotNewTables.class, SnapshotNewTables.OFF)
                                                        .withWidth(Width.SHORT)
                                                        .withImportance(Importance.LOW)
-                                                       .withDescription("BETA FEATURE: If new tables are added to the config, snapshot the new tables in parallel to reading the binlog for the "
-                                                               + "tables previously in the config. Once reading of the new tables is caught up to the present time, both old and new readers will "
-                                                               + "be temporarily halted and a new binlog reader will start that will read the binlog for all configured tables.")
-                                                       .withDefault(false);
+                                                       .withDescription("BETA FEATURE: On connector restart, the connector will check if there have been any new tables added to the configuration, "
+                                                           + "and snapshot them. There is presently only two options:"
+                                                           + "'off': Default behavior. Do not snapshot new tables."
+                                                           + "'parallel': The snapshot of the new tables will occur in parallel to the continued binlog reading of the old tables. When the snapshot "
+                                                           + "completes, an independent binlog reader will begin reading the events for the new tables until it catches up to present time. At this "
+                                                           + "point, both old and new binlog readers will be momentarily halted and new binlog reader will start that will read the binlog for all "
+                                                           + "configured tables.");
 
     public static final Field TIME_PRECISION_MODE = Field.create("time.precision.mode")
                                                          .withDisplayName("Time Precision")
@@ -996,7 +1050,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      TABLE_WHITELIST, TABLE_BLACKLIST, TABLES_IGNORE_BUILTIN,
                                                      DATABASE_WHITELIST, DATABASE_BLACKLIST,
                                                      COLUMN_BLACKLIST,
-                                                     SNAPSHOT_MODE, SNAPSHOT_PARALLEL, SNAPSHOT_MINIMAL_LOCKING, SNAPSHOT_LOCKING_MODE,
+                                                     SNAPSHOT_MODE, SNAPSHOT_NEW_TABLES, SNAPSHOT_MINIMAL_LOCKING, SNAPSHOT_LOCKING_MODE,
                                                      GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
                                                      GTID_SOURCE_FILTER_DML_EVENTS,
                                                      GTID_NEW_CHANNEL_POSITION,
@@ -1084,7 +1138,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                     CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
-                    SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE, SNAPSHOT_MINIMAL_LOCKING, SNAPSHOT_PARALLEL, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
+                    SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE, SNAPSHOT_NEW_TABLES, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                     BIGINT_UNSIGNED_HANDLING_MODE, SNAPSHOT_DELAY_MS, DDL_PARSER_MODE);
         return config;
     }

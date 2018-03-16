@@ -128,7 +128,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_MODE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_PARALLEL);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_NEW_TABLES);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_MODE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_KEYSTORE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD);
@@ -183,7 +183,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_MODE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_PARALLEL);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_NEW_TABLES);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_MODE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_KEYSTORE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD);
@@ -234,7 +234,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_MODE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_PARALLEL);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_NEW_TABLES);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_MODE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_KEYSTORE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD);
