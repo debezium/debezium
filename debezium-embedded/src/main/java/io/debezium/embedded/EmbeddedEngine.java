@@ -501,7 +501,7 @@ public final class EmbeddedEngine implements Runnable {
     private final WorkerConfig workerConfig;
     private final CompletionResult completionResult;
     private long recordsSinceLastCommit = 0;
-    private long timeSinceLastCommitMillis = 0;
+    private long timeOfLastCommitMillis = 0;
     private OffsetCommitPolicy offsetCommitPolicy;
 
     private EmbeddedEngine(Configuration config, ClassLoader classLoader, Clock clock, Consumer<SourceRecord> consumer,
@@ -688,7 +688,7 @@ public final class EmbeddedEngine implements Runnable {
                     recordsSinceLastCommit = 0;
                     Throwable handlerError = null;
                     try {
-                        timeSinceLastCommitMillis = clock.currentTimeInMillis();
+                        timeOfLastCommitMillis = clock.currentTimeInMillis();
                         boolean keepProcessing = true;
                         List<SourceRecord> changeRecords = null;
                         while (runningThread.get() != null && handlerError == null && keepProcessing) {
@@ -806,6 +806,7 @@ public final class EmbeddedEngine implements Runnable {
     protected void maybeFlush(OffsetStorageWriter offsetWriter, OffsetCommitPolicy policy, long commitTimeoutMs,
                               SourceTask task) {
         // Determine if we need to commit to offset storage ...
+        long timeSinceLastCommitMillis = clock.currentTimeInMillis() - timeOfLastCommitMillis;
         if (policy.performCommit(recordsSinceLastCommit, Duration.ofMillis(timeSinceLastCommitMillis))) {
             commitOffsets(offsetWriter, commitTimeoutMs, task);
         }
@@ -831,7 +832,7 @@ public final class EmbeddedEngine implements Runnable {
             // if we've gotten this far, the offsets have been committed so notify the task
             task.commit();
             recordsSinceLastCommit = 0;
-            timeSinceLastCommitMillis = clock.currentTimeInMillis();
+            timeOfLastCommitMillis = clock.currentTimeInMillis();
         } catch (InterruptedException e) {
             logger.warn("Flush of {} offsets interrupted, cancelling", this);
             offsetWriter.cancelFlush();
