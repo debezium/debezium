@@ -219,10 +219,18 @@ public class RecordMakers {
                 Object key = tableSchema.keyFromColumnData(row);
                 Struct value = tableSchema.valueFromColumnData(row);
                 if (value != null || key != null) {
+                    int bytes = 0;
+                    for (Object o : row) {
+                      if (o != null) {
+                        bytes += o.toString().getBytes().length;
+                      }
+                    }
+                    source.increTotalBytes(id.table(), bytes);
+                    source.increTotalCount(id.table());
+                    Struct origin = source.struct(id);
                     Schema keySchema = tableSchema.keySchema();
                     Map<String, ?> partition = source.partition();
                     Map<String, ?> offset = source.offsetForRow(rowNumber, numberOfRows);
-                    Struct origin = source.struct(id);
                     SourceRecord record = new SourceRecord(partition, offset, topicName, partitionNum,
                             keySchema, key, envelope.schema(), envelope.create(value, origin, ts));
                     consumer.accept(record);
@@ -240,6 +248,14 @@ public class RecordMakers {
                 Object key = tableSchema.keyFromColumnData(after);
                 Struct valueAfter = tableSchema.valueFromColumnData(after);
                 if (valueAfter != null || key != null) {
+                    int bytes = 0;
+                    for (Object o : after) {
+                      if (o != null) {
+                        bytes += o.toString().getBytes().length;
+                      }
+                    }
+                    source.increTotalBytes(id.table(), bytes);
+                    source.increTotalCount(id.table());
                     Object oldKey = tableSchema.keyFromColumnData(before);
                     Struct valueBefore = tableSchema.valueFromColumnData(before);
                     Schema keySchema = tableSchema.keySchema();
@@ -418,14 +434,6 @@ public class RecordMakers {
          * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
          */
         public int create(Object[] row, long ts, int rowNumber, int numberOfRows) throws InterruptedException {
-            int bytes = 0;
-            for (Object o : row) {
-              if (o != null) {
-                bytes += o.toString().getBytes().length;
-              }
-            }
-            source.increTotalBytes(bytes);
-            source.increTotalCount();
             return converter.insert(source, row, rowNumber, numberOfRows, includedColumns, ts, consumer);
         }
 
@@ -458,14 +466,6 @@ public class RecordMakers {
          * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
          */
         public int update(Object[] before, Object[] after, long ts, int rowNumber, int numberOfRows) throws InterruptedException {
-            int bytes = 0;
-            for (Object o : after) {
-              if (o != null) {
-                bytes += o.toString().getBytes().length;
-              }
-            }
-            source.increTotalBytes(bytes);
-            source.increTotalCount();
             return converter.update(source, before, after, rowNumber, numberOfRows, includedColumns, ts, consumer);
         }
 

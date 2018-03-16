@@ -434,8 +434,8 @@ final class SourceInfo {
             result.put(DpRecordConstants.SOURCE_ENTITY_NAME_KEY, tableId.table());
             result.put(DpRecordConstants.SOURCE_ENTITY_SNAPSHOT_SIZE_KEY, isSnapshotInEffect() ? entitySize : 0);
             result.put(DpRecordConstants.SOURCE_ENTITY_SNAPSHOT_RECORD_INDEX_KEY, isSnapshotInEffect() ? lastIndex : 0);
-            result.put(DpRecordConstants.SOURCE_ENTITY_TOTAL_COUNT_KEY, totalCount);
-            result.put(DpRecordConstants.SOURCE_ENTITY_TOTAL_BYTES_KEY, totalBytes);
+            result.put(DpRecordConstants.SOURCE_ENTITY_TOTAL_COUNT_KEY, totalCount.get(tableId.table()).sum());
+            result.put(DpRecordConstants.SOURCE_ENTITY_TOTAL_BYTES_KEY, totalBytes.get(tableId.table()).sum());
 
         }
         return result;
