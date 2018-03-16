@@ -340,7 +340,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
 
             // Create topic
             final NewTopic topic = new NewTopic(topicName, (short)1, replicationFactor);
-            topic.configs(Collect.hashMapOf("cleanup.policy", "delete", "retention.ms", Long.toString(Long.MAX_VALUE)));
+            topic.configs(Collect.hashMapOf("cleanup.policy", "delete", "retention.ms", Long.toString(Long.MAX_VALUE), "retention.bytes", "-1"));
             admin.createTopics(Collections.singleton(topic));
 
             logger.info("Database history topic '{}' created", topic);
