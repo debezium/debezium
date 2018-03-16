@@ -17,11 +17,14 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Predicate;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
 
 /**
  * Information about the source of information, which includes the position in the source binary log we have previously processed.
@@ -166,8 +169,8 @@ final class SourceInfo {
     private List<String> snapshottedEntities = new ArrayList<>();
     private long entitySize;
     private long lastIndex = 0L;
-    private long totalCount = 0L;
-    private long totalBytes = 0L;
+    private Map<String, LongAdder> totalCount = new HashMap<>();
+    private Map<String, LongAdder> totalBytes = new HashMap<>();
     private boolean isSnapshotLastOne = false;
 
     public SourceInfo() {
@@ -206,12 +209,14 @@ final class SourceInfo {
         this.entitySize = size;
     }
 
-    public void increTotalCount() {
-        this.totalCount++;
+    public void increTotalCount(String tableName) {
+      totalCount.putIfAbsent(tableName, new LongAdder());
+      totalCount.get(tableName).add(1);
     }
 
-    public void increTotalBytes(long bytes) {
-        this.totalBytes += bytes;
+    public void increTotalBytes(String tableName, long bytes) {
+      totalBytes.putIfAbsent(tableName, new LongAdder());
+      totalBytes.get(tableName).add(bytes);
     }
 
   /**
@@ -355,11 +360,21 @@ final class SourceInfo {
             map.put(LAST_SNAPSHOTTED_RECORD_KEY, lastSnapshottedRecord);
             map.put(SNAPSHOTTED_ENTITIES_KEY, String.join(",", snapshottedEntities));
         }
-        map.put(DpRecordConstants.SOURCE_ENTITY_TOTAL_COUNT_KEY, totalCount);
-        map.put(DpRecordConstants.SOURCE_ENTITY_TOTAL_BYTES_KEY, totalBytes);
+        map.put(DpRecordConstants.SOURCE_ENTITY_TOTAL_COUNT_KEY, convertMapToJSONObject(totalCount).toString());
+        map.put(DpRecordConstants.SOURCE_ENTITY_TOTAL_BYTES_KEY, convertMapToJSONObject(totalBytes).toString());
         return map;
     }
 
+    private JSONObject convertMapToJSONObject(Map<String, LongAdder> map) {
+      JSONObject jsonObject = new JSONObject();
+      for (Map.Entry<String, LongAdder> entry : map.entrySet()) {
+        try {
+          jsonObject.put(entry.getKey(), entry.getValue().sum());
+        } catch (JSONException ignore) {
+        }
+      }
+      return jsonObject;
+    }
     /**
      * Get a {@link Schema} representation of the source {@link #partition()} and {@link #offset()} information.
      *
@@ -583,8 +598,24 @@ final class SourceInfo {
             if (snapshottedEntitiesStr != null && !snapshottedEntitiesStr.isEmpty()) {
                 snapshottedEntities = new ArrayList<>(Arrays.asList(snapshottedEntitiesStr.split(",")));
             }
-            totalCount = longOffsetValue(sourceOffset, DpRecordConstants.SOURCE_ENTITY_TOTAL_COUNT_KEY);
-            totalBytes = longOffsetValue(sourceOffset, DpRecordConstants.SOURCE_ENTITY_TOTAL_BYTES_KEY);
+          try {
+            JSONObject totalCount = new JSONObject((String)sourceOffset.get(DpRecordConstants.SOURCE_ENTITY_TOTAL_COUNT_KEY));
+            for (int i =0; i<totalCount.names().length(); i++) {
+              String tableName = totalCount.names().getString(i);
+              Long lastCount = totalCount.getLong(tableName);
+              LongAdder count = new LongAdder();
+              count.add(lastCount);
+              this.totalCount.put(tableName, count);
+            }
+            JSONObject totalBytes = new JSONObject((String)sourceOffset.get(DpRecordConstants.SOURCE_ENTITY_TOTAL_BYTES_KEY));
+            for (int i =0; i<totalBytes.names().length(); i++) {
+              String tableName = totalBytes.names().getString(i);
+              Long lastBytes = totalBytes.getLong(tableName);
+              LongAdder bytes = new LongAdder();
+              bytes.add(lastBytes);
+              this.totalBytes.put(tableName, bytes);
+            }
+          } catch (JSONException ignore) { }
         }
     }
 
