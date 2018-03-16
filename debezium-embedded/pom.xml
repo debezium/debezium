@@ -35,6 +35,21 @@
             <groupId>org.apache.kafka</groupId>
             <artifactId>connect-file</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.eclipse.microprofile.health</groupId>
+            <artifactId>microprofile-health-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.microprofile.config</groupId>
+            <artifactId>microprofile-config-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wildfly</groupId>
+            <artifactId>wildfly-microprofile-config-extension</artifactId>
+            <scope>provided</scope>
+        </dependency>
 
         <!-- Testing -->
         <dependency>

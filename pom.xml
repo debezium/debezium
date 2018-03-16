@@ -73,6 +73,10 @@
         <version.mongo.server>3.2.12</version.mongo.server>
         <version.mongo.driver>3.4.2</version.mongo.driver>
 
+        <!-- Microprofile -->
+        <version.microprofile.config>1.2.1</version.microprofile.config>
+        <version.microprofile.health>1.0</version.microprofile.health>
+
         <!-- Connectors -->
         <version.com.google.protobuf>2.6.1</version.com.google.protobuf>
 
@@ -275,6 +279,23 @@
                 <groupId>log4j</groupId>
                 <artifactId>log4j</artifactId>
                 <version>${version.log4j}</version>
+            </dependency>
+
+            <!-- Microprofile -->
+            <dependency>
+                <groupId>org.eclipse.microprofile.health</groupId>
+                <artifactId>microprofile-health-api</artifactId>
+                <version>${version.microprofile.health}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.microprofile.config</groupId>
+                <artifactId>microprofile-config-api</artifactId>
+                <version>${version.microprofile.config}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.wildfly</groupId>
+                <artifactId>wildfly-microprofile-config-extension</artifactId>
+                <version>${version.microprofile.config}</version>
             </dependency>
 
             <!-- Test dependencies -->
