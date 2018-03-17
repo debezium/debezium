@@ -6,18 +6,22 @@
 
 package io.debezium.antlr;
 
+import io.debezium.text.ParsingException;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.BiFunction;
 
 /**
  * Instances of this class allows multiple listeners to receive events
  * while walking the parse tree. For example:
- *
+ * <p>
  * <pre>
  * ProxyParseTreeListener proxy = new ProxyParseTreeListener();
  * ParseTreeListener listener1 = ... ;
@@ -30,13 +34,15 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class ProxyParseTreeListener implements ParseTreeListener {
     private List<ParseTreeListener> listeners;
 
+    private Collection<ParsingException> errors = new ArrayList<>();
+    private final BiFunction<ParsingException, Collection<ParsingException>, Collection<ParsingException>> accumulateError;
     /**
      * Creates a new proxy without an empty list of listeners. Add
      * listeners before walking the tree.
      */
-    public ProxyParseTreeListener() {
+    public ProxyParseTreeListener(BiFunction<ParsingException, Collection<ParsingException>, Collection<ParsingException>> accumulateError) {
         // Setting the listener to null automatically instantiates a new list.
-        this( null );
+        this(null, accumulateError);
     }
 
     /**
@@ -44,37 +50,54 @@ public class ProxyParseTreeListener implements ParseTreeListener {
      *
      * @param listeners A list of listerners to receive events.
      */
-    public ProxyParseTreeListener( List<ParseTreeListener> listeners ) {
-        setListeners( listeners );
+    public ProxyParseTreeListener(List<ParseTreeListener> listeners, BiFunction<ParsingException, Collection<ParsingException>, Collection<ParsingException>> accumulateError) {
+        this.accumulateError = accumulateError;
+        setListeners(listeners);
     }
 
     @Override
-    public void enterEveryRule( ParserRuleContext ctx ) {
-        for( ParseTreeListener listener : getListeners() ) {
-            listener.enterEveryRule( ctx );
-            ctx.enterRule( listener );
+    public void enterEveryRule(ParserRuleContext ctx) {
+        for (ParseTreeListener listener : getListeners()) {
+            try {
+                listener.enterEveryRule(ctx);
+                ctx.enterRule(listener);
+            } catch (ParsingException parsingException) {
+                accumulateError.apply(parsingException, errors);
+            }
         }
     }
 
     @Override
-    public void exitEveryRule( ParserRuleContext ctx ) {
-        for( ParseTreeListener listener : getListeners() ) {
-            ctx.exitRule( listener );
-            listener.exitEveryRule( ctx );
+    public void exitEveryRule(ParserRuleContext ctx) {
+        for (ParseTreeListener listener : getListeners()) {
+            try {
+                ctx.exitRule(listener);
+                listener.exitEveryRule(ctx);
+            } catch (ParsingException parsingException) {
+                accumulateError.apply(parsingException, errors);
+            }
         }
     }
 
     @Override
-    public void visitErrorNode( ErrorNode node ) {
-        for( ParseTreeListener listener : getListeners() ) {
-            listener.visitErrorNode( node );
+    public void visitErrorNode(ErrorNode node) {
+        for (ParseTreeListener listener : getListeners()) {
+            try {
+                listener.visitErrorNode(node);
+            } catch (ParsingException parsingException) {
+                accumulateError.apply(parsingException, errors);
+            }
         }
     }
 
     @Override
-    public void visitTerminal( TerminalNode node ) {
-        for( ParseTreeListener listener : getListeners() ) {
-            listener.visitTerminal( node );
+    public void visitTerminal(TerminalNode node) {
+        for (ParseTreeListener listener : getListeners()) {
+            try {
+                listener.visitTerminal(node);
+            } catch (ParsingException parsingException) {
+                accumulateError.apply(parsingException, errors);
+            }
         }
     }
 
@@ -83,8 +106,8 @@ public class ProxyParseTreeListener implements ParseTreeListener {
      *
      * @param listener A listener to begin receiving events.
      */
-    public void add( ParseTreeListener listener ) {
-        getListeners().add( listener );
+    public void add(ParseTreeListener listener) {
+        getListeners().add(listener);
     }
 
     /**
@@ -93,8 +116,8 @@ public class ProxyParseTreeListener implements ParseTreeListener {
      * @param listener A listener to stop receiving events.
      * @return false The listener was not registered to receive events.
      */
-    public boolean remove( ParseTreeListener listener ) {
-        return getListeners().remove( listener );
+    public boolean remove(ParseTreeListener listener) {
+        return getListeners().remove(listener);
     }
 
     /**
@@ -111,10 +134,10 @@ public class ProxyParseTreeListener implements ParseTreeListener {
      * listeners is null, an empty list will be created.
      *
      * @param listeners A list of listeners to receive tree walking
-     * events.
+     *                  events.
      */
-    public void setListeners( List<ParseTreeListener> listeners ) {
-        if( listeners == null ) {
+    public void setListeners(List<ParseTreeListener> listeners) {
+        if (listeners == null) {
             listeners = createParseTreeListenerList();
         }
 
@@ -129,5 +152,14 @@ public class ProxyParseTreeListener implements ParseTreeListener {
      */
     protected List<ParseTreeListener> createParseTreeListenerList() {
         return new CopyOnWriteArrayList<ParseTreeListener>();
+    }
+
+    /**
+     * Returns all caught errors during tree walk.
+     *
+     * @return list of Parsing exceptions
+     */
+    public Collection<ParsingException> getErrors() {
+        return errors;
     }
 }

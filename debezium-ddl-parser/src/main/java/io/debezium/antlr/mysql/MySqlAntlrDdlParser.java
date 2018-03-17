@@ -16,11 +16,11 @@ import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
-import io.debezium.relational.Tables;
+import io.debezium.text.ParsingException;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.misc.Interval;
-import org.antlr.v4.runtime.tree.ParseTreeWalker;
+import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.sql.Types;
 import java.util.ArrayList;
@@ -32,24 +32,21 @@ import java.util.stream.Collectors;
  */
 public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser> {
 
-    private Tables databaseTables;
-
     private TableEditor tableEditor;
     private ColumnEditor columnEditor;
 
     @Override
-    protected void parse(MySqlParser parser, Tables databaseTables) {
-        this.databaseTables = databaseTables;
-        MySqlParser.RootContext root = parser.root();
+    protected ParseTree parseTree(MySqlParser parser) {
+        return parser.root();
+    }
 
-        ProxyParseTreeListener proxyParseTreeListener = new ProxyParseTreeListener();
+    @Override
+    protected void assignParserListeners(ProxyParseTreeListener proxyParseTreeListener) {
         proxyParseTreeListener.add(new CreateTableParserListener());
         proxyParseTreeListener.add(new DropTableParserListener());
         proxyParseTreeListener.add(new AlterTableParserListener());
         proxyParseTreeListener.add(new ColumnDefinitionParserListener());
         proxyParseTreeListener.add(new ExitSqlStatementParserListener());
-
-        ParseTreeWalker.DEFAULT.walk(proxyParseTreeListener, root);
     }
 
     @Override
@@ -85,6 +82,14 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
     private String parseColumnName(MySqlParser.UidContext uidContext) {
         return uidContext.getText();
+    }
+
+    private String getFullTableName(TableId tableId) {
+        if (tableId.schema() != null) {
+            return tableId.schema() + "." + tableId.table();
+        } else {
+            return tableId.table();
+        }
     }
 
     private void resolveColumnDataType(MySqlParser.DataTypeContext dataTypeContext) {
@@ -270,73 +275,112 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         @Override
         public void enterAlterTable(MySqlParser.AlterTableContext ctx) {
             TableId tableId = parseQualifiedTableId(ctx.tableName());
-            tableEditor = databaseTables.editOrCreateTable(tableId);
+            tableEditor = databaseTables.editTable(tableId);
+            if (tableEditor == null) {
+                throw new ParsingException(null, "Trying to alter table " + getFullTableName(tableId)
+                        + ", which does not exists.");
+            }
             super.enterAlterTable(ctx);
         }
 
         @Override
+        public void exitAlterTable(MySqlParser.AlterTableContext ctx) {
+            runIfTableEditorNotNull(() -> {
+                databaseTables.overwriteTable(tableEditor.create());
+                signalAlterTable(tableEditor.tableId(), null, ctx.getParent());
+                debugParsed(ctx.getParent());
+            });
+            super.exitAlterTable(ctx);
+        }
+
+        @Override
         public void enterAlterByAddColumn(MySqlParser.AlterByAddColumnContext ctx) {
-            String columnName = parseColumnName(ctx.uid(0));
-            columnEditor = Column.editor().name(columnName);
+            runIfTableEditorNotNull(() -> {
+                String columnName = parseColumnName(ctx.uid(0));
+                columnEditor = Column.editor().name(columnName);
+            });
+            super.exitAlterByAddColumn(ctx);
+        }
+
+        @Override
+        public void exitAlterByAddColumn(MySqlParser.AlterByAddColumnContext ctx) {
+            runIfAllEditorsNotNull(() -> {
+                String columnName = columnEditor.name();
+                tableEditor.addColumn(columnEditor.create());
+
+                if (ctx.FIRST() != null) {
+                    tableEditor.reorderColumn(columnName, null);
+                } else if (ctx.AFTER() != null) {
+                    String afterColumn = parseColumnName(ctx.uid(1));
+                    tableEditor.reorderColumn(columnName, afterColumn);
+                }
+            });
             super.exitAlterByAddColumn(ctx);
         }
 
         @Override
         public void enterAlterByAddColumns(MySqlParser.AlterByAddColumnsContext ctx) {
             // multiple columns are added. Initialize a list of column editors for them
-            columnEditors = new ArrayList<>(ctx.uid().size());
-            for (MySqlParser.UidContext uidContext : ctx.uid()) {
-                String columnName = parseColumnName(uidContext);
-                columnEditors.add(Column.editor().name(columnName));
-            }
-            columnEditor = columnEditors.get(0);
+            runIfTableEditorNotNull(() -> {
+                columnEditors = new ArrayList<>(ctx.uid().size());
+                for (MySqlParser.UidContext uidContext : ctx.uid()) {
+                    String columnName = parseColumnName(uidContext);
+                    columnEditors.add(Column.editor().name(columnName));
+                }
+                columnEditor = columnEditors.get(0);
+            });
             super.enterAlterByAddColumns(ctx);
         }
 
         @Override
-        public void exitAlterByAddColumn(MySqlParser.AlterByAddColumnContext ctx) {
-            String columnName = columnEditor.name();
-            tableEditor.addColumn(columnEditor.create());
-
-            if (ctx.FIRST() != null) {
-                //TODO: this new column should have the first position in table
-                tableEditor.reorderColumn(columnName, null);
-            } else if (ctx.AFTER() != null) {
-                String afterColumn = parseColumnName(ctx.uid(1));
-                tableEditor.reorderColumn(columnName, afterColumn);
-            }
-            super.exitAlterByAddColumn(ctx);
+        public void exitColumnDefinition(MySqlParser.ColumnDefinitionContext ctx) {
+            runIfAllEditorsNotNull(() -> {
+                if (columnEditors != null) {
+                    // column editor list is not null when a multiple columns are parsed in one statement
+                    if (columnEditors.size() > parsingColumnIndex) {
+                        // assign next column editor to parse another column definition
+                        columnEditor = columnEditors.get(parsingColumnIndex++);
+                    } else {
+                        // all columns parsed
+                        // reset global variables for next parsed statement
+                        columnEditors = null;
+                        parsingColumnIndex = STARTING_INDEX;
+                    }
+                }
+            });
+            super.exitColumnDefinition(ctx);
         }
 
         @Override
         public void exitAlterByAddColumns(MySqlParser.AlterByAddColumnsContext ctx) {
-            columnEditors.forEach(columnEditor -> tableEditor.addColumn(columnEditor.create()));
+            runIfAllEditorsNotNull(() -> columnEditors.forEach(columnEditor -> tableEditor.addColumn(columnEditor.create())));
             super.exitAlterByAddColumns(ctx);
         }
 
         @Override
-        public void exitAlterTable(MySqlParser.AlterTableContext ctx) {
-            databaseTables.overwriteTable(tableEditor.create());
-            signalAlterTable(tableEditor.tableId(), null, ctx.getParent());
-            debugParsed(ctx.getParent());
-            super.exitAlterTable(ctx);
+        public void enterAlterByChangeColumn(MySqlParser.AlterByChangeColumnContext ctx) {
+            runIfTableEditorNotNull(() -> {
+                String oldColumnName = parseColumnName(ctx.oldColumn);
+                Column existingColumn = tableEditor.columnWithName(oldColumnName);
+                if (existingColumn != null) {
+                    columnEditor = existingColumn.edit();
+                } else {
+                    throw new ParsingException(null, "Trying to change column " + oldColumnName + " in "
+                            + getFullTableName(tableEditor.tableId()) + " table, which does not exists.");
+                }
+            });
+            super.enterAlterByChangeColumn(ctx);
         }
 
         @Override
-        public void exitColumnDefinition(MySqlParser.ColumnDefinitionContext ctx) {
-            if (columnEditors != null) {
-                // column editor list is not null when a multiple columns are parsed in one statement
-                if (columnEditors.size() > parsingColumnIndex) {
-                    // assign next column editor to parse another column definition
-                    columnEditor = columnEditors.get(parsingColumnIndex++);
-                } else {
-                    // all columns parsed
-                    // reset global variables for next parsed statement
-                    columnEditors = null;
-                    parsingColumnIndex = STARTING_INDEX;
-                }
-            }
-            super.exitColumnDefinition(ctx);
+        public void exitAlterByChangeColumn(MySqlParser.AlterByChangeColumnContext ctx) {
+            runIfAllEditorsNotNull(() -> {
+                tableEditor.addColumn(columnEditor.create());
+
+                String newColumnName = parseColumnName(ctx.newColumn);
+                tableEditor.renameColumn(columnEditor.name(), newColumnName);
+            });
+            super.exitAlterByChangeColumn(ctx);
         }
     }
 
@@ -347,35 +391,42 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
         @Override
         public void enterColumnDefinition(MySqlParser.ColumnDefinitionContext ctx) {
-            resolveColumnDataType(ctx.dataType());
+            runIfAllEditorsNotNull(() -> {
+                resolveColumnDataType(ctx.dataType());
+            });
             super.enterColumnDefinition(ctx);
         }
 
         @Override
         public void enterPrimaryKeyColumnConstraint(MySqlParser.PrimaryKeyColumnConstraintContext ctx) {
-            // this rule will be parsed only if no primary key is set in a table
-            // otherwise the statement can't be executed due to multiple primary key error
-            columnEditor.optional(false);
-            tableEditor.setPrimaryKeyNames(columnEditor.name());
+            runIfAllEditorsNotNull(() -> {
+                // this rule will be parsed only if no primary key is set in a table
+                // otherwise the statement can't be executed due to multiple primary key error
+                columnEditor.optional(false);
+                tableEditor.setPrimaryKeyNames(columnEditor.name());
+            });
             super.enterPrimaryKeyColumnConstraint(ctx);
         }
 
         @Override
         public void enterNullNotnull(MySqlParser.NullNotnullContext ctx) {
-            columnEditor.optional(ctx.NOT() == null);
+            runIfAllEditorsNotNull(() -> columnEditor.optional(ctx.NOT() == null));
+
             super.enterNullNotnull(ctx);
         }
 
         @Override
         public void enterDefaultColumnConstraint(MySqlParser.DefaultColumnConstraintContext ctx) {
-            columnEditor.generated(true);
+            runIfAllEditorsNotNull(() -> columnEditor.generated(true));
             super.enterDefaultColumnConstraint(ctx);
         }
 
         @Override
         public void enterAutoIncrementColumnConstraint(MySqlParser.AutoIncrementColumnConstraintContext ctx) {
-            columnEditor.autoIncremented(true);
-            columnEditor.generated(true);
+            runIfAllEditorsNotNull(() -> {
+                columnEditor.autoIncremented(true);
+                columnEditor.generated(true);
+            });
             super.enterAutoIncrementColumnConstraint(ctx);
         }
     }
@@ -391,6 +442,26 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
             tableEditor = null;
             columnEditor = null;
             super.exitSqlStatement(ctx);
+        }
+    }
+
+    /**
+     * Runs the function if {@link MySqlAntlrDdlParser#tableEditor} is not null.
+     * @param function function to run.
+     */
+    private void runIfTableEditorNotNull(Runnable function) {
+        if (tableEditor != null) {
+            function.run();
+        }
+    }
+
+    /**
+     * Runs the function if {@link MySqlAntlrDdlParser#tableEditor} and {@link MySqlAntlrDdlParser#columnEditor} is not null.
+     * @param function function to run.
+     */
+    private void runIfAllEditorsNotNull(Runnable function) {
+        if (tableEditor != null && columnEditor != null) {
+            function.run();
         }
     }
 
