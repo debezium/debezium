@@ -11,7 +11,6 @@ import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.AbstractDdlParser;
 import io.debezium.relational.ddl.DdlParserListener;
 import io.debezium.text.MultipleParsingExceptions;
-import io.debezium.text.ParsingException;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CodePointCharStream;
@@ -21,11 +20,15 @@ import org.antlr.v4.runtime.Lexer;
 import org.antlr.v4.runtime.Parser;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.misc.Interval;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.ParseTreeWalker;
 
 /**
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends AbstractDdlParser {
+
+    protected Tables databaseTables;
 
     public AntlrDdlParser() {
         super(";");
@@ -33,6 +36,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
 
     @Override
     public void parse(String ddlContent, Tables databaseTables) {
+        this.databaseTables = databaseTables;
 
 //        CodePointCharStream ddlContentCharStream = CharStreams.fromString(removeLineFeeds(replaceOneLineComments(ddlContent)));
         CodePointCharStream ddlContentCharStream = CharStreams.fromString(ddlContent);
@@ -45,9 +49,18 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
         ParsingErrorListener parsingErrorListener = new ParsingErrorListener(this::accumulateParsingFailure);
         parser.addErrorListener(parsingErrorListener);
 
-        parse(parser, databaseTables);
+        ParseTree parseTree = parseTree(parser);
 
-        if (parsingErrorListener.getErrors().size() > 0) {
+        if (parsingErrorListener.getErrors().isEmpty()) {
+            ProxyParseTreeListener proxyParseTreeListener = new ProxyParseTreeListener(this::accumulateParsingFailure);
+            assignParserListeners(proxyParseTreeListener);
+
+            ParseTreeWalker.DEFAULT.walk(proxyParseTreeListener, parseTree);
+
+            if (!proxyParseTreeListener.getErrors().isEmpty()) {
+                throw new MultipleParsingExceptions(proxyParseTreeListener.getErrors());
+            }
+        } else {
             throw new MultipleParsingExceptions(parsingErrorListener.getErrors());
         }
     }
@@ -57,11 +70,10 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * database table definitions.
      *
      * @param parser         initialized ANTLR parser instance with common token stream from DDL statement; may not be null
-     * @param databaseTables the database's table definitions, which should be used by this method to create, change, or remove
-     *                       tables as defined in the DDL content; may not be null
-     * @throws ParsingException if there is a problem parsing the supplied content
      */
-    protected abstract void parse(P parser, Tables databaseTables);
+    protected abstract ParseTree parseTree(P parser);
+
+    protected abstract void assignParserListeners(ProxyParseTreeListener proxyParseTreeListener);
 
     /**
      * Creates a new generic type instance of ANTLR Lexer.
