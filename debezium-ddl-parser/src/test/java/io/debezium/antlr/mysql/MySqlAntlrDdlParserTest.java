@@ -9,6 +9,7 @@ package io.debezium.antlr.mysql;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.ddl.SimpleDdlParserListener;
+import io.debezium.text.MultipleParsingExceptions;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -55,11 +56,10 @@ public class MySqlAntlrDdlParserTest {
         listener.assertNext().alterTableNamed("foo").ddlStartsWith("ALTER TABLE foo ADD COLUMN c");
     }
 
-    @Test
+    @Test(expected = MultipleParsingExceptions.class)
     public void shouldParseAlterStatementsWithoutCreate() {
         String ddl = "ALTER TABLE foo ADD COLUMN c bigint;" + System.lineSeparator();
         parser.parse(ddl, tables);
-        listener.assertNext().alterTableNamed("foo").ddlStartsWith("ALTER TABLE foo ADD COLUMN c");
     }
 
 }
