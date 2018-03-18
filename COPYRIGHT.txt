@@ -22,6 +22,7 @@ Henryk Konsek
 Horia Chiorean
 Jiri Pechanec
 Jure Kajzer
+Maciej Bryński
 MaoXiang Pan
 Mario Mueller
 Matteo Capitanio
