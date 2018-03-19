@@ -5,17 +5,6 @@
  */
 package io.debezium.connector.mysql;
 
-import java.math.BigDecimal;
-import java.util.Arrays;
-import java.util.Objects;
-import java.util.Random;
-import java.util.stream.Collectors;
-
-import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.common.config.ConfigDef.Importance;
-import org.apache.kafka.common.config.ConfigDef.Type;
-import org.apache.kafka.common.config.ConfigDef.Width;
-
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -27,6 +16,16 @@ import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.KafkaDatabaseHistory;
+import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.ConfigDef.Importance;
+import org.apache.kafka.common.config.ConfigDef.Type;
+import org.apache.kafka.common.config.ConfigDef.Width;
+
+import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.Objects;
+import java.util.Random;
+import java.util.stream.Collectors;
 
 /**
  * The configuration properties.
@@ -1119,7 +1118,8 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
         String tableBlacklist = config.getString(TABLE_BLACKLIST);
         String dbWhitelist = config.getString(DATABASE_WHITELIST);
         String dbBlacklist = config.getString(DATABASE_BLACKLIST);
-        if (snapshotTableOrderSpecifier != null &&(tableWhitelist != null || tableBlacklist != null || dbWhitelist != null || dbBlacklist != null)){
+        if (snapshotTableOrderSpecifier != null &&
+                (tableWhitelist != null || tableBlacklist != null || dbWhitelist != null || dbBlacklist != null)){
             problems.accept(TABLE_SNAPSHOT_ORDER_SPECIFIER,
                     config.getString(TABLE_SNAPSHOT_ORDER_SPECIFIER),
                     "Table snapshot order specifier cannot be used with any table/db blacklist/whitelist");

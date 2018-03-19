@@ -429,6 +429,170 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    /**
+     * Validates that TABLE_SNAPSHOT_ORDER_SPECIFIER is invalid with SNAPSHOT_MODE values of
+     * 'schema_only', 'schema_only_recovery' and 'never'
+     */
+    @Test
+    @FixFor("DBZ-666")
+    public void shouldNotValidateTableSnapshotOrderSpecifierWithInvalidSnapshotModeConfiguration() {
+        final List<String> invalidValues = Arrays.asList(
+                SnapshotMode.SCHEMA_ONLY_RECOVERY.getValue(),
+                SnapshotMode.SCHEMA_ONLY.getValue(),
+                SnapshotMode.NEVER.getValue()
+        );
+
+        // Loop over all known valid values
+        for (final String invalidValue: invalidValues) {
+            Configuration config = DATABASE.defaultJdbcConfigBuilder()
+                    .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
+                    .with(MySqlConnectorConfig.SERVER_ID, 18765)
+                    .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+                    .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
+                    .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
+                    .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+
+                    // Conflicting properties under test:
+                    .with(MySqlConnectorConfig.SNAPSHOT_MODE, invalidValue)
+                    .with(MySqlConnectorConfig.TABLE_SNAPSHOT_ORDER_SPECIFIER,"connector_test.products")
+                    .build();
+
+            MySqlConnector connector = new MySqlConnector();
+            Config result = connector.validate(config.asMap());
+            assertConfigurationErrors(result, MySqlConnectorConfig.TABLE_SNAPSHOT_ORDER_SPECIFIER);
+        }
+    }
+
+    /**
+     * Validates that TABLE_SNAPSHOT_ORDER_SPECIFIER is valid with SNAPSHOT_MODE values of
+     * 'when_needed', 'initial' and 'initial_only'
+     */
+    @Test
+    @FixFor("DBZ-666")
+    public void shouldValidateTableSnapshotOrderSpecifierWithInvalidSnapshotModeConfiguration() {
+        final List<String> invalidValues = Arrays.asList(
+                SnapshotMode.WHEN_NEEDED.getValue(),
+                SnapshotMode.INITIAL.getValue(),
+                SnapshotMode.INITIAL_ONLY.getValue()
+        );
+
+        // Loop over all known valid values
+        for (final String invalidValue: invalidValues) {
+            Configuration config = DATABASE.defaultJdbcConfigBuilder()
+                    .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
+                    .with(MySqlConnectorConfig.SERVER_ID, 18765)
+                    .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+                    .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
+                    .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
+                    .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+
+                    // Conflicting properties under test:
+                    .with(MySqlConnectorConfig.SNAPSHOT_MODE, invalidValue)
+                    .with(MySqlConnectorConfig.TABLE_SNAPSHOT_ORDER_SPECIFIER,"connector_test.products")
+                    .build();
+
+            MySqlConnector connector = new MySqlConnector();
+            Config result = connector.validate(config.asMap());
+            assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_SNAPSHOT_ORDER_SPECIFIER);
+        }
+    }
+
+    /**
+     * Validates that TABLE_SNAPSHOT_ORDER_SPECIFIER is invalid with database.whitelist
+     */
+    @Test
+    @FixFor("DBZ-666")
+    public void shouldNotValidateTableSnapshotOrderSpecifierWithDatabaseWhitelist() {
+        Configuration config = DATABASE.defaultJdbcConfigBuilder()
+                .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
+                .with(MySqlConnectorConfig.SERVER_ID, 18765)
+                .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+                .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
+                .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+
+                // Conflicting properties under test:
+                .with(MySqlConnectorConfig.DATABASE_WHITELIST, "connector_test")
+                .with(MySqlConnectorConfig.TABLE_SNAPSHOT_ORDER_SPECIFIER,"connector_test.products")
+                .build();
+
+        MySqlConnector connector = new MySqlConnector();
+        Config result = connector.validate(config.asMap());
+        assertConfigurationErrors(result, MySqlConnectorConfig.TABLE_SNAPSHOT_ORDER_SPECIFIER);
+    }
+
+    /**
+     * Validates that TABLE_SNAPSHOT_ORDER_SPECIFIER is invalid with database.blacklist
+     */
+    @Test
+    @FixFor("DBZ-666")
+    public void shouldNotValidateTableSnapshotOrderSpecifierWithDatabaseBlacklist() {
+        Configuration config = DATABASE.defaultJdbcConfigBuilder()
+                .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
+                .with(MySqlConnectorConfig.SERVER_ID, 18765)
+                .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+                .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
+                .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+
+                // Conflicting properties under test:
+                .with(MySqlConnectorConfig.DATABASE_BLACKLIST, "connector_test")
+                .with(MySqlConnectorConfig.TABLE_SNAPSHOT_ORDER_SPECIFIER,"connector_test.products")
+                .build();
+
+        MySqlConnector connector = new MySqlConnector();
+        Config result = connector.validate(config.asMap());
+        assertConfigurationErrors(result, MySqlConnectorConfig.TABLE_SNAPSHOT_ORDER_SPECIFIER);
+    }
+
+    /**
+     * Validates that TABLE_SNAPSHOT_ORDER_SPECIFIER is invalid with table.whitelist
+     */
+    @Test
+    @FixFor("DBZ-666")
+    public void shouldNotValidateTableSnapshotOrderSpecifierWithTableWhitelist() {
+        Configuration config = DATABASE.defaultJdbcConfigBuilder()
+                .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
+                .with(MySqlConnectorConfig.SERVER_ID, 18765)
+                .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+                .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
+                .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+
+                // Conflicting properties under test:
+                .with(MySqlConnectorConfig.TABLE_WHITELIST, "products")
+                .with(MySqlConnectorConfig.TABLE_SNAPSHOT_ORDER_SPECIFIER,"connector_test.products")
+                .build();
+
+        MySqlConnector connector = new MySqlConnector();
+        Config result = connector.validate(config.asMap());
+        assertConfigurationErrors(result, MySqlConnectorConfig.TABLE_SNAPSHOT_ORDER_SPECIFIER);
+    }
+
+    /**
+     * Validates that TABLE_SNAPSHOT_ORDER_SPECIFIER is invalid with table.blacklist
+     */
+    @Test
+    @FixFor("DBZ-666")
+    public void shouldNotValidateTableSnapshotOrderSpecifierWithTableBlacklist() {
+        Configuration config = DATABASE.defaultJdbcConfigBuilder()
+                .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
+                .with(MySqlConnectorConfig.SERVER_ID, 18765)
+                .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+                .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
+                .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+
+                // Conflicting properties under test:
+                .with(MySqlConnectorConfig.TABLE_BLACKLIST, "products")
+                .with(MySqlConnectorConfig.TABLE_SNAPSHOT_ORDER_SPECIFIER,"connector_test.products")
+                .build();
+
+        MySqlConnector connector = new MySqlConnector();
+        Config result = connector.validate(config.asMap());
+        assertConfigurationErrors(result, MySqlConnectorConfig.TABLE_SNAPSHOT_ORDER_SPECIFIER);
+    }
+
     @Test
     public void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
         String masterPort = System.getProperty("database.port", "3306");
