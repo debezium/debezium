@@ -754,15 +754,16 @@ public class DdlParser {
             sb.append(tokens.consumeInteger());
         }
         if (tokens.canConsume('.')) {
+            sb.append('.');
             sb.append(tokens.consumeInteger());
             decimal = true;
         }
-        if (!tokens.canConsume('E')) {
+        if (!tokens.canConsumeAnyOf("E", "e")) {
             if (decimal) return Double.parseDouble(sb.toString());
             return Integer.parseInt(sb.toString());
         }
         sb.append('E');
-        if (tokens.matches("+", "-")) {
+        if (tokens.matchesAnyOf("+", "-")) {
             sb.append(tokens.consumeAnyOf("+", "-"));
         }
         sb.append(tokens.consumeInteger());
