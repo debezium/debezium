@@ -17,6 +17,7 @@ import java.util.function.LongConsumer;
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.function.BooleanConsumer;
+import io.debezium.relational.ddl.DdlTokenizer;
 import io.debezium.util.Strings;
 
 /**
@@ -572,10 +573,22 @@ public class TokenStream {
     public int consumeInteger() throws ParsingException, IllegalStateException {
         if (completed) throwNoMoreContent();
         // Get the value from the current token ...
-        String value = currentToken().value();
+        String value = currentToken().value().toUpperCase();
         try {
+            List<Token> newTokens = new ArrayList<>();
+            int ePos = value.indexOf("E");
+            // Scientific format, need to identify mantissa and exponent and put it back to stream
+            if (ePos != -1) {
+                String mantissa = value.substring(0, ePos);
+                newTokens.add(new CaseInsensitiveToken(currentToken().startIndex() + ePos, currentToken().startIndex() + ePos + 1, DdlTokenizer.WORD, currentToken().position()));
+                // Number is in format xxxEyyy
+                if (ePos != value.length() - 1) {
+                    newTokens.add(new CaseInsensitiveToken(currentToken().startIndex() + ePos + 1, currentToken().endIndex(), DdlTokenizer.WORD, currentToken().position()));
+                }
+                value = mantissa;
+            }
             int result = Integer.parseInt(value);
-            moveToNextToken();
+            moveToNextToken(newTokens);
             return result;
         } catch (NumberFormatException e) {
             Position position = currentToken().position();
@@ -1795,7 +1808,17 @@ public class TokenStream {
         return sb.toString();
     }
 
-    private void moveToNextToken() {
+    private void moveToNextToken(List<Token> newTokens) {
+        if (newTokens != null && !newTokens.isEmpty()) {
+            for (Token t: newTokens) {
+                tokenIterator.add(t);
+            }
+            for (int i = 0; i < newTokens.size() - 1; i++) {
+                tokenIterator.previous();
+            }
+            currentToken = newTokens.get(0);
+            return;
+        }
         // And move the currentToken to the next token ...
         if (!tokenIterator.hasNext()) {
             completed = true;
@@ -1803,6 +1826,10 @@ public class TokenStream {
         } else {
             currentToken = tokenIterator.next();
         }
+    }
+
+    private void moveToNextToken() {
+        moveToNextToken(null);
     }
 
     /**
