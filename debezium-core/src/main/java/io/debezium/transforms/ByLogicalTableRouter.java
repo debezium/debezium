@@ -240,7 +240,8 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
         String newTopic = topicRegexReplaceCache.get(oldTopic);
         if (newTopic != null) {
             return newTopic;
-        } else {
+        }
+        else {
             final Matcher matcher = topicRegex.matcher(oldTopic);
             if (matcher.matches()) {
                 newTopic = matcher.replaceFirst(topicReplacement);
@@ -284,7 +285,8 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
                 if (matcher.matches()) {
                     physicalTableIdentifier = matcher.replaceFirst(keyFieldReplacement);
                     keyRegexReplaceCache.put(oldTopic, physicalTableIdentifier);
-                } else {
+                }
+                else {
                     physicalTableIdentifier = oldTopic;
                 }
             }
