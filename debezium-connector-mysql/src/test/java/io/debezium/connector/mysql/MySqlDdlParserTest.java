@@ -811,6 +811,18 @@ public class MySqlDdlParserTest {
         listener.forEach(this::printEvent);
     }
 
+    @FixFor("DBZ-667")
+    @Test
+    public void shouldParseScientificNotationNumber() {
+        String ddl = "CREATE TABLE t (id INT NOT NULL, myvalue DOUBLE DEFAULT 1E-10, PRIMARY KEY (`id`));"
+                + "CREATE TABLE t (id INT NOT NULL, myvalue DOUBLE DEFAULT 1.3E-10, PRIMARY KEY (`id`));"
+                + "CREATE TABLE t (id INT NOT NULL, myvalue DOUBLE DEFAULT 1.3E+10, PRIMARY KEY (`id`));"
+                + "CREATE TABLE t (id INT NOT NULL, myvalue DOUBLE DEFAULT 3E10, PRIMARY KEY (`id`));"
+                + "CREATE TABLE t (id INT NOT NULL, myvalue DOUBLE DEFAULT 1.3e10, PRIMARY KEY (`id`))";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+    }
+
     @FixFor("DBZ-162")
     @Test
     public void shouldParseAlterTableWithNewlineFeeds() {
