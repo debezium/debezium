@@ -35,6 +35,7 @@ import io.debezium.relational.ddl.DdlChanges.DatabaseStatementStringConsumer;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.text.ParsingException;
+import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.util.Collect;
 import io.debezium.util.SchemaNameAdjuster;
 
@@ -320,7 +321,7 @@ public class MySqlSchema {
             this.ddlChanges.reset();
             this.ddlParser.setCurrentSchema(databaseName);
             this.ddlParser.parse(ddlStatements, tables);
-        } catch (ParsingException e) {
+        } catch (ParsingException | MultipleParsingExceptions e) {
             if (skipUnparseableDDL) {
                 logger.warn("Ignoring unparseable DDL statement '{}': {}", ddlStatements);
             } else {
