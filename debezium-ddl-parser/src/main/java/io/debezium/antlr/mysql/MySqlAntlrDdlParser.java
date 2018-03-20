@@ -46,7 +46,10 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         proxyParseTreeListener.add(new DropTableParserListener());
         proxyParseTreeListener.add(new AlterTableParserListener());
         proxyParseTreeListener.add(new ColumnDefinitionParserListener());
-        proxyParseTreeListener.add(new ExitSqlStatementParserListener());
+        proxyParseTreeListener.add(new RenameTableParserListener());
+//        proxyParseTreeListener.add(new TruncateTableParserListener());
+        proxyParseTreeListener.add(new CreateUniqueIndexParserListener());
+        proxyParseTreeListener.add(new FinishSqlStatementParserListener());
     }
 
     @Override
@@ -66,6 +69,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
     @Override
     protected String replaceOneLineComments(String statement) {
+        //todo remove: no need to use it with used grammar specification
         return statement.replaceAll("--(.*)", "/*$1*/");
     }
 
@@ -85,8 +89,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     }
 
     private String getFullTableName(TableId tableId) {
-        if (tableId.schema() != null) {
-            return tableId.schema() + "." + tableId.table();
+        if (tableId.catalog() != null) {
+            return tableId.catalog() + "." + tableId.table();
         } else {
             return tableId.table();
         }
@@ -160,17 +164,26 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         columnEditor.jdbcType(jdbcType);
     }
 
+    private void parsePrimaryIndexColumnNames(MySqlParser.IndexColumnNamesContext indexColumnNamesContext) {
+        List<String> pkColumnNames = indexColumnNamesContext.indexColumnName().stream()
+                .map(indexColumnNameContext -> {
+                    // MySQL does not allow a primary key to have nullable columns, so let's make sure we model that correctly ...
+                    String columnName = parseColumnName(indexColumnNameContext.uid());
+                    Column column = tableEditor.columnWithName(columnName);
+                    if (column != null && column.isOptional()) {
+                        tableEditor.addColumn(column.edit().optional(false).create());
+                    }
+                    return columnName;
+                })
+                .collect(Collectors.toList());
+
+        tableEditor.setPrimaryKeyNames(pkColumnNames);
+    }
+
     /**
      * Parser listener for MySQL create table queries.
      */
     private class CreateTableParserListener extends MySqlParserBaseListener {
-
-        @Override
-        public void enterQueryCreateTable(MySqlParser.QueryCreateTableContext ctx) {
-            TableId tableId = parseQualifiedTableId(ctx.tableName());
-            tableEditor = databaseTables.editOrCreateTable(tableId);
-            super.enterQueryCreateTable(ctx);
-        }
 
         @Override
         public void enterColumnCreateTable(MySqlParser.ColumnCreateTableContext ctx) {
@@ -183,16 +196,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         public void exitColumnCreateTable(MySqlParser.ColumnCreateTableContext ctx) {
             databaseTables.overwriteTable(tableEditor.create());
             signalCreateTable(tableEditor.tableId(), ctx);
-            debugParsed(ctx);
             super.exitColumnCreateTable(ctx);
-        }
-
-        @Override
-        public void exitQueryCreateTable(MySqlParser.QueryCreateTableContext ctx) {
-            databaseTables.overwriteTable(tableEditor.create());
-            signalCreateTable(tableEditor.tableId(), ctx);
-            debugParsed(ctx);
-            super.exitQueryCreateTable(ctx);
         }
 
         @Override
@@ -204,7 +208,6 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 databaseTables.overwriteTable(tableId, original.columns(), original.primaryKeyColumnNames(), original.defaultCharsetName());
                 signalCreateTable(tableId, ctx);
             }
-            debugParsed(ctx);
             super.exitCopyCreateTable(ctx);
         }
 
@@ -224,22 +227,16 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
         @Override
         public void enterPrimaryKeyTableConstraint(MySqlParser.PrimaryKeyTableConstraintContext ctx) {
-            MySqlParser.IndexColumnNamesContext indexColumnNamesContext = ctx.indexColumnNames();
-
-            List<String> pkColumnNames = indexColumnNamesContext.indexColumnName().stream()
-                    .map(indexColumnNameContext -> {
-                        // MySQL does not allow a primary key to have nullable columns, so let's make sure we model that correctly ...
-                        String columnName = parseColumnName(indexColumnNameContext.uid());
-                        Column column = tableEditor.columnWithName(columnName);
-                        if (column != null && column.isOptional()) {
-                            tableEditor.addColumn(column.edit().optional(false).create());
-                        }
-                        return columnName;
-                    })
-                    .collect(Collectors.toList());
-
-            tableEditor.setPrimaryKeyNames(pkColumnNames);
+            parsePrimaryIndexColumnNames(ctx.indexColumnNames());
             super.enterPrimaryKeyTableConstraint(ctx);
+        }
+
+        @Override
+        public void enterUniqueKeyTableConstraint(MySqlParser.UniqueKeyTableConstraintContext ctx) {
+            if (!tableEditor.hasPrimaryKey()) {
+                parsePrimaryIndexColumnNames(ctx.indexColumnNames());
+            }
+            super.enterUniqueKeyTableConstraint(ctx);
         }
     }
 
@@ -288,7 +285,6 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
             runIfTableEditorNotNull(() -> {
                 databaseTables.overwriteTable(tableEditor.create());
                 signalAlterTable(tableEditor.tableId(), null, ctx.getParent());
-                debugParsed(ctx.getParent());
             });
             super.exitAlterTable(ctx);
         }
@@ -376,11 +372,97 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         public void exitAlterByChangeColumn(MySqlParser.AlterByChangeColumnContext ctx) {
             runIfAllEditorsNotNull(() -> {
                 tableEditor.addColumn(columnEditor.create());
-
                 String newColumnName = parseColumnName(ctx.newColumn);
                 tableEditor.renameColumn(columnEditor.name(), newColumnName);
+
+                if (ctx.FIRST() != null) {
+                    tableEditor.reorderColumn(newColumnName, null);
+                } else if (ctx.afterColumn != null) {
+                    tableEditor.reorderColumn(newColumnName, parseColumnName(ctx.afterColumn));
+                }
             });
             super.exitAlterByChangeColumn(ctx);
+        }
+
+        @Override
+        public void enterAlterByModifyColumn(MySqlParser.AlterByModifyColumnContext ctx) {
+            runIfTableEditorNotNull(() -> {
+                String columnName = parseColumnName(ctx.uid(0));
+                Column column = tableEditor.columnWithName(columnName);
+                if (column != null) {
+                    columnEditor = column.edit();
+                } else {
+                    throw new ParsingException(null, "Trying to change column " + columnName + " in "
+                            + getFullTableName(tableEditor.tableId()) + " table, which does not exists.");
+                }
+            });
+            super.enterAlterByModifyColumn(ctx);
+        }
+
+        @Override
+        public void exitAlterByModifyColumn(MySqlParser.AlterByModifyColumnContext ctx) {
+            runIfAllEditorsNotNull(() -> {
+                tableEditor.addColumn(columnEditor.create());
+
+                if (ctx.FIRST() != null) {
+                    tableEditor.reorderColumn(columnEditor.name(), null);
+                } else if (ctx.AFTER() != null) {
+                    String afterColumn = parseColumnName(ctx.uid(1));
+                    tableEditor.reorderColumn(columnEditor.name(), afterColumn);
+                }
+            });
+            super.exitAlterByModifyColumn(ctx);
+        }
+
+        @Override
+        public void enterAlterByDropColumn(MySqlParser.AlterByDropColumnContext ctx) {
+            runIfTableEditorNotNull(() -> tableEditor.removeColumn(parseColumnName(ctx.uid())));
+            super.enterAlterByDropColumn(ctx);
+        }
+
+        @Override
+        public void enterAlterByRename(MySqlParser.AlterByRenameContext ctx) {
+            runIfTableEditorNotNull(() -> {
+                TableId newTableId = resolveTableId(currentSchema(), ctx.uid().getText());
+                databaseTables.renameTable(tableEditor.tableId(), newTableId);
+            });
+            super.enterAlterByRename(ctx);
+        }
+
+        @Override
+        public void enterAlterByChangeDefault(MySqlParser.AlterByChangeDefaultContext ctx) {
+            runIfTableEditorNotNull(() -> {
+                String columnName = parseColumnName(ctx.uid());
+                Column column = tableEditor.columnWithName(columnName);
+                if (column != null) {
+                    ColumnEditor columnEditor = column.edit();
+                    columnEditor.generated(ctx.DROP() != null);
+                }
+            });
+            super.enterAlterByChangeDefault(ctx);
+        }
+
+        @Override
+        public void enterAlterByAddPrimaryKey(MySqlParser.AlterByAddPrimaryKeyContext ctx) {
+            runIfTableEditorNotNull(() -> parsePrimaryIndexColumnNames(ctx.indexColumnNames()));
+            super.enterAlterByAddPrimaryKey(ctx);
+        }
+
+        @Override
+        public void enterAlterByDropPrimaryKey(MySqlParser.AlterByDropPrimaryKeyContext ctx) {
+            runIfTableEditorNotNull(() -> tableEditor.setPrimaryKeyNames(new ArrayList<>()));
+            super.enterAlterByDropPrimaryKey(ctx);
+        }
+
+        @Override
+        public void enterAlterByAddUniqueKey(MySqlParser.AlterByAddUniqueKeyContext ctx) {
+            runIfTableEditorNotNull(() -> {
+                if (!tableEditor.hasPrimaryKey()) {
+                    // this may eventually get overwritten by a real PK
+                    parsePrimaryIndexColumnNames(ctx.indexColumnNames());
+                }
+            });
+            super.enterAlterByAddUniqueKey(ctx);
         }
     }
 
@@ -395,6 +477,17 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 resolveColumnDataType(ctx.dataType());
             });
             super.enterColumnDefinition(ctx);
+        }
+
+        @Override
+        public void enterUniqueKeyColumnConstraint(MySqlParser.UniqueKeyColumnConstraintContext ctx) {
+            runIfAllEditorsNotNull(() -> {
+                if (!tableEditor.hasPrimaryKey()) {
+                    // take the first unique constrain if no primary key is set
+                    tableEditor.setPrimaryKeyNames(columnEditor.name());
+                }
+            });
+            super.enterUniqueKeyColumnConstraint(ctx);
         }
 
         @Override
@@ -432,15 +525,72 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     }
 
     /**
-     * Parser listener for MySQL alter table queries.
+     * Parser listener for MySQL rename table queries.
      */
-    private class ExitSqlStatementParserListener extends MySqlParserBaseListener {
+    private class RenameTableParserListener extends MySqlParserBaseListener {
+
+        @Override
+        public void enterRenameTableClause(MySqlParser.RenameTableClauseContext ctx) {
+            TableId oldTable = parseQualifiedTableId(ctx.tableName(0));
+            TableId newTable = parseQualifiedTableId(ctx.tableName(1));
+            databaseTables.renameTable(oldTable, newTable);
+            signalAlterTable(newTable, oldTable, ctx);
+            super.enterRenameTableClause(ctx);
+        }
+    }
+
+    /**
+     * Parser listener for MySQL truncate table queries.
+     */
+    private class TruncateTableParserListener extends MySqlParserBaseListener {
+
+        @Override
+        public void enterTruncateTable(MySqlParser.TruncateTableContext ctx) {
+            //TODO how to react for this type of query?
+            TableId tableId = parseQualifiedTableId(ctx.tableName());
+            super.enterTruncateTable(ctx);
+        }
+    }
+
+    /**
+     * Parser listener for MySQL create unique index sql statement.
+     */
+    private class CreateUniqueIndexParserListener extends MySqlParserBaseListener {
+
+        @Override
+        public void enterCreateIndex(MySqlParser.CreateIndexContext ctx) {
+            if (ctx.UNIQUE() != null) {
+                TableId tableId = parseQualifiedTableId(ctx.tableName());
+                tableEditor = databaseTables.editTable(tableId);
+                if (tableEditor != null) {
+                    if (!tableEditor.hasPrimaryKey()) {
+                        parsePrimaryIndexColumnNames(ctx.indexColumnNames());
+                        signalAlterTable(tableId, null, ctx);
+                    }
+                } else {
+                    throw new ParsingException(null, "Trying to create index on non existing table " + getFullTableName(tableId));
+                }
+            }
+            super.enterCreateIndex(ctx);
+        }
+    }
+
+    /**
+     * Parser listener for MySQL finishing parsing of one sql statement.
+     */
+    private class FinishSqlStatementParserListener extends MySqlParserBaseListener {
 
         @Override
         public void exitSqlStatement(MySqlParser.SqlStatementContext ctx) {
-            // reset global values for next statement that could be parsed with this instance
-            tableEditor = null;
-            columnEditor = null;
+            if (tableEditor != null) {
+                // reset global values for next statement that could be parsed with this instance
+                tableEditor = null;
+                columnEditor = null;
+                debugParsed(ctx);
+            } else {
+                // if table editor was not set, then nothing was parsed
+                debugSkipped(ctx);
+            }
             super.exitSqlStatement(ctx);
         }
     }
