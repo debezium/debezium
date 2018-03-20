@@ -14,6 +14,7 @@ import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.common.config.Config;
@@ -943,6 +944,10 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    private Struct getAfter(SourceRecord record) {
+        return (Struct)((Struct)record.value()).get("after");
+    }
+
     @Test
     public void shouldConsumeEventsWithNoSnapshot() throws SQLException, InterruptedException {
         Testing.Files.delete(DB_HISTORY_PATH);
@@ -963,8 +968,14 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("products_on_hand")).size()).isEqualTo(9);
         assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("customers")).size()).isEqualTo(4);
         assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("orders")).size()).isEqualTo(5);
+        assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("Products")).size()).isEqualTo(9);
         assertThat(records.topics().size()).isEqualTo(4 + 1);
         assertThat(records.ddlRecordsForDatabase(RO_DATABASE.getDatabaseName()).size()).isEqualTo(6);
+
+        // check float value
+        Optional<SourceRecord> recordWithScientfic = records.recordsForTopic(RO_DATABASE.topicForTable("Products")).stream().filter(x -> "hammer2".equals(getAfter(x).get("name"))).findFirst();
+        assertThat(recordWithScientfic.isPresent());
+        assertThat(getAfter(recordWithScientfic.get()).get("weight")).isEqualTo(0.875);
 
         // Check that all records are valid, can be serialized and deserialized ...
         records.forEach(this::validate);
