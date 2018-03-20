@@ -22,16 +22,63 @@ import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
 
 /**
- * JSON deserialization of a message sent by
+ * <p>JSON deserialization of a message sent by
  * <a href="https://github.com/eulerto/wal2json">wal2json</a> logical decoding plugin. The plugin sends all
  * changes in one transaction as a single batch and they are passed to processor one-by-one.
+ * The JSON file arrives in chunks of a big JSON file where the chunks are not valid JSON itself.</p>
  *
+ * <p>There are four different chunks that can arrive from the decoder.
+ * <b>Beginning of message</b></br>
+ * <pre>
+ * {
+ *   "xid": 563,
+ *   "timestamp": "2018-03-20 10:58:43.396355+01",
+ *   "change": [
+ * </pre>
+ *
+ * <b>First change</b>
+ * <pre>
+ *      {
+ *          "kind": "insert",
+ *          "schema": "public",
+ *          "table": "numeric_decimal_table",
+ *          "columnnames": ["pk", "d", "dzs", "dvs", "d_nn", "n", "nzs", "nvs", "d_int", "dzs_int", "dvs_int", "n_int", "nzs_int", "nvs_int", "d_nan", "dzs_nan", "dvs_nan", "n_nan", "nzs_nan", "nvs_nan"],
+ *          "columntypes": ["integer", "numeric(3,2)", "numeric(4,0)", "numeric", "numeric(3,2)", "numeric(6,4)", "numeric(4,0)", "numeric", "numeric(3,2)", "numeric(4,0)", "numeric", "numeric(6,4)", "numeric(4,0)", "numeric", "numeric(3,2)", "numeric(4,0)", "numeric", "numeric(6,4)", "numeric(4,0)", "numeric"],
+ *          "columnoptionals": [false, true, true, true, false, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true],
+ *          "columnvalues": [1, 1.10, 10, 10.1111, 3.30, 22.2200, 22, 22.2222, 1.00, 10, 10, 22.0000, 22, 22, null, null, null, null, null, null]
+ *      }
+ * </pre>
+ *
+ * <b>Further changes</b>
+ * <pre>
+ *      ,{
+ *          "kind": "insert",
+ *          "schema": "public",
+ *          "table": "numeric_decimal_table",
+ *          "columnnames": ["pk", "d", "dzs", "dvs", "d_nn", "n", "nzs", "nvs", "d_int", "dzs_int", "dvs_int", "n_int", "nzs_int", "nvs_int", "d_nan", "dzs_nan", "dvs_nan", "n_nan", "nzs_nan", "nvs_nan"],
+ *          "columntypes": ["integer", "numeric(3,2)", "numeric(4,0)", "numeric", "numeric(3,2)", "numeric(6,4)", "numeric(4,0)", "numeric", "numeric(3,2)", "numeric(4,0)", "numeric", "numeric(6,4)", "numeric(4,0)", "numeric", "numeric(3,2)", "numeric(4,0)", "numeric", "numeric(6,4)", "numeric(4,0)", "numeric"],
+ *          "columnoptionals": [false, true, true, true, false, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true],
+ *          "columnvalues": [1, 1.10, 10, 10.1111, 3.30, 22.2200, 22, 22.2222, 1.00, 10, 10, 22.0000, 22, 22, null, null, null, null, null, null]
+ *      }
+ * </pre>
+ *
+ * <b>End of message</b>
+ * <pre>
+ *      ]
+ * }
+ * </pre>
+ * </p>
+ *
+ * <p>
+ * For parsing purposes it is necessary to add or remove a fragment of JSON to make a well-formatted JSON out of it.
+ * The last message is just dropped.
+ * </p>
  * @author Jiri Pechanec
  *
  */
-public class Wal2JsonMessageDecoder implements MessageDecoder {
+public class StreamingWal2JsonMessageDecoder implements MessageDecoder {
 
-    private static final  Logger LOGGER = LoggerFactory.getLogger(Wal2JsonMessageDecoder.class);
+    private static final  Logger LOGGER = LoggerFactory.getLogger(StreamingWal2JsonMessageDecoder.class);
 
     private final DateTimeFormat dateTime = DateTimeFormat.get();
     private boolean containsMetadata = false;
@@ -57,10 +104,10 @@ public class Wal2JsonMessageDecoder implements MessageDecoder {
             if (!messageInProgress) {
                 // We received the beginning of a transaction
                 if (!content.endsWith("}")) {
-                    // Chunks are enabled and we have an unfinished message
+                    // Chunks are enabled and we have an unfinished message, it is necessary to add a sequence of closing chars
                     content += "]}";
                 }
-                final Document message = DocumentReader.defaultReader().read(content + "]}");
+                final Document message = DocumentReader.defaultReader().read(content);
                 txId = message.getInteger("xid");
                 timestamp = message.getString("timestamp");
                 commitTime = dateTime.systemTimestamp(timestamp);
@@ -70,11 +117,11 @@ public class Wal2JsonMessageDecoder implements MessageDecoder {
             else {
                 // We are receiving changes in chunks
                 if (content.startsWith("{")) {
-                    // First change
+                    // First change, this is a valid JSON
                     bufferedContent = content;
                 }
                 else if (content.startsWith(",")) {
-                    // following changes
+                    // following changes, they have an extra comma at the start of message
                     doProcessMessage(processor, typeRegistry, bufferedContent, false);
                     bufferedContent = content.substring(1);
                 }
