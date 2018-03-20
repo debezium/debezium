@@ -454,12 +454,12 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
                     // Conflicting properties under test:
                     .with(MySqlConnectorConfig.SNAPSHOT_MODE, invalidValue)
-                    .with(MySqlConnectorConfig.TABLE_SNAPSHOT_ORDER_SPECIFIER,"connector_test.products")
+                    .with(MySqlConnectorConfig.EXPLICIT_SNAPSHOT_TABLE_ORDER,"connector_test.products")
                     .build();
 
             MySqlConnector connector = new MySqlConnector();
             Config result = connector.validate(config.asMap());
-            assertConfigurationErrors(result, MySqlConnectorConfig.TABLE_SNAPSHOT_ORDER_SPECIFIER);
+            assertConfigurationErrors(result, MySqlConnectorConfig.EXPLICIT_SNAPSHOT_TABLE_ORDER);
         }
     }
 
@@ -488,12 +488,12 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
                     // Conflicting properties under test:
                     .with(MySqlConnectorConfig.SNAPSHOT_MODE, invalidValue)
-                    .with(MySqlConnectorConfig.TABLE_SNAPSHOT_ORDER_SPECIFIER,"connector_test.products")
+                    .with(MySqlConnectorConfig.EXPLICIT_SNAPSHOT_TABLE_ORDER,"connector_test.products")
                     .build();
 
             MySqlConnector connector = new MySqlConnector();
             Config result = connector.validate(config.asMap());
-            assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_SNAPSHOT_ORDER_SPECIFIER);
+            assertNoConfigurationErrors(result, MySqlConnectorConfig.EXPLICIT_SNAPSHOT_TABLE_ORDER);
         }
     }
 
@@ -513,12 +513,12 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
                 // Conflicting properties under test:
                 .with(MySqlConnectorConfig.DATABASE_WHITELIST, "connector_test")
-                .with(MySqlConnectorConfig.TABLE_SNAPSHOT_ORDER_SPECIFIER,"connector_test.products")
+                .with(MySqlConnectorConfig.EXPLICIT_SNAPSHOT_TABLE_ORDER,"connector_test.products")
                 .build();
 
         MySqlConnector connector = new MySqlConnector();
         Config result = connector.validate(config.asMap());
-        assertConfigurationErrors(result, MySqlConnectorConfig.TABLE_SNAPSHOT_ORDER_SPECIFIER);
+        assertConfigurationErrors(result, MySqlConnectorConfig.EXPLICIT_SNAPSHOT_TABLE_ORDER);
     }
 
     /**
@@ -537,12 +537,12 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
                 // Conflicting properties under test:
                 .with(MySqlConnectorConfig.DATABASE_BLACKLIST, "connector_test")
-                .with(MySqlConnectorConfig.TABLE_SNAPSHOT_ORDER_SPECIFIER,"connector_test.products")
+                .with(MySqlConnectorConfig.EXPLICIT_SNAPSHOT_TABLE_ORDER,"connector_test.products")
                 .build();
 
         MySqlConnector connector = new MySqlConnector();
         Config result = connector.validate(config.asMap());
-        assertConfigurationErrors(result, MySqlConnectorConfig.TABLE_SNAPSHOT_ORDER_SPECIFIER);
+        assertConfigurationErrors(result, MySqlConnectorConfig.EXPLICIT_SNAPSHOT_TABLE_ORDER);
     }
 
     /**
@@ -561,12 +561,12 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
                 // Conflicting properties under test:
                 .with(MySqlConnectorConfig.TABLE_WHITELIST, "products")
-                .with(MySqlConnectorConfig.TABLE_SNAPSHOT_ORDER_SPECIFIER,"connector_test.products")
+                .with(MySqlConnectorConfig.EXPLICIT_SNAPSHOT_TABLE_ORDER,"connector_test.products")
                 .build();
 
         MySqlConnector connector = new MySqlConnector();
         Config result = connector.validate(config.asMap());
-        assertConfigurationErrors(result, MySqlConnectorConfig.TABLE_SNAPSHOT_ORDER_SPECIFIER);
+        assertConfigurationErrors(result, MySqlConnectorConfig.EXPLICIT_SNAPSHOT_TABLE_ORDER);
     }
 
     /**
@@ -585,12 +585,12 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
                 // Conflicting properties under test:
                 .with(MySqlConnectorConfig.TABLE_BLACKLIST, "products")
-                .with(MySqlConnectorConfig.TABLE_SNAPSHOT_ORDER_SPECIFIER,"connector_test.products")
+                .with(MySqlConnectorConfig.EXPLICIT_SNAPSHOT_TABLE_ORDER,"connector_test.products")
                 .build();
 
         MySqlConnector connector = new MySqlConnector();
         Config result = connector.validate(config.asMap());
-        assertConfigurationErrors(result, MySqlConnectorConfig.TABLE_SNAPSHOT_ORDER_SPECIFIER);
+        assertConfigurationErrors(result, MySqlConnectorConfig.EXPLICIT_SNAPSHOT_TABLE_ORDER);
     }
 
     @Test
