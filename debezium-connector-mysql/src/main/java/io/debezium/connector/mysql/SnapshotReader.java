@@ -22,6 +22,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -214,6 +215,7 @@ public class SnapshotReader extends AbstractReader {
         boolean isLocked = false;
         boolean isTxnStarted = false;
         boolean tableLocks = false;
+        String snapshotTableOrderSpecifier = context.getExplicitSnapshotTableOrder();
         try {
             metrics.startSnapshot();
 
@@ -287,12 +289,14 @@ public class SnapshotReader extends AbstractReader {
                     // generated as part of the snapshot will contain the binlog position of the snapshot.
                     readBinlogPosition(step++, source, mysql, sql);
                 }
-
+                List<TableId> tableIds = new ArrayList<>();
+                final Set<String> readableDatabaseNames = new HashSet<>();
+                final Map<String, List<TableId>> tableIdsByDbName = new HashMap<>();
+                final Set<String> includedDatabaseNames = new HashSet<>();
                 // -------------------
                 // READ DATABASE NAMES
                 // -------------------
                 // Get the list of databases ...
-                if (!isRunning()) return;
                 logger.info("Step {}: read list of available databases", step++);
                 final List<String> databaseNames = new ArrayList<>();
                 sql.set("SHOW DATABASES");
@@ -302,42 +306,84 @@ public class SnapshotReader extends AbstractReader {
                     }
                 });
                 logger.info("\t list of available databases is: {}", databaseNames);
+                /*
+                The snapshot operation includes data and it needs to be performed in the order specified in the property
+                table.snapshot.order.specifier.
+                 */
 
-                // ----------------
-                // READ TABLE NAMES
-                // ----------------
-                // Get the list of table IDs for each database. We can't use a prepared statement with MySQL, so we have to
-                // build the SQL statement each time. Although in other cases this might lead to SQL injection, in our case
-                // we are reading the database names from the database and not taking them from the user ...
-                if (!isRunning()) return;
-                logger.info("Step {}: read list of available tables in each database", step++);
-                List<TableId> tableIds = new ArrayList<>();
-                final Map<String, List<TableId>> tableIdsByDbName = new HashMap<>();
-                final Set<String> readableDatabaseNames = new HashSet<>();
-                for (String dbName : databaseNames) {
-                    try {
-                        // MySQL sometimes considers some local files as databases (see DBZ-164),
-                        // so we will simply try each one and ignore the problematic ones ...
-                        sql.set("SHOW FULL TABLES IN " + quote(dbName) + " where Table_Type = 'BASE TABLE'");
-                        mysql.query(sql.get(), rs -> {
-                            while (rs.next() && isRunning()) {
-                                TableId id = new TableId(dbName, null, rs.getString(1));
-                                if (filters.tableFilter().test(id)) {
-                                    tableIds.add(id);
-                                    tableIdsByDbName.computeIfAbsent(dbName, k -> new ArrayList<>()).add(id);
-                                    logger.info("\t including '{}'", id);
-                                } else {
-                                    logger.info("\t '{}' is filtered out, discarding", id);
+                if (Optional.ofNullable(snapshotTableOrderSpecifier).isPresent()){
+                    logger.info("Snapshot data in the order specified [{}]",snapshotTableOrderSpecifier);
+                    List<String> schemaTableInOrder = Arrays.asList(snapshotTableOrderSpecifier.split(","));
+                    for (String schemaTable :  schemaTableInOrder){
+                        AtomicBoolean errorReadingSchemaTable = new AtomicBoolean(false); // Using AtomicBoolean as Boolean is immutable
+                        String orderedSchema = schemaTable.split("\\.")[0];
+                        String orderedTable = schemaTable.split("\\.")[1];
+                        if (!databaseNames.contains(orderedSchema)){
+                            logger.error("Invalid database schema {} specified.",orderedSchema);
+                            errorReadingSchemaTable.set(true);
+                        }
+                        else {
+                            String query = "SELECT COUNT(*) as valid_table FROM information_schema.tables WHERE table_schema = '"
+                                    + orderedSchema + "' AND table_name = '" + orderedTable + "'";
+                            sql.set(query);
+                            mysql.query(sql.get(), rs -> {
+                                while (rs.next() && isRunning()) {
+                                    int validTableCount = rs.getInt("valid_table");
+                                    if (validTableCount == 0) {
+                                        logger.error("Invalid table {} specified in schema {}.", orderedTable, orderedSchema);
+                                        break;
+                                    } else {
+                                        TableId id = new TableId(orderedSchema, null, orderedTable);
+                                        tableIds.add(id);
+                                        tableIdsByDbName.computeIfAbsent(orderedSchema, k -> new ArrayList<>()).add(id);
+                                        logger.info("\t including '{}'", id);
+                                    }
                                 }
-                            }
-                        });
-                        readableDatabaseNames.add(dbName);
-                    } catch (SQLException e) {
-                        // We were unable to execute the query or process the results, so skip this ...
-                        logger.warn("\t skipping database '{}' due to error reading tables: {}", dbName, e.getMessage());
+                                if (!rs.isAfterLast())
+                                    errorReadingSchemaTable.set(true);
+                                else
+                                    readableDatabaseNames.add(orderedSchema);
+                            });
+                        }
+                        if (errorReadingSchemaTable.get())
+                            throw new Exception("Invalid schema/table name passed in config.");
+                        includedDatabaseNames.addAll(readableDatabaseNames);
                     }
                 }
-                final Set<String> includedDatabaseNames = readableDatabaseNames.stream().filter(filters.databaseFilter()).collect(Collectors.toSet());
+                else {
+                    // ----------------
+                    // READ TABLE NAMES
+                    // ----------------
+                    // Get the list of table IDs for each database. We can't use a prepared statement with MySQL, so we have to
+                    // build the SQL statement each time. Although in other cases this might lead to SQL injection, in our case
+                    // we are reading the database names from the database and not taking them from the user ...
+                    if (!isRunning()) return;
+                    logger.info("Step {}: read list of available tables in each database", step++);
+                    for (String dbName : databaseNames) {
+                        try {
+                            // MySQL sometimes considers some local files as databases (see DBZ-164),
+                            // so we will simply try each one and ignore the problematic ones ...
+                            sql.set("SHOW FULL TABLES IN " + quote(dbName) + " where Table_Type = 'BASE TABLE'");
+                            mysql.query(sql.get(), rs -> {
+                                while (rs.next() && isRunning()) {
+                                    TableId id = new TableId(dbName, null, rs.getString(1));
+                                    if (filters.tableFilter().test(id)) {
+                                        tableIds.add(id);
+                                        tableIdsByDbName.computeIfAbsent(dbName, k -> new ArrayList<>()).add(id);
+                                        logger.info("\t including '{}'", id);
+                                    } else {
+                                        logger.info("\t '{}' is filtered out, discarding", id);
+                                    }
+                                }
+                            });
+                            readableDatabaseNames.add(dbName);
+                        } catch (SQLException e) {
+                            // We were unable to execute the query or process the results, so skip this ...
+                            logger.warn("\t skipping database '{}' due to error reading tables: {}", dbName, e.getMessage());
+                        }
+                    }
+                    includedDatabaseNames.addAll(readableDatabaseNames.stream().filter(filters.databaseFilter()).collect(Collectors.toSet()));
+                }
                 logger.info("\tsnapshot continuing with database(s): {}", includedDatabaseNames);
 
                 if (!isLocked) {

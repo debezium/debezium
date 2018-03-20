@@ -5,17 +5,6 @@
  */
 package io.debezium.connector.mysql;
 
-import java.math.BigDecimal;
-import java.util.Arrays;
-import java.util.Objects;
-import java.util.Random;
-import java.util.stream.Collectors;
-
-import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.common.config.ConfigDef.Importance;
-import org.apache.kafka.common.config.ConfigDef.Type;
-import org.apache.kafka.common.config.ConfigDef.Width;
-
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -27,6 +16,16 @@ import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.KafkaDatabaseHistory;
+import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.ConfigDef.Importance;
+import org.apache.kafka.common.config.ConfigDef.Type;
+import org.apache.kafka.common.config.ConfigDef.Width;
+
+import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.Objects;
+import java.util.Random;
+import java.util.stream.Collectors;
 
 /**
  * The configuration properties.
@@ -648,6 +647,20 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                       .withDescription("");
 
     /**
+     * A comma-separated list of <databaseName>.<tableName> that specifies explicitly the order in which we want to perform the data snapshot
+     */
+    public static final Field EXPLICIT_SNAPSHOT_TABLE_ORDER = Field.create("explicit.snapshot.table.order")
+                                                                .withDisplayName("Snapshot table data in the specified order")
+                                                                .withType(Type.STRING)
+                                                                .withWidth(Width.LONG)
+                                                                .withImportance(Importance.LOW)
+                                                                .withValidation(MySqlConnectorConfig::validateTableSnapshotOrderSpecifier)
+                                                                .withDescription("This config can be used to specify an explicit order in which snapshot operation can be performed." +
+                                                                        " The config should be a comma separated list of <db>.<table>, which would be the order in which the snapshot operation" +
+                                                                        " would be done. Note that it is not allowed to use this mode with any of the other db/table, whitelist/blacklist options." +
+                                                                        " Also, it is valid to be used only with data inclusive snapshot modes namely 'when_needed','initial' and 'inital_only'.");
+
+    /**
      * A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog
      * position in the MySQL server. Only the GTID ranges that have sources matching one of these include patterns will
      * be used.
@@ -908,7 +921,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                      CommonConnectorConfig.POLL_INTERVAL_MS,
                                                      BUFFER_SIZE_FOR_BINLOG_READER, Heartbeat.HEARTBEAT_INTERVAL,
                                                      Heartbeat.HEARTBEAT_TOPICS_PREFIX, DATABASE_HISTORY, INCLUDE_SCHEMA_CHANGES,
-                                                     TABLE_WHITELIST, TABLE_BLACKLIST, TABLES_IGNORE_BUILTIN,
+                                                     TABLE_WHITELIST, TABLE_BLACKLIST, TABLES_IGNORE_BUILTIN,EXPLICIT_SNAPSHOT_TABLE_ORDER,
                                                      DATABASE_WHITELIST, DATABASE_BLACKLIST,
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, SNAPSHOT_LOCKING_MODE,
                                                      GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
@@ -968,7 +981,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                     DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, DatabaseHistory.DDL_FILTER,
                     DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL);
         Field.group(config, "Events", INCLUDE_SCHEMA_CHANGES, TABLES_IGNORE_BUILTIN, DATABASE_WHITELIST, TABLE_WHITELIST,
-                    COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST,
+                    COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST,EXPLICIT_SNAPSHOT_TABLE_ORDER,
                     GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS, BUFFER_SIZE_FOR_BINLOG_READER,
                     Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX, EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE, INCONSISTENT_SCHEMA_HANDLING_MODE,
                     CommonConnectorConfig.TOMBSTONES_ON_DELETE);
@@ -1092,6 +1105,33 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
 
     private static int validateColumnBlacklist(Configuration config, Field field, ValidationOutput problems) {
         // String blacklist = config.getString(COLUMN_BLACKLIST);
+        return 0;
+    }
+
+    private static int validateTableSnapshotOrderSpecifier(Configuration config, Field field, ValidationOutput problems){
+        String snapshotTableOrderSpecifier = config.getString(EXPLICIT_SNAPSHOT_TABLE_ORDER);
+        String snapshotMode = config.getString(MySqlConnectorConfig.SNAPSHOT_MODE);
+        if (snapshotTableOrderSpecifier != null
+                && (snapshotMode.equals(SnapshotMode.SCHEMA_ONLY.getValue())
+                || snapshotMode.equals(SnapshotMode.SCHEMA_ONLY_RECOVERY.getValue())
+                || snapshotMode.equals(SnapshotMode.NEVER.getValue()))){
+            problems.accept(EXPLICIT_SNAPSHOT_TABLE_ORDER,
+                    config.getString(EXPLICIT_SNAPSHOT_TABLE_ORDER),
+                    "Table snapshot order specifier can only be used with modes initial,initial_only and when_needed.");
+            return 1;
+        }
+        String tableWhitelist = config.getString(TABLE_WHITELIST);
+        String tableBlacklist = config.getString(TABLE_BLACKLIST);
+        String dbWhitelist = config.getString(DATABASE_WHITELIST);
+        String dbBlacklist = config.getString(DATABASE_BLACKLIST);
+        if (snapshotTableOrderSpecifier != null &&
+                (tableWhitelist != null || tableBlacklist != null || dbWhitelist != null || dbBlacklist != null)){
+            problems.accept(EXPLICIT_SNAPSHOT_TABLE_ORDER,
+                    config.getString(EXPLICIT_SNAPSHOT_TABLE_ORDER),
+                    "Table snapshot order specifier cannot be used with any table/db blacklist/whitelist");
+            return 1;
+        }
+
         return 0;
     }
 
