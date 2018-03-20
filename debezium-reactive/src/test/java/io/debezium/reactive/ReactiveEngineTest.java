@@ -19,7 +19,7 @@ import io.debezium.util.Testing;
 import io.reactivex.Flowable;
 
 public class ReactiveEngineTest extends AbstractReactiveEngineTest {
-    private Flowable<DebeziumEvent<SourceRecord>> stream;
+    private Flowable<DataChangeEvent<SourceRecord>> stream;
 
     @Before
     public void initEngine() throws IOException {

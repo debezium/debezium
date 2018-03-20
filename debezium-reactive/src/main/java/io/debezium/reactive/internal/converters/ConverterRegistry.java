@@ -5,6 +5,7 @@
  */
 package io.debezium.reactive.internal.converters;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.ServiceLoader;
@@ -20,11 +21,12 @@ import io.debezium.reactive.spi.Converter;
  */
 public class ConverterRegistry {
 
-    private final Map<Class<? extends AsType<?>>, Converter<?>> registry = new HashMap<>();
+    private final Map<Class<? extends AsType<?>>, Converter<?>> registry;
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public ConverterRegistry(Map<String, ?> configs) {
         final ServiceLoader<Converter> serviceLoader = ServiceLoader.load(Converter.class);
+        final Map<Class<? extends AsType<?>>, Converter<?>> registry = new HashMap<>();
         for (final Converter c: serviceLoader) {
             c.configure(configs);
             final Class<AsType<?>> asType = c.getConvertedType();
@@ -37,11 +39,14 @@ public class ConverterRegistry {
             }
             registry.put(asType, c);
         }
+        this.registry = Collections.unmodifiableMap(registry);
     }
 
     public Converter<?> getConverter(Class<? extends AsType<?>> asType) {
-        return registry.computeIfAbsent(asType, x -> {
+        final Converter<?> c = registry.get(asType);
+        if (c == null) {
             throw new IllegalStateException("Converter for " + asType.getName() + " was not found");
-        });
+        }
+        return c;
     }
 }

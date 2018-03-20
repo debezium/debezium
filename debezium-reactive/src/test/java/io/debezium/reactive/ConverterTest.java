@@ -17,7 +17,7 @@ import io.debezium.reactive.converters.AsJson;
 import io.reactivex.Flowable;
 
 public class ConverterTest extends AbstractReactiveEngineTest {
-    private Flowable<DebeziumEvent<String>> stream;
+    private Flowable<DataChangeEvent<String>> stream;
 
     @Before
     public void initEngine() throws IOException {

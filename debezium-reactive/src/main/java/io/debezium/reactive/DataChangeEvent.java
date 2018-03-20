@@ -5,17 +5,15 @@
  */
 package io.debezium.reactive;
 
-import org.apache.kafka.connect.source.SourceRecord;
-
 /**
- * A class that encapsulates {@link SourceRecord} and associates the {@link #complete()} operation with it.
+ * A class that encapsulates a data change event coming from database and associates the {@link #complete()} operation with it.
  * It is expected that the consumer will receive the event from the pipeline and when the event is
  * durably processed it will signal this fact back to engine using {@link #complete()} call.
  *
  * @author Jiri Pechanec
  *
  */
-public interface DebeziumEvent<T> {
+public interface DataChangeEvent<T> {
 
     /**
      * @return A key for a change data capture event as {@link SourceRecord} received from Debezium connector.

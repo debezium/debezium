@@ -19,7 +19,7 @@ import io.reactivex.Flowable;
  * An embedded engine that uses Rx Java 2 as an API. Internally this class encapsulates {@link EmbeddedEngine}
  * and exposes the change events coming from database as an RX stream.<br/>
  * 
- * The events itself are encapsulated in {@link DebeziumEvent} class.
+ * The events itself are encapsulated in {@link DataChangeEvent} class.
  * The consumer is expected to extract the Debezium generated {@link SourceRecord} or it its serialized form and when the record
  * is durably processed then the consumer must commit the record so the record offset is stored in offset store.<br/>
  * 
@@ -60,5 +60,5 @@ public interface ReactiveEngine<T> {
     /**
      * @return a stream of change events from Debezium connector
      */
-    Flowable<DebeziumEvent<T>> stream();
+    Flowable<DataChangeEvent<T>> stream();
 }

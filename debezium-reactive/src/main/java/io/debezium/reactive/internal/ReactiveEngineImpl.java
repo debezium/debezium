@@ -13,7 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.embedded.StopConnectorException;
-import io.debezium.reactive.DebeziumEvent;
+import io.debezium.reactive.DataChangeEvent;
 import io.debezium.reactive.ReactiveEngine;
 import io.debezium.reactive.internal.converters.ConverterRegistry;
 import io.debezium.reactive.spi.Converter;
@@ -34,7 +34,7 @@ class ReactiveEngineImpl<T> implements ReactiveEngine<T> {
     private Consumer<SourceRecord> emitterConsumer; 
     private DebeziumEventImpl currentEvent;
 
-    private class DebeziumEventImpl implements DebeziumEvent<T> {
+    private class DebeziumEventImpl implements DataChangeEvent<T> {
 
         private T key;
         private T value;
@@ -96,14 +96,14 @@ class ReactiveEngineImpl<T> implements ReactiveEngine<T> {
      * when the consumer tries to read a new event and the previous one is not committed.
      */
     @Override
-    public Flowable<DebeziumEvent<T>> stream() {
+    public Flowable<DataChangeEvent<T>> stream() {
        return Flowable
                 .generate(() -> {
                         engine.doStart();
                         currentEvent = null;
                         LOGGER.info("Consumer subscribed to reactive engine");
                         return engine;
-                    }, (RowSendingEmbeddedEngine engine, Emitter<DebeziumEvent<T>> emitter) -> {
+                    }, (RowSendingEmbeddedEngine engine, Emitter<DataChangeEvent<T>> emitter) -> {
                         if (currentEvent != null) {
                             emitter.onError(new IllegalStateException("An uncommitted event exists. Always commit() the event after processing."));
                             return;
