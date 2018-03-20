@@ -2,6 +2,42 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 0.7.5
+March 20th, 2018 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12337159)
+
+### New features since 0.7.4
+
+* Keep SnapshotReaderMetrics bean registered after snapshot completed [DBZ-640](https://issues.jboss.org/browse/DBZ-640)
+* Cache replaced topic names and shard ids in ByLogicalTableRouter SMT [DBZ-655](https://issues.jboss.org/browse/DBZ-655)
+* Filter out useless commands from the history topic [DBZ-661](https://issues.jboss.org/browse/DBZ-661)
+* Apache Kafka 1.0.1 updates [DBZ-647](https://issues.jboss.org/browse/DBZ-647)
+
+
+### Breaking changes since 0.7.4
+
+Debezium was creating  database history topic with an infinite time-based log retention but a broker default one for topic size log retention.
+This was fixed in [DBZ-663](https://issues.jboss.org/browse/DBZ-663).
+See our [blogpost](http://debezium.io/blog/2018/03/16/note-on-database-history-topic-configuration/) for more details.
+
+Snapshot JMX metrics were removed after the snapshot was completed.
+This was changed in [DBZ-640](https://issues.jboss.org/browse/DBZ-640) and the metrics are available till next connector restart.
+
+### Fixes since 0.7.4
+
+* io.debezium.text.ParsingException for TokuDB table [DBZ-646](https://issues.jboss.org/browse/DBZ-646)
+* MongoDB connector continues to try to connect to invalid host even after deletion [DBZ-648](https://issues.jboss.org/browse/DBZ-648)
+* Streaming stopped due to JsonParseException [DBZ-657](https://issues.jboss.org/browse/DBZ-657)
+* 'ALTER TABLE `tbl_name` ADD CONSTRAINT UNIQUE KEY `key_name` (`colname`)' throwing exception [DBZ-660](https://issues.jboss.org/browse/DBZ-660)
+* Missing setting for the automatic history topic creation [DBZ-663](https://issues.jboss.org/browse/DBZ-663)
+* EmbeddedEngine passes time of last commit to policy, not time since [DBZ-665](https://issues.jboss.org/browse/DBZ-665)
+
+
+### Other changes since 0.7.4
+
+* "snapshot" attribute should be false instead of null for events based on the binlog [DBZ-592](https://issues.jboss.org/browse/DBZ-592)
+* Describe limitations of wal2json version currently used on RDS [DBZ-619](https://issues.jboss.org/browse/DBZ-619)
+
+
 ## 0.7.4
 March 7th, 2018 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12336214)
 
