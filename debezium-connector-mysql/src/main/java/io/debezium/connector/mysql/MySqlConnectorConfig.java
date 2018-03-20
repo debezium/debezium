@@ -646,13 +646,19 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                       .withValidation(MySqlConnectorConfig::validateColumnBlacklist)
                                                       .withDescription("");
 
-    public static final Field TABLE_SNAPSHOT_ORDER_SPECIFIER = Field.create("table.snapshot.order.specifier")
+    /**
+     * A comma-separated list of <databaseName>.<tableName> that specifies explicitly the order in which we want to perform the data snapshot
+     */
+    public static final Field EXPLICIT_SNAPSHOT_TABLE_ORDER = Field.create("explicit.snapshot.table.order")
                                                                 .withDisplayName("Snapshot table data in the specified order")
                                                                 .withType(Type.STRING)
                                                                 .withWidth(Width.LONG)
                                                                 .withImportance(Importance.LOW)
                                                                 .withValidation(MySqlConnectorConfig::validateTableSnapshotOrderSpecifier)
-                                                                .withDescription("");
+                                                                .withDescription("This config can be used to specify an explicit order in which snapshot operation can be performed." +
+                                                                        " The config should be a comma separated list of <db>.<table>, which would be the order in which the snapshot operation" +
+                                                                        " would be done. Note that it is not allowed to use this mode with any of the other db/table, whitelist/blacklist options." +
+                                                                        " Also, it is valid to be used only with data inclusive snapshot modes namely 'when_needed','initial' and 'inital_only'.");
 
     /**
      * A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog
@@ -915,7 +921,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                      CommonConnectorConfig.POLL_INTERVAL_MS,
                                                      BUFFER_SIZE_FOR_BINLOG_READER, Heartbeat.HEARTBEAT_INTERVAL,
                                                      Heartbeat.HEARTBEAT_TOPICS_PREFIX, DATABASE_HISTORY, INCLUDE_SCHEMA_CHANGES,
-                                                     TABLE_WHITELIST, TABLE_BLACKLIST, TABLES_IGNORE_BUILTIN,TABLE_SNAPSHOT_ORDER_SPECIFIER,
+                                                     TABLE_WHITELIST, TABLE_BLACKLIST, TABLES_IGNORE_BUILTIN,EXPLICIT_SNAPSHOT_TABLE_ORDER,
                                                      DATABASE_WHITELIST, DATABASE_BLACKLIST,
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, SNAPSHOT_LOCKING_MODE,
                                                      GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
@@ -975,7 +981,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                     DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, DatabaseHistory.DDL_FILTER,
                     DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL);
         Field.group(config, "Events", INCLUDE_SCHEMA_CHANGES, TABLES_IGNORE_BUILTIN, DATABASE_WHITELIST, TABLE_WHITELIST,
-                    COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST,TABLE_SNAPSHOT_ORDER_SPECIFIER,
+                    COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST,EXPLICIT_SNAPSHOT_TABLE_ORDER,
                     GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS, BUFFER_SIZE_FOR_BINLOG_READER,
                     Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX, EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE, INCONSISTENT_SCHEMA_HANDLING_MODE,
                     CommonConnectorConfig.TOMBSTONES_ON_DELETE);
@@ -1103,14 +1109,14 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
     }
 
     private static int validateTableSnapshotOrderSpecifier(Configuration config, Field field, ValidationOutput problems){
-        String snapshotTableOrderSpecifier = config.getString(TABLE_SNAPSHOT_ORDER_SPECIFIER);
+        String snapshotTableOrderSpecifier = config.getString(EXPLICIT_SNAPSHOT_TABLE_ORDER);
         String snapshotMode = config.getString(MySqlConnectorConfig.SNAPSHOT_MODE);
         if (snapshotTableOrderSpecifier != null
                 && (snapshotMode.equals(SnapshotMode.SCHEMA_ONLY.getValue())
                 || snapshotMode.equals(SnapshotMode.SCHEMA_ONLY_RECOVERY.getValue())
                 || snapshotMode.equals(SnapshotMode.NEVER.getValue()))){
-            problems.accept(TABLE_SNAPSHOT_ORDER_SPECIFIER,
-                    config.getString(TABLE_SNAPSHOT_ORDER_SPECIFIER),
+            problems.accept(EXPLICIT_SNAPSHOT_TABLE_ORDER,
+                    config.getString(EXPLICIT_SNAPSHOT_TABLE_ORDER),
                     "Table snapshot order specifier can only be used with modes initial,initial_only and when_needed.");
             return 1;
         }
@@ -1120,8 +1126,8 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
         String dbBlacklist = config.getString(DATABASE_BLACKLIST);
         if (snapshotTableOrderSpecifier != null &&
                 (tableWhitelist != null || tableBlacklist != null || dbWhitelist != null || dbBlacklist != null)){
-            problems.accept(TABLE_SNAPSHOT_ORDER_SPECIFIER,
-                    config.getString(TABLE_SNAPSHOT_ORDER_SPECIFIER),
+            problems.accept(EXPLICIT_SNAPSHOT_TABLE_ORDER,
+                    config.getString(EXPLICIT_SNAPSHOT_TABLE_ORDER),
                     "Table snapshot order specifier cannot be used with any table/db blacklist/whitelist");
             return 1;
         }

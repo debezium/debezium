@@ -49,11 +49,11 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
      */
     private final boolean tableIdCaseInsensitive;
 
-    public String getTableSnapshotOrderSpecifier() {
-        return tableSnapshotOrderSpecifier;
+    public String getExplicitSnapshotTableOrder() {
+        return explicitSnapshotTableOrder;
     }
 
-    private final String tableSnapshotOrderSpecifier;
+    private final String explicitSnapshotTableOrder;
 
     public MySqlTaskContext(Configuration config) {
         this(config, null);
@@ -94,7 +94,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         // Set up the DDL filter
         final String ddlFilter = config.getString(DatabaseHistory.DDL_FILTER);
         this.ddlFilter = (ddlFilter != null) ? Predicates.includes(ddlFilter) : (x -> false);
-        this.tableSnapshotOrderSpecifier = config.getString(MySqlConnectorConfig.TABLE_SNAPSHOT_ORDER_SPECIFIER);
+        this.explicitSnapshotTableOrder = config.getString(MySqlConnectorConfig.EXPLICIT_SNAPSHOT_TABLE_ORDER);
     }
 
     public Configuration config() {

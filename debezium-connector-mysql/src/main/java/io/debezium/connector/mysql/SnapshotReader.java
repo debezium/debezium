@@ -214,7 +214,7 @@ public class SnapshotReader extends AbstractReader {
         boolean isLocked = false;
         boolean isTxnStarted = false;
         boolean tableLocks = false;
-        String snapshotTableOrderSpecifier = context.getTableSnapshotOrderSpecifier();
+        String snapshotTableOrderSpecifier = context.getExplicitSnapshotTableOrder();
         try {
             metrics.startSnapshot();
 
