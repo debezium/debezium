@@ -332,8 +332,8 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     @Override
     public void initializeStorage() {
         super.initializeStorage();
-        final AdminClient admin = AdminClient.create(this.producerConfig.asProperties());
-        try {
+
+        try (AdminClient admin = AdminClient.create(this.producerConfig.asProperties())) {
             // Find default replication factor
             Config brokerConfig = getKafkaBrokerConfig(admin);
             final short replicationFactor = Short.parseShort(brokerConfig.get(DEFAULT_TOPIC_REPLICATION_FACTOR_PROP_NAME).value());
