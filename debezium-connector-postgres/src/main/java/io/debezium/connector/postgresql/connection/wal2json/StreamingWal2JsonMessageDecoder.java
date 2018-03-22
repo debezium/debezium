@@ -83,7 +83,12 @@ public class StreamingWal2JsonMessageDecoder implements MessageDecoder {
     private final DateTimeFormat dateTime = DateTimeFormat.get();
     private boolean containsMetadata = false;
     private boolean messageInProgress = false;
-    private String bufferedContent;
+
+    /**
+     * To identify if the last current chunk is the last one we can send the current one
+     * for processing only after we read the next one or the end of message fragment.
+     */
+    private String currentChunk;
 
     private int txId;
 
@@ -112,31 +117,32 @@ public class StreamingWal2JsonMessageDecoder implements MessageDecoder {
                 timestamp = message.getString("timestamp");
                 commitTime = dateTime.systemTimestamp(timestamp);
                 messageInProgress = true;
-                bufferedContent = null;
+                currentChunk = null;
             }
             else {
                 // We are receiving changes in chunks
                 if (content.startsWith("{")) {
                     // First change, this is a valid JSON
-                    bufferedContent = content;
+                    currentChunk = content;
                 }
                 else if (content.startsWith(",")) {
                     // following changes, they have an extra comma at the start of message
-                    doProcessMessage(processor, typeRegistry, bufferedContent, false);
-                    bufferedContent = content.substring(1);
+                    doProcessMessage(processor, typeRegistry, currentChunk, false);
+                    currentChunk = content.substring(1);
                 }
                 else if (content.startsWith("]")) {
                     // No more changes
-                    if (bufferedContent != null) {
-                        doProcessMessage(processor, typeRegistry, bufferedContent, true);
+                    if (currentChunk != null) {
+                        doProcessMessage(processor, typeRegistry, currentChunk, true);
                     }
                     messageInProgress = false;
                 }
                 else {
-                    throw new ConnectException("Chunk arrived in unxepected state");
+                    throw new ConnectException("Chunk arrived in unexpected state");
                 }
             }
-        } catch (final IOException e) {
+        }
+        catch (final IOException e) {
             throw new ConnectException(e);
         }
     }
