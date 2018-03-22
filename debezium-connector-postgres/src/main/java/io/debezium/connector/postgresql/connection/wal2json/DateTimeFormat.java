@@ -14,6 +14,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
+import java.time.format.TextStyle;
 import java.time.temporal.ChronoField;
 import java.util.function.Supplier;
 
@@ -47,23 +48,35 @@ public interface DateTimeFormat {
         private static final DateTimeFormatter TS_FORMAT = new DateTimeFormatterBuilder()
                 .appendPattern("yyyy-MM-dd HH:mm:ss")
                 .appendFraction(ChronoField.MICRO_OF_SECOND, 0, 6, true)
+                .optionalStart()
+                .appendLiteral(" ")
+                .appendText(ChronoField.ERA, TextStyle.SHORT)
+                .optionalEnd()
                 .toFormatter();
 
         private static final String TS_TZ_FORMAT_PATTERN = "yyyy-MM-dd HH:mm:ss[.S]X";
         private static final DateTimeFormatter TS_TZ_FORMAT = new DateTimeFormatterBuilder()
                 .appendPattern("yyyy-MM-dd HH:mm:ss")
                 .appendFraction(ChronoField.MICRO_OF_SECOND, 0, 6, true)
-                .appendOffset("+HH", "")
+                .appendOffset("+HH:mm", "")
+                .optionalStart()
+                .appendLiteral(" ")
+                .appendText(ChronoField.ERA, TextStyle.SHORT)
+                .optionalEnd()
                 .toFormatter();
 
         private static final String SYSTEM_TS_FORMAT_PATTERN = "yyyy-MM-dd HH:mm:ss.SSSSSSX";
         private static final DateTimeFormatter SYSTEM_TS_FORMAT = new DateTimeFormatterBuilder()
                 .appendPattern("yyyy-MM-dd HH:mm:ss")
                 .appendFraction(ChronoField.MICRO_OF_SECOND, 0, 6, true)
-                .appendOffset("+HH", "Z")
+                .appendOffset("+HH:mm", "Z")
+                .optionalStart()
+                .appendLiteral(" ")
+                .appendText(ChronoField.ERA, TextStyle.SHORT)
+                .optionalEnd()
                 .toFormatter();
 
-        private static final String DATE_FORMAT_PATTERN = "yyyy-MM-dd";
+        private static final String DATE_FORMAT_PATTERN = "yyyy-MM-dd[ GG]";
         private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern(DATE_FORMAT_PATTERN);
 
         private static final String TIME_FORMAT_PATTERN = "HH:mm:ss";
