@@ -46,7 +46,7 @@ class HeartbeatImpl implements Heartbeat {
      */
     static final String DEFAULT_HEARTBEAT_TOPICS_PREFIX = "__debezium-heartbeat";
 
-    private static final String SERVER_NAME_KEY = "name";
+    private static final String SERVER_NAME_KEY = "serverName";
     private static Schema KEY_SCHEMA = SchemaBuilder.struct()
                                                     .name(schemaNameAdjuster.adjust("io.debezium.connector.mysql.ServerNameKey"))
                                                     .field(SERVER_NAME_KEY,Schema.STRING_SCHEMA)
@@ -88,7 +88,7 @@ class HeartbeatImpl implements Heartbeat {
     }
 
     /**
-     * Produce a key struct for based on the server name and KEY_SCHEMA
+     * Produce a key struct based on the server name and KEY_SCHEMA
      *
      */
     private Struct serverNameKey(String serverName){
