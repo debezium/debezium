@@ -117,6 +117,64 @@ public class ByLogicalTableRouterTest {
         assertThat(((Struct) transformed3.key()).get("shard_id")).isEqualTo("2");
     }
 
+    @Test
+    public void testHeartbeatMessageTopicReplacementTopic(){
+        final ByLogicalTableRouter<SourceRecord> router = new ByLogicalTableRouter<>();
+        final Map<String, String> props = new HashMap<>();
+        final String keyFieldName = "serverName";
+        final String keyOriginalKeyTopic = "originalTopic";
+        final String replacedTopic = "debezium_heartbeat_central";
+
+        props.put("topic.regex", "__debezium-heartbeat(.*)");
+        props.put("topic.replacement", replacedTopic);
+        props.put("key.field.name", keyOriginalKeyTopic);
+        router.configure(props);
+
+        Schema keySchema = SchemaBuilder.struct()
+                .name("io.debezium.connector.mysql.ServerNameKey")
+                .field(keyFieldName,Schema.STRING_SCHEMA)
+                .build();
+
+        Struct key1 = new Struct(keySchema).put(keyFieldName, "test_server_name_db");
+        SourceRecord record1 = new SourceRecord(
+                new HashMap<>(), new HashMap<>(), "__debezium-heartbeat.test_server_name_db", keySchema, key1, null, null
+        );
+
+        SourceRecord transformed1 = router.apply(record1);
+        assertThat(transformed1).isNotNull();
+        assertThat(transformed1.topic()).isEqualTo(replacedTopic);
+
+        assertThat(transformed1.keySchema().name()).isEqualTo(replacedTopic + ".Key");
+        assertThat(transformed1.keySchema().fields()).hasSize(2);
+        assertThat(transformed1.keySchema().fields().get(0).name()).isEqualTo(keyFieldName);
+        assertThat(transformed1.keySchema().fields().get(1).name()).isEqualTo(keyOriginalKeyTopic);
+
+        assertThat(((Struct) transformed1.key()).get(keyFieldName)).isEqualTo("test_server_name_db");
+        assertThat(((Struct) transformed1.key()).get(keyOriginalKeyTopic)).isEqualTo("__debezium-heartbeat.test_server_name_db");
+
+        assertThat(transformed1.value()).isNull();
+
+
+        Struct key2 = new Struct(keySchema).put(keyFieldName, "test_server_name_db_2");
+        SourceRecord record2 = new SourceRecord(
+                new HashMap<>(), new HashMap<>(), "__debezium-heartbeat.test_server_name_db_2", keySchema, key2, null, null
+        );
+
+        SourceRecord transformed2 = router.apply(record2);
+        assertThat(transformed2).isNotNull();
+        assertThat(transformed2.topic()).isEqualTo(replacedTopic);
+
+        assertThat(transformed2.keySchema().name()).isEqualTo(replacedTopic + ".Key");
+        assertThat(transformed2.keySchema().fields()).hasSize(2);
+        assertThat(transformed2.keySchema().fields().get(0).name()).isEqualTo(keyFieldName);
+        assertThat(transformed2.keySchema().fields().get(1).name()).isEqualTo(keyOriginalKeyTopic);
+
+        assertThat(((Struct) transformed2.key()).get(keyFieldName)).isEqualTo("test_server_name_db_2");
+        assertThat(((Struct) transformed2.key()).get(keyOriginalKeyTopic)).isEqualTo("__debezium-heartbeat.test_server_name_db_2");
+
+        assertThat(transformed2.value()).isNull();
+    }
+
     @Test(expected = ConnectException.class)
     public void testBrokenTopicReplacementConfigurationNullValue() {
         final ByLogicalTableRouter<SourceRecord> subject = new ByLogicalTableRouter<>();
