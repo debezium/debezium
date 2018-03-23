@@ -70,7 +70,7 @@ class PgProtoReplicationMessage implements ReplicationMessage {
     }
 
     @Override
-    public int getTransactionId() {
+    public long getTransactionId() {
         return rawMessage.getTransactionId();
     }
 

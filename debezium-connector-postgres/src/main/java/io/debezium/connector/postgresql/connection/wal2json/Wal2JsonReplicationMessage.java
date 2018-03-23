@@ -49,14 +49,14 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Wal2JsonReplicationMessage.class);
 
-    private final int txId;
+    private final long txId;
     private final long commitTime;
     private final Document rawMessage;
     private final boolean hasMetadata;
     private final boolean lastEventForLsn;
     private final TypeRegistry typeRegistry;
 
-    public Wal2JsonReplicationMessage(int txId, long commitTime, Document rawMessage, boolean hasMetadata, boolean lastEventForLsn, TypeRegistry typeRegistry) {
+    public Wal2JsonReplicationMessage(long txId, long commitTime, Document rawMessage, boolean hasMetadata, boolean lastEventForLsn, TypeRegistry typeRegistry) {
         this.txId = txId;
         this.commitTime = commitTime;
         this.rawMessage = rawMessage;
@@ -86,7 +86,7 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
     }
 
     @Override
-    public int getTransactionId() {
+    public long getTransactionId() {
         return txId;
     }
 

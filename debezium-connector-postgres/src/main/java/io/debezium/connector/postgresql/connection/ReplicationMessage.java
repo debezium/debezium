@@ -63,7 +63,7 @@ public interface ReplicationMessage {
     /**
      * @return An id of transaction to which this change belongs
      */
-    public int getTransactionId();
+    public long getTransactionId();
 
     /**
      * @return Table changed
