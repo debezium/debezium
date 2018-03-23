@@ -115,11 +115,11 @@ public class StreamingWal2JsonMessageDecoder implements MessageDecoder {
             // Extend the array by two as we might need to append two chars and set them to space by default
             final byte[] content = Arrays.copyOfRange(source, buffer.arrayOffset(), source.length + 2);
             final int lastPos = content.length - 1;
-            content[lastPos - 1] = 32;
-            content[lastPos] = 32;
+            content[lastPos - 1] = SPACE;
+            content[lastPos] = SPACE;
 
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Chunk arrived from database {}", new String(content));
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("Chunk arrived from database {}", new String(content));
             }
 
             if (!messageInProgress) {
@@ -200,7 +200,8 @@ public class StreamingWal2JsonMessageDecoder implements MessageDecoder {
     private void doProcessMessage(ReplicationMessageProcessor processor, TypeRegistry typeRegistry, byte[] content, boolean lastMessage)
             throws IOException, SQLException, InterruptedException {
         final Document change = DocumentReader.floatNumbersAsTextReader().read(content);
-        LOGGER.debug("Change arrived for decoding {}", change);
+
+        LOGGER.trace("Change arrived for decoding {}", change);
         processor.process(new Wal2JsonReplicationMessage(txId, commitTime, change, containsMetadata, lastMessage, typeRegistry));
     }
 
