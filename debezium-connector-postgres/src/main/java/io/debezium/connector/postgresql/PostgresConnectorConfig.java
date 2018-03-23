@@ -23,7 +23,8 @@ import io.debezium.config.Field;
 import io.debezium.connector.postgresql.connection.MessageDecoder;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.pgproto.PgProtoMessageDecoder;
-import io.debezium.connector.postgresql.connection.wal2json.Wal2JsonMessageDecoder;
+import io.debezium.connector.postgresql.connection.wal2json.NonStreamingWal2JsonMessageDecoder;
+import io.debezium.connector.postgresql.connection.wal2json.StreamingWal2JsonMessageDecoder;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -300,13 +301,42 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
         WAL2JSON("wal2json") {
             @Override
             public MessageDecoder messageDecoder() {
-                return new Wal2JsonMessageDecoder();
+                return new StreamingWal2JsonMessageDecoder();
             }
         },
         WAL2JSON_RDS("wal2json_rds") {
             @Override
             public MessageDecoder messageDecoder() {
-                return new Wal2JsonMessageDecoder();
+                return new StreamingWal2JsonMessageDecoder();
+            }
+
+            @Override
+            public boolean forceRds() {
+                return true;
+            }
+
+            @Override
+            public String getPostgresPluginName() {
+                return "wal2json";
+            }
+        },
+        @Deprecated
+        WAL2JSON_LEGACY("wal2json_legacy") {
+            @Override
+            public MessageDecoder messageDecoder() {
+                return new NonStreamingWal2JsonMessageDecoder();
+            }
+
+            @Override
+            public String getPostgresPluginName() {
+                return "wal2json";
+            }
+        },
+        @Deprecated
+        WAL2JSON_RDS_LEGACY("wal2json_rds_legacy") {
+            @Override
+            public MessageDecoder messageDecoder() {
+                return new NonStreamingWal2JsonMessageDecoder();
             }
 
             @Override

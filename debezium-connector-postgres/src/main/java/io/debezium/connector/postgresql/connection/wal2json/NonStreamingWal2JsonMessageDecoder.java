@@ -26,16 +26,17 @@ import io.debezium.document.DocumentReader;
 import io.debezium.document.Value;
 
 /**
- * JSON deserialization of a message sent by
+ * A legacy version of JSON deserialization of a message sent by
  * <a href="https://github.com/eulerto/wal2json">wal2json</a> logical decoding plugin. The plugin sends all
- * changes in one transaction as a single batch and they are passed to processor one-by-one.
+ * changes in one transaction as a single batch in a big JSON file and they are passed to processor one-by-one.
  *
  * @author Jiri Pechanec
  *
  */
-public class Wal2JsonMessageDecoder implements MessageDecoder {
+@Deprecated
+public class NonStreamingWal2JsonMessageDecoder implements MessageDecoder {
 
-    private static final  Logger LOGGER = LoggerFactory.getLogger(Wal2JsonMessageDecoder.class);
+    private static final  Logger LOGGER = LoggerFactory.getLogger(NonStreamingWal2JsonMessageDecoder.class);
 
     private final DateTimeFormat dateTime = DateTimeFormat.get();
     private boolean containsMetadata = false;
