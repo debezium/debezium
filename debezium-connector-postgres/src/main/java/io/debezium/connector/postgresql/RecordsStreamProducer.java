@@ -219,7 +219,7 @@ public class RecordsStreamProducer extends RecordsProducer {
 
         // update the source info with the coordinates for this message
         long commitTimeNs = message.getCommitTime();
-        int txId = message.getTransactionId();
+        long txId = message.getTransactionId();
         sourceInfo.update(lsn, commitTimeNs, txId);
         if (logger.isDebugEnabled()) {
             logger.debug("received new message at position {}\n{}", ReplicationConnection.format(lsn), message);

@@ -167,7 +167,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             // If rows are being inserted while we're doing the snapshot, the xlog pos should increase and so when
             // we start streaming, we should get back those changes
             long xlogStart = connection.currentXLogLocation();
-            int txId = connection.currentTransactionId().intValue();
+            long txId = connection.currentTransactionId().longValue();
             logger.info("\t read xlogStart at '{}' from transaction '{}'", ReplicationConnection.format(xlogStart), txId);
 
             // and mark the start of the snapshot
