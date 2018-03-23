@@ -90,7 +90,7 @@ final class SourceInfo extends AbstractSourceInfo {
                                                      .name("io.debezium.connector.postgresql.Source")
                                                      .field(SERVER_NAME_KEY, Schema.STRING_SCHEMA)
                                                      .field(TIMESTAMP_KEY, Schema.OPTIONAL_INT64_SCHEMA)
-                                                     .field(TXID_KEY, Schema.OPTIONAL_INT32_SCHEMA)
+                                                     .field(TXID_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                      .field(LSN_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                      .field(SNAPSHOT_KEY, SchemaBuilder.bool().optional().defaultValue(false).build())
                                                      .field(LAST_SNAPSHOT_RECORD_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
@@ -100,7 +100,7 @@ final class SourceInfo extends AbstractSourceInfo {
     private final Map<String, String> sourcePartition;
 
     private Long lsn;
-    private Integer txId;
+    private Long txId;
     private Long useconds;
     private boolean snapshot = false;
     private Boolean lastSnapshotRecord;
@@ -113,7 +113,7 @@ final class SourceInfo extends AbstractSourceInfo {
 
     protected void load(Map<String, Object> lastStoredOffset) {
         this.lsn = ((Number) lastStoredOffset.get(LSN_KEY)).longValue();
-        this.txId = ((Number) lastStoredOffset.get(TXID_KEY)).intValue();
+        this.txId = ((Number) lastStoredOffset.get(TXID_KEY)).longValue();
         this.useconds = (Long) lastStoredOffset.get(TIMESTAMP_KEY);
         this.snapshot = lastStoredOffset.containsKey(SNAPSHOT_KEY);
         if (this.snapshot) {
@@ -167,7 +167,7 @@ final class SourceInfo extends AbstractSourceInfo {
      * @param txId the ID of the transaction that generated the transaction; may be null if this information nis not available
      * @return this instance
      */
-    protected SourceInfo update(Long lsn, Long useconds, Integer txId) {
+    protected SourceInfo update(Long lsn, Long useconds, Long txId) {
         this.lsn = lsn;
         this.useconds = useconds;
         this.txId = txId;

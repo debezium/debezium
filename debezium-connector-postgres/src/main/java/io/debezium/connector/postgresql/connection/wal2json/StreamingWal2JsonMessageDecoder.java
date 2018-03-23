@@ -99,7 +99,7 @@ public class StreamingWal2JsonMessageDecoder implements MessageDecoder {
      */
     private byte[] currentChunk;
 
-    private int txId;
+    private long txId;
 
     private String timestamp;
 
@@ -130,7 +130,7 @@ public class StreamingWal2JsonMessageDecoder implements MessageDecoder {
                     content[lastPos] = RIGHT_BRACE;
                 }
                 final Document message = DocumentReader.defaultReader().read(content);
-                txId = message.getInteger("xid");
+                txId = message.getLong("xid");
                 timestamp = message.getString("timestamp");
                 commitTime = dateTime.systemTimestamp(timestamp);
                 messageInProgress = true;
