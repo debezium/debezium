@@ -48,7 +48,7 @@ import io.debezium.text.TokenStream.Marker;
  * @author Barry LaFond
  */
 @NotThreadSafe
-public class LegacyDdlParser {
+public class LegacyDdlParser implements DdlParser {
 
     protected static interface TokenSet {
         void add(String token);
@@ -161,8 +161,16 @@ public class LegacyDdlParser {
      *
      * @param name the name of the current schema; may be null
      */
+    @Override
     public void setCurrentSchema(String name) {
         this.currentSchema = name;
+    }
+
+    // this parser doesn't distinguish between database name and schema name; what's stored as "database name"
+    // in history records is used as "schema" here
+    @Override
+    public void setCurrentDatabase(String databaseName) {
+        this.currentSchema = databaseName;
     }
 
     /**
@@ -261,6 +269,7 @@ public class LegacyDdlParser {
      *            tables as defined in the DDL content; may not be null
      * @throws ParsingException if there is a problem parsing the supplied content
      */
+    @Override
     public final void parse(String ddlContent, Tables databaseTables) {
         TokenStream stream = new TokenStream(ddlContent, new DdlTokenizer(!skipComments(), this::determineTokenType), false);
         stream.start();
