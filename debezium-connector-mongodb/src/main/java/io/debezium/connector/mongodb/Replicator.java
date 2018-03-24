@@ -400,7 +400,6 @@ public class Replicator {
         FindIterable<Document> results = oplog.find(filter)
                                               .sort(new Document("$natural", 1)) // force forwards collection scan
                                               .oplogReplay(true) // tells Mongo to not rely on indexes
-                                              .noCursorTimeout(true) // don't timeout waiting for events
                                               .cursorType(CursorType.TailableAwait); // tail and await new data
         // Read as much of the oplog as we can ...
         ServerAddress primaryAddress = primary.getAddress();
