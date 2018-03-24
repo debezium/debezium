@@ -133,6 +133,7 @@ public class Replicator {
      */
     public void stop() {
         this.copyThreads.shutdownNow();
+        this.running.set(false);
     }
 
     /**
