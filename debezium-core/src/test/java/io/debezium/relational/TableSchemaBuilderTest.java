@@ -28,6 +28,7 @@ public class TableSchemaBuilderTest {
     private final String prefix = "";
     private final TableId id = new TableId("catalog", "schema", "table");
     private final Object[] data = new Object[] { "c1value", 3.142d, java.sql.Date.valueOf("2001-10-31"), 4, new byte[]{ 71, 117, 110, 110, 97, 114}, null };
+    private final byte[] byteArray = "NULL".getBytes();
     private Table table;
     private Column c1;
     private Column c2;
@@ -50,6 +51,7 @@ public class TableSchemaBuilderTest {
                                        .type("VARCHAR").jdbcType(Types.VARCHAR).length(10)
                                        .optional(false)
                                        .generated(true)
+                                       .defaultValue("")
                                        .create(),
                                  Column.editor().name("C2")
                                        .type("NUMBER").jdbcType(Types.NUMERIC).length(5).scale(3)
@@ -67,11 +69,13 @@ public class TableSchemaBuilderTest {
                                        .type("BINARY").jdbcType(Types.BINARY)
                                        .optional(false)
                                        .length(16)
+                                        .defaultValue(byteArray)
                                        .create(),
                                  Column.editor().name("C6")
                                        .type("SMALLINT").jdbcType(Types.SMALLINT)
                                        .optional(false)
                                        .length(1)
+                                       .defaultValue((short) 0)
                                        .create())
                      .setPrimaryKeyNames("C1", "C2")
                      .create();
@@ -120,7 +124,7 @@ public class TableSchemaBuilderTest {
         assertThat(values).isNotNull();
         assertThat(values.field("C1").name()).isEqualTo("C1");
         assertThat(values.field("C1").index()).isEqualTo(0);
-        assertThat(values.field("C1").schema()).isEqualTo(SchemaBuilder.string().build());
+        assertThat(values.field("C1").schema()).isEqualTo(SchemaBuilder.string().defaultValue("").build());
         assertThat(values.field("C2").name()).isEqualTo("C2");
         assertThat(values.field("C2").index()).isEqualTo(1);
         assertThat(values.field("C2").schema()).isEqualTo(Decimal.builder(3).optional().build()); // scale of 3
@@ -131,9 +135,9 @@ public class TableSchemaBuilderTest {
         assertThat(values.field("C4").index()).isEqualTo(3);
         assertThat(values.field("C4").schema()).isEqualTo(SchemaBuilder.int32().optional().build()); // JDBC INTEGER = 32 bits
         assertThat(values.field("C5").index()).isEqualTo(4);
-        assertThat(values.field("C5").schema()).isEqualTo(SchemaBuilder.bytes().build()); // JDBC BINARY = bytes
+        assertThat(values.field("C5").schema()).isEqualTo(SchemaBuilder.bytes().defaultValue(byteArray).build()); // JDBC BINARY = bytes
         assertThat(values.field("C6").index()).isEqualTo(5);
-        assertThat(values.field("C6").schema()).isEqualTo(SchemaBuilder.int16().build());
+        assertThat(values.field("C6").schema()).isEqualTo(SchemaBuilder.int16().defaultValue((short) 0).build());
 
         Struct value = schema.valueFromColumnData(data);
         assertThat(value).isNotNull();

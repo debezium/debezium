@@ -1499,6 +1499,22 @@ public class MySqlDdlParserTest {
         assertThat(tables.forTable(new TableId(null, null, "flat_view_request_log"))).isNotNull();
     }
 
+    @Test
+    public void parseDefaultValue() {
+        String ddl = "CREATE TABLE tmp (id INT NOT NULL, " +
+                "columnA CHAR(60) NOT NULL DEFAULT 'A'," +
+                "columnB INT NOT NULL DEFAULT 1," +
+                "columnC VARCHAR NULL DEFAULT 'C'," +
+                "columnD VARCHAR NULL DEFAULT NULL);";
+        parser.parse(ddl, tables);
+        Table table = tables.forTable(new TableId(null, null, "tmp"));
+        assertThat(table.columnWithName("id").isOptional()).isEqualTo(false);
+        assertThat(table.columnWithName("columnA").defaultValue()).isEqualTo("A");
+        assertThat(table.columnWithName("columnB").defaultValue()).isEqualTo(1);
+        assertThat(table.columnWithName("columnC").defaultValue()).isEqualTo("C");
+        assertThat(table.columnWithName("columnD").defaultValue()).isEqualTo(null);
+    }
+
     protected void assertParseEnumAndSetOptions(String typeExpression, String optionString) {
         List<String> options = MySqlDdlParser.parseSetAndEnumOptions(typeExpression);
         String commaSeperatedOptions = Strings.join(",", options);

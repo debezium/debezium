@@ -89,10 +89,7 @@ public class MySqlSchema {
      */
     public MySqlSchema(Configuration config, String serverName, Predicate<String> gtidFilter, boolean tableIdCaseInsensitive, TopicSelector topicSelector) {
         this.filters = new Filters(config);
-        this.ddlParser = new MySqlDdlParser(false);
         this.tables = new Tables(tableIdCaseInsensitive);
-        this.ddlChanges = new DdlChanges(this.ddlParser.terminator());
-        this.ddlParser.addListener(ddlChanges);
         this.topicSelector = topicSelector;
         this.tableIdCaseInsensitive = tableIdCaseInsensitive;
 
@@ -107,6 +104,10 @@ public class MySqlSchema {
         BigIntUnsignedMode bigIntUnsignedMode = bigIntUnsignedHandlingMode.asBigIntUnsignedMode();
         MySqlValueConverters valueConverters = new MySqlValueConverters(decimalMode, timePrecisionMode, bigIntUnsignedMode);
         this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameAdjuster, SourceInfo.SCHEMA);
+
+        this.ddlParser = new MySqlDdlParser(false, valueConverters);
+        this.ddlChanges = new DdlChanges(this.ddlParser.terminator());
+        this.ddlParser.addListener(ddlChanges);
 
         // Set up the server name and schema prefix ...
         if (serverName != null) serverName = serverName.trim();

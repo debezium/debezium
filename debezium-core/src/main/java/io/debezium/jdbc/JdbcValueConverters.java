@@ -21,6 +21,7 @@ import java.time.OffsetTime;
 import java.time.ZoneOffset;
 import java.time.temporal.TemporalAdjuster;
 import java.util.BitSet;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Field;
@@ -793,6 +794,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
         if (data instanceof Boolean) {
             return NumberConversions.getShort((Boolean) data);
         }
+        if (data instanceof String) {
+            try {
+                return Short.parseShort((String) data);
+            } catch (NumberFormatException ignore) {
+            }
+        }
         return handleUnknownData(column, fieldDefn, data);
     }
 
@@ -821,6 +828,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
         if (data instanceof Boolean) {
             return NumberConversions.getInteger((Boolean) data);
         }
+        if (data instanceof String) {
+            try {
+                return Integer.parseInt((String) data);
+            } catch (NumberFormatException ignore) {
+            }
+        }
         return handleUnknownData(column, fieldDefn, data);
     }
 
@@ -848,6 +861,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
         }
         if (data instanceof Boolean) {
             return NumberConversions.getLong((Boolean) data);
+        }
+        if (data instanceof String) {
+            try {
+                return Long.parseLong((String) data);
+            } catch (NumberFormatException ignore) {
+            }
         }
         return handleUnknownData(column, fieldDefn, data);
     }
@@ -1070,6 +1089,13 @@ public class JdbcValueConverters implements ValueConverterProvider {
         if (data instanceof BitSet) {
             BitSet value = (BitSet) data;
             return value.get(0);
+        }
+        if (data instanceof String) {
+            if (Objects.equals(data, "1") || "true".equalsIgnoreCase((String) data)) {
+                return true;
+            } else if (Objects.equals(data, "0") || "false".equalsIgnoreCase((String) data)) {
+                return false;
+            }
         }
         return handleUnknownData(column, fieldDefn, data);
     }

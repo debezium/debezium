@@ -126,6 +126,13 @@ public interface Column extends Comparable<Column> {
      */
     boolean isGenerated();
 
+    /**
+     * Get the default value of the column
+     *
+     * @return the default value
+     */
+    Object defaultValue();
+
     @Override
     default int compareTo(Column that) {
         if (this == that) return 0;

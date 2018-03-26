@@ -13,7 +13,9 @@ import java.time.OffsetTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.TemporalAdjuster;
+import java.util.Objects;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -40,6 +42,8 @@ public class ZonedTimestamp {
     public static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
     public static final String SCHEMA_NAME = "io.debezium.time.ZonedTimestamp";
+
+    public static final String ALL_ZERO_TIMESTAMP = "0000-00-00 00:00:00";
 
     /**
      * Returns a {@link SchemaBuilder} for a {@link ZonedTimestamp}. You can use the resulting SchemaBuilder
@@ -90,8 +94,24 @@ public class ZonedTimestamp {
         if (value instanceof java.util.Date) { // or JDBC subtypes
             return toIsoString((java.util.Date) value, defaultZone, adjuster);
         }
+        if (value instanceof Integer && (Integer) value == 0) {
+            return ALL_ZERO_TIMESTAMP;
+        }
+        if (value instanceof String && isTimestampFormat((String) value)) {
+            return (String) value;
+        }
         throw new IllegalArgumentException(
                 "Unable to convert to OffsetDateTime from unexpected value '" + value + "' of type " + value.getClass().getName());
+    }
+
+    public static boolean isTimestampFormat(String timestamp) {
+        try {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            formatter.parse(timestamp);
+            return true;
+        } catch (DateTimeParseException ignore) {
+            return Objects.equals(timestamp, ALL_ZERO_TIMESTAMP);
+        }
     }
 
     /**

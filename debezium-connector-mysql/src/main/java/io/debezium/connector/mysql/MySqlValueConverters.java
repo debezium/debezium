@@ -720,7 +720,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
         }
         if (data == null) {
             if (column.isOptional()) return null;
-            return 0;
+            return 0L;
         }
 
         if (data instanceof Long) {
@@ -788,7 +788,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
         }
         if (data == null) {
             if (column.isOptional()) return null;
-            return 0;
+            return 0L;
         }
         try {
             if (data instanceof Duration) return ((Duration) data).toNanos() / 1_000;
