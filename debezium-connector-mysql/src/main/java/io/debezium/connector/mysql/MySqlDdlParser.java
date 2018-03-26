@@ -18,12 +18,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
+import io.debezium.relational.ValueConverter;
 import io.debezium.relational.ddl.DataType;
 import io.debezium.relational.ddl.DataTypeParser;
 import io.debezium.relational.ddl.DdlParser;
@@ -53,6 +58,8 @@ public class MySqlDdlParser extends DdlParser {
 
     private final MySqlSystemVariables systemVariables = new MySqlSystemVariables();
     private final ConcurrentMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
+    private MySqlValueConverters converters = null;
+    private MySqlDefaultValuePreConverter defaultValuePreConverter = new MySqlDefaultValuePreConverter();
 
     /**
      * Create a new DDL parser for MySQL that does not include view definitions.
@@ -68,6 +75,11 @@ public class MySqlDdlParser extends DdlParser {
      */
     public MySqlDdlParser(boolean includeViews) {
         super(";", includeViews);
+    }
+
+    protected MySqlDdlParser(boolean includeViews, MySqlValueConverters converters) {
+        super(";", includeViews);
+        this.converters = converters;
     }
 
     protected MySqlSystemVariables systemVariables() {
@@ -747,6 +759,8 @@ public class MySqlDdlParser extends DdlParser {
 
         parseColumnDefinition(start, columnName, tokens, table, column, isPrimaryKey);
 
+        convertDefaultValueToSchemaType(column);
+
         // Update the table ...
         Column newColumnDefn = column.create();
         table.addColumns(newColumnDefn);
@@ -766,6 +780,29 @@ public class MySqlDdlParser extends DdlParser {
             table.reorderColumn(columnName, tokens.consume());
         }
         return table.columnWithName(newColumnDefn.name());
+    }
+
+    private void convertDefaultValueToSchemaType(ColumnEditor columnEditor) {
+        final Column column = columnEditor.create();
+        // if converters is not null and the default value is not null, we need to convert default value
+        if (converters != null && columnEditor.defaultValue() != null) {
+            Object defaultValue = columnEditor.defaultValue();
+            final SchemaBuilder schemaBuilder = converters.schemaBuilder(column);
+            if (schemaBuilder == null) {
+                return;
+            }
+            final Schema schema = schemaBuilder.build();
+            //In order to get the valueConverter for this column, we have to create a field;
+            //The index value -1 in the field will never used when converting default value;
+            //So we can set any number here;
+            final Field field = new Field(column.name(), -1, schema);
+            final ValueConverter valueConverter = converters.converter(column, field);
+            if (defaultValue instanceof String) {
+                defaultValue = defaultValuePreConverter.convert(column, (String)defaultValue);
+            }
+            defaultValue = valueConverter.convert(defaultValue);
+            columnEditor.defaultValue(defaultValue);
+        }
     }
 
     /**
@@ -885,7 +922,7 @@ public class MySqlDdlParser extends DdlParser {
                 }
                 // Default value ...
                 if (tokens.matches("DEFAULT")) {
-                    parseDefaultClause(start);
+                    parseDefaultClause(start, column);
                 }
                 if (tokens.matches("ON", "UPDATE") || tokens.matches("ON", "DELETE")) {
                     parseOnUpdateOrDelete(tokens.mark());
@@ -1254,10 +1291,11 @@ public class MySqlDdlParser extends DdlParser {
             if (!isNextTokenQuotedIdentifier()) {
                 tokens.canConsume("COLUMN");
             }
-            tokens.consume(); // column name
+            String columnName = tokens.consume(); // column name
             if (!tokens.canConsume("DROP", "DEFAULT")) {
                 tokens.consume("SET");
-                parseDefaultClause(start);
+                ColumnEditor columnEditor = table.columnWithName(columnName).edit();
+                parseDefaultClause(start, columnEditor);
             }
         } else if (tokens.canConsume("CHANGE")) {
             if (!isNextTokenQuotedIdentifier()) {
@@ -1628,6 +1666,34 @@ public class MySqlDdlParser extends DdlParser {
                 // do nothing ...
             } else {
                 parseLiteral(start);
+            }
+        }
+    }
+
+    /**
+     * Parse and consume the {@code DEFAULT} clause. Add default value in column;
+     *
+     * @param start the marker at the beginning of the clause
+     * @param column column editor
+     */
+    protected void parseDefaultClause(Marker start, ColumnEditor column) {
+        tokens.consume("DEFAULT");
+        if (isNextTokenQuotedIdentifier()) {
+            // We know that it is a quoted literal ...
+            Object defaultValue = parseLiteral(start);
+            column.defaultValue(defaultValue);
+        } else {
+            if (tokens.matchesAnyOf("CURRENT_TIMESTAMP", "NOW")) {
+                parseCurrentTimestampOrNow();
+                parseOnUpdateOrDelete(tokens.mark());
+                //CURRENT_TIMESTAMP and NOW default value will be replaced with epoch timestamp
+                column.defaultValue("1970-01-01 00:00:00");
+            } else if (tokens.canConsume("NULL")) {
+                // If the default value of column is Null, we will set default value null;
+                column.defaultValue(null);
+            } else {
+                Object defaultValue = parseLiteral(start);
+                column.defaultValue(defaultValue);
             }
         }
     }
