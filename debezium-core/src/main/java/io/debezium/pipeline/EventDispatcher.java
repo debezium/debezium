@@ -20,7 +20,7 @@ import io.debezium.pipeline.spi.ChangeEventCreator;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
-import io.debezium.relational.TableId;
+import io.debezium.schema.DataCollectionFilters.DataCollectionFilter;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.schema.DataCollectionSchema;
 import io.debezium.schema.DatabaseSchema;
@@ -36,19 +36,22 @@ import io.debezium.schema.TopicSelector;
  *
  * @author Gunnar Morling
  */
-public class EventDispatcher {
+public class EventDispatcher<T extends DataCollectionId> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EventDispatcher.class);
 
     private final TopicSelector topicSelector;
     private final DatabaseSchema schema;
     private final ChangeEventQueue<Object> queue;
+    private final DataCollectionFilter<T> filter;
 
     public EventDispatcher(TopicSelector topicSelector, DatabaseSchema schema,
-            ChangeEventQueue<Object> queue) {
+            ChangeEventQueue<Object> queue,
+            DataCollectionFilter<T> filter) {
         this.topicSelector = topicSelector;
         this.schema = schema;
         this.queue = queue;
+        this.filter = filter;
     }
 
     /**
@@ -58,15 +61,13 @@ public class EventDispatcher {
      * receiving coordinator creates {@link SourceRecord}s for all emitted events and passes them to the given
      * {@link ChangeEventCreator} for converting them into data change events.
      */
-    public void dispatchDataChangeEvent(DataCollectionId dataCollectionId, Supplier<ChangeRecordEmitter> changeRecordEmitter, ChangeEventCreator changeEventCreator) throws InterruptedException {
+    public void dispatchDataChangeEvent(T dataCollectionId, Supplier<ChangeRecordEmitter> changeRecordEmitter, ChangeEventCreator changeEventCreator) throws InterruptedException {
         // TODO Handle Heartbeat
 
         // TODO Handle JMX
 
-        // TODO handle filtering based on table id
-        boolean tableIncluded = true;
-
-        if(!tableIncluded) {
+        if(!filter.isIncluded(dataCollectionId)) {
+            LOGGER.trace("Skipping data change event for {}", dataCollectionId);
             return;
         }
 
@@ -83,13 +84,13 @@ public class EventDispatcher {
         );
     }
 
-    public void dispatchSchemaChangeEvent(TableId tableId, Supplier<SchemaChangeEventEmitter> schemaChangeEventEmitter) throws InterruptedException {
-        // TODO
-        boolean tableIncluded = true;
-
-        if(tableIncluded) {
-            schemaChangeEventEmitter.get().emitSchemaChangeEvent(new SchemaChangeEventReceiver());
+    public void dispatchSchemaChangeEvent(T dataCollectionId, Supplier<SchemaChangeEventEmitter> schemaChangeEventEmitter) throws InterruptedException {
+        if(!filter.isIncluded(dataCollectionId)) {
+            LOGGER.trace("Skipping data change event for {}", dataCollectionId);
+            return;
         }
+
+        schemaChangeEventEmitter.get().emitSchemaChangeEvent(new SchemaChangeEventReceiver());
     }
 
     private final class ChangeRecordReceiver implements ChangeRecordEmitter.Receiver {

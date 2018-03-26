@@ -30,14 +30,14 @@ public class OracleStreamingChangeEventSource implements StreamingChangeEventSou
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleStreamingChangeEventSource.class);
 
     private final JdbcConnection jdbcConnection;
-    private final EventDispatcher dispatcher;
+    private final EventDispatcher<?> dispatcher;
     private final ErrorHandler errorHandler;
     private final Clock clock;
     private final OracleDatabaseSchema schema;
     private final OracleOffsetContext offsetContext;
     private final String xStreamServerName;
 
-    public OracleStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext, JdbcConnection jdbcConnection, EventDispatcher dispatcher, ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema) {
+    public OracleStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext, JdbcConnection jdbcConnection, EventDispatcher<?> dispatcher, ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema) {
         this.jdbcConnection = jdbcConnection;
         this.dispatcher = dispatcher;
         this.errorHandler = errorHandler;

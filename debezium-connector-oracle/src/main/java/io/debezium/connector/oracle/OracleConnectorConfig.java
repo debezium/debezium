@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.oracle;
 
+import java.util.function.Predicate;
+
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -16,12 +18,13 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.document.Document;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.TableId;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.KafkaDatabaseHistory;
-import oracle.streams.StreamsException;
 
-public class OracleConnectorConfig extends CommonConnectorConfig {
+public class OracleConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     // TODO pull up to RelationalConnectorConfig
     public static final String DATABASE_CONFIG_PREFIX = "database.";
@@ -87,6 +90,9 @@ public class OracleConnectorConfig extends CommonConnectorConfig {
             DATABASE_NAME,
             PDB_NAME,
             XSTREAM_SERVER_NAME,
+            RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
+            RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
+            RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
             CommonConnectorConfig.POLL_INTERVAL_MS,
             CommonConnectorConfig.MAX_BATCH_SIZE,
             CommonConnectorConfig.MAX_QUEUE_SIZE
@@ -97,7 +103,7 @@ public class OracleConnectorConfig extends CommonConnectorConfig {
     private final String xoutServerName;
 
     public OracleConnectorConfig(Configuration config) {
-        super(config, LOGICAL_NAME);
+        super(config, LOGICAL_NAME, new SystemTablesPredicate());
 
         this.databaseName = config.getString(DATABASE_NAME);
         this.pdbName = config.getString(PDB_NAME);
@@ -108,6 +114,10 @@ public class OracleConnectorConfig extends CommonConnectorConfig {
         ConfigDef config = new ConfigDef();
 
         Field.group(config, "Oracle", LOGICAL_NAME, DATABASE_NAME, PDB_NAME, XSTREAM_SERVER_NAME);
+        Field.group(config, "Events", RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
+                RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
+                RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN
+        );
         Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.MAX_QUEUE_SIZE);
 
         return config;
@@ -152,5 +162,18 @@ public class OracleConnectorConfig extends CommonConnectorConfig {
         databaseHistory.configure(dbHistoryConfig, historyComparator); // validates
 
         return databaseHistory;
+    }
+
+    private static class SystemTablesPredicate implements Predicate<TableId> {
+
+        @Override
+        public boolean test(TableId t) {
+            return t.schema().toLowerCase().equals("system") ||
+                    t.schema().toLowerCase().equals("sys") ||
+                    t.schema().toLowerCase().equals("mdsys") ||
+                    t.schema().toLowerCase().equals("ctxsys") ||
+                    t.schema().toLowerCase().equals("outln") ||
+                    t.schema().toLowerCase().equals("xdb");
+        }
     }
 }
