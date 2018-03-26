@@ -793,6 +793,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
         if (data instanceof Boolean) {
             return NumberConversions.getShort((Boolean) data);
         }
+        if (data instanceof String) {
+            return Short.parseShort((String) data);
+        }
         return handleUnknownData(column, fieldDefn, data);
     }
 
@@ -821,6 +824,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
         if (data instanceof Boolean) {
             return NumberConversions.getInteger((Boolean) data);
         }
+        if (data instanceof String) {
+            return Integer.parseInt((String) data);
+        }
         return handleUnknownData(column, fieldDefn, data);
     }
 
@@ -848,6 +854,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
         }
         if (data instanceof Boolean) {
             return NumberConversions.getLong((Boolean) data);
+        }
+        if (data instanceof String) {
+            return Long.parseLong((String) data);
         }
         return handleUnknownData(column, fieldDefn, data);
     }
@@ -986,6 +995,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
             decimal = BigDecimal.valueOf(((Float) data).doubleValue());
         else if (data instanceof Double)
             decimal = BigDecimal.valueOf(((Double) data).doubleValue());
+        else if (data instanceof String)
+            decimal = new BigDecimal((String) data);
         else {
             return handleUnknownData(column, fieldDefn, data);
         }

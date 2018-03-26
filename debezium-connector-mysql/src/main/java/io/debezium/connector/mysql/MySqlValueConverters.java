@@ -399,6 +399,9 @@ public class MySqlValueConverters extends JdbcValueConverters {
             // MySQL JDBC driver sometimes returns a Java SQL Date object ...
             return adjustYear(((java.sql.Date) data).getYear());
         }
+        if (data instanceof String) {
+            data = Integer.parseInt((String) data);
+        }
         if (data instanceof Number) {
             // MySQL JDBC driver sometimes returns a short ...
             return adjustYear(((Number) data).intValue());
@@ -624,7 +627,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
         }
         if (data == null) {
             if (column.isOptional()) return null;
-            return 0;
+            return (short) 0;
         }
 
         if (data instanceof Short) {
@@ -720,7 +723,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
         }
         if (data == null) {
             if (column.isOptional()) return null;
-            return 0;
+            return 0L;
         }
 
         if (data instanceof Long) {
@@ -752,7 +755,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
         }
         if (data == null) {
             if (column.isOptional()) return null;
-            return 0;
+            return 0L;
         }
 
         if (data instanceof BigDecimal) {
@@ -760,6 +763,9 @@ public class MySqlValueConverters extends JdbcValueConverters {
         }
         else if (data instanceof Number) {
             return MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal(((Number) data).toString()));
+        }
+        else if (data instanceof String) {
+            return MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal((String) data));
         }
         else {
             //We continue with the original converting method (numeric) since we have an unsigned Integer
@@ -788,7 +794,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
         }
         if (data == null) {
             if (column.isOptional()) return null;
-            return 0;
+            return 0L;
         }
         try {
             if (data instanceof Duration) return ((Duration) data).toNanos() / 1_000;

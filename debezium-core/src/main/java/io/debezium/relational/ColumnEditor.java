@@ -113,6 +113,20 @@ public interface ColumnEditor extends Comparable<Column> {
     boolean isGenerated();
 
     /**
+     * Get the default value of the column.
+     *
+     * @return the default value
+     */
+    Object defaultValue();
+
+    /**
+     * Determine whether this column's has a default value set
+     *
+     * @return {@code true} if the default value was provided, or {@code false} otherwise
+     */
+    boolean hasDefaultValue();
+
+    /**
      * Set the name of the column.
      * 
      * @param name the column name
@@ -218,6 +232,14 @@ public interface ColumnEditor extends Comparable<Column> {
      * @return this editor so callers can chain methods together
      */
     ColumnEditor position(int position);
+
+    /**
+     * Set the default value of the column;
+     *
+     * @param defaultValue the default value
+     * @return this editor so callers can chain methods together
+     */
+    ColumnEditor defaultValue(Object defaultValue);
 
     /**
      * Obtain an immutable column definition representing the current state of this editor. Typically, an editor is created and
