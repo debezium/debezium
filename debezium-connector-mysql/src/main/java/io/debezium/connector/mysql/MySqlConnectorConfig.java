@@ -709,6 +709,15 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                 .withDefault(true)
                                                 .withValidation(Field::isBoolean);
 
+    public static final Field KEEP_ALIVE_INTERVAL_MS = Field.create("connect.keep.alive.interval.ms")
+                                                            .withDisplayName("Keep alive interval (ms)")
+                                                            .withType(Type.INT)
+                                                            .withWidth(Width.SHORT)
+                                                            .withImportance(Importance.LOW)
+                                                            .withDescription("Interval in milliseconds to wait for connection checking if keep alive thread is used.")
+                                                            .withDefault(60 * 1000)
+                                                            .withValidation(Field::isPositiveInteger);
+
     public static final Field ROW_COUNT_FOR_STREAMING_RESULT_SETS = Field.create("min.row.count.to.stream.results")
                                                                          .withDisplayName("Stream result set of size")
                                                                          .withType(Type.LONG)
@@ -900,7 +909,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
      */
     public static Field.Set ALL_FIELDS = Field.setOf(USER, PASSWORD, HOSTNAME, PORT, SERVER_ID,
                                                      SERVER_NAME,
-                                                     CONNECTION_TIMEOUT_MS, KEEP_ALIVE,
+                                                     CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS,
                                                      CommonConnectorConfig.MAX_QUEUE_SIZE,
                                                      CommonConnectorConfig.MAX_BATCH_SIZE,
                                                      CommonConnectorConfig.POLL_INTERVAL_MS,
@@ -970,7 +979,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                     GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS, BUFFER_SIZE_FOR_BINLOG_READER,
                     Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX, EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE, INCONSISTENT_SCHEMA_HANDLING_MODE,
                     CommonConnectorConfig.TOMBSTONES_ON_DELETE);
-        Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, CommonConnectorConfig.MAX_QUEUE_SIZE,
+        Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
                     SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                     BIGINT_UNSIGNED_HANDLING_MODE);

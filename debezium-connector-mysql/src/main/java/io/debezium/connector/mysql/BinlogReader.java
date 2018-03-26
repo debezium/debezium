@@ -165,6 +165,7 @@ public class BinlogReader extends AbstractReader {
         client.setServerId(context.serverId());
         client.setSSLMode(sslModeFor(connectionContext.sslMode()));
         client.setKeepAlive(context.config().getBoolean(MySqlConnectorConfig.KEEP_ALIVE));
+        client.setKeepAliveInterval(context.config().getLong(MySqlConnectorConfig.KEEP_ALIVE_INTERVAL_MS));
         client.registerEventListener(context.bufferSizeForBinlogReader() == 0
                 ? this::handleEvent
                 : (new EventBuffer(context.bufferSizeForBinlogReader(), this))::add);
