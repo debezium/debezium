@@ -82,7 +82,6 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
         connection.execute("COMMIT");
 
-        System.out.println("Inserted");
         expectedRecordCount += 1;
 
         connection.execute("UPDATE debezium.customer SET name = 'Bruce', score = 2345.67, registered = TO_DATE('2018/03/23', 'yyyy-mm-dd') WHERE id = 1");

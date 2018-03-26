@@ -24,6 +24,7 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.relational.TableId;
 import io.debezium.schema.TopicSelector;
 import io.debezium.util.Clock;
 import io.debezium.util.SchemaNameAdjuster;
@@ -86,7 +87,8 @@ public class OracleConnectorTask extends BaseSourceTask {
             schema.recover(previousOffset);
         }
 
-        EventDispatcher dispatcher = new EventDispatcher(topicSelector, schema, queue);
+        EventDispatcher<TableId> dispatcher = new EventDispatcher<>(topicSelector, schema, queue,
+                connectorConfig.getTableFilters().dataCollectionFilter());
 
         coordinator = new ChangeEventSourceCoordinator(
                 previousOffset,
