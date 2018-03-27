@@ -23,12 +23,13 @@ Henryk Konsek
 Horia Chiorean
 Jiri Pechanec
 Jure Kajzer
+Listman Gamboa
+Liu Hanlin
 Maciej Bryński
 MaoXiang Pan
 Mario Mueller
 Matteo Capitanio
 Omar Al-Safi
-Liu Hanlin
 Peter Goransson
 Prannoy Mittal
 Raf Liwoch
