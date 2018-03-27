@@ -624,7 +624,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
         }
         if (data == null) {
             if (column.isOptional()) return null;
-            return 0;
+            return (short) 0;
         }
 
         if (data instanceof Short) {
@@ -752,7 +752,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
         }
         if (data == null) {
             if (column.isOptional()) return null;
-            return 0;
+            return 0L;
         }
 
         if (data instanceof BigDecimal) {

@@ -995,6 +995,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
             decimal = (BigDecimal) data;
         else if (data instanceof Boolean)
             decimal = NumberConversions.getBigDecimal((Boolean) data);
+        else if (data instanceof Byte)
+            decimal = new BigDecimal(((Byte) data).byteValue());
         else if (data instanceof Short)
             decimal = new BigDecimal(((Short) data).intValue());
         else if (data instanceof Integer)

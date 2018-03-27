@@ -302,8 +302,10 @@ public class TableSchemaBuilder {
             }
             if (column.isOptional()) fieldBuilder.optional();
 
-            //set schema default value
-            if (column.isOptional() || column.defaultValue() != null) {
+            // if the default value in ddl is null
+            // or column is optional
+            // or default value is not null, set schema default value
+            if (column.shouldSetDefaultValue()) {
                 fieldBuilder.defaultValue(column.defaultValue());
             }
 

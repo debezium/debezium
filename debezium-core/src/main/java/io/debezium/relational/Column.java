@@ -133,6 +133,18 @@ public interface Column extends Comparable<Column> {
      */
     Object defaultValue();
 
+    /**
+     * Determine whether this column's default values is null;
+     * If the default value in ddl is null, we should set field isDefaultValueNull {@code true};
+     *
+     * @return {@code true} if the default values is null, or {@code false} otherwise
+     */
+    boolean isDefaultValueNull();
+
+    default boolean shouldSetDefaultValue() {
+        return isDefaultValueNull() || isOptional() || defaultValue() != null;
+    }
+
     @Override
     default int compareTo(Column that) {
         if (this == that) return 0;
