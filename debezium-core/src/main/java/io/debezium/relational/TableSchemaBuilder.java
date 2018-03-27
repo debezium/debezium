@@ -303,7 +303,9 @@ public class TableSchemaBuilder {
             if (column.isOptional()) fieldBuilder.optional();
 
             //set schema default value
-            fieldBuilder.defaultValue(column.defaultValue());
+            if (column.isOptional() || column.defaultValue() != null) {
+                fieldBuilder.defaultValue(column.defaultValue());
+            }
 
             builder.field(column.name(), fieldBuilder.build());
             if (LOGGER.isDebugEnabled()) {
