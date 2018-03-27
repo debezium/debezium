@@ -9,7 +9,7 @@ import io.debezium.schema.DataCollectionSchema;
 import io.debezium.schema.SchemaChangeEvent;
 
 /**
- * Emits change one or more change records - specific to a given {@link DataCollectionSchema}.
+ * Emits one or more change records - specific to a given {@link DataCollectionSchema}.
  *
  * @author Gunnar Morling
  */
