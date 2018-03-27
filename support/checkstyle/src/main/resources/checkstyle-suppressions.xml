@@ -10,4 +10,7 @@
     <suppress checks="." files="[\\/]org[\\/]postgresql[\\/].*\.java$"/>
     <!--exclude any protobuf generated files-->
     <suppress checks="." files=".[\\/]io[\\/]debezium[\\/]connector[\\/]postgresql[\\/]proto[\\/].*\.java$"/>
+
+    <!-- excluded Antlr generated files -->
+    <suppress checks="." files=".[\\/]antlr4[\\/]io[\\/]debezium[\\/]connector[\\/]oracle[\\/]parser[\\/].*\.java"/>
 </suppressions>

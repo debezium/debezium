@@ -1,3 +1,8 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
 package io.debezium.connector.oracle;
 
 import java.util.Set;
@@ -13,6 +18,11 @@ import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import oracle.streams.DDLLCR;
 
+/**
+ * {@link SchemaChangeEventEmitter} implementation based on Oracle.
+ *
+ * @author Gunnar Morling
+ */
 public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleSchemaChangeEventEmitter.class);
