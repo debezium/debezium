@@ -80,7 +80,7 @@ public class OracleConnectorTask extends BaseSourceTask {
         jdbcConnection = new OracleConnection(jdbcConfig, new OracleConnectionFactory());
         SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
 
-        this.schema = new OracleDatabaseSchema(connectorConfig, schemaNameAdjuster, topicSelector);
+        this.schema = new OracleDatabaseSchema(connectorConfig, schemaNameAdjuster, topicSelector, jdbcConnection);
 
         OracleOffsetContext previousOffset = getPreviousOffset(connectorConfig);
         if (previousOffset != null) {

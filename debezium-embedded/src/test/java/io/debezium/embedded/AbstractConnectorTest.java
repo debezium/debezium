@@ -82,7 +82,7 @@ public abstract class AbstractConnectorTest implements Testing {
     private ExecutorService executor;
     protected EmbeddedEngine engine;
     private BlockingQueue<SourceRecord> consumedLines;
-    protected long pollTimeoutInMs = TimeUnit.SECONDS.toMillis(60);
+    protected long pollTimeoutInMs = TimeUnit.SECONDS.toMillis(120);
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     private CountDownLatch latch;
     private JsonConverter keyJsonConverter = new JsonConverter();
