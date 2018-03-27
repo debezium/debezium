@@ -46,6 +46,7 @@ public class OracleConnectorTask extends BaseSourceTask {
     private volatile ChangeEventSourceCoordinator coordinator;
     private volatile ErrorHandler errorHandler;
     private volatile OracleDatabaseSchema schema;
+    private volatile Map<String, ?> lastOffset;
 
     @Override
     public String version() {
@@ -124,9 +125,20 @@ public class OracleConnectorTask extends BaseSourceTask {
         // TODO
         List records = queue.poll();
 
-        return ((List<DataChangeEvent>)records).stream()
+        List<SourceRecord> sourceRecords = ((List<DataChangeEvent>)records).stream()
             .map(DataChangeEvent::getRecord)
             .collect(Collectors.toList());
+
+        if (!sourceRecords.isEmpty()) {
+            this.lastOffset = sourceRecords.get(sourceRecords.size() - 1).sourceOffset();
+        }
+
+        return sourceRecords;
+    }
+
+    @Override
+    public void commit() throws InterruptedException {
+        coordinator.commitOffset(lastOffset);
     }
 
     @Override

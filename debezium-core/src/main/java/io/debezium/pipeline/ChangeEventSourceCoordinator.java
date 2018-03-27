@@ -6,6 +6,7 @@
 package io.debezium.pipeline;
 
 import java.time.Duration;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -42,7 +43,7 @@ public class ChangeEventSourceCoordinator {
     private final ExecutorService executor;
 
     private volatile boolean running;
-
+    private volatile StreamingChangeEventSource streamingSource;
 
     public ChangeEventSourceCoordinator(OffsetContext previousOffset, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType, String logicalName, ChangeEventSourceFactory changeEventSourceFactory) {
         this.previousOffset = previousOffset;
@@ -63,7 +64,7 @@ public class ChangeEventSourceCoordinator {
                 SnapshotResult snapshotResult = snapshotSource.execute(context);
 
                 if (running && snapshotResult.getStatus() == SnapshotResultStatus.COMPLETED) {
-                    StreamingChangeEventSource streamingSource = changeEventSourceFactory.getStreamingChangeEventSource(snapshotResult.getOffset());
+                    streamingSource = changeEventSourceFactory.getStreamingChangeEventSource(snapshotResult.getOffset());
                     streamingSource.execute(context);
                 }
             }
@@ -75,6 +76,12 @@ public class ChangeEventSourceCoordinator {
                 errorHandler.setProducerThrowable(e);
             }
         });
+    }
+
+    public void commitOffset(Map<String, ?> offset) {
+        if (streamingSource != null) {
+            streamingSource.commitOffset(offset);
+        }
     }
 
     /**
