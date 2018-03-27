@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.oracle;
 
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,6 +38,7 @@ public class OracleStreamingChangeEventSource implements StreamingChangeEventSou
     private final OracleDatabaseSchema schema;
     private final OracleOffsetContext offsetContext;
     private final String xStreamServerName;
+    private volatile XStreamOut xsOut;
 
     public OracleStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext, JdbcConnection jdbcConnection, EventDispatcher<?> dispatcher, ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema) {
         this.jdbcConnection = jdbcConnection;
@@ -49,8 +52,6 @@ public class OracleStreamingChangeEventSource implements StreamingChangeEventSou
 
     @Override
     public void execute(ChangeEventSourceContext context) throws InterruptedException {
-        XStreamOut xsOut = null;
-
         try {
             // 1. connect
             xsOut = XStreamOut.attach((OracleConnection) jdbcConnection.connection(), xStreamServerName,
@@ -78,6 +79,19 @@ public class OracleStreamingChangeEventSource implements StreamingChangeEventSou
                 }
             }
         }
+    }
+
+    @Override
+    public void commitOffset(Map<String, ?> offset) {
+        if (xsOut != null) {
+            try {
+                xsOut.setProcessedLowWatermark(convertScnToPosition((long) offset.get(SourceInfo.SCN_KEY)), XStreamOut.DEFAULT_MODE);
+            }
+            catch (StreamsException e) {
+                throw new RuntimeException("Couldn't set processed low watermark", e);
+            }
+        }
+
     }
 
     private byte[] convertScnToPosition(long scn) {

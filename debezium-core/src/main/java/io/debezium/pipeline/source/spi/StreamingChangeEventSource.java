@@ -5,6 +5,8 @@
  */
 package io.debezium.pipeline.source.spi;
 
+import java.util.Map;
+
 /**
  * A change event source that emits events from a DB log, such as MySQL's binlog or similar.
  *
@@ -24,4 +26,6 @@ public interface StreamingChangeEventSource extends ChangeEventSource {
      *             in case the snapshot was aborted before completion
      */
     void execute(ChangeEventSourceContext context) throws InterruptedException;
+
+    void commitOffset(Map<String, ?> offset);
 }
