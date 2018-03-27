@@ -31,6 +31,7 @@ import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
+import oracle.jdbc.OracleTypes;
 
 public class OracleDdlParser implements DdlParser {
 
@@ -110,29 +111,76 @@ public class OracleDdlParser implements DdlParser {
             ColumnEditor columnEditor = Column.editor();
             columnEditor.name(getColumnName(ctx.column_name()));
 
-            if (ctx.datatype().native_datatype_element().INT() != null || ctx.datatype().native_datatype_element().INTEGER() != null) {
+            if (ctx.datatype().native_datatype_element().INT() != null
+                    || ctx.datatype().native_datatype_element().INTEGER() != null
+                    || ctx.datatype().native_datatype_element().SMALLINT() != null) {
                 columnEditor.jdbcType(Types.NUMERIC);
                 columnEditor.type("NUMBER");
                 columnEditor.length(38);
                 columnEditor.scale(0);
             }
             else if (ctx.datatype().native_datatype_element().DATE() != null) {
-                columnEditor.jdbcType(Types.DATE);
+                // JDBC driver reports type as timestamp but name DATE
+                columnEditor.jdbcType(Types.TIMESTAMP);
                 columnEditor.type("DATE");
             }
             else if (ctx.datatype().native_datatype_element().TIMESTAMP() != null) {
-                columnEditor.jdbcType(Types.TIMESTAMP);
-                columnEditor.type("TIMESTAMP");
+                if (ctx.datatype().WITH() != null
+                        && ctx.datatype().TIME() != null
+                        && ctx.datatype().ZONE() != null) {
+                    if (ctx.datatype().LOCAL() != null) {
+                        columnEditor.jdbcType(OracleTypes.TIMESTAMPLTZ);
+                        columnEditor.type("TIMESTAMP WITH LOCAL TIME ZONE");
+                    }
+                    else {
+                        columnEditor.jdbcType(OracleTypes.TIMESTAMPTZ);
+                        columnEditor.type("TIMESTAMP WITH TIME ZONE");
+                    }
+                }
+                else {
+                    columnEditor.jdbcType(Types.TIMESTAMP);
+                    columnEditor.type("TIMESTAMP");
+                }
                 columnEditor.length(6);
-                columnEditor.scale(0);
             }
             else if (ctx.datatype().native_datatype_element().VARCHAR2() != null) {
                 columnEditor.jdbcType(Types.VARCHAR);
                 columnEditor.type("VARCHAR2");
+                columnEditor.length(getVarCharDefaultLength());
             }
-            else if (ctx.datatype().native_datatype_element().DECIMAL() != null) {
-                columnEditor.jdbcType(Types.DECIMAL);
-                columnEditor.type("DECIMAL");
+            else if (ctx.datatype().native_datatype_element().NVARCHAR2() != null) {
+                columnEditor.jdbcType(Types.NVARCHAR);
+                columnEditor.type("NVARCHAR2");
+                columnEditor.length(getVarCharDefaultLength());
+            }
+            else if (ctx.datatype().native_datatype_element().CHAR() != null) {
+                columnEditor.jdbcType(Types.CHAR);
+                columnEditor.type("CHAR");
+                columnEditor.length(1);
+            }
+            else if (ctx.datatype().native_datatype_element().NCHAR() != null) {
+                columnEditor.jdbcType(Types.NCHAR);
+                columnEditor.type("NCHAR");
+                columnEditor.length(1);
+            }
+            else if (ctx.datatype().native_datatype_element().BINARY_FLOAT() != null) {
+                columnEditor.jdbcType(OracleTypes.BINARY_FLOAT);
+                columnEditor.type("BINARY_FLOAT");
+            }
+            else if (ctx.datatype().native_datatype_element().BINARY_DOUBLE() != null) {
+                columnEditor.jdbcType(OracleTypes.BINARY_DOUBLE);
+                columnEditor.type("BINARY_DOUBLE");
+            }
+            else if (ctx.datatype().native_datatype_element().FLOAT() != null) {
+                columnEditor.jdbcType(Types.FLOAT);
+                columnEditor.type("FLOAT");
+                columnEditor.length(126);
+            }
+            else if (ctx.datatype().native_datatype_element().NUMERIC() != null
+                    || ctx.datatype().native_datatype_element().NUMBER() != null
+                    || ctx.datatype().native_datatype_element().DECIMAL() != null) {
+                columnEditor.jdbcType(Types.NUMERIC);
+                columnEditor.type("NUMBER");
             }
             else {
                 throw new IllegalArgumentException("Unsupported column type: " + ctx.datatype().native_datatype_element().getText());
@@ -157,6 +205,11 @@ public class OracleDdlParser implements DdlParser {
             editor.addColumn(columnEditor.create());
 
             super.exitColumn_definition(ctx);
+        }
+
+        private int getVarCharDefaultLength() {
+            // TODO replace with falue from select name, value  from v$parameter where name='max_string_size';
+            return 4000;
         }
 
         @Override
