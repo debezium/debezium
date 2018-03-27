@@ -115,6 +115,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_BLACKLIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.CONNECTION_TIMEOUT_MS);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.KEEP_ALIVE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.KEEP_ALIVE_INTERVAL_MS);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_QUEUE_SIZE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_BATCH_SIZE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.POLL_INTERVAL_MS);
@@ -168,6 +169,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_BLACKLIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.CONNECTION_TIMEOUT_MS);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.KEEP_ALIVE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.KEEP_ALIVE_INTERVAL_MS);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_QUEUE_SIZE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_BATCH_SIZE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.POLL_INTERVAL_MS);
@@ -215,6 +217,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_BLACKLIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.CONNECTION_TIMEOUT_MS);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.KEEP_ALIVE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.KEEP_ALIVE_INTERVAL_MS);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_QUEUE_SIZE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_BATCH_SIZE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.POLL_INTERVAL_MS);
