@@ -40,12 +40,12 @@ public class OracleDatabaseSchema implements RelationalDatabaseSchema {
     private final TableSchemaBuilder tableSchemaBuilder;
     private final DatabaseHistory databaseHistory;
 
-    public OracleDatabaseSchema(OracleConnectorConfig connectorConfig, SchemaNameAdjuster schemaNameAdjuster, TopicSelector topicSelector) {
+    public OracleDatabaseSchema(OracleConnectorConfig connectorConfig, SchemaNameAdjuster schemaNameAdjuster, TopicSelector topicSelector, OracleConnection connection) {
         this.topicSelector = topicSelector;
 
         this.tables = new Tables();
         this.schemas = new HashMap<>();
-        this.tableSchemaBuilder = new TableSchemaBuilder(new OracleValueConverters(), schemaNameAdjuster, SourceInfo.SCHEMA);
+        this.tableSchemaBuilder = new TableSchemaBuilder(new OracleValueConverters(connection), schemaNameAdjuster, SourceInfo.SCHEMA);
 
         this.databaseHistory = connectorConfig.getDatabaseHistory();
         this.databaseHistory.start();

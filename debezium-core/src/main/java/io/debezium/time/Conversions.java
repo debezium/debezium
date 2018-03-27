@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Temporal conversion constants.
- * 
+ *
  * @author Randall Hauch
  */
 public final class Conversions {
@@ -33,7 +33,7 @@ public final class Conversions {
 
     private Conversions() {
     }
-    
+
     @SuppressWarnings("deprecation")
     protected static LocalDate toLocalDate(Object obj) {
         if ( obj == null ) {
@@ -167,10 +167,10 @@ public final class Conversions {
         }
         throw new IllegalArgumentException("Unable to convert to LocalTime from unexpected value '" + obj + "' of type " + obj.getClass().getName());
     }
-    
+
     /**
      * Get the number of nanoseconds past epoch of the given {@link LocalDateTime}.
-     * 
+     *
      * @param timestamp the Java timestamp value
      * @return the epoch nanoseconds
      */
@@ -182,7 +182,7 @@ public final class Conversions {
 
     /**
      * Get the number of nanoseconds past epoch of the given {@link LocalDate}.
-     * 
+     *
      * @param date the Java date value
      * @return the epoch nanoseconds
      */
@@ -227,7 +227,7 @@ public final class Conversions {
 
     /**
      * Get the number of nanoseconds past epoch of the given {@link Instant}.
-     * 
+     *
      * @param instant the Java instant value
      * @return the epoch nanoseconds
      */

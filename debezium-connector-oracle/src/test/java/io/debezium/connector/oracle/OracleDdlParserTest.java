@@ -50,6 +50,19 @@ public class OracleDdlParserTest {
         assertThat(id.jdbcType()).isEqualTo(Types.NUMERIC);
         assertThat(id.typeName()).isEqualTo("NUMBER");
 
+        final Column name = table.columnWithName("NAME");
+        assertThat(name.isOptional()).isTrue();
+        assertThat(name.jdbcType()).isEqualTo(Types.VARCHAR);
+        assertThat(name.typeName()).isEqualTo("VARCHAR2");
+        assertThat(name.length()).isEqualTo(1000);
+
+        final Column score = table.columnWithName("SCORE");
+        assertThat(score.isOptional()).isTrue();
+        assertThat(score.jdbcType()).isEqualTo(Types.DECIMAL);
+        assertThat(score.typeName()).isEqualTo("DECIMAL");
+        assertThat(score.length()).isEqualTo(6);
+        assertThat(score.scale()).isEqualTo(2);
+
         assertThat(table.columns()).hasSize(4);
         assertThat(table.isPrimaryKeyColumn("ID"));
     }
