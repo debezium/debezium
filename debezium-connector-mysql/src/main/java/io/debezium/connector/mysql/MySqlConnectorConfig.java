@@ -6,6 +6,7 @@
 package io.debezium.connector.mysql;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.Objects;
 import java.util.Random;
 
@@ -711,11 +712,11 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
 
     public static final Field KEEP_ALIVE_INTERVAL_MS = Field.create("connect.keep.alive.interval.ms")
                                                             .withDisplayName("Keep alive interval (ms)")
-                                                            .withType(Type.INT)
+                                                            .withType(Type.LONG)
                                                             .withWidth(Width.SHORT)
                                                             .withImportance(Importance.LOW)
                                                             .withDescription("Interval in milliseconds to wait for connection checking if keep alive thread is used.")
-                                                            .withDefault(60 * 1000)
+                                                            .withDefault(Duration.ofMinutes(1).toMillis())
                                                             .withValidation(Field::isPositiveInteger);
 
     public static final Field ROW_COUNT_FOR_STREAMING_RESULT_SETS = Field.create("min.row.count.to.stream.results")
