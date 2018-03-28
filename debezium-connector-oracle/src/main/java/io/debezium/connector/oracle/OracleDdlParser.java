@@ -19,6 +19,7 @@ import io.debezium.connector.oracle.parser.PlSqlParser;
 import io.debezium.connector.oracle.parser.PlSqlParser.Column_definitionContext;
 import io.debezium.connector.oracle.parser.PlSqlParser.Column_nameContext;
 import io.debezium.connector.oracle.parser.PlSqlParser.Create_tableContext;
+import io.debezium.connector.oracle.parser.PlSqlParser.ExpressionContext;
 import io.debezium.connector.oracle.parser.PlSqlParser.Out_of_line_constraintContext;
 import io.debezium.connector.oracle.parser.PlSqlParser.Precision_partContext;
 import io.debezium.connector.oracle.parser.PlSqlParser.Tableview_nameContext;
@@ -231,12 +232,34 @@ public class OracleDdlParser implements DdlParser {
                 }
             }
             else if (ctx.datatype().INTERVAL() != null
+                    && ctx.datatype().YEAR() != null
                     && ctx.datatype().TO() != null
                     && ctx.datatype().MONTH() != null) {
                 columnEditor
                     .jdbcType(OracleTypes.INTERVALYM)
                     .type("INTERVAL YEAR TO MONTH")
                     .length(2);
+                if (!ctx.datatype().expression().isEmpty()) {
+                    columnEditor.length(Integer.valueOf((ctx.datatype().expression(0).getText())));
+                }
+            }
+            else if (ctx.datatype().INTERVAL() != null
+                    && ctx.datatype().DAY() != null
+                    && ctx.datatype().TO() != null
+                    && ctx.datatype().SECOND() != null) {
+                columnEditor
+                    .jdbcType(OracleTypes.INTERVALDS)
+                    .type("INTERVAL DAY TO SECOND")
+                    .length(2)
+                    .scale(6);
+                for (final ExpressionContext e: ctx.datatype().expression()) {
+                    if (e.getSourceInterval().startsAfter(ctx.datatype().TO().getSourceInterval())) {
+                        columnEditor.scale(Integer.valueOf(e.getText()));
+                    }
+                    else {
+                        columnEditor.length(Integer.valueOf(e.getText()));
+                    }
+                }
                 if (!ctx.datatype().expression().isEmpty()) {
                     columnEditor.length(Integer.valueOf((ctx.datatype().expression(0).getText())));
                 }
@@ -270,7 +293,7 @@ public class OracleDdlParser implements DdlParser {
                     .collect(Collectors.toList());
 
                 editor.setPrimaryKeyNames(pkColumnNames);
-            }
+        }
 
             super.exitOut_of_line_constraint(ctx);
         }
