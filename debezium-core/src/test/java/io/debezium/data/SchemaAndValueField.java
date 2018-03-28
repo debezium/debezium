@@ -66,9 +66,11 @@ public class SchemaAndValueField {
 
         if (actualValue instanceof byte[]) {
             Assertions.assertThat((byte[]) actualValue).as("Values don't match for " + fieldName).isEqualTo((byte[]) value);
-        } else if (actualValue instanceof Struct) {
+        }
+        else if (actualValue instanceof Struct) {
             assertStruct((Struct)value, (Struct)actualValue);
-        } else {
+        }
+        else {
             Assertions.assertThat(actualValue).as("Values don't match for " + fieldName).isEqualTo(value);
         }
     }
