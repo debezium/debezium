@@ -91,7 +91,8 @@ public class SchemaAndValueField {
             }
             else if (actualValue instanceof Struct) {
                 assertStruct((Struct)expectedValue, (Struct)actualValue);
-            }else {
+            }
+            else {
                 Assertions.assertThat(actualValue).as("Values don't match for " + fieldName).isEqualTo(expectedValue);
             }
         });

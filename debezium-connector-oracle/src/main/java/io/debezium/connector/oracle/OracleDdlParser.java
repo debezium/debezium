@@ -137,75 +137,88 @@ public class OracleDdlParser implements DdlParser {
                         || ctx.datatype().native_datatype_element().SMALLINT() != null
                         || ctx.datatype().native_datatype_element().NUMERIC() != null
                         || ctx.datatype().native_datatype_element().DECIMAL() != null) {
-                    // NUMERIC and DECIMAl types have by default zero scale
-                    columnEditor.jdbcType(Types.NUMERIC);
-                    columnEditor.type("NUMBER");
-                    columnEditor.length(38);
-                    columnEditor.scale(0);
+                    // NUMERIC and DECIMAL types have by default zero scale
+                    columnEditor
+                        .jdbcType(Types.NUMERIC)
+                        .type("NUMBER")
+                        .length(38)
+                        .scale(0);
                 }
                 else if (ctx.datatype().native_datatype_element().DATE() != null) {
                     // JDBC driver reports type as timestamp but name DATE
-                    columnEditor.jdbcType(Types.TIMESTAMP);
-                    columnEditor.type("DATE");
+                    columnEditor
+                        .jdbcType(Types.TIMESTAMP)
+                        .type("DATE");
                 }
                 else if (ctx.datatype().native_datatype_element().TIMESTAMP() != null) {
                     if (ctx.datatype().WITH() != null
                             && ctx.datatype().TIME() != null
                             && ctx.datatype().ZONE() != null) {
                         if (ctx.datatype().LOCAL() != null) {
-                            columnEditor.jdbcType(OracleTypes.TIMESTAMPLTZ);
-                            columnEditor.type("TIMESTAMP WITH LOCAL TIME ZONE");
+                            columnEditor
+                                .jdbcType(OracleTypes.TIMESTAMPLTZ)
+                                .type("TIMESTAMP WITH LOCAL TIME ZONE");
                         }
                         else {
-                            columnEditor.jdbcType(OracleTypes.TIMESTAMPTZ);
-                            columnEditor.type("TIMESTAMP WITH TIME ZONE");
+                            columnEditor
+                                .jdbcType(OracleTypes.TIMESTAMPTZ)
+                                .type("TIMESTAMP WITH TIME ZONE");
                         }
                     }
                     else {
-                        columnEditor.jdbcType(Types.TIMESTAMP);
-                        columnEditor.type("TIMESTAMP");
+                        columnEditor
+                            .jdbcType(Types.TIMESTAMP)
+                            .type("TIMESTAMP");
                     }
                     columnEditor.length(6);
                 }
                 else if (ctx.datatype().native_datatype_element().VARCHAR2() != null) {
-                    columnEditor.jdbcType(Types.VARCHAR);
-                    columnEditor.type("VARCHAR2");
-                    columnEditor.length(getVarCharDefaultLength());
+                    columnEditor
+                        .jdbcType(Types.VARCHAR)
+                        .type("VARCHAR2")
+                        .length(getVarCharDefaultLength());
                 }
                 else if (ctx.datatype().native_datatype_element().NVARCHAR2() != null) {
-                    columnEditor.jdbcType(Types.NVARCHAR);
-                    columnEditor.type("NVARCHAR2");
-                    columnEditor.length(getVarCharDefaultLength());
+                    columnEditor
+                        .jdbcType(Types.NVARCHAR)
+                        .type("NVARCHAR2")
+                        .length(getVarCharDefaultLength());
                 }
                 else if (ctx.datatype().native_datatype_element().CHAR() != null) {
-                    columnEditor.jdbcType(Types.CHAR);
-                    columnEditor.type("CHAR");
-                    columnEditor.length(1);
+                    columnEditor
+                        .jdbcType(Types.CHAR)
+                        .type("CHAR")
+                        .length(1);
                 }
                 else if (ctx.datatype().native_datatype_element().NCHAR() != null) {
-                    columnEditor.jdbcType(Types.NCHAR);
-                    columnEditor.type("NCHAR");
-                    columnEditor.length(1);
+                    columnEditor
+                        .jdbcType(Types.NCHAR)
+                        .type("NCHAR")
+                        .length(1);
                 }
                 else if (ctx.datatype().native_datatype_element().BINARY_FLOAT() != null) {
-                    columnEditor.jdbcType(OracleTypes.BINARY_FLOAT);
-                    columnEditor.type("BINARY_FLOAT");
+                    columnEditor
+                        .jdbcType(OracleTypes.BINARY_FLOAT)
+                        .type("BINARY_FLOAT");
                 }
                 else if (ctx.datatype().native_datatype_element().BINARY_DOUBLE() != null) {
-                    columnEditor.jdbcType(OracleTypes.BINARY_DOUBLE);
-                    columnEditor.type("BINARY_DOUBLE");
+                    columnEditor
+                        .jdbcType(OracleTypes.BINARY_DOUBLE)
+                        .type("BINARY_DOUBLE");
                 }
                 // PRECISION keyword is mandatory
                 else if (ctx.datatype().native_datatype_element().FLOAT() != null ||
                         (ctx.datatype().native_datatype_element().DOUBLE() != null && ctx.datatype().native_datatype_element().PRECISION() != null)) {
-                    columnEditor.jdbcType(Types.FLOAT);
-                    columnEditor.type("FLOAT");
-                    columnEditor.length(126);
+                    columnEditor
+                        .jdbcType(Types.FLOAT)
+                        .type("FLOAT")
+                        .length(126);
                 }
                 else if (ctx.datatype().native_datatype_element().REAL() != null) {
-                    columnEditor.jdbcType(Types.FLOAT);
-                    columnEditor.type("FLOAT");
-                    columnEditor.length(63);
+                    columnEditor
+                        .jdbcType(Types.FLOAT)
+                        .type("FLOAT")
+                        .length(63);
                 }
                 else if (ctx.datatype().native_datatype_element().NUMBER() != null) {
                     columnEditor
@@ -281,7 +294,7 @@ public class OracleDdlParser implements DdlParser {
         }
 
         private int getVarCharDefaultLength() {
-            // TODO replace with falue from select name, value  from v$parameter where name='max_string_size';
+            // TODO replace with value from select name, value  from v$parameter where name='max_string_size';
             return 4000;
         }
 
