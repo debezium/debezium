@@ -18,12 +18,15 @@ import io.debezium.data.VariableScaleDecimal;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
+import io.debezium.time.MicroDuration;
 import io.debezium.time.ZonedTimestamp;
+import io.debezium.util.NumberConversions;
 import oracle.jdbc.OracleTypes;
 import oracle.sql.BINARY_DOUBLE;
 import oracle.sql.BINARY_FLOAT;
 import oracle.sql.CHAR;
 import oracle.sql.DATE;
+import oracle.sql.INTERVALYM;
 import oracle.sql.NUMBER;
 import oracle.sql.TIMESTAMP;
 import oracle.sql.TIMESTAMPLTZ;
@@ -63,6 +66,8 @@ public class OracleValueConverters extends JdbcValueConverters {
             case OracleTypes.TIMESTAMPTZ:
             case OracleTypes.TIMESTAMPLTZ:
                 return ZonedTimestamp.builder();
+            case OracleTypes.INTERVALYM:
+                return MicroDuration.builder();
             default:
                 return super.schemaBuilder(column);
         }
@@ -89,6 +94,8 @@ public class OracleValueConverters extends JdbcValueConverters {
             case OracleTypes.TIMESTAMPTZ:
             case OracleTypes.TIMESTAMPLTZ:
                 return (data) -> convertTimestampWithZone(column, fieldDefn, data);
+            case OracleTypes.INTERVALYM:
+                return (data) -> convertInterval(column, fieldDefn, data);
         }
 
         return super.converter(column, fieldDefn);
@@ -235,5 +242,37 @@ public class OracleValueConverters extends JdbcValueConverters {
     @Override
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
         return super.convertTimestampWithZone(column, fieldDefn, fromOracleTimeClasses(column, data));
+    }
+
+    protected Object convertInterval(Column column, Field fieldDefn, Object data) {
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return NumberConversions.DOUBLE_FALSE;
+        }
+        if (data instanceof Number) {
+            // we expect to get back from the plugin a double value
+            return ((Number) data).doubleValue();
+        }
+        if (data instanceof INTERVALYM) {
+            final String interval = ((INTERVALYM) data).stringValue();
+            int sign = 1;
+            int start = 0;
+            if (interval.charAt(0) == '-') {
+                sign = -1;
+                start = 1;
+            }
+            for (int i = 1; i < interval.length(); i++) {
+                if (interval.charAt(i) == '-') {
+                    final int year = sign * Integer.parseInt(interval.substring(start, i));
+                    final int month = sign * Integer.parseInt(interval.substring(i + 1, interval.length()));
+                    return MicroDuration.durationMicros(year, month, 0, 0,
+                            0, 0, MicroDuration.DAYS_PER_MONTH_AVG);
+                }
+            }
+        }
+        return handleUnknownData(column, fieldDefn, data);
     }
 }

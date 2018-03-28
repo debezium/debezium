@@ -62,11 +62,6 @@ import io.debezium.util.NumberConversions;
 public class PostgresValueConverter extends JdbcValueConverters {
 
     /**
-     * The approximation used by the plugin when converting a duration to micros
-     */
-    static final double DAYS_PER_MONTH_AVG = 365.25 / 12.0d;
-
-    /**
      * Variable scale decimal/numeric is defined by metadata
      * scale - 0
      * length - 131089
@@ -423,7 +418,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         if (data instanceof PGInterval) {
             PGInterval interval = (PGInterval) data;
             return MicroDuration.durationMicros(interval.getYears(), interval.getMonths(), interval.getDays(), interval.getHours(),
-                                                interval.getMinutes(), interval.getSeconds(), DAYS_PER_MONTH_AVG);
+                                                interval.getMinutes(), interval.getSeconds(), MicroDuration.DAYS_PER_MONTH_AVG);
         }
         return handleUnknownData(column, fieldDefn, data);
     }

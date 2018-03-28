@@ -21,7 +21,11 @@ import org.apache.kafka.connect.data.SchemaBuilder;
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 public class MicroDuration {
-    
+    /**
+     * The approximation used by the plugins when converting a duration to micros
+     */
+    public static final double DAYS_PER_MONTH_AVG = 365.25 / 12.0d;
+
     public static final String SCHEMA_NAME = "io.debezium.time.MicroDuration";
     
     /**
