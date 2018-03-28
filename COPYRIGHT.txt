@@ -21,6 +21,7 @@ Ewen Cheslack-Postava
 Gunnar Morling
 Henryk Konsek
 Horia Chiorean
+Ivan Vucina
 Jiri Pechanec
 Jure Kajzer
 Listman Gamboa
