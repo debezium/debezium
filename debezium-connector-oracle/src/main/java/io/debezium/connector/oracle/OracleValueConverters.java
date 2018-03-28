@@ -9,7 +9,10 @@ import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.time.ZonedDateTime;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
@@ -26,6 +29,7 @@ import oracle.sql.BINARY_DOUBLE;
 import oracle.sql.BINARY_FLOAT;
 import oracle.sql.CHAR;
 import oracle.sql.DATE;
+import oracle.sql.INTERVALDS;
 import oracle.sql.INTERVALYM;
 import oracle.sql.NUMBER;
 import oracle.sql.TIMESTAMP;
@@ -34,6 +38,7 @@ import oracle.sql.TIMESTAMPTZ;
 
 public class OracleValueConverters extends JdbcValueConverters {
     private static int NUMBER_VARIABLE_SCALE_LENGTH = 0;
+    private static final Pattern INTERVAL_DAY_SECOND_PATTERN = Pattern.compile("([+\\-])?(\\d+) (\\d+):(\\d+):(\\d+).(\\d+)");
 
     private final OracleConnection connection;
 
@@ -67,6 +72,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             case OracleTypes.TIMESTAMPLTZ:
                 return ZonedTimestamp.builder();
             case OracleTypes.INTERVALYM:
+            case OracleTypes.INTERVALDS:
                 return MicroDuration.builder();
             default:
                 return super.schemaBuilder(column);
@@ -95,7 +101,9 @@ public class OracleValueConverters extends JdbcValueConverters {
             case OracleTypes.TIMESTAMPLTZ:
                 return (data) -> convertTimestampWithZone(column, fieldDefn, data);
             case OracleTypes.INTERVALYM:
-                return (data) -> convertInterval(column, fieldDefn, data);
+                return (data) -> convertIntervalYearMonth(column, fieldDefn, data);
+            case OracleTypes.INTERVALDS:
+                return (data) -> convertIntervalDaySecond(column, fieldDefn, data);
         }
 
         return super.converter(column, fieldDefn);
@@ -244,7 +252,7 @@ public class OracleValueConverters extends JdbcValueConverters {
         return super.convertTimestampWithZone(column, fieldDefn, fromOracleTimeClasses(column, data));
     }
 
-    protected Object convertInterval(Column column, Field fieldDefn, Object data) {
+    protected Object convertIntervalYearMonth(Column column, Field fieldDefn, Object data) {
         if (data == null) {
             data = fieldDefn.schema().defaultValue();
         }
@@ -271,6 +279,38 @@ public class OracleValueConverters extends JdbcValueConverters {
                     return MicroDuration.durationMicros(year, month, 0, 0,
                             0, 0, MicroDuration.DAYS_PER_MONTH_AVG);
                 }
+            }
+        }
+        return handleUnknownData(column, fieldDefn, data);
+    }
+
+    protected Object convertIntervalDaySecond(Column column, Field fieldDefn, Object data) {
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return NumberConversions.DOUBLE_FALSE;
+        }
+        if (data instanceof Number) {
+            // we expect to get back from the plugin a double value
+            return ((Number) data).doubleValue();
+        }
+        if (data instanceof INTERVALDS) {
+            final String interval = ((INTERVALDS) data).stringValue();
+            System.err.println(interval);
+            final Matcher m = INTERVAL_DAY_SECOND_PATTERN.matcher(interval);
+            if (m.matches()) {
+                final int sign = "-".equals(m.group(1)) ? -1 : 1;
+                return MicroDuration.durationMicros(
+                        0,
+                        0,
+                        sign * Integer.valueOf(m.group(2)),
+                        sign * Integer.valueOf(m.group(3)),
+                        sign * Integer.valueOf(m.group(4)),
+                        sign * Integer.valueOf(m.group(5)),
+                        sign * Integer.valueOf(StringUtils.rightPad(m.group(6), 6, '0')),
+                        MicroDuration.DAYS_PER_MONTH_AVG);
             }
         }
         return handleUnknownData(column, fieldDefn, data);
