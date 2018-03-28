@@ -1681,8 +1681,9 @@ public class MySqlDdlParser extends DdlParser {
                 parseCurrentTimestampOrNow();
                 parseOnUpdateOrDelete(tokens.mark());
             } else if (tokens.canConsume("NULL")) {
-                // If the value of column can be nullable, we set the column optional
+                // If the default value of column is Null, we will set default value null;
                 column.defaultValue(null);
+                column.isDefaultValueNull(true);
             } else {
                 Object defaultValue = parseLiteral(start);
                 column.defaultValue(defaultValue);

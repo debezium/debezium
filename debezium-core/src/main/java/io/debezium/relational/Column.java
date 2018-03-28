@@ -141,6 +141,16 @@ public interface Column extends Comparable<Column> {
      */
     boolean isDefaultValueNull();
 
+    /**
+     * Determine whether this column's default value should set at {@link org.apache.kafka.connect.data.ConnectSchema} default value;
+     * If matching any of the below condition, we should return {@code true}
+     *
+     * 1. the default value in ddl is Null;
+     * 2. this column is optional
+     * 3. the default value is not Null;
+     *
+     * @return {@code true} if we need set default in schema, or {@code false} otherwise
+     */
     default boolean shouldSetDefaultValue() {
         return isDefaultValueNull() || isOptional() || defaultValue() != null;
     }
