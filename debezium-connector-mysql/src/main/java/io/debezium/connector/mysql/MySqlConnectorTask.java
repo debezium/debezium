@@ -210,6 +210,8 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                             "The MySQL server does not appear to be using a row-level binlog, which is required for this connector to work properly. Enable this mode and restart the connector.");
                 }
 
+
+
                 // if there are new tables
                 if (newTablesInConfig()) {
                     // and we are configured to run a parallel snapshot
@@ -261,12 +263,12 @@ public final class MySqlConnectorTask extends BaseSourceTask {
 
     private static class CompleteReconciliation implements Runnable {
 
-        private MySqlTaskContext unifiedBinlogReaderContext;
-        private ReconcilingBinlogReader reconcilingBinlogReader;
-        private SourceInfo sourceInfo;
-        private Configuration config;
+        private final MySqlTaskContext unifiedBinlogReaderContext;
+        private final ReconcilingBinlogReader reconcilingBinlogReader;
+        private final SourceInfo sourceInfo;
+        private final Configuration config;
 
-        private final Logger logger = LoggerFactory.getLogger(getClass());
+        private static final Logger logger = LoggerFactory.getLogger(getClass());
 
         /**
          * Create a runnable to complete the Reconciliation process:
