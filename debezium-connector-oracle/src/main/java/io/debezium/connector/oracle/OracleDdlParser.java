@@ -130,103 +130,119 @@ public class OracleDdlParser implements DdlParser {
             ColumnEditor columnEditor = Column.editor();
             columnEditor.name(getColumnName(ctx.column_name()));
 
-            if (ctx.datatype().native_datatype_element().INT() != null
-                    || ctx.datatype().native_datatype_element().INTEGER() != null
-                    || ctx.datatype().native_datatype_element().SMALLINT() != null
-                    || ctx.datatype().native_datatype_element().NUMERIC() != null
-                    || ctx.datatype().native_datatype_element().DECIMAL() != null) {
-                // UMERIC and DECIMAl types have by default zero scale
-                columnEditor.jdbcType(Types.NUMERIC);
-                columnEditor.type("NUMBER");
-                columnEditor.length(38);
-                columnEditor.scale(0);
-            }
-            else if (ctx.datatype().native_datatype_element().DATE() != null) {
-                // JDBC driver reports type as timestamp but name DATE
-                columnEditor.jdbcType(Types.TIMESTAMP);
-                columnEditor.type("DATE");
-            }
-            else if (ctx.datatype().native_datatype_element().TIMESTAMP() != null) {
-                if (ctx.datatype().WITH() != null
-                        && ctx.datatype().TIME() != null
-                        && ctx.datatype().ZONE() != null) {
-                    if (ctx.datatype().LOCAL() != null) {
-                        columnEditor.jdbcType(OracleTypes.TIMESTAMPLTZ);
-                        columnEditor.type("TIMESTAMP WITH LOCAL TIME ZONE");
+            if (ctx.datatype().native_datatype_element() != null) {
+                if (ctx.datatype().native_datatype_element().INT() != null
+                        || ctx.datatype().native_datatype_element().INTEGER() != null
+                        || ctx.datatype().native_datatype_element().SMALLINT() != null
+                        || ctx.datatype().native_datatype_element().NUMERIC() != null
+                        || ctx.datatype().native_datatype_element().DECIMAL() != null) {
+                    // NUMERIC and DECIMAl types have by default zero scale
+                    columnEditor.jdbcType(Types.NUMERIC);
+                    columnEditor.type("NUMBER");
+                    columnEditor.length(38);
+                    columnEditor.scale(0);
+                }
+                else if (ctx.datatype().native_datatype_element().DATE() != null) {
+                    // JDBC driver reports type as timestamp but name DATE
+                    columnEditor.jdbcType(Types.TIMESTAMP);
+                    columnEditor.type("DATE");
+                }
+                else if (ctx.datatype().native_datatype_element().TIMESTAMP() != null) {
+                    if (ctx.datatype().WITH() != null
+                            && ctx.datatype().TIME() != null
+                            && ctx.datatype().ZONE() != null) {
+                        if (ctx.datatype().LOCAL() != null) {
+                            columnEditor.jdbcType(OracleTypes.TIMESTAMPLTZ);
+                            columnEditor.type("TIMESTAMP WITH LOCAL TIME ZONE");
+                        }
+                        else {
+                            columnEditor.jdbcType(OracleTypes.TIMESTAMPTZ);
+                            columnEditor.type("TIMESTAMP WITH TIME ZONE");
+                        }
                     }
                     else {
-                        columnEditor.jdbcType(OracleTypes.TIMESTAMPTZ);
-                        columnEditor.type("TIMESTAMP WITH TIME ZONE");
+                        columnEditor.jdbcType(Types.TIMESTAMP);
+                        columnEditor.type("TIMESTAMP");
+                    }
+                    columnEditor.length(6);
+                }
+                else if (ctx.datatype().native_datatype_element().VARCHAR2() != null) {
+                    columnEditor.jdbcType(Types.VARCHAR);
+                    columnEditor.type("VARCHAR2");
+                    columnEditor.length(getVarCharDefaultLength());
+                }
+                else if (ctx.datatype().native_datatype_element().NVARCHAR2() != null) {
+                    columnEditor.jdbcType(Types.NVARCHAR);
+                    columnEditor.type("NVARCHAR2");
+                    columnEditor.length(getVarCharDefaultLength());
+                }
+                else if (ctx.datatype().native_datatype_element().CHAR() != null) {
+                    columnEditor.jdbcType(Types.CHAR);
+                    columnEditor.type("CHAR");
+                    columnEditor.length(1);
+                }
+                else if (ctx.datatype().native_datatype_element().NCHAR() != null) {
+                    columnEditor.jdbcType(Types.NCHAR);
+                    columnEditor.type("NCHAR");
+                    columnEditor.length(1);
+                }
+                else if (ctx.datatype().native_datatype_element().BINARY_FLOAT() != null) {
+                    columnEditor.jdbcType(OracleTypes.BINARY_FLOAT);
+                    columnEditor.type("BINARY_FLOAT");
+                }
+                else if (ctx.datatype().native_datatype_element().BINARY_DOUBLE() != null) {
+                    columnEditor.jdbcType(OracleTypes.BINARY_DOUBLE);
+                    columnEditor.type("BINARY_DOUBLE");
+                }
+                // PRECISION keyword is mandatory
+                else if (ctx.datatype().native_datatype_element().FLOAT() != null ||
+                        (ctx.datatype().native_datatype_element().DOUBLE() != null && ctx.datatype().native_datatype_element().PRECISION() != null)) {
+                    columnEditor.jdbcType(Types.FLOAT);
+                    columnEditor.type("FLOAT");
+                    columnEditor.length(126);
+                }
+                else if (ctx.datatype().native_datatype_element().REAL() != null) {
+                    columnEditor.jdbcType(Types.FLOAT);
+                    columnEditor.type("FLOAT");
+                    columnEditor.length(63);
+                }
+                else if (ctx.datatype().native_datatype_element().NUMBER() != null) {
+                    columnEditor
+                        .jdbcType(Types.NUMERIC)
+                        .type("NUMBER")
+                        .length(38)
+                        .scale(0);
+                    if (precisionPart == null) {
+                        columnEditor
+                            .length(0)
+                            .scale(-127);
                     }
                 }
                 else {
-                    columnEditor.jdbcType(Types.TIMESTAMP);
-                    columnEditor.type("TIMESTAMP");
+                    throw new IllegalArgumentException("Unsupported column type: " + ctx.datatype().native_datatype_element().getText());
                 }
-                columnEditor.length(6);
+
+                if (precisionPart != null) {
+                    columnEditor.length(Integer.valueOf(precisionPart.numeric(0).getText()));
+
+                    if (precisionPart.numeric().size() > 1) {
+                        columnEditor.scale(Integer.valueOf(precisionPart.numeric(1).getText()));
+                    }
+                }
             }
-            else if (ctx.datatype().native_datatype_element().VARCHAR2() != null) {
-                columnEditor.jdbcType(Types.VARCHAR);
-                columnEditor.type("VARCHAR2");
-                columnEditor.length(getVarCharDefaultLength());
-            }
-            else if (ctx.datatype().native_datatype_element().NVARCHAR2() != null) {
-                columnEditor.jdbcType(Types.NVARCHAR);
-                columnEditor.type("NVARCHAR2");
-                columnEditor.length(getVarCharDefaultLength());
-            }
-            else if (ctx.datatype().native_datatype_element().CHAR() != null) {
-                columnEditor.jdbcType(Types.CHAR);
-                columnEditor.type("CHAR");
-                columnEditor.length(1);
-            }
-            else if (ctx.datatype().native_datatype_element().NCHAR() != null) {
-                columnEditor.jdbcType(Types.NCHAR);
-                columnEditor.type("NCHAR");
-                columnEditor.length(1);
-            }
-            else if (ctx.datatype().native_datatype_element().BINARY_FLOAT() != null) {
-                columnEditor.jdbcType(OracleTypes.BINARY_FLOAT);
-                columnEditor.type("BINARY_FLOAT");
-            }
-            else if (ctx.datatype().native_datatype_element().BINARY_DOUBLE() != null) {
-                columnEditor.jdbcType(OracleTypes.BINARY_DOUBLE);
-                columnEditor.type("BINARY_DOUBLE");
-            }
-            // PRECISION keyword is mandatory
-            else if (ctx.datatype().native_datatype_element().FLOAT() != null ||
-                    (ctx.datatype().native_datatype_element().DOUBLE() != null && ctx.datatype().native_datatype_element().PRECISION() != null)) {
-                columnEditor.jdbcType(Types.FLOAT);
-                columnEditor.type("FLOAT");
-                columnEditor.length(126);
-            }
-            else if (ctx.datatype().native_datatype_element().REAL() != null) {
-                columnEditor.jdbcType(Types.FLOAT);
-                columnEditor.type("FLOAT");
-                columnEditor.length(63);
-            }
-            else if (ctx.datatype().native_datatype_element().NUMBER() != null) {
+            else if (ctx.datatype().INTERVAL() != null
+                    && ctx.datatype().TO() != null
+                    && ctx.datatype().MONTH() != null) {
                 columnEditor
-                    .jdbcType(Types.NUMERIC)
-                    .type("NUMBER")
-                    .length(38)
-                    .scale(0);
-                if (precisionPart == null) {
-                    columnEditor
-                        .length(0)
-                        .scale(-127);
+                    .jdbcType(OracleTypes.INTERVALYM)
+                    .type("INTERVAL YEAR TO MONTH")
+                    .length(2);
+                if (!ctx.datatype().expression().isEmpty()) {
+                    columnEditor.length(Integer.valueOf((ctx.datatype().expression(0).getText())));
                 }
             }
             else {
-                throw new IllegalArgumentException("Unsupported column type: " + ctx.datatype().native_datatype_element().getText());
-            }
-
-            if (precisionPart != null) {
-                columnEditor.length(Integer.valueOf(precisionPart.numeric(0).getText()));
-
-                if (precisionPart.numeric().size() > 1) {
-                    columnEditor.scale(Integer.valueOf(precisionPart.numeric(1).getText()));
-                }
+                throw new IllegalArgumentException("Unsupported column type: " + ctx.datatype().getText());
             }
 
             boolean hasNotNullConstraint = ctx.inline_constraint().stream()

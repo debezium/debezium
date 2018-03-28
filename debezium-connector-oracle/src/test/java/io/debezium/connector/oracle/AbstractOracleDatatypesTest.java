@@ -28,6 +28,7 @@ import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.time.MicroDuration;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.Timestamp;
 import io.debezium.time.ZonedTimestamp;
@@ -77,6 +78,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             "  val_ts timestamp, " +
             "  val_tstz timestamp with time zone, " +
             "  val_tsltz timestamp with local time zone, " +
+            "  val_int_ytm interval year to month, " +
             "  primary key (id)" +
             ")";
 
@@ -106,7 +108,8 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     private static final List<SchemaAndValueField> EXPECTED_TIME = Arrays.asList(
             new SchemaAndValueField("VAL_DATE", Timestamp.builder().optional().build(), 1522108800_000l),
             new SchemaAndValueField("VAL_TS", MicroTimestamp.builder().optional().build(), LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000 + 7890),
-            new SchemaAndValueField("VAL_TSTZ", ZonedTimestamp.builder().optional().build(), "2018-03-27T01:34:56.00789-11:00")
+            new SchemaAndValueField("VAL_TSTZ", ZonedTimestamp.builder().optional().build(), "2018-03-27T01:34:56.00789-11:00"),
+            new SchemaAndValueField("VAL_INT_YTM", MicroDuration.builder().optional().build(), -110451600_000_000.0)
 //            new SchemaAndValueField("VAL_TSLTZ", ZonedTimestamp.builder().optional().build(), "2018-03-27T01:34:56.00789-11:00")
     );
 
@@ -157,7 +160,6 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     @Test
     public void stringTypes() throws Exception {
         int expectedRecordCount = 0;
-//        connection.execute("INSERT INTO debezium.type_string VALUES (1, 'v\u010d2', 'nv\u010d2', 'c', 'n\u010d', 'av\u010d2', 'an\u010d')");
         connection.execute("INSERT INTO debezium.type_string VALUES (1, 'v\u010d2', 'nv\u010d2', 'c', 'n\u010d')");
         connection.execute("COMMIT");
 
@@ -218,7 +220,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     @Test
     public void timeTypes() throws Exception {
         int expectedRecordCount = 0;
-        connection.execute("INSERT INTO debezium.type_time VALUES (1, '27-MAR-2018', '27-MAR-2018 12:34:56.00789', '27-MAR-2018 01:34:56.00789 am -11:00', '27-MAR-2018 01:34:56.00789')");
+        connection.execute("INSERT INTO debezium.type_time VALUES (1, '27-MAR-2018', '27-MAR-2018 12:34:56.00789', '27-MAR-2018 01:34:56.00789 am -11:00', '27-MAR-2018 01:34:56.00789', INTERVAL '-3-6' YEAR TO MONTH)");
         connection.execute("COMMIT");
 
         Testing.debug("Inserted");
