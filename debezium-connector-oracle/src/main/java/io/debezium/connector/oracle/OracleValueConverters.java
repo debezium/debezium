@@ -30,6 +30,8 @@ import oracle.sql.TIMESTAMPLTZ;
 import oracle.sql.TIMESTAMPTZ;
 
 public class OracleValueConverters extends JdbcValueConverters {
+    private static int NUMBER_VARIABLE_SCALE_LENGTH = 0;
+
     private final OracleConnection connection;
 
     public OracleValueConverters(OracleConnection connection) {
@@ -38,12 +40,22 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     @Override
     public SchemaBuilder schemaBuilder(Column column) {
-        logger.debug("Building schema for column {} of type {} named {}", column.name(), column.jdbcType(), column.typeName());
+        logger.debug("Building schema for column {} of type {} named {} with constraints ({},{})",
+                column.name(),
+                column.jdbcType(),
+                column.typeName(),
+                column.length(),
+                column.scale()
+        );
 
         switch (column.jdbcType()) {
             // Oracle's float is not float as in Java but a NUMERIC without scale
             case Types.FLOAT:
                 return VariableScaleDecimal.builder();
+            case Types.NUMERIC:
+                return column.length() == NUMBER_VARIABLE_SCALE_LENGTH ? 
+                        VariableScaleDecimal.builder() :
+                        super.schemaBuilder(column);
             case OracleTypes.BINARY_FLOAT:
                 return SchemaBuilder.float32();
             case OracleTypes.BINARY_DOUBLE:
@@ -69,9 +81,11 @@ public class OracleValueConverters extends JdbcValueConverters {
             case OracleTypes.BINARY_DOUBLE:
                 return data -> convertDouble(column, fieldDefn, data);
             case Types.NUMERIC:
-                return data -> convertNumeric(column, fieldDefn, data);
+                    return column.length() == NUMBER_VARIABLE_SCALE_LENGTH ? 
+                            data -> convertVariableScale(column, fieldDefn, data) :
+                            data -> convertNumeric(column, fieldDefn, data);
             case Types.FLOAT:
-                return data -> convertOracleFloat(column, fieldDefn, data);
+                return data -> convertVariableScale(column, fieldDefn, data);
             case OracleTypes.TIMESTAMPTZ:
             case OracleTypes.TIMESTAMPLTZ:
                 return (data) -> convertTimestampWithZone(column, fieldDefn, data);
@@ -162,7 +176,7 @@ public class OracleValueConverters extends JdbcValueConverters {
         return super.convertNumeric(column, fieldDefn, data);
     }
 
-    protected Object convertOracleFloat(Column column, Field fieldDefn, Object data) {
+    protected Object convertVariableScale(Column column, Field fieldDefn, Object data) {
         data = convertNumeric(column, fieldDefn, data);
 
         if (data == null) {
