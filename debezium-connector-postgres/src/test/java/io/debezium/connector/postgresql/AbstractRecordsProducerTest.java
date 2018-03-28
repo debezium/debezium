@@ -299,7 +299,7 @@ public abstract class AbstractRecordsProducerTest {
         int expectedDate = Date.toEpochDay(LocalDate.parse("2016-11-04"), null);
         long expectedTi = LocalTime.parse("13:51:30").toNanoOfDay();
         String expectedTtz = "11:51:30Z";  //time is stored with TZ, should be read back at GMT
-        double interval = MicroDuration.durationMicros(1, 2, 3, 4, 5, 0, PostgresValueConverter.DAYS_PER_MONTH_AVG);
+        double interval = MicroDuration.durationMicros(1, 2, 3, 4, 5, 0, MicroDuration.DAYS_PER_MONTH_AVG);
 
         return Arrays.asList(new SchemaAndValueField("ts", NanoTimestamp.builder().optional().build(), expectedTs),
                              new SchemaAndValueField("tz", ZonedTimestamp.builder().optional().build(), expectedTz),
@@ -315,7 +315,7 @@ public abstract class AbstractRecordsProducerTest {
         int expectedDate = Date.toEpochDay(LocalDate.parse("2016-11-04"), null);
         long expectedTi = LocalTime.parse("13:51:30").toNanoOfDay() / 1_000;
         String expectedTtz = "11:51:30Z";  //time is stored with TZ, should be read back at GMT
-        double interval = MicroDuration.durationMicros(1, 2, 3, 4, 5, 0, PostgresValueConverter.DAYS_PER_MONTH_AVG);
+        double interval = MicroDuration.durationMicros(1, 2, 3, 4, 5, 0, MicroDuration.DAYS_PER_MONTH_AVG);
 
         return Arrays.asList(new SchemaAndValueField("ts", NanoTimestamp.builder().optional().build(), expectedTs),
                 new SchemaAndValueField("tz", ZonedTimestamp.builder().optional().build(), expectedTz),
