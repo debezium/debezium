@@ -48,8 +48,6 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             "  val_nvarchar2 nvarchar2(1000), " +
             "  val_char char(3), " +
             "  val_nchar nchar(3), " +
-//            "  val_character_varying character varying(1000), " +
-//            "  val_national_char national char(4), " +
             "  primary key (id)" +
             ")";
 
@@ -59,6 +57,9 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             "  val_bd binary_double, " +
             "  val_f float, " +
             "  val_num number(10,6), " +
+            "  val_dp double precision, " +
+            "  val_r real, " +
+            "  val_num_vs number, " +
             "  primary key (id)" +
             ")";
 
@@ -84,15 +85,16 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             new SchemaAndValueField("VAL_NVARCHAR2", Schema.OPTIONAL_STRING_SCHEMA, "nv\u010d2"),
             new SchemaAndValueField("VAL_CHAR", Schema.OPTIONAL_STRING_SCHEMA, "c  "),
             new SchemaAndValueField("VAL_NCHAR", Schema.OPTIONAL_STRING_SCHEMA, "n\u010d ")
-//            new SchemaAndValueField("VAL_CHARACTER_VARYING", Schema.OPTIONAL_STRING_SCHEMA, "av\u010d2"),
-//            new SchemaAndValueField("VAL_NATIONAL_CHAR", Schema.OPTIONAL_STRING_SCHEMA, "an\u010d ")
     );
 
     private static final List<SchemaAndValueField> EXPECTED_FP = Arrays.asList(
             new SchemaAndValueField("VAL_BF", Schema.OPTIONAL_FLOAT32_SCHEMA, 1.1f),
             new SchemaAndValueField("VAL_BD", Schema.OPTIONAL_FLOAT64_SCHEMA, 2.22),
             new SchemaAndValueField("VAL_F", VariableScaleDecimal.builder().optional().schema(), VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().schema(), new SpecialValueDecimal(new BigDecimal("3.33")))),
-            new SchemaAndValueField("VAL_NUM", Decimal.builder(6).optional().schema(), new BigDecimal("4.4444"))
+            new SchemaAndValueField("VAL_NUM", Decimal.builder(6).optional().schema(), new BigDecimal("4.4444")),
+            new SchemaAndValueField("VAL_DP", VariableScaleDecimal.builder().optional().schema(), VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().schema(), new SpecialValueDecimal(new BigDecimal("5.555")))),
+            new SchemaAndValueField("VAL_R", VariableScaleDecimal.builder().optional().schema(), VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().schema(), new SpecialValueDecimal(new BigDecimal("6.66")))),
+            new SchemaAndValueField("VAL_NUM_VS", VariableScaleDecimal.builder().optional().schema(), VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().schema(), new SpecialValueDecimal(new BigDecimal("77.323"))))
     );
 
     private static final List<SchemaAndValueField> EXPECTED_INT = Arrays.asList(
@@ -176,7 +178,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     @Test
     public void fpTypes() throws Exception {
         int expectedRecordCount = 0;
-        connection.execute("INSERT INTO debezium.type_fp VALUES (1, 1.1, 2.22, 3.33, 4.4444)");
+        connection.execute("INSERT INTO debezium.type_fp VALUES (1, 1.1, 2.22, 3.33, 4.4444, 5.555, 6.66, 77.323)");
         connection.execute("COMMIT");
 
         Testing.debug("Inserted");

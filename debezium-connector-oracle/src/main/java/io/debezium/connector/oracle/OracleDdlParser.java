@@ -125,12 +125,17 @@ public class OracleDdlParser implements DdlParser {
 
         @Override
         public void exitColumn_definition(Column_definitionContext ctx) {
+            Precision_partContext precisionPart = ctx.datatype().precision_part();
+
             ColumnEditor columnEditor = Column.editor();
             columnEditor.name(getColumnName(ctx.column_name()));
 
             if (ctx.datatype().native_datatype_element().INT() != null
                     || ctx.datatype().native_datatype_element().INTEGER() != null
-                    || ctx.datatype().native_datatype_element().SMALLINT() != null) {
+                    || ctx.datatype().native_datatype_element().SMALLINT() != null
+                    || ctx.datatype().native_datatype_element().NUMERIC() != null
+                    || ctx.datatype().native_datatype_element().DECIMAL() != null) {
+                // UMERIC and DECIMAl types have by default zero scale
                 columnEditor.jdbcType(Types.NUMERIC);
                 columnEditor.type("NUMBER");
                 columnEditor.length(38);
@@ -188,22 +193,34 @@ public class OracleDdlParser implements DdlParser {
                 columnEditor.jdbcType(OracleTypes.BINARY_DOUBLE);
                 columnEditor.type("BINARY_DOUBLE");
             }
-            else if (ctx.datatype().native_datatype_element().FLOAT() != null) {
+            // PRECISION keyword is mandatory
+            else if (ctx.datatype().native_datatype_element().FLOAT() != null ||
+                    (ctx.datatype().native_datatype_element().DOUBLE() != null && ctx.datatype().native_datatype_element().PRECISION() != null)) {
                 columnEditor.jdbcType(Types.FLOAT);
                 columnEditor.type("FLOAT");
                 columnEditor.length(126);
             }
-            else if (ctx.datatype().native_datatype_element().NUMERIC() != null
-                    || ctx.datatype().native_datatype_element().NUMBER() != null
-                    || ctx.datatype().native_datatype_element().DECIMAL() != null) {
-                columnEditor.jdbcType(Types.NUMERIC);
-                columnEditor.type("NUMBER");
+            else if (ctx.datatype().native_datatype_element().REAL() != null) {
+                columnEditor.jdbcType(Types.FLOAT);
+                columnEditor.type("FLOAT");
+                columnEditor.length(63);
+            }
+            else if (ctx.datatype().native_datatype_element().NUMBER() != null) {
+                columnEditor
+                    .jdbcType(Types.NUMERIC)
+                    .type("NUMBER")
+                    .length(38)
+                    .scale(0);
+                if (precisionPart == null) {
+                    columnEditor
+                        .length(0)
+                        .scale(-127);
+                }
             }
             else {
                 throw new IllegalArgumentException("Unsupported column type: " + ctx.datatype().native_datatype_element().getText());
             }
 
-            Precision_partContext precisionPart = ctx.datatype().precision_part();
             if (precisionPart != null) {
                 columnEditor.length(Integer.valueOf(precisionPart.numeric(0).getText()));
 
