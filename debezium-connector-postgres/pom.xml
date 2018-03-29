@@ -21,6 +21,8 @@
         <postgres.user>postgres</postgres.user>
         <postgres.password>postgres</postgres.password>
         <postgres.db.name>postgres</postgres.db.name>
+        <postgres.encoding>UTF8</postgres.encoding>
+        <postgres.system.lang>en_US.utf8</postgres.system.lang>
         <docker.filter>debezium/postgres:${version.postgres.server}</docker.filter>
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
@@ -135,6 +137,8 @@
                                     <POSTGRES_USER>${postgres.user}</POSTGRES_USER>
                                     <POSTGRES_PASSWORD>${postgres.password}</POSTGRES_PASSWORD>
                                     <POSTGRES_DB>${postgres.db.name}</POSTGRES_DB>
+                                    <POSTGRES_INITDB_ARGS>-E ${postgres.encoding}</POSTGRES_INITDB_ARGS>
+                                    <LANG>${postgres.system.lang}</LANG>
                                 </env>
                                 <ports>
                                     <port>${postgres.port}:5432</port>
@@ -294,6 +298,13 @@
             <id>wal2json-decoder</id>
             <properties>
                 <decoder.plugin.name>wal2json</decoder.plugin.name>
+            </properties>
+        </profile>
+        <profile>
+            <id>charset-8bit</id>
+            <properties>
+                <postgres.system.lang>${cs_CZ.iso-8859-2}</postgres.system.lang>
+                <postgres.encoding>LATIN2</postgres.encoding>
             </properties>
         </profile>
     </profiles>
