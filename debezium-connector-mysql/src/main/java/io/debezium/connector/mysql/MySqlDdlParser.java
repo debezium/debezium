@@ -785,7 +785,7 @@ public class MySqlDdlParser extends DdlParser {
         if (converters != null && column.defaultValue() != null) {
             Schema schema = converters.schemaBuilder(column);
             //In order to get the valueConverter for this column, we have to create a field;
-            //The index value -1 in the field will never be used when converting default value;
+            //The index value -1 in the field will never used when converting default value;
             //So we can set any number here;
             Field field = new Field(column.name(), -1, schema);
             ValueConverter valueConverter = converters.converter(column, field);
