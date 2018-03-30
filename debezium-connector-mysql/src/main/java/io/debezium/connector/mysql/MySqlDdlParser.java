@@ -781,11 +781,8 @@ public class MySqlDdlParser extends DdlParser {
 
     private void convertDefaultValueToSchemaType(ColumnEditor columnEditor) {
         Column column = columnEditor.create();
-        // if converters is not null and match one of the below condition, we need to convert default value
-        // 1. the value of this column is null; (null is defined in ddl)
-        // 2. the value of this column is not null;
-        // 3. the value of this column is optional;
-        if (converters != null && column.shouldSetDefaultValue()) {
+        // if converters is not null and the default value is not null, we need to convert default value
+        if (converters != null && column.defaultValue() != null) {
             Schema schema = converters.schemaBuilder(column);
             //In order to get the valueConverter for this column, we have to create a field;
             //The index value -1 in the field will never be used when converting default value;
@@ -793,9 +790,14 @@ public class MySqlDdlParser extends DdlParser {
             Field field = new Field(column.name(), -1, schema);
             ValueConverter valueConverter = converters.converter(column, field);
             Object defaultValue = columnEditor.defaultValue();
-            //convert default value to schema type
-            defaultValue = valueConverter.convert(defaultValue);
-            columnEditor.defaultValue(defaultValue);
+            try {
+                defaultValue = valueConverter.convert(defaultValue);
+            } catch (Throwable ignore) {
+                return;
+            }
+            if (defaultValue != null) {
+                columnEditor.defaultValue(defaultValue);
+            }
         }
     }
 

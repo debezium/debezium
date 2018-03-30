@@ -1508,7 +1508,8 @@ public class MySqlDdlParserTest {
                 "columnB INT NOT NULL DEFAULT 1," +
                 "columnC VARCHAR(10) NULL DEFAULT 'C'," +
                 "columnD VARCHAR(10) NULL DEFAULT NULL," +
-                "columnE VARCHAR(10) NOT NULL);";
+                "columnE VARCHAR(10) NOT NULL," +
+                "my_date datetime NOT NULL DEFAULT '0000-00-00 00:00:00');";
         MySqlValueConverters valueConverters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
                 TemporalPrecisionMode.ADAPTIVE, JdbcValueConverters.BigIntUnsignedMode.PRECISE);
         MySqlDdlParser ddlParser = new MySqlDdlParser(false, valueConverters);
