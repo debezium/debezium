@@ -761,6 +761,13 @@ public class MySqlValueConverters extends JdbcValueConverters {
         else if (data instanceof Number) {
             return MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal(((Number) data).toString()));
         }
+        else if (data instanceof String) {
+            try {
+                return MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal((String) data));
+            } catch (NumberFormatException ignore) {
+                return null;
+            }
+        }
         else {
             //We continue with the original converting method (numeric) since we have an unsigned Integer
             return convertNumeric(column, fieldDefn, data);

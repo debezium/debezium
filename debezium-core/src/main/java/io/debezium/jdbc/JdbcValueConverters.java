@@ -21,7 +21,6 @@ import java.time.OffsetTime;
 import java.time.ZoneOffset;
 import java.time.temporal.TemporalAdjuster;
 import java.util.BitSet;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Field;
@@ -913,6 +912,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
         if (data instanceof Boolean) {
             return NumberConversions.getDouble((Boolean) data);
         }
+        if (data instanceof String) {
+            try {
+                return Double.parseDouble((String) data);
+            } catch (NumberFormatException ignore) {
+            }
+        }
         return handleUnknownData(column, fieldDefn, data);
     }
 
@@ -995,8 +1000,6 @@ public class JdbcValueConverters implements ValueConverterProvider {
             decimal = (BigDecimal) data;
         else if (data instanceof Boolean)
             decimal = NumberConversions.getBigDecimal((Boolean) data);
-        else if (data instanceof Byte)
-            decimal = new BigDecimal(((Byte) data).byteValue());
         else if (data instanceof Short)
             decimal = new BigDecimal(((Short) data).intValue());
         else if (data instanceof Integer)
@@ -1007,6 +1010,13 @@ public class JdbcValueConverters implements ValueConverterProvider {
             decimal = BigDecimal.valueOf(((Float) data).doubleValue());
         else if (data instanceof Double)
             decimal = BigDecimal.valueOf(((Double) data).doubleValue());
+        else if (data instanceof String) {
+            try {
+                decimal = new BigDecimal((String) data);
+            } catch (NumberFormatException ignore) {
+                return handleUnknownData(column, fieldDefn, data);
+            }
+        }
         else {
             return handleUnknownData(column, fieldDefn, data);
         }
@@ -1093,10 +1103,11 @@ public class JdbcValueConverters implements ValueConverterProvider {
             return value.get(0);
         }
         if (data instanceof String) {
-            if (Objects.equals(data, "1") || "true".equalsIgnoreCase((String) data)) {
-                return true;
-            } else if (Objects.equals(data, "0") || "false".equalsIgnoreCase((String) data)) {
-                return false;
+            try {
+                return Integer.parseInt((String) data) == 0 ? Boolean.FALSE : Boolean.TRUE;
+            } catch (NumberFormatException ignore) {
+                if ("true".equals((String) data)) return true;
+                else if ("false".equals((String) data)) return false;
             }
         }
         return handleUnknownData(column, fieldDefn, data);
@@ -1218,6 +1229,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
         if (data instanceof Short) return ((Short) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
         if (data instanceof Integer) return ((Integer) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
         if (data instanceof Long) return ((Long) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
+        if (data instanceof String) {
+            try {
+                return Integer.parseInt((String) data) == 0 ? Boolean.FALSE : Boolean.TRUE;
+            } catch (NumberFormatException ignore) {
+            }
+        }
         return handleUnknownData(column, fieldDefn, data);
     }
 
