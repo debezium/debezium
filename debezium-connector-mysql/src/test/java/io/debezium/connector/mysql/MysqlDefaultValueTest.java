@@ -1,3 +1,8 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
 package io.debezium.connector.mysql;
 
 import io.debezium.jdbc.JdbcValueConverters;
@@ -10,7 +15,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.math.BigDecimal;
-import java.math.MathContext;
 
 import static org.fest.assertions.Assertions.assertThat;
 
