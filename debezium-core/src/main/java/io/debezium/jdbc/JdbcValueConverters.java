@@ -1157,15 +1157,16 @@ public class JdbcValueConverters implements ValueConverterProvider {
             return buffer.array();
         }
         if (data instanceof String) {
-            char[] ch = ((String) data).toCharArray();
-            byte[] bytes = new byte[((String) data).length()];
-            int i = 0;
-            int j = bytes.length;
-            while (j > i) {
-                bytes[i] = Byte.parseByte(String.valueOf(ch[i]));
-                ++i;
+            String value = (String) data;
+            int nums = value.length() / Byte.SIZE + (value.length() % Byte.SIZE == 0 ? 0 : 1);
+            byte[] bytes = new byte[nums];
+            for (int i = 0; i < nums; i++) {
+                int s = value.length() - Byte.SIZE < 0 ? 0 : value.length() - Byte.SIZE;
+                int e = value.length();
+                bytes[nums - i - 1] = Byte.parseByte(value.substring(s, e), 2);
+                value = value.substring(0, s);
             }
-            return padLittleEndian(numBytes, bytes);
+            data = bytes;
         }
         if (data instanceof byte[]) {
             byte[] bytes = (byte[]) data;

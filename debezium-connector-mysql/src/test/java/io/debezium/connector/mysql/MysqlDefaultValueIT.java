@@ -277,6 +277,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         Schema schemaG = record.valueSchema().fields().get(1).schema().fields().get(6).schema();
         Schema schemaH = record.valueSchema().fields().get(1).schema().fields().get(7).schema();
         Schema schemaI = record.valueSchema().fields().get(1).schema().fields().get(8).schema();
+        Schema schemaJ = record.valueSchema().fields().get(1).schema().fields().get(9).schema();
         assertThat(schemaA.defaultValue()).isEqualTo(null);
         assertThat(schemaB.defaultValue()).isEqualTo(false);
         assertThat(schemaC.defaultValue()).isEqualTo(true);
@@ -284,8 +285,9 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         assertThat(schemaE.defaultValue()).isEqualTo(true);
         assertThat(schemaF.defaultValue()).isEqualTo(true);
         assertThat(schemaG.defaultValue()).isEqualTo(false);
-        assertThat(schemaH.defaultValue()).isEqualTo(new byte[] {1, 0});
+        assertThat(schemaH.defaultValue()).isEqualTo(new byte[] {66, 1});
         assertThat(schemaI.defaultValue()).isEqualTo(null);
+        assertThat(schemaJ.defaultValue()).isEqualTo(new byte[] {15, 97, 1, 0});
     }
 
     @Test

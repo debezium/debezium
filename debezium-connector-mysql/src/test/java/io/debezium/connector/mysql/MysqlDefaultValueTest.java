@@ -217,8 +217,9 @@ public class MysqlDefaultValueTest {
                 "  E BIT(1) DEFAULT b'1',\n" +
                 "  F BIT(1) DEFAULT TRUE,\n" +
                 "  G BIT(1) DEFAULT FALSE,\n" +
-                "  H BIT(10) DEFAULT b'10',\n" +
-                "  I BIT(10) DEFAULT NULL\n" +
+                "  H BIT(10) DEFAULT b'101000010',\n" +
+                "  I BIT(10) DEFAULT NULL,\n" +
+                "  J BIT(25) DEFAULT b'10110000100001111'\n" +
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "BIT_TABLE"));
@@ -229,8 +230,9 @@ public class MysqlDefaultValueTest {
         assertThat(table.columnWithName("E").defaultValue()).isEqualTo(true);
         assertThat(table.columnWithName("F").defaultValue()).isEqualTo(true);
         assertThat(table.columnWithName("G").defaultValue()).isEqualTo(false);
-        assertThat(table.columnWithName("H").defaultValue()).isEqualTo(new byte[] {1, 0});
+        assertThat(table.columnWithName("H").defaultValue()).isEqualTo(new byte[] {66, 1});
         assertThat(table.columnWithName("I").defaultValue()).isEqualTo(null);
+        assertThat(table.columnWithName("J").defaultValue()).isEqualTo(new byte[] {15, 97, 1, 0});
     }
 
     @Test
