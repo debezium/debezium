@@ -1156,6 +1156,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
             buffer.putLong(value.longValue());
             return buffer.array();
         }
+        if (data instanceof String) {
+            char[] ch = ((String) data).toCharArray();
+            byte[] bytes = new byte[((String) data).length()];
+            int i = 0;
+            int j = bytes.length;
+            while (j > i) {
+                bytes[i] = Byte.parseByte(String.valueOf(ch[i]));
+                ++i;
+            }
+            return padLittleEndian(numBytes, bytes);
+        }
         if (data instanceof byte[]) {
             byte[] bytes = (byte[]) data;
             if (bytes.length == 1) {

@@ -206,32 +206,32 @@ public class MysqlDefaultValueTest {
         assertThat(table.columnWithName("H").defaultValue()).isEqualTo(null);
     }
 
-//    @Test
-//    public void parseBitDefaultValue() {
-//        parser = new MySqlDdlParser(false, converters);
-//        String sql = "CREATE TABLE BIT_TABLE (\n" +
-//                "  A BIT(1) DEFAULT NULL,\n" +
-//                "  B BIT(1) DEFAULT 0,\n" +
-//                "  C BIT(1) DEFAULT 1,\n" +
-//                "  D BIT(1) DEFAULT b'0',\n" +
-//                "  E BIT(1) DEFAULT b'1',\n" +
-//                "  F BIT(1) DEFAULT TRUE,\n" +
-//                "  G BIT(1) DEFAULT FALSE,\n" +
-//                "  H BIT(10) DEFAULT b'111111',\n" +
-//                "  I BIT(10) DEFAULT NULL\n" +
-//                ");";
-//        parser.parse(sql, tables);
-//        Table table = tables.forTable(new TableId(null, null, "BIT_TABLE"));
-//        assertThat(table.columnWithName("A").defaultValue()).isEqualTo(null);
-//        assertThat(table.columnWithName("B").defaultValue()).isEqualTo(false);
-//        assertThat(table.columnWithName("C").defaultValue()).isEqualTo(true);
-//        assertThat(table.columnWithName("D").defaultValue()).isEqualTo(false);
-//        assertThat(table.columnWithName("E").defaultValue()).isEqualTo(true);
-//        assertThat(table.columnWithName("F").defaultValue()).isEqualTo(true);
-//        assertThat(table.columnWithName("G").defaultValue()).isEqualTo(false);
-//        assertThat(table.columnWithName("H").defaultValue()).isEqualTo(new byte[] {1, 1, 1, 1, 1, 1});
-//        assertThat(table.columnWithName("I").defaultValue()).isEqualTo(null);
-//    }
+    @Test
+    public void parseBitDefaultValue() {
+        parser = new MySqlDdlParser(false, converters);
+        String sql = "CREATE TABLE BIT_TABLE (\n" +
+                "  A BIT(1) NULL DEFAULT NULL,\n" +
+                "  B BIT(1) DEFAULT 0,\n" +
+                "  C BIT(1) DEFAULT 1,\n" +
+                "  D BIT(1) DEFAULT b'0',\n" +
+                "  E BIT(1) DEFAULT b'1',\n" +
+                "  F BIT(1) DEFAULT TRUE,\n" +
+                "  G BIT(1) DEFAULT FALSE,\n" +
+                "  H BIT(10) DEFAULT b'10',\n" +
+                "  I BIT(10) DEFAULT NULL\n" +
+                ");";
+        parser.parse(sql, tables);
+        Table table = tables.forTable(new TableId(null, null, "BIT_TABLE"));
+        assertThat(table.columnWithName("A").defaultValue()).isEqualTo(null);
+        assertThat(table.columnWithName("B").defaultValue()).isEqualTo(false);
+        assertThat(table.columnWithName("C").defaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("D").defaultValue()).isEqualTo(false);
+        assertThat(table.columnWithName("E").defaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("F").defaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("G").defaultValue()).isEqualTo(false);
+        assertThat(table.columnWithName("H").defaultValue()).isEqualTo(new byte[] {1, 0});
+        assertThat(table.columnWithName("I").defaultValue()).isEqualTo(null);
+    }
 
     @Test
     public void parseBooleanDefaultValue() {
