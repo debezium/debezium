@@ -51,7 +51,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         Testing.Print.enable();
 
-        SourceRecords records = consumeRecordsByTopic(34);
+        SourceRecords records = consumeRecordsByTopic(37);
         ConnectRecord record = records.recordsForTopic(DATABASE.topicForTable("UNSIGNED_TINYINT_TABLE")).get(0);
         Schema schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
         Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
@@ -81,7 +81,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         Testing.Print.enable();
 
-        SourceRecords records = consumeRecordsByTopic(34);
+        SourceRecords records = consumeRecordsByTopic(37);
         ConnectRecord record = records.recordsForTopic(DATABASE.topicForTable("UNSIGNED_SMALLINT_TABLE")).get(0);
         Schema schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
         Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
@@ -111,7 +111,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         Testing.Print.enable();
 
-        SourceRecords records = consumeRecordsByTopic(34);
+        SourceRecords records = consumeRecordsByTopic(37);
         ConnectRecord record = records.recordsForTopic(DATABASE.topicForTable("UNSIGNED_MEDIUMINT_TABLE")).get(0);
         Schema schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
         Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
@@ -141,7 +141,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         Testing.Print.enable();
 
-        SourceRecords records = consumeRecordsByTopic(34);
+        SourceRecords records = consumeRecordsByTopic(37);
         ConnectRecord record = records.recordsForTopic(DATABASE.topicForTable("UNSIGNED_INT_TABLE")).get(0);
         Schema schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
         Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
@@ -171,7 +171,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         Testing.Print.enable();
 
-        SourceRecords records = consumeRecordsByTopic(34);
+        SourceRecords records = consumeRecordsByTopic(37);
         ConnectRecord record = records.recordsForTopic(DATABASE.topicForTable("UNSIGNED_BIGINT_TABLE")).get(0);
         Schema schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
         Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
@@ -202,7 +202,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         Testing.Print.enable();
 
-        SourceRecords records = consumeRecordsByTopic(34);
+        SourceRecords records = consumeRecordsByTopic(37);
         ConnectRecord record = records.recordsForTopic(DATABASE.topicForTable("UNSIGNED_BIGINT_TABLE")).get(0);
         Schema schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
         Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
@@ -232,7 +232,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         Testing.Print.enable();
 
-        SourceRecords records = consumeRecordsByTopic(34);
+        SourceRecords records = consumeRecordsByTopic(37);
         ConnectRecord record = records.recordsForTopic(DATABASE.topicForTable("STRING_TABLE")).get(0);
         Schema schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
         Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
@@ -292,7 +292,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         Testing.Print.enable();
 
-        SourceRecords records = consumeRecordsByTopic(34);
+        SourceRecords records = consumeRecordsByTopic(37);
         ConnectRecord record = records.recordsForTopic(DATABASE.topicForTable("BOOLEAN_TABLE")).get(0);
         Schema schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
         Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
@@ -315,22 +315,35 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         Testing.Print.enable();
 
-        SourceRecords records = consumeRecordsByTopic(34);
+        SourceRecords records = consumeRecordsByTopic(37);
         ConnectRecord record = records.recordsForTopic(DATABASE.topicForTable("NUMBER_TABLE")).get(0);
         Schema schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
         Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
         Schema schemaC = record.valueSchema().fields().get(1).schema().fields().get(2).schema();
         Schema schemaD = record.valueSchema().fields().get(1).schema().fields().get(3).schema();
         Schema schemaE = record.valueSchema().fields().get(1).schema().fields().get(4).schema();
-        Schema schemaF = record.valueSchema().fields().get(1).schema().fields().get(5).schema();
-        Schema schemaG = record.valueSchema().fields().get(1).schema().fields().get(6).schema();
         assertThat(schemaA.defaultValue()).isEqualTo((short) 10);
         assertThat(schemaB.defaultValue()).isEqualTo((short) 5);
         assertThat(schemaC.defaultValue()).isEqualTo(0);
         assertThat(schemaD.defaultValue()).isEqualTo(20L);
         assertThat(schemaE.defaultValue()).isEqualTo(null);
-        assertThat(schemaF.defaultValue()).isEqualTo(0d);
-        assertThat(schemaG.defaultValue()).isEqualTo(1d);
+    }
+
+    @Test
+    public void floatAndDoubleTest() throws InterruptedException {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
+                .build();
+        start(MySqlConnector.class, config);
+
+        Testing.Print.enable();
+
+        SourceRecords records = consumeRecordsByTopic(37);
+        ConnectRecord record = records.recordsForTopic(DATABASE.topicForTable("FlOAT_DOUBLE_TABLE")).get(0);
+        Schema schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
+        Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
+        assertThat(schemaA.defaultValue()).isEqualTo(0d);
+        assertThat(schemaB.defaultValue()).isEqualTo(1.0d);
     }
 
     @Test
@@ -342,7 +355,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         Testing.Print.enable();
 
-        SourceRecords records = consumeRecordsByTopic(34);
+        SourceRecords records = consumeRecordsByTopic(37);
         ConnectRecord record = records.recordsForTopic(DATABASE.topicForTable("REAL_TABLE")).get(0);
         Schema schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
         Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
@@ -360,7 +373,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         Testing.Print.enable();
 
-        SourceRecords records = consumeRecordsByTopic(34);
+        SourceRecords records = consumeRecordsByTopic(37);
         ConnectRecord record = records.recordsForTopic(DATABASE.topicForTable("NUMERIC_DECIMAL_TABLE")).get(0);
         Schema schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
         Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
@@ -380,7 +393,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         Testing.Print.enable();
 
-        SourceRecords records = consumeRecordsByTopic(34);
+        SourceRecords records = consumeRecordsByTopic(37);
         ConnectRecord record = records.recordsForTopic(DATABASE.topicForTable("NUMERIC_DECIMAL_TABLE")).get(0);
         Schema schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
         Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
