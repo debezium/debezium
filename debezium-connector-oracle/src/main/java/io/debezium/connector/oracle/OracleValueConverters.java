@@ -12,7 +12,6 @@ import java.time.ZonedDateTime;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
@@ -24,6 +23,7 @@ import io.debezium.relational.ValueConverter;
 import io.debezium.time.MicroDuration;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.NumberConversions;
+import io.debezium.util.Strings;
 import oracle.jdbc.OracleTypes;
 import oracle.sql.BINARY_DOUBLE;
 import oracle.sql.BINARY_FLOAT;
@@ -298,7 +298,6 @@ public class OracleValueConverters extends JdbcValueConverters {
         }
         if (data instanceof INTERVALDS) {
             final String interval = ((INTERVALDS) data).stringValue();
-            System.err.println(interval);
             final Matcher m = INTERVAL_DAY_SECOND_PATTERN.matcher(interval);
             if (m.matches()) {
                 final int sign = "-".equals(m.group(1)) ? -1 : 1;
@@ -309,7 +308,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                         sign * Integer.valueOf(m.group(3)),
                         sign * Integer.valueOf(m.group(4)),
                         sign * Integer.valueOf(m.group(5)),
-                        sign * Integer.valueOf(StringUtils.rightPad(m.group(6), 6, '0')),
+                        sign * Integer.valueOf(Strings.pad(m.group(6), 6, '0')),
                         MicroDuration.DAYS_PER_MONTH_AVG);
             }
         }
