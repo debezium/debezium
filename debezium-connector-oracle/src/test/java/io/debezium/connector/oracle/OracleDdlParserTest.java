@@ -58,8 +58,8 @@ public class OracleDdlParserTest {
 
         final Column score = table.columnWithName("SCORE");
         assertThat(score.isOptional()).isTrue();
-        assertThat(score.jdbcType()).isEqualTo(Types.DECIMAL);
-        assertThat(score.typeName()).isEqualTo("DECIMAL");
+        assertThat(score.jdbcType()).isEqualTo(Types.NUMERIC);
+        assertThat(score.typeName()).isEqualTo("NUMBER");
         assertThat(score.length()).isEqualTo(6);
         assertThat(score.scale()).isEqualTo(2);
 
