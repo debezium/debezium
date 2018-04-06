@@ -89,6 +89,8 @@ public class StreamingWal2JsonMessageDecoder implements MessageDecoder {
     private static final byte RIGHT_BRACKET = 93;
     private static final byte LEFT_BRACE = 123;
     private static final byte RIGHT_BRACE = 125;
+    private static final long UNDEFINED_LONG = -1;
+    private static final String UNDEFINED_STRING = "undefined";
 
     private final DateTimeFormat dateTime = DateTimeFormat.get();
     private boolean containsMetadata = false;
@@ -124,47 +126,82 @@ public class StreamingWal2JsonMessageDecoder implements MessageDecoder {
             }
 
             if (!messageInProgress) {
-                // We received the beginning of a transaction
-                if (getLastNonWhiteChar(content) != RIGHT_BRACE) {
-                    // Chunks are enabled and we have an unfinished message, it is necessary to add a sequence of closing chars
-                    content[lastPos - 1] = RIGHT_BRACKET;
-                    content[lastPos] = RIGHT_BRACE;
-                }
-                final Document message = DocumentReader.defaultReader().read(content);
-                txId = message.getLong("xid");
-                timestamp = message.getString("timestamp");
-                commitTime = dateTime.systemTimestamp(timestamp);
-                messageInProgress = true;
-                currentChunk = null;
-            }
-            else {
                 byte firstChar = getFirstNonWhiteChar(content);
-                // We are receiving changes in chunks
-                if (firstChar == LEFT_BRACE) {
-                    // First change, this is a valid JSON
-                    currentChunk = content;
-                }
-                else if (firstChar == COMMA) {
-                    // following changes, they have an extra comma at the start of message
-                    doProcessMessage(processor, typeRegistry, currentChunk, serverTimezone, false);
-                    replaceFirstNonWhiteChar(content, SPACE);
-                    currentChunk = content;
-                }
-                else if (firstChar == RIGHT_BRACKET) {
-                    // No more changes
-                    if (currentChunk != null) {
-                        doProcessMessage(processor, typeRegistry, currentChunk, serverTimezone, true);
-                    }
-                    messageInProgress = false;
+                if (firstChar != LEFT_BRACE) {
+                    outOfOrderChunk(content);
+                    nonInitialChunk(processor, typeRegistry, content, serverTimezone);
                 }
                 else {
-                    throw new ConnectException("Chunk arrived in unexpected state");
+                    // We received the beginning of a transaction
+                    if (getLastNonWhiteChar(content) != RIGHT_BRACE) {
+                        // Chunks are enabled and we have an unfinished message, it is necessary to add a sequence of closing chars
+                        content[lastPos - 1] = RIGHT_BRACKET;
+                        content[lastPos] = RIGHT_BRACE;
+                    }
+                    final Document message = DocumentReader.defaultReader().read(content);
+                    if (message.has("kind")) {
+                        // This is not a preamble but out-of-order change chunk
+                        outOfOrderChunk(content);
+                        nonInitialChunk(processor, typeRegistry, content, serverTimezone);
+                    }
+                    else {
+                        // Correct initial chunk
+                        txId = message.getLong("xid");
+                        timestamp = message.getString("timestamp");
+                        commitTime = dateTime.systemTimestamp(timestamp);
+                        messageInProgress = true;
+                        currentChunk = null;
+                    }
                 }
+            }
+            else {
+                nonInitialChunk(processor, typeRegistry, content, serverTimezone);
             }
         }
         catch (final IOException e) {
             throw new ConnectException(e);
         }
+    }
+
+    protected void nonInitialChunk(ReplicationMessageProcessor processor, TypeRegistry typeRegistry,
+            final byte[] content, ZoneOffset serverTimezone) throws IOException, SQLException, InterruptedException {
+        byte firstChar = getFirstNonWhiteChar(content);
+        // We are receiving changes in chunks
+        if (firstChar == LEFT_BRACE) {
+            // First change, this is a valid JSON
+            currentChunk = content;
+        }
+        else if (firstChar == COMMA) {
+            // following changes, they have an extra comma at the start of message
+            if (currentChunk != null) {
+                doProcessMessage(processor, typeRegistry, currentChunk, serverTimezone, false);
+            }
+            replaceFirstNonWhiteChar(content, SPACE);
+            currentChunk = content;
+        }
+        else if (firstChar == RIGHT_BRACKET) {
+            // No more changes
+            if (currentChunk != null) {
+                doProcessMessage(processor, typeRegistry, currentChunk, serverTimezone, true);
+            }
+            messageInProgress = false;
+        }
+        else {
+            throw new ConnectException("Chunk arrived in unexpected state");
+        }
+    }
+
+    protected void outOfOrderChunk(final byte[] content) {
+        // This is not a standalone JSON, we are getting a transaction in progress
+        // Metadata are lost, we need to create artificial ones
+        if (LOGGER.isWarnEnabled()) {
+            LOGGER.warn("Got out of order chunk {}, recording artifical TX", new String(content));
+        }
+        txId = UNDEFINED_LONG;
+        timestamp = UNDEFINED_STRING;
+        commitTime = UNDEFINED_LONG;
+        messageInProgress = true;
+        currentChunk = null;
     }
 
     private byte getLastNonWhiteChar(byte[] array) throws IllegalArgumentException {
