@@ -24,6 +24,7 @@ import io.debezium.text.ParsingException;
 import io.debezium.util.IoUtil;
 import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Testing;
+import io.debezium.antlr.mysql.MySqlSystemVariables;
 
 /**
  * @author Randall Hauch

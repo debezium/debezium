@@ -6,6 +6,7 @@
 
 package io.debezium.relational.ddl;
 
+import io.debezium.relational.SystemVariables;
 import io.debezium.relational.Tables;
 import io.debezium.text.ParsingException;
 
@@ -36,26 +37,7 @@ public interface DdlParser {
      */
     void setCurrentSchema(String schemaName);
 
-    /**
-     * Add a listener. This method should not be called more than once with the same listener object, since the result will be
-     * that object will be called multiple times for each event.
-     *
-     * @param listener the listener; if null nothing is done
-     */
-    void addListener(DdlParserListener listener);
-
-    /**
-     * Remove an existing listener.
-     *
-     * @param listener the listener; if null nothing is done
-     * @return {@code true} if the listener was removed, or {@code false} otherwise
-     */
-    boolean removeListener(DdlParserListener listener);
-
-    /**
-     * Remove all existing listeners.
-     */
-    void removeListeners();
+    DdlChanges getDdlChanges();
 
     /**
      * The token used to terminate a DDL statement.
@@ -63,4 +45,6 @@ public interface DdlParser {
      * @return the terminating token; never null
      */
     String terminator();
+
+    SystemVariables systemVariables();
 }
