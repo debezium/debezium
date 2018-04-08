@@ -8,6 +8,8 @@ package io.debezium.antlr.mysql;
 
 import io.debezium.relational.SystemVariables;
 
+import java.util.concurrent.ConcurrentMap;
+
 /**
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
@@ -42,4 +44,12 @@ public class MySqlSystemVariables extends SystemVariables {
      */
     public static final String LOWER_CASE_TABLE_NAMES = "lower_case_table_names";
 
+    @Override
+    protected ConcurrentMap<String, String> forScope(Scope scope) {
+        // local and session scope are the same in MySQL
+        if (scope == MySqlScope.LOCAL) {
+            scope = MySqlScope.SESSION;
+        }
+        return super.forScope(scope);
+    }
 }
