@@ -12,6 +12,7 @@ import java.util.function.Predicate;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
+import io.debezium.antlr.mysql.MySqlSystemVariables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

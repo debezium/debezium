@@ -7,6 +7,8 @@
 package io.debezium.antlr.mysql;
 
 import io.debezium.antlr.AntlrDdlParser;
+import io.debezium.antlr.DataTypeResolver;
+import io.debezium.antlr.DataTypeResolver.DataTypeEntry;
 import io.debezium.antlr.ProxyParseTreeListener;
 import io.debezium.ddl.parser.mysql.generated.MySqlLexer;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
@@ -24,6 +26,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -34,6 +37,11 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
     private TableEditor tableEditor;
     private ColumnEditor columnEditor;
+
+    public MySqlAntlrDdlParser() {
+        super();
+        systemVariables = new MySqlSystemVariables();
+    }
 
     @Override
     protected ParseTree parseTree(MySqlParser parser) {
@@ -68,9 +76,74 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     }
 
     @Override
-    protected String replaceOneLineComments(String statement) {
-        //todo remove: no need to use it with used grammar specification
-        return statement.replaceAll("--(.*)", "/*$1*/");
+    protected void initDataTypes(DataTypeResolver dataTypeResolver) {
+        // TODO: solve data types that are not in provided lexer
+//        dataTypes.register(Types.DOUBLE, "DOUBLE PRECISION[(M[,D])] [UNSIGNED|SIGNED] [ZEROFILL]");
+//        dataTypes.register(Types.NVARCHAR, "NVARCHAR(L)");
+//        dataTypes.register(Types.NVARCHAR, "NATIONAL VARCHAR(L)");
+//        dataTypes.register(Types.NVARCHAR, "NCHAR VARCHAR(L)");
+//        dataTypes.register(Types.NVARCHAR, "NATIONAL CHARACTER VARYING(L)");
+//        dataTypes.register(Types.NVARCHAR, "NATIONAL CHAR VARYING(L)");
+//        dataTypes.register(Types.NCHAR, "NCHAR[(L)]");
+//        dataTypes.register(Types.NCHAR, "NATIONAL CHARACTER(L)");
+//        dataTypes.register(Types.BLOB, "TINYTEXT BINARY");
+//        dataTypes.register(Types.BLOB, "TEXT BINARY");
+//        dataTypes.register(Types.BLOB, "MEDIUMTEXT BINARY");
+//        dataTypes.register(Types.BLOB, "LONGTEXT BINARY");
+//        dataTypes.register(Types.OTHER, "JSON");
+//        dataTypes.register(Types.OTHER, "GEOMETRY");
+        dataTypeResolver.registerDataTypes(MySqlParser.StringDataTypeContext.class.getCanonicalName(), Arrays.asList(
+                new DataTypeEntry(MySqlParser.CHAR, Types.BINARY),
+                new DataTypeEntry(MySqlParser.VARCHAR, Types.VARCHAR),
+                new DataTypeEntry(MySqlParser.TINYTEXT, Types.BLOB),
+                new DataTypeEntry(MySqlParser.TEXT, Types.BLOB),
+                new DataTypeEntry(MySqlParser.MEDIUMTEXT, Types.BLOB),
+                new DataTypeEntry(MySqlParser.LONGTEXT, Types.BLOB)
+        ));
+        dataTypeResolver.registerDataTypes(MySqlParser.DimensionDataTypeContext.class.getCanonicalName(), Arrays.asList(
+                new DataTypeEntry(MySqlParser.TINYINT, Types.SMALLINT),
+                new DataTypeEntry(MySqlParser.SMALLINT, Types.SMALLINT),
+                new DataTypeEntry(MySqlParser.MEDIUMINT, Types.INTEGER),
+                new DataTypeEntry(MySqlParser.INT, Types.INTEGER),
+                new DataTypeEntry(MySqlParser.INTEGER, Types.INTEGER),
+                new DataTypeEntry(MySqlParser.BIGINT, Types.BIGINT),
+                new DataTypeEntry(MySqlParser.REAL, Types.REAL),
+                new DataTypeEntry(MySqlParser.DOUBLE, Types.DOUBLE),
+                new DataTypeEntry(MySqlParser.FLOAT, Types.FLOAT),
+                new DataTypeEntry(MySqlParser.DECIMAL, Types.DECIMAL),
+                new DataTypeEntry(MySqlParser.DEC, Types.DECIMAL),
+                new DataTypeEntry(MySqlParser.FIXED, Types.DECIMAL),
+                new DataTypeEntry(MySqlParser.NUMERIC, Types.NUMERIC),
+                new DataTypeEntry(MySqlParser.BIT, Types.BIT),
+                new DataTypeEntry(MySqlParser.TIME, Types.TIME),
+                new DataTypeEntry(MySqlParser.TIMESTAMP, Types.TIME_WITH_TIMEZONE),
+                new DataTypeEntry(MySqlParser.DATETIME, Types.TIMESTAMP),
+                new DataTypeEntry(MySqlParser.BINARY, Types.BINARY),
+                new DataTypeEntry(MySqlParser.VARBINARY, Types.VARBINARY),
+                new DataTypeEntry(MySqlParser.YEAR, Types.INTEGER)
+        ));
+        dataTypeResolver.registerDataTypes(MySqlParser.SimpleDataTypeContext.class.getCanonicalName(), Arrays.asList(
+                new DataTypeEntry(MySqlParser.DATE, Types.DATE),
+                new DataTypeEntry(MySqlParser.TINYBLOB, Types.BLOB),
+                new DataTypeEntry(MySqlParser.BLOB, Types.BLOB),
+                new DataTypeEntry(MySqlParser.MEDIUMBLOB, Types.BLOB),
+                new DataTypeEntry(MySqlParser.LONGBLOB, Types.BLOB),
+                new DataTypeEntry(MySqlParser.BOOL, Types.BOOLEAN),
+                new DataTypeEntry(MySqlParser.BOOLEAN, Types.BOOLEAN)
+        ));
+        dataTypeResolver.registerDataTypes(MySqlParser.CollectionDataTypeContext.class.getCanonicalName(), Arrays.asList(
+                new DataTypeEntry(MySqlParser.ENUM, Types.CHAR),
+                new DataTypeEntry(MySqlParser.SET, Types.CHAR)
+        ));
+        dataTypeResolver.registerDataTypes(MySqlParser.SpatialDataTypeContext.class.getCanonicalName(), Arrays.asList(
+                new DataTypeEntry(MySqlParser.GEOMETRYCOLLECTION, Types.OTHER),
+                new DataTypeEntry(MySqlParser.LINESTRING, Types.OTHER),
+                new DataTypeEntry(MySqlParser.MULTILINESTRING, Types.OTHER),
+                new DataTypeEntry(MySqlParser.MULTIPOINT, Types.OTHER),
+                new DataTypeEntry(MySqlParser.MULTIPOLYGON, Types.OTHER),
+                new DataTypeEntry(MySqlParser.POINT, Types.OTHER),
+                new DataTypeEntry(MySqlParser.POLYGON, Types.OTHER)
+        ));
     }
 
     private TableId parseQualifiedTableId(MySqlParser.TableNameContext tableNameContext) {
@@ -98,7 +171,6 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
     private void resolveColumnDataType(MySqlParser.DataTypeContext dataTypeContext) {
         String dataTypeName;
-        int jdbcType = Types.NULL;
         if (dataTypeContext instanceof MySqlParser.StringDataTypeContext) {
             // CHAR | VARCHAR | TINYTEXT | TEXT | MEDIUMTEXT | LONGTEXT
             MySqlParser.StringDataTypeContext stringDataTypeContext = (MySqlParser.StringDataTypeContext) dataTypeContext;
@@ -142,26 +214,22 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
             if (scale != null) {
                 columnEditor.scale(scale);
             }
-            // TODO: resolve jdbc type
         } else if (dataTypeContext instanceof MySqlParser.SimpleDataTypeContext) {
             // DATE | TINYBLOB | BLOB | MEDIUMBLOB | LONGBLOB | BOOL | BOOLEAN
             dataTypeName = ((MySqlParser.SimpleDataTypeContext) dataTypeContext).typeName.getText();
-            // TODO: resolve jdbc type
         } else if (dataTypeContext instanceof MySqlParser.CollectionDataTypeContext) {
             // ENUM | SET
             // do not care about charsetName or collationName
             dataTypeName = ((MySqlParser.CollectionDataTypeContext) dataTypeContext).typeName.getText();
-            // TODO: resolve jdbc type
         } else if (dataTypeContext instanceof MySqlParser.SpatialDataTypeContext) {
             // GEOMETRYCOLLECTION | LINESTRING | MULTILINESTRING | MULTIPOINT | MULTIPOLYGON | POINT | POLYGON
             dataTypeName = ((MySqlParser.SpatialDataTypeContext) dataTypeContext).typeName.getText();
-            // TODO: resolve jdbc type
         } else {
             throw new IllegalStateException("Not recognized instance of data type context for " + dataTypeContext.getText());
         }
 
         columnEditor.type(dataTypeName);
-        columnEditor.jdbcType(jdbcType);
+        columnEditor.jdbcType(dataTypeResolver.resolveDataType(dataTypeContext));
     }
 
     private void parsePrimaryIndexColumnNames(MySqlParser.IndexColumnNamesContext indexColumnNamesContext) {

@@ -9,7 +9,6 @@ package io.debezium.antlr;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.AbstractDdlParser;
-import io.debezium.relational.ddl.DdlParserListener;
 import io.debezium.text.MultipleParsingExceptions;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
@@ -29,6 +28,7 @@ import org.antlr.v4.runtime.tree.ParseTreeWalker;
 public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends AbstractDdlParser {
 
     protected Tables databaseTables;
+    protected DataTypeResolver dataTypeResolver;
 
     public AntlrDdlParser() {
         super(";");
@@ -38,10 +38,11 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     public void parse(String ddlContent, Tables databaseTables) {
         this.databaseTables = databaseTables;
 
-//        CodePointCharStream ddlContentCharStream = CharStreams.fromString(removeLineFeeds(replaceOneLineComments(ddlContent)));
         CodePointCharStream ddlContentCharStream = CharStreams.fromString(ddlContent);
         L lexer = createNewLexerInstance(new CaseChangingCharStream(ddlContentCharStream, isGrammarInUpperCase()));
         P parser = createNewParserInstance(new CommonTokenStream(lexer));
+
+        initDataTypes(dataTypeResolver);
 
         // remove default console output printing error listener
         parser.removeErrorListener(ConsoleErrorListener.INSTANCE);
@@ -99,12 +100,11 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     protected abstract boolean isGrammarInUpperCase();
 
     /**
-     * Replace one line comment syntax by multiline syntax.
+     * Initialize DB to JDBC data types mapping for resolver.
      *
-     * @param statement statement with one line comments; may not be null
-     * @return statement without one line syntax comments
+     * @param dataTypeResolver data type resolver
      */
-    protected abstract String replaceOneLineComments(String statement);
+    protected abstract void initDataTypes(DataTypeResolver dataTypeResolver);
 
     /**
      * Returns matched part of the getText for the context.
@@ -186,7 +186,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param ctx the start of the statement; may not be null
      */
     protected void signalCreateView(TableId id, ParserRuleContext ctx) {
-        signalEvent(new DdlParserListener.TableCreatedEvent(id, getText(ctx), true));
+        signalCreateView(id, getText(ctx));
     }
 
     /**
