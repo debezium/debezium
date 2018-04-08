@@ -8,6 +8,7 @@ package io.debezium.relational.ddl;
 
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
+import io.debezium.relational.SystemVariables;
 import io.debezium.relational.TableId;
 import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
@@ -18,8 +19,6 @@ import java.math.BigDecimal;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * @author Roman Kuchár <kucharrom@gmail.com>.
@@ -28,10 +27,11 @@ public abstract class AbstractDdlParser implements DdlParser {
 
     private final String terminator;
     protected final boolean skipViews;
+    private final DdlChanges ddlChanges;
+    protected SystemVariables systemVariables;
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     private String currentSchema = null;
-    private final List<DdlParserListener> listeners = new CopyOnWriteArrayList<>();
 
     /**
      * Create a new parser that uses the supplied {@link DataTypeParser}, but that does not include view definitions.
@@ -51,6 +51,7 @@ public abstract class AbstractDdlParser implements DdlParser {
     public AbstractDdlParser(String terminator, boolean includeViews) {
         this.terminator = terminator != null ? terminator : ";";
         this.skipViews = !includeViews;
+        this.ddlChanges = new DdlChanges(terminator);
     }
 
     @Override
@@ -66,23 +67,17 @@ public abstract class AbstractDdlParser implements DdlParser {
     }
 
     @Override
-    public void addListener(DdlParserListener listener) {
-        if (listener != null) listeners.add(listener);
-    }
-
-    @Override
-    public boolean removeListener(DdlParserListener listener) {
-        return listener != null ? listeners.remove(listener) : false;
-    }
-
-    @Override
-    public void removeListeners() {
-        listeners.clear();
-    }
-
-    @Override
     public final String terminator() {
         return terminator;
+    }
+
+    @Override
+    public DdlChanges getDdlChanges() {
+        return ddlChanges;
+    }
+
+    public SystemVariables systemVariables() {
+        return systemVariables;
     }
 
     /**
@@ -120,10 +115,8 @@ public abstract class AbstractDdlParser implements DdlParser {
      *
      * @param event the event; may not be null
      */
-    protected void signalEvent(DdlParserListener.Event event) {
-        if (event != null && !listeners.isEmpty()) {
-            listeners.forEach(listener -> listener.handle(event));
-        }
+    protected void signalChangeEvent(DdlParserListener.Event event) {
+        this.ddlChanges.handle(event);
     }
 
     /**
@@ -133,7 +126,7 @@ public abstract class AbstractDdlParser implements DdlParser {
      * @param statement    the DDL statement; may not be null
      */
     protected void signalCreateDatabase(String databaseName, String statement) {
-        signalEvent(new DdlParserListener.DatabaseCreatedEvent(databaseName, statement));
+        signalChangeEvent(new DdlParserListener.DatabaseCreatedEvent(databaseName, statement));
     }
 
     /**
@@ -144,7 +137,7 @@ public abstract class AbstractDdlParser implements DdlParser {
      * @param statement            the DDL statement; may not be null
      */
     protected void signalAlterDatabase(String databaseName, String previousDatabaseName, String statement) {
-        signalEvent(new DdlParserListener.DatabaseAlteredEvent(databaseName, previousDatabaseName, statement));
+        signalChangeEvent(new DdlParserListener.DatabaseAlteredEvent(databaseName, previousDatabaseName, statement));
     }
 
     /**
@@ -154,7 +147,7 @@ public abstract class AbstractDdlParser implements DdlParser {
      * @param statement    the DDL statement; may not be null
      */
     protected void signalDropDatabase(String databaseName, String statement) {
-        signalEvent(new DdlParserListener.DatabaseCreatedEvent(databaseName, statement));
+        signalChangeEvent(new DdlParserListener.DatabaseCreatedEvent(databaseName, statement));
     }
 
     /**
@@ -164,7 +157,7 @@ public abstract class AbstractDdlParser implements DdlParser {
      * @param statement the DDL statement; may not be null
      */
     protected void signalCreateTable(TableId id, String statement) {
-        signalEvent(new DdlParserListener.TableCreatedEvent(id, statement, false));
+        signalChangeEvent(new DdlParserListener.TableCreatedEvent(id, statement, false));
     }
 
     /**
@@ -175,7 +168,7 @@ public abstract class AbstractDdlParser implements DdlParser {
      * @param statement  the DDL statement; may not be null
      */
     protected void signalAlterTable(TableId id, TableId previousId, String statement) {
-        signalEvent(new DdlParserListener.TableAlteredEvent(id, previousId, statement, false));
+        signalChangeEvent(new DdlParserListener.TableAlteredEvent(id, previousId, statement, false));
     }
 
     /**
@@ -185,7 +178,7 @@ public abstract class AbstractDdlParser implements DdlParser {
      * @param statement the statement; may not be null
      */
     protected void signalDropTable(TableId id, String statement) {
-        signalEvent(new DdlParserListener.TableDroppedEvent(id, statement, false));
+        signalChangeEvent(new DdlParserListener.TableDroppedEvent(id, statement, false));
     }
 
     /**
@@ -195,7 +188,7 @@ public abstract class AbstractDdlParser implements DdlParser {
      * @param statement the DDL statement; may not be null
      */
     protected void signalCreateView(TableId id, String statement) {
-        signalEvent(new DdlParserListener.TableCreatedEvent(id, statement, true));
+        signalChangeEvent(new DdlParserListener.TableCreatedEvent(id, statement, true));
     }
 
     /**
@@ -206,7 +199,7 @@ public abstract class AbstractDdlParser implements DdlParser {
      * @param statement  the DDL statement; may not be null
      */
     protected void signalAlterView(TableId id, TableId previousId, String statement) {
-        signalEvent(new DdlParserListener.TableAlteredEvent(id, previousId, statement, true));
+        signalChangeEvent(new DdlParserListener.TableAlteredEvent(id, previousId, statement, true));
     }
 
     /**
@@ -216,7 +209,7 @@ public abstract class AbstractDdlParser implements DdlParser {
      * @param statement the statement; may not be null
      */
     protected void signalDropView(TableId id, String statement) {
-        signalEvent(new DdlParserListener.TableDroppedEvent(id, statement, true));
+        signalChangeEvent(new DdlParserListener.TableDroppedEvent(id, statement, true));
     }
 
     /**
@@ -227,7 +220,7 @@ public abstract class AbstractDdlParser implements DdlParser {
      * @param statement the DDL statement; may not be null
      */
     protected void signalCreateIndex(String indexName, TableId id, String statement) {
-        signalEvent(new DdlParserListener.TableIndexCreatedEvent(indexName, id, statement));
+        signalChangeEvent(new DdlParserListener.TableIndexCreatedEvent(indexName, id, statement));
     }
 
     /**
@@ -238,7 +231,7 @@ public abstract class AbstractDdlParser implements DdlParser {
      * @param statement the DDL statement; may not be null
      */
     protected void signalDropIndex(String indexName, TableId id, String statement) {
-        signalEvent(new DdlParserListener.TableIndexDroppedEvent(indexName, id, statement));
+        signalChangeEvent(new DdlParserListener.TableIndexDroppedEvent(indexName, id, statement));
     }
 
     protected String removeLineFeeds(String input) {

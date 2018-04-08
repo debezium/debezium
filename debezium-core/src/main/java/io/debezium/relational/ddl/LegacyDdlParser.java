@@ -28,6 +28,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * A parser for DDL statements.
@@ -55,6 +56,8 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
     protected final DataTypeParser dataTypeParser = new DataTypeParser();
     protected Tables databaseTables;
     protected TokenStream tokens;
+
+    private final List<DdlParserListener> listeners = new CopyOnWriteArrayList<>();
 
     /**
      * Create a new parser that uses the supplied {@link DataTypeParser}, but that does not include view definitions.
@@ -86,6 +89,18 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
 
     protected void initializeStatementStarts(TokenSet statementStartTokens) {
         statementStartTokens.add("CREATE", "ALTER", "DROP", "INSERT", "SET", "GRANT", "REVOKE");
+    }
+
+    public void addListener(DdlParserListener listener) {
+        if (listener != null) listeners.add(listener);
+    }
+
+    public boolean removeListener(DdlParserListener listener) {
+        return listener != null && listeners.remove(listener);
+    }
+
+    public void removeListeners() {
+        listeners.clear();
     }
 
     /**
@@ -298,6 +313,19 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
     }
 
     /**
+     * Signal an event to all listeners.
+     *
+     * @param event the event; may not be null
+     */
+    @Override
+    protected void signalChangeEvent(DdlParserListener.Event event) {
+        if (event != null && !listeners.isEmpty()) {
+            listeners.forEach(listener -> listener.handle(event));
+        }
+        super.signalChangeEvent(event);
+    }
+
+    /**
      * Signal an alter database event to all listeners.
      *
      * @param databaseName the database name; may not be null
@@ -356,7 +384,7 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
      * @param statementStart the start of the statement; may not be null
      */
     protected void signalCreateView(TableId id, Marker statementStart) {
-        signalEvent(new TableCreatedEvent(id, statement(statementStart), true));
+        signalChangeEvent(new TableCreatedEvent(id, statement(statementStart), true));
     }
 
     /**

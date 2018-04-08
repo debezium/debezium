@@ -19,8 +19,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.antlr.mysql.MySqlSystemVariables;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
+import io.debezium.antlr.mysql.MySqlSystemVariables.MySqlScope;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
@@ -51,7 +53,6 @@ public class MySqlDdlParser extends LegacyDdlParser {
      */
     private static final String SERVER_CHARSET_NAME = MySqlSystemVariables.CHARSET_NAME_SERVER;
 
-    private final MySqlSystemVariables systemVariables = new MySqlSystemVariables();
     private final ConcurrentMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
 
     /**
@@ -68,10 +69,7 @@ public class MySqlDdlParser extends LegacyDdlParser {
      */
     public MySqlDdlParser(boolean includeViews) {
         super(";", includeViews);
-    }
-
-    protected MySqlSystemVariables systemVariables() {
-        return systemVariables;
+        systemVariables = new MySqlSystemVariables();
     }
 
     @Override
@@ -179,7 +177,7 @@ public class MySqlDdlParser extends LegacyDdlParser {
 
     protected void parseSet(Marker start) {
         tokens.consume("SET");
-        AtomicReference<MySqlSystemVariables.Scope> scope = new AtomicReference<>();
+        AtomicReference<MySqlScope> scope = new AtomicReference<>();
         parseSetVariable(start, scope);
         while (tokens.canConsume(',')) {
             parseSetVariable(start, scope);
@@ -188,14 +186,14 @@ public class MySqlDdlParser extends LegacyDdlParser {
         debugParsed(start);
     }
 
-    protected void parseSetVariable(Marker start, AtomicReference<MySqlSystemVariables.Scope> scope) {
+    protected void parseSetVariable(Marker start, AtomicReference<MySqlScope> scope) {
         // First, use the modifier to set the scope ...
         if (tokens.canConsume("GLOBAL") || tokens.canConsume("@@GLOBAL", ".")) {
-            scope.set(MySqlSystemVariables.Scope.GLOBAL);
+            scope.set(MySqlScope.GLOBAL);
         } else if (tokens.canConsume("SESSION") || tokens.canConsume("@@SESSION", ".")) {
-            scope.set(MySqlSystemVariables.Scope.SESSION);
+            scope.set(MySqlScope.SESSION);
         } else if (tokens.canConsume("LOCAL") || tokens.canConsume("@@LOCAL", ".")) {
-            scope.set(MySqlSystemVariables.Scope.LOCAL);
+            scope.set(MySqlScope.LOCAL);
         }
 
         // Now handle the remainder of the variable assignment ...
@@ -249,7 +247,7 @@ public class MySqlDdlParser extends LegacyDdlParser {
                 }
 
                 // Signal that the variable was set ...
-                signalEvent(new SetVariableEvent(variableName, value, statement(start)));
+                signalChangeEvent(new SetVariableEvent(variableName, value, statement(start)));
             }
         }
     }
@@ -1439,7 +1437,7 @@ public class MySqlDdlParser extends LegacyDdlParser {
         // system variables. We replicate that behavior here (or the variable we care about) so that these variables are always
         // right for the current database.
         String charsetForDb = charsetNameForDatabase.get(dbName);
-        systemVariables.setVariable(MySqlSystemVariables.Scope.GLOBAL, "character_set_database", charsetForDb);
+        systemVariables.setVariable(MySqlScope.GLOBAL, "character_set_database", charsetForDb);
     }
 
     /**

@@ -14,7 +14,7 @@ import org.apache.kafka.common.config.ConfigDef.Width;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.relational.Tables;
-import io.debezium.relational.ddl.LegacyDdlParser;
+import io.debezium.relational.ddl.DdlParser;
 
 /**
  * A history of the database schema described by a {@link Tables}. Changes to the database schema can be
@@ -74,7 +74,7 @@ public interface DatabaseHistory {
      *
      * @param config the configuration for this history store
      * @param comparator the function that should be used to compare history records during
-     *            {@link #recover(Map, Map, Tables, LegacyDdlParser) recovery}; may be null if the
+     *            {@link #recover(Map, Map, Tables, DdlParser) recovery}; may be null if the
      *            {@link HistoryRecordComparator#INSTANCE default comparator} is to be used
      */
     void configure(Configuration config, HistoryRecordComparator comparator);
@@ -89,7 +89,7 @@ public interface DatabaseHistory {
      *
      * @param source the information about the source database; may not be null
      * @param position the point in history where these DDL changes were made, which may be used when
-     *            {@link #recover(Map, Map, Tables, LegacyDdlParser) recovering} the schema to some point in history; may not be
+     *            {@link #recover(Map, Map, Tables, DdlParser) recovering} the schema to some point in history; may not be
      *            null
      * @param databaseName the name of the database whose schema is being changed; may be null
      * @param ddl the DDL statements that describe the changes to the database schema; may not be null
@@ -109,7 +109,7 @@ public interface DatabaseHistory {
      *            may not be null
      * @param ddlParser the DDL parser that can be used to apply DDL statements to the given {@code schema}; may not be null
      */
-    void recover(Map<String, ?> source, Map<String, ?> position, Tables schema, LegacyDdlParser ddlParser);
+    void recover(Map<String, ?> source, Map<String, ?> position, Tables schema, DdlParser ddlParser);
 
     /**
      * Stop recording history and release any resources acquired since {@link #configure(Configuration, HistoryRecordComparator)}.

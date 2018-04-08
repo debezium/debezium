@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import io.debezium.antlr.mysql.MySqlSystemVariables;
+import io.debezium.relational.SystemVariables;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -1442,7 +1444,7 @@ public class MySqlDdlParserTest {
         }
     }
 
-    protected void assertVariable(MySqlSystemVariables.Scope scope, String name, String expectedValue) {
+    protected void assertVariable(SystemVariables.Scope scope, String name, String expectedValue) {
         String actualValue = parser.systemVariables().getVariable(name, scope);
         if (expectedValue == null) {
             assertThat(actualValue).isNull();
@@ -1452,15 +1454,15 @@ public class MySqlDdlParserTest {
     }
 
     protected void assertGlobalVariable(String name, String expectedValue) {
-        assertVariable(MySqlSystemVariables.Scope.GLOBAL, name, expectedValue);
+        assertVariable(MySqlSystemVariables.MySqlScope.GLOBAL, name, expectedValue);
     }
 
     protected void assertSessionVariable(String name, String expectedValue) {
-        assertVariable(MySqlSystemVariables.Scope.SESSION, name, expectedValue);
+        assertVariable(MySqlSystemVariables.MySqlScope.SESSION, name, expectedValue);
     }
 
     protected void assertLocalVariable(String name, String expectedValue) {
-        assertVariable(MySqlSystemVariables.Scope.LOCAL, name, expectedValue);
+        assertVariable(MySqlSystemVariables.MySqlScope.LOCAL, name, expectedValue);
     }
 
     protected void printEvent(Event event) {
