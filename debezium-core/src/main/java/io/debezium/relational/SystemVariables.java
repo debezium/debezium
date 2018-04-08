@@ -26,12 +26,28 @@ public class SystemVariables {
         int priority();
     }
 
+    public enum DefaultScope implements Scope {
+        DEFAULT_SCOPE(100);
+
+        private int priority;
+
+        DefaultScope(int priority) {
+            this.priority = priority;
+        }
+
+        @Override
+        public int priority() {
+            return priority;
+        }
+    }
+
     private final Map<Scope, ConcurrentMap<String, String>> systemVariables = new ConcurrentHashMap<>();
 
     /**
      * Create an instance.
      */
     public SystemVariables() {
+        systemVariables.put(DefaultScope.DEFAULT_SCOPE, new ConcurrentHashMap<>());
     }
 
     /**
@@ -101,7 +117,8 @@ public class SystemVariables {
             return systemVariables.computeIfAbsent(scope, entities -> new ConcurrentHashMap<>());
         }
         // return most prior scope variables if scope is not defined
-        return getOrderedSystemVariablesByScopePriority().get(0);
+        List<ConcurrentMap<String, String>> orderedSystemVariablesByScopePriority = getOrderedSystemVariablesByScopePriority();
+        return orderedSystemVariablesByScopePriority.isEmpty() ? null : orderedSystemVariablesByScopePriority.get(0);
     }
 
 }

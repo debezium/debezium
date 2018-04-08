@@ -15,6 +15,7 @@ import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
+import io.debezium.relational.SystemVariables;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
@@ -68,6 +69,11 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     @Override
     protected MySqlParser createNewParserInstance(CommonTokenStream commonTokenStream) {
         return new MySqlParser(commonTokenStream);
+    }
+
+    @Override
+    protected SystemVariables createNewSystemVariablesInstance() {
+        return new MySqlSystemVariables();
     }
 
     @Override
