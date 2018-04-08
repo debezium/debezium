@@ -11,7 +11,7 @@ import org.antlr.v4.runtime.misc.Interval;
 
 /**
  * https://github.com/parrt/antlr4/blob/case-insensitivity-doc/doc/resources/CaseChangingCharStream.java
- *
+ * <p>
  * This class supports case-insensitive lexing by wrapping an existing
  * {@link CharStream} and forcing the lexer to see either upper or
  * lowercase characters. Grammar literals should then be either upper or
@@ -28,8 +28,9 @@ public class CaseChangingCharStream implements CharStream {
     /**
      * Constructs a new CaseChangingCharStream wrapping the given {@link CharStream} forcing
      * all characters to upper case or lower case.
+     *
      * @param stream The stream to wrap.
-     * @param upper If true force each symbol to upper case, otherwise force to lower.
+     * @param upper  If true force each symbol to upper case, otherwise force to lower.
      */
     public CaseChangingCharStream(CharStream stream, boolean upper) {
         this.stream = stream;

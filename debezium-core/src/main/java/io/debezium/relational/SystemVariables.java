@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 
 /**
  * Encapsulates a set of the MySQL system variables.
- * 
+ *
  * @author Randall Hauch
  */
 public class SystemVariables {
@@ -36,9 +36,9 @@ public class SystemVariables {
 
     /**
      * Set the variable with the specified scope.
-     * 
+     *
      * @param scope the variable scope; may be null if the session scope is to be used
-     * @param name the name of the variable; may not be null
+     * @param name  the name of the variable; may not be null
      * @param value the variable value; may be null if the value for the named variable is to be removed
      * @return this object for method chaining purposes; never null
      */
@@ -46,7 +46,8 @@ public class SystemVariables {
         name = variableName(name);
         if (value != null) {
             forScope(scope).put(name, value);
-        } else {
+        }
+        else {
             forScope(scope).remove(name);
         }
         return this;
@@ -54,8 +55,8 @@ public class SystemVariables {
 
     /**
      * Get the variable with the specified name and scope.
-     * 
-     * @param name the name of the variable; may not be null
+     *
+     * @param name  the name of the variable; may not be null
      * @param scope the variable scope; may not be null
      * @return the variable value; may be null if the variable is not currently set
      */
@@ -66,7 +67,7 @@ public class SystemVariables {
 
     /**
      * Get the variable with the specified name, from the highest priority scope that contain it.
-     * 
+     *
      * @param name the name of the variable; may not be null
      * @return the variable value; may be null if the variable is not currently set
      */
@@ -77,7 +78,7 @@ public class SystemVariables {
 
         for (ConcurrentMap<String, String> variablesByScope : orderedSystemVariablesByPriority) {
             String variableName = variablesByScope.get(name);
-            if(variableName != null) {
+            if (variableName != null) {
                 return variableName;
             }
         }
@@ -86,9 +87,9 @@ public class SystemVariables {
 
     private List<ConcurrentMap<String, String>> getOrderedSystemVariablesByScopePriority() {
         return systemVariables.entrySet().stream()
-                    .sorted(Comparator.comparingInt(entry -> entry.getKey().priority()))
-                    .map(Map.Entry::getValue)
-                    .collect(Collectors.toList());
+                .sorted(Comparator.comparingInt(entry -> entry.getKey().priority()))
+                .map(Map.Entry::getValue)
+                .collect(Collectors.toList());
     }
 
     private String variableName(String name) {

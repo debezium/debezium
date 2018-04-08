@@ -8,16 +8,16 @@ package io.debezium.antlr;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 
- import java.sql.Types;
- import java.util.ArrayList;
- import java.util.HashMap;
- import java.util.List;
- import java.util.Map;
+import java.sql.Types;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class DataTypeResolver {
 
     private final Map<String, List<DataTypeEntry>> contextDataTypesMap = new HashMap<>();
-    
+
     public void registerDataTypes(String contextClassCanonicalName, List<DataTypeEntry> dataTypeEntries) {
         contextDataTypesMap.put(contextClassCanonicalName, dataTypeEntries);
     }
