@@ -61,7 +61,8 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
             if (!proxyParseTreeListener.getErrors().isEmpty()) {
                 throw new MultipleParsingExceptions(proxyParseTreeListener.getErrors());
             }
-        } else {
+        }
+        else {
             throw new MultipleParsingExceptions(parsingErrorListener.getErrors());
         }
     }
@@ -70,7 +71,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * Examine the supplied string containing DDL statements, and apply those statements to the specified
      * database table definitions.
      *
-     * @param parser         initialized ANTLR parser instance with common token stream from DDL statement; may not be null
+     * @param parser initialized ANTLR parser instance with common token stream from DDL statement; may not be null
      */
     protected abstract ParseTree parseTree(P parser);
 
@@ -121,7 +122,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * Signal a create database event to all listeners.
      *
      * @param databaseName the database name; may not be null
-     * @param ctx the start of the statement; may not be null
+     * @param ctx          the start of the statement; may not be null
      */
     protected void signalCreateDatabase(String databaseName, ParserRuleContext ctx) {
         signalCreateDatabase(databaseName, getText(ctx));
@@ -130,9 +131,9 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     /**
      * Signal an alter database event to all listeners.
      *
-     * @param databaseName the database name; may not be null
+     * @param databaseName         the database name; may not be null
      * @param previousDatabaseName the previous name of the database if it was renamed, or null if it was not renamed
-     * @param ctx the start of the statement; may not be null
+     * @param ctx                  the start of the statement; may not be null
      */
     protected void signalAlterDatabase(String databaseName, String previousDatabaseName, ParserRuleContext ctx) {
         signalAlterDatabase(databaseName, previousDatabaseName, getText(ctx));
@@ -142,7 +143,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * Signal a drop database event to all listeners.
      *
      * @param databaseName the database name; may not be null
-     * @param ctx the start of the statement; may not be null
+     * @param ctx          the start of the statement; may not be null
      */
     protected void signalDropDatabase(String databaseName, ParserRuleContext ctx) {
         signalDropDatabase(databaseName, getText(ctx));
@@ -151,7 +152,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     /**
      * Signal a create table event to all listeners.
      *
-     * @param id the table identifier; may not be null
+     * @param id  the table identifier; may not be null
      * @param ctx the start of the statement; may not be null
      */
     protected void signalCreateTable(TableId id, ParserRuleContext ctx) {
@@ -161,9 +162,9 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     /**
      * Signal an alter table event to all listeners.
      *
-     * @param id the table identifier; may not be null
+     * @param id         the table identifier; may not be null
      * @param previousId the previous name of the view if it was renamed, or null if it was not renamed
-     * @param ctx the start of the statement; may not be null
+     * @param ctx        the start of the statement; may not be null
      */
     protected void signalAlterTable(TableId id, TableId previousId, ParserRuleContext ctx) {
         signalAlterTable(id, previousId, getText(ctx));
@@ -172,7 +173,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     /**
      * Signal a drop table event to all listeners.
      *
-     * @param id the table identifier; may not be null
+     * @param id  the table identifier; may not be null
      * @param ctx the start of the statement; may not be null
      */
     protected void signalDropTable(TableId id, ParserRuleContext ctx) {
@@ -182,7 +183,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     /**
      * Signal a create view event to all listeners.
      *
-     * @param id the table identifier; may not be null
+     * @param id  the table identifier; may not be null
      * @param ctx the start of the statement; may not be null
      */
     protected void signalCreateView(TableId id, ParserRuleContext ctx) {
@@ -192,9 +193,9 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     /**
      * Signal an alter view event to all listeners.
      *
-     * @param id the table identifier; may not be null
+     * @param id         the table identifier; may not be null
      * @param previousId the previous name of the view if it was renamed, or null if it was not renamed
-     * @param ctx the start of the statement; may not be null
+     * @param ctx        the start of the statement; may not be null
      */
     protected void signalAlterView(TableId id, TableId previousId, ParserRuleContext ctx) {
         signalAlterView(id, previousId, getText(ctx));
@@ -203,7 +204,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     /**
      * Signal a drop view event to all listeners.
      *
-     * @param id the table identifier; may not be null
+     * @param id  the table identifier; may not be null
      * @param ctx the start of the statement; may not be null
      */
     protected void signalDropView(TableId id, ParserRuleContext ctx) {
@@ -214,8 +215,8 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * Signal a create index event to all listeners.
      *
      * @param indexName the name of the index; may not be null
-     * @param id the table identifier; may be null if the index does not apply to a single table
-     * @param ctx the start of the statement; may not be null
+     * @param id        the table identifier; may be null if the index does not apply to a single table
+     * @param ctx       the start of the statement; may not be null
      */
     protected void signalCreateIndex(String indexName, TableId id, ParserRuleContext ctx) {
         signalCreateIndex(indexName, id, getText(ctx));
@@ -225,8 +226,8 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * Signal a drop index event to all listeners.
      *
      * @param indexName the name of the index; may not be null
-     * @param id the table identifier; may not be null
-     * @param ctx the start of the statement; may not be null
+     * @param id        the table identifier; may not be null
+     * @param ctx       the start of the statement; may not be null
      */
     protected void signalDropIndex(String indexName, TableId id, ParserRuleContext ctx) {
         signalDropIndex(indexName, id, getText(ctx));

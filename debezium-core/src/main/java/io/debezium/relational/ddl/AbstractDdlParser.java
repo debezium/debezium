@@ -273,13 +273,16 @@ public abstract class AbstractDdlParser implements DdlParser {
                 column.type("CHAR");
                 column.jdbcType(Types.CHAR);
                 column.length(constantValue.length() - 2);
-            } else if (constantValue.equalsIgnoreCase("TRUE") || constantValue.equalsIgnoreCase("FALSE")) {
+            }
+            else if (constantValue.equalsIgnoreCase("TRUE") || constantValue.equalsIgnoreCase("FALSE")) {
                 column.type("BOOLEAN");
                 column.jdbcType(Types.BOOLEAN);
-            } else {
+            }
+            else {
                 setTypeInfoForConstant(constantValue, column);
             }
-        } catch (Throwable t) {
+        }
+        catch (Throwable t) {
             logger.debug("Unable to create an artificial column for the constant: " + constantValue);
         }
         return column.create();
@@ -290,19 +293,22 @@ public abstract class AbstractDdlParser implements DdlParser {
             Integer.parseInt(constantValue);
             column.type("INTEGER");
             column.jdbcType(Types.INTEGER);
-        } catch (NumberFormatException e) {
+        }
+        catch (NumberFormatException e) {
         }
         try {
             Long.parseLong(constantValue);
             column.type("BIGINT");
             column.jdbcType(Types.BIGINT);
-        } catch (NumberFormatException e) {
+        }
+        catch (NumberFormatException e) {
         }
         try {
             Float.parseFloat(constantValue);
             column.type("FLOAT");
             column.jdbcType(Types.FLOAT);
-        } catch (NumberFormatException e) {
+        }
+        catch (NumberFormatException e) {
         }
         try {
             Double.parseDouble(constantValue);
@@ -315,20 +321,24 @@ public abstract class AbstractDdlParser implements DdlParser {
                 char c = constantValue.charAt(i);
                 if (c == '+' || c == '-') {
                     continue;
-                } else if (c == '.') {
+                }
+                else if (c == '.') {
                     foundDecimalPoint = true;
-                } else if (Character.isDigit(c)) {
+                }
+                else if (Character.isDigit(c)) {
                     if (foundDecimalPoint)
                         ++scale;
                     else
                         ++precision;
-                } else {
+                }
+                else {
                     break;
                 }
             }
             column.length(precision);
             column.scale(scale);
-        } catch (NumberFormatException e) {
+        }
+        catch (NumberFormatException e) {
         }
         try {
             BigDecimal decimal = new BigDecimal(constantValue);
@@ -336,7 +346,8 @@ public abstract class AbstractDdlParser implements DdlParser {
             column.jdbcType(Types.DECIMAL);
             column.length(decimal.precision());
             column.scale(decimal.precision());
-        } catch (NumberFormatException e) {
+        }
+        catch (NumberFormatException e) {
         }
     }
 

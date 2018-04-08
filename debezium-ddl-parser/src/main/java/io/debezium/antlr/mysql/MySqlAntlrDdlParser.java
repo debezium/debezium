@@ -152,7 +152,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         if ((dotIndex = fullTableName.indexOf(".")) > 0) {
             return resolveTableId(fullTableName.substring(0, dotIndex),
                     fullTableName.substring(dotIndex + 1, fullTableName.length()));
-        } else {
+        }
+        else {
             return resolveTableId(currentSchema(), fullTableName);
         }
     }
@@ -164,7 +165,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     private String getFullTableName(TableId tableId) {
         if (tableId.catalog() != null) {
             return tableId.catalog() + "." + tableId.table();
-        } else {
+        }
+        else {
             return tableId.table();
         }
     }
@@ -180,7 +182,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 Integer length = Integer.valueOf(stringDataTypeContext.lengthOneDimension().decimalLiteral().getText());
                 columnEditor.length(length);
             }
-        } else if (dataTypeContext instanceof MySqlParser.DimensionDataTypeContext) {
+        }
+        else if (dataTypeContext instanceof MySqlParser.DimensionDataTypeContext) {
             // TINYINT | SMALLINT | MEDIUMINT | INT | INTEGER | BIGINT
             // REAL | DOUBLE | FLOAT
             // DECIMAL | NUMERIC | DEC | FIXED
@@ -214,17 +217,21 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
             if (scale != null) {
                 columnEditor.scale(scale);
             }
-        } else if (dataTypeContext instanceof MySqlParser.SimpleDataTypeContext) {
+        }
+        else if (dataTypeContext instanceof MySqlParser.SimpleDataTypeContext) {
             // DATE | TINYBLOB | BLOB | MEDIUMBLOB | LONGBLOB | BOOL | BOOLEAN
             dataTypeName = ((MySqlParser.SimpleDataTypeContext) dataTypeContext).typeName.getText();
-        } else if (dataTypeContext instanceof MySqlParser.CollectionDataTypeContext) {
+        }
+        else if (dataTypeContext instanceof MySqlParser.CollectionDataTypeContext) {
             // ENUM | SET
             // do not care about charsetName or collationName
             dataTypeName = ((MySqlParser.CollectionDataTypeContext) dataTypeContext).typeName.getText();
-        } else if (dataTypeContext instanceof MySqlParser.SpatialDataTypeContext) {
+        }
+        else if (dataTypeContext instanceof MySqlParser.SpatialDataTypeContext) {
             // GEOMETRYCOLLECTION | LINESTRING | MULTILINESTRING | MULTIPOINT | MULTIPOLYGON | POINT | POLYGON
             dataTypeName = ((MySqlParser.SpatialDataTypeContext) dataTypeContext).typeName.getText();
-        } else {
+        }
+        else {
             throw new IllegalStateException("Not recognized instance of data type context for " + dataTypeContext.getText());
         }
 
@@ -374,7 +381,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
                 if (ctx.FIRST() != null) {
                     tableEditor.reorderColumn(columnName, null);
-                } else if (ctx.AFTER() != null) {
+                }
+                else if (ctx.AFTER() != null) {
                     String afterColumn = parseColumnName(ctx.uid(1));
                     tableEditor.reorderColumn(columnName, afterColumn);
                 }
@@ -404,7 +412,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                     if (columnEditors.size() > parsingColumnIndex) {
                         // assign next column editor to parse another column definition
                         columnEditor = columnEditors.get(parsingColumnIndex++);
-                    } else {
+                    }
+                    else {
                         // all columns parsed
                         // reset global variables for next parsed statement
                         columnEditors = null;
@@ -428,7 +437,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 Column existingColumn = tableEditor.columnWithName(oldColumnName);
                 if (existingColumn != null) {
                     columnEditor = existingColumn.edit();
-                } else {
+                }
+                else {
                     throw new ParsingException(null, "Trying to change column " + oldColumnName + " in "
                             + getFullTableName(tableEditor.tableId()) + " table, which does not exists.");
                 }
@@ -445,7 +455,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
                 if (ctx.FIRST() != null) {
                     tableEditor.reorderColumn(newColumnName, null);
-                } else if (ctx.afterColumn != null) {
+                }
+                else if (ctx.afterColumn != null) {
                     tableEditor.reorderColumn(newColumnName, parseColumnName(ctx.afterColumn));
                 }
             });
@@ -459,7 +470,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 Column column = tableEditor.columnWithName(columnName);
                 if (column != null) {
                     columnEditor = column.edit();
-                } else {
+                }
+                else {
                     throw new ParsingException(null, "Trying to change column " + columnName + " in "
                             + getFullTableName(tableEditor.tableId()) + " table, which does not exists.");
                 }
@@ -474,7 +486,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
                 if (ctx.FIRST() != null) {
                     tableEditor.reorderColumn(columnEditor.name(), null);
-                } else if (ctx.AFTER() != null) {
+                }
+                else if (ctx.AFTER() != null) {
                     String afterColumn = parseColumnName(ctx.uid(1));
                     tableEditor.reorderColumn(columnEditor.name(), afterColumn);
                 }
@@ -635,7 +648,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                         parsePrimaryIndexColumnNames(ctx.indexColumnNames());
                         signalAlterTable(tableId, null, ctx);
                     }
-                } else {
+                }
+                else {
                     throw new ParsingException(null, "Trying to create index on non existing table " + getFullTableName(tableId));
                 }
             }
@@ -655,7 +669,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 tableEditor = null;
                 columnEditor = null;
                 debugParsed(ctx);
-            } else {
+            }
+            else {
                 // if table editor was not set, then nothing was parsed
                 debugSkipped(ctx);
             }
@@ -665,6 +680,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
     /**
      * Runs the function if {@link MySqlAntlrDdlParser#tableEditor} is not null.
+     *
      * @param function function to run.
      */
     private void runIfTableEditorNotNull(Runnable function) {
@@ -675,6 +691,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
     /**
      * Runs the function if {@link MySqlAntlrDdlParser#tableEditor} and {@link MySqlAntlrDdlParser#columnEditor} is not null.
+     *
      * @param function function to run.
      */
     private void runIfAllEditorsNotNull(Runnable function) {
