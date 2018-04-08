@@ -112,7 +112,7 @@ public class SystemVariables {
         return name.toLowerCase();
     }
 
-    private ConcurrentMap<String, String> forScope(Scope scope) {
+    protected ConcurrentMap<String, String> forScope(Scope scope) {
         if (scope != null) {
             return systemVariables.computeIfAbsent(scope, entities -> new ConcurrentHashMap<>());
         }
