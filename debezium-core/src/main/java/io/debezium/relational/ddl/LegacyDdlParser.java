@@ -7,6 +7,7 @@ package io.debezium.relational.ddl;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.relational.Column;
+import io.debezium.relational.SystemVariables;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
@@ -79,6 +80,11 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
         initializeDataTypes(dataTypeParser);
         initializeKeywords(keywords::add);
         initializeStatementStarts(statementStarts::add);
+    }
+
+    @Override
+    protected SystemVariables createNewSystemVariablesInstance() {
+        return new SystemVariables();
     }
 
     protected void initializeDataTypes(DataTypeParser dataTypeParser) {

@@ -27,6 +27,7 @@ import io.debezium.antlr.mysql.MySqlSystemVariables;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.antlr.mysql.MySqlSystemVariables.MySqlScope;
+import io.debezium.relational.SystemVariables;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
@@ -76,7 +77,11 @@ public class MySqlDdlParser extends LegacyDdlParser {
      */
     public MySqlDdlParser(boolean includeViews) {
         super(";", includeViews);
-        systemVariables = new MySqlSystemVariables();
+    }
+
+    @Override
+    protected SystemVariables createNewSystemVariablesInstance() {
+        return new MySqlSystemVariables();
     }
 
     protected MySqlDdlParser(boolean includeViews, MySqlValueConverters converters) {

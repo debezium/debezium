@@ -52,6 +52,7 @@ public abstract class AbstractDdlParser implements DdlParser {
         this.terminator = terminator != null ? terminator : ";";
         this.skipViews = !includeViews;
         this.ddlChanges = new DdlChanges(terminator);
+        this.systemVariables = createNewSystemVariablesInstance();
     }
 
     @Override
@@ -79,6 +80,8 @@ public abstract class AbstractDdlParser implements DdlParser {
     public SystemVariables systemVariables() {
         return systemVariables;
     }
+
+    protected abstract SystemVariables createNewSystemVariablesInstance();
 
     /**
      * Get the name of the current schema.
