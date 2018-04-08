@@ -36,6 +36,7 @@ public class ProxyParseTreeListener implements ParseTreeListener {
 
     private Collection<ParsingException> errors = new ArrayList<>();
     private final BiFunction<ParsingException, Collection<ParsingException>, Collection<ParsingException>> accumulateError;
+
     /**
      * Creates a new proxy without an empty list of listeners. Add
      * listeners before walking the tree.
@@ -61,7 +62,8 @@ public class ProxyParseTreeListener implements ParseTreeListener {
             try {
                 listener.enterEveryRule(ctx);
                 ctx.enterRule(listener);
-            } catch (ParsingException parsingException) {
+            }
+            catch (ParsingException parsingException) {
                 accumulateError.apply(parsingException, errors);
             }
         }
@@ -73,7 +75,8 @@ public class ProxyParseTreeListener implements ParseTreeListener {
             try {
                 ctx.exitRule(listener);
                 listener.exitEveryRule(ctx);
-            } catch (ParsingException parsingException) {
+            }
+            catch (ParsingException parsingException) {
                 accumulateError.apply(parsingException, errors);
             }
         }
@@ -84,7 +87,8 @@ public class ProxyParseTreeListener implements ParseTreeListener {
         for (ParseTreeListener listener : getListeners()) {
             try {
                 listener.visitErrorNode(node);
-            } catch (ParsingException parsingException) {
+            }
+            catch (ParsingException parsingException) {
                 accumulateError.apply(parsingException, errors);
             }
         }
@@ -95,7 +99,8 @@ public class ProxyParseTreeListener implements ParseTreeListener {
         for (ParseTreeListener listener : getListeners()) {
             try {
                 listener.visitTerminal(node);
-            } catch (ParsingException parsingException) {
+            }
+            catch (ParsingException parsingException) {
                 accumulateError.apply(parsingException, errors);
             }
         }
