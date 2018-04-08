@@ -47,7 +47,8 @@ public class MySqlSystemVariables extends SystemVariables {
     @Override
     protected ConcurrentMap<String, String> forScope(Scope scope) {
         // local and session scope are the same in MySQL
-        if (scope == MySqlScope.LOCAL) {
+        // use session as default scope
+        if (scope == null || scope == MySqlScope.LOCAL) {
             scope = MySqlScope.SESSION;
         }
         return super.forScope(scope);
