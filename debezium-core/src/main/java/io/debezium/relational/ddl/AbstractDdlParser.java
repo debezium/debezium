@@ -27,7 +27,7 @@ public abstract class AbstractDdlParser implements DdlParser {
 
     private final String terminator;
     protected final boolean skipViews;
-    private final DdlChanges ddlChanges;
+    protected DdlChanges ddlChanges;
     protected SystemVariables systemVariables;
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());

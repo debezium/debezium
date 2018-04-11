@@ -50,6 +50,18 @@ public class SystemVariables {
         systemVariables.put(DefaultScope.DEFAULT_SCOPE, new ConcurrentHashMap<>());
     }
 
+    public SystemVariables(Scope[] scopes) {
+        for (Scope scope : scopes) {
+            systemVariables.put(scope, new ConcurrentHashMap<>());
+        }
+    }
+
+    public SystemVariables(List<Scope> scopes) {
+        for (Scope scope : scopes) {
+            systemVariables.put(scope, new ConcurrentHashMap<>());
+        }
+    }
+
     /**
      * Set the variable with the specified scope.
      *
