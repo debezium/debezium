@@ -119,7 +119,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     }
 
     /**
-     * Signal a create database event to all listeners.
+     * Signal a create database event to ddl changes listener.
      *
      * @param databaseName the database name; may not be null
      * @param ctx          the start of the statement; may not be null
@@ -129,7 +129,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     }
 
     /**
-     * Signal an alter database event to all listeners.
+     * Signal an alter database event to ddl changes listener.
      *
      * @param databaseName         the database name; may not be null
      * @param previousDatabaseName the previous name of the database if it was renamed, or null if it was not renamed
@@ -140,7 +140,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     }
 
     /**
-     * Signal a drop database event to all listeners.
+     * Signal a drop database event to ddl changes listener.
      *
      * @param databaseName the database name; may not be null
      * @param ctx          the start of the statement; may not be null
@@ -150,7 +150,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     }
 
     /**
-     * Signal a create table event to all listeners.
+     * Signal a create table event to ddl changes listener.
      *
      * @param id  the table identifier; may not be null
      * @param ctx the start of the statement; may not be null
@@ -160,7 +160,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     }
 
     /**
-     * Signal an alter table event to all listeners.
+     * Signal an alter table event to ddl changes listener.
      *
      * @param id         the table identifier; may not be null
      * @param previousId the previous name of the view if it was renamed, or null if it was not renamed
@@ -171,7 +171,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     }
 
     /**
-     * Signal a drop table event to all listeners.
+     * Signal a drop table event to ddl changes listener.
      *
      * @param id  the table identifier; may not be null
      * @param ctx the start of the statement; may not be null
@@ -181,7 +181,17 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     }
 
     /**
-     * Signal a create view event to all listeners.
+     * Signal a truncate table event to ddl changes listener.
+     *
+     * @param id  the table identifier; may not be null
+     * @param ctx the start of the statement; may not be null
+     */
+    protected void signalTruncateTable(TableId id, ParserRuleContext ctx) {
+        signalTruncateTable(id, getText(ctx));
+    }
+
+    /**
+     * Signal a create view event to ddl changes listener.
      *
      * @param id  the table identifier; may not be null
      * @param ctx the start of the statement; may not be null
@@ -191,7 +201,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     }
 
     /**
-     * Signal an alter view event to all listeners.
+     * Signal an alter view event to ddl changes listener.
      *
      * @param id         the table identifier; may not be null
      * @param previousId the previous name of the view if it was renamed, or null if it was not renamed
@@ -202,7 +212,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     }
 
     /**
-     * Signal a drop view event to all listeners.
+     * Signal a drop view event to ddl changes listener.
      *
      * @param id  the table identifier; may not be null
      * @param ctx the start of the statement; may not be null
@@ -212,7 +222,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     }
 
     /**
-     * Signal a create index event to all listeners.
+     * Signal a create index event to ddl changes listener.
      *
      * @param indexName the name of the index; may not be null
      * @param id        the table identifier; may be null if the index does not apply to a single table
@@ -223,7 +233,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     }
 
     /**
-     * Signal a drop index event to all listeners.
+     * Signal a drop index event to ddl changes listener.
      *
      * @param indexName the name of the index; may not be null
      * @param id        the table identifier; may not be null
