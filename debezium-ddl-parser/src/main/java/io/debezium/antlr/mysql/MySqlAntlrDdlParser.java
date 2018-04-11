@@ -51,12 +51,12 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
     @Override
     protected void assignParserListeners(ProxyParseTreeListener proxyParseTreeListener) {
+        proxyParseTreeListener.add(new ColumnDefinitionParserListener());
         proxyParseTreeListener.add(new CreateTableParserListener());
         proxyParseTreeListener.add(new DropTableParserListener());
         proxyParseTreeListener.add(new AlterTableParserListener());
-        proxyParseTreeListener.add(new ColumnDefinitionParserListener());
         proxyParseTreeListener.add(new RenameTableParserListener());
-//        proxyParseTreeListener.add(new TruncateTableParserListener());
+        proxyParseTreeListener.add(new TruncateTableParserListener());
         proxyParseTreeListener.add(new CreateUniqueIndexParserListener());
         proxyParseTreeListener.add(new FinishSqlStatementParserListener());
     }
@@ -679,8 +679,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
         @Override
         public void enterTruncateTable(MySqlParser.TruncateTableContext ctx) {
-            //TODO how to react for this type of query?
             TableId tableId = parseQualifiedTableId(ctx.tableName());
+            signalTruncateTable(tableId, ctx);
             super.enterTruncateTable(ctx);
         }
     }

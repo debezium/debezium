@@ -114,7 +114,7 @@ public abstract class AbstractDdlParser implements DdlParser {
     }
 
     /**
-     * Signal an event to all listeners.
+     * Signal an event to ddl changes listener.
      *
      * @param event the event; may not be null
      */
@@ -123,7 +123,7 @@ public abstract class AbstractDdlParser implements DdlParser {
     }
 
     /**
-     * Signal a create database event to all listeners.
+     * Signal a create database event to ddl changes listener.
      *
      * @param databaseName the database name; may not be null
      * @param statement    the DDL statement; may not be null
@@ -133,7 +133,7 @@ public abstract class AbstractDdlParser implements DdlParser {
     }
 
     /**
-     * Signal an alter database event to all listeners.
+     * Signal an alter database event to ddl changes listener.
      *
      * @param databaseName         the database name; may not be null
      * @param previousDatabaseName the previous name of the database if it was renamed, or null if it was not renamed
@@ -144,7 +144,7 @@ public abstract class AbstractDdlParser implements DdlParser {
     }
 
     /**
-     * Signal a drop database event to all listeners.
+     * Signal a drop database event to ddl changes listener.
      *
      * @param databaseName the database name; may not be null
      * @param statement    the DDL statement; may not be null
@@ -154,7 +154,7 @@ public abstract class AbstractDdlParser implements DdlParser {
     }
 
     /**
-     * Signal a create table event to all listeners.
+     * Signal a create table event to ddl changes listener.
      *
      * @param id        the table identifier; may not be null
      * @param statement the DDL statement; may not be null
@@ -164,7 +164,7 @@ public abstract class AbstractDdlParser implements DdlParser {
     }
 
     /**
-     * Signal an alter table event to all listeners.
+     * Signal an alter table event to ddl changes listener.
      *
      * @param id         the table identifier; may not be null
      * @param previousId the previous name of the view if it was renamed, or null if it was not renamed
@@ -175,7 +175,7 @@ public abstract class AbstractDdlParser implements DdlParser {
     }
 
     /**
-     * Signal a drop table event to all listeners.
+     * Signal a drop table event to ddl changes listener.
      *
      * @param id        the table identifier; may not be null
      * @param statement the statement; may not be null
@@ -184,8 +184,19 @@ public abstract class AbstractDdlParser implements DdlParser {
         signalChangeEvent(new DdlParserListener.TableDroppedEvent(id, statement, false));
     }
 
+
     /**
-     * Signal a create view event to all listeners.
+     * Signal a truncate table event to ddl changes listener.
+     *
+     * @param id        the table identifier; may not be null
+     * @param statement the statement; may not be null
+     */
+    protected void signalTruncateTable(TableId id, String statement) {
+        signalChangeEvent(new DdlParserListener.TableTruncatedEvent(id, statement, false));
+    }
+
+    /**
+     * Signal a create view event to ddl changes listener.
      *
      * @param id        the table identifier; may not be null
      * @param statement the DDL statement; may not be null
@@ -195,7 +206,7 @@ public abstract class AbstractDdlParser implements DdlParser {
     }
 
     /**
-     * Signal an alter view event to all listeners.
+     * Signal an alter view event to ddl changes listener.
      *
      * @param id         the table identifier; may not be null
      * @param previousId the previous name of the view if it was renamed, or null if it was not renamed
@@ -206,7 +217,7 @@ public abstract class AbstractDdlParser implements DdlParser {
     }
 
     /**
-     * Signal a drop view event to all listeners.
+     * Signal a drop view event to ddl changes listener.
      *
      * @param id        the table identifier; may not be null
      * @param statement the statement; may not be null
@@ -216,7 +227,7 @@ public abstract class AbstractDdlParser implements DdlParser {
     }
 
     /**
-     * Signal a create index event to all listeners.
+     * Signal a create index event to ddl changes listener.
      *
      * @param indexName the name of the index; may not be null
      * @param id        the table identifier; may be null if the index does not apply to a single table
@@ -227,7 +238,7 @@ public abstract class AbstractDdlParser implements DdlParser {
     }
 
     /**
-     * Signal a drop index event to all listeners.
+     * Signal a drop index event to ddl changes listener.
      *
      * @param indexName the name of the index; may not be null
      * @param id        the table identifier; may not be null
