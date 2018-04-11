@@ -11,7 +11,6 @@ import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.ddl.SimpleDdlParserListener;
 import io.debezium.text.MultipleParsingExceptions;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import static org.fest.assertions.Assertions.assertThat;
@@ -19,8 +18,6 @@ import static org.fest.assertions.Assertions.assertThat;
 /**
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
-//TODO rkuchar: fix tests
-@Ignore
 public class MySqlAntlrDdlParserTest {
 
     private DdlParser parser;
@@ -29,9 +26,9 @@ public class MySqlAntlrDdlParserTest {
 
     @Before
     public void beforeEach() {
-        parser = new MySqlAntlrDdlParser();
+        parser = new MySqlAntlrDdlParserWithSimpleTestListener();
         tables = new Tables();
-        listener = new SimpleDdlParserListener();
+        listener = (SimpleDdlParserListener) parser.getDdlChanges();
     }
 
     @Test
@@ -64,6 +61,13 @@ public class MySqlAntlrDdlParserTest {
         parser.parse(ddl, tables);
     }
 
+    class MySqlAntlrDdlParserWithSimpleTestListener extends MySqlAntlrDdlParser {
+
+        public MySqlAntlrDdlParserWithSimpleTestListener() {
+            super();
+            ddlChanges = new SimpleDdlParserListener();
+        }
+    }
 
 }
 

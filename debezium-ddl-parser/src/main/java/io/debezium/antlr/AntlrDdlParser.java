@@ -28,7 +28,7 @@ import org.antlr.v4.runtime.tree.ParseTreeWalker;
 public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends AbstractDdlParser {
 
     protected Tables databaseTables;
-    protected DataTypeResolver dataTypeResolver;
+    protected DataTypeResolver dataTypeResolver = new DataTypeResolver();
 
     public AntlrDdlParser() {
         super(";");

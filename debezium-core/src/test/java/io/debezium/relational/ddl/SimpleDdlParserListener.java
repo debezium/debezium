@@ -18,7 +18,7 @@ import io.debezium.relational.TableId;
  * @author Randall Hauch
  *
  */
-public class SimpleDdlParserListener implements DdlParserListener {
+public class SimpleDdlParserListener extends DdlChanges implements DdlParserListener {
 
     public static final class EventAssert {
 

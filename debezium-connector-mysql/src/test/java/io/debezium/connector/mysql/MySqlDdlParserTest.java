@@ -41,10 +41,9 @@ public class MySqlDdlParserTest {
 
     @Before
     public void beforeEach() {
-        parser = new MySqlDdlParser();
-        tables = new Tables();
         listener = new SimpleDdlParserListener();
-        parser.addListener(listener);
+        parser = new MysqlDdlParserWithTest();
+        tables = new Tables();
     }
 
     @Test
@@ -1626,6 +1625,13 @@ public class MySqlDdlParserTest {
         assertThat(column.isOptional()).isEqualTo(optional);
         assertThat(column.isGenerated()).isEqualTo(generated);
         assertThat(column.isAutoIncremented()).isEqualTo(autoIncremented);
+    }
+
+    class MysqlDdlParserWithTest extends MySqlDdlParser {
+        public MysqlDdlParserWithTest() {
+            super();
+            this.ddlChanges = listener;
+        }
     }
 
 }

@@ -220,7 +220,7 @@ INTEGER:                             'INTEGER';
 BIGINT:                              'BIGINT';
 REAL:                                'REAL';
 DOUBLE:                              'DOUBLE';
-DOUBLE_PRECISION:                           'DOUBLE PRECISION';
+PRECISION:                           'PRECISION';
 FLOAT:                               'FLOAT';
 DECIMAL:                             'DECIMAL';
 DEC:                                 'DEC';
@@ -233,6 +233,8 @@ DATETIME:                            'DATETIME';
 YEAR:                                'YEAR';
 CHAR:                                'CHAR';
 VARCHAR:                             'VARCHAR';
+NVARCHAR:                            'NVARCHAR';
+NATIONAL:                            'NATIONAL';
 BINARY:                              'BINARY';
 VARBINARY:                           'VARBINARY';
 TINYBLOB:                            'TINYBLOB';
@@ -244,6 +246,7 @@ TEXT:                                'TEXT';
 MEDIUMTEXT:                          'MEDIUMTEXT';
 LONGTEXT:                            'LONGTEXT';
 ENUM:                                'ENUM';
+VARYING:                             'VARYING';
 
 
 // Interval type Keywords
@@ -714,6 +717,7 @@ SERIALIZABLE:                        'SERIALIZABLE';
 // Spatial data types
 
 GEOMETRYCOLLECTION:                  'GEOMETRYCOLLECTION';
+GEOMETRY:                            'GEOMETRY';
 LINESTRING:                          'LINESTRING';
 MULTILINESTRING:                     'MULTILINESTRING';
 MULTIPOINT:                          'MULTIPOINT';
