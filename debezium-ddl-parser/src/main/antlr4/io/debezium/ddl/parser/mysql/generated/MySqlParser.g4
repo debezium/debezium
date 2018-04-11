@@ -1965,14 +1965,23 @@ constant
 dataType
     : typeName=(
       CHAR | VARCHAR | TINYTEXT | TEXT | MEDIUMTEXT | LONGTEXT
+       | NCHAR | NVARCHAR
       ) 
       lengthOneDimension? BINARY? 
-      (CHARACTER SET charsetName)? (COLLATE collationName)?         #stringDataType
+      (CHARACTER SET charsetName)? (COLLATE collationName)?          #stringDataType
+    | NATIONAL typeName=(VARCHAR | CHARACTER)
+        lengthOneDimension? BINARY? (COLLATE collationName)?         #nationalStringDataType
+    | NCHAR typeName=VARCHAR
+        lengthOneDimension? BINARY? (COLLATE collationName)?         #nationalStringDataType
+    | NATIONAL typeName=(CHAR | CHARACTER) VARYING
+        lengthOneDimension? BINARY? (COLLATE collationName)?         #nationalVaryingStringDataType
     | typeName=(
         TINYINT | SMALLINT | MEDIUMINT | INT | INTEGER | BIGINT
       ) 
       lengthOneDimension? UNSIGNED? ZEROFILL?                       #dimensionDataType
-    | typeName=(REAL | DOUBLE | DOUBLE_PRECISION | FLOAT)
+    | typeName=(REAL | FLOAT)
+      lengthTwoDimension? UNSIGNED? ZEROFILL?                       #dimensionDataType
+    | typeName=DOUBLE PRECISION?
       lengthTwoDimension? UNSIGNED? ZEROFILL?                       #dimensionDataType
     | typeName=(DECIMAL | DEC | FIXED | NUMERIC)
       lengthTwoOptionalDimension? UNSIGNED? ZEROFILL?               #dimensionDataType
@@ -1990,7 +1999,7 @@ dataType
       (CHARACTER SET charsetName)? (COLLATE collationName)?         #collectionDataType
     | typeName=(
         GEOMETRYCOLLECTION | LINESTRING | MULTILINESTRING
-        | MULTIPOINT | MULTIPOLYGON | POINT | POLYGON
+        | MULTIPOINT | MULTIPOLYGON | POINT | POLYGON | JSON | GEOMETRY
       )                                                             #spatialDataType
     ;
 
