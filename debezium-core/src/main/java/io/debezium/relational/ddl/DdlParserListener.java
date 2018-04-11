@@ -31,7 +31,7 @@ public interface DdlParserListener {
      * The type of concrete {@link Event}s.
      */
     public static enum EventType {
-        CREATE_TABLE, ALTER_TABLE, DROP_TABLE,
+        CREATE_TABLE, ALTER_TABLE, DROP_TABLE, TRUNCATE_TABLE,
         CREATE_INDEX, DROP_INDEX,
         CREATE_DATABASE, ALTER_DATABASE, DROP_DATABASE,
         SET_VARIABLE,
@@ -152,6 +152,15 @@ public interface DdlParserListener {
         }
     }
 
+    /**
+     * An event describing the truncating of a table.
+     */
+    @Immutable
+    public static class TableTruncatedEvent extends TableEvent {
+        public TableTruncatedEvent(TableId tableId, String ddlStatement, boolean isView) {
+            super(EventType.TRUNCATE_TABLE, tableId, ddlStatement, isView);
+        }
+    }
     /**
      * The abstract base class for all index-related events.
      */
