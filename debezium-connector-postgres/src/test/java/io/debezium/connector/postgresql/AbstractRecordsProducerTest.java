@@ -76,9 +76,10 @@ public abstract class AbstractRecordsProducerTest {
     protected static final Pattern INSERT_TABLE_MATCHING_PATTERN = Pattern.compile("insert into (.*)\\(.*\\) VALUES .*", Pattern.CASE_INSENSITIVE);
 
     protected static final String INSERT_CASH_TYPES_STMT = "INSERT INTO cash_table (csh) VALUES ('$1234.11')";
-    protected static final String INSERT_DATE_TIME_TYPES_STMT = "INSERT INTO time_table(ts, tsneg, tz, date, ti, ttz, it) " +
+    protected static final String INSERT_DATE_TIME_TYPES_STMT = "INSERT INTO time_table(ts, tsneg, tz, date, ti, tip, ttz, tptz, it) " +
                                                                 "VALUES ('2016-11-04T13:51:30.123456'::TIMESTAMP, '1936-10-25T22:10:12.608'::TIMESTAMP, '2016-11-04T13:51:30+02:00'::TIMESTAMPTZ, " +
-                                                                "'2016-11-04'::DATE, '13:51:30'::TIME, '13:51:30+02:00'::TIMETZ, 'P1Y2M3DT4H5M0S'::INTERVAL)";
+                                                                "'2016-11-04'::DATE, '13:51:30'::TIME, '13:51:30.123'::TIME, '13:51:30+02:00'::TIMETZ, '13:51:30.123+02:00'::TIMETZ, " +
+                                                                "'P1Y2M3DT4H5M0S'::INTERVAL)";
     protected static final String INSERT_BIN_TYPES_STMT = "INSERT INTO bitbin_table (ba, bol, bs, bv) " +
                                                           "VALUES (E'\\\\001\\\\002\\\\003'::bytea, '0'::bit(1), '11'::bit(2), '00'::bit(2))";
     protected static final String INSERT_GEOM_TYPES_STMT = "INSERT INTO geom_table(p) VALUES ('(1,1)'::point)";
@@ -299,7 +300,9 @@ public abstract class AbstractRecordsProducerTest {
         String expectedTz = "2016-11-04T11:51:30Z"; //timestamp is stored with TZ, should be read back with UTC
         int expectedDate = Date.toEpochDay(LocalDate.parse("2016-11-04"), null);
         long expectedTi = LocalTime.parse("13:51:30").toNanoOfDay();
+        long expectedTiPrecision = LocalTime.parse("13:51:30.123").toNanoOfDay();
         String expectedTtz = "11:51:30Z";  //time is stored with TZ, should be read back at GMT
+        String expectedTtzPrecision = "11:51:30.123Z";
         double interval = MicroDuration.durationMicros(1, 2, 3, 4, 5, 0, PostgresValueConverter.DAYS_PER_MONTH_AVG);
 
         return Arrays.asList(new SchemaAndValueField("ts", NanoTimestamp.builder().optional().build(), expectedTs),
@@ -307,7 +310,9 @@ public abstract class AbstractRecordsProducerTest {
                              new SchemaAndValueField("tz", ZonedTimestamp.builder().optional().build(), expectedTz),
                              new SchemaAndValueField("date", Date.builder().optional().build(), expectedDate),
                              new SchemaAndValueField("ti", NanoTime.builder().optional().build(), expectedTi),
+                             new SchemaAndValueField("tip", NanoTime.builder().optional().build(), expectedTiPrecision),
                              new SchemaAndValueField("ttz", ZonedTime.builder().optional().build(), expectedTtz),
+                             new SchemaAndValueField("tptz", ZonedTime.builder().optional().build(), expectedTtzPrecision),
                              new SchemaAndValueField("it", MicroDuration.builder().optional().build(), interval));
     }
 
