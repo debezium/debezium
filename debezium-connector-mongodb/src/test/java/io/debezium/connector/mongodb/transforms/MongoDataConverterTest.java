@@ -38,7 +38,7 @@ public class MongoDataConverterTest {
     public void setup() throws Exception {
         record = getFile("restaurants5.json");
         val = BsonDocument.parse(record);
-        builder = SchemaBuilder.struct();
+        builder = SchemaBuilder.struct().name("pub");
     }
 
     @Test
@@ -85,15 +85,15 @@ public class MongoDataConverterTest {
         Schema finalSchema = builder.build();
 
         assertThat(finalSchema).isEqualTo(
-                SchemaBuilder.struct()
-                    .field("address", SchemaBuilder.struct()
+                SchemaBuilder.struct().name("pub")
+                    .field("address", SchemaBuilder.struct().name("pub.address")
                             .field("building", Schema.OPTIONAL_STRING_SCHEMA)
                             .field("coord", SchemaBuilder.array(Schema.OPTIONAL_FLOAT64_SCHEMA).build())
                             .field("street", Schema.OPTIONAL_STRING_SCHEMA)
                             .field("zipcode", Schema.OPTIONAL_STRING_SCHEMA).build())
                     .field("borough", Schema.OPTIONAL_STRING_SCHEMA)
                     .field("cuisine", Schema.OPTIONAL_STRING_SCHEMA)
-                    .field("grades", SchemaBuilder.array(SchemaBuilder.struct()
+                    .field("grades", SchemaBuilder.array(SchemaBuilder.struct().name("pub.grades")
                             .field("date", Schema.OPTIONAL_INT64_SCHEMA)
                             .field("grade", Schema.OPTIONAL_STRING_SCHEMA)
                             .field("score", Schema.OPTIONAL_INT32_SCHEMA).build())

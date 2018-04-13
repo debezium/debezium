@@ -36,7 +36,11 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
 
     @Override
     public R apply(R r) {
-        SchemaBuilder valueSchemaBuilder = SchemaBuilder.struct();
+        String newValueSchemaName = r.valueSchema().name();
+        if (newValueSchemaName.endsWith(".Envelope")) {
+            newValueSchemaName = newValueSchemaName.substring(0, newValueSchemaName.length() - 9);
+        }
+        SchemaBuilder valueSchemaBuilder = SchemaBuilder.struct().name(newValueSchemaName);
         SchemaBuilder keySchemabuilder = SchemaBuilder.struct();
         BsonDocument valueDocument = null;
 

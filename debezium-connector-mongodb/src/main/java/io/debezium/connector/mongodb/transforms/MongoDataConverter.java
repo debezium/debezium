@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 public class MongoDataConverter {
 
     private static final Logger LOG = LoggerFactory.getLogger(MongoDataConverter.class);
+    public static final String SCHEMA_NAME_REGEX = "io.debezium.mongodb.regex";
 
     public static Struct convertRecord(Entry<String, BsonValue> keyvalueforStruct, Schema schema, Struct struct) {
         convertFieldValue(keyvalueforStruct, struct, schema);
@@ -228,9 +229,9 @@ public class MongoDataConverter {
             break;
 
         case JAVASCRIPT_WITH_SCOPE:
-            SchemaBuilder jswithscope = SchemaBuilder.struct();
+            SchemaBuilder jswithscope = SchemaBuilder.struct().name(builder.name() + "." + key);
             jswithscope.field("code", Schema.OPTIONAL_STRING_SCHEMA);
-            SchemaBuilder scope = SchemaBuilder.struct();
+            SchemaBuilder scope = SchemaBuilder.struct().name(jswithscope.name() + ".scope");
             BsonDocument jwsDocument = keyValuesforSchema.getValue().asJavaScriptWithScope().getScope().asDocument();
 
             for (Entry<String, BsonValue> jwsDocumentKey : jwsDocument.entrySet()) {
@@ -243,14 +244,14 @@ public class MongoDataConverter {
             break;
 
         case REGULAR_EXPRESSION:
-            SchemaBuilder regexwop = SchemaBuilder.struct();
+            SchemaBuilder regexwop = SchemaBuilder.struct().name(SCHEMA_NAME_REGEX);
             regexwop.field("regex", Schema.OPTIONAL_STRING_SCHEMA);
             regexwop.field("options", Schema.OPTIONAL_STRING_SCHEMA);
             builder.field(key, regexwop.build());
             break;
 
         case DOCUMENT:
-            SchemaBuilder builderDoc = SchemaBuilder.struct();
+            SchemaBuilder builderDoc = SchemaBuilder.struct().name(builder.name() + "." + key);
             BsonDocument docs = keyValuesforSchema.getValue().asDocument();
 
             for (Entry<String, BsonValue> doc : docs.entrySet()) {
@@ -301,7 +302,7 @@ public class MongoDataConverter {
                         break;
 
                     case DOCUMENT:
-                        SchemaBuilder documentSchemaBuilder = SchemaBuilder.struct();
+                        SchemaBuilder documentSchemaBuilder = SchemaBuilder.struct().name(builder.name() + "." + key);
                         BsonDocument arrayDocs = keyValuesforSchema.getValue().asArray().get(0).asDocument();
 
                         for (Entry<String, BsonValue> arrayDoc : arrayDocs.entrySet()) {
