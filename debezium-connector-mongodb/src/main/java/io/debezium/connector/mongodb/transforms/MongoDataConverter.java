@@ -6,12 +6,15 @@
 package io.debezium.connector.mongodb.transforms;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonDocument;
 import org.bson.BsonType;
 import org.bson.BsonValue;
@@ -231,7 +234,7 @@ public class MongoDataConverter {
         case JAVASCRIPT_WITH_SCOPE:
             SchemaBuilder jswithscope = SchemaBuilder.struct().name(builder.name() + "." + key);
             jswithscope.field("code", Schema.OPTIONAL_STRING_SCHEMA);
-            SchemaBuilder scope = SchemaBuilder.struct().name(jswithscope.name() + ".scope");
+            SchemaBuilder scope = SchemaBuilder.struct().name(jswithscope.name() + ".scope").optional();
             BsonDocument jwsDocument = keyValuesforSchema.getValue().asJavaScriptWithScope().getScope().asDocument();
 
             for (Entry<String, BsonValue> jwsDocumentKey : jwsDocument.entrySet()) {
@@ -244,14 +247,14 @@ public class MongoDataConverter {
             break;
 
         case REGULAR_EXPRESSION:
-            SchemaBuilder regexwop = SchemaBuilder.struct().name(SCHEMA_NAME_REGEX);
+            SchemaBuilder regexwop = SchemaBuilder.struct().name(SCHEMA_NAME_REGEX).optional();
             regexwop.field("regex", Schema.OPTIONAL_STRING_SCHEMA);
             regexwop.field("options", Schema.OPTIONAL_STRING_SCHEMA);
             builder.field(key, regexwop.build());
             break;
 
         case DOCUMENT:
-            SchemaBuilder builderDoc = SchemaBuilder.struct().name(builder.name() + "." + key);
+            SchemaBuilder builderDoc = SchemaBuilder.struct().name(builder.name() + "." + key).optional();
             BsonDocument docs = keyValuesforSchema.getValue().asDocument();
 
             for (Entry<String, BsonValue> doc : docs.entrySet()) {
@@ -262,12 +265,17 @@ public class MongoDataConverter {
 
         case ARRAY:
             if (keyValuesforSchema.getValue().asArray().isEmpty()) {
-                builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).build());
+                builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
                 break;
             }
-
             else {
                 BsonType valueType = keyValuesforSchema.getValue().asArray().get(0).getBsonType();
+                for (BsonValue element: keyValuesforSchema.getValue().asArray()) {
+                    if (element.getBsonType() != valueType) {
+                        throw new ConnectException("Field " + key + " of schema " + builder.name() + " is not a homogenous array.\n"
+                                + "Check option 'xxx' of parameter 'yyy'");
+                    }
+                }
 
                 switch (valueType) {
                     case NULL:
@@ -278,38 +286,48 @@ public class MongoDataConverter {
                     case JAVASCRIPT:
                     case OBJECT_ID:
                     case DECIMAL128:
-                        builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).build());
+                        builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
                         break;
                     case DOUBLE:
-                        builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_FLOAT64_SCHEMA).build());
+                        builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_FLOAT64_SCHEMA).optional().build());
                         break;
                     case BINARY:
-                        builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_BYTES_SCHEMA).build());
+                        builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_BYTES_SCHEMA).optional().build());
                         break;
 
                     case INT32:
                     case TIMESTAMP:
-                        builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).build());
+                        builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build());
                         break;
 
                     case INT64:
                     case DATE_TIME:
-                        builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).build());
+                        builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build());
                         break;
 
                     case BOOLEAN:
-                        builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_BOOLEAN_SCHEMA).build());
+                        builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_BOOLEAN_SCHEMA).optional().build());
                         break;
 
                     case DOCUMENT:
-                        SchemaBuilder documentSchemaBuilder = SchemaBuilder.struct().name(builder.name() + "." + key);
-                        BsonDocument arrayDocs = keyValuesforSchema.getValue().asArray().get(0).asDocument();
-
-                        for (Entry<String, BsonValue> arrayDoc : arrayDocs.entrySet()) {
-                            addFieldSchema(arrayDoc, documentSchemaBuilder);
+                        final SchemaBuilder documentSchemaBuilder = SchemaBuilder.struct().name(builder.name() + "." + key).optional();
+                        final Map<String, BsonType> union = new HashMap<>();
+                        for (BsonValue element: keyValuesforSchema.getValue().asArray()) {
+                            final BsonDocument arrayDocs = element.asDocument();
+                            for (Entry<String, BsonValue> arrayDoc: arrayDocs.entrySet()) {
+                                final BsonType prevType = union.putIfAbsent(arrayDoc.getKey(), arrayDoc.getValue().getBsonType());
+                                if (prevType == null) {
+                                    addFieldSchema(arrayDoc, documentSchemaBuilder);
+                                }
+                                else if (prevType != arrayDoc.getValue().getBsonType()) {
+                                    throw new ConnectException("Field " + arrayDoc.getKey() + " of schema " + documentSchemaBuilder.name() + " is not the same type for all documents in the array.\n"
+                                            + "Check option 'xxx' of parameter 'yyy'");
+                                }
+                            }
                         }
+
                         Schema build = documentSchemaBuilder.build();
-                        builder.field(key, SchemaBuilder.array(build).build());
+                        builder.field(key, SchemaBuilder.array(build).optional().build());
                         break;
 
                     default:
