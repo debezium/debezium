@@ -98,6 +98,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
         assertThat(key.get("id")).isEqualTo(objId.toString());
 
         // and then assert value and its schema
+        assertThat(value.schema().name()).isEqualTo("serverX...dbA.c1");
         assertThat(value.schema()).isSameAs(transformed.valueSchema());
         assertThat(value.get("name")).isEqualTo("Sally");
         assertThat(value.get("id")).isEqualTo(objId.toString());
