@@ -7,6 +7,7 @@ package io.debezium.relational;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -165,6 +166,20 @@ public final class Tables {
             } finally {
                 changes.add(updated.id());
             }
+        });
+    }
+
+    public void removeTablesForDatabase(String schemaName) {
+        removeTablesForDatabase(schemaName, null);
+    }
+
+    public void removeTablesForDatabase(String catalogName, String schemaName) {
+        lock.write(() -> {
+            tablesByTableId.entrySet().removeIf(tableIdTableEntry -> {
+                TableId tableId = tableIdTableEntry.getKey();
+                return (schemaName == null || tableId.schema() == null || schemaName.equals(tableId.schema()))
+                        & (catalogName == null || tableId.catalog() == null || catalogName.equals(tableId.catalog()));
+            });
         });
     }
 
@@ -379,6 +394,10 @@ public final class Tables {
 
         void forEach(BiConsumer<? super TableId, ? super TableImpl> action) {
             values.forEach(action);
+        }
+
+        Set<Map.Entry<TableId, TableImpl>> entrySet() {
+            return values.entrySet();
         }
 
         private TableId toLowerCaseIfNeeded(TableId tableId) {

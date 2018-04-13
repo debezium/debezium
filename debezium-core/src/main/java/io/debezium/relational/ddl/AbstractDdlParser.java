@@ -248,8 +248,37 @@ public abstract class AbstractDdlParser implements DdlParser {
         signalChangeEvent(new DdlParserListener.TableIndexDroppedEvent(indexName, id, statement));
     }
 
+    /**
+     * Removes line feeds from input string.
+     *
+     * @param input input with possible line feeds
+     * @return input string without line feeds
+     */
     protected String removeLineFeeds(String input) {
         return input.replaceAll("[\\n|\\t]", "");
+    }
+
+    /**
+     * Cut out the string surrounded with single, double and reversed quotes.
+     *
+     * @param possiblyQuoted string with possible quotes
+     * @return string without quotes
+     */
+    protected static String withoutQuotes(String possiblyQuoted) {
+        if (possiblyQuoted.length() < 2) {
+            // Too short to be quoted ...
+            return possiblyQuoted;
+        }
+        if (possiblyQuoted.startsWith("`") && possiblyQuoted.endsWith("`")) {
+            return possiblyQuoted.substring(1, possiblyQuoted.length() - 1);
+        }
+        if (possiblyQuoted.startsWith("'") && possiblyQuoted.endsWith("'")) {
+            return possiblyQuoted.substring(1, possiblyQuoted.length() - 1);
+        }
+        if (possiblyQuoted.startsWith("\"") && possiblyQuoted.endsWith("\"")) {
+            return possiblyQuoted.substring(1, possiblyQuoted.length() - 1);
+        }
+        return possiblyQuoted;
     }
 
     /**
