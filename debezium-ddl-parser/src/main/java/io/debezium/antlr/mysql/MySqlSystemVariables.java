@@ -40,6 +40,14 @@ public class MySqlSystemVariables extends SystemVariables {
     public static final String CHARSET_NAME_SERVER = "character_set_server";
 
     /**
+     * The system variable name fo the name for the character set that the current database uses.
+     */
+    public static final String CHARSET_NAME_DATABASE = "character_set_database";
+    public static final String CHARSET_NAME_CLIENT = "character_set_client";
+    public static final String CHARSET_NAME_RESULT = "character_set_results";
+    public static final String CHARSET_NAME_CONNECTION = "character_set_connection";
+
+    /**
      * The system variable name to see if the MySQL tables are stored and looked-up in case sensitive way.
      * See https://dev.mysql.com/doc/refman/5.7/en/server-system-variables.html#sysvar_lower_case_table_names
      */

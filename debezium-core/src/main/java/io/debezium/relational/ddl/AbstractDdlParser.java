@@ -122,6 +122,10 @@ public abstract class AbstractDdlParser implements DdlParser {
         this.ddlChanges.handle(event);
     }
 
+    protected void signalSetVariable(String variableName, String variableValue, String statement) {
+        signalChangeEvent(new DdlParserListener.SetVariableEvent(variableName, variableValue, statement));
+    }
+
     /**
      * Signal a create database event to ddl changes listener.
      *
