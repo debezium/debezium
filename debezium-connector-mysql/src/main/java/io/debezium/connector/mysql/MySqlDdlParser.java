@@ -790,20 +790,6 @@ public class MySqlDdlParser extends LegacyDdlParser {
         return options;
     }
 
-    protected static String withoutQuotes(String possiblyQuoted) {
-        if (possiblyQuoted.length() < 2) {
-            // Too short to be quoted ...
-            return possiblyQuoted;
-        }
-        if (possiblyQuoted.startsWith("'") && possiblyQuoted.endsWith("'")) {
-            return possiblyQuoted.substring(1, possiblyQuoted.length() - 1);
-        }
-        if (possiblyQuoted.startsWith("\"") && possiblyQuoted.endsWith("\"")) {
-            return possiblyQuoted.substring(1, possiblyQuoted.length() - 1);
-        }
-        return possiblyQuoted;
-    }
-
     protected void parseColumnDefinition(Marker start, String columnName, TokenStream tokens, TableEditor table, ColumnEditor column,
                                          AtomicBoolean isPrimaryKey) {
         // Parse the data type, which must be at this location ...
@@ -1108,6 +1094,7 @@ public class MySqlDdlParser extends LegacyDdlParser {
 
         // We don't care about any other statements or the rest of this statement ...
         consumeRemainingStatement(start);
+        // TODO fix: signal should be send only when some changes on table are made
         signalCreateIndex(indexName, tableId, start);
         debugParsed(start);
     }

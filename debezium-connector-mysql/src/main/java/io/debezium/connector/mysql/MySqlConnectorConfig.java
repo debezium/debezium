@@ -9,6 +9,8 @@ import java.math.BigDecimal;
 import java.util.Objects;
 import java.util.Random;
 
+import io.debezium.antlr.mysql.MySqlAntlrDdlParser;
+import io.debezium.relational.ddl.DdlParser;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -372,6 +374,60 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
             }
 
             return null;
+        }
+    }
+
+    public static enum DdlParsingMode implements EnumeratedValue {
+
+        LEGACY("legacy", MySqlDdlParser.class),
+        ANTLR("antlr", MySqlAntlrDdlParser.class);
+
+        private final String value;
+        private final Class<? extends DdlParser> parserClass;
+
+        private DdlParsingMode(String value, Class<? extends DdlParser> parserClass) {
+            this.value = value;
+            this.parserClass = parserClass;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public Class<? extends DdlParser> getParserClass() {
+            return parserClass;
+        }
+
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static DdlParsingMode parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+            for (DdlParsingMode option : DdlParsingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+        
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static DdlParsingMode parse(String value, String defaultValue) {
+            DdlParsingMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
         }
     }
 
@@ -767,6 +823,18 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                     "The value of those properties is the select statement to use when retrieving data from the specific table during snapshotting. " +
                     "A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted.");
 
+    public static final Field DDL_PARSER_MODE = Field.create("ddl.parser.mode")
+            .withDisplayName("Ddl parser mode")
+            .withEnum(DdlParsingMode.class, DdlParsingMode.LEGACY)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            // TODO rkuchar: change description
+            .withDescription("Time, date, and timestamps can be represented with different kinds of precisions, including:"
+                    + "'adaptive_time_microseconds' (the default) like 'adaptive' mode, but TIME fields always use microseconds precision;"
+                    + "'adaptive' (deprecated) bases the precision of time, date, and timestamp values on the database column's precision; "
+                    + "'connect' always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
+                    + "which uses millisecond precision regardless of the database columns' precision.");
+
     /**
      * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
      * have their values truncated to be no longer than the specified number of characters.
@@ -820,6 +888,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                      BIGINT_UNSIGNED_HANDLING_MODE,
                                                      EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE,
                                                      INCONSISTENT_SCHEMA_HANDLING_MODE,
+                                                     DDL_PARSER_MODE,
                                                      CommonConnectorConfig.TOMBSTONES_ON_DELETE);
 
     /**
@@ -857,7 +926,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
                     SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
-                    BIGINT_UNSIGNED_HANDLING_MODE);
+                    BIGINT_UNSIGNED_HANDLING_MODE, DDL_PARSER_MODE);
         return config;
     }
 

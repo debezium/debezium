@@ -250,4 +250,8 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     protected void debugSkipped(ParserRuleContext ctx) {
         debugSkipped(getText(ctx));
     }
+
+    protected String withoutQuotes(ParserRuleContext ctx) {
+        return withoutQuotes(ctx.getText());
+    }
 }

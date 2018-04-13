@@ -6,11 +6,11 @@
 package io.debezium.connector.mysql;
 
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.antlr.mysql.MySqlAntlrDdlParser;
 import io.debezium.antlr.mysql.MySqlSystemVariables.MySqlScope;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.BigIntUnsignedHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.DecimalHandlingMode;
+import io.debezium.connector.mysql.MySqlConnectorConfig.DdlParsingMode;
 import io.debezium.document.Document;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
@@ -96,14 +96,17 @@ public class MySqlSchema {
         this.topicSelector = topicSelector;
         this.tableIdCaseInsensitive = tableIdCaseInsensitive;
 
-        // TODO rkuchar: implement connector configuration using enum to define which parser should be used
-        if(true) {
-            this.ddlParser = new MySqlDdlParser();
-        } else {
-            this.ddlParser = new MySqlAntlrDdlParser();
-        }
+        String ddlParsingModeStr = config.getString(MySqlConnectorConfig.DDL_PARSER_MODE);
+        DdlParsingMode parsingMode = DdlParsingMode.parse(ddlParsingModeStr, MySqlConnectorConfig.DDL_PARSER_MODE.defaultValueAsString());
 
-        this.ddlChanges = this.ddlParser.getDdlChanges();
+        try {
+            this.ddlParser = parsingMode.getParserClass().newInstance();
+            this.ddlChanges = this.ddlParser.getDdlChanges();
+        }
+        catch (InstantiationException | IllegalAccessException e) {
+            // ddl parser constructor are not throwing any exceptions, so this should never happen
+            throw new IllegalArgumentException("Unable to create new instance for ddl parser class " + parsingMode.getParserClass().getCanonicalName());
+        }
 
         // Use MySQL-specific converters and schemas for values ...
         String timePrecisionModeStr = config.getString(MySqlConnectorConfig.TIME_PRECISION_MODE);
@@ -122,7 +125,8 @@ public class MySqlSchema {
         this.serverName = serverName;
         if (this.serverName == null || serverName.isEmpty()) {
             this.schemaPrefix = "";
-        } else {
+        }
+        else {
             this.schemaPrefix = serverName.endsWith(".") ? serverName : serverName + ".";
         }
 

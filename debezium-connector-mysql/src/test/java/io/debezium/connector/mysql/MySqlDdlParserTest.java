@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 
 import io.debezium.antlr.mysql.MySqlSystemVariables;
 import io.debezium.relational.SystemVariables;
+import io.debezium.relational.ddl.DdlChanges;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -40,7 +41,7 @@ public class MySqlDdlParserTest {
     @Before
     public void beforeEach() {
         listener = new SimpleDdlParserListener();
-        parser = new MysqlDdlParserWithTest();
+        parser = new MysqlDdlParserWithSimpleTestListener(listener);
         tables = new Tables();
     }
 
@@ -1531,10 +1532,10 @@ public class MySqlDdlParserTest {
         assertThat(column.isAutoIncremented()).isEqualTo(autoIncremented);
     }
 
-    class MysqlDdlParserWithTest extends MySqlDdlParser {
-        public MysqlDdlParserWithTest() {
+    class MysqlDdlParserWithSimpleTestListener extends MySqlDdlParser {
+        public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener) {
             super();
-            this.ddlChanges = listener;
+            this.ddlChanges = changesListener;
         }
     }
 

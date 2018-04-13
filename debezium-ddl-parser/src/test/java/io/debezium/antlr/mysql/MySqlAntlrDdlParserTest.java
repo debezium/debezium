@@ -7,6 +7,7 @@
 package io.debezium.antlr.mysql;
 
 import io.debezium.relational.Tables;
+import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.ddl.SimpleDdlParserListener;
 import io.debezium.text.MultipleParsingExceptions;
@@ -26,9 +27,9 @@ public class MySqlAntlrDdlParserTest {
 
     @Before
     public void beforeEach() {
-        parser = new MySqlAntlrDdlParserWithSimpleTestListener();
+        listener = new SimpleDdlParserListener();
+        parser = new MySqlAntlrDdlParserWithSimpleTestListener(listener);
         tables = new Tables();
-        listener = (SimpleDdlParserListener) parser.getDdlChanges();
     }
 
     @Test
@@ -63,9 +64,9 @@ public class MySqlAntlrDdlParserTest {
 
     class MySqlAntlrDdlParserWithSimpleTestListener extends MySqlAntlrDdlParser {
 
-        public MySqlAntlrDdlParserWithSimpleTestListener() {
+        public MySqlAntlrDdlParserWithSimpleTestListener(DdlChanges changesListener) {
             super();
-            ddlChanges = new SimpleDdlParserListener();
+            this.ddlChanges = changesListener;
         }
     }
 
