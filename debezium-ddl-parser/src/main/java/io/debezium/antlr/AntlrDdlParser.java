@@ -118,6 +118,10 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
         return ctx.start.getInputStream().getText(interval);
     }
 
+    protected void signalSetVariable(String variableName, String variableValue, ParserRuleContext ctx) {
+        signalSetVariable(variableName, variableValue, getText(ctx));
+    }
+
     /**
      * Signal a create database event to ddl changes listener.
      *

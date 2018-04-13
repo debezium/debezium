@@ -10,6 +10,7 @@ import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.antlr.DataTypeResolver;
 import io.debezium.antlr.DataTypeResolver.DataTypeEntry;
 import io.debezium.antlr.ProxyParseTreeListener;
+import io.debezium.antlr.mysql.MySqlSystemVariables.MySqlScope;
 import io.debezium.ddl.parser.mysql.generated.MySqlLexer;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
@@ -64,6 +65,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         proxyParseTreeListener.add(new RenameTableParserListener());
         proxyParseTreeListener.add(new TruncateTableParserListener());
         proxyParseTreeListener.add(new CreateUniqueIndexParserListener());
+        proxyParseTreeListener.add(new SetStatementParserListener());
+        proxyParseTreeListener.add(new UseStatementParserListener());
         proxyParseTreeListener.add(new FinishSqlStatementParserListener());
     }
 
@@ -311,6 +314,20 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 .collect(Collectors.toList());
 
         tableEditor.setPrimaryKeyNames(pkColumnNames);
+    }
+
+
+    /**
+     * Get the name of the character set for the current database, via the "character_set_database" system property.
+     *
+     * @return the name of the character set for the current database, or null if not known ...
+     */
+    protected String currentDatabaseCharset() {
+        String charsetName = systemVariables.getVariable(MySqlSystemVariables.CHARSET_NAME_DATABASE);
+        if (charsetName == null || "DEFAULT".equalsIgnoreCase(charsetName)) {
+            charsetName = systemVariables.getVariable(MySqlSystemVariables.CHARSET_NAME_SERVER);
+        }
+        return charsetName;
     }
 
     /**
@@ -767,6 +784,90 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
             // TODO fixed together with MySql legacy parser bug.
             signalAlterTable(null, null, ctx);
             super.enterCreateIndex(ctx);
+        }
+    }
+
+    private class SetStatementParserListener extends MySqlParserBaseListener {
+        @Override
+        public void enterSetVariable(MySqlParser.SetVariableContext ctx) {
+            // If you set multiple system variables, the most recent GLOBAL or SESSION modifier in the statement
+            // is used for following assignments that have no modifier specified.
+            MySqlScope scope = null;
+            for (int i = 0; i < ctx.variableClause().size(); i++) {
+                MySqlParser.VariableClauseContext variableClauseContext = ctx.variableClause(i);
+                // default scope
+                if (variableClauseContext.uid() == null) {
+                    // that mean that user variable is set, so do nothing with it
+                    continue;
+                }
+
+                if (variableClauseContext.GLOBAL() != null) {
+                    scope = MySqlScope.GLOBAL;
+                }
+                else if (variableClauseContext.SESSION() != null) {
+                    scope = MySqlScope.SESSION;
+                }
+
+                String variableName = parseName(variableClauseContext.uid());
+                String value = withoutQuotes(ctx.expression(i));
+
+                systemVariables.setVariable(scope, variableName, value);
+
+                // If this is setting 'character_set_database', then we need to record the character set for
+                // the given database ...
+                if (MySqlSystemVariables.CHARSET_NAME_DATABASE.equalsIgnoreCase(variableName)) {
+                    String currentDatabaseName = currentSchema();
+                    if (currentDatabaseName != null) {
+                        charsetNameForDatabase.put(currentDatabaseName, value);
+                    }
+                }
+
+                // Signal that the variable was set ...
+                signalSetVariable(variableName, value, ctx);
+            }
+            super.enterSetVariable(ctx);
+        }
+
+        @Override
+        public void enterSetCharset(MySqlParser.SetCharsetContext ctx) {
+            String charsetName = ctx.charsetName() != null ? withoutQuotes(ctx.charsetName()) : currentDatabaseCharset();
+            // Sets variables according to documentation at
+            // https://dev.mysql.com/doc/refman/5.7/en/set-character-set.html
+            // Using default scope for these variables, because this type of set statement you cannot specify
+            // the scope manually
+            systemVariables.setVariable(MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_CLIENT, charsetName);
+            systemVariables.setVariable(MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_RESULT, charsetName);
+            systemVariables.setVariable(MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_CONNECTION,
+                    systemVariables.getVariable(MySqlSystemVariables.CHARSET_NAME_DATABASE));
+            super.enterSetCharset(ctx);
+        }
+
+        @Override
+        public void enterSetNames(MySqlParser.SetNamesContext ctx) {
+            String charsetName = ctx.charsetName() != null ? withoutQuotes(ctx.charsetName()) : currentDatabaseCharset();
+            // Sets variables according to documentation at
+            // https://dev.mysql.com/doc/refman/5.7/en/set-names.html
+            // Using default scope for these variables, because this type of set statement you cannot specify
+            // the scope manually
+            systemVariables.setVariable(MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_CLIENT, charsetName);
+            systemVariables.setVariable(MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_RESULT, charsetName);
+            systemVariables.setVariable(MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_CONNECTION, charsetName);
+            super.enterSetNames(ctx);
+        }
+    }
+
+    private class UseStatementParserListener extends MySqlParserBaseListener {
+        @Override
+        public void enterUseStatement(MySqlParser.UseStatementContext ctx) {
+            String dbName = parseName(ctx.uid());
+            setCurrentSchema(dbName);
+
+            // Every time MySQL switches to a different database, it sets the "character_set_database" and "collation_database"
+            // system variables. We replicate that behavior here (or the variable we care about) so that these variables are always
+            // right for the current database.
+            String charsetForDb = charsetNameForDatabase.get(dbName);
+            systemVariables.setVariable(MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_DATABASE, charsetForDb);
+            super.enterUseStatement(ctx);
         }
     }
 
