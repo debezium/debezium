@@ -15,10 +15,17 @@ import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.transforms.ExtractField;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.config.Configuration;
+import io.debezium.config.EnumeratedValue;
+import io.debezium.config.Field;
 
 /**
  * Debezium Mongo Connector generates the CDC records in String format. Sink connectors usually are not able to parse
@@ -30,9 +37,65 @@ import org.bson.BsonValue;
  */
 public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Transformation<R> {
 
+    private final Logger logger = LoggerFactory.getLogger(getClass());
+    private static final Field ARRAY_ENCODING = Field.create("array.encoding")
+            .withDisplayName("Array encoding")
+            .withEnum(ArrayEncoding.class, ArrayEncoding.ARRAY)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDescription("The arrays can be encoded using 'array' schema type (the default) ar as a 'struct' (similar to how BSON encodes arrays). "
+                    + "'array' is easier to consume but requires all elemnts in the array to be of the same type. "
+                    + "Use 'struct' if the arrays in data source mixes different types together.");
+
+    public static enum ArrayEncoding implements EnumeratedValue {
+        ARRAY("array"),
+        DOCUMENT("document");
+
+        private final String value;
+
+        private ArrayEncoding(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static ArrayEncoding parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+            for (ArrayEncoding option : ArrayEncoding.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static ArrayEncoding parse(String value, String defaultValue) {
+            ArrayEncoding mode = parse(value);
+            if (mode == null && defaultValue != null) mode = parse(defaultValue);
+            return mode;
+        }
+    }
+
+
     private final ExtractField<R> afterExtractor = new ExtractField.Value<R>();
     private final ExtractField<R> patchExtractor = new ExtractField.Value<R>();
     private final ExtractField<R> keyExtractor = new ExtractField.Key<R>();
+    private MongoDataConverter converter;
 
     @Override
     public R apply(R r) {
@@ -80,15 +143,15 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
                 BsonDocument val1 = BsonDocument.parse(valuePairsforSchema.getValue().toString());
                 Set<Entry<String, BsonValue>> keyValuesforSetSchema = val1.entrySet();
                 for (Entry<String, BsonValue> keyValuesforSetSchemaEntry : keyValuesforSetSchema) {
-                    MongoDataConverter.addFieldSchema(keyValuesforSetSchemaEntry, valueSchemaBuilder);
+                    converter.addFieldSchema(keyValuesforSetSchemaEntry, valueSchemaBuilder);
                 }
             } else {
-                MongoDataConverter.addFieldSchema(valuePairsforSchema, valueSchemaBuilder);
+                converter.addFieldSchema(valuePairsforSchema, valueSchemaBuilder);
             }
         }
 
         for (Entry<String, BsonValue> keyPairsforSchema : keyPairs) {
-            MongoDataConverter.addFieldSchema(keyPairsforSchema, keySchemabuilder);
+            converter.addFieldSchema(keyPairsforSchema, keySchemabuilder);
         }
 
         Schema finalValueSchema = valueSchemaBuilder.build();
@@ -101,15 +164,15 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
                 BsonDocument val1 = BsonDocument.parse(valuePairsforStruct.getValue().toString());
                 Set<Entry<String, BsonValue>> keyvalueforSetStruct = val1.entrySet();
                 for (Entry<String, BsonValue> keyvalueforSetStructEntry : keyvalueforSetStruct) {
-                    MongoDataConverter.convertRecord(keyvalueforSetStructEntry, finalValueSchema, finalValueStruct);
+                    converter.convertRecord(keyvalueforSetStructEntry, finalValueSchema, finalValueStruct);
                 }
             } else {
-                MongoDataConverter.convertRecord(valuePairsforStruct, finalValueSchema, finalValueStruct);
+                converter.convertRecord(valuePairsforStruct, finalValueSchema, finalValueStruct);
             }
         }
 
         for (Entry<String, BsonValue> keyPairsforStruct : keyPairs) {
-            MongoDataConverter.convertRecord(keyPairsforStruct, finalKeySchema, finalKeyStruct);
+            converter.convertRecord(keyPairsforStruct, finalKeySchema, finalKeyStruct);
         }
 
         if (finalValueSchema.fields().isEmpty()) {
@@ -124,7 +187,9 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
 
     @Override
     public ConfigDef config() {
-        return new ConfigDef();
+        final ConfigDef config = new ConfigDef();
+        Field.group(config, null, ARRAY_ENCODING);
+        return config;
     }
 
     @Override
@@ -133,6 +198,14 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
 
     @Override
     public void configure(final Map<String, ?> map) {
+        final Configuration config = Configuration.from(map);
+        final Field.Set configFields = Field.setOf(ARRAY_ENCODING);
+        if (!config.validateAndRecord(configFields, logger::error)) {
+            throw new ConnectException("Unable to validate config.");
+        }
+
+        converter = new MongoDataConverter(ArrayEncoding.parse(config.getString(ARRAY_ENCODING)));
+
         final Map<String, String> afterExtractorConfig = new HashMap<>();
         afterExtractorConfig.put("field", "after");
         final Map<String, String> patchExtractorConfig = new HashMap<>();
