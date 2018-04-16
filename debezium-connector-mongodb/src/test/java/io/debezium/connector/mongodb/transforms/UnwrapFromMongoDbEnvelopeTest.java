@@ -56,7 +56,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
         recordMakers = new RecordMakers(source, topicSelector, produced::add, true);
 
         transformation = new UnwrapFromMongoDbEnvelope<SourceRecord>();
-        transformation.configure(Collections.emptyMap());
+        transformation.configure(Collections.singletonMap("array.encoding", "array"));
     }
 
     @After
@@ -110,7 +110,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
         assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("phone").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT64_SCHEMA);
         assertThat(value.schema().field("active").schema()).isEqualTo(SchemaBuilder.OPTIONAL_BOOLEAN_SCHEMA);
-        assertThat(value.schema().field("scores").schema()).isEqualTo(SchemaBuilder.array(SchemaBuilder.OPTIONAL_FLOAT64_SCHEMA).build());
+        assertThat(value.schema().field("scores").schema()).isEqualTo(SchemaBuilder.array(SchemaBuilder.OPTIONAL_FLOAT64_SCHEMA).optional().build());
         assertThat(value.schema().fields()).hasSize(5);
 
         transformation.close();

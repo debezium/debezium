@@ -25,6 +25,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.confluent.connect.avro.AvroData;
+import io.debezium.connector.mongodb.transforms.UnwrapFromMongoDbEnvelope.ArrayEncoding;
 import io.debezium.doc.FixFor;
 
 /**
@@ -38,6 +39,7 @@ public class ToAvroMongoDataConverterTest {
     private BsonDocument val;
     private SchemaBuilder builder;
     private AvroData avroData;
+    private MongoDataConverter converter;
 
     @Before
     public void setup() throws Exception {
@@ -45,19 +47,20 @@ public class ToAvroMongoDataConverterTest {
         val = BsonDocument.parse(record);
         builder = SchemaBuilder.struct().name("complex");
         avroData = new AvroData(100);
+        converter = new MongoDataConverter(ArrayEncoding.ARRAY);
     }
 
     @Test
     public void shouldCreateStructWithNestedObject() {
         for (Entry<String, BsonValue> entry : val.entrySet()) {
-            MongoDataConverter.addFieldSchema(entry, builder);
+            converter.addFieldSchema(entry, builder);
         }
 
         Schema finalSchema = builder.build();
         Struct struct = new Struct(finalSchema);
 
         for (Entry<String, BsonValue> entry : val.entrySet()) {
-            MongoDataConverter.convertRecord(entry, finalSchema, struct);
+            converter.convertRecord(entry, finalSchema, struct);
         }
 
         final GenericData.Record avro = (GenericData.Record)avroData.fromConnectData(finalSchema, struct);
@@ -71,7 +74,7 @@ public class ToAvroMongoDataConverterTest {
     @FixFor("DBZ-650")
     public void shouldCreateSchemaWithNestedObject() {
         for (Entry<String, BsonValue> entry : val.entrySet()) {
-            MongoDataConverter.addFieldSchema(entry, builder);
+            converter.addFieldSchema(entry, builder);
         }
         Schema finalSchema = builder.build();
 
@@ -79,16 +82,16 @@ public class ToAvroMongoDataConverterTest {
         assertThat(avroSchema.toString()).isEqualTo(
                 "{\"type\":\"record\",\"name\":\"complex\",\"fields\":[" +
                     "{\"name\":\"_id\",\"type\":[\"null\",\"int\"],\"default\":null}," +
-                    "{\"name\":\"s1\",\"type\":{\"type\":\"record\",\"name\":\"s1\",\"namespace\":\"complex\",\"fields\":[" +
+                    "{\"name\":\"s1\",\"type\":[\"null\",{\"type\":\"record\",\"name\":\"s1\",\"namespace\":\"complex\",\"fields\":[" +
                         "{\"name\":\"s1f1\",\"type\":[\"null\",\"string\"],\"default\":null}," +
                         "{\"name\":\"s1f2\",\"type\":[\"null\",\"string\"],\"default\":null}]," +
-                    "\"connect.name\":\"complex.s1\"}}," +
-                    "{\"name\":\"s2\",\"type\":{\"type\":\"record\",\"name\":\"s2\",\"namespace\":\"complex\",\"fields\":[" +
+                    "\"connect.name\":\"complex.s1\"}],\"default\":null}," +
+                    "{\"name\":\"s2\",\"type\":[\"null\",{\"type\":\"record\",\"name\":\"s2\",\"namespace\":\"complex\",\"fields\":[" +
                         "{\"name\":\"s2f1\",\"type\":[\"null\",\"string\"],\"default\":null}," +
-                        "{\"name\":\"s2f2\",\"type\":{\"type\":\"record\",\"name\":\"s2f2\",\"namespace\":\"complex.s2\",\"fields\":[" +
+                        "{\"name\":\"s2f2\",\"type\":[\"null\",{\"type\":\"record\",\"name\":\"s2f2\",\"namespace\":\"complex.s2\",\"fields\":[" +
                             "{\"name\":\"in1\",\"type\":[\"null\",\"int\"],\"default\":null}]," +
-                        "\"connect.name\":\"complex.s2.s2f2\"}}]," +
-                    "\"connect.name\":\"complex.s2\"}}]," +
+                        "\"connect.name\":\"complex.s2.s2f2\"}],\"default\":null}]," +
+                    "\"connect.name\":\"complex.s2\"}],\"default\":null}]," +
                 "\"connect.name\":\"complex\"}");
     }
 

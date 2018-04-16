@@ -18,6 +18,8 @@ import org.bson.BsonValue;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.connector.mongodb.transforms.UnwrapFromMongoDbEnvelope.ArrayEncoding;
+
 /**
  * Unit test for {@code MongoDataConverter} that verifies array types.
  *
@@ -32,6 +34,12 @@ public class MongoArrayConverterTest {
             "        11,\n" +
             "        \"abc\"\n" +
             "    ]\n" +
+            "}";
+
+    private static final String EMPTY_ARRAY =
+            "{\n" +
+            "    \"_id\": 1,\n" +
+            "    \"f\": []\n" +
             "}";
 
     private static final String HETEROGENOUS_DOCUMENT_IN_ARRAY =
@@ -74,25 +82,28 @@ public class MongoArrayConverterTest {
 
     @Test(expected = ConnectException.class)
     public void shouldDetectHeterogenousArray() throws Exception {
+        final MongoDataConverter converter = new MongoDataConverter(ArrayEncoding.ARRAY);
         final BsonDocument val = BsonDocument.parse(HETEROGENOUS_ARRAY);
         for (Entry<String, BsonValue> entry : val.entrySet()) {
-            MongoDataConverter.addFieldSchema(entry, builder);
+            converter.addFieldSchema(entry, builder);
         }
     }
 
     @Test(expected = ConnectException.class)
     public void shouldDetectHeterogenousDocumentInArray() throws Exception {
+        final MongoDataConverter converter = new MongoDataConverter(ArrayEncoding.ARRAY);
         final BsonDocument val = BsonDocument.parse(HETEROGENOUS_DOCUMENT_IN_ARRAY);
         for (Entry<String, BsonValue> entry : val.entrySet()) {
-            MongoDataConverter.addFieldSchema(entry, builder);
+            converter.addFieldSchema(entry, builder);
         }
     }
 
     @Test
     public void shouldCreateSchemaForHomogenousArray() throws Exception {
+        final MongoDataConverter converter = new MongoDataConverter(ArrayEncoding.ARRAY);
         final BsonDocument val = BsonDocument.parse(HOMOGENOUS_ARRAYS);
         for (Entry<String, BsonValue> entry : val.entrySet()) {
-            MongoDataConverter.addFieldSchema(entry, builder);
+            converter.addFieldSchema(entry, builder);
         }
         final Schema finalSchema = builder.build();
 
@@ -112,18 +123,19 @@ public class MongoArrayConverterTest {
 
     @Test
     public void shouldCreateStructForHomogenousArray() throws Exception {
+        final MongoDataConverter converter = new MongoDataConverter(ArrayEncoding.ARRAY);
         final BsonDocument val = BsonDocument.parse(HOMOGENOUS_ARRAYS);
         final SchemaBuilder builder = SchemaBuilder.struct().name("array");
 
         for (Entry<String, BsonValue> entry : val.entrySet()) {
-            MongoDataConverter.addFieldSchema(entry, builder);
+            converter.addFieldSchema(entry, builder);
         }
 
         final Schema finalSchema = builder.build();
         final Struct struct = new Struct(finalSchema);
 
         for (Entry<String, BsonValue> entry : val.entrySet()) {
-            MongoDataConverter.convertRecord(entry, finalSchema, struct);
+            converter.convertRecord(entry, finalSchema, struct);
         }
 
         assertThat(struct.toString()).isEqualTo(
@@ -135,6 +147,184 @@ public class MongoArrayConverterTest {
                         "]," +
                         "a2=[11, abc]," +
                         "empty=[]}"
+        );
+    }
+
+    @Test
+    public void shouldCreateSchemaForEmptyArrayEncodingArray() throws Exception {
+        final BsonDocument val = BsonDocument.parse(EMPTY_ARRAY);
+
+        final MongoDataConverter arrayConverter = new MongoDataConverter(ArrayEncoding.ARRAY);
+        for (Entry<String, BsonValue> entry : val.entrySet()) {
+            arrayConverter.addFieldSchema(entry, builder);
+        }
+        final Schema arraySchema = builder.build();
+
+        assertThat(arraySchema)
+                .isEqualTo(
+                        SchemaBuilder.struct().name("array")
+                                .field("_id", Schema.OPTIONAL_INT32_SCHEMA)
+                                .field("f", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build())
+                        .build());
+    }
+
+    @Test
+    public void shouldCreateStructForEmptyArrayEncodingArray() throws Exception {
+        final BsonDocument val = BsonDocument.parse(EMPTY_ARRAY);
+
+        final MongoDataConverter arrayConverter = new MongoDataConverter(ArrayEncoding.ARRAY);
+        for (Entry<String, BsonValue> entry : val.entrySet()) {
+            arrayConverter.addFieldSchema(entry, builder);
+        }
+        final Schema arraySchema = builder.build();
+
+        final Struct struct = new Struct(arraySchema);
+
+        for (Entry<String, BsonValue> entry : val.entrySet()) {
+            arrayConverter.convertRecord(entry, arraySchema, struct);
+        }
+
+        assertThat(struct.toString()).isEqualTo(
+                "Struct{" +
+                        "_id=1," +
+                        "f=[]" +
+                "}"
+        );
+    }
+
+    @Test
+    public void shouldCreateSchemaForEmptyArrayEncodingDocument() throws Exception {
+        final BsonDocument val = BsonDocument.parse(EMPTY_ARRAY);
+
+        final MongoDataConverter documentConverter = new MongoDataConverter(ArrayEncoding.DOCUMENT);
+        for (Entry<String, BsonValue> entry : val.entrySet()) {
+            documentConverter.addFieldSchema(entry, builder);
+        }
+        final Schema documentSchema = builder.build();
+
+        assertThat(documentSchema)
+                .isEqualTo(
+                        SchemaBuilder.struct().name("array")
+                                .field("_id", Schema.OPTIONAL_INT32_SCHEMA)
+                                .field("f", SchemaBuilder.struct().name("array.f").optional().build())
+                        .build());
+    }
+
+    @Test
+    public void shouldCreateStructForEmptyArrayEncodingDocument() throws Exception {
+        final BsonDocument val = BsonDocument.parse(EMPTY_ARRAY);
+
+        final MongoDataConverter documentConverter = new MongoDataConverter(ArrayEncoding.DOCUMENT);
+        for (Entry<String, BsonValue> entry : val.entrySet()) {
+            documentConverter.addFieldSchema(entry, builder);
+        }
+        final Schema documentSchema = builder.build();
+
+        final Struct struct = new Struct(documentSchema);
+
+        for (Entry<String, BsonValue> entry : val.entrySet()) {
+            documentConverter.convertRecord(entry, documentSchema, struct);
+        }
+
+        assertThat(struct.toString()).isEqualTo(
+                "Struct{" +
+                        "_id=1," +
+                        "f=Struct{}}"
+        );
+    }
+
+    @Test
+    public void shouldCreateSchemaForHeterogenousArray() throws Exception {
+        final MongoDataConverter converter = new MongoDataConverter(ArrayEncoding.DOCUMENT);
+        final BsonDocument val = BsonDocument.parse(HETEROGENOUS_ARRAY);
+        for (Entry<String, BsonValue> entry : val.entrySet()) {
+            converter.addFieldSchema(entry, builder);
+        }
+        final Schema finalSchema = builder.build();
+
+        assertThat(finalSchema)
+            .isEqualTo(
+                    SchemaBuilder.struct().name("array")
+                            .field("_id", Schema.OPTIONAL_INT32_SCHEMA)
+                            .field("a2", SchemaBuilder.struct().name("array.a2").optional()
+                                    .field("0", Schema.OPTIONAL_INT32_SCHEMA)
+                                    .field("1", Schema.OPTIONAL_STRING_SCHEMA)
+                                    .build()
+                             ).build()
+                    );
+    }
+
+    @Test
+    public void shouldCreateStructForHeterogenousArray() throws Exception {
+        final MongoDataConverter converter = new MongoDataConverter(ArrayEncoding.DOCUMENT);
+        final BsonDocument val = BsonDocument.parse(HETEROGENOUS_ARRAY);
+        for (Entry<String, BsonValue> entry : val.entrySet()) {
+            converter.addFieldSchema(entry, builder);
+        }
+        final Schema finalSchema = builder.build();
+
+        final Struct struct = new Struct(finalSchema);
+
+        for (Entry<String, BsonValue> entry : val.entrySet()) {
+            converter.convertRecord(entry, finalSchema, struct);
+        }
+
+        assertThat(struct.toString()).isEqualTo(
+                "Struct{" +
+                        "_id=1," +
+                        "a2=Struct{0=11,1=abc}}"
+        );
+    }
+
+    @Test
+    public void shouldCreateSchemaForHeterogenousDocumentInArray() throws Exception {
+        final MongoDataConverter converter = new MongoDataConverter(ArrayEncoding.DOCUMENT);
+        final BsonDocument val = BsonDocument.parse(HETEROGENOUS_DOCUMENT_IN_ARRAY);
+        for (Entry<String, BsonValue> entry : val.entrySet()) {
+            converter.addFieldSchema(entry, builder);
+        }
+        final Schema finalSchema = builder.build();
+
+        assertThat(finalSchema)
+            .isEqualTo(
+                    SchemaBuilder.struct().name("array")
+                            .field("_id", Schema.OPTIONAL_INT32_SCHEMA)
+                            .field("a1", SchemaBuilder.struct().name("array.a1").optional()
+                                    .field("0", SchemaBuilder.struct().name("array.a1.0").optional()
+                                            .field("a", Schema.OPTIONAL_INT32_SCHEMA)
+                                            .build())
+                                    .field("1", SchemaBuilder.struct().name("array.a1.1").optional()
+                                            .field("a", Schema.OPTIONAL_STRING_SCHEMA)
+                                            .build())
+                                    .build()
+                             )
+                            .build()
+                    );
+    }
+
+    @Test
+    public void shouldCreateStructForHeterogenousDocumentInArray() throws Exception {
+        final MongoDataConverter converter = new MongoDataConverter(ArrayEncoding.DOCUMENT);
+        final BsonDocument val = BsonDocument.parse(HETEROGENOUS_DOCUMENT_IN_ARRAY);
+        for (Entry<String, BsonValue> entry : val.entrySet()) {
+            converter.addFieldSchema(entry, builder);
+        }
+        final Schema finalSchema = builder.build();
+
+        final Struct struct = new Struct(finalSchema);
+
+        for (Entry<String, BsonValue> entry : val.entrySet()) {
+            converter.convertRecord(entry, finalSchema, struct);
+        }
+
+        assertThat(struct.toString()).isEqualTo(
+                "Struct{" +
+                        "_id=1," +
+                        "a1=Struct{" +
+                            "0=Struct{a=1}," +
+                            "1=Struct{a=c}" +
+                        "}" +
+                "}"
         );
     }
 }

@@ -23,6 +23,8 @@ import org.bson.BsonValue;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.connector.mongodb.transforms.UnwrapFromMongoDbEnvelope.ArrayEncoding;
+
 /**
  * Unit test for {@code MongoDataConverter}.
  *
@@ -33,25 +35,27 @@ public class MongoDataConverterTest {
     private String record;
     private BsonDocument val;
     private SchemaBuilder builder;
+    private MongoDataConverter converter;
 
     @Before
     public void setup() throws Exception {
         record = getFile("restaurants5.json");
         val = BsonDocument.parse(record);
         builder = SchemaBuilder.struct().name("pub");
+        converter = new MongoDataConverter(ArrayEncoding.ARRAY);
     }
 
     @Test
     public void shouldCreateCorrectStructFromInsertJson() {
         for (Entry<String, BsonValue> entry : val.entrySet()) {
-            MongoDataConverter.addFieldSchema(entry, builder);
+            converter.addFieldSchema(entry, builder);
         }
 
         Schema finalSchema = builder.build();
         Struct struct = new Struct(finalSchema);
 
         for (Entry<String, BsonValue> entry : val.entrySet()) {
-            MongoDataConverter.convertRecord(entry, finalSchema, struct);
+            converter.convertRecord(entry, finalSchema, struct);
         }
 
         assertThat(struct.toString()).isEqualTo(
@@ -84,7 +88,7 @@ public class MongoDataConverterTest {
     @Test
     public void shouldCreateCorrectSchemaFromInsertJson() {
         for (Entry<String, BsonValue> entry : val.entrySet()) {
-            MongoDataConverter.addFieldSchema(entry, builder);
+            converter.addFieldSchema(entry, builder);
         }
         Schema finalSchema = builder.build();
 
