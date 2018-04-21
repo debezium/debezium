@@ -177,8 +177,11 @@ public final class Tables {
         lock.write(() -> {
             tablesByTableId.entrySet().removeIf(tableIdTableEntry -> {
                 TableId tableId = tableIdTableEntry.getKey();
-                return (schemaName == null || tableId.schema() == null || schemaName.equals(tableId.schema()))
-                        & (catalogName == null || tableId.catalog() == null || catalogName.equals(tableId.catalog()));
+                boolean equalSchema = schemaName == null && tableId.schema() == null
+                        || schemaName != null && schemaName.equals(tableId.schema());
+                boolean equalCatalog = catalogName == null && tableId.catalog() == null
+                        || catalogName != null && catalogName.equals(tableId.schema());
+                return equalSchema && equalCatalog;
             });
         });
     }
