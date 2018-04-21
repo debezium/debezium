@@ -292,7 +292,7 @@ public abstract class AbstractDdlParser implements DdlParser {
      * @param list the list of previous parsing exceptions; may be null
      * @return the list of previous and current parsing exceptions; if {@code e} is null then always {@code list}, but otherwise non-null list
      */
-    protected Collection<ParsingException> accumulateParsingFailure(ParsingException e, Collection<ParsingException> list) {
+    public static Collection<ParsingException> accumulateParsingFailure(ParsingException e, Collection<ParsingException> list) {
         if (e == null) return list;
         if (list == null) list = new ArrayList<ParsingException>();
         list.add(e);

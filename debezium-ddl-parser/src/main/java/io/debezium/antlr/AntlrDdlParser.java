@@ -31,7 +31,7 @@ import java.util.Collection;
 public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends AbstractDdlParser {
 
     private boolean throwErrorsFromTreeWalk;
-    private ProxyParseTreeListener proxyParseTreeListener;
+    private AntlrDdlParserListener antlrDdlParserListener;
 
     protected Tables databaseTables;
     protected DataTypeResolver dataTypeResolver = new DataTypeResolver();
@@ -54,17 +54,17 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
         // remove default console output printing error listener
         parser.removeErrorListener(ConsoleErrorListener.INSTANCE);
 
-        ParsingErrorListener parsingErrorListener = new ParsingErrorListener(this::accumulateParsingFailure);
+        ParsingErrorListener parsingErrorListener = new ParsingErrorListener(AbstractDdlParser::accumulateParsingFailure);
         parser.addErrorListener(parsingErrorListener);
 
         ParseTree parseTree = parseTree(parser);
 
         if (parsingErrorListener.getErrors().isEmpty()) {
-            proxyParseTreeListener = assignParserListeners();
-            ParseTreeWalker.DEFAULT.walk(proxyParseTreeListener, parseTree);
+            antlrDdlParserListener = assignParserListeners();
+            ParseTreeWalker.DEFAULT.walk(antlrDdlParserListener, parseTree);
 
-            if (throwErrorsFromTreeWalk && !proxyParseTreeListener.getErrors().isEmpty()) {
-                throw new MultipleParsingExceptions(proxyParseTreeListener.getErrors());
+            if (throwErrorsFromTreeWalk && !antlrDdlParserListener.getErrors().isEmpty()) {
+                throw new MultipleParsingExceptions(antlrDdlParserListener.getErrors());
             }
         }
         else {
@@ -73,12 +73,9 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     }
 
     public Collection<ParsingException> getParsingExceptionsFromWalker() {
-        return proxyParseTreeListener.getErrors();
+        return antlrDdlParserListener.getErrors();
     }
 
-    protected void signalSkipTreeNode() {
-        proxyParseTreeListener.signalSkipTreeNode();
-    }
     /**
      * Examine the supplied string containing DDL statements, and apply those statements to the specified
      * database table definitions.
@@ -87,7 +84,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      */
     protected abstract ParseTree parseTree(P parser);
 
-    protected abstract ProxyParseTreeListener assignParserListeners();
+    protected abstract AntlrDdlParserListener assignParserListeners();
 
     /**
      * Creates a new generic type instance of ANTLR Lexer.
