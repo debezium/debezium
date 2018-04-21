@@ -37,7 +37,7 @@ root
     ;
 
 sqlStatements
-    : (sqlStatement MINUSMINUS? SEMI | emptyStatement)*
+    : (sqlStatement MINUSMINUS? SEMI? | emptyStatement)*
     (sqlStatement (MINUSMINUS? SEMI)? | emptyStatement)
     ;
 
