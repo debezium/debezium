@@ -34,6 +34,7 @@ import java.util.function.BiFunction;
 public class ProxyParseTreeListener implements ParseTreeListener {
     private List<ParseTreeListener> listeners;
 
+    private SkipException skipException = null;
     private Collection<ParsingException> errors = new ArrayList<>();
     private final BiFunction<ParsingException, Collection<ParsingException>, Collection<ParsingException>> accumulateError;
 
@@ -58,27 +59,37 @@ public class ProxyParseTreeListener implements ParseTreeListener {
 
     @Override
     public void enterEveryRule(ParserRuleContext ctx) {
-        for (ParseTreeListener listener : getListeners()) {
-            try {
-                listener.enterEveryRule(ctx);
-                ctx.enterRule(listener);
-            }
-            catch (ParsingException parsingException) {
-                accumulateError.apply(parsingException, errors);
+        if (skipException == null) {
+            for (ParseTreeListener listener : getListeners()) {
+                try {
+                    listener.enterEveryRule(ctx);
+                    ctx.enterRule(listener);
+                }
+                catch (ParsingException parsingException) {
+                    accumulateError.apply(parsingException, errors);
+                }
+                catch (SkipException e) {
+                    skipException = e;
+                }
             }
         }
     }
 
     @Override
     public void exitEveryRule(ParserRuleContext ctx) {
-        for (ParseTreeListener listener : getListeners()) {
-            try {
-                ctx.exitRule(listener);
-                listener.exitEveryRule(ctx);
+        if (skipException == null) {
+            for (ParseTreeListener listener : getListeners()) {
+                try {
+                    ctx.exitRule(listener);
+                    listener.exitEveryRule(ctx);
+                }
+                catch (ParsingException parsingException) {
+                    accumulateError.apply(parsingException, errors);
+                }
             }
-            catch (ParsingException parsingException) {
-                accumulateError.apply(parsingException, errors);
-            }
+        }
+        else if (skipException.getCtxClass().isAssignableFrom(ctx.getClass())) {
+            skipException = null;
         }
     }
 

@@ -37,7 +37,7 @@ root
     ;
 
 sqlStatements
-    : (sqlStatement MINUSMINUS? SEMI | emptyStatement)* 
+    : (sqlStatement MINUSMINUS? SEMI | emptyStatement)*
     (sqlStatement (MINUSMINUS? SEMI)? | emptyStatement)
     ;
 
@@ -304,7 +304,7 @@ indexOption
     ;
 
 procedureParameter
-    : direction=(IN | OUT | INOUT) uid dataType
+    : direction=(IN | OUT | INOUT)? uid dataType
     ;
 
 functionParameter
@@ -349,18 +349,20 @@ columnDefinition
 columnConstraint
     : nullNotnull                                                   #nullColumnConstraint
     | DEFAULT defaultValue                                          #defaultColumnConstraint
-    | AUTO_INCREMENT                                                #autoIncrementColumnConstraint
+    | (AUTO_INCREMENT | ON UPDATE timeDefinition)                   #autoIncrementColumnConstraint
     | PRIMARY? KEY                                                  #primaryKeyColumnConstraint
     | UNIQUE KEY?                                                   #uniqueKeyColumnConstraint
     | COMMENT STRING_LITERAL                                        #commentColumnConstraint
     | COLUMN_FORMAT colformat=(FIXED | DYNAMIC | DEFAULT)           #formatColumnConstraint
     | STORAGE storageval=(DISK | MEMORY | DEFAULT)                  #storageColumnConstraint
     | referenceDefinition                                           #referenceColumnConstraint
+    | COLLATE collationName                                         #collateColumnConstraint
     ;
 
 tableConstraint
     : (CONSTRAINT name=uid?)? 
-      PRIMARY KEY indexType? indexColumnNames indexOption*          #primaryKeyTableConstraint
+      PRIMARY KEY index=uid? indexType?
+      indexColumnNames indexOption*                                 #primaryKeyTableConstraint
     | (CONSTRAINT name=uid?)? 
       UNIQUE indexFormat=(INDEX | KEY)? index=uid?
       indexType? indexColumnNames indexOption*                      #uniqueKeyTableConstraint
@@ -371,7 +373,7 @@ tableConstraint
     ;
 
 referenceDefinition
-    : REFERENCES tableName indexColumnNames 
+    : REFERENCES tableName indexColumnNames?
       (MATCH matchType=(FULL | PARTIAL | SIMPLE))? 
       referenceAction?
     ;
@@ -404,7 +406,7 @@ tableOption
     | AUTO_INCREMENT '='? decimalLiteral                            #tableOptionAutoIncrement
     | AVG_ROW_LENGTH '='? decimalLiteral                            #tableOptionAverage
     | DEFAULT? (CHARACTER SET | CHARSET) '='? charsetName           #tableOptionCharset
-    | CHECKSUM '='? boolValue=('0' | '1')                           #tableOptionChecksum
+    | (CHECKSUM | PAGE_CHECKSUM) '='? boolValue=('0' | '1')         #tableOptionChecksum
     | DEFAULT? COLLATE '='? collationName                           #tableOptionCollate
     | COMMENT '='? STRING_LITERAL                                   #tableOptionComment
     | COMPRESSION '='? STRING_LITERAL                               #tableOptionCompression
@@ -428,6 +430,7 @@ tableOption
     | STATS_PERSISTENT '='? extBoolValue=(DEFAULT | '0' | '1')      #tableOptionPersistent
     | STATS_SAMPLE_PAGES '='? decimalLiteral                        #tableOptionSamplePage
     | TABLESPACE uid tablespaceStorage?                             #tableOptionTablespace
+    | tablespaceStorage                                             #tableOptionTablespace
     | UNION '='? '(' tables ')'                                     #tableOptionUnion
     ;
 
@@ -440,7 +443,7 @@ partitionDefinitions
       (PARTITIONS count=decimalLiteral)? 
       (
         SUBPARTITION BY subpartitionFunctionDefinition
-        (SUBPARTITIONS subCount=decimalLiteral)? 
+        (SUBPARTITIONS subCount=decimalLiteral)?
       )? 
     ('(' partitionDefinition (',' partitionDefinition)* ')')?
     ;
@@ -461,10 +464,13 @@ subpartitionFunctionDefinition
 
 partitionDefinition
     : PARTITION uid VALUES LESS THAN
-      '(' 
+      '('
           partitionDefinerAtom (',' partitionDefinerAtom)*
       ')'
       partitionOption*
+      (subpartitionDefinition (',' subpartitionDefinition)*)?       #partitionComparision
+    | PARTITION uid VALUES LESS THAN
+        partitionDefinerAtom partitionOption*
       (subpartitionDefinition (',' subpartitionDefinition)*)?       #partitionComparision
     | PARTITION uid VALUES IN  
       '('
@@ -483,7 +489,7 @@ partitionDefinition
     ;
 
 partitionDefinerAtom
-    : constant | MAXVALUE | expression
+    : constant  | expression | MAXVALUE
     ;
 
 partitionDefinerVector
@@ -551,7 +557,7 @@ alterServer
 alterTable
     : ALTER intimeAction=(ONLINE | OFFLINE)? 
       IGNORE? TABLE tableName
-      alterSpecification (',' alterSpecification)* 
+      (alterSpecification (',' alterSpecification)*)?
       partitionDefinitions?
     ;
 
@@ -604,7 +610,7 @@ alterSpecification
     | LOCK '='? lockType=(DEFAULT | NONE | SHARED | EXCLUSIVE)      #alterByLock
     | MODIFY COLUMN?
       uid columnDefinition (FIRST | AFTER uid)?                     #alterByModifyColumn
-    | DROP COLUMN? uid                                              #alterByDropColumn
+    | DROP COLUMN? uid RESTRICT?                                    #alterByDropColumn
     | DROP PRIMARY KEY                                              #alterByDropPrimaryKey
     | DROP indexFormat=(INDEX | KEY) uid                            #alterByDropIndex
     | DROP FOREIGN KEY uid                                          #alterByDropForeignKey
@@ -1328,7 +1334,7 @@ blockStatement
         (declareCondition SEMI)*
         (declareCursor SEMI)*
         (declareHandler SEMI)*
-        procedureSqlStatement+
+        (procedureSqlStatement)*
       )?
       END uid?
     ;
@@ -1633,8 +1639,8 @@ uninstallPlugin
 //    Set and show statements
 
 setStatement
-    : SET variableClause '=' expression
-      (',' variableClause '=' expression)*                          #setVariable
+    : SET variableClause ('=' | ':=') expression
+      (',' variableClause ('=' | ':=') expression)*                          #setVariable
     | SET (CHARACTER SET | CHARSET) (charsetName | DEFAULT)         #setCharset
     | SET NAMES
         (charsetName (COLLATE collationName)? | DEFAULT)            #setNames
@@ -1694,7 +1700,7 @@ showStatement
 // details
 
 variableClause
-    : LOCAL_ID | GLOBAL_ID | ( ('@' '@')? (GLOBAL | SESSION)  )? uid
+    : LOCAL_ID | GLOBAL_ID | (('@' '@')? (GLOBAL | SESSION | LOCAL))? uid
     ;
 
 showCommonEntity
@@ -1847,11 +1853,11 @@ fullColumnName
     ;
 
 indexColumnName
-    : uid ('(' decimalLiteral ')')? sortType=(ASC | DESC)?
+    : (uid | STRING_LITERAL) ('(' decimalLiteral ')')? sortType=(ASC | DESC)?
     ;
 
 userName
-    : STRING_USER_NAME | ID;
+    : STRING_USER_NAME | ID | STRING_LITERAL;
 
 mysqlVariable
     : LOCAL_ID
@@ -1870,7 +1876,7 @@ collationName
 
 engineName
     : ARCHIVE | BLACKHOLE | CSV | FEDERATED | INNODB | MEMORY 
-    | MRG_MYISAM | MYISAM | NDB | NDBCLUSTER | PERFOMANCE_SCHEMA
+    | MRG_MYISAM | MYISAM | NDB | NDBCLUSTER | PERFORMANCE_SCHEMA
     ;
 
 uuidSet
@@ -1968,23 +1974,23 @@ dataType
        | NCHAR | NVARCHAR
       ) 
       lengthOneDimension? BINARY? 
-      (CHARACTER SET charsetName)? (COLLATE collationName)?          #stringDataType
+      ((CHARACTER SET | CHARSET) charsetName)?                                #stringDataType
     | NATIONAL typeName=(VARCHAR | CHARACTER)
-        lengthOneDimension? BINARY? (COLLATE collationName)?         #nationalStringDataType
+        lengthOneDimension? BINARY?                                           #nationalStringDataType
     | NCHAR typeName=VARCHAR
-        lengthOneDimension? BINARY? (COLLATE collationName)?         #nationalStringDataType
+        lengthOneDimension? BINARY?                                           #nationalStringDataType
     | NATIONAL typeName=(CHAR | CHARACTER) VARYING
-        lengthOneDimension? BINARY? (COLLATE collationName)?         #nationalVaryingStringDataType
+        lengthOneDimension? BINARY?                                           #nationalVaryingStringDataType
     | typeName=(
         TINYINT | SMALLINT | MEDIUMINT | INT | INTEGER | BIGINT
       ) 
-      lengthOneDimension? UNSIGNED? ZEROFILL?                       #dimensionDataType
+      lengthOneDimension? (SIGNED | UNSIGNED)? ZEROFILL?                       #dimensionDataType
     | typeName=(REAL | FLOAT)
-      lengthTwoDimension? UNSIGNED? ZEROFILL?                       #dimensionDataType
+      lengthTwoDimension? (SIGNED | UNSIGNED)? ZEROFILL?                       #dimensionDataType
     | typeName=DOUBLE PRECISION?
-      lengthTwoDimension? UNSIGNED? ZEROFILL?                       #dimensionDataType
+      lengthTwoDimension? (SIGNED | UNSIGNED)? ZEROFILL?                       #dimensionDataType
     | typeName=(DECIMAL | DEC | FIXED | NUMERIC)
-      lengthTwoOptionalDimension? UNSIGNED? ZEROFILL?               #dimensionDataType
+      lengthTwoOptionalDimension? (SIGNED | UNSIGNED)? ZEROFILL?               #dimensionDataType
     | typeName=(
         DATE | TINYBLOB | BLOB | MEDIUMBLOB | LONGBLOB
         | BOOL | BOOLEAN
@@ -1995,12 +2001,16 @@ dataType
       ) 
       lengthOneDimension?                                           #dimensionDataType
     | typeName=(ENUM | SET) 
-      '(' STRING_LITERAL (',' STRING_LITERAL)* ')' BINARY? 
-      (CHARACTER SET charsetName)? (COLLATE collationName)?         #collectionDataType
+      '(' collectionOption (',' collectionOption)* ')' BINARY?
+      ((CHARACTER SET | CHARSET) charsetName)?                      #collectionDataType
     | typeName=(
         GEOMETRYCOLLECTION | LINESTRING | MULTILINESTRING
         | MULTIPOINT | MULTIPOLYGON | POINT | POLYGON | JSON | GEOMETRY
       )                                                             #spatialDataType
+    ;
+
+collectionOption
+    : STRING_LITERAL
     ;
 
 convertedDataType
@@ -2064,7 +2074,13 @@ userVariables
 defaultValue
     : NULL_LITERAL
     | constant
-    | CURRENT_TIMESTAMP (ON UPDATE LOCALTIMESTAMP)?
+//    | timeDefinition (ON UPDATE timeDefinition)?
+    | timeDefinition
+    ;
+
+timeDefinition
+    : (CURRENT_TIMESTAMP | NOW | LOCALTIME | LOCALTIMESTAMP)
+          ('(' functionArgs? ')')?
     ;
 
 expressionOrDefault
@@ -2337,7 +2353,7 @@ keywordsCanBeId
     | AT | AUTHORS | AUTOCOMMIT | AUTOEXTEND_SIZE
     | AUTO_INCREMENT | AVG_ROW_LENGTH | BEGIN | BINLOG | BIT
     | BLOCK | BOOL | BOOLEAN | BTREE | CASCADED | CHAIN
-    | CHANNEL | CHECKSUM | CIPHER | CLIENT | COALESCE | CODE
+    | CHANNEL | CHECKSUM | PAGE_CHECKSUM | CIPHER | CLIENT | COALESCE | CODE
     | COLUMNS | COLUMN_FORMAT | COMMENT | COMMIT | COMPACT
     | COMPLETION | COMPRESSED | COMPRESSION | CONCURRENT
     | CONNECTION | CONSISTENT | CONTAINS | CONTEXT
@@ -2370,7 +2386,7 @@ keywordsCanBeId
     | OJ | OLD_PASSWORD | ONE | ONLINE | ONLY | OPTIMIZER_COSTS
     | OPTIONS | OWNER | PACK_KEYS | PAGE | PARSER | PARTIAL
     | PARTITIONING | PARTITIONS | PASSWORD | PHASE | PLUGINS
-    | PLUGIN_DIR | PORT | PRECEDES | PREPARE | PRESERVE | PREV
+    | PLUGIN_DIR | PLUGIN | PORT | PRECEDES | PREPARE | PRESERVE | PREV
     | PROCESSLIST | PROFILE | PROFILES | PROXY | QUERY | QUICK
     | REBUILD | RECOVER | REDO_BUFFER_SIZE | REDUNDANT
     | RELAYLOG | RELAY_LOG_FILE | RELAY_LOG_POS | REMOVE
