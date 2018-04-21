@@ -7,6 +7,7 @@
 package io.debezium.antlr.mysql;
 
 import io.debezium.antlr.AntlrDdlParser;
+import io.debezium.antlr.AntlrDdlParserListener;
 import io.debezium.antlr.DataTypeResolver;
 import io.debezium.antlr.DataTypeResolver.DataTypeEntry;
 import io.debezium.antlr.ProxyParseTreeListener;
@@ -23,17 +24,23 @@ import io.debezium.relational.TableId;
 import io.debezium.text.ParsingException;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.misc.Interval;
+import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.ParseTreeListener;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 /**
@@ -61,10 +68,9 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     }
 
     @Override
-    protected ProxyParseTreeListener assignParserListeners() {
-        ProxyParseTreeListener proxyParseTreeListener = new ProxyParseTreeListener(this::accumulateParsingFailure);
+    protected AntlrDdlParserListener assignParserListeners() {
+        MySqlAtlrDdlParserListener proxyParseTreeListener = new MySqlAtlrDdlParserListener();
         proxyParseTreeListener.add(new DatabaseOptionsListener());
-        proxyParseTreeListener.add(new ColumnDefinitionParserListener());
         proxyParseTreeListener.add(new DropDatabaseParserListener());
         proxyParseTreeListener.add(new CreateTableParserListener());
         proxyParseTreeListener.add(new AlterTableParserListener());
@@ -75,7 +81,6 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         proxyParseTreeListener.add(new CreateUniqueIndexParserListener());
         proxyParseTreeListener.add(new SetStatementParserListener());
         proxyParseTreeListener.add(new UseStatementParserListener());
-        proxyParseTreeListener.add(new FinishSqlStatementParserListener());
         return proxyParseTreeListener;
     }
 
@@ -375,7 +380,68 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     /**
      * Parser listener for MySQL column definition queries.
      */
-    private class ColumnDefinitionParserListener extends MySqlParserBaseListener {
+    private class MySqlAtlrDdlParserListener extends MySqlParserBaseListener implements AntlrDdlParserListener {
+
+        private List<ParseTreeListener> listeners = new CopyOnWriteArrayList<>();
+
+        private boolean skipNodes;
+        private int skippedNodesCount = 0;
+        private Collection<ParsingException> errors = new ArrayList<>();
+
+        /**
+         * Returns all caught errors during tree walk.
+         *
+         * @return list of Parsing exceptions
+         */
+        public Collection<ParsingException> getErrors() {
+            return errors;
+        }
+
+        @Override
+        public void enterEveryRule(ParserRuleContext ctx) {
+            if (skipNodes) {
+                skippedNodesCount++;
+            }
+            else {
+                ProxyParseTreeListener.delegateEnterRule(ctx, listeners, errors);
+            }
+        }
+
+        @Override
+        public void exitEveryRule(ParserRuleContext ctx) {
+            if (skipNodes) {
+                if (skippedNodesCount == 0) {
+                    // back in the node where skipping started
+                    skipNodes = false;
+                }
+                else {
+                    // going up in a tree, means decreasing a number of skipped nodes
+                    skippedNodesCount--;
+                }
+            }
+            else {
+                ProxyParseTreeListener.delegateExitRule(ctx, listeners, errors);
+            }
+        }
+
+        @Override
+        public void visitErrorNode(ErrorNode node) {
+            ProxyParseTreeListener.visitErrorNode(node, listeners, errors);
+        }
+
+        @Override
+        public void visitTerminal(TerminalNode node) {
+            ProxyParseTreeListener.visitTerminal(node, listeners, errors);
+        }
+
+        /**
+         * Adds the given listener to the list of event notification recipients.
+         *
+         * @param listener A listener to begin receiving events.
+         */
+        public void add(ParseTreeListener listener) {
+            this.listeners.add(listener);
+        }
 
         @Override
         public void enterColumnDefinition(MySqlParser.ColumnDefinitionContext ctx) {
@@ -424,6 +490,25 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
             super.enterAutoIncrementColumnConstraint(ctx);
         }
 
+        @Override
+        public void enterRoutineBody(MySqlParser.RoutineBodyContext ctx) {
+            skipNodes = true;
+        }
+
+        @Override
+        public void exitSqlStatement(MySqlParser.SqlStatementContext ctx) {
+            if (tableEditor != null) {
+                // reset global values for next statement that could be parsed with this instance
+                tableEditor = null;
+                columnEditor = null;
+                debugParsed(ctx);
+            }
+            else {
+                // if table editor was not set, then nothing was parsed
+                debugSkipped(ctx);
+            }
+            super.exitSqlStatement(ctx);
+        }
     }
 
     /**
@@ -1132,33 +1217,6 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
             String charsetForDb = charsetNameForDatabase.get(dbName);
             systemVariables.setVariable(MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_DATABASE, charsetForDb);
             super.enterUseStatement(ctx);
-        }
-    }
-
-    /**
-     * Parser listener for MySQL finishing parsing of one sql statement.
-     */
-    private class FinishSqlStatementParserListener extends MySqlParserBaseListener {
-
-
-        @Override
-        public void enterRoutineBody(MySqlParser.RoutineBodyContext ctx) {
-            signalSkipTreeNode();
-        }
-
-        @Override
-        public void exitSqlStatement(MySqlParser.SqlStatementContext ctx) {
-            if (tableEditor != null) {
-                // reset global values for next statement that could be parsed with this instance
-                tableEditor = null;
-                columnEditor = null;
-                debugParsed(ctx);
-            }
-            else {
-                // if table editor was not set, then nothing was parsed
-                debugSkipped(ctx);
-            }
-            super.exitSqlStatement(ctx);
         }
     }
 
