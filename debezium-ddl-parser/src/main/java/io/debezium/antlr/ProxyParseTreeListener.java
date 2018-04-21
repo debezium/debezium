@@ -34,7 +34,8 @@ import java.util.function.BiFunction;
 public class ProxyParseTreeListener implements ParseTreeListener {
     private List<ParseTreeListener> listeners;
 
-    private SkipException skipException = null;
+    private boolean skipNodes;
+    private int skipedNodesCount = 0;
     private Collection<ParsingException> errors = new ArrayList<>();
     private final BiFunction<ParsingException, Collection<ParsingException>, Collection<ParsingException>> accumulateError;
 
@@ -59,7 +60,10 @@ public class ProxyParseTreeListener implements ParseTreeListener {
 
     @Override
     public void enterEveryRule(ParserRuleContext ctx) {
-        if (skipException == null) {
+        if (skipNodes) {
+            skipedNodesCount++;
+        }
+        else {
             for (ParseTreeListener listener : getListeners()) {
                 try {
                     listener.enterEveryRule(ctx);
@@ -68,16 +72,23 @@ public class ProxyParseTreeListener implements ParseTreeListener {
                 catch (ParsingException parsingException) {
                     accumulateError.apply(parsingException, errors);
                 }
-                catch (SkipException e) {
-                    skipException = e;
-                }
             }
         }
     }
 
     @Override
     public void exitEveryRule(ParserRuleContext ctx) {
-        if (skipException == null) {
+        if (skipNodes) {
+            if (skipedNodesCount == 0) {
+                // back in the node where skipping started
+                skipNodes = false;
+            }
+            else {
+                // going up in a tree, means decreasing a number of skipped nodes
+                skipedNodesCount--;
+            }
+        }
+        else {
             for (ParseTreeListener listener : getListeners()) {
                 try {
                     ctx.exitRule(listener);
@@ -87,9 +98,6 @@ public class ProxyParseTreeListener implements ParseTreeListener {
                     accumulateError.apply(parsingException, errors);
                 }
             }
-        }
-        else if (skipException.getCtxClass().isAssignableFrom(ctx.getClass())) {
-            skipException = null;
         }
     }
 
@@ -115,6 +123,10 @@ public class ProxyParseTreeListener implements ParseTreeListener {
                 accumulateError.apply(parsingException, errors);
             }
         }
+    }
+
+    public void signalSkipTreeNode() {
+        skipNodes = true;
     }
 
     /**
