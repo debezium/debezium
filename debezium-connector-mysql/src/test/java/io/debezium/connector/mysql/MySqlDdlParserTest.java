@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import io.debezium.antlr.mysql.MySqlAntlrDdlParser;
 import io.debezium.antlr.mysql.MySqlSystemVariables;
 import io.debezium.doc.FixFor;
 import io.debezium.relational.Column;
@@ -1534,10 +1535,10 @@ public class MySqlDdlParserTest {
         assertThat(column.isAutoIncremented()).isEqualTo(autoIncremented);
     }
 
-    class MysqlDdlParserWithSimpleTestListener extends MySqlDdlParser {
+    class MysqlDdlParserWithSimpleTestListener extends MySqlAntlrDdlParser {
         public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener) {
-//            super(false);
-            super();
+            super(false);
+//            super();
             this.ddlChanges = changesListener;
         }
     }
