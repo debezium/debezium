@@ -76,6 +76,9 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
         return proxyParseTreeListener.getErrors();
     }
 
+    protected void signalSkipTreeNode() {
+        proxyParseTreeListener.signalSkipTreeNode();
+    }
     /**
      * Examine the supplied string containing DDL statements, and apply those statements to the specified
      * database table definitions.

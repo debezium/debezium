@@ -10,7 +10,6 @@ import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.antlr.DataTypeResolver;
 import io.debezium.antlr.DataTypeResolver.DataTypeEntry;
 import io.debezium.antlr.ProxyParseTreeListener;
-import io.debezium.antlr.SkipException;
 import io.debezium.antlr.mysql.MySqlSystemVariables.MySqlScope;
 import io.debezium.ddl.parser.mysql.generated.MySqlLexer;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
@@ -1144,7 +1143,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
         @Override
         public void enterRoutineBody(MySqlParser.RoutineBodyContext ctx) {
-            throw new SkipException(ctx.getClass());
+            signalSkipTreeNode();
         }
 
         @Override
