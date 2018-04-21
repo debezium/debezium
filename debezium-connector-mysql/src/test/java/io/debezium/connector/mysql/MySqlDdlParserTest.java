@@ -1638,5 +1638,4 @@ public class MySqlDdlParserTest {
             this.ddlChanges = changesListener;
         }
     }
-
 }
