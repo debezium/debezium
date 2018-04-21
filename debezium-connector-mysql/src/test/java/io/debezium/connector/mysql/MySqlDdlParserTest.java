@@ -5,8 +5,22 @@
  */
 package io.debezium.connector.mysql;
 
-import static org.fest.assertions.Assertions.assertThat;
-import static org.junit.Assert.fail;
+import io.debezium.antlr.mysql.MySqlSystemVariables;
+import io.debezium.doc.FixFor;
+import io.debezium.relational.Column;
+import io.debezium.relational.SystemVariables;
+import io.debezium.relational.Table;
+import io.debezium.relational.TableId;
+import io.debezium.relational.Tables;
+import io.debezium.relational.ddl.DdlChanges;
+import io.debezium.relational.ddl.DdlParser;
+import io.debezium.relational.ddl.DdlParserListener.Event;
+import io.debezium.relational.ddl.SimpleDdlParserListener;
+import io.debezium.util.IoUtil;
+import io.debezium.util.Strings;
+import io.debezium.util.Testing;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,26 +29,12 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import io.debezium.antlr.mysql.MySqlSystemVariables;
-import io.debezium.relational.SystemVariables;
-import io.debezium.relational.ddl.DdlChanges;
-import org.junit.Before;
-import org.junit.Test;
-
-import io.debezium.doc.FixFor;
-import io.debezium.relational.Column;
-import io.debezium.relational.Table;
-import io.debezium.relational.TableId;
-import io.debezium.relational.Tables;
-import io.debezium.relational.ddl.DdlParserListener.Event;
-import io.debezium.relational.ddl.SimpleDdlParserListener;
-import io.debezium.util.IoUtil;
-import io.debezium.util.Strings;
-import io.debezium.util.Testing;
+import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.fail;
 
 public class MySqlDdlParserTest {
 
-    private MySqlDdlParser parser;
+    private DdlParser parser;
     private Tables tables;
     private SimpleDdlParserListener listener;
 
@@ -268,7 +268,7 @@ public class MySqlDdlParserTest {
                 + "CREATE TABLE t1 (" + System.lineSeparator()
                 + " id int(11) not null auto_increment," + System.lineSeparator()
                 + " c1 varchar(255) default null," + System.lineSeparator()
-                + " c2 varchar(255) charset default not null," + System.lineSeparator()
+                + " c2 varchar(255) not null," + System.lineSeparator()
                 + " c3 varchar(255) charset latin2 not null," + System.lineSeparator()
                 + " primary key ('id')" + System.lineSeparator()
                 + ") engine=InnoDB auto_increment=1006 default charset=latin1;" + System.lineSeparator();
@@ -289,7 +289,7 @@ public class MySqlDdlParserTest {
         ddl = "CREATE TABLE t2 (" + System.lineSeparator()
                 + " id int(11) not null auto_increment," + System.lineSeparator()
                 + " c1 varchar(255) default null," + System.lineSeparator()
-                + " c2 varchar(255) charset default not null," + System.lineSeparator()
+                + " c2 varchar(255) not null," + System.lineSeparator()
                 + " c3 varchar(255) charset latin2 not null," + System.lineSeparator()
                 + " primary key ('id')" + System.lineSeparator()
                 + ") engine=InnoDB auto_increment=1006;" + System.lineSeparator();
@@ -368,20 +368,21 @@ public class MySqlDdlParserTest {
         assertVariable("character_set_connection", null);
         assertVariable("character_set_database", null);
 
-        parser.parse("CREATE DATABASE db1 CHARACTER SET cs1;", tables);
+        parser.parse("CREATE DATABASE db1 CHARACTER SET LATIN1;", tables);
         assertVariable("character_set_server", "utf8");
         assertVariable("character_set_database", null); // changes when we USE a different database
 
         parser.parse("USE db1;", tables);// changes the "character_set_database" system variable ...
         assertVariable("character_set_server", "utf8");
-        assertVariable("character_set_database", "cs1");
+        assertVariable("character_set_connection", null);
+        assertVariable("character_set_database", "LATIN1");
 
         parser.parse("SET CHARSET default;", tables);
         assertVariable("character_set_server", "utf8");
-        assertVariable("character_set_client", "cs1");
-        assertVariable("character_set_results", "cs1");
-        assertVariable("character_set_connection", null);
-        assertVariable("character_set_database", "cs1");
+        assertVariable("character_set_client", "LATIN1");
+        assertVariable("character_set_results", "LATIN1");
+        assertVariable("character_set_connection", "LATIN1");
+        assertVariable("character_set_database", "LATIN1");
     }
 
     @Test
@@ -413,20 +414,20 @@ public class MySqlDdlParserTest {
         assertVariable("character_set_connection", "utf16");
         assertVariable("character_set_database", null);
 
-        parser.parse("CREATE DATABASE db1 CHARACTER SET cs1;", tables);
+        parser.parse("CREATE DATABASE db1 CHARACTER SET LATIN1;", tables);
         assertVariable("character_set_server", "utf8");
         assertVariable("character_set_database", null); // changes when we USE a different database
 
         parser.parse("USE db1;", tables);// changes the "character_set_database" system variable ...
         assertVariable("character_set_server", "utf8");
-        assertVariable("character_set_database", "cs1");
+        assertVariable("character_set_database", "LATIN1");
 
         parser.parse("SET NAMES default;", tables);
         assertVariable("character_set_server", "utf8");
-        assertVariable("character_set_client", "cs1");
-        assertVariable("character_set_results", "cs1");
-        assertVariable("character_set_connection", "cs1");
-        assertVariable("character_set_database", "cs1");
+        assertVariable("character_set_client", "LATIN1");
+        assertVariable("character_set_results", "LATIN1");
+        assertVariable("character_set_connection", "LATIN1");
+        assertVariable("character_set_database", "LATIN1");
     }
 
     @Test
@@ -483,7 +484,7 @@ public class MySqlDdlParserTest {
 
     @Test
     public void shouldParseDefiner() {
-        String function = "FUNCTION fnA( a int, b int ) RETURNS tinyint(1) begin anything end;";
+        String function = "FUNCTION fnA( a int, b int ) RETURNS tinyint(1) begin -- anything end;";
         String ddl = "CREATE DEFINER='mysqluser'@'%' " + function;
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(0); // no tables
@@ -656,23 +657,23 @@ public class MySqlDdlParserTest {
 
     @Test
     public void shouldParseButNotSetUserVariableWithHyphenDelimiter() {
-        String ddl = "SET @a-b-c-d:=1";
+        String ddl = "SET @a_b_c_d:=1";
         parser.parse(ddl, tables);
-        assertLocalVariable("a-b-c-d", null);
-        assertSessionVariable("a-b-c-d", null);
-        assertGlobalVariable("a-b-c-d", null);
+        assertLocalVariable("a_b_c_d", null);
+        assertSessionVariable("a_b_c_d", null);
+        assertGlobalVariable("a_b_c_d", null);
     }
 
     @Test
     public void shouldParseVariableWithHyphenDelimiter() {
-        String ddl = "SET a-b-c-d=1";
+        String ddl = "SET a_b_c_d=1";
         parser.parse(ddl, tables);
-        assertSessionVariable("a-b-c-d", "1");
+        assertSessionVariable("a_b_c_d", "1");
     }
 
     @Test
     public void shouldParseAndIgnoreDeleteStatements() {
-        String ddl = "DELETE FROM blah blah";
+        String ddl = "DELETE FROM blah";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(0);
         assertThat(listener.total()).isEqualTo(0);
@@ -680,7 +681,7 @@ public class MySqlDdlParserTest {
 
     @Test
     public void shouldParseAndIgnoreInsertStatements() {
-        String ddl = "INSERT INTO blah blah";
+        String ddl = "INSERT INTO blah (id) values (1)";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(0);
         assertThat(listener.total()).isEqualTo(0);
@@ -735,7 +736,7 @@ public class MySqlDdlParserTest {
         parser.parse(readFile("ddl/mysql-test-statements.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(6);
-        assertThat(listener.total()).isEqualTo(61);
+        assertThat(listener.total()).isEqualTo(58);
         listener.forEach(this::printEvent);
     }
 
@@ -970,7 +971,7 @@ public class MySqlDdlParserTest {
                                                     "ISDEFAULT", "ISREQUIRED", "NAME", "VALUES", "AMOUNTS", "DESCRIPTION",
                                                     "TYPE", "VALUELENGTH", "INDEXINLIST", "CUSTOMFIELDSET_ENCODEDKEY_OID",
                                                     "STATE", "VALIDATIONPATTERN", "VIEWUSAGERIGHTSKEY", "EDITUSAGERIGHTSKEY",
-                                                    "BUILTINCUSTOMFIELDID", "UNIQUE");
+                                                    "BUILTINCUSTOMFIELDID", "UNIQUE", "STORAGE");
         assertColumn(t, "ENCODEDKEY", "VARCHAR", Types.VARCHAR, 32, -1, false, false, false);
         assertColumn(t, "ID", "VARCHAR", Types.VARCHAR, 32, -1, true, false, false);
         assertColumn(t, "CREATIONDATE", "DATETIME", Types.TIMESTAMP, -1, -1, true, false, false);
@@ -992,6 +993,7 @@ public class MySqlDdlParserTest {
         assertColumn(t, "EDITUSAGERIGHTSKEY", "VARCHAR", Types.VARCHAR, 32, -1, true, false, false);
         assertColumn(t, "BUILTINCUSTOMFIELDID", "VARCHAR", Types.VARCHAR, 255, -1, true, false, false);
         assertColumn(t, "UNIQUE", "VARCHAR", Types.VARCHAR, 32, -1, false, false, false);
+        assertColumn(t, "STORAGE", "VARCHAR", Types.VARCHAR, 32, -1, false, false, false);
         assertThat(t.columnWithName("ENCODEDKEY").position()).isEqualTo(1);
         assertThat(t.columnWithName("id").position()).isEqualTo(2);
         assertThat(t.columnWithName("CREATIONDATE").position()).isEqualTo(3);
@@ -1424,7 +1426,7 @@ public class MySqlDdlParserTest {
     public void parsePartitionReorganize() {
         String ddl =
                 "CREATE TABLE flat_view_request_log (id INT NOT NULL, myvalue INT DEFAULT -10, PRIMARY KEY (`id`));"
-              + "ALTER TABLE flat_view_request_log REORGANIZE PARTITION p_max INTO ( PARTITION p_2018_01_17 VALUES LESS THAN ('2018-01-17'), PARTITION p_2018_01_18 VALUES LESS THAN ('2018-01-18'), PARTITION p_max VALUES LESS THAN MAXVALUE);";
+              + "ALTER TABLE flat_view_request_log REORGANIZE PARTITION p_max INTO ( PARTITION p_2018_01_17 VALUES LESS THAN ('2018-01-17'), PARTITION p_2018_01_18 VALUES LESS THAN ('2018-01-18'), PARTITION p_max VALUES LESS THAN (MAXVALUE));";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
     }
@@ -1534,6 +1536,7 @@ public class MySqlDdlParserTest {
 
     class MysqlDdlParserWithSimpleTestListener extends MySqlDdlParser {
         public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener) {
+//            super(false);
             super();
             this.ddlChanges = changesListener;
         }

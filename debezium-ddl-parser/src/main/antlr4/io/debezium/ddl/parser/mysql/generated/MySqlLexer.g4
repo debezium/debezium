@@ -36,7 +36,7 @@ SPACE:                               [ \t\r\n]+    -> channel(HIDDEN);
 SPEC_MYSQL_COMMENT:                  '/*!' .+? '*/' -> channel(MYSQLCOMMENT);
 COMMENT_INPUT:                       '/*' .*? '*/' -> channel(HIDDEN);
 LINE_COMMENT:                        (
-                                       ('-- ' | '#') ~[\r\n]* ('\r'? '\n' | EOF) 
+                                       ('-- ' | '#') ~[\r\n]* ('\r'? '\n' | EOF)
                                        | '--' ('\r'? '\n' | EOF) 
                                      ) -> channel(HIDDEN);
 
@@ -336,6 +336,7 @@ CHAIN:                               'CHAIN';
 CHANGED:                             'CHANGED';
 CHANNEL:                             'CHANNEL';
 CHECKSUM:                            'CHECKSUM';
+PAGE_CHECKSUM:                       'PAGE_CHECKSUM';
 CIPHER:                              'CIPHER';
 CLIENT:                              'CLIENT';
 CLOSE:                               'CLOSE';
@@ -703,7 +704,7 @@ MRG_MYISAM:                          'MRG_MYISAM';
 MYISAM:                              'MYISAM';
 NDB:                                 'NDB';
 NDBCLUSTER:                          'NDBCLUSTER';
-PERFOMANCE_SCHEMA:                   'PERFOMANCE_SCHEMA';
+PERFORMANCE_SCHEMA:                  'PERFORMANCE_SCHEMA';
 
 
 // Transaction Levels
@@ -1099,7 +1100,7 @@ FILESIZE_LITERAL:                    DEC_DIGIT+ ('K'|'M'|'G'|'T');
 
 START_NATIONAL_STRING_LITERAL:       'N' SQUOTA_STRING;
 STRING_LITERAL:                      DQUOTA_STRING | SQUOTA_STRING;
-DECIMAL_LITERAL:                     DEC_DIGIT+;
+DECIMAL_LITERAL:                     '-'? DEC_DIGIT+;
 HEXADECIMAL_LITERAL:                 'X' '\'' (HEX_DIGIT HEX_DIGIT)+ '\''
                                      | '0X' HEX_DIGIT+;
 

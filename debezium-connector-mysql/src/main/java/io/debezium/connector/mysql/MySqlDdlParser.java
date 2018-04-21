@@ -215,6 +215,8 @@ public class MySqlDdlParser extends LegacyDdlParser {
             }
             systemVariables.setVariable(scope.get(), "character_set_client", charsetName);
             systemVariables.setVariable(scope.get(), "character_set_results", charsetName);
+            systemVariables.setVariable(MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_CONNECTION,
+                    systemVariables.getVariable(MySqlSystemVariables.CHARSET_NAME_DATABASE));
             // systemVariables.setVariable(scope.get(), "collation_connection", ...);
         } else if (tokens.canConsume("NAMES")) {
             // https://dev.mysql.com/doc/refman/5.7/en/set-statement.html
