@@ -99,6 +99,7 @@ public class Filters {
         ColumnMappers.Builder columnMapperBuilder = ColumnMappers.create();
         config.forEachMatchingFieldNameWithInteger("column\\.truncate\\.to\\.(\\d+)\\.chars", columnMapperBuilder::truncateStrings);
         config.forEachMatchingFieldNameWithInteger("column\\.mask\\.with\\.(\\d+)\\.chars", columnMapperBuilder::maskStrings);
+        config.forEachMatchingFieldName("column\\.add\\.original\\.type", columnMapperBuilder::addOriginalType);
         this.columnMappers = columnMapperBuilder.build();
     }
 
