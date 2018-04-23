@@ -10,16 +10,16 @@ import java.io.IOException;
 import java.util.Properties;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.util.IoUtil;
-import kafka.admin.AdminUtils;
 import kafka.admin.RackAwareMode;
 import kafka.log.Log;
 import kafka.server.KafkaConfig;
-import kafka.utils.ZkUtils;
+import kafka.zk.AdminZkClient;
 import scala.collection.JavaConverters;
 
 /**
@@ -41,6 +41,7 @@ public class KafkaServer {
     private volatile int desiredPort = -1;
     private volatile int port = -1;
     private volatile kafka.server.KafkaServer server;
+    private volatile AdminZkClient adminZkClient;
 
     /**
      * Create a new server instance.
@@ -209,6 +210,7 @@ public class KafkaServer {
                                                   new scala.collection.mutable.ArraySeq<>(0));
             server.startup();
             LOGGER.info("Started Kafka server {} at {} with storage in {}", brokerId, getConnection(), logsDir.getAbsolutePath());
+            adminZkClient = new AdminZkClient(server.zkClient());
             return this;
         } catch (RuntimeException e) {
             server = null;
@@ -233,6 +235,7 @@ public class KafkaServer {
                 LOGGER.info("Stopped Kafka server {} at {}", brokerId, getConnection());
             } finally {
                 server = null;
+                adminZkClient = null;
                 port = desiredPort;
             }
         }
@@ -253,12 +256,12 @@ public class KafkaServer {
     }
 
     /**
-     * Get the Zookeeper utilities used by the running Kafka server.
+     * Get the Zookeeper admin client used by the running Kafka server.
      * 
-     * @return the Zookeeper utilities, or null if the Kafka server is not running
+     * @return the Zookeeper admin client, or null if the Kafka server is not running
      */
-    public ZkUtils getZkUtils() {
-        return server != null ? server.zkUtils() : null;
+    public AdminZkClient getAdminZkClient() {
+        return adminZkClient;
     }
 
     /**
@@ -292,7 +295,7 @@ public class KafkaServer {
      */
     public void createTopic( String topic, int numPartitions, int replicationFactor ) {
         RackAwareMode rackAwareMode = null;
-        AdminUtils.createTopic(getZkUtils(), topic, numPartitions, replicationFactor, new Properties(), rackAwareMode);
+        getAdminZkClient().createTopic(topic, numPartitions, replicationFactor, new Properties(), rackAwareMode);
     }
 
     /**
