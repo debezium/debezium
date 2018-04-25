@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -160,6 +161,8 @@ public class OracleConnectorTask extends BaseSourceTask {
         catch (InterruptedException e) {
             Thread.interrupted();
             LOGGER.error("Interrupted while stopping coordinator", e);
+            // XStream code can end in SIGSEGV so fail the task instead of JVM crash
+            throw new ConnectException("Interrupted while stopping coordinator, failing the task");
         }
 
         try {
