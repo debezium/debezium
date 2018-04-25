@@ -33,6 +33,8 @@ public class ParallelSnapshotReader implements Reader {
     private final AtomicBoolean running = new AtomicBoolean();
     private final AtomicReference<Runnable> uponCompletion = new AtomicReference<>();
 
+    private static final long NEW_TABLES_SERVER_ID_OFFSET = 10000;
+
     /**
      * Create a ParallelSnapshotReader.
      *
@@ -50,14 +52,20 @@ public class ParallelSnapshotReader implements Reader {
         ParallelHaltingPredicate newTablesReaderHaltingPredicate =
             new ParallelHaltingPredicate(newTablesReaderNearEnd, oldTablesReaderNearEnd);
 
-        this.oldTablesReader = new BinlogReader("oldBinlog", noSnapshotContext, oldTablesReaderHaltingPredicate);
+        this.oldTablesReader = new BinlogReader("oldBinlog",
+                                                noSnapshotContext,
+                                                oldTablesReaderHaltingPredicate);
 
         MySqlTaskContext newTablesContext = new MySqlTaskContext(config, snapshotFilters);
+        newTablesContext.start();
         SnapshotReader newTablesSnapshotReader = new SnapshotReader("newSnapshot", newTablesContext);
 
-        this.newTablesBinlogReader = new BinlogReader("newBinlog", newTablesContext, newTablesReaderHaltingPredicate);
+        long newTablesBinlogReaderServerId = newTablesContext.serverId() + NEW_TABLES_SERVER_ID_OFFSET;
+        this.newTablesBinlogReader = new BinlogReader("newBinlog",
+                                                      newTablesContext,
+                                                      newTablesReaderHaltingPredicate,
+                                                      newTablesBinlogReaderServerId);
         this.newTablesReader = new ChainedReader.Builder().addReader(newTablesSnapshotReader).addReader(newTablesBinlogReader).build();
-
     }
 
     // for testing purposes

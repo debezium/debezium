@@ -148,6 +148,18 @@ public class BinlogReader extends AbstractReader {
      * @param acceptAndContinue see {@link AbstractReader#AbstractReader(String, MySqlTaskContext, Predicate)}
      */
     public BinlogReader(String name, MySqlTaskContext context, Predicate<SourceRecord> acceptAndContinue) {
+        this(name, context, acceptAndContinue, context.serverId());
+    }
+
+    /**
+     * Create a binlog reader.
+     *
+     * @param name the name of this reader; may not be null
+     * @param context the task context in which this reader is running; may not be null
+     * @param acceptAndContinue see {@link AbstractReader#AbstractReader(String, MySqlTaskContext, Predicate)}
+     * @param serverId the server id to use for the {@link BinaryLogClient}
+     */
+    public BinlogReader(String name, MySqlTaskContext context, Predicate<SourceRecord> acceptAndContinue, long serverId) {
         super(name, context, acceptAndContinue);
 
         connectionContext = context.getConnectionContext();
@@ -165,7 +177,7 @@ public class BinlogReader extends AbstractReader {
         client = new BinaryLogClient(connectionContext.hostname(), connectionContext.port(), connectionContext.username(), connectionContext.password());
         // BinaryLogClient will overwrite thread names later
         client.setThreadFactory(Threads.threadFactory(MySqlConnector.class, context.getConnectorConfig().getLogicalName(), "binlog-client", false));
-        client.setServerId(context.serverId());
+        client.setServerId(serverId);
         client.setSSLMode(sslModeFor(connectionContext.sslMode()));
         client.setKeepAlive(context.config().getBoolean(MySqlConnectorConfig.KEEP_ALIVE));
         client.setKeepAliveInterval(context.config().getLong(MySqlConnectorConfig.KEEP_ALIVE_INTERVAL_MS));

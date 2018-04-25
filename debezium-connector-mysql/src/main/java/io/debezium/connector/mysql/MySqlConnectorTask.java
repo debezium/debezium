@@ -268,7 +268,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
         private final SourceInfo sourceInfo;
         private final Configuration config;
 
-        private static final Logger logger = LoggerFactory.getLogger(getClass());
+        private static final Logger logger = LoggerFactory.getLogger(CompleteReconciliation.class);
 
         /**
          * Create a runnable to complete the Reconciliation process:

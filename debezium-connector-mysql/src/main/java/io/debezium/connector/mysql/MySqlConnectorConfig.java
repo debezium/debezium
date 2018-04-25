@@ -942,7 +942,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                            + "'parallel': The snapshot of the new tables will occur in parallel to the continued binlog reading of the old tables. When the snapshot "
                                                            + "completes, an independent binlog reader will begin reading the events for the new tables until it catches up to present time. At this "
                                                            + "point, both old and new binlog readers will be momentarily halted and new binlog reader will start that will read the binlog for all "
-                                                           + "configured tables.");
+                                                           + "configured tables. The parallel binlog reader will have a configured server id of 10000 + the primary binlog reader's server id.");
 
     public static final Field TIME_PRECISION_MODE = Field.create("time.precision.mode")
                                                          .withDisplayName("Time Precision")
