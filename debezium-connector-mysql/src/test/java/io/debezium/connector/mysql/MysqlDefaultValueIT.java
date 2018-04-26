@@ -48,7 +48,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void unsignedTinyintTest() throws InterruptedException {
+    public void unsignedTinyIntTest() throws InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
                 .build();
@@ -78,7 +78,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void unsignedSmallintTest() throws InterruptedException {
+    public void unsignedSmallIntTest() throws InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
                 .build();
@@ -108,7 +108,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void unsignedMediumintTest() throws InterruptedException {
+    public void unsignedMediumIntTest() throws InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
                 .build();

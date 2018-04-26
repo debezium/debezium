@@ -1685,7 +1685,6 @@ public class MySqlDdlParser extends DdlParser {
             } else if (tokens.canConsume("NULL")) {
                 // If the default value of column is Null, we will set default value null;
                 column.defaultValue(null);
-                column.isDefaultValueNull(true);
             } else {
                 Object defaultValue = parseLiteral(start);
                 column.defaultValue(defaultValue);

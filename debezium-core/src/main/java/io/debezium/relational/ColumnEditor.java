@@ -120,11 +120,11 @@ public interface ColumnEditor extends Comparable<Column> {
     Object defaultValue();
 
     /**
-     * Determine whether this column's default values is null;
+     * Determine whether this column's has a default value set
      *
-     * @return {@code true} if the default values is null, or {@code false} otherwise
+     * @return {@code true} if the default value was provided, or {@code false} otherwise
      */
-    boolean isDefaultValueNull();
+    boolean hasDefaultValue();
 
     /**
      * Set the name of the column.
@@ -240,14 +240,6 @@ public interface ColumnEditor extends Comparable<Column> {
      * @return this editor so callers can chain methods together
      */
     ColumnEditor defaultValue(Object defaultValue);
-
-    /**
-     * Set the default value is null
-     *
-     * @param isNull {@code true} if the column's defalut value is null, or {@code false} otherwise
-     * @return this editor so callers can chain methods together
-     */
-    ColumnEditor isDefaultValueNull(boolean isNull);
 
     /**
      * Obtain an immutable column definition representing the current state of this editor. Typically, an editor is created and

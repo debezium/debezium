@@ -23,7 +23,7 @@ final class ColumnImpl implements Column, Comparable<Column> {
     private final boolean autoIncremented;
     private final boolean generated;
     private final Object defaultValue;
-    private final boolean isDefaultValueNull;
+    private final boolean hasDefaultValue;
 
     protected ColumnImpl(String columnName, int position, int jdbcType, int componentType, String typeName, String typeExpression,
             String charsetName, String defaultCharsetName, int columnLength, int columnScale,
@@ -34,7 +34,7 @@ final class ColumnImpl implements Column, Comparable<Column> {
 
     protected ColumnImpl(String columnName, int position, int jdbcType, int nativeType, String typeName, String typeExpression,
                          String charsetName, String defaultCharsetName, int columnLength, int columnScale,
-                         boolean optional, boolean autoIncremented, boolean generated, Object defaultValue, boolean isDefaultValueNull) {
+                         boolean optional, boolean autoIncremented, boolean generated, Object defaultValue, boolean hasDefaultValue) {
         this.name = columnName;
         this.position = position;
         this.jdbcType = jdbcType;
@@ -53,7 +53,7 @@ final class ColumnImpl implements Column, Comparable<Column> {
         this.autoIncremented = autoIncremented;
         this.generated = generated;
         this.defaultValue = defaultValue;
-        this.isDefaultValueNull = isDefaultValueNull;
+        this.hasDefaultValue = hasDefaultValue;
         assert this.scale >= -1;
         assert this.length >= -1;
     }
@@ -124,8 +124,8 @@ final class ColumnImpl implements Column, Comparable<Column> {
     }
 
     @Override
-    public boolean isDefaultValueNull() {
-        return isDefaultValueNull;
+    public boolean hasDefaultValue() {
+        return hasDefaultValue;
     }
 
     @Override
@@ -150,7 +150,7 @@ final class ColumnImpl implements Column, Comparable<Column> {
                     this.isAutoIncremented() == that.isAutoIncremented() &&
                     this.isGenerated() == that.isGenerated() &&
                     Objects.equals(this.defaultValue(), that.defaultValue()) &&
-                    this.isDefaultValueNull() == that.isDefaultValueNull();
+                    this.hasDefaultValue() == that.hasDefaultValue();
         }
         return false;
     }
@@ -172,7 +172,7 @@ final class ColumnImpl implements Column, Comparable<Column> {
         if (!optional) sb.append(" NOT NULL");
         if (autoIncremented) sb.append(" AUTO_INCREMENTED");
         if (generated) sb.append(" GENERATED");
-        if (isDefaultValueNull) {
+        if (hasDefaultValue() && defaultValue() == null) {
             sb.append(" DEFAULT VALUE NULL");
         } else if (defaultValue != null) {
             sb.append(" DEFAULT VALUE ").append(defaultValue);
@@ -193,9 +193,10 @@ final class ColumnImpl implements Column, Comparable<Column> {
                 .position(position())
                 .optional(isOptional())
                 .autoIncremented(isAutoIncremented())
-                .generated(isGenerated())
-                .defaultValue(defaultValue())
-                .isDefaultValueNull(isDefaultValueNull());
+                .generated(isGenerated());
+        if (hasDefaultValue()) {
+            editor.defaultValue(defaultValue());
+        }
         return editor;
     }
 }
