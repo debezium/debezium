@@ -17,6 +17,7 @@ public class AddOriginalDataType implements ColumnMapper {
 
     @Override
     public void alterFieldSchema(Column column, SchemaBuilder schemaBuilder) {
-       schemaBuilder.parameter("originalType", column.typeName().toUpperCase());
+       schemaBuilder.parameter("originalType", String.valueOf(column.jdbcType()));
+       schemaBuilder.parameter("columnSize", String.valueOf(column.length()));
     }
 }
