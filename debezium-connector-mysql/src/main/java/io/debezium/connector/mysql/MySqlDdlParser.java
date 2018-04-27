@@ -18,6 +18,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
@@ -34,8 +38,6 @@ import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
 import io.debezium.text.TokenStream;
 import io.debezium.text.TokenStream.Marker;
-import org.apache.kafka.connect.data.Field;
-import org.apache.kafka.connect.data.Schema;
 
 /**
  * A parser for DDL statements.
@@ -57,6 +59,7 @@ public class MySqlDdlParser extends DdlParser {
     private final MySqlSystemVariables systemVariables = new MySqlSystemVariables();
     private final ConcurrentMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
     private MySqlValueConverters converters = null;
+    private MySqlDefaultValuePreConverter defaultValuePreConverter = new MySqlDefaultValuePreConverter();
 
     /**
      * Create a new DDL parser for MySQL that does not include view definitions.
@@ -780,24 +783,25 @@ public class MySqlDdlParser extends DdlParser {
     }
 
     private void convertDefaultValueToSchemaType(ColumnEditor columnEditor) {
-        Column column = columnEditor.create();
+        final Column column = columnEditor.create();
         // if converters is not null and the default value is not null, we need to convert default value
-        if (converters != null && column.defaultValue() != null) {
-            Schema schema = converters.schemaBuilder(column);
+        if (converters != null && columnEditor.defaultValue() != null) {
+            Object defaultValue = columnEditor.defaultValue();
+            final SchemaBuilder schemaBuilder = converters.schemaBuilder(column);
+            if (schemaBuilder == null) {
+                return;
+            }
+            final Schema schema = schemaBuilder.build();
             //In order to get the valueConverter for this column, we have to create a field;
             //The index value -1 in the field will never used when converting default value;
             //So we can set any number here;
-            Field field = new Field(column.name(), -1, schema);
-            ValueConverter valueConverter = converters.converter(column, field);
-            Object defaultValue = columnEditor.defaultValue();
-            try {
-                defaultValue = valueConverter.convert(defaultValue);
-            } catch (Throwable ignore) {
-                return;
+            final Field field = new Field(column.name(), -1, schema);
+            final ValueConverter valueConverter = converters.converter(column, field);
+            if (defaultValue instanceof String) {
+                defaultValue = defaultValuePreConverter.convert(column, (String)defaultValue);
             }
-            if (defaultValue != null) {
-                columnEditor.defaultValue(defaultValue);
-            }
+            defaultValue = valueConverter.convert(defaultValue);
+            columnEditor.defaultValue(defaultValue);
         }
     }
 

@@ -1509,7 +1509,7 @@ public class MySqlDdlParserTest {
                 "columnC VARCHAR(10) NULL DEFAULT 'C'," +
                 "columnD VARCHAR(10) NULL DEFAULT NULL," +
                 "columnE VARCHAR(10) NOT NULL," +
-                "my_date datetime NOT NULL DEFAULT '0000-00-00 00:00:00');";
+                "my_date datetime NOT NULL DEFAULT '2018-04-27 13:28:43');";
         MySqlValueConverters valueConverters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
                 TemporalPrecisionMode.ADAPTIVE, JdbcValueConverters.BigIntUnsignedMode.PRECISE);
         MySqlDdlParser ddlParser = new MySqlDdlParser(false, valueConverters);

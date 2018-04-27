@@ -55,7 +55,7 @@ public class MysqlDefaultValueTest {
         assertThat(table.columnWithName("B").defaultValue()).isEqualTo((short) 10);
         assertThat(table.columnWithName("C").isOptional()).isEqualTo(true);
         assertThat(table.columnWithName("C").hasDefaultValue()).isTrue();
-        assertThat(table.columnWithName("C").defaultValue()).isNull();;
+        assertThat(table.columnWithName("C").defaultValue()).isNull();
         assertThat(table.columnWithName("D").isOptional()).isEqualTo(false);
         assertThat(table.columnWithName("D").hasDefaultValue()).isFalse();
         assertThat(table.columnWithName("E").isOptional()).isEqualTo(false);
