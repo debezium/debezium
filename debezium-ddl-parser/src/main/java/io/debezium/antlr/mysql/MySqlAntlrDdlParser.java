@@ -41,6 +41,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -140,7 +142,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 new DataTypeEntry(MySqlParser.NUMERIC, Types.NUMERIC),
                 new DataTypeEntry(MySqlParser.BIT, Types.BIT),
                 new DataTypeEntry(MySqlParser.TIME, Types.TIME),
-                new DataTypeEntry(MySqlParser.TIMESTAMP, Types.TIME_WITH_TIMEZONE),
+                new DataTypeEntry(MySqlParser.TIMESTAMP, Types.TIMESTAMP_WITH_TIMEZONE),
                 new DataTypeEntry(MySqlParser.DATETIME, Types.TIMESTAMP),
                 new DataTypeEntry(MySqlParser.BINARY, Types.BINARY),
                 new DataTypeEntry(MySqlParser.VARBINARY, Types.VARBINARY),
@@ -670,7 +672,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
             tableEditor = databaseTables.editTable(tableId);
             if (tableEditor == null) {
                 throw new ParsingException(null, "Trying to alter table " + getFullTableName(tableId)
-                        + ", which does not exists.");
+                        + ", which does not exists. Query: " + getText(ctx));
             }
             super.enterAlterTable(ctx);
         }
@@ -760,7 +762,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 }
                 else {
                     throw new ParsingException(null, "Trying to change column " + oldColumnName + " in "
-                            + getFullTableName(tableEditor.tableId()) + " table, which does not exists.");
+                            + getFullTableName(tableEditor.tableId()) + " table, which does not exists. Query: " + getText(ctx));
                 }
             });
             super.enterAlterByChangeColumn(ctx);
@@ -793,7 +795,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 }
                 else {
                     throw new ParsingException(null, "Trying to change column " + columnName + " in "
-                            + getFullTableName(tableEditor.tableId()) + " table, which does not exists.");
+                            + getFullTableName(tableEditor.tableId()) + " table, which does not exists. Query: " + getText(ctx));
                 }
             });
             super.enterAlterByModifyColumn(ctx);
@@ -824,9 +826,10 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         @Override
         public void enterAlterByRename(MySqlParser.AlterByRenameContext ctx) {
             runIfTableEditorNotNull(() -> {
-//                TODO rkuchar: test uid
                 TableId newTableId = resolveTableId(currentSchema(), parseName(ctx.uid()));
                 databaseTables.renameTable(tableEditor.tableId(), newTableId);
+                // databaseTables are updated clear table editor so exitAlterTable will not update a table by table editor
+                tableEditor = null;
             });
             super.enterAlterByRename(ctx);
         }
@@ -891,9 +894,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         @Override
         public void enterTruncateTable(MySqlParser.TruncateTableContext ctx) {
             TableId tableId = parseQualifiedTableId(ctx.tableName().fullId());
-            // TODO rkuchar: uncomment. Tis is comment just because of test.
-            // The old parser is not signaling truncate events
-//            signalTruncateTable(tableId, ctx);
+            // Be aware the legacy parser is not signaling truncate events
+            signalTruncateTable(tableId, ctx);
             super.enterTruncateTable(ctx);
         }
     }
@@ -1104,7 +1106,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                     }
                 }
                 else {
-                    throw new ParsingException(null, "Trying to create index on non existing table " + getFullTableName(tableId));
+                    throw new ParsingException(null, "Trying to create index on non existing table " + getFullTableName(tableId) + "."
+                     + "Query: " + getText(ctx));
                 }
             }
             // TODO fixed together with MySql legacy parser bug.
@@ -1240,6 +1243,25 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         if (tableEditor != null && columnEditor != null) {
             function.run();
         }
+    }
+
+    /**
+     * Parse the {@code ENUM} or {@code SET} data type expression to extract the character options, where the index(es) appearing
+     * in the {@code ENUM} or {@code SET} values can be used to identify the acceptable characters.
+     *
+     * @param typeExpression the data type expression
+     * @return the string containing the character options allowed by the {@code ENUM} or {@code SET}; never null
+     */
+    public static List<String> parseSetAndEnumOptions(String typeExpression) {
+        List<String> options = new ArrayList<>();
+        if (typeExpression.startsWith("ENUM") || typeExpression.startsWith("SET")) {
+            Pattern pattern = Pattern.compile("['\"][a-zA-Z0-9-!$%^&*()_+|~=`{}\\[\\]:\";'<>?\\/\\\\ ]*['\"]");
+            Matcher matcher = pattern.matcher(typeExpression);
+            while (matcher.find()) {
+                options.add(withoutQuotes(matcher.group()));
+            }
+        }
+        return options;
     }
 
 }

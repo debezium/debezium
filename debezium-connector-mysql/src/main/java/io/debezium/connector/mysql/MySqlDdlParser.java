@@ -5,6 +5,25 @@
  */
 package io.debezium.connector.mysql;
 
+import io.debezium.annotation.NotThreadSafe;
+import io.debezium.antlr.mysql.MySqlSystemVariables;
+import io.debezium.antlr.mysql.MySqlSystemVariables.MySqlScope;
+import io.debezium.relational.Column;
+import io.debezium.relational.ColumnEditor;
+import io.debezium.relational.SystemVariables;
+import io.debezium.relational.Table;
+import io.debezium.relational.TableEditor;
+import io.debezium.relational.TableId;
+import io.debezium.relational.ddl.DataType;
+import io.debezium.relational.ddl.DataTypeParser;
+import io.debezium.relational.ddl.DdlParserListener.SetVariableEvent;
+import io.debezium.relational.ddl.DdlTokenizer;
+import io.debezium.relational.ddl.LegacyDdlParser;
+import io.debezium.text.MultipleParsingExceptions;
+import io.debezium.text.ParsingException;
+import io.debezium.text.TokenStream;
+import io.debezium.text.TokenStream.Marker;
+
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -17,25 +36,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-
-import io.debezium.annotation.NotThreadSafe;
-import io.debezium.antlr.mysql.MySqlSystemVariables;
-import io.debezium.relational.Column;
-import io.debezium.relational.ColumnEditor;
-import io.debezium.antlr.mysql.MySqlSystemVariables.MySqlScope;
-import io.debezium.relational.SystemVariables;
-import io.debezium.relational.Table;
-import io.debezium.relational.TableEditor;
-import io.debezium.relational.TableId;
-import io.debezium.relational.ddl.DataType;
-import io.debezium.relational.ddl.DataTypeParser;
-import io.debezium.relational.ddl.LegacyDdlParser;
-import io.debezium.relational.ddl.DdlParserListener.SetVariableEvent;
-import io.debezium.relational.ddl.DdlTokenizer;
-import io.debezium.text.MultipleParsingExceptions;
-import io.debezium.text.ParsingException;
-import io.debezium.text.TokenStream;
-import io.debezium.text.TokenStream.Marker;
 
 /**
  * A parser for DDL statements.
