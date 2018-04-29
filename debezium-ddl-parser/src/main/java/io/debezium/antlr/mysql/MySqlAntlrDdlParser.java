@@ -318,7 +318,13 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
             throw new IllegalStateException("Not recognized instance of data type context for " + dataTypeContext.getText());
         }
 
-        columnEditor.type(dataTypeName.toUpperCase());
+        if (dataTypeName.equals("ENUM") || dataTypeName.equals("SET")) {
+            // type expression has to be set, because the value converter needs to know the enum or set options
+            columnEditor.type(dataTypeName.toUpperCase(), getText(dataTypeContext));
+        }
+        else {
+            columnEditor.type(dataTypeName.toUpperCase());
+        }
 
         if (jdbcDataType == Types.NULL) {
             jdbcDataType = dataTypeResolver.resolveDataType(dataTypeContext);
