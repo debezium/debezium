@@ -102,15 +102,14 @@ public class MySqlSchema {
         String ddlParsingModeStr = config.getString(MySqlConnectorConfig.DDL_PARSER_MODE);
         DdlParsingMode parsingMode = DdlParsingMode.parse(ddlParsingModeStr, MySqlConnectorConfig.DDL_PARSER_MODE.defaultValueAsString());
 
-//        try {
-//            this.ddlParser = parsingMode.getParserClass().newInstance();
-            this.ddlParser = new MySqlAntlrDdlParser();
+        try {
+            this.ddlParser = parsingMode.getParserClass().newInstance();
             this.ddlChanges = this.ddlParser.getDdlChanges();
-//        }
-//        catch (InstantiationException | IllegalAccessException e) {
-//            // ddl parser constructor are not throwing any exceptions, so this should never happen
-//            throw new IllegalArgumentException("Unable to create new instance for ddl parser class " + parsingMode.getParserClass().getCanonicalName());
-//        }
+        }
+        catch (InstantiationException | IllegalAccessException e) {
+            // ddl parser constructors are not throwing any exceptions, so this should never happen
+            throw new IllegalArgumentException("Unable to create new instance for ddl parser class " + parsingMode.getParserClass().getCanonicalName());
+        }
 
         // Use MySQL-specific converters and schemas for values ...
         String timePrecisionModeStr = config.getString(MySqlConnectorConfig.TIME_PRECISION_MODE);
