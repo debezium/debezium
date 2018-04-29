@@ -6,9 +6,12 @@
 
 package io.debezium.antlr;
 
+import io.debezium.relational.ddl.DataType;
+import io.debezium.relational.ddl.DataTypeBuilder;
+import io.debezium.text.ParsingException;
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
-import java.sql.Types;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -27,30 +30,107 @@ public class DataTypeResolver {
         dataTypeEntries.add(dataTypeEntry);
     }
 
-    public Integer resolveDataType(ParserRuleContext dataTypeContext) {
+    public DataType resolveDataType(ParserRuleContext dataTypeContext) {
+        DataType dataType = null;
+        // use priority according to number of matched tokens
+        int selectedTypePriority = -1;
         for (DataTypeEntry dataTypeEntry : contextDataTypesMap.get(dataTypeContext.getClass().getCanonicalName())) {
-            if (dataTypeContext.getToken(dataTypeEntry.getDbmsDataTypeTokenIdentifier(), 0) != null) {
-                return dataTypeEntry.getJdbcDataType();
+            int dataTypePriority = dataTypeEntry.getDbmsDataTypeTokenIdentifiers().length;
+            if (dataTypePriority > selectedTypePriority) {
+                DataTypeBuilder dataTypeBuilder = new DataTypeBuilder();
+                boolean correctDataType = true;
+                for (Integer mainTokenIdentifier : dataTypeEntry.getDbmsDataTypeTokenIdentifiers()) {
+                    TerminalNode token = dataTypeContext.getToken(mainTokenIdentifier, 0);
+                    if (correctDataType) {
+                        if (token == null) {
+                            correctDataType = false;
+                        }
+                        else {
+                            dataTypeBuilder.addToName(token.getText());
+                        }
+                    }
+                }
+                if (correctDataType) {
+                    addOptionalSuffixToName(dataTypeContext, dataTypeEntry, dataTypeBuilder);
+                    dataTypeBuilder.jdbcType(dataTypeEntry.getJdbcDataType());
+                    dataTypeBuilder.length(dataTypeEntry.getDefaultLength());
+                    dataTypeBuilder.scale(dataTypeEntry.getDefaultScale());
+
+                    dataType = dataTypeBuilder.create();
+                    selectedTypePriority = dataTypePriority;
+                }
             }
         }
-        return Types.NULL;
+        if (dataType == null) {
+            throw new ParsingException(null, "Unrecognized dataType for " + AntlrDdlParser.getText(dataTypeContext));
+        }
+        return dataType;
+    }
+
+    private void addOptionalSuffixToName(ParserRuleContext dataTypeContext, DataTypeEntry dataTypeEntry, DataTypeBuilder dataTypeBuilder) {
+        if (dataTypeEntry.getSuffixTokens() != null) {
+            for (Integer suffixTokenIdentifier : dataTypeEntry.getSuffixTokens()) {
+                if (dataTypeContext.getToken(suffixTokenIdentifier, 0) != null) {
+                    dataTypeBuilder.addToName(dataTypeContext.getToken(suffixTokenIdentifier, 0).getText());
+                }
+            }
+        }
     }
 
     public static class DataTypeEntry {
-        private final int dbmsDataTypeTokenIdentifier;
-        private final int jdbcDataType;
 
-        public DataTypeEntry(int dbmsDataTypeTokenIdentifier, int jdbcDataType) {
-            this.dbmsDataTypeTokenIdentifier = dbmsDataTypeTokenIdentifier;
+        /**
+         * Token identifiers for DBMS data type
+         */
+        private final Integer[] dbmsDataTypeTokenIdentifiers;
+        /**
+         * Mapped JDBC data type
+         */
+        private final int jdbcDataType;
+        private Integer[] suffixTokens = null;
+        private int defaultLength = -1;
+        private int defaultScale = -1;
+
+        public DataTypeEntry(int jdbcDataType, Integer... dbmsDataTypeTokenIdentifiers) {
+            this.dbmsDataTypeTokenIdentifiers = dbmsDataTypeTokenIdentifiers;
             this.jdbcDataType = jdbcDataType;
         }
 
-        public int getDbmsDataTypeTokenIdentifier() {
-            return dbmsDataTypeTokenIdentifier;
+        public Integer[] getDbmsDataTypeTokenIdentifiers() {
+            return dbmsDataTypeTokenIdentifiers;
         }
 
         public int getJdbcDataType() {
             return jdbcDataType;
         }
+
+        public Integer[] getSuffixTokens() {
+            return suffixTokens;
+        }
+
+        public int getDefaultLength() {
+            return defaultLength;
+        }
+
+        public int getDefaultScale() {
+            return defaultScale;
+        }
+
+        public DataTypeEntry setSuffixTokens(Integer... suffixTokens) {
+            this.suffixTokens = suffixTokens;
+            return this;
+        }
+
+        public DataTypeEntry setDefualtLengthDimmension(int defaultLength) {
+            this.defaultLength = defaultLength;
+            return this;
+        }
+
+        public DataTypeEntry setDefualtLengthScaleDimmension(int defaultLength, int defaultScale) {
+            this.defaultLength = defaultLength;
+            this.defaultScale = defaultScale;
+            return this;
+        }
+
     }
 }
