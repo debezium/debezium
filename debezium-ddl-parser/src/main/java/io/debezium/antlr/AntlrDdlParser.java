@@ -122,7 +122,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param ctx the parser rule context; may not be null
      * @return matched part of the getText
      */
-    protected String getText(ParserRuleContext ctx) {
+    public static String getText(ParserRuleContext ctx) {
         Interval interval = new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex());
         return ctx.start.getInputStream().getText(interval);
     }
