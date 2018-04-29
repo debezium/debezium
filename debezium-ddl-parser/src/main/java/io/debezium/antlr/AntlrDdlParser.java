@@ -64,11 +64,11 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
             ParseTreeWalker.DEFAULT.walk(antlrDdlParserListener, parseTree);
 
             if (throwErrorsFromTreeWalk && !antlrDdlParserListener.getErrors().isEmpty()) {
-                throw new MultipleParsingExceptions(antlrDdlParserListener.getErrors());
+                throwParsingException(antlrDdlParserListener.getErrors());
             }
         }
         else {
-            throw new MultipleParsingExceptions(parsingErrorListener.getErrors());
+            throwParsingException(parsingErrorListener.getErrors());
         }
     }
 
@@ -266,5 +266,14 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
 
     protected String withoutQuotes(ParserRuleContext ctx) {
         return withoutQuotes(ctx.getText());
+    }
+
+    private void throwParsingException(Collection<ParsingException> errors) {
+        if(errors.size() == 1) {
+            throw errors.iterator().next();
+        }
+        else {
+            throw new MultipleParsingExceptions(errors);
+        }
     }
 }
