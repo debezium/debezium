@@ -60,7 +60,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
         ParseTree parseTree = parseTree(parser);
 
         if (parsingErrorListener.getErrors().isEmpty()) {
-            antlrDdlParserListener = assignParserListeners();
+            antlrDdlParserListener = createParseTreeWalkerListener();
             ParseTreeWalker.DEFAULT.walk(antlrDdlParserListener, parseTree);
 
             if (throwErrorsFromTreeWalk && !antlrDdlParserListener.getErrors().isEmpty()) {
@@ -84,7 +84,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      */
     protected abstract ParseTree parseTree(P parser);
 
-    protected abstract AntlrDdlParserListener assignParserListeners();
+    protected abstract AntlrDdlParserListener createParseTreeWalkerListener();
 
     /**
      * Creates a new generic type instance of ANTLR Lexer.
@@ -116,6 +116,14 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      */
     protected abstract void initDataTypes(DataTypeResolver dataTypeResolver);
 
+    public Tables databaseTables() {
+        return databaseTables;
+    }
+
+    public DataTypeResolver dataTypeResolver() {
+        return dataTypeResolver;
+    }
+
     /**
      * Returns matched part of the getText for the context.
      *
@@ -127,7 +135,11 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
         return ctx.start.getInputStream().getText(interval);
     }
 
-    protected void signalSetVariable(String variableName, String variableValue, ParserRuleContext ctx) {
+    public boolean skipViews() {
+        return skipViews;
+    }
+
+    public void signalSetVariable(String variableName, String variableValue, ParserRuleContext ctx) {
         signalSetVariable(variableName, variableValue, getText(ctx));
     }
 
@@ -137,7 +149,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param databaseName the database name; may not be null
      * @param ctx          the start of the statement; may not be null
      */
-    protected void signalCreateDatabase(String databaseName, ParserRuleContext ctx) {
+    public void signalCreateDatabase(String databaseName, ParserRuleContext ctx) {
         signalCreateDatabase(databaseName, getText(ctx));
     }
 
@@ -148,7 +160,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param previousDatabaseName the previous name of the database if it was renamed, or null if it was not renamed
      * @param ctx                  the start of the statement; may not be null
      */
-    protected void signalAlterDatabase(String databaseName, String previousDatabaseName, ParserRuleContext ctx) {
+    public void signalAlterDatabase(String databaseName, String previousDatabaseName, ParserRuleContext ctx) {
         signalAlterDatabase(databaseName, previousDatabaseName, getText(ctx));
     }
 
@@ -158,7 +170,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param databaseName the database name; may not be null
      * @param ctx          the start of the statement; may not be null
      */
-    protected void signalDropDatabase(String databaseName, ParserRuleContext ctx) {
+    public void signalDropDatabase(String databaseName, ParserRuleContext ctx) {
         signalDropDatabase(databaseName, getText(ctx));
     }
 
@@ -168,7 +180,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param id  the table identifier; may not be null
      * @param ctx the start of the statement; may not be null
      */
-    protected void signalCreateTable(TableId id, ParserRuleContext ctx) {
+    public void signalCreateTable(TableId id, ParserRuleContext ctx) {
         signalCreateTable(id, getText(ctx));
     }
 
@@ -179,8 +191,13 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param previousId the previous name of the view if it was renamed, or null if it was not renamed
      * @param ctx        the start of the statement; may not be null
      */
-    protected void signalAlterTable(TableId id, TableId previousId, ParserRuleContext ctx) {
+    public void signalAlterTable(TableId id, TableId previousId, ParserRuleContext ctx) {
         signalAlterTable(id, previousId, getText(ctx));
+    }
+
+    @Override
+    public void signalDropTable(TableId id, String ctx) {
+        super.signalDropTable(id, ctx);
     }
 
     /**
@@ -189,7 +206,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param id  the table identifier; may not be null
      * @param ctx the start of the statement; may not be null
      */
-    protected void signalDropTable(TableId id, ParserRuleContext ctx) {
+    public void signalDropTable(TableId id, ParserRuleContext ctx) {
         signalDropTable(id, getText(ctx));
     }
 
@@ -199,7 +216,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param id  the table identifier; may not be null
      * @param ctx the start of the statement; may not be null
      */
-    protected void signalTruncateTable(TableId id, ParserRuleContext ctx) {
+    public void signalTruncateTable(TableId id, ParserRuleContext ctx) {
         signalTruncateTable(id, getText(ctx));
     }
 
@@ -209,7 +226,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param id  the table identifier; may not be null
      * @param ctx the start of the statement; may not be null
      */
-    protected void signalCreateView(TableId id, ParserRuleContext ctx) {
+    public void signalCreateView(TableId id, ParserRuleContext ctx) {
         signalCreateView(id, getText(ctx));
     }
 
@@ -220,7 +237,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param previousId the previous name of the view if it was renamed, or null if it was not renamed
      * @param ctx        the start of the statement; may not be null
      */
-    protected void signalAlterView(TableId id, TableId previousId, ParserRuleContext ctx) {
+    public void signalAlterView(TableId id, TableId previousId, ParserRuleContext ctx) {
         signalAlterView(id, previousId, getText(ctx));
     }
 
@@ -230,7 +247,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param id  the table identifier; may not be null
      * @param ctx the start of the statement; may not be null
      */
-    protected void signalDropView(TableId id, ParserRuleContext ctx) {
+    public void signalDropView(TableId id, ParserRuleContext ctx) {
         signalDropView(id, getText(ctx));
     }
 
@@ -241,7 +258,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param id        the table identifier; may be null if the index does not apply to a single table
      * @param ctx       the start of the statement; may not be null
      */
-    protected void signalCreateIndex(String indexName, TableId id, ParserRuleContext ctx) {
+    public void signalCreateIndex(String indexName, TableId id, ParserRuleContext ctx) {
         signalCreateIndex(indexName, id, getText(ctx));
     }
 
@@ -252,19 +269,19 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param id        the table identifier; may not be null
      * @param ctx       the start of the statement; may not be null
      */
-    protected void signalDropIndex(String indexName, TableId id, ParserRuleContext ctx) {
+    public void signalDropIndex(String indexName, TableId id, ParserRuleContext ctx) {
         signalDropIndex(indexName, id, getText(ctx));
     }
 
-    protected void debugParsed(ParserRuleContext ctx) {
+    public void debugParsed(ParserRuleContext ctx) {
         debugParsed(getText(ctx));
     }
 
-    protected void debugSkipped(ParserRuleContext ctx) {
+    public void debugSkipped(ParserRuleContext ctx) {
         debugSkipped(getText(ctx));
     }
 
-    protected String withoutQuotes(ParserRuleContext ctx) {
+    public String withoutQuotes(ParserRuleContext ctx) {
         return withoutQuotes(ctx.getText());
     }
 
