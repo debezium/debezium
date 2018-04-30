@@ -88,7 +88,7 @@ public abstract class AbstractDdlParser implements DdlParser {
      *
      * @return the current schema name, or null if the current schema name has not been {@link #setCurrentSchema(String) set}
      */
-    protected String currentSchema() {
+    public String currentSchema() {
         return currentSchema;
     }
 
@@ -100,7 +100,7 @@ public abstract class AbstractDdlParser implements DdlParser {
      * @param tableName  the name of the table; should not be null
      * @return the table identifier; never null
      */
-    protected TableId resolveTableId(String schemaName, String tableName) {
+    public TableId resolveTableId(String schemaName, String tableName) {
         return new TableId(schemaName, null, tableName);
     }
 
@@ -268,7 +268,7 @@ public abstract class AbstractDdlParser implements DdlParser {
      * @param possiblyQuoted string with possible quotes
      * @return string without quotes
      */
-    protected static String withoutQuotes(String possiblyQuoted) {
+    public static String withoutQuotes(String possiblyQuoted) {
         if (possiblyQuoted.length() < 2) {
             // Too short to be quoted ...
             return possiblyQuoted;
