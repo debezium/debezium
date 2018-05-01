@@ -268,6 +268,7 @@ public class BinlogReader extends AbstractReader {
 
     @Override
     protected void doStart() {
+        logger.info("STARTING BINLOG READER; id {}", client.getServerId());
         // Register our event handlers ...
         eventHandlers.put(EventType.STOP, this::handleServerStop);
         eventHandlers.put(EventType.HEARTBEAT, this::handleServerHeartbeat);

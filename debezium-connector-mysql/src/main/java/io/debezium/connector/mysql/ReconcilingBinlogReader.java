@@ -69,6 +69,7 @@ public class ReconcilingBinlogReader implements Reader {
     @Override
     public void start() {
         if (running.compareAndSet(false, true)) {
+            logger.info("RECONCILLING-BINLOG-READER START");
             completed.set(false);
             determineLeadingReader();
 
@@ -114,6 +115,11 @@ public class ReconcilingBinlogReader implements Reader {
         aReaderLeading = SourceInfo.isPositionAtOrBefore(bDocument,
                                                          aDocument,
                                                          binlogReaderA.context.gtidSourceFilter());
+        if (aReaderLeading) {
+            logger.info("OLD TABLES LEADING; READING ONLY FROM NEW TABLES");
+        } else {
+            logger.info("NEW TABLES LEADING; READING ONLY FROM OLD TABLES");
+        }
     }
 
     /*package private*/ BinlogReader getLeadingReader() {

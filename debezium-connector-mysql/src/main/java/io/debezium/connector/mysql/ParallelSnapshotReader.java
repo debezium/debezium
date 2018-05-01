@@ -161,6 +161,9 @@ public class ParallelSnapshotReader implements Reader {
      */
 
     /*package local*/ static class ParallelHaltingPredicate implements Predicate<SourceRecord> {
+
+        private final Logger logger = LoggerFactory.getLogger(getClass());
+
         private volatile AtomicBoolean thisReaderNearEnd;
         private volatile AtomicBoolean otherReaderNearEnd;
 
@@ -185,13 +188,18 @@ public class ParallelSnapshotReader implements Reader {
 
         @Override
         public boolean test(SourceRecord ourSourceRecord) {
+            logger.info("TESTING PARALLEL HALTING PREDICATE");
             // we assume if we ever end up near the end of the binlog, then we will remain there.
             if (!thisReaderNearEnd.get()) {
+                Instant recordTimestamp = Instant.ofEpochMilli((Long) ourSourceRecord.sourceOffset().get(SourceInfo.TIMESTAMP_KEY));
+                Instant now = Instant.now();
                 Duration durationToEnd =
-                    Duration.between(Instant.ofEpochMilli((Long) ourSourceRecord.sourceOffset().get(SourceInfo.TIMESTAMP_KEY)),
-                                     Instant.now());
+                    Duration.between(recordTimestamp,
+                        now);
+                logger.info("RECORDTIME: {} VS NOW: {} => {} sec", recordTimestamp.toString(), now.toString(), durationToEnd.getSeconds());
                 if (durationToEnd.compareTo(minHaltingDuration) <= 0) {
                     // we are within minHaltingDuration of the end
+                    logger.info("HALTING PREDICATE: THIS READER NEAR END");
                     thisReaderNearEnd.set(true);
                 }
             }
