@@ -43,7 +43,11 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     }
 
     public MySqlAntlrDdlParser(boolean throwErrorsFromTreeWalk) {
-        super(throwErrorsFromTreeWalk);
+        this(throwErrorsFromTreeWalk, false);
+    }
+
+    public MySqlAntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews) {
+        super(throwErrorsFromTreeWalk, includeViews);
         systemVariables = new MySqlSystemVariables();
     }
 
