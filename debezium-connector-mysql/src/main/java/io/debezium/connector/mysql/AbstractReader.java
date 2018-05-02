@@ -235,6 +235,7 @@ public abstract class AbstractReader implements Reader {
 
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
+        logger.info("POLLING IN READER {}", this.name);
         // Before we do anything else, determine if there was a failure and throw that exception ...
         failureException = this.failure.get();
         if (failureException != null) {

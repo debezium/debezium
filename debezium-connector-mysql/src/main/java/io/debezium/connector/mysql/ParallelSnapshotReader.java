@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
@@ -135,8 +136,12 @@ public class ParallelSnapshotReader implements Reader {
 
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
+        logger.info("POLLING PARALLEL SNAPSHOT READER");
         List<SourceRecord> allRecords = oldTablesReader.poll();
         List<SourceRecord> newTablesRecords = newTablesReader.poll();
+        logger.info("INNER READERS POLL SIZES: {}, {}",
+                    allRecords == null? -1 : allRecords.size(),
+                    newTablesRecords == null? -1 : newTablesRecords.size());
         if (newTablesRecords != null) {
             if (allRecords == null) {
                 allRecords = newTablesRecords;
@@ -144,6 +149,7 @@ public class ParallelSnapshotReader implements Reader {
                 allRecords.addAll(newTablesRecords);
             }
         }
+        // else newTableRecords == null
         return allRecords;
     }
 
@@ -191,7 +197,9 @@ public class ParallelSnapshotReader implements Reader {
             logger.info("TESTING PARALLEL HALTING PREDICATE");
             // we assume if we ever end up near the end of the binlog, then we will remain there.
             if (!thisReaderNearEnd.get()) {
-                Instant recordTimestamp = Instant.ofEpochMilli((Long) ourSourceRecord.sourceOffset().get(SourceInfo.TIMESTAMP_KEY));
+                //Map<String, ?> sourceOffset = ourSourceRecord.sourceOffset();
+                //logger.info("SOURCEOFFSET: {}", sourceOffset.toString());
+                Instant recordTimestamp = Instant.ofEpochSecond((Long) ourSourceRecord.sourceOffset().get(SourceInfo.TIMESTAMP_KEY));
                 Instant now = Instant.now();
                 Duration durationToEnd =
                     Duration.between(recordTimestamp,
@@ -203,7 +211,8 @@ public class ParallelSnapshotReader implements Reader {
                     thisReaderNearEnd.set(true);
                 }
             }
-            return thisReaderNearEnd.get() && otherReaderNearEnd.get();
+            // return false if both readers are near end, true otherwise.
+            return !(thisReaderNearEnd.get() && otherReaderNearEnd.get());
         }
     }
 }
