@@ -828,12 +828,11 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
             .withEnum(DdlParsingMode.class, DdlParsingMode.LEGACY)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            // TODO rkuchar: change description
-            .withDescription("Time, date, and timestamps can be represented with different kinds of precisions, including:"
-                    + "'adaptive_time_microseconds' (the default) like 'adaptive' mode, but TIME fields always use microseconds precision;"
-                    + "'adaptive' (deprecated) bases the precision of time, date, and timestamp values on the database column's precision; "
-                    + "'connect' always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
-                    + "which uses millisecond precision regardless of the database columns' precision.");
+            .withDescription("MySQL ddl statements can be parsed in different ways:" +
+                    "'legacy' (the default) parsing is creating a TokenStream and comparing token by token with an expected values." +
+                    "The decisions are made by matched token values." +
+                    "'antlr' uses generated parser from MySQL grammar using ANTLR v4 tool which use ALL(*) algorithm for parsing." +
+                    "This parser creates a parsing tree for DDL statement, then walks trough it and apply changes by node types in parsed tree.");
 
     /**
      * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
