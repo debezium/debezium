@@ -108,6 +108,102 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    public void shouldParseCreateViewStatementStartSelect() {
+        String ddl = "CREATE TABLE foo ( " + System.lineSeparator()
+                + " c1 INTEGER NOT NULL AUTO_INCREMENT, " + System.lineSeparator()
+                + " c2 VARCHAR(22) " + System.lineSeparator()
+                + "); " + System.lineSeparator();
+        String ddl2 = "CREATE VIEW fooView AS (SELECT * FROM foo)" + System.lineSeparator();
+
+        parser = new MysqlDdlParserWithSimpleTestListener(listener, true);
+        parser.parse(ddl, tables);
+        parser.parse(ddl2, tables);
+        assertThat(tables.size()).isEqualTo(2);
+        Table foo = tables.forTable(new TableId(null, null, "fooView"));
+        assertThat(foo).isNotNull();
+        assertThat(foo.columnNames()).containsExactly("c1", "c2");
+        assertThat(foo.primaryKeyColumnNames()).isEmpty();
+        assertColumn(foo, "c1", "INTEGER", Types.INTEGER, -1, -1, false, true, true);
+        assertColumn(foo, "c2", "VARCHAR", Types.VARCHAR, 22, -1, true, false, false);
+    }
+
+    @Test
+    public void shouldParseDropView() {
+        String ddl = "CREATE TABLE foo ( " + System.lineSeparator()
+                + " c1 INTEGER NOT NULL AUTO_INCREMENT, " + System.lineSeparator()
+                + " c2 VARCHAR(22) " + System.lineSeparator()
+                + "); " + System.lineSeparator();
+        String ddl2 = "CREATE VIEW fooView AS (SELECT * FROM foo)" + System.lineSeparator();
+        String ddl3 = "DROP VIEW fooView";
+        parser = new MysqlDdlParserWithSimpleTestListener(listener, true);
+        parser.parse(ddl, tables);
+        parser.parse(ddl2, tables);
+        parser.parse(ddl3, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table foo = tables.forTable(new TableId(null, null, "fooView"));
+        assertThat(foo).isNull();
+    }
+
+    @Test
+    public void shouldParseCreateViewStatementColumnAlias() {
+        String ddl = "CREATE TABLE foo ( " + System.lineSeparator()
+                + " c1 INTEGER NOT NULL AUTO_INCREMENT, " + System.lineSeparator()
+                + " c2 VARCHAR(22) " + System.lineSeparator()
+                + "); " + System.lineSeparator();
+        String ddl2 = "CREATE VIEW fooView(w1) AS (SELECT c2 as w1 FROM foo)" + System.lineSeparator();
+
+        parser = new MysqlDdlParserWithSimpleTestListener(listener, true);
+        parser.parse(ddl, tables);
+        parser.parse(ddl2, tables);
+        assertThat(tables.size()).isEqualTo(2);
+        Table foo = tables.forTable(new TableId(null, null, "fooView"));
+        assertThat(foo).isNotNull();
+        assertThat(foo.columnNames()).containsExactly("w1");
+        assertThat(foo.primaryKeyColumnNames()).isEmpty();
+        assertColumn(foo, "w1", "VARCHAR", Types.VARCHAR, 22, -1, true, false, false);
+    }
+
+    @Test
+    public void shouldParseCreateViewStatementColumnAliasInnerSelect() {
+        String ddl = "CREATE TABLE foo ( " + System.lineSeparator()
+                + " c1 INTEGER NOT NULL AUTO_INCREMENT, " + System.lineSeparator()
+                + " c2 VARCHAR(22) " + System.lineSeparator()
+                + "); " + System.lineSeparator();
+        String ddl2 = "CREATE VIEW fooView(w1) AS (SELECT foo2.c2 as w1 FROM (SELECT c1 as c2 FROM foo) AS foo2)" + System.lineSeparator();
+
+        parser = new MysqlDdlParserWithSimpleTestListener(listener, true);
+        parser.parse(ddl, tables);
+        parser.parse(ddl2, tables);
+        assertThat(tables.size()).isEqualTo(2);
+        Table foo = tables.forTable(new TableId(null, null, "fooView"));
+        assertThat(foo).isNotNull();
+        assertThat(foo.columnNames()).containsExactly("w1");
+        assertThat(foo.primaryKeyColumnNames()).isEmpty();
+        assertColumn(foo, "w1", "INTEGER", Types.INTEGER, -1, -1, false, true, true);
+    }
+
+    @Test
+    public void shouldParseAlterViewStatementColumnAliasInnerSelect() {
+        String ddl = "CREATE TABLE foo ( " + System.lineSeparator()
+                + " c1 INTEGER NOT NULL AUTO_INCREMENT, " + System.lineSeparator()
+                + " c2 VARCHAR(22) " + System.lineSeparator()
+                + "); " + System.lineSeparator();
+        String ddl2 = "CREATE VIEW fooView(w1) AS (SELECT foo2.c2 as w1 FROM (SELECT c1 as c2 FROM foo) AS foo2)" + System.lineSeparator();
+        String ddl3 = "ALTER VIEW fooView AS (SELECT c2 FROM foo)";
+        parser = new MysqlDdlParserWithSimpleTestListener(listener, true);
+        parser.parse(ddl, tables);
+        parser.parse(ddl2, tables);
+        parser.parse(ddl3, tables);
+        assertThat(tables.size()).isEqualTo(2);
+        assertThat(listener.total()).isEqualTo(3);
+        Table foo = tables.forTable(new TableId(null, null, "fooView"));
+        assertThat(foo).isNotNull();
+        assertThat(foo.columnNames()).containsExactly("c2");
+        assertThat(foo.primaryKeyColumnNames()).isEmpty();
+        assertColumn(foo, "c2", "VARCHAR", Types.VARCHAR, 22, -1, true, false, false);
+    }
+
+    @Test
     public void shouldParseCreateTableStatementWithSingleGeneratedColumnAsPrimaryKey() {
         String ddl = "CREATE TABLE my.foo ( " + System.lineSeparator()
                 + " c1 INTEGER NOT NULL AUTO_INCREMENT, " + System.lineSeparator()
@@ -755,7 +851,9 @@ public class MySqlAntlrDdlParserTest {
         // legacy parser was signaling all created index
         // antlr is parsing only those, which will make any model changes
         int numberOfNonUniqueIndexesCreated = 2;
-        assertThat(listener.total()).isEqualTo(58 - numberOfAlteredTablesWhichDoesNotExists - numberOfNonUniqueIndexesCreated);
+        int numberOfAlterViewStatements = 6;
+        assertThat(listener.total()).isEqualTo(58 - numberOfAlteredTablesWhichDoesNotExists
+                - numberOfNonUniqueIndexesCreated + numberOfAlterViewStatements);
         listener.forEach(this::printEvent);
     }
 
@@ -1563,7 +1661,11 @@ public class MySqlAntlrDdlParserTest {
 
     class MysqlDdlParserWithSimpleTestListener extends MySqlAntlrDdlParser {
         public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener) {
-            super(false);
+            this(changesListener, false);
+        }
+
+        public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews) {
+            super(false, includeViews);
             this.ddlChanges = changesListener;
         }
     }

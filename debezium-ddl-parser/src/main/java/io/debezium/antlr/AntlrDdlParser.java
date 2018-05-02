@@ -37,7 +37,11 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     protected DataTypeResolver dataTypeResolver = new DataTypeResolver();
 
     public AntlrDdlParser(boolean throwErrorsFromTreeWalk) {
-        super(";");
+        this(throwErrorsFromTreeWalk, false);
+    }
+
+    public AntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews) {
+        super(";", includeViews);
         this.throwErrorsFromTreeWalk = throwErrorsFromTreeWalk;
     }
 
@@ -196,8 +200,8 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     }
 
     @Override
-    public void signalDropTable(TableId id, String ctx) {
-        super.signalDropTable(id, ctx);
+    public void signalDropTable(TableId id, String statement) {
+        super.signalDropTable(id, statement);
     }
 
     /**

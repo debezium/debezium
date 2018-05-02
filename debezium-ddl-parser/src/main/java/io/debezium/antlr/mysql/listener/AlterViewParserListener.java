@@ -6,11 +6,14 @@
 
 package io.debezium.antlr.mysql.listener;
 
+import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.antlr.mysql.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
 import io.debezium.relational.Column;
 import io.debezium.relational.TableEditor;
+import io.debezium.relational.TableId;
+import io.debezium.text.ParsingException;
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
 import java.util.List;
@@ -18,7 +21,7 @@ import java.util.List;
 /**
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
-public class CreateViewParserListener extends MySqlParserBaseListener {
+public class AlterViewParserListener extends MySqlParserBaseListener {
 
     private final MySqlAntlrDdlParser parserCtx;
     private final List<ParseTreeListener> listeners;
@@ -26,15 +29,24 @@ public class CreateViewParserListener extends MySqlParserBaseListener {
     private TableEditor tableEditor;
     private ViewSelectedColumnsParserListener selectColumnsListener;
 
-    public CreateViewParserListener(MySqlAntlrDdlParser parserCtx, List<ParseTreeListener> listeners) {
+
+    public AlterViewParserListener(MySqlAntlrDdlParser parserCtx, List<ParseTreeListener> listeners) {
         this.parserCtx = parserCtx;
         this.listeners = listeners;
     }
 
     @Override
-    public void enterCreateView(MySqlParser.CreateViewContext ctx) {
+    public void enterAlterView(MySqlParser.AlterViewContext ctx) {
         if (!parserCtx.skipViews()) {
-            tableEditor = parserCtx.databaseTables().editOrCreateTable(parserCtx.parseQualifiedTableId(ctx.fullId()));
+            TableId tableId = parserCtx.parseQualifiedTableId(ctx.fullId());
+
+            tableEditor = parserCtx.databaseTables().editTable(tableId);
+            if (tableEditor == null) {
+                throw new ParsingException(null, "Trying to alter view " + parserCtx.getFullTableName(tableId)
+                        + ", which does not exists. Query:" + AntlrDdlParser.getText(ctx));
+            }
+            // alter view will override existing columns for a new one
+            tableEditor.columnNames().forEach(tableEditor::removeColumn);
             // create new columns just with specified name for now
             if (ctx.uidList() != null) {
                 ctx.uidList().uid().stream().map(parserCtx::parseName).forEach(columnName -> {
@@ -44,11 +56,11 @@ public class CreateViewParserListener extends MySqlParserBaseListener {
             selectColumnsListener = new ViewSelectedColumnsParserListener(tableEditor, parserCtx);
             listeners.add(selectColumnsListener);
         }
-        super.enterCreateView(ctx);
+        super.enterAlterView(ctx);
     }
 
     @Override
-    public void exitCreateView(MySqlParser.CreateViewContext ctx) {
+    public void exitAlterView(MySqlParser.AlterViewContext ctx) {
         parserCtx.runIfNotNull(() -> {
             tableEditor.addColumns(selectColumnsListener.getSelectedColumns());
             // Make sure that the table's character set has been set ...
@@ -59,9 +71,7 @@ public class CreateViewParserListener extends MySqlParserBaseListener {
             listeners.remove(selectColumnsListener);
         }, tableEditor);
         // signal view even if it was skipped
-        parserCtx.signalCreateView(parserCtx.parseQualifiedTableId(ctx.fullId()), ctx);
-        super.exitCreateView(ctx);
+        parserCtx.signalAlterView(parserCtx.parseQualifiedTableId(ctx.fullId()), null, ctx);
+        super.exitAlterView(ctx);
     }
-
-
 }
