@@ -32,15 +32,12 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class MySqlAntlrDdlParserListener extends MySqlParserBaseListener implements AntlrDdlParserListener {
 
     private List<ParseTreeListener> listeners = new CopyOnWriteArrayList<>();
-    private final MySqlAntlrDdlParser parserCtx;
 
     private boolean skipNodes;
     private int skippedNodesCount = 0;
     private Collection<ParsingException> errors = new ArrayList<>();
 
     public MySqlAntlrDdlParserListener(MySqlAntlrDdlParser parserCtx) {
-        this.parserCtx = parserCtx;
-
         listeners.add(new DatabaseOptionsParserListener(parserCtx));
         listeners.add(new DropDatabaseParserListener(parserCtx));
         listeners.add(new CreateTableParserListener(parserCtx, listeners));
@@ -105,18 +102,6 @@ public class MySqlAntlrDdlParserListener extends MySqlParserBaseListener impleme
     @Override
     public void enterRoutineBody(MySqlParser.RoutineBodyContext ctx) {
         skipNodes = true;
-    }
-
-    @Override
-    public void exitSqlStatement(MySqlParser.SqlStatementContext ctx) {
-        // TODO rkuchar figure out how to log the easiest way
-//        if (!skippedQuery) {
-//            parserCtx.debugParsed(ctx);
-//        }
-//        else {
-//            parserCtx.debugSkipped(ctx);
-//        }
-        super.exitSqlStatement(ctx);
     }
 
 }

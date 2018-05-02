@@ -35,6 +35,7 @@ public class CreateUniqueIndexParserListener extends MySqlParserBaseListener {
             if (tableEditor != null) {
                 if (!tableEditor.hasPrimaryKey()) {
                     parserCtx.parsePrimaryIndexColumnNames(ctx.indexColumnNames(), tableEditor);
+                    parserCtx.signalCreateIndex(parserCtx.parseName(ctx.uid()), null, ctx);
                 }
             }
             else {
@@ -42,8 +43,6 @@ public class CreateUniqueIndexParserListener extends MySqlParserBaseListener {
                         + "Query: " + getText(ctx));
             }
         }
-        // TODO rkuchar fixed together with MySql legacy parser bug.
-        parserCtx.signalAlterTable(null, null, ctx);
         super.enterCreateIndex(ctx);
     }
 }
