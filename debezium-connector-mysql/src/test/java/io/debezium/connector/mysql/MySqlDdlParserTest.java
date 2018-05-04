@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.mysql;
 
-import io.debezium.antlr.mysql.MySqlSystemVariables;
 import io.debezium.doc.FixFor;
 import io.debezium.relational.Column;
 import io.debezium.relational.SystemVariables;
@@ -27,8 +26,6 @@ import java.io.InputStream;
 import java.sql.Types;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.fest.assertions.Assertions.assertThat;
@@ -36,29 +33,15 @@ import static org.junit.Assert.fail;
 
 public class MySqlDdlParserTest {
 
-    private DdlParser parser;
-    private Tables tables;
-    private SimpleDdlParserListener listener;
+    protected DdlParser parser;
+    protected Tables tables;
+    protected SimpleDdlParserListener listener;
 
     @Before
     public void beforeEach() {
         listener = new SimpleDdlParserListener();
         parser = new MysqlDdlParserWithSimpleTestListener(listener);
         tables = new Tables();
-    }
-
-    @Test
-    public void test() {
-        String text = "ENUM ('test1', \"test2\")";
-
-        Pattern pattern = Pattern.compile("('|\")[a-zA-Z0-9-!$%^&*()_+|~=`{}\\[\\]:\";'<>?,.\\/]*('|\")");
-        Matcher matcher = pattern.matcher(text);
-        int count = 0;
-        while(matcher.find()) {
-            count++;
-            System.out.println("found: " + count + " : "
-                    + matcher.group());
-        }
     }
 
     @Test

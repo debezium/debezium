@@ -6,8 +6,7 @@
 package io.debezium.connector.mysql;
 
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.antlr.mysql.MySqlSystemVariables;
-import io.debezium.antlr.mysql.MySqlSystemVariables.MySqlScope;
+import io.debezium.connector.mysql.MySqlSystemVariables.MySqlScope;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.SystemVariables;

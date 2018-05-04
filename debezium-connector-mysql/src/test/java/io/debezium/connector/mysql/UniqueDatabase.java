@@ -169,6 +169,7 @@ public class UniqueDatabase {
                 .with(MySqlConnectorConfig.DATABASE_WHITELIST, getDatabaseName())
                 .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                 .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000);
+//        TODO rkuchar create a new profile to run the test with LEGACY ddl parser
         if (dbHistoryPath != null) {
             builder.with(FileDatabaseHistory.FILE_PATH, dbHistoryPath);
         }

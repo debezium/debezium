@@ -6,7 +6,7 @@
 package io.debezium.connector.mysql;
 
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.antlr.mysql.MySqlSystemVariables.MySqlScope;
+import io.debezium.connector.mysql.MySqlSystemVariables.MySqlScope;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.BigIntUnsignedHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.DdlParsingMode;

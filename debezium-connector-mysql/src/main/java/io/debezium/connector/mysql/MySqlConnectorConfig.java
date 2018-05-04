@@ -9,7 +9,7 @@ import java.math.BigDecimal;
 import java.util.Objects;
 import java.util.Random;
 
-import io.debezium.antlr.mysql.MySqlAntlrDdlParser;
+import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.relational.ddl.DdlParser;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -825,7 +825,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
 
     public static final Field DDL_PARSER_MODE = Field.create("ddl.parser.mode")
             .withDisplayName("Ddl parser mode")
-            .withEnum(DdlParsingMode.class, DdlParsingMode.LEGACY)
+            .withEnum(DdlParsingMode.class, DdlParsingMode.ANTLR)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDescription("MySQL ddl statements can be parsed in different ways:" +
