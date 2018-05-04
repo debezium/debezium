@@ -23,8 +23,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.antlr.mysql.MySqlSystemVariables;
-import io.debezium.antlr.mysql.MySqlSystemVariables.MySqlScope;
+import io.debezium.connector.mysql.MySqlSystemVariables.MySqlScope;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.SystemVariables;
