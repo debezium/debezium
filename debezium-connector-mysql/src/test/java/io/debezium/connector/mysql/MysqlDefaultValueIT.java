@@ -9,7 +9,18 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import java.nio.file.Path;
+import java.sql.Time;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
 
+import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.time.Timestamp;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
@@ -423,7 +434,112 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         SourceRecords records = consumeRecordsByTopic(7);
         final SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("DATE_TIME_TABLE")).get(0);
         Schema schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
-        // Number of days since epoch for date 1976-08-23
+        Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
+        Schema schemaC = record.valueSchema().fields().get(1).schema().fields().get(2).schema();
+        Schema schemaD = record.valueSchema().fields().get(1).schema().fields().get(3).schema();
+        Schema schemaE = record.valueSchema().fields().get(1).schema().fields().get(4).schema();
+        Schema schemaF = record.valueSchema().fields().get(1).schema().fields().get(5).schema();
+        Schema schemaG = record.valueSchema().fields().get(1).schema().fields().get(6).schema();
+        Schema schemaH = record.valueSchema().fields().get(1).schema().fields().get(7).schema();
+        Schema schemaI = record.valueSchema().fields().get(1).schema().fields().get(8).schema();
+        Schema schemaJ = record.valueSchema().fields().get(1).schema().fields().get(9).schema();
+//         Number of days since epoch for date 1976-08-23
         assertThat(schemaA.defaultValue()).isEqualTo(2426);
+        assertThat(schemaB.defaultValue()).isEqualTo("1970-01-01T00:00:01+08:00");
+        assertThat(schemaC.defaultValue()).isEqualTo(1514937610000L);
+        assertThat(schemaD.defaultValue()).isEqualTo(1514937610700L);
+        assertThat(schemaE.defaultValue()).isEqualTo(1514937610123456L);
+        assertThat(schemaF.defaultValue()).isEqualTo(2001);
+        assertThat(schemaG.defaultValue()).isEqualTo(0L);
+        assertThat(schemaH.defaultValue()).isEqualTo(82800700000L);
+        assertThat(schemaI.defaultValue()).isEqualTo(82800123456L);
+        //don not have default value
+        assertThat(schemaJ.defaultValue()).isEqualTo(null);
+    }
+
+    @Test
+    public void timeTypeWithAdaptiveMode() throws InterruptedException {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
+                .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("DATE_TIME_TABLE"))
+                .with(MySqlConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ADAPTIVE)
+                .build();
+        start(MySqlConnector.class, config);
+
+        Testing.Print.enable();
+
+        SourceRecords records = consumeRecordsByTopic(7);
+        final SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("DATE_TIME_TABLE")).get(0);
+        Schema schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
+        Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
+        Schema schemaC = record.valueSchema().fields().get(1).schema().fields().get(2).schema();
+        Schema schemaD = record.valueSchema().fields().get(1).schema().fields().get(3).schema();
+        Schema schemaE = record.valueSchema().fields().get(1).schema().fields().get(4).schema();
+        Schema schemaF = record.valueSchema().fields().get(1).schema().fields().get(5).schema();
+        Schema schemaG = record.valueSchema().fields().get(1).schema().fields().get(6).schema();
+        Schema schemaH = record.valueSchema().fields().get(1).schema().fields().get(7).schema();
+        Schema schemaI = record.valueSchema().fields().get(1).schema().fields().get(8).schema();
+
+        assertThat(schemaA.defaultValue()).isEqualTo(2426);
+        assertThat(schemaB.defaultValue()).isEqualTo("1970-01-01T00:00:01+08:00");
+        assertThat(schemaC.defaultValue()).isEqualTo(1514937610000L);
+        assertThat(schemaD.defaultValue()).isEqualTo(1514937610700L);
+        assertThat(schemaE.defaultValue()).isEqualTo(1514937610123456L);
+        assertThat(schemaF.defaultValue()).isEqualTo(2001);
+        assertThat(schemaG.defaultValue()).isEqualTo(0);
+        assertThat(schemaH.defaultValue()).isEqualTo(82800700);
+        assertThat(schemaI.defaultValue()).isEqualTo(82800123456L);
+    }
+
+    @Test
+    public void timeTypeWithConnectMode() throws InterruptedException {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
+                .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("DATE_TIME_TABLE"))
+                .with(MySqlConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.CONNECT)
+                .build();
+        start(MySqlConnector.class, config);
+
+        Testing.Print.enable();
+
+        SourceRecords records = consumeRecordsByTopic(7);
+        final SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("DATE_TIME_TABLE")).get(0);
+        Schema schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
+        Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
+        Schema schemaC = record.valueSchema().fields().get(1).schema().fields().get(2).schema();
+        Schema schemaD = record.valueSchema().fields().get(1).schema().fields().get(3).schema();
+        Schema schemaE = record.valueSchema().fields().get(1).schema().fields().get(4).schema();
+        Schema schemaF = record.valueSchema().fields().get(1).schema().fields().get(5).schema();
+        Schema schemaG = record.valueSchema().fields().get(1).schema().fields().get(6).schema();
+        Schema schemaH = record.valueSchema().fields().get(1).schema().fields().get(7).schema();
+        Schema schemaI = record.valueSchema().fields().get(1).schema().fields().get(8).schema();
+
+        TemporalAccessor accessor = DateTimeFormatter.ofPattern("yyyy-MM-dd").parse("1976-08-23");
+        Instant instant = LocalDate.from(accessor).atStartOfDay().toInstant(ZoneOffset.UTC);
+        assertThat(schemaA.defaultValue()).isEqualTo(java.util.Date.from(instant));
+
+        assertThat(schemaB.defaultValue()).isEqualTo("1970-01-01T00:00:01+08:00");
+
+        LocalDateTime localDateTimeC = LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").parse("2018-01-03 00:00:10"));
+        assertThat(schemaC.defaultValue()).isEqualTo(new java.util.Date(Timestamp.toEpochMillis(localDateTimeC, MySqlValueConverters::adjustTemporal)));
+
+        LocalDateTime localDateTimeD = LocalDateTime.from(DateTimeFormatter
+                .ofPattern("yyyy-MM-dd HH:mm:ss.S").parse("2018-01-03 00:00:10.7"));
+        assertThat(schemaD.defaultValue()).isEqualTo(new java.util.Date(Timestamp.toEpochMillis(localDateTimeD, MySqlValueConverters::adjustTemporal)));
+
+        LocalDateTime localDateTimeE = LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS").parse("2018-01-03 00:00:10.123456"));
+        assertThat(schemaE.defaultValue()).isEqualTo(new java.util.Date(Timestamp.toEpochMillis(localDateTimeE, MySqlValueConverters::adjustTemporal)));
+
+        assertThat(schemaF.defaultValue()).isEqualTo(2001);
+
+        LocalTime localTime = Time.valueOf("00:00:00").toLocalTime();
+        java.util.Date date = new java.util.Date(Timestamp.toEpochMillis(localTime, MySqlValueConverters::adjustTemporal));
+        assertThat(schemaG.defaultValue()).isEqualTo(date);
+
+        Duration duration1 = Duration.between(LocalTime.MIN, LocalTime.from(DateTimeFormatter.ofPattern("HH:mm:ss.S").parse("23:00:00.7")));
+        assertThat(schemaH.defaultValue()).isEqualTo(new java.util.Date(io.debezium.time.Time.toMilliOfDay(duration1, MySqlValueConverters::adjustTemporal)));
+
+        Duration duration2 = Duration.between(LocalTime.MIN, LocalTime.from(DateTimeFormatter.ofPattern("HH:mm:ss.SSSSSS").parse("23:00:00.123456")));
+        assertThat(schemaI.defaultValue()).isEqualTo(new java.util.Date(io.debezium.time.Time.toMilliOfDay(duration2, MySqlValueConverters::adjustTemporal)));
     }
 }

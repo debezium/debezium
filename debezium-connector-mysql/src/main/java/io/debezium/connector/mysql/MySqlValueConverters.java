@@ -399,6 +399,9 @@ public class MySqlValueConverters extends JdbcValueConverters {
             // MySQL JDBC driver sometimes returns a Java SQL Date object ...
             return adjustYear(((java.sql.Date) data).getYear());
         }
+        if (data instanceof String) {
+            data = Integer.parseInt((String) data);
+        }
         if (data instanceof Number) {
             // MySQL JDBC driver sometimes returns a short ...
             return adjustYear(((Number) data).intValue());

@@ -12,7 +12,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 
-import org.apache.kafka.connect.data.Schema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -168,42 +167,6 @@ public class MySqlSchemaTest {
         assertTableIncluded("mysql.columns_priv");
         assertTablesExistForDatabase("mysql");
         assertHistoryRecorded();
-    }
-
-    @Test
-    public void parseSchemaDefaultValue() {
-        String ddl = "CREATE TABLE `test_tmp` (\n" +
-                "   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,\n" +
-                "   `A` tinyint(3) unsigned NOT NULL DEFAULT '0',\n" +
-                "   `B` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',\n" +
-                "   `C` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n" +
-                "   `D` timestamp NULL DEFAULT NULL,\n" +
-                "   `E` tinyint(1) unsigned NOT NULL DEFAULT '0',\n" +
-                "   `F` int(10) unsigned NOT NULL DEFAULT '0',\n" +
-                "   `G` bit(1) NOT NULL DEFAULT b'0',\n" +
-                "   `H` varchar(255) DEFAULT NULL,\n" +
-                "   `J` int(10) unsigned DEFAULT NULL,\n" +
-                "   PRIMARY KEY (`id`)\n" +
-                " ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
-
-        mysql = build.storeDatabaseHistoryInFile(TEST_FILE_PATH)
-                .serverName(SERVER_NAME)
-                .includeDatabases("connector_test,mysql")
-                .includeBuiltInTables()
-                .createSchemas();
-        mysql.start();
-        mysql.applyDdl(source, "mysql", ddl, this::printStatements);
-        TableSchema schema = mysql.schemaFor(new TableId("mysql", null, "test_tmp"));
-        Schema valueSchema = schema.valueSchema();
-        assertThat(valueSchema.field("id").schema().isOptional()).isEqualTo(false);
-        assertThat(valueSchema.field("A").schema().defaultValue()).isEqualTo((short) 0);
-        assertThat(valueSchema.field("B").schema().defaultValue()).isEqualTo("0000-00-00 00:00:00");
-        assertThat(valueSchema.field("D").schema().defaultValue()).isEqualTo(null);
-        assertThat(valueSchema.field("E").schema().defaultValue()).isEqualTo((short) 0);
-        assertThat(valueSchema.field("F").schema().defaultValue()).isEqualTo(0L);
-        assertThat(valueSchema.field("G").schema().defaultValue()).isEqualTo(false);
-        assertThat(valueSchema.field("H").schema().defaultValue()).isEqualTo(null);
-        assertThat(valueSchema.field("J").schema().defaultValue()).isEqualTo(null);
     }
 
     protected void assertTableIncluded(String fullyQualifiedTableName) {
