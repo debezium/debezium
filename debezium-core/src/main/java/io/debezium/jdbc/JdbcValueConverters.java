@@ -793,6 +793,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
         if (data instanceof Boolean) {
             return NumberConversions.getShort((Boolean) data);
         }
+        if (data instanceof String) {
+            try {
+                return Short.parseShort((String) data);
+            } catch (NumberFormatException ignore) {
+            }
+        }
         return handleUnknownData(column, fieldDefn, data);
     }
 
@@ -821,6 +827,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
         if (data instanceof Boolean) {
             return NumberConversions.getInteger((Boolean) data);
         }
+        if (data instanceof String) {
+            try {
+                return Integer.parseInt((String) data);
+            } catch (NumberFormatException ignore) {
+            }
+        }
         return handleUnknownData(column, fieldDefn, data);
     }
 
@@ -848,6 +860,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
         }
         if (data instanceof Boolean) {
             return NumberConversions.getLong((Boolean) data);
+        }
+        if (data instanceof String) {
+            try {
+                return Long.parseLong((String) data);
+            } catch (NumberFormatException ignore) {
+            }
         }
         return handleUnknownData(column, fieldDefn, data);
     }
@@ -893,6 +911,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
         }
         if (data instanceof Boolean) {
             return NumberConversions.getDouble((Boolean) data);
+        }
+        if (data instanceof String) {
+            try {
+                return Double.parseDouble((String) data);
+            } catch (NumberFormatException ignore) {
+            }
         }
         return handleUnknownData(column, fieldDefn, data);
     }
@@ -986,6 +1010,13 @@ public class JdbcValueConverters implements ValueConverterProvider {
             decimal = BigDecimal.valueOf(((Float) data).doubleValue());
         else if (data instanceof Double)
             decimal = BigDecimal.valueOf(((Double) data).doubleValue());
+        else if (data instanceof String) {
+            try {
+                decimal = new BigDecimal((String) data);
+            } catch (NumberFormatException ignore) {
+                return handleUnknownData(column, fieldDefn, data);
+            }
+        }
         else {
             return handleUnknownData(column, fieldDefn, data);
         }
@@ -1071,6 +1102,14 @@ public class JdbcValueConverters implements ValueConverterProvider {
             BitSet value = (BitSet) data;
             return value.get(0);
         }
+        if (data instanceof String) {
+            try {
+                return Integer.parseInt((String) data) == 0 ? Boolean.FALSE : Boolean.TRUE;
+            } catch (NumberFormatException ignore) {
+                if ("true".equals((String) data)) return true;
+                else if ("false".equals((String) data)) return false;
+            }
+        }
         return handleUnknownData(column, fieldDefn, data);
     }
 
@@ -1116,6 +1155,18 @@ public class JdbcValueConverters implements ValueConverterProvider {
             buffer.order(ByteOrder.LITTLE_ENDIAN);
             buffer.putLong(value.longValue());
             return buffer.array();
+        }
+        if (data instanceof String) {
+            String value = (String) data;
+            int nums = value.length() / Byte.SIZE + (value.length() % Byte.SIZE == 0 ? 0 : 1);
+            byte[] bytes = new byte[nums];
+            for (int i = 0; i < nums; i++) {
+                int s = value.length() - Byte.SIZE < 0 ? 0 : value.length() - Byte.SIZE;
+                int e = value.length();
+                bytes[nums - i - 1] = Byte.parseByte(value.substring(s, e), 2);
+                value = value.substring(0, s);
+            }
+            data = bytes;
         }
         if (data instanceof byte[]) {
             byte[] bytes = (byte[]) data;
@@ -1190,6 +1241,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
         if (data instanceof Short) return ((Short) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
         if (data instanceof Integer) return ((Integer) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
         if (data instanceof Long) return ((Long) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
+        if (data instanceof String) {
+            try {
+                return Integer.parseInt((String) data) == 0 ? Boolean.FALSE : Boolean.TRUE;
+            } catch (NumberFormatException ignore) {
+            }
+        }
         return handleUnknownData(column, fieldDefn, data);
     }
 

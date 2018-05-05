@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -1497,6 +1499,28 @@ public class MySqlDdlParserTest {
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
         assertThat(tables.forTable(new TableId(null, null, "flat_view_request_log"))).isNotNull();
+    }
+
+    @Test
+    public void parseDefaultValue() {
+        String ddl = "CREATE TABLE tmp (id INT NOT NULL, " +
+                "columnA CHAR(60) NOT NULL DEFAULT 'A'," +
+                "columnB INT NOT NULL DEFAULT 1," +
+                "columnC VARCHAR(10) NULL DEFAULT 'C'," +
+                "columnD VARCHAR(10) NULL DEFAULT NULL," +
+                "columnE VARCHAR(10) NOT NULL," +
+                "my_date datetime NOT NULL DEFAULT '2018-04-27 13:28:43');";
+        MySqlValueConverters valueConverters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
+                TemporalPrecisionMode.ADAPTIVE, JdbcValueConverters.BigIntUnsignedMode.PRECISE);
+        MySqlDdlParser ddlParser = new MySqlDdlParser(false, valueConverters);
+        ddlParser.parse(ddl, tables);
+        Table table = tables.forTable(new TableId(null, null, "tmp"));
+        assertThat(table.columnWithName("id").isOptional()).isEqualTo(false);
+        assertThat(table.columnWithName("columnA").defaultValue()).isEqualTo("A");
+        assertThat(table.columnWithName("columnB").defaultValue()).isEqualTo(1);
+        assertThat(table.columnWithName("columnC").defaultValue()).isEqualTo("C");
+        assertThat(table.columnWithName("columnD").defaultValue()).isEqualTo(null);
+        assertThat(table.columnWithName("columnE").defaultValue()).isEqualTo(null);
     }
 
     protected void assertParseEnumAndSetOptions(String typeExpression, String optionString) {
