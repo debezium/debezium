@@ -96,15 +96,4 @@ public class NumberConversions {
     public static Double getDouble(Boolean data) {
         return data.booleanValue() ? DOUBLE_TRUE : DOUBLE_FALSE;
     }
-
-    /**
-     * Convert string object to short object
-     *
-     * @param data A string object
-     * @return Short object
-     * @throws NumberFormatException If the string does not contain a parsable {@code short}.
-     */
-    public static Short getShort(String data) {
-        return Short.parseShort(data);
-    }
 }

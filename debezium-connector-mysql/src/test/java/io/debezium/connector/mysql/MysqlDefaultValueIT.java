@@ -15,12 +15,16 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.time.MicroTimestamp;
 import io.debezium.time.Timestamp;
+import io.debezium.time.ZonedTimestamp;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
@@ -445,10 +449,24 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         Schema schemaJ = record.valueSchema().fields().get(1).schema().fields().get(9).schema();
 //         Number of days since epoch for date 1976-08-23
         assertThat(schemaA.defaultValue()).isEqualTo(2426);
-        assertThat(schemaB.defaultValue()).isEqualTo("1970-01-01T00:00:01+08:00");
-        assertThat(schemaC.defaultValue()).isEqualTo(1514937610000L);
-        assertThat(schemaD.defaultValue()).isEqualTo(1514937610700L);
-        assertThat(schemaE.defaultValue()).isEqualTo(1514937610123456L);
+
+        String value1 = "1970-01-01 00:00:01";
+        ZonedDateTime t = java.sql.Timestamp.valueOf(value1).toInstant().atZone(ZoneId.systemDefault());
+        String isoString = ZonedTimestamp.toIsoString(t, ZoneId.systemDefault(), MySqlValueConverters::adjustTemporal);
+        assertThat(schemaB.defaultValue()).isEqualTo(isoString);
+
+        String value2 = "2018-01-03 00:00:10";
+        long toEpochMillis1 = Timestamp.toEpochMillis(LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").parse(value2)), MySqlValueConverters::adjustTemporal);
+        assertThat(schemaC.defaultValue()).isEqualTo(toEpochMillis1);
+
+        String value3 = "2018-01-03 00:00:10.7";
+        long toEpochMillis2 = Timestamp.toEpochMillis(LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S").parse(value3)), MySqlValueConverters::adjustTemporal);
+        assertThat(schemaD.defaultValue()).isEqualTo(toEpochMillis2);
+
+        String value4 = "2018-01-03 00:00:10.123456";
+        long toEpochMicro = MicroTimestamp.toEpochMicros(LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS").parse(value4)), MySqlValueConverters::adjustTemporal);
+        assertThat(schemaE.defaultValue()).isEqualTo(toEpochMicro);
+
         assertThat(schemaF.defaultValue()).isEqualTo(2001);
         assertThat(schemaG.defaultValue()).isEqualTo(0L);
         assertThat(schemaH.defaultValue()).isEqualTo(82800700000L);
@@ -481,10 +499,24 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         Schema schemaI = record.valueSchema().fields().get(1).schema().fields().get(8).schema();
 
         assertThat(schemaA.defaultValue()).isEqualTo(2426);
-        assertThat(schemaB.defaultValue()).isEqualTo("1970-01-01T00:00:01+08:00");
-        assertThat(schemaC.defaultValue()).isEqualTo(1514937610000L);
-        assertThat(schemaD.defaultValue()).isEqualTo(1514937610700L);
-        assertThat(schemaE.defaultValue()).isEqualTo(1514937610123456L);
+
+        String value1 = "1970-01-01 00:00:01";
+        ZonedDateTime t = java.sql.Timestamp.valueOf(value1).toInstant().atZone(ZoneId.systemDefault());
+        String isoString = ZonedTimestamp.toIsoString(t, ZoneId.systemDefault(), MySqlValueConverters::adjustTemporal);
+        assertThat(schemaB.defaultValue()).isEqualTo(isoString);
+
+        String value2 = "2018-01-03 00:00:10";
+        long toEpochMillis1 = Timestamp.toEpochMillis(LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").parse(value2)), MySqlValueConverters::adjustTemporal);
+        assertThat(schemaC.defaultValue()).isEqualTo(toEpochMillis1);
+
+        String value3 = "2018-01-03 00:00:10.7";
+        long toEpochMillis2 = Timestamp.toEpochMillis(LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S").parse(value3)), MySqlValueConverters::adjustTemporal);
+        assertThat(schemaD.defaultValue()).isEqualTo(toEpochMillis2);
+
+        String value4 = "2018-01-03 00:00:10.123456";
+        long toEpochMicro = MicroTimestamp.toEpochMicros(LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS").parse(value4)), MySqlValueConverters::adjustTemporal);
+        assertThat(schemaE.defaultValue()).isEqualTo(toEpochMicro);
+
         assertThat(schemaF.defaultValue()).isEqualTo(2001);
         assertThat(schemaG.defaultValue()).isEqualTo(0);
         assertThat(schemaH.defaultValue()).isEqualTo(82800700);
@@ -518,7 +550,10 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         Instant instant = LocalDate.from(accessor).atStartOfDay().toInstant(ZoneOffset.UTC);
         assertThat(schemaA.defaultValue()).isEqualTo(java.util.Date.from(instant));
 
-        assertThat(schemaB.defaultValue()).isEqualTo("1970-01-01T00:00:01+08:00");
+        String value1 = "1970-01-01 00:00:01";
+        ZonedDateTime t = java.sql.Timestamp.valueOf(value1).toInstant().atZone(ZoneId.systemDefault());
+        String isoString = ZonedTimestamp.toIsoString(t, ZoneId.systemDefault(), MySqlValueConverters::adjustTemporal);
+        assertThat(schemaB.defaultValue()).isEqualTo(isoString);
 
         LocalDateTime localDateTimeC = LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").parse("2018-01-03 00:00:10"));
         assertThat(schemaC.defaultValue()).isEqualTo(new java.util.Date(Timestamp.toEpochMillis(localDateTimeC, MySqlValueConverters::adjustTemporal)));
