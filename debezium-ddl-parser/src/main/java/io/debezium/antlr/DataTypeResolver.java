@@ -51,12 +51,7 @@ public class DataTypeResolver {
                     }
                 }
                 if (correctDataType) {
-                    addOptionalSuffixToName(dataTypeContext, dataTypeEntry, dataTypeBuilder);
-                    dataTypeBuilder.jdbcType(dataTypeEntry.getJdbcDataType());
-                    dataTypeBuilder.length(dataTypeEntry.getDefaultLength());
-                    dataTypeBuilder.scale(dataTypeEntry.getDefaultScale());
-
-                    dataType = dataTypeBuilder.create();
+                    dataType = buildDataType(dataTypeContext, dataTypeEntry, dataTypeBuilder);
                     selectedTypePriority = dataTypePriority;
                 }
             }
@@ -65,6 +60,15 @@ public class DataTypeResolver {
             throw new ParsingException(null, "Unrecognized dataType for " + AntlrDdlParser.getText(dataTypeContext));
         }
         return dataType;
+    }
+
+    private DataType buildDataType(ParserRuleContext dataTypeContext, DataTypeEntry dataTypeEntry, DataTypeBuilder dataTypeBuilder) {
+        addOptionalSuffixToName(dataTypeContext, dataTypeEntry, dataTypeBuilder);
+        dataTypeBuilder.jdbcType(dataTypeEntry.getJdbcDataType());
+        dataTypeBuilder.length(dataTypeEntry.getDefaultLength());
+        dataTypeBuilder.scale(dataTypeEntry.getDefaultScale());
+
+        return dataTypeBuilder.create();
     }
 
     private void addOptionalSuffixToName(ParserRuleContext dataTypeContext, DataTypeEntry dataTypeEntry, DataTypeBuilder dataTypeBuilder) {
@@ -80,13 +84,14 @@ public class DataTypeResolver {
     public static class DataTypeEntry {
 
         /**
-         * Token identifiers for DBMS data type
-         */
-        private final Integer[] dbmsDataTypeTokenIdentifiers;
-        /**
          * Mapped JDBC data type
          */
         private final int jdbcDataType;
+
+        /**
+         * Token identifiers for DBMS data type
+         */
+        private final Integer[] dbmsDataTypeTokenIdentifiers;
         private Integer[] suffixTokens = null;
         private int defaultLength = -1;
         private int defaultScale = -1;
@@ -126,7 +131,7 @@ public class DataTypeResolver {
             return this;
         }
 
-        public DataTypeEntry setDefualtLengthScaleDimmension(int defaultLength, int defaultScale) {
+        public DataTypeEntry setDefaultLengthScaleDimension(int defaultLength, int defaultScale) {
             this.defaultLength = defaultLength;
             this.defaultScale = defaultScale;
             return this;
