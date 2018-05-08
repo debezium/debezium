@@ -220,6 +220,8 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                         ReconcilingBinlogReader reconcilingBinlogReader = parallelSnapshotReader.createReconcilingBinlogReader();
                         MySqlTaskContext unifiedTaskContext = createAndStartTaskContext(config, getAllFilters(config));
                         // take any final steps requires for reconciling the parallel readers
+                        // TODO this is going to be a bit of a problem because this .uponCompletion is going to be trampled by the ChainedReader, which uses
+                        // .uponCompletion to trigger the start of the next reader (unifiedBinlogReader in this case).
                         reconcilingBinlogReader.uponCompletion(new CompleteReconciliation(unifiedTaskContext, reconcilingBinlogReader, source, config));
                         BinlogReader unifiedBinlogReader = new BinlogReader("binlog", unifiedTaskContext, null);
                         chainedReaderBuilder.addReader(parallelSnapshotReader);

@@ -69,7 +69,7 @@ public class ReconcilingBinlogReader implements Reader {
     @Override
     public void start() {
         if (running.compareAndSet(false, true)) {
-            logger.info("RECONCILLING-BINLOG-READER START");
+            logger.info("RECONCILING-BINLOG-READER START");
             completed.set(false);
             determineLeadingReader();
 
@@ -97,7 +97,21 @@ public class ReconcilingBinlogReader implements Reader {
 
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
-        return reconcilingReader.poll();
+        List<SourceRecord> innerReaderPoll = reconcilingReader.poll();
+        if (innerReaderPoll == null) {
+            completeSuccessfully();
+        }
+        return innerReaderPoll;
+    }
+
+    private void completeSuccessfully() {
+        // if both readers have stopped, we need to stop.
+        logger.info("PARALLEL SNAPSHOT READER IS DONE! NEXT UP IS {}", this.uponCompletion.get().getClass());
+        running.compareAndSet(true, false);
+        Runnable completionHandler = uponCompletion.getAndSet(null); // set to null so that we call it only once
+        if (completionHandler != null) {
+            completionHandler.run();
+        }
     }
 
     private void determineLeadingReader() {

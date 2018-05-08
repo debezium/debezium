@@ -196,7 +196,7 @@ public final class ChainedReader implements Reader {
         // There is at least one more reader, so start it ...
         Reader lastReader = currentReader.getAndSet(null);
         if (lastReader != null) {
-            logger.debug("Transitioning from the {} reader to the {} reader", lastReader.name(), reader.name());
+            logger.info("TRANSITIONING from the {} reader to the {} reader", lastReader.name(), reader.name());
         } else {
             logger.debug("Starting the {} reader", reader.name());
         }

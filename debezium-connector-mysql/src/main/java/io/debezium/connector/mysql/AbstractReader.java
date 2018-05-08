@@ -322,6 +322,7 @@ public abstract class AbstractReader implements Reader {
                 return true;
             } else {
                 // if we found a record we should not accept, we are done.
+                logger.info("TEST RETURNED FALSE; COMPLETING READER {} SUCCESSFULLY", this.name);
                 completeSuccessfully();
             }
         }

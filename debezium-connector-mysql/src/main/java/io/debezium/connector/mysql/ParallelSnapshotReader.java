@@ -149,8 +149,23 @@ public class ParallelSnapshotReader implements Reader {
                 allRecords.addAll(newTablesRecords);
             }
         }
-        // else newTableRecords == null
+        else {
+            // else newTableRecords == null
+            if (allRecords == null) {
+                completeSuccessfully();
+            }
+        }
         return allRecords;
+    }
+
+    private void completeSuccessfully() {
+        // if both readers have stopped, we need to stop.
+        logger.info("PARALLEL SNAPSHOT READER IS DONE! NEXT UP IS {}", this.uponCompletion.get().getClass());
+        running.compareAndSet(true, false);
+        Runnable completionHandler = uponCompletion.getAndSet(null); // set to null so that we call it only once
+        if (completionHandler != null) {
+            completionHandler.run();
+        }
     }
 
     @Override
@@ -197,14 +212,11 @@ public class ParallelSnapshotReader implements Reader {
             logger.info("TESTING PARALLEL HALTING PREDICATE");
             // we assume if we ever end up near the end of the binlog, then we will remain there.
             if (!thisReaderNearEnd.get()) {
-                //Map<String, ?> sourceOffset = ourSourceRecord.sourceOffset();
-                //logger.info("SOURCEOFFSET: {}", sourceOffset.toString());
                 Instant recordTimestamp = Instant.ofEpochSecond((Long) ourSourceRecord.sourceOffset().get(SourceInfo.TIMESTAMP_KEY));
                 Instant now = Instant.now();
                 Duration durationToEnd =
                     Duration.between(recordTimestamp,
                         now);
-                logger.info("RECORDTIME: {} VS NOW: {} => {} sec", recordTimestamp.toString(), now.toString(), durationToEnd.getSeconds());
                 if (durationToEnd.compareTo(minHaltingDuration) <= 0) {
                     // we are within minHaltingDuration of the end
                     logger.info("HALTING PREDICATE: THIS READER NEAR END");
