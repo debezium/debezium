@@ -132,13 +132,13 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
                 new DataTypeEntry(Types.DECIMAL, MySqlParser.DECIMAL)
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL)
-                        .setDefualtLengthScaleDimmension(10, 0),
+                        .setDefaultLengthScaleDimension(10, 0),
                 new DataTypeEntry(Types.DECIMAL, MySqlParser.DEC)
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL)
-                        .setDefualtLengthScaleDimmension(10, 0),
+                        .setDefaultLengthScaleDimension(10, 0),
                 new DataTypeEntry(Types.DECIMAL, MySqlParser.FIXED)
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL)
-                        .setDefualtLengthScaleDimmension(10, 0),
+                        .setDefaultLengthScaleDimension(10, 0),
                 new DataTypeEntry(Types.NUMERIC, MySqlParser.NUMERIC)
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
                 new DataTypeEntry(Types.BIT, MySqlParser.BIT),

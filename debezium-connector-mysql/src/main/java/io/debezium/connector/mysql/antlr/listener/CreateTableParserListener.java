@@ -48,6 +48,9 @@ public class CreateTableParserListener extends MySqlParserBaseListener {
             if (!tableEditor.hasDefaultCharsetName()) {
                 tableEditor.setDefaultCharsetName(parserCtx.currentDatabaseCharset());
             }
+            listeners.remove(columnDefinitionListener);
+            columnDefinitionListener = null;
+            // remove column definition parser listener
             parserCtx.databaseTables().overwriteTable(tableEditor.create());
             parserCtx.signalCreateTable(tableEditor.tableId(), ctx);
         }, tableEditor);
@@ -71,9 +74,11 @@ public class CreateTableParserListener extends MySqlParserBaseListener {
         parserCtx.runIfNotNull(() -> {
             String columnName = parserCtx.parseName(ctx.uid());
             ColumnEditor columnEditor = Column.editor().name(columnName);
-            if (columnEditor != null) {
+            if (columnDefinitionListener == null) {
                 columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, columnEditor, parserCtx.dataTypeResolver());
                 listeners.add(columnDefinitionListener);
+            } else {
+                columnDefinitionListener.setColumnEditor(columnEditor);
             }
         }, tableEditor);
         super.enterColumnDeclaration(ctx);
@@ -83,8 +88,6 @@ public class CreateTableParserListener extends MySqlParserBaseListener {
     public void exitColumnDeclaration(MySqlParser.ColumnDeclarationContext ctx) {
         parserCtx.runIfNotNull(() -> {
             tableEditor.addColumn(columnDefinitionListener.getColumn());
-            // remove column definition parser listener
-            listeners.remove(columnDefinitionListener);
         }, tableEditor, columnDefinitionListener);
         super.exitColumnDeclaration(ctx);
     }
