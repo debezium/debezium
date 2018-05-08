@@ -16,12 +16,12 @@ import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
  *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
-public class DatabaseOptionsParserListener extends MySqlParserBaseListener {
+public class CreateAndAlterDatabaseParserListener extends MySqlParserBaseListener {
 
     private final MySqlAntlrDdlParser parserCtx;
     private String databaseName;
 
-    public DatabaseOptionsParserListener(MySqlAntlrDdlParser parserCtx) {
+    public CreateAndAlterDatabaseParserListener(MySqlAntlrDdlParser parserCtx) {
         this.parserCtx = parserCtx;
     }
 

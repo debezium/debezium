@@ -1,4 +1,9 @@
 /*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+/*
  * Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
  *
  * Licensed under the BSD 3-clause license, available at https://raw.githubusercontent.com/antlr/antlr4/master/LICENSE.txt
@@ -15,19 +20,13 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import java.util.Collection;
 
 /**
- * Instances of this class allows multiple listeners to receive events
- * while walking the parse tree. For example:
- * <p>
- * <pre>
- * ProxyParseTreeListener proxy = new ProxyParseTreeListener();
- * ParseTreeListener listener1 = ... ;
- * ParseTreeListener listener2 = ... ;
- * proxy.add( listener1 );
- * proxy.add( listener2 );
- * ParseTreeWalker.DEFAULT.walk( proxy, ctx );
- * </pre>
+ *
  */
-public class ProxyParseTreeListener {
+public class ProxyParseTreeListenerUtil {
+
+    private ProxyParseTreeListenerUtil() {
+        // instance of util class should never exists
+    }
 
     public static void delegateEnterRule(ParserRuleContext ctx, Collection<ParseTreeListener> listeners, Collection<ParsingException> errors) {
         for (ParseTreeListener listener : listeners) {

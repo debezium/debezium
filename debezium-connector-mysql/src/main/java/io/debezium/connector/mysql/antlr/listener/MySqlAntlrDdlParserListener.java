@@ -11,7 +11,7 @@ package io.debezium.connector.mysql.antlr.listener;
  */
 
 import io.debezium.antlr.AntlrDdlParserListener;
-import io.debezium.antlr.ProxyParseTreeListener;
+import io.debezium.antlr.ProxyParseTreeListenerUtil;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
@@ -38,7 +38,7 @@ public class MySqlAntlrDdlParserListener extends MySqlParserBaseListener impleme
     private Collection<ParsingException> errors = new ArrayList<>();
 
     public MySqlAntlrDdlParserListener(MySqlAntlrDdlParser parserCtx) {
-        listeners.add(new DatabaseOptionsParserListener(parserCtx));
+        listeners.add(new CreateAndAlterDatabaseParserListener(parserCtx));
         listeners.add(new DropDatabaseParserListener(parserCtx));
         listeners.add(new CreateTableParserListener(parserCtx, listeners));
         listeners.add(new AlterTableParserListener(parserCtx, listeners));
@@ -68,7 +68,7 @@ public class MySqlAntlrDdlParserListener extends MySqlParserBaseListener impleme
             skippedNodesCount++;
         }
         else {
-            ProxyParseTreeListener.delegateEnterRule(ctx, listeners, errors);
+            ProxyParseTreeListenerUtil.delegateEnterRule(ctx, listeners, errors);
         }
     }
 
@@ -85,18 +85,18 @@ public class MySqlAntlrDdlParserListener extends MySqlParserBaseListener impleme
             }
         }
         else {
-            ProxyParseTreeListener.delegateExitRule(ctx, listeners, errors);
+            ProxyParseTreeListenerUtil.delegateExitRule(ctx, listeners, errors);
         }
     }
 
     @Override
     public void visitErrorNode(ErrorNode node) {
-        ProxyParseTreeListener.visitErrorNode(node, listeners, errors);
+        ProxyParseTreeListenerUtil.visitErrorNode(node, listeners, errors);
     }
 
     @Override
     public void visitTerminal(TerminalNode node) {
-        ProxyParseTreeListener.visitTerminal(node, listeners, errors);
+        ProxyParseTreeListenerUtil.visitTerminal(node, listeners, errors);
     }
 
     @Override
