@@ -65,10 +65,12 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
 
         if (parsingErrorListener.getErrors().isEmpty()) {
             antlrDdlParserListener = createParseTreeWalkerListener();
-            ParseTreeWalker.DEFAULT.walk(antlrDdlParserListener, parseTree);
+            if (antlrDdlParserListener != null) {
+                ParseTreeWalker.DEFAULT.walk(antlrDdlParserListener, parseTree);
 
-            if (throwErrorsFromTreeWalk && !antlrDdlParserListener.getErrors().isEmpty()) {
-                throwParsingException(antlrDdlParserListener.getErrors());
+                if (throwErrorsFromTreeWalk && !antlrDdlParserListener.getErrors().isEmpty()) {
+                    throwParsingException(antlrDdlParserListener.getErrors());
+                }
             }
         }
         else {
