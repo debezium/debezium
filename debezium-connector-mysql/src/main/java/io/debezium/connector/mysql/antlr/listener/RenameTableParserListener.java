@@ -12,6 +12,8 @@ import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
 import io.debezium.relational.TableId;
 
 /**
+ * Parser listeners that is parsing MySQL RENAME TABLE statements.
+ *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public class RenameTableParserListener extends MySqlParserBaseListener {

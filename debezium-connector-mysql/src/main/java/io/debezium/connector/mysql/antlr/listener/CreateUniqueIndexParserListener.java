@@ -16,6 +16,9 @@ import io.debezium.text.ParsingException;
 import static io.debezium.antlr.AntlrDdlParser.getText;
 
 /**
+ * Parser listeners that is parsing MySQL CREATE UNIQUE INDEX statements, that will be used as a primary key
+ * if it's not already defined for the table.
+ *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public class CreateUniqueIndexParserListener extends MySqlParserBaseListener {
@@ -39,7 +42,7 @@ public class CreateUniqueIndexParserListener extends MySqlParserBaseListener {
                 }
             }
             else {
-                throw new ParsingException(null, "Trying to create index on non existing table " + parserCtx.getFullTableName(tableId) + "."
+                throw new ParsingException(null, "Trying to create index on non existing table " + tableId.toString() + "."
                         + "Query: " + getText(ctx));
             }
         }

@@ -33,6 +33,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
+ * A ANTLR based parser for MySQL DDL statements.
+ *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser> {
@@ -175,14 +177,32 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         ));
     }
 
+    /**
+     * Provides a map of default character sets by database/schema name.
+     *
+     * @return map of default character sets.
+     */
     public ConcurrentMap<String, String> charsetNameForDatabase() {
         return charsetNameForDatabase;
     }
 
+    /**
+     * Parse a name from {@link MySqlParser.UidContext}.
+     *
+     * @param uidContext uid context
+     * @return name without quotes.
+     */
     public String parseName(MySqlParser.UidContext uidContext) {
         return withoutQuotes(uidContext);
     }
 
+    /**
+     * Parse qualified table identification from {@link MySqlParser.FullIdContext}.
+     * {@link MySqlAntlrDdlParser#currentSchema()} will be used if definition of schema name is not part of the context.
+     *
+     * @param fullIdContext full id context.
+     * @return qualified {@link TableId}.
+     */
     public TableId parseQualifiedTableId(MySqlParser.FullIdContext fullIdContext) {
         String fullTableName = fullIdContext.getText();
         int dotIndex;
@@ -195,6 +215,13 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         }
     }
 
+    /**
+     * Parse column names for primary index from {@link MySqlParser.IndexColumnNamesContext}. This method will updates
+     * column to be not optional and set primary key column names to table.
+     *
+     * @param indexColumnNamesContext primary key index column names context.
+     * @param tableEditor editor for table where primary key index is parsed.
+     */
     public void parsePrimaryIndexColumnNames(MySqlParser.IndexColumnNamesContext indexColumnNamesContext, TableEditor tableEditor) {
         List<String> pkColumnNames = indexColumnNamesContext.indexColumnName().stream()
                 .map(indexColumnNameContext -> {
@@ -230,15 +257,12 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         return charsetName;
     }
 
-    public String getFullTableName(TableId tableId) {
-        if (tableId.catalog() != null) {
-            return tableId.catalog() + "." + tableId.table();
-        }
-        else {
-            return tableId.table();
-        }
-    }
-
+    /**
+     * Runs a function if all given object are not null.
+     *
+     * @param function function to run; may not be null
+     * @param nullableObjects object to be tested, if they are null.
+     */
     public void runIfNotNull(Runnable function, Object... nullableObjects) {
         for (Object nullableObject : nullableObjects) {
             if (nullableObject == null) {

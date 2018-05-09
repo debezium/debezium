@@ -6,10 +6,6 @@
 
 package io.debezium.connector.mysql.antlr.listener;
 
-/**
- * @author Roman Kuchár <kucharrom@gmail.com>.
- */
-
 import io.debezium.antlr.AntlrDdlParserListener;
 import io.debezium.antlr.ProxyParseTreeListenerUtil;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
@@ -27,17 +23,36 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Parser listener for MySQL column definition queries.
+ * Parser listener for MySQL column definition queries. It's purpose is to delegate events
+ * to defined collection of concrete parser listeners. Each listener handles the specified type of DDL statement.
+ * This listener is catching all occurred parsing exceptions and implements a skipping logic for BEGIN ... END
+ * statements. No event will be delegated during skipping phase.
  */
 public class MySqlAntlrDdlParserListener extends MySqlParserBaseListener implements AntlrDdlParserListener {
 
+    /**
+     * Collection of listeners for delegation of events.
+     */
     private List<ParseTreeListener> listeners = new CopyOnWriteArrayList<>();
 
+    /**
+     * Flag for skipping phase.
+     */
     private boolean skipNodes;
+
+    /**
+     * Count of skipped nodes. Each enter event during skipping phase will increase the counter
+     * and each exit event will decrease it. When counter will be decreased to 0, the skipping phase will end.
+     */
     private int skippedNodesCount = 0;
+
+    /**
+     * Collection of catched exceptions.
+     */
     private Collection<ParsingException> errors = new ArrayList<>();
 
     public MySqlAntlrDdlParserListener(MySqlAntlrDdlParser parserCtx) {
+        // initialize listeners
         listeners.add(new CreateAndAlterDatabaseParserListener(parserCtx));
         listeners.add(new DropDatabaseParserListener(parserCtx));
         listeners.add(new CreateTableParserListener(parserCtx, listeners));
@@ -101,6 +116,7 @@ public class MySqlAntlrDdlParserListener extends MySqlParserBaseListener impleme
 
     @Override
     public void enterRoutineBody(MySqlParser.RoutineBodyContext ctx) {
+        // this is a grammar rule for BEGIN ... END part of statements. Skip it.
         skipNodes = true;
     }
 

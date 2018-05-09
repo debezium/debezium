@@ -12,6 +12,9 @@ import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
 
 /**
+ * Parser listeners that is parsing MySQL USE statements that changes
+ * current database/schema on which all changes are applied.
+ *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public class UseStatementParserListener extends MySqlParserBaseListener {
