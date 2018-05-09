@@ -19,6 +19,8 @@ import org.antlr.v4.runtime.tree.ParseTreeListener;
 import java.util.List;
 
 /**
+ * Parser listeners that is parsing MySQL ALTER VIEW statements.
+ *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public class AlterViewParserListener extends MySqlParserBaseListener {
@@ -42,7 +44,7 @@ public class AlterViewParserListener extends MySqlParserBaseListener {
 
             tableEditor = parserCtx.databaseTables().editTable(tableId);
             if (tableEditor == null) {
-                throw new ParsingException(null, "Trying to alter view " + parserCtx.getFullTableName(tableId)
+                throw new ParsingException(null, "Trying to alter view " + tableId.toString()
                         + ", which does not exists. Query:" + AntlrDdlParser.getText(ctx));
             }
             // alter view will override existing columns for a new one

@@ -17,19 +17,45 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * A resolver for DBMS data types.
+ *
+ * It's main purpose is to match corresponding JDBC data type, resolve a name of parsed data type,
+ * and optionally predefine default values for length and scale for DBMS data type.
+ *
+ * @author Roman Kuchár <kucharrom@gmail.com>.
+ */
 public class DataTypeResolver {
 
     private final Map<String, List<DataTypeEntry>> contextDataTypesMap = new HashMap<>();
 
+    /**
+     * Registers a data type entries, which will be used for resolving phase.
+     *
+     * @param contextClassCanonicalName canonical name of context instance, in which the data type entry will appear; may not be null
+     * @param dataTypeEntries list of {@link DataTypeEntry} definitions; may not be null
+     */
     public void registerDataTypes(String contextClassCanonicalName, List<DataTypeEntry> dataTypeEntries) {
         contextDataTypesMap.put(contextClassCanonicalName, dataTypeEntries);
     }
 
-    public void registerDataTypes(String contextClassCanonicalName, DataTypeEntry dataTypeEntry) {
+    /**
+     * Registers a data type entry, which will be used for resolving phase.
+     *
+     * @param contextClassCanonicalName canonical name of context instance, in which the data type entry will appear; may not be null
+     * @param dataTypeEntry {@link DataTypeEntry} definitions; may not be null
+     */
+    public void registerDataType(String contextClassCanonicalName, DataTypeEntry dataTypeEntry) {
         List<DataTypeEntry> dataTypeEntries = contextDataTypesMap.computeIfAbsent(contextClassCanonicalName, k -> new ArrayList<>());
         dataTypeEntries.add(dataTypeEntry);
     }
 
+    /**
+     * Resolves a data type from given parsed context.
+     *
+     * @param dataTypeContext parse context; may not e null
+     * @return instance of {@link DataType}, which will holds matched JDBC type, name and default values for length and scale.
+     */
     public DataType resolveDataType(ParserRuleContext dataTypeContext) {
         DataType dataType = null;
         // use priority according to number of matched tokens
@@ -81,17 +107,22 @@ public class DataTypeResolver {
         }
     }
 
+    /**
+     * DTO class for definition of data type.
+     */
     public static class DataTypeEntry {
 
         /**
-         * Mapped JDBC data type
+         * The corresponding JDBC data type
          */
         private final int jdbcDataType;
-
         /**
          * Token identifiers for DBMS data type
          */
         private final Integer[] dbmsDataTypeTokenIdentifiers;
+        /**
+         * Token identifiers for optional suffix tokens for DBMS data type.
+         */
         private Integer[] suffixTokens = null;
         private int defaultLength = -1;
         private int defaultScale = -1;
@@ -101,36 +132,56 @@ public class DataTypeResolver {
             this.jdbcDataType = jdbcDataType;
         }
 
-        public Integer[] getDbmsDataTypeTokenIdentifiers() {
+
+        Integer[] getDbmsDataTypeTokenIdentifiers() {
             return dbmsDataTypeTokenIdentifiers;
         }
 
-        public int getJdbcDataType() {
+        int getJdbcDataType() {
             return jdbcDataType;
         }
 
-        public Integer[] getSuffixTokens() {
+        Integer[] getSuffixTokens() {
             return suffixTokens;
         }
 
-        public int getDefaultLength() {
+        int getDefaultLength() {
             return defaultLength;
         }
 
-        public int getDefaultScale() {
+        int getDefaultScale() {
             return defaultScale;
         }
 
+        /**
+         * Sets an optional suffix tokens that may appear in DBMS data type definition.
+         *
+         * @param suffixTokens optional suffix tokens.
+         * @return instance of this class, so the calls may be chained.
+         */
         public DataTypeEntry setSuffixTokens(Integer... suffixTokens) {
             this.suffixTokens = suffixTokens;
             return this;
         }
 
+        /**
+         * Set a default length for data type.
+         *
+         * @param defaultLength default length for data type.
+         * @return instance of this class, so the calls may be chained.
+         */
         public DataTypeEntry setDefualtLengthDimmension(int defaultLength) {
             this.defaultLength = defaultLength;
             return this;
         }
 
+        /**
+         * Set a default length and scale for data type.
+         *
+         * @param defaultLength default length for data type.
+         * @param defaultScale default scale for data type.
+         * @return instance of this class, so the calls may be chained.
+         */
         public DataTypeEntry setDefaultLengthScaleDimension(int defaultLength, int defaultScale) {
             this.defaultLength = defaultLength;
             this.defaultScale = defaultScale;

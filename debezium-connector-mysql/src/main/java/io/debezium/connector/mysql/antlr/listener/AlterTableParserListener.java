@@ -22,6 +22,8 @@ import java.util.List;
 import static io.debezium.antlr.AntlrDdlParser.getText;
 
 /**
+ * Parser listeners that is parsing MySQL ALTER TABLE statements.
+ *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public class AlterTableParserListener extends MySqlParserBaseListener {
@@ -47,7 +49,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
         TableId tableId = parserCtx.parseQualifiedTableId(ctx.tableName().fullId());
         tableEditor = parserCtx.databaseTables().editTable(tableId);
         if (tableEditor == null) {
-            throw new ParsingException(null, "Trying to alter table " + parserCtx.getFullTableName(tableId)
+            throw new ParsingException(null, "Trying to alter table " + tableId.toString()
                     + ", which does not exists. Query: " + getText(ctx));
         }
         super.enterAlterTable(ctx);
@@ -146,7 +148,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
             }
             else {
                 throw new ParsingException(null, "Trying to change column " + oldColumnName + " in "
-                        + parserCtx.getFullTableName(tableEditor.tableId()) + " table, which does not exists. Query: " + getText(ctx));
+                        + tableEditor.tableId().toString() + " table, which does not exists. Query: " + getText(ctx));
             }
         }, tableEditor);
         super.enterAlterByChangeColumn(ctx);
@@ -181,7 +183,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
             }
             else {
                 throw new ParsingException(null, "Trying to change column " + columnName + " in "
-                        + parserCtx.getFullTableName(tableEditor.tableId()) + " table, which does not exists. Query: " + getText(ctx));
+                        + tableEditor.tableId().toString() + " table, which does not exists. Query: " + getText(ctx));
             }
         }, tableEditor);
         super.enterAlterByModifyColumn(ctx);

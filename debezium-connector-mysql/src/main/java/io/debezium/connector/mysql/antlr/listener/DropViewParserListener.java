@@ -11,6 +11,8 @@ import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
 
 /**
+ * Parser listeners that is parsing MySQL DROP VIEW statements.
+ *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public class DropViewParserListener extends MySqlParserBaseListener {

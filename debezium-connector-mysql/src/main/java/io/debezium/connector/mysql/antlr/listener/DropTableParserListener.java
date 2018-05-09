@@ -13,6 +13,8 @@ import io.debezium.relational.TableId;
 import org.antlr.v4.runtime.misc.Interval;
 
 /**
+ * Parser listeners that is parsing MySQL DROP TABLE statements.
+ *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public class DropTableParserListener extends MySqlParserBaseListener {

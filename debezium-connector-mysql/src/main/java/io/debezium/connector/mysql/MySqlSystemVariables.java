@@ -12,6 +12,8 @@ import java.util.Arrays;
 import java.util.concurrent.ConcurrentMap;
 
 /**
+ * Custom class for MySQL {@link SystemVariables}, which defines MySQL scopes and constants of used variable names.
+ *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public class MySqlSystemVariables extends SystemVariables {
@@ -25,7 +27,6 @@ public class MySqlSystemVariables extends SystemVariables {
         MySqlScope(int priority) {
             this.priority = priority;
         }
-
 
         @Override
         public int priority() {

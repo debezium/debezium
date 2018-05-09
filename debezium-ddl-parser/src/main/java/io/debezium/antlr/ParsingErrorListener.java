@@ -18,6 +18,8 @@ import java.util.function.BiFunction;
 /**
  * ANTLR parsing error listener.
  *
+ * This listener will collect all errors, which may appear during a construction of parsed tree.
+ *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public class ParsingErrorListener extends BaseErrorListener {

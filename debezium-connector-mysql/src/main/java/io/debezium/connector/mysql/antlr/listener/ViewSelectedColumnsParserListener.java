@@ -21,6 +21,8 @@ import java.util.Map;
 import static io.debezium.relational.ddl.AbstractDdlParser.withoutQuotes;
 
 /**
+ * Parser listeners that is parsing MySQL SELECT statements used for definition of VIEW.
+ *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public class ViewSelectedColumnsParserListener extends MySqlParserBaseListener {
