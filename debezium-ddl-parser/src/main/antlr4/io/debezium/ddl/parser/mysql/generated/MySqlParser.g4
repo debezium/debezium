@@ -2073,8 +2073,7 @@ userVariables
 
 defaultValue
     : NULL_LITERAL
-    | constant
-//    | timeDefinition (ON UPDATE timeDefinition)?
+    | unaryOperator? constant
     | timeDefinition
     ;
 
