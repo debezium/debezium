@@ -74,6 +74,28 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <!-- https://github.com/antlr/antlr4test-maven-plugin -->
+                <groupId>com.khubla.antlr</groupId>
+                <artifactId>antlr4test-maven-plugin</artifactId>
+                <version>1.10</version>
+                <configuration>
+                    <verbose>false</verbose>
+                    <showTree>false</showTree>
+                    <entryPoint>root</entryPoint>
+                    <grammarName>MySql</grammarName>
+                    <packageName>io.debezium.ddl.parser.mysql.generated</packageName>
+                    <caseInsensitiveType>UPPER</caseInsensitiveType>
+                    <exampleFiles>src/test/resources/mysql/examples</exampleFiles>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 </project>
