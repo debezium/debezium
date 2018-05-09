@@ -76,6 +76,9 @@
         <!-- Connectors -->
         <version.com.google.protobuf>2.6.1</version.com.google.protobuf>
 
+        <!-- ANTLR -->
+        <antlr.version>4.7</antlr.version>
+
         <!-- Testing -->
         <version.junit>4.12</version.junit>
         <version.fest>1.4</version.fest>
@@ -111,6 +114,7 @@
 
     <modules>
         <module>support/checkstyle</module>
+        <module>debezium-ddl-parser</module>
         <module>debezium-assembly-descriptors</module>
         <module>debezium-core</module>
         <module>debezium-embedded</module>
@@ -221,6 +225,12 @@
                 <version>${version.confluent.platform}</version>
             </dependency>
 
+            <dependency>
+                <groupId>org.antlr</groupId>
+                <artifactId>antlr4-runtime</artifactId>
+                <version>${antlr.version}</version>
+            </dependency>
+
             <!-- PostgreSQL connector -->
 
             <dependency>
@@ -318,6 +328,11 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-connector-mysql</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-ddl-parser</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

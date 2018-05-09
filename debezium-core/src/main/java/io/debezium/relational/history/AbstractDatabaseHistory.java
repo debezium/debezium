@@ -17,8 +17,8 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.function.Predicates;
 import io.debezium.relational.Tables;
-import io.debezium.relational.ddl.DdlParser;
 import io.debezium.text.ParsingException;
+import io.debezium.relational.ddl.DdlParser;
 
 /**
  * @author Randall Hauch

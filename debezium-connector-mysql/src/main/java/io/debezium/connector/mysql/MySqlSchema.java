@@ -5,26 +5,17 @@
  */
 package io.debezium.connector.mysql;
 
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.function.Predicate;
-
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.errors.ConnectException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.connector.mysql.MySqlSystemVariables.MySqlScope;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.BigIntUnsignedHandlingMode;
+import io.debezium.connector.mysql.MySqlConnectorConfig.DdlParsingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.DecimalHandlingMode;
-import io.debezium.connector.mysql.MySqlSystemVariables.Scope;
 import io.debezium.document.Document;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.SystemVariables;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
@@ -32,11 +23,23 @@ import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.ddl.DdlChanges.DatabaseStatementStringConsumer;
+import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Collect;
 import io.debezium.util.SchemaNameAdjuster;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.errors.ConnectException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.function.Predicate;
 
 /**
  * Component that records the schema history for databases hosted by a MySQL database server. The schema information includes
@@ -62,7 +65,7 @@ public class MySqlSchema {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(logger);
     private final Set<String> ignoredQueryStatements = Collect.unmodifiableSet("BEGIN", "END", "FLUSH PRIVILEGES");
-    private final MySqlDdlParser ddlParser;
+    private final DdlParser ddlParser;
     private final TopicSelector topicSelector;
     private final SchemasByTableId tableSchemaByTableId;
     private final Filters filters;
@@ -89,12 +92,21 @@ public class MySqlSchema {
      */
     public MySqlSchema(Configuration config, String serverName, Predicate<String> gtidFilter, boolean tableIdCaseInsensitive, TopicSelector topicSelector) {
         this.filters = new Filters(config);
-        this.ddlParser = new MySqlDdlParser(false);
         this.tables = new Tables(tableIdCaseInsensitive);
-        this.ddlChanges = new DdlChanges(this.ddlParser.terminator());
-        this.ddlParser.addListener(ddlChanges);
         this.topicSelector = topicSelector;
         this.tableIdCaseInsensitive = tableIdCaseInsensitive;
+
+        String ddlParsingModeStr = config.getString(MySqlConnectorConfig.DDL_PARSER_MODE);
+        DdlParsingMode parsingMode = DdlParsingMode.parse(ddlParsingModeStr, MySqlConnectorConfig.DDL_PARSER_MODE.defaultValueAsString());
+
+        try {
+            this.ddlParser = parsingMode.getParserClass().newInstance();
+            this.ddlChanges = this.ddlParser.getDdlChanges();
+        }
+        catch (InstantiationException | IllegalAccessException e) {
+            // ddl parser constructors are not throwing any exceptions, so this should never happen
+            throw new IllegalArgumentException("Unable to create new instance for ddl parser class " + parsingMode.getParserClass().getCanonicalName());
+        }
 
         // Use MySQL-specific converters and schemas for values ...
         String timePrecisionModeStr = config.getString(MySqlConnectorConfig.TIME_PRECISION_MODE);
@@ -113,7 +125,8 @@ public class MySqlSchema {
         this.serverName = serverName;
         if (this.serverName == null || serverName.isEmpty()) {
             this.schemaPrefix = "";
-        } else {
+        }
+        else {
             this.schemaPrefix = serverName.endsWith(".") ? serverName : serverName + ".";
         }
 
@@ -235,7 +248,7 @@ public class MySqlSchema {
      */
     public void setSystemVariables(Map<String, String> variables) {
         variables.forEach((varName, value) -> {
-            ddlParser.systemVariables().setVariable(Scope.SESSION, varName, value);
+            ddlParser.systemVariables().setVariable(MySqlScope.SESSION, varName, value);
         });
     }
 
@@ -244,7 +257,7 @@ public class MySqlSchema {
      *
      * @return the system variables; never null
      */
-    public MySqlSystemVariables systemVariables() {
+    public SystemVariables systemVariables() {
         return ddlParser.systemVariables();
     }
 
@@ -320,7 +333,7 @@ public class MySqlSchema {
             this.ddlChanges.reset();
             this.ddlParser.setCurrentSchema(databaseName);
             this.ddlParser.parse(ddlStatements, tables);
-        } catch (ParsingException e) {
+        } catch (ParsingException | MultipleParsingExceptions e) {
             if (skipUnparseableDDL) {
                 logger.warn("Ignoring unparseable DDL statement '{}': {}", ddlStatements);
             } else {
