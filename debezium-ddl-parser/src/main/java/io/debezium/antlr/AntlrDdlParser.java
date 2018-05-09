@@ -26,11 +26,26 @@ import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import java.util.Collection;
 
 /**
+ * Base implementation of ANTLR based parsers.
+ *
+ * This abstract class provides generic initialization of parser and it's main sequence of steps
+ * that are needed to properly start parsing.
+ * It also provides implementation of helper methods for any type of ANTLR listeners.
+ *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends AbstractDdlParser {
 
+    /**
+     * Flag to indicate if the errors catched during tree walk will be thrown.
+     * true = errors will be thrown
+     * false = errors will not be thrown. They will be available to get by {@link AntlrDdlParser#getParsingExceptionsFromWalker()}.
+     */
     private boolean throwErrorsFromTreeWalk;
+
+    /**
+     * Parser listener for tree walker.
+     */
     private AntlrDdlParserListener antlrDdlParserListener;
 
     protected Tables databaseTables;
@@ -78,6 +93,11 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
         }
     }
 
+    /**
+     * Returns errors catched during tree walk.
+     *
+     * @return collection of {@link ParsingException}s.
+     */
     public Collection<ParsingException> getParsingExceptionsFromWalker() {
         return antlrDdlParserListener.getErrors();
     }
@@ -90,6 +110,11 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      */
     protected abstract ParseTree parseTree(P parser);
 
+    /**
+     * Creates a new instance of parsed tree walker listener.
+     *
+     * @return new instance of parser listener.
+     */
     protected abstract AntlrDdlParserListener createParseTreeWalkerListener();
 
     /**
@@ -122,10 +147,20 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      */
     protected abstract void initDataTypes(DataTypeResolver dataTypeResolver);
 
+    /**
+     * Returns actual tables schema.
+     *
+     * @return table schema.
+     */
     public Tables databaseTables() {
         return databaseTables;
     }
 
+    /**
+     * Returns a data type resolver component.
+     *
+     * @return data type resolver.
+     */
     public DataTypeResolver dataTypeResolver() {
         return dataTypeResolver;
     }

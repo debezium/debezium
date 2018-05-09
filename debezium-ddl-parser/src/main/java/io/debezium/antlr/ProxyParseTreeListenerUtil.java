@@ -20,7 +20,10 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import java.util.Collection;
 
 /**
+ * Utility class that implements a helper method for achieving a delegation of parsed rules to multiple listeners.
  *
+ * For example implementation of proxy parse tree listener see
+ * <a href="https://github.com/antlr/antlr4/issues/841">ANTLR issue</a> about it.
  */
 public class ProxyParseTreeListenerUtil {
 
@@ -28,6 +31,13 @@ public class ProxyParseTreeListenerUtil {
         // instance of util class should never exists
     }
 
+    /**
+     * Delegates enter rule event to collection of parsing listeners and captures parsing exceptions that may appear.
+     *
+     * @param ctx enter rule context; may not be null
+     * @param listeners collection of listeners; may not be null
+     * @param errors collection of errors; may not be null
+     */
     public static void delegateEnterRule(ParserRuleContext ctx, Collection<ParseTreeListener> listeners, Collection<ParsingException> errors) {
         for (ParseTreeListener listener : listeners) {
             try {
@@ -40,6 +50,14 @@ public class ProxyParseTreeListenerUtil {
         }
     }
 
+
+    /**
+     * Delegates exit rule event to collection of parsing listeners and captures parsing exceptions that may appear.
+     *
+     * @param ctx exit rule context; may not be null
+     * @param listeners collection of listeners; may not be null
+     * @param errors collection of errors; may not be null
+     */
     public static void delegateExitRule(ParserRuleContext ctx, Collection<ParseTreeListener> listeners, Collection<ParsingException> errors) {
         for (ParseTreeListener listener : listeners) {
             try {
@@ -53,6 +71,14 @@ public class ProxyParseTreeListenerUtil {
 
     }
 
+
+    /**
+     * Delegates visit error node event to collection of parsing listeners and captures parsing exceptions that may appear.
+     *
+     * @param node error node; may not be null
+     * @param listeners collection of listeners; may not be null
+     * @param errors collection of errors; may not be null
+     */
     public static void visitErrorNode(ErrorNode node, Collection<ParseTreeListener> listeners, Collection<ParsingException> errors) {
         for (ParseTreeListener listener : listeners) {
             try {
@@ -64,6 +90,14 @@ public class ProxyParseTreeListenerUtil {
         }
     }
 
+
+    /**
+     * Delegates visit terminal event to collection of parsing listeners and captures parsing exceptions that may appear.
+     *
+     * @param node terminal node; may not be null
+     * @param listeners collection of listeners; may not be null
+     * @param errors collection of errors; may not be null
+     */
     public static void visitTerminal(TerminalNode node, Collection<ParseTreeListener> listeners, Collection<ParsingException> errors) {
         for (ParseTreeListener listener : listeners) {
             try {

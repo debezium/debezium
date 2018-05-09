@@ -20,6 +20,8 @@ import java.util.List;
 import static io.debezium.antlr.AntlrDdlParser.getText;
 
 /**
+ * Parser listeners that is parsing column definition part of MySQL statements.
+ *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public class ColumnDefinitionParserListener extends MySqlParserBaseListener {

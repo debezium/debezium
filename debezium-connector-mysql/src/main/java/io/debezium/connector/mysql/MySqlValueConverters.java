@@ -24,6 +24,7 @@ import java.time.temporal.Temporal;
 import java.util.Arrays;
 import java.util.List;
 
+import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -502,7 +503,8 @@ public class MySqlValueConverters extends JdbcValueConverters {
     }
 
     protected List<String> extractEnumAndSetOptions(Column column) {
-        return MySqlDdlParser.parseSetAndEnumOptions(column.typeExpression());
+//        return MySqlDdlParser.parseSetAndEnumOptions(column.typeExpression());
+        return MySqlAntlrDdlParser.parseSetAndEnumOptions(column.typeExpression());
     }
 
     protected String extractEnumAndSetOptionsAsString(Column column) {

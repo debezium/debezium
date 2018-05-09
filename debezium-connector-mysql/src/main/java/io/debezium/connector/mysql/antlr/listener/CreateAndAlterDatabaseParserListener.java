@@ -12,7 +12,8 @@ import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
 
 /**
- * Parser listener for MySQL create database query to get database charsetName.
+ * Parser listeners that is parsing MySQL CREATE DATABASE and ALTER DATABASE statements,
+ * to get default character sets for database.
  *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */

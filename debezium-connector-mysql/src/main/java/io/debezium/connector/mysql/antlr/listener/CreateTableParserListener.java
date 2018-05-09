@@ -19,6 +19,8 @@ import org.antlr.v4.runtime.tree.ParseTreeListener;
 import java.util.List;
 
 /**
+ * Parser listeners that is parsing MySQL CREATE TABLE statements.
+ *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public class CreateTableParserListener extends MySqlParserBaseListener {
