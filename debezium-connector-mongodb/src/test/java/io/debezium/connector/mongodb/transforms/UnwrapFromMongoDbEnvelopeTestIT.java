@@ -119,6 +119,12 @@ public class UnwrapFromMongoDbEnvelopeTestIT extends AbstractConnectorTest {
         });
 
         records = consumeRecordsByTopic(1);
+        final SourceRecord candidateRecord = records.recordsForTopic(TOPIC_NAME).get(0);
+        if (((Struct)candidateRecord.value()).get("op").equals("c")) {
+            // MongoDB is not providing really consistent snapshot, so the initial insert
+            // can arrive both in initial sync snapshot and in oplog
+            records = consumeRecordsByTopic(1);
+        }
 
         assertThat(records.recordsForTopic(TOPIC_NAME).size()).isEqualTo(1);
         final SourceRecord updateRecord = records.recordsForTopic(TOPIC_NAME).get(0);
