@@ -13,15 +13,16 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.time.Duration;
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Collections;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -337,6 +338,20 @@ public class SnapshotReader extends AbstractReader {
                         logger.warn("\t skipping database '{}' due to error reading tables: {}", dbName, e.getMessage());
                     }
                 }
+                /* To achieve an ordered snapshot, we would first get a list of Regex tables.whitelist regex patterns
++                   and then sort the tableIds list based on the above list
++                 */
+                List<Pattern> tableWhitelistPattern = Strings.listOfRegex(context.config().getString(MySqlConnectorConfig.TABLE_WHITELIST),Pattern.CASE_INSENSITIVE);
+                List<TableId> tableIdsSorted = new ArrayList<>();
+                tableWhitelistPattern.forEach(pattern -> {
+                    List<TableId> tablesMatchedByPattern = tableIds.stream().filter(t -> pattern.asPredicate().test(t.toString()))
+                            .collect(Collectors.toList());
+                                        tablesMatchedByPattern.forEach(t -> {
+                                                if (!tableIdsSorted.contains(t))
+                                                    tableIdsSorted.add(t);
+                                        });
+                });
+                tableIds.sort(Comparator.comparing(tableIdsSorted::indexOf));
                 final Set<String> includedDatabaseNames = readableDatabaseNames.stream().filter(filters.databaseFilter()).collect(Collectors.toSet());
                 logger.info("\tsnapshot continuing with database(s): {}", includedDatabaseNames);
 
@@ -387,7 +402,7 @@ public class SnapshotReader extends AbstractReader {
                     schema.applyDdl(source, null, setSystemVariablesStatement, this::enqueueSchemaChanges);
 
                     // Add DROP TABLE statements for all tables that we knew about AND those tables found in the databases ...
-                    Set<TableId> allTableIds = new HashSet<>(schema.tables().tableIds());
+                    List<TableId> allTableIds = new ArrayList<>(schema.tables().tableIds());
                     allTableIds.addAll(tableIds);
                     allTableIds.stream()
                                .filter(id -> isRunning()) // ignore all subsequent tables if this reader is stopped

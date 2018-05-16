@@ -35,7 +35,7 @@ public final class ColumnId implements Comparable<ColumnId> {
      * @return the predicate function; never null
      */
     public static Map<TableId,Predicate<Column>> filter(String columnBlacklist) {
-        Set<ColumnId> columnExclusions = columnBlacklist == null ? null : Strings.listOf(columnBlacklist, ColumnId::parse);
+        Set<ColumnId> columnExclusions = columnBlacklist == null ? null : Strings.setOf(columnBlacklist, ColumnId::parse);
         Map<TableId,Set<String>> excludedColumnNamesByTable = new HashMap<>();
         columnExclusions.forEach(columnId->{
             excludedColumnNamesByTable.compute(columnId.tableId(), (tableId,columns)->{
