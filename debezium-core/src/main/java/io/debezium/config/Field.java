@@ -1049,7 +1049,7 @@ public final class Field {
         int errors = 0;
         if (value != null) {
             try {
-                Strings.listOfRegex(value, Pattern.CASE_INSENSITIVE);
+                Strings.setOfRegex(value, Pattern.CASE_INSENSITIVE);
             } catch (PatternSyntaxException e) {
                 problems.accept(field, value, "A comma-separated list of valid regular expressions is expected, but " + e.getMessage());
                 ++errors;
