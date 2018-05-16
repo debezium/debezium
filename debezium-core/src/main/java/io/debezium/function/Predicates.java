@@ -194,7 +194,7 @@ public class Predicates {
      * @throws PatternSyntaxException if the string includes an invalid regular expression
      */
     public static <T> Predicate<T> includes(String regexPatterns, Function<T, String> conversion) {
-        Set<Pattern> patterns = Strings.listOfRegex(regexPatterns, Pattern.CASE_INSENSITIVE);
+        Set<Pattern> patterns = Strings.setOfRegex(regexPatterns, Pattern.CASE_INSENSITIVE);
         return includedInPatterns(patterns, conversion);
     }
 
@@ -212,7 +212,7 @@ public class Predicates {
      * @throws PatternSyntaxException if the string includes an invalid regular expression
      */
     public static Function<String, Optional<Pattern>> matchedBy(String regexPatterns) {
-        return matchedByPattern(Strings.listOfRegex(regexPatterns, Pattern.CASE_INSENSITIVE), Function.identity());
+        return matchedByPattern(Strings.setOfRegex(regexPatterns, Pattern.CASE_INSENSITIVE), Function.identity());
     }
 
     protected static <T> Function<T, Optional<Pattern>> matchedByPattern(Collection<Pattern> patterns, Function<T, String> conversion) {
