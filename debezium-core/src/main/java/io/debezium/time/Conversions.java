@@ -136,6 +136,9 @@ final class Conversions {
         if ( obj instanceof java.util.Date) {
             java.util.Date date = (java.util.Date)obj;
             long millis = (int)(date.getTime() % Conversions.MILLISECONDS_PER_SECOND);
+            if (millis < 0) {
+                millis = Conversions.MILLISECONDS_PER_SECOND + millis;
+            }
             int nanosOfSecond = (int)(millis * Conversions.NANOSECONDS_PER_MILLISECOND);
             return LocalDateTime.of(date.getYear() + 1900,
                                     date.getMonth() + 1,
