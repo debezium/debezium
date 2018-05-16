@@ -70,8 +70,8 @@
         <version.mysql.server>5.7</version.mysql.server>
         <version.mysql.driver>5.1.40</version.mysql.driver>
         <version.mysql.binlog>0.13.0</version.mysql.binlog>
-        <version.mongo.server>3.6.3</version.mongo.server>
-        <version.mongo.driver>3.6.3</version.mongo.driver>
+        <version.mongo.server>3.2.12</version.mongo.server>
+        <version.mongo.driver>3.4.2</version.mongo.driver>
 
         <!-- Connectors -->
         <version.com.google.protobuf>2.6.1</version.com.google.protobuf>

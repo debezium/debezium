@@ -35,7 +35,6 @@ after_install:
 script: 
   - mvn clean install -Passembly -Dversion.postgres.server=9.6-devel
   - mvn install -pl debezium-connector-postgres -Pwal2json-decoder -Dversion.postgres.server=9.6-devel
-  - mvn install -pl debezium-connector-mongodb -Dversion.mongo.server=3.2.19
 
 notifications:
   webhooks:
