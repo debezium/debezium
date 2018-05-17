@@ -133,6 +133,16 @@ final class Conversions {
             LocalTime localTime = toLocalTime(obj);
             return LocalDateTime.of(EPOCH, localTime);
         }
+        if ( obj instanceof java.sql.Timestamp) {
+            java.sql.Timestamp timestamp = (java.sql.Timestamp)obj;
+            return LocalDateTime.of(timestamp.getYear() + 1900,
+                                    timestamp.getMonth() + 1,
+                                    timestamp.getDate(),
+                                    timestamp.getHours(),
+                                    timestamp.getMinutes(),
+                                    timestamp.getSeconds(),
+                                    timestamp.getNanos());
+        }
         if ( obj instanceof java.util.Date) {
             java.util.Date date = (java.util.Date)obj;
             long millis = (int)(date.getTime() % Conversions.MILLISECONDS_PER_SECOND);
