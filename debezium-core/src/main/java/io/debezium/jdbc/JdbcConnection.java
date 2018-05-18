@@ -586,6 +586,10 @@ public class JdbcConnection implements AutoCloseable {
             if (conn == null) throw new SQLException("Unable to obtain a JDBC connection");
             // Always run the initial operations on this new connection
             if (initialOps != null) execute(initialOps);
+            final String statements = config.getString(JdbcConfiguration.ON_CONNECT_STATEMENTS);
+            if (statements != null) {
+                execute(statements.split(";"));
+            }
         }
         return conn;
     }
