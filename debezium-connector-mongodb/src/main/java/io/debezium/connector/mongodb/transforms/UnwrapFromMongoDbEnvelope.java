@@ -109,7 +109,7 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
             .withDescription("Flattening structs by concatenating the fields into plain properties, using a "
                     + "(configurable) delimiter.");
 
-    private static final Field DELIMITER = Field.create("delimiter")
+    private static final Field DELIMITER = Field.create("flatten.struct.delimiter")
             .withDisplayName("Delimiter for flattened struct")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.SHORT)
@@ -142,9 +142,14 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
             if (patchRecord.value() != null) {
                 valueDocument = BsonDocument.parse(patchRecord.value().toString());
                 valueDocument = valueDocument.getDocument("$set");
-
                 if (!valueDocument.containsKey("id")) {
                     valueDocument.append("id", keyDocument.get("id"));
+                }
+                // patch already contains flattened document, there is no need for conversion
+                if (flattenStruct) {
+                    final BsonDocument newDocument = new BsonDocument();
+                    valueDocument.forEach((fKey, fValue) -> newDocument.put(fKey.replace(".", delimiter), fValue));
+                    valueDocument = newDocument;
                 }
             }
             // delete
@@ -163,7 +168,7 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
         Set<Entry<String, BsonValue>> keyPairs = keyDocument.entrySet();
 
         for (Entry<String, BsonValue> valuePairsforSchema : valuePairs) {
-            if(valuePairsforSchema.getKey().toString().equalsIgnoreCase("$set")) {
+            if (valuePairsforSchema.getKey().toString().equalsIgnoreCase("$set")) {
                 BsonDocument val1 = BsonDocument.parse(valuePairsforSchema.getValue().toString());
                 Set<Entry<String, BsonValue>> keyValuesforSetSchema = val1.entrySet();
                 for (Entry<String, BsonValue> keyValuesforSetSchemaEntry : keyValuesforSetSchema) {
@@ -184,13 +189,14 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
         Struct finalKeyStruct = new Struct(finalKeySchema);
 
         for (Entry<String, BsonValue> valuePairsforStruct : valuePairs) {
-            if(valuePairsforStruct.getKey().toString().equalsIgnoreCase("$set")) {
+            if (valuePairsforStruct.getKey().toString().equalsIgnoreCase("$set")) {
                 BsonDocument val1 = BsonDocument.parse(valuePairsforStruct.getValue().toString());
                 Set<Entry<String, BsonValue>> keyvalueforSetStruct = val1.entrySet();
                 for (Entry<String, BsonValue> keyvalueforSetStructEntry : keyvalueforSetStruct) {
                     converter.convertRecord(keyvalueforSetStructEntry, finalValueSchema, finalValueStruct);
                 }
-            } else {
+            }
+            else {
                 converter.convertRecord(valuePairsforStruct, finalValueSchema, finalValueStruct);
             }
         }
@@ -198,22 +204,22 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
         for (Entry<String, BsonValue> keyPairsforStruct : keyPairs) {
             converter.convertRecord(keyPairsforStruct, finalKeySchema, finalKeyStruct);
         }
+
         if (flattenStruct) {
            final R flattenRecord = recordFlattener.apply(r.newRecord(r.topic(), r.kafkaPartition(), finalKeySchema,
                finalKeyStruct, finalValueSchema, finalValueStruct,r.timestamp()));
-         return flattenRecord;
+           return flattenRecord;
         }
         else {
-        if (finalValueSchema.fields().isEmpty()) {
-                return r.newRecord(r.topic(), r.kafkaPartition(), finalKeySchema, finalKeyStruct, null, null,
-                        r.timestamp());
-            }
-            else {
-                return r.newRecord(r.topic(), r.kafkaPartition(), finalKeySchema, finalKeyStruct, finalValueSchema, finalValueStruct,
-                        r.timestamp());
-            }
+            if (finalValueSchema.fields().isEmpty()) {
+                    return r.newRecord(r.topic(), r.kafkaPartition(), finalKeySchema, finalKeyStruct, null, null,
+                            r.timestamp());
+                }
+                else {
+                    return r.newRecord(r.topic(), r.kafkaPartition(), finalKeySchema, finalKeyStruct, finalValueSchema, finalValueStruct,
+                            r.timestamp());
+                }
         }
-
     }
 
     @Override
