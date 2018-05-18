@@ -31,6 +31,7 @@ import io.debezium.connector.mongodb.RecordMakers.RecordsForCollection;
 import io.debezium.connector.mongodb.SourceInfo;
 import io.debezium.connector.mongodb.TopicSelector;
 import io.debezium.doc.FixFor;
+import io.debezium.util.Collect;
 
 /**
  * Unit test for {@link UnwrapFromMongoDbEnvelope}. It uses {@link RecordMakers}
@@ -44,7 +45,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
     private static final String SERVER_NAME = "serverX.";
     private static final String PREFIX = SERVER_NAME + ".";
     private static final String FLATTEN_STRUCT = "flatten.struct";
-    private static final String DELIMITER = "delimiter";
+    private static final String DELIMITER = "flatten.struct.delimiter";
 
     private SourceInfo source;
     private RecordMakers recordMakers;
@@ -324,7 +325,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
 
         transformation.close();
     }
-    
+
     @Test
     public void shouldFlattenTransformRecordForInsertEvent() throws InterruptedException {
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
@@ -347,7 +348,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
         records.recordEvent(event, 1002);
         assertThat(produced.size()).isEqualTo(1);
         SourceRecord record = produced.get(0);
-        
+
         final Map<String, String> props = new HashMap<>();
         props.put(FLATTEN_STRUCT, "true");
         transformation.configure(props);
@@ -377,7 +378,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
 
         transformation.close();
     }
-    
+
     @Test
     public void shouldFlattenWithDelimiterTransformRecordForInsertEvent() throws InterruptedException {
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
@@ -400,7 +401,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
         records.recordEvent(event, 1002);
         assertThat(produced.size()).isEqualTo(1);
         SourceRecord record = produced.get(0);
-        
+
         final Map<String, String> props = new HashMap<>();
         props.put(FLATTEN_STRUCT, "true");
         props.put(DELIMITER, "-");
@@ -427,6 +428,56 @@ public class UnwrapFromMongoDbEnvelopeTest {
         assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("address-street").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("address-zipcode").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().fields()).hasSize(4);
+
+        transformation.close();
+    }
+
+    @Test
+    public void shouldFlattenWithDelimiterTransformRecordForUpdateEvent() throws InterruptedException {
+        CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
+        BsonTimestamp ts = new BsonTimestamp(1000, 1);
+        ObjectId objId = new ObjectId();
+        final Document obj = new Document().append("$set", new Document(Collect.hashMapOf("address.city", "Canberra", "address.name", "James", "address.city2.part", 3)));
+
+        // given
+        Document event = new Document().append("o", obj)
+                .append("o2", objId)
+                .append("ns", "dbA.c1")
+                .append("ts", ts)
+                .append("h", Long.valueOf(12345678))
+                .append("op", "u");
+        RecordsForCollection records = recordMakers.forCollection(collectionId);
+        records.recordEvent(event, 1002);
+        assertThat(produced.size()).isEqualTo(1);
+        SourceRecord record = produced.get(0);
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(FLATTEN_STRUCT, "true");
+        props.put(DELIMITER, "-");
+        transformation.configure(props);
+        // when
+        SourceRecord transformed = transformation.apply(record);
+
+        Struct key = (Struct) transformed.key();
+        Struct value = (Struct) transformed.value();
+
+        // then assert key and its schema
+        assertThat(key.schema()).isSameAs(transformed.keySchema());
+        assertThat(key.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(key.get("id")).isEqualTo(objId.toString());
+
+        // and then assert value and its schema
+        assertThat(value.schema()).isSameAs(transformed.valueSchema());
+        assertThat(value.get("id")).isEqualTo(objId.toString());
+        assertThat(value.get("address-city")).isEqualTo("Canberra");
+        assertThat(value.get("address-name")).isEqualTo("James");
+        assertThat(value.get("address-city2-part")).isEqualTo(3);
+
+        assertThat(value.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("address-city").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("address-name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("address-city2-part").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
         assertThat(value.schema().fields()).hasSize(4);
 
         transformation.close();
