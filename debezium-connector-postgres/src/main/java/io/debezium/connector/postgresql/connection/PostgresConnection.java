@@ -306,7 +306,9 @@ public class PostgresConnection extends JdbcConnection {
                 // Read non-array types
                 try (final ResultSet rs = statement.executeQuery(SQL_NON_ARRAY_TYPES)) {
                     while (rs.next()) {
-                        final int oid = rs.getInt("oid");
+                        // Coerce long to int so large unsigned values are represented as signed
+                        // Same technique is used in TypeInfoCache
+                        final int oid = (int)rs.getLong("oid");
                         typeRegistryBuilder.addType(new PostgresType(
                                 rs.getString("name"),
                                 oid,
@@ -320,7 +322,7 @@ public class PostgresConnection extends JdbcConnection {
                 try (final ResultSet rs = statement.executeQuery(SQL_ARRAY_TYPES)) {
                     while (rs.next()) {
                         // int2vector and oidvector will not be treated as arrays
-                        final int oid = rs.getInt("oid");
+                        final int oid = (int)rs.getLong("oid");
                         typeRegistryBuilder.addType(new PostgresType(
                                 rs.getString("name"),
                                 oid,
