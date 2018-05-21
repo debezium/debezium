@@ -299,13 +299,13 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                 return new PgProtoMessageDecoder();
             }
         },
-        WAL2JSON("wal2json") {
+        WAL2JSON_STREAMING("wal2json_streaming") {
             @Override
             public MessageDecoder messageDecoder() {
                 return new StreamingWal2JsonMessageDecoder();
             }
         },
-        WAL2JSON_RDS("wal2json_rds") {
+        WAL2JSON_RDS_STREAMING("wal2json_rds_streaming") {
             @Override
             public MessageDecoder messageDecoder() {
                 return new StreamingWal2JsonMessageDecoder();
@@ -321,8 +321,7 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                 return "wal2json";
             }
         },
-        @Deprecated
-        WAL2JSON_LEGACY("wal2json_legacy") {
+        WAL2JSON("wal2json") {
             @Override
             public MessageDecoder messageDecoder() {
                 return new NonStreamingWal2JsonMessageDecoder();
@@ -333,8 +332,7 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                 return "wal2json";
             }
         },
-        @Deprecated
-        WAL2JSON_RDS_LEGACY("wal2json_rds_legacy") {
+        WAL2JSON_RDS("wal2json_rds") {
             @Override
             public MessageDecoder messageDecoder() {
                 return new NonStreamingWal2JsonMessageDecoder();
