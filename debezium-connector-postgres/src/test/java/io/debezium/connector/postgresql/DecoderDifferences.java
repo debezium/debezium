@@ -43,8 +43,8 @@ public class DecoderDifferences {
     private static boolean wal2Json() {
         return TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.WAL2JSON
                 || TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.WAL2JSON_RDS
-                || TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.WAL2JSON_LEGACY
-                || TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.WAL2JSON_RDS_LEGACY;
+                || TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.WAL2JSON_STREAMING
+                || TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.WAL2JSON_RDS_STREAMING;
     }
 
     /**
