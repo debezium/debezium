@@ -21,7 +21,11 @@ import org.apache.kafka.connect.data.SchemaBuilder;
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 public class MicroDuration {
-    
+    /**
+     * The approximation used by the plugins when converting a duration to micros
+     */
+    public static final double DAYS_PER_MONTH_AVG = 365.25 / 12.0d;
+
     public static final String SCHEMA_NAME = "io.debezium.time.MicroDuration";
     
     /**
@@ -64,17 +68,36 @@ public class MicroDuration {
      * @param hours a number of hours
      * @param minutes a number of minutes
      * @param seconds a number of seconds
-     * @param daysPerMonthAvg an optional value representing a days per month average; if null, the default duration 
+     * @param micros a number of microseconds
+     * @param daysPerMonthAvg an optional value representing a days per month average; if null, the default duration
      * from {@link ChronoUnit#MONTHS} is used.
      * @return a {@link BigDecimal} value which contains the number of microseconds, never {@code null}
-     */
-    public static double durationMicros(int years, int months, int days, int hours, int minutes, double seconds, 
-                                        Double daysPerMonthAvg) {
+    */
+    public static double durationMicros(int years, int months, int days, int hours, int minutes, double seconds,
+                                        int micros, Double daysPerMonthAvg) {
         if (daysPerMonthAvg == null) {
             daysPerMonthAvg = (double) ChronoUnit.MONTHS.getDuration().toDays();
         }
         double numberOfDays = ((years * 12) + months) * daysPerMonthAvg + days;
         double numberOfSeconds = (((numberOfDays * 24 + hours) * 60) + minutes) * 60 + seconds;
-        return numberOfSeconds * 1e6;          
+        return numberOfSeconds * 1e6 + micros;
+    }
+
+    /**
+     * Converts a number of time units to a duration in microseconds.
+     *
+     * @param years a number of years
+     * @param months a number of months
+     * @param days a number of days
+     * @param hours a number of hours
+     * @param minutes a number of minutes
+     * @param seconds a number of seconds
+     * @param daysPerMonthAvg an optional value representing a days per month average; if null, the default duration
+     * from {@link ChronoUnit#MONTHS} is used.
+     * @return a {@link BigDecimal} value which contains the number of microseconds, never {@code null}
+    */
+    public static double durationMicros(int years, int months, int days, int hours, int minutes, double seconds,
+            Double daysPerMonthAvg) {
+        return durationMicros(years, months, days, hours, minutes, seconds, 0, daysPerMonthAvg);
     }
 }

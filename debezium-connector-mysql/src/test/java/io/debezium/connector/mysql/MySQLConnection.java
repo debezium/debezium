@@ -12,14 +12,14 @@ import io.debezium.jdbc.JdbcConnection;
 /**
  * A utility for integration test cases to connect the MySQL server running in the Docker container created by this module's
  * build.
- * 
+ *
  * @author Randall Hauch
  */
 public class MySQLConnection extends JdbcConnection {
 
     /**
      * Obtain a connection instance to the named test database.
-     * 
+     *
      * @param databaseName the name of the test database
      * @return the MySQLConnection instance; never null
      */
@@ -33,7 +33,7 @@ public class MySQLConnection extends JdbcConnection {
 
     /**
      * Obtain a connection instance to the named test database.
-     * 
+     *
      * @param databaseName the name of the test database
      * @param username the username
      * @param password the password
@@ -59,21 +59,10 @@ public class MySQLConnection extends JdbcConnection {
 
     /**
      * Create a new instance with the given configuration and connection factory.
-     * 
+     *
      * @param config the configuration; may not be null
      */
     public MySQLConnection(Configuration config) {
         super(config, FACTORY, null, MySQLConnection::addDefaults);
-    }
-
-    /**
-     * Create a new instance with the given configuration and connection factory, and specify the operations that should be
-     * run against each newly-established connection.
-     * 
-     * @param config the configuration; may not be null
-     * @param initialOperations the initial operations that should be run on each new connection; may be null
-     */
-    public MySQLConnection(Configuration config, Operations initialOperations) {
-        super(config, FACTORY, initialOperations, MySQLConnection::addDefaults);
     }
 }

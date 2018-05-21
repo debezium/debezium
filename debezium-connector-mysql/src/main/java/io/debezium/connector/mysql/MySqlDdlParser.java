@@ -26,9 +26,9 @@ import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 import io.debezium.relational.ddl.DataType;
 import io.debezium.relational.ddl.DataTypeParser;
-import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.ddl.DdlParserListener.SetVariableEvent;
 import io.debezium.relational.ddl.DdlTokenizer;
+import io.debezium.relational.ddl.LegacyDdlParser;
 import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
 import io.debezium.text.TokenStream;
@@ -43,7 +43,7 @@ import io.debezium.text.TokenStream.Marker;
  * @author Randall Hauch
  */
 @NotThreadSafe
-public class MySqlDdlParser extends DdlParser {
+public class MySqlDdlParser extends LegacyDdlParser {
 
     /**
      * The system variable name for the name of the character set that the server uses by default.

@@ -701,7 +701,7 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
     private final SnapshotMode snapshotMode;
 
     protected PostgresConnectorConfig(Configuration config) {
-        super(config);
+        super(config, SERVER_NAME);
 
         this.config = config;
         String serverName = config.getString(PostgresConnectorConfig.SERVER_NAME);
