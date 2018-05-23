@@ -44,8 +44,8 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.MEDIUM)
             .withDescription("The arrays can be encoded using 'array' schema type (the default) ar as a 'struct' (similar to how BSON encodes arrays). "
-                    + "'array' is easier to consume but requires all elemnts in the array to be of the same type. "
-                    + "Use 'struct' if the arrays in data source mixes different types together.");
+                    + "'array' is easier to consume but requires all elements in the array to be of the same type. "
+                    + "Use 'struct' if the arrays in data source mix different types together.");
 
     public static enum ArrayEncoding implements EnumeratedValue {
         ARRAY("array"),
