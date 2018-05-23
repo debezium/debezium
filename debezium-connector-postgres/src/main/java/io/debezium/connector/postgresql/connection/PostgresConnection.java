@@ -328,7 +328,7 @@ public class PostgresConnection extends JdbcConnection {
                                 oid,
                                 nameToJdbc.get(rs.getString("name")),
                                 typeInfo,
-                                typeRegistryBuilder.get(rs.getInt("element"))
+                                typeRegistryBuilder.get((int)rs.getLong("element"))
                         ));
                     }
                 }
