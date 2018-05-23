@@ -58,6 +58,10 @@ public class MongoDataConverterTest {
                 "Struct{"
                 + "address=Struct{"
                   + "building=1007,"
+                  + "floor=Struct{"
+                    + "level=17,"
+                    + "description=level 17"
+                  + "},"
                   + "coord=[-73.856077, 40.848447],"
                   + "street=Morris Park Ave,"
                   + "zipcode=10462"
@@ -88,6 +92,11 @@ public class MongoDataConverterTest {
                 SchemaBuilder.struct().name("pub")
                     .field("address", SchemaBuilder.struct().name("pub.address")
                             .field("building", Schema.OPTIONAL_STRING_SCHEMA)
+                            .field("floor", SchemaBuilder.struct().name("pub.address.floor").optional()
+                                    .field("level", Schema.OPTIONAL_INT32_SCHEMA)
+                                    .field("description", Schema.OPTIONAL_STRING_SCHEMA)
+                                    .build()
+                            )
                             .field("coord", SchemaBuilder.array(Schema.OPTIONAL_FLOAT64_SCHEMA).build())
                             .field("street", Schema.OPTIONAL_STRING_SCHEMA)
                             .field("zipcode", Schema.OPTIONAL_STRING_SCHEMA).build())
