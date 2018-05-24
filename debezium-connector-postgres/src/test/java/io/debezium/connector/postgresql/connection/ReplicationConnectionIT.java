@@ -21,6 +21,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
+import org.apache.kafka.connect.errors.ConnectException;
+import org.fest.assertions.Assertions;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -61,7 +63,7 @@ public class ReplicationConnectionIT {
         }
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test(expected = ConnectException.class)
     public void shouldNotAllowMultipleReplicationSlotsOnTheSameDBSlotAndPlugin() throws Exception {
         // create a replication connection which should be dropped once it's closed
         try (ReplicationConnection conn1 = TestHelper.createForReplication("test1", true)) {
@@ -70,6 +72,20 @@ public class ReplicationConnectionIT {
                 conn2.startStreaming();
                 fail("Should not be able to create 2 replication connections on the same db, plugin and slot");
             }
+        }
+    }
+
+    @Test
+    public void shouldCloseConnectionOnInvalidSlotName() throws Exception {
+        try (ReplicationConnection conn1 = TestHelper.createForReplication("test1-", true)) {
+            conn1.startStreaming();
+            fail("Invalid slot name should fail");
+        }
+        catch (Exception e) {
+            PostgresConnection connection = TestHelper.create();
+            connection.execute(x -> {
+                Assertions.assertThat(x.executeQuery("select * from pg_stat_replication where state = 'startup'").next()).as("Connection should not be active").isFalse();
+            });
         }
     }
 
