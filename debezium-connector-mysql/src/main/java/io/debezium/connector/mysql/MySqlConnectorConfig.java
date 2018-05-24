@@ -513,8 +513,9 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                            .withType(Type.STRING)
                                                            .withWidth(Width.LONG)
                                                            .withImportance(Importance.LOW)
-                                                           .withDescription("A semicolon separated list of SQL statements to be executed when connection to database is established. "
-                                                                   + "Typically used for configuration of session parameters.");
+                                                           .withDescription("A semicolon separated list of SQL statements to be executed when JDBC connection (not binlog reading connection) to the database is established. "
+                                                                   + "Typically used for configuration of session parameters. "
+                                                                   + "Use doubled semicolon ';;' to use it as a character not as a delimiter");
 
     public static final Field SERVER_ID = Field.create("database.server.id")
                                                .withDisplayName("Cluster ID")

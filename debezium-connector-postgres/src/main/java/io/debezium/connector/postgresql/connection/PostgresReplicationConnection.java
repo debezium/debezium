@@ -65,7 +65,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                          boolean dropSlotOnClose,
                                          Integer statusUpdateIntervalMillis,
                                          TypeRegistry typeRegistry) {
-        super(config, PostgresConnection.FACTORY, null ,PostgresReplicationConnection::defaultSettings);
+        super(config, PostgresConnection.FACTORY, null, PostgresReplicationConnection::defaultSettings);
 
         this.originalConfig = config;
         this.slotName = slotName;
@@ -109,6 +109,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             }
 
             AtomicLong xlogStart = new AtomicLong();
+            // replication connection does not support parsing of SQL statements so we need to create
+            // the connection without executing on connect statements - see JDBC opt preferQueryMode=simple
+            pgConnection();
             execute(statement -> {
                 String identifySystemStatement = "IDENTIFY_SYSTEM";
                 LOGGER.debug("running '{}' to validate replication connection", identifySystemStatement);
@@ -154,7 +157,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     protected PGConnection pgConnection() throws SQLException {
-        return (PGConnection) connection();
+        return (PGConnection) connection(false);
     }
 
     private ReplicationStream createReplicationStream(final LogSequenceNumber lsn) throws SQLException {
