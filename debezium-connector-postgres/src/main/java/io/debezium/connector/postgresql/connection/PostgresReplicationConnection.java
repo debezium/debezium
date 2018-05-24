@@ -77,7 +77,14 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
         try {
             initReplicationSlot();
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
+            try {
+                close();
+            }
+            catch (Exception ec) {
+                // ignore cleanup exceptions
+            }
             throw new JdbcConnectionException("Cannot create replication connection", e);
         }
     }
