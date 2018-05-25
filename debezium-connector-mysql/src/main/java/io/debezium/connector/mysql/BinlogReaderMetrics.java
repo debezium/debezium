@@ -17,16 +17,18 @@ class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
 
     private final BinaryLogClient client;
     private final BinaryLogClientStatistics stats;
+    private final MySqlSchema schema;
 
     private final AtomicLong numberOfCommittedTransactions = new AtomicLong();
     private final AtomicLong numberOfRolledBackTransactions = new AtomicLong();
     private final AtomicLong numberOfNotWellFormedTransactions = new AtomicLong();
     private final AtomicLong numberOfLargeTransactions = new AtomicLong();
 
-    public BinlogReaderMetrics( BinaryLogClient client) {
+    public BinlogReaderMetrics(BinaryLogClient client, MySqlSchema schema) {
         super("binlog");
         this.client = client;
         this.stats = new BinaryLogClientStatistics(client);
+        this.schema = schema;
     }
 
     @Override
@@ -122,6 +124,11 @@ class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
 
     public void onLargeTransaction() {
         numberOfLargeTransactions.incrementAndGet();
+    }
+
+    @Override
+    public String[] getMonitoredTables() {
+        return schema.monitoredTablesAsStringArray();
     }
 
 }

@@ -8,7 +8,7 @@ package io.debezium.connector.mysql;
 /**
  * @author Randall Hauch
  */
-public interface SnapshotReaderMetricsMXBean {
+public interface SnapshotReaderMetricsMXBean extends ReaderMetricsMXBean {
 
     int getTotalTableCount();
     int getRemainingTableCount();

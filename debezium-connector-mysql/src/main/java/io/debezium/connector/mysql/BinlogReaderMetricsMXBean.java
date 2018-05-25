@@ -9,7 +9,7 @@ package io.debezium.connector.mysql;
  * @author Randall Hauch
  *
  */
-public interface BinlogReaderMetricsMXBean {
+public interface BinlogReaderMetricsMXBean extends ReaderMetricsMXBean {
 
     boolean isConnected();
     String getBinlogFilename();

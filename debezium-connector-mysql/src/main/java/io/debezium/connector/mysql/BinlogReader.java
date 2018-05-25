@@ -231,7 +231,7 @@ public class BinlogReader extends AbstractReader {
         client.setEventDeserializer(eventDeserializer);
 
         // Set up for JMX ...
-        metrics = new BinlogReaderMetrics(client);
+        metrics = new BinlogReaderMetrics(client, context.dbSchema());
         heartbeat = Heartbeat.create(context.config(), context.topicSelector().getHeartbeatTopic(),
                 context.serverName(), () -> OffsetPosition.build(source.partition(), source.offset()));
     }

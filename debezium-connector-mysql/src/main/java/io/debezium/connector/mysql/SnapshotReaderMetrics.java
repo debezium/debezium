@@ -24,12 +24,14 @@ class SnapshotReaderMetrics extends Metrics implements SnapshotReaderMetricsMXBe
     private final AtomicBoolean snapshotAborted = new AtomicBoolean();
     private final AtomicLong startTime = new AtomicLong();
     private final AtomicLong stopTime = new AtomicLong();
-    
+    private final MySqlSchema schema;
+
     private final Clock clock;
     
-    public SnapshotReaderMetrics(Clock clock) {
+    public SnapshotReaderMetrics(Clock clock, MySqlSchema schema) {
         super("snapshot");
-        this.clock= clock;
+        this.clock = clock;
+        this.schema = schema;
     }
     
     @Override
@@ -110,5 +112,10 @@ class SnapshotReaderMetrics extends Metrics implements SnapshotReaderMetricsMXBe
         this.snapshotAborted.set(true);
         this.snapshotRunning.set(false);
         this.stopTime.set(clock.currentTimeInMillis());
+    }
+
+    @Override
+    public String[] getMonitoredTables() {
+        return schema.monitoredTablesAsStringArray();
     }
 }
