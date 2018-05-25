@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -180,6 +181,21 @@ public class MySqlSchema {
      */
     public Tables tables() {
         return tables.subset(filters.tableFilter());
+    }
+
+    /**
+     * Get all table names for all databases that are monitored whose events are captured by Debezium
+     *
+     * @return the array with the table names
+     */
+    public String[] monitoredTablesAsStringArray() {
+        final Collection<TableId> tables = tables().tableIds();
+        String[] ret = new String[tables.size()];
+        int i = 0;
+        for (TableId table: tables) {
+            ret[i++] = table.toString();
+        }
+        return ret;
     }
 
     /**
