@@ -243,6 +243,21 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    public void shouldExecuteOnConnectStatements() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                                               .with(PostgresConnectorConfig.SNAPSHOT_MODE, INITIAL.getValue())
+                                               .with(PostgresConnectorConfig.ON_CONNECT_STATEMENTS, "INSERT INTO s1.a (aa) VALUES (2); INSERT INTO s2.a (aa) VALUES (2)")
+                                               .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        SourceRecords actualRecords = consumeRecordsByTopic(2);
+        assertKey(actualRecords.allRecordsInOrder().get(0), "pk", 1);
+        assertKey(actualRecords.allRecordsInOrder().get(1), "pk", 2);
+    }
+
+    @Test
     public void shouldProduceEventsWhenSnapshotsAreNeverAllowed() throws InterruptedException {
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()

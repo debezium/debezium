@@ -53,6 +53,7 @@ import io.debezium.util.Strings;
  */
 public class JdbcConnection implements AutoCloseable {
 
+    private static final char STATEMENT_DELIMITER = ';';
     private final static Logger LOGGER = LoggerFactory.getLogger(JdbcConnection.class);
 
     /**
@@ -581,13 +582,56 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     public synchronized Connection connection() throws SQLException {
+        return connection(true);
+    }
+
+    public synchronized Connection connection(boolean executeOnConnect) throws SQLException {
         if (conn == null) {
             conn = factory.connect(JdbcConfiguration.adapt(config));
             if (conn == null) throw new SQLException("Unable to obtain a JDBC connection");
             // Always run the initial operations on this new connection
             if (initialOps != null) execute(initialOps);
+            final String statements = config.getString(JdbcConfiguration.ON_CONNECT_STATEMENTS);
+            if (statements != null && executeOnConnect) {
+                final List<String> splitStatements = parseSqlStatementString(statements);
+                execute(splitStatements.toArray(new String[splitStatements.size()]));
+            }
         }
         return conn;
+    }
+
+    protected List<String> parseSqlStatementString(final String statements) {
+        final List<String> splitStatements = new ArrayList<>();
+        final char[] statementsChars = statements.toCharArray();
+        StringBuilder activeStatement = new StringBuilder();
+        for (int i = 0; i < statementsChars.length; i++) {
+            if (statementsChars[i] == STATEMENT_DELIMITER) {
+                if (i == statementsChars.length - 1) {
+                    // last character so it is the delimiter
+                }
+                else if (statementsChars[i + 1] == STATEMENT_DELIMITER) {
+                    // two semicolons in a row - escaped semicolon
+                    activeStatement.append(STATEMENT_DELIMITER);
+                    i++;
+                }
+                else {
+                    // semicolon as a delimiter
+                    final String trimmedStatement = activeStatement.toString().trim();
+                    if (!trimmedStatement.isEmpty()) {
+                        splitStatements.add(trimmedStatement);
+                    }
+                    activeStatement = new StringBuilder();
+                }
+            }
+            else {
+                activeStatement.append(statementsChars[i]);
+            }
+        }
+        final String trimmedStatement = activeStatement.toString().trim();
+        if (!trimmedStatement.isEmpty()) {
+            splitStatements.add(trimmedStatement);
+        }
+        return splitStatements;
     }
 
     /**

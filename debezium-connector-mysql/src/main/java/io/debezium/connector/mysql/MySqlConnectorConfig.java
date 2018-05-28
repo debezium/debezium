@@ -508,6 +508,15 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                          + "Each distinct MySQL installation should have a separate namespace and monitored by "
                                                          + "at most one Debezium connector.");
 
+    public static final Field ON_CONNECT_STATEMENTS = Field.create("database.initial.statements")
+                                                           .withDisplayName("Initial statements")
+                                                           .withType(Type.STRING)
+                                                           .withWidth(Width.LONG)
+                                                           .withImportance(Importance.LOW)
+                                                           .withDescription("A semicolon separated list of SQL statements to be executed when JDBC connection (not binlog reading connection) to the database is established. "
+                                                                   + "Typically used for configuration of session parameters. "
+                                                                   + "Use doubled semicolon ';;' to use it as a character not as a delimiter");
+
     public static final Field SERVER_ID = Field.create("database.server.id")
                                                .withDisplayName("Cluster ID")
                                                .withType(Type.LONG)
@@ -908,7 +917,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
-    public static Field.Set ALL_FIELDS = Field.setOf(USER, PASSWORD, HOSTNAME, PORT, SERVER_ID,
+    public static Field.Set ALL_FIELDS = Field.setOf(USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS, SERVER_ID,
                                                      SERVER_NAME,
                                                      CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS,
                                                      CommonConnectorConfig.MAX_QUEUE_SIZE,
@@ -968,7 +977,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
 
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
-        Field.group(config, "MySQL", HOSTNAME, PORT, USER, PASSWORD, SERVER_NAME, SERVER_ID,
+        Field.group(config, "MySQL", HOSTNAME, PORT, USER, PASSWORD, ON_CONNECT_STATEMENTS, SERVER_NAME, SERVER_ID,
                     SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD, SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER);
         Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                     KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
