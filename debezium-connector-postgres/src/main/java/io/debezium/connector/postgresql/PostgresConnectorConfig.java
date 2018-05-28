@@ -456,9 +456,10 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                                                            .withType(Type.STRING)
                                                            .withWidth(Width.LONG)
                                                            .withImportance(Importance.LOW)
-                                                           .withDescription("A semicolon separated list of SQL statements to be executed when JDBC connection (not binlog reading connection) to the database is established. "
-                                                                + "Typically used for configuration of session parameters. "
-                                                                + "Use doubled semicolon ';;' to use it as a character not as a delimiter");
+                                                           .withDescription("A semicolon separated list of SQL statements to be executed when a JDBC connection to the database is established. "
+                                                                   + "Note that the connector may establish JDBC connections at its own discretion, so this should typically be used for configuration"
+                                                                   + "of session parameters only, but not for executing DML statements. Use doubled semicolon (';;') to use a semicolon as a character "
+                                                                   + "and not as a delimiter.");
 
     public static final Field SERVER_NAME = Field.create(DATABASE_CONFIG_PREFIX + "server.name")
                                                  .withDisplayName("Namespace")
