@@ -249,6 +249,10 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         return config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX);
     }
 
+    public long snapshotDelayMinutes() {
+        return config.getLong(MySqlConnectorConfig.SNAPSHOT_DELAY_MINUTES);
+    }
+
     public void start() {
         connectionContext.start();
         // Start the MySQL database history, which simply starts up resources but does not recover the history to a specific point

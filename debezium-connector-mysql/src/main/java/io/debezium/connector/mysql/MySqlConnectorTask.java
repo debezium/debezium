@@ -6,6 +6,7 @@
 package io.debezium.connector.mysql;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -165,11 +166,16 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                 // We're supposed to start with a snapshot, so set that up ...
                 SnapshotReader snapshotReader = new SnapshotReader("snapshot", taskContext);
                 if (snapshotEventsAreInserts) snapshotReader.generateInsertEvents();
+
+                if (taskContext.snapshotDelayMinutes() > 0) {
+                    // Adding a timed blocking reader to delay the snapshot, can help to avoid initial rebalancing interruptions
+                    chainedReaderBuilder.addReader(new TimedBlockingReader("blocker", Duration.ofMinutes(taskContext.snapshotDelayMinutes())));
+                }
                 chainedReaderBuilder.addReader(snapshotReader);
 
                 if (taskContext.isInitialSnapshotOnly()) {
                     logger.warn("This connector will only perform a snapshot, and will stop after that completes.");
-                    chainedReaderBuilder.addReader(new BlockingReader("blocker"));
+                    chainedReaderBuilder.addReader(new BlockingReader("blocker", "Connector has completed all of its work but will continue in the running state. It can be shut down at any time."));
                     chainedReaderBuilder.completionMessage("Connector configured to only perform snapshot, and snapshot completed successfully. Connector will terminate.");
                 } else {
                     if (!rowBinlogEnabled) {

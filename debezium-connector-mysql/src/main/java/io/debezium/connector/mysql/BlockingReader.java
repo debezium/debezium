@@ -29,10 +29,12 @@ public class BlockingReader implements Reader {
     private final Metronome metronome;
 
     private final String name;
+    private final String runningLogMessage;
 
-    public BlockingReader(String name) {
+    public BlockingReader(String name, String runningLogMessage) {
         this.name = name;
         this.metronome = Metronome.parker(ConfigurationDefaults.RETURN_CONTROL_INTERVAL, Clock.SYSTEM);
+        this.runningLogMessage = runningLogMessage;
 
     }
 
@@ -65,7 +67,7 @@ public class BlockingReader implements Reader {
     @Override
     public void start() {
         state.set(State.RUNNING);
-        logger.info("Connector has completed all of its work but will continue in the running state. It can be shut down at any time.");
+        logger.info(runningLogMessage);
     }
 
     @Override
