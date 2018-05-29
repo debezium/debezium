@@ -18,6 +18,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
 
+import com.github.shyiko.mysql.binlog.event.RowsQueryEventData;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 
@@ -264,6 +265,11 @@ public class BinlogReader extends AbstractReader {
         eventHandlers.put(EventType.VIEW_CHANGE, this::viewChange);
         eventHandlers.put(EventType.XA_PREPARE, this::prepareTransaction);
         eventHandlers.put(EventType.XID, this::handleTransactionCompletion);
+
+        // Conditionally register QUERY handler to parse SQL statements.
+        if (context.includeSqlQuery()) {
+            eventHandlers.put(EventType.ROWS_QUERY, this::handleRowsQuery);
+        }
 
         // Get the current GtidSet from MySQL so we can get a filtered/merged GtidSet based off of the last Debezium checkpoint.
         String availableServerGtidStr = connectionContext.knownGtidSet();
@@ -571,6 +577,22 @@ public class BinlogReader extends AbstractReader {
                 ignoreDmlEventByGtidSource = true;
             }
         }
+    }
+
+    /**
+     * Handle the supplied event with an {@link RowsQueryEventData} by possibly recording the original SQL query
+     * that generated the event.
+     *
+     * @param event the database change data event to be processed; may not be null
+     */
+    protected void handleRowsQuery(Event event) {
+        // Unwrap the RowsQueryEvent
+        final RowsQueryEventData lastRowsQueryEventData = unwrapData(event);
+
+        // TODO potentially filter or skip processing this event based on connector configuration options or filtering rules.
+
+        // Set the query on the source
+        source.setQuery(lastRowsQueryEventData.getQuery());
     }
 
     /**

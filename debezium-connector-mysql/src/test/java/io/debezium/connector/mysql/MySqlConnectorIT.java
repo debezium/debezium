@@ -51,6 +51,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     private final UniqueDatabase RO_DATABASE = new UniqueDatabase("myServer2", "connector_test_ro", DATABASE)
             .withDbHistoryPath(DB_HISTORY_PATH);
 
+    // Defines how many initial events are generated from loading the test databases.
+    private static final int INITIAL_EVENT_COUNT = 9 + 9 + 4 + 5 + 6;
+
     private Configuration config;
 
     @Before
@@ -931,7 +934,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         // Consume the first records due to startup and initialization of the database ...
         // Testing.Print.enable();
-        SourceRecords records = consumeRecordsByTopic(9 + 9 + 4 + 5 + 6); // 6 DDL changes
+        SourceRecords records = consumeRecordsByTopic(INITIAL_EVENT_COUNT); // 6 DDL changes
         assertThat(recordsForTopicForRoProductsTable(records).size()).isEqualTo(9);
         assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("products_on_hand")).size()).isEqualTo(9);
         assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("customers")).size()).isEqualTo(4);
@@ -1027,7 +1030,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        SourceRecords records = consumeRecordsByTopic(9 + 9 + 4 + 5 + 6); // 6 DDL changes
+        SourceRecords records = consumeRecordsByTopic(INITIAL_EVENT_COUNT); // 6 DDL changes
         assertThat(records.recordsForTopic(DATABASE.topicForTable("orders")).size()).isEqualTo(5);
 
         try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
@@ -1061,9 +1064,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-582")
     public void shouldEmitNoTombstoneOnDelete() throws Exception {
         config = DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
-                .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
-                .build();
+            .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
+            .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+            .build();
 
         // Start the connector ...
         start(MySqlConnector.class, config);
@@ -1071,7 +1074,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        SourceRecords records = consumeRecordsByTopic(9 + 9 + 4 + 5 + 6); // 6 DDL changes
+        SourceRecords records = consumeRecordsByTopic(INITIAL_EVENT_COUNT); // 6 DDL changes
         assertThat(records.recordsForTopic(DATABASE.topicForTable("orders")).size()).isEqualTo(5);
 
         try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
@@ -1100,6 +1103,506 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertDelete(updates.get(1), "order_number", 10002);
 
         stopConnector();
+    }
+
+    /**
+     * This test case validates that if you disable MySQL option binlog_rows_query_log_events, then
+     * the original SQL statement for an INSERT statement is NOT parsed into the resulting event.
+     */
+    @Test
+    @FixFor("DBZ-706")
+    public void shouldNotParseQueryIfServerOptionDisabled() throws Exception {
+        // Define the table we want to watch events from.
+        final String tableName = "products";
+
+        config = DATABASE.defaultConfig()
+            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+            .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+            .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName(tableName))
+            // Explicitly configure connector TO parse query
+            .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
+            .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // Flush all existing records not related to the test.
+        consumeRecords(INITIAL_EVENT_COUNT, null);
+
+        // Define insert query we want to validate.
+        final String insertSqlStatement = "INSERT INTO products VALUES (default,'robot','Toy robot',1.304)";
+
+        // Connect to the DB and issue our insert statement to test.
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                // Disable Query log option
+                connection.execute("SET binlog_rows_query_log_events=OFF");
+
+                // Execute insert statement.
+                connection.execute(insertSqlStatement);
+            }
+        }
+
+        // Lets see what gets produced?
+        final SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable(tableName)).size()).isEqualTo(1);
+
+        // Parse through the source record for the query value.
+        final SourceRecord sourceRecord = records.recordsForTopic(DATABASE.topicForTable(tableName)).get(0);
+        logger.info("Record: {}", sourceRecord);
+
+        // Should have been an insert with query parsed.
+        validate(sourceRecord);
+        assertInsert(sourceRecord, "id", 110);
+        assertQuery(sourceRecord, null);
+    }
+
+    /**
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events,
+     * but configure the connector to NOT include the query, it will not be included in the event.
+     */
+    @Test
+    @FixFor("DBZ-706")
+    public void shouldNotParseQueryIfConnectorNotConfiguredTo() throws Exception {
+        // Define the table we want to watch events from.
+        final String tableName = "products";
+
+        config = DATABASE.defaultConfig()
+            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+            .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+            .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName(tableName))
+            // Explicitly configure connector to NOT parse query
+            .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, false)
+            .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // Flush all existing records not related to the test.
+        consumeRecords(INITIAL_EVENT_COUNT, null);
+
+        // Define insert query we want to validate.
+        final String insertSqlStatement = "INSERT INTO products VALUES (default,'robot','Toy robot',1.304)";
+
+        // Connect to the DB and issue our insert statement to test.
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                // Enable Query log option
+                connection.execute("SET binlog_rows_query_log_events=ON");
+
+                // Execute insert statement.
+                connection.execute(insertSqlStatement);
+            }
+        }
+
+        // Lets see what gets produced?
+        final SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable(tableName)).size()).isEqualTo(1);
+
+        // Parse through the source record for the query value.
+        final SourceRecord sourceRecord = records.recordsForTopic(DATABASE.topicForTable(tableName)).get(0);
+        logger.info("Record: {}", sourceRecord);
+
+        // Should have been an insert with query parsed.
+        validate(sourceRecord);
+        assertInsert(sourceRecord, "id", 110);
+        assertQuery(sourceRecord, null);
+    }
+
+    /**
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events, then
+     * the original SQL statement for an INSERT statement is parsed into the resulting event.
+     */
+    @Test
+    @FixFor("DBZ-706")
+    public void shouldParseQueryIfAvailableAndConnectorOptionEnabled() throws Exception {
+        // Define the table we want to watch events from.
+        final String tableName = "products";
+
+        config = DATABASE.defaultConfig()
+            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+            .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+            .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName(tableName))
+            // Explicitly configure connector TO parse query
+            .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
+            .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // Flush all existing records not related to the test.
+        consumeRecords(INITIAL_EVENT_COUNT, null);
+
+        // Define insert query we want to validate.
+        final String insertSqlStatement = "INSERT INTO products VALUES (default,'robot','Toy robot',1.304)";
+
+        // Connect to the DB and issue our insert statement to test.
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                // Enable Query log option
+                connection.execute("SET binlog_rows_query_log_events=ON");
+
+                // Execute insert statement.
+                connection.execute(insertSqlStatement);
+            }
+        }
+
+        // Lets see what gets produced?
+        final SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable(tableName)).size()).isEqualTo(1);
+
+        // Parse through the source record for the query value.
+        final SourceRecord sourceRecord = records.recordsForTopic(DATABASE.topicForTable(tableName)).get(0);
+        logger.info("Record: {}", sourceRecord);
+
+        // Should have been an insert with query parsed.
+        validate(sourceRecord);
+        assertInsert(sourceRecord, "id", 110);
+        assertQuery(sourceRecord, insertSqlStatement);
+    }
+
+    /**
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events, then
+     * the issue multiple INSERTs, the appropriate SQL statements are parsed into the resulting events.
+     */
+    @Test
+    @FixFor("DBZ-706")
+    public void parseMultipleInsertStatements() throws Exception {
+        // Define the table we want to watch events from.
+        final String tableName = "products";
+
+        config = DATABASE.defaultConfig()
+            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+            .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+            .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName(tableName))
+            // Explicitly configure connector TO parse query
+            .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
+            .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // Flush all existing records not related to the test.
+        consumeRecords(INITIAL_EVENT_COUNT, null);
+
+        // Define insert query we want to validate.
+        final String insertSqlStatement1 = "INSERT INTO products VALUES (default,'robot','Toy robot',1.304)";
+        final String insertSqlStatement2 = "INSERT INTO products VALUES (default,'toaster','Toaster',3.33)";
+
+        logger.warn(DATABASE.getDatabaseName());
+
+        // Connect to the DB and issue our insert statement to test.
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                // Enable Query log option
+                connection.execute("SET binlog_rows_query_log_events=ON");
+
+                // Execute insert statement.
+                connection.execute(insertSqlStatement1);
+                connection.execute(insertSqlStatement2);
+            }
+        }
+
+        // Lets see what gets produced?
+        final SourceRecords records = consumeRecordsByTopic(2);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable(tableName)).size()).isEqualTo(2);
+
+        // Parse through the source record for the query value.
+        final SourceRecord sourceRecord1 = records.recordsForTopic(DATABASE.topicForTable(tableName)).get(0);
+
+        // Should have been an insert with query parsed.
+        validate(sourceRecord1);
+        assertInsert(sourceRecord1, "id", 110);
+        assertQuery(sourceRecord1, insertSqlStatement1);
+
+        // Grab second event
+        final SourceRecord sourceRecord2 = records.recordsForTopic(DATABASE.topicForTable(tableName)).get(1);
+
+        // Should have been an insert with query parsed.
+        validate(sourceRecord2);
+        assertInsert(sourceRecord2, "id", 111);
+        assertQuery(sourceRecord2, insertSqlStatement2);
+    }
+
+    /**
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events, then
+     * the issue single multi-row INSERT, the appropriate SQL statements are parsed into the resulting events.
+     */
+    @Test
+    @FixFor("DBZ-706")
+    public void parseMultipleRowInsertStatement() throws Exception {
+        // Define the table we want to watch events from.
+        final String tableName = "products";
+
+        config = DATABASE.defaultConfig()
+            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+            .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+            .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName(tableName))
+            // Explicitly configure connector TO parse query
+            .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
+            .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // Flush all existing records not related to the test.
+        consumeRecords(INITIAL_EVENT_COUNT, null);
+
+        // Define insert query we want to validate.
+        final String insertSqlStatement = "INSERT INTO products VALUES (default,'robot','Toy robot',1.304), (default,'toaster','Toaster',3.33)";
+
+        logger.warn(DATABASE.getDatabaseName());
+
+        // Connect to the DB and issue our insert statement to test.
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                // Enable Query log option
+                connection.execute("SET binlog_rows_query_log_events=ON");
+
+                // Execute insert statement.
+                connection.execute(insertSqlStatement);
+            }
+        }
+
+        // Lets see what gets produced?
+        final SourceRecords records = consumeRecordsByTopic(2);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable(tableName)).size()).isEqualTo(2);
+
+        // Parse through the source record for the query value.
+        final SourceRecord sourceRecord1 = records.recordsForTopic(DATABASE.topicForTable(tableName)).get(0);
+
+        // Should have been an insert with query parsed.
+        validate(sourceRecord1);
+        assertInsert(sourceRecord1, "id", 110);
+        assertQuery(sourceRecord1, insertSqlStatement);
+
+        // Grab second event
+        final SourceRecord sourceRecord2 = records.recordsForTopic(DATABASE.topicForTable(tableName)).get(1);
+
+        // Should have been an insert with query parsed.
+        validate(sourceRecord2);
+        assertInsert(sourceRecord2, "id", 111);
+        assertQuery(sourceRecord2, insertSqlStatement);
+    }
+
+    /**
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events, then
+     * the original SQL statement for a DELETE over a single row is parsed into the resulting event.
+     */
+    @Test
+    @FixFor("DBZ-706")
+    public void parseDeleteQuery() throws Exception {
+        // Define the table we want to watch events from.
+        final String tableName = "orders";
+
+        config = DATABASE.defaultConfig()
+            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+            .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+            .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName(tableName))
+            // Explicitly configure connector TO parse query
+            .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
+            .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // Flush all existing records not related to the test.
+        consumeRecords(INITIAL_EVENT_COUNT, null);
+
+        // Define insert query we want to validate.
+        final String deleteSqlStatement = "DELETE FROM orders WHERE order_number=10001 LIMIT 1";
+
+        // Connect to the DB and issue our insert statement to test.
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                // Enable Query log option
+                connection.execute("SET binlog_rows_query_log_events=ON");
+
+                // Execute insert statement.
+                connection.execute(deleteSqlStatement);
+            }
+        }
+
+        // Lets see what gets produced?
+        final SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable(tableName)).size()).isEqualTo(1);
+
+        // Parse through the source record for the query value.
+        final SourceRecord sourceRecord = records.recordsForTopic(DATABASE.topicForTable(tableName)).get(0);
+
+        // Should have been a delete with query parsed.
+        validate(sourceRecord);
+        assertDelete(sourceRecord, "order_number", 10001);
+        assertQuery(sourceRecord, deleteSqlStatement);
+    }
+
+    /**
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events, then
+     * issue a multi-row DELETE, the resulting events get the original SQL statement.
+     */
+    @Test
+    @FixFor("DBZ-706")
+    public void parseMultiRowDeleteQuery() throws Exception {
+        // Define the table we want to watch events from.
+        final String tableName = "orders";
+
+        config = DATABASE.defaultConfig()
+            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+            .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+            .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName(tableName))
+            // Explicitly configure connector TO parse query
+            .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
+            .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // Flush all existing records not related to the test.
+        consumeRecords(INITIAL_EVENT_COUNT, null);
+
+        // Define insert query we want to validate.
+        final String deleteSqlStatement = "DELETE FROM orders WHERE purchaser=1002";
+
+        // Connect to the DB and issue our insert statement to test.
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                // Enable Query log option
+                connection.execute("SET binlog_rows_query_log_events=ON");
+
+                // Execute insert statement.
+                connection.execute(deleteSqlStatement);
+            }
+        }
+
+        // Lets see what gets produced?
+        final SourceRecords records = consumeRecordsByTopic(2);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable(tableName)).size()).isEqualTo(2);
+
+        // Parse through the source record for the query value.
+        final SourceRecord sourceRecord1 = records.recordsForTopic(DATABASE.topicForTable(tableName)).get(0);
+
+        // Should have been a delete with query parsed.
+        validate(sourceRecord1);
+        assertDelete(sourceRecord1, "order_number", 10002);
+        assertQuery(sourceRecord1, deleteSqlStatement);
+
+        // Validate second event.
+        final SourceRecord sourceRecord2 = records.recordsForTopic(DATABASE.topicForTable(tableName)).get(1);
+
+        // Should have been a delete with query parsed.
+        validate(sourceRecord2);
+        assertDelete(sourceRecord2, "order_number", 10004);
+        assertQuery(sourceRecord2, deleteSqlStatement);
+    }
+
+    /**
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events, then
+     * the original SQL statement for an UPDATE over a single row is parsed into the resulting event.
+     */
+    @Test
+    @FixFor("DBZ-706")
+    public void parseUpdateQuery() throws Exception {
+        // Define the table we want to watch events from.
+        final String tableName = "products";
+
+        config = DATABASE.defaultConfig()
+            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+            .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+            .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName(tableName))
+            // Explicitly configure connector TO parse query
+            .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
+            .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // Flush all existing records not related to the test.
+        consumeRecords(INITIAL_EVENT_COUNT, null);
+
+        // Define insert query we want to validate.
+        final String updateSqlStatement = "UPDATE products set name='toaster' where id=109 LIMIT 1";
+
+        // Connect to the DB and issue our insert statement to test.
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                // Enable Query log option
+                connection.execute("SET binlog_rows_query_log_events=ON");
+
+                // Execute insert statement.
+                connection.execute(updateSqlStatement);
+            }
+        }
+
+        // Lets see what gets produced?
+        final SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable(tableName)).size()).isEqualTo(1);
+
+        // Parse through the source record for the query value.
+        final SourceRecord sourceRecord = records.recordsForTopic(DATABASE.topicForTable(tableName)).get(0);
+
+        // Should have been a delete with query parsed.
+        validate(sourceRecord);
+        assertUpdate(sourceRecord, "id", 109);
+        assertQuery(sourceRecord, updateSqlStatement);
+    }
+
+    /**
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events, then
+     * the original SQL statement for an UPDATE over a single row is parsed into the resulting event.
+     */
+    @Test
+    @FixFor("DBZ-706")
+    public void parseMultiRowUpdateQuery() throws Exception {
+        // Define the table we want to watch events from.
+        final String tableName = "orders";
+
+        config = DATABASE.defaultConfig()
+            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+            .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+            .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName(tableName))
+            // Explicitly configure connector TO parse query
+            .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
+            .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // Flush all existing records not related to the test.
+        consumeRecords(INITIAL_EVENT_COUNT, null);
+
+        // Define insert query we want to validate.
+        final String updateSqlStatement = "UPDATE orders set quantity=0 where order_number in (10001, 10004)";
+
+        // Connect to the DB and issue our insert statement to test.
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                // Enable Query log option
+                connection.execute("SET binlog_rows_query_log_events=ON");
+
+                // Execute insert statement.
+                connection.execute(updateSqlStatement);
+            }
+        }
+
+        // Lets see what gets produced?
+        final SourceRecords records = consumeRecordsByTopic(2);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable(tableName)).size()).isEqualTo(2);
+
+        // Parse through the source record for the query value.
+        final SourceRecord sourceRecord1 = records.recordsForTopic(DATABASE.topicForTable(tableName)).get(0);
+
+        // Should have been a delete with query parsed.
+        validate(sourceRecord1);
+        assertUpdate(sourceRecord1, "order_number", 10001);
+        assertQuery(sourceRecord1, updateSqlStatement);
+
+        // Validate second event
+        final SourceRecord sourceRecord2 = records.recordsForTopic(DATABASE.topicForTable(tableName)).get(1);
+
+        // Should have been a delete with query parsed.
+        validate(sourceRecord2);
+        assertUpdate(sourceRecord2, "order_number", 10004);
+        assertQuery(sourceRecord2, updateSqlStatement);
     }
 
     private List<SourceRecord> recordsForTopicForRoProductsTable(SourceRecords records) {
