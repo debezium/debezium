@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.function.Predicate;
 
@@ -251,6 +252,10 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
 
     public String getHeartbeatTopicsPrefix() {
         return config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX);
+    }
+
+    public Duration snapshotDelay() {
+        return Duration.ofMillis(config.getLong(MySqlConnectorConfig.SNAPSHOT_DELAY_MS));
     }
 
     public void start() {
