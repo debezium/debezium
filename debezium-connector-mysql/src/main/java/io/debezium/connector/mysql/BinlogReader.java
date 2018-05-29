@@ -18,6 +18,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
 
+import com.github.shyiko.mysql.binlog.event.RowsQueryEventData;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 
@@ -255,6 +256,7 @@ public class BinlogReader extends AbstractReader {
         eventHandlers.put(EventType.ROTATE, this::handleRotateLogsEvent);
         eventHandlers.put(EventType.TABLE_MAP, this::handleUpdateTableMetadata);
         eventHandlers.put(EventType.QUERY, this::handleQueryEvent);
+        eventHandlers.put(EventType.ROWS_QUERY, this::handleRowsQuery);
         eventHandlers.put(EventType.WRITE_ROWS, this::handleInsert);
         eventHandlers.put(EventType.UPDATE_ROWS, this::handleUpdate);
         eventHandlers.put(EventType.DELETE_ROWS, this::handleDelete);
@@ -396,7 +398,7 @@ public class BinlogReader extends AbstractReader {
     }
 
     protected void ignoreEvent(Event event) {
-        logger.trace("Ignoring event due to missing handler: {}", event);
+        logger.debug("Ignoring event due to missing handler: {}", event);
     }
 
     protected void handleEvent(Event event) {
@@ -426,6 +428,7 @@ public class BinlogReader extends AbstractReader {
         // If there is a handler for this event, forward the event to it ...
         try {
             // Forward the event to the handler ...
+            logger.debug("Processing event type {}", eventType);
             eventHandlers.getOrDefault(eventType, this::ignoreEvent).accept(event);
 
             // Generate heartbeat message if the time is right
@@ -571,6 +574,11 @@ public class BinlogReader extends AbstractReader {
                 ignoreDmlEventByGtidSource = true;
             }
         }
+    }
+
+    protected void handleRowsQuery(Event event) {
+        final RowsQueryEventData lastRowsQueryEventData = unwrapData(event);
+        source.setQuery(lastRowsQueryEventData.getQuery());
     }
 
     /**
@@ -728,6 +736,9 @@ public class BinlogReader extends AbstractReader {
             logger.debug("Skipping DML event because this GTID source is filtered: {}", event);
             return;
         }
+
+        logger.warn("Handling Insert where Last Query Data: {}", source.getQuery());
+
         WriteRowsEventData write = unwrapData(event);
         long tableNumber = write.getTableId();
         BitSet includedColumns = write.getIncludedColumns();
@@ -776,6 +787,9 @@ public class BinlogReader extends AbstractReader {
             logger.debug("Skipping DML event because this GTID source is filtered: {}", event);
             return;
         }
+
+        logger.warn("Handling update where Last Query Data: {}", source.getQuery());
+
         UpdateRowsEventData update = unwrapData(event);
         long tableNumber = update.getTableId();
         BitSet includedColumns = update.getIncludedColumns();
@@ -828,6 +842,9 @@ public class BinlogReader extends AbstractReader {
             logger.debug("Skipping DML event because this GTID source is filtered: {}", event);
             return;
         }
+
+        logger.warn("Handling delete where Last Query Data: {}", source.getQuery());
+
         DeleteRowsEventData deleted = unwrapData(event);
         long tableNumber = deleted.getTableId();
         BitSet includedColumns = deleted.getIncludedColumns();

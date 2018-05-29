@@ -1061,9 +1061,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-582")
     public void shouldEmitNoTombstoneOnDelete() throws Exception {
         config = DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
-                .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
-                .build();
+            .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
+            .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+            .build();
 
         // Start the connector ...
         start(MySqlConnector.class, config);
@@ -1100,6 +1100,50 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertDelete(updates.get(1), "order_number", 10002);
 
         stopConnector();
+    }
+
+    @Test
+    public void shouldParseQueryIfAvailable() throws Exception {
+        Testing.Files.delete(DB_HISTORY_PATH);
+
+        // Use the DB configuration to define the connector's configuration ...
+        config = RO_DATABASE.defaultConfig()
+            .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+            .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // Consume the first records due to startup and initialization of the database ...
+         Testing.Print.enable();
+        SourceRecords records = consumeRecordsByTopic(9 + 9 + 4 + 5 + 6); // 6 DDL changes
+        assertThat(recordsForTopicForRoProductsTable(records).size()).isEqualTo(9);
+        assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("products_on_hand")).size()).isEqualTo(9);
+        assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("customers")).size()).isEqualTo(4);
+        assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("orders")).size()).isEqualTo(5);
+        assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("Products")).size()).isEqualTo(9);
+        assertThat(records.topics().size()).isEqualTo(4 + 1);
+        assertThat(records.ddlRecordsForDatabase(RO_DATABASE.getDatabaseName()).size()).isEqualTo(6);
+
+        // check float value
+        Optional<SourceRecord> recordWithScientfic = records.recordsForTopic(RO_DATABASE.topicForTable("Products")).stream().filter(x -> "hammer2".equals(getAfter(x).get("name"))).findFirst();
+        assertThat(recordWithScientfic.isPresent());
+        assertThat(getAfter(recordWithScientfic.get()).get("weight")).isEqualTo(0.875);
+
+        // Check that all records are valid, can be serialized and deserialized ...
+        records.forEach(this::validate);
+
+        // More records may have been written (if this method were run after the others), but we don't care ...
+        stopConnector();
+
+        records.recordsForTopic(RO_DATABASE.topicForTable("orders")).forEach(record -> {
+            print(record);
+        });
+
+        records.recordsForTopic(RO_DATABASE.topicForTable("customers")).forEach(record -> {
+            print(record);
+        });
     }
 
     private List<SourceRecord> recordsForTopicForRoProductsTable(SourceRecords records) {
