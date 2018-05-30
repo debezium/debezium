@@ -150,7 +150,7 @@ final class SourceInfo extends AbstractSourceInfo {
     private Map<String, String> sourcePartition;
     private boolean lastSnapshot = true;
     private boolean nextSnapshot = false;
-    private String currentQuery;
+    private String currentQuery = null;
 
     public SourceInfo() {
         super(Module.version());
@@ -166,10 +166,18 @@ final class SourceInfo extends AbstractSourceInfo {
         sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, serverName);
     }
 
-    public void setQuery(String query) {
+    /**
+     * Set the original SQL query.
+     *
+     * @param query the original SQL query that generated the event.
+     */
+    public void setQuery(final String query) {
         this.currentQuery = query;
     }
 
+    /**
+     * @return the original SQL query that generated the event.  NULL if no such query is associated.
+     */
     public String getQuery() {
         return this.currentQuery;
     }
