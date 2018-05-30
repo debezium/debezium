@@ -169,7 +169,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
 
                 if (taskContext.snapshotDelayMinutes() > 0) {
                     // Adding a timed blocking reader to delay the snapshot, can help to avoid initial rebalancing interruptions
-                    chainedReaderBuilder.addReader(new TimedBlockingReader("blocker", Duration.ofMinutes(taskContext.snapshotDelayMinutes())));
+                    chainedReaderBuilder.addReader(new TimedBlockingReader("timed-blocker", Duration.ofMinutes(taskContext.snapshotDelayMinutes())));
                 }
                 chainedReaderBuilder.addReader(snapshotReader);
 
