@@ -8,7 +8,6 @@ package io.debezium.embedded;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
-import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,7 +43,6 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetStorageReaderImpl;
-import org.fest.assertions.Delta;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -53,7 +51,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
-import io.debezium.data.SchemaUtil;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.EmbeddedEngine.CompletionCallback;
 import io.debezium.embedded.EmbeddedEngine.ConnectorCallback;
@@ -544,8 +541,12 @@ public abstract class AbstractConnectorTest implements Testing {
         VerifyRecord.isValidDelete(record, pkField, pk);
     }
 
-    protected void assertQuery(SourceRecord record, String query) {
-        assertValueField(record, "source/query", query);
+    protected void assertSourceQuery(SourceRecord record, String query) {
+        VerifyRecord.hasValidSourceQuery(record, query);
+    }
+
+    protected void assertHasNoSourceQuery(SourceRecord record) {
+        VerifyRecord.hasNoSourceQuery(record);
     }
 
     protected void assertTombstone(SourceRecord record, String pkField, int pk) {
@@ -568,41 +569,11 @@ public abstract class AbstractConnectorTest implements Testing {
     }
     
     protected void assertValueField(SourceRecord record, String fieldPath, Object expectedValue) {
-        Object value = record.value();
-        String[] fieldNames = fieldPath.split("/");
-        String pathSoFar = null;
-        for (int i=0; i!=fieldNames.length; ++i) {
-            String fieldName = fieldNames[i];
-            if (value instanceof Struct) {
-                value = ((Struct)value).get(fieldName);
-            } else {
-                // We expected the value to be a struct ...
-                String path = pathSoFar == null ? "record value" : ("'" + pathSoFar + "'");
-                String msg = "Expected the " + path + " to be a Struct but was " + value.getClass().getSimpleName() + " in record: " + SchemaUtil.asString(record);
-                fail(msg);
-            }
-            pathSoFar = pathSoFar == null ? fieldName : pathSoFar + "/" + fieldName;
-        }
-        assertSameValue(value,expectedValue);
+        VerifyRecord.assertValueField(record, fieldPath, expectedValue);
     }
     
     private void assertSameValue(Object actual, Object expected) {
-        if(expected instanceof Double || expected instanceof Float || expected instanceof BigDecimal) {
-            // Value should be within 1%
-            double expectedNumericValue = ((Number)expected).doubleValue();
-            double actualNumericValue = ((Number)actual).doubleValue();
-            assertThat(actualNumericValue).isEqualTo(expectedNumericValue, Delta.delta(0.01d*expectedNumericValue));
-        } else if (expected instanceof Integer || expected instanceof Long || expected instanceof Short) {
-            long expectedNumericValue = ((Number)expected).longValue();
-            long actualNumericValue = ((Number)actual).longValue();
-            assertThat(actualNumericValue).isEqualTo(expectedNumericValue);
-        } else if (expected instanceof Boolean) {
-            boolean expectedValue = ((Boolean)expected).booleanValue();
-            boolean actualValue = ((Boolean)actual).booleanValue();
-            assertThat(actualValue).isEqualTo(expectedValue);
-        } else {
-            assertThat(actual).isEqualTo(expected);
-        }
+        VerifyRecord.assertSameValue(actual, expected);
     }
 
     /**
