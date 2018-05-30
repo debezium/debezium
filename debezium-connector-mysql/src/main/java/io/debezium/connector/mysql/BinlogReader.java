@@ -589,8 +589,6 @@ public class BinlogReader extends AbstractReader {
         // Unwrap the RowsQueryEvent
         final RowsQueryEventData lastRowsQueryEventData = unwrapData(event);
 
-        // TODO potentially filter or skip processing this event based on connector configuration options or filtering rules.
-
         // Set the query on the source
         source.setQuery(lastRowsQueryEventData.getQuery());
     }
