@@ -783,7 +783,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
         .withWidth(Width.SHORT)
         .withImportance(Importance.MEDIUM)
         .withDescription("Whether the connector should include the original SQL query that generated the change event. "
-            + "Note: This option requires MySQL be configured with the binlog_rows_query_log_events option set to ON. "
+            + "Note: This option requires MySQL be configured with the binlog_rows_query_log_events option set to ON. Query will not be present for events generated from snapshot. "
             + "WARNING: Enabling this option may expose tables or fields explicitly blacklisted or masked by including the original SQL statement in the change event. "
             + "For this reason the default value is 'false'.")
         .withDefault(false);

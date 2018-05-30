@@ -1154,7 +1154,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Should have been an insert with query parsed.
         validate(sourceRecord);
         assertInsert(sourceRecord, "id", 110);
-        assertQuery(sourceRecord, null);
+        assertHasNoSourceQuery(sourceRecord);
     }
 
     /**
@@ -1206,7 +1206,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Should have been an insert with query parsed.
         validate(sourceRecord);
         assertInsert(sourceRecord, "id", 110);
-        assertQuery(sourceRecord, null);
+        assertHasNoSourceQuery(sourceRecord);
     }
 
     /**
@@ -1258,7 +1258,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Should have been an insert with query parsed.
         validate(sourceRecord);
         assertInsert(sourceRecord, "id", 110);
-        assertQuery(sourceRecord, insertSqlStatement);
+        assertSourceQuery(sourceRecord, insertSqlStatement);
     }
 
     /**
@@ -1313,7 +1313,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Should have been an insert with query parsed.
         validate(sourceRecord1);
         assertInsert(sourceRecord1, "id", 110);
-        assertQuery(sourceRecord1, insertSqlStatement1);
+        assertSourceQuery(sourceRecord1, insertSqlStatement1);
 
         // Grab second event
         final SourceRecord sourceRecord2 = records.recordsForTopic(DATABASE.topicForTable(tableName)).get(1);
@@ -1321,7 +1321,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Should have been an insert with query parsed.
         validate(sourceRecord2);
         assertInsert(sourceRecord2, "id", 111);
-        assertQuery(sourceRecord2, insertSqlStatement2);
+        assertSourceQuery(sourceRecord2, insertSqlStatement2);
     }
 
     /**
@@ -1374,7 +1374,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Should have been an insert with query parsed.
         validate(sourceRecord1);
         assertInsert(sourceRecord1, "id", 110);
-        assertQuery(sourceRecord1, insertSqlStatement);
+        assertSourceQuery(sourceRecord1, insertSqlStatement);
 
         // Grab second event
         final SourceRecord sourceRecord2 = records.recordsForTopic(DATABASE.topicForTable(tableName)).get(1);
@@ -1382,7 +1382,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Should have been an insert with query parsed.
         validate(sourceRecord2);
         assertInsert(sourceRecord2, "id", 111);
-        assertQuery(sourceRecord2, insertSqlStatement);
+        assertSourceQuery(sourceRecord2, insertSqlStatement);
     }
 
     /**
@@ -1433,7 +1433,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Should have been a delete with query parsed.
         validate(sourceRecord);
         assertDelete(sourceRecord, "order_number", 10001);
-        assertQuery(sourceRecord, deleteSqlStatement);
+        assertSourceQuery(sourceRecord, deleteSqlStatement);
     }
 
     /**
@@ -1484,7 +1484,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Should have been a delete with query parsed.
         validate(sourceRecord1);
         assertDelete(sourceRecord1, "order_number", 10002);
-        assertQuery(sourceRecord1, deleteSqlStatement);
+        assertSourceQuery(sourceRecord1, deleteSqlStatement);
 
         // Validate second event.
         final SourceRecord sourceRecord2 = records.recordsForTopic(DATABASE.topicForTable(tableName)).get(1);
@@ -1492,7 +1492,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Should have been a delete with query parsed.
         validate(sourceRecord2);
         assertDelete(sourceRecord2, "order_number", 10004);
-        assertQuery(sourceRecord2, deleteSqlStatement);
+        assertSourceQuery(sourceRecord2, deleteSqlStatement);
     }
 
     /**
@@ -1543,7 +1543,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Should have been a delete with query parsed.
         validate(sourceRecord);
         assertUpdate(sourceRecord, "id", 109);
-        assertQuery(sourceRecord, updateSqlStatement);
+        assertSourceQuery(sourceRecord, updateSqlStatement);
     }
 
     /**
@@ -1594,7 +1594,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Should have been a delete with query parsed.
         validate(sourceRecord1);
         assertUpdate(sourceRecord1, "order_number", 10001);
-        assertQuery(sourceRecord1, updateSqlStatement);
+        assertSourceQuery(sourceRecord1, updateSqlStatement);
 
         // Validate second event
         final SourceRecord sourceRecord2 = records.recordsForTopic(DATABASE.topicForTable(tableName)).get(1);
@@ -1602,7 +1602,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Should have been a delete with query parsed.
         validate(sourceRecord2);
         assertUpdate(sourceRecord2, "order_number", 10004);
-        assertQuery(sourceRecord2, updateSqlStatement);
+        assertSourceQuery(sourceRecord2, updateSqlStatement);
     }
 
     private List<SourceRecord> recordsForTopicForRoProductsTable(SourceRecords records) {
