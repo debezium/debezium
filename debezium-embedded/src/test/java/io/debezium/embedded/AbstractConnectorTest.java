@@ -27,6 +27,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.data.Field;
@@ -541,6 +542,10 @@ public abstract class AbstractConnectorTest implements Testing {
 
     protected void assertDelete(SourceRecord record, String pkField, int pk) {
         VerifyRecord.isValidDelete(record, pkField, pk);
+    }
+
+    protected void assertQuery(SourceRecord record, String query) {
+        assertValueField(record, "source/query", query);
     }
 
     protected void assertTombstone(SourceRecord record, String pkField, int pk) {
