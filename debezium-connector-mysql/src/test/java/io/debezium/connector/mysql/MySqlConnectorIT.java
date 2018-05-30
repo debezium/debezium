@@ -51,6 +51,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     private final UniqueDatabase RO_DATABASE = new UniqueDatabase("myServer2", "connector_test_ro", DATABASE)
             .withDbHistoryPath(DB_HISTORY_PATH);
 
+    // Defines how many initial events are generated from loading the test databases.
+    private static final int INITIAL_EVENT_COUNT = 9 + 9 + 4 + 5 + 6;
+
     private Configuration config;
 
     @Before
@@ -931,7 +934,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         // Consume the first records due to startup and initialization of the database ...
         // Testing.Print.enable();
-        SourceRecords records = consumeRecordsByTopic(9 + 9 + 4 + 5 + 6); // 6 DDL changes
+        SourceRecords records = consumeRecordsByTopic(INITIAL_EVENT_COUNT); // 6 DDL changes
         assertThat(recordsForTopicForRoProductsTable(records).size()).isEqualTo(9);
         assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("products_on_hand")).size()).isEqualTo(9);
         assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("customers")).size()).isEqualTo(4);
@@ -1027,7 +1030,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        SourceRecords records = consumeRecordsByTopic(9 + 9 + 4 + 5 + 6); // 6 DDL changes
+        SourceRecords records = consumeRecordsByTopic(INITIAL_EVENT_COUNT); // 6 DDL changes
         assertThat(records.recordsForTopic(DATABASE.topicForTable("orders")).size()).isEqualTo(5);
 
         try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
@@ -1071,7 +1074,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        SourceRecords records = consumeRecordsByTopic(9 + 9 + 4 + 5 + 6); // 6 DDL changes
+        SourceRecords records = consumeRecordsByTopic(INITIAL_EVENT_COUNT); // 6 DDL changes
         assertThat(records.recordsForTopic(DATABASE.topicForTable("orders")).size()).isEqualTo(5);
 
         try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
@@ -1108,23 +1111,23 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
      */
     @Test
     @FixFor("DBZ-706")
-    public void shouldNotParseQueryIfNotAvailable() throws Exception {
+    public void shouldNotParseQueryIfServerOptionDisabled() throws Exception {
         // Define the table we want to watch events from.
         final String tableName = "products";
 
         config = DATABASE.defaultConfig()
-            .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
             .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
             .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
             .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName(tableName))
+            // Explicitly configure connector TO parse query
+            .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
             .build();
 
         // Start the connector ...
         start(MySqlConnector.class, config);
 
         // Flush all existing records not related to the test.
-        waitForAvailableRecords(3, TimeUnit.SECONDS);
-        consumeAvailableRecords(null);
+        consumeRecords(INITIAL_EVENT_COUNT, null);
 
         // Define insert query we want to validate.
         final String insertSqlStatement = "INSERT INTO products VALUES (default,'robot','Toy robot',1.304)";
@@ -1155,28 +1158,80 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     /**
-     * This test case validates that if you enable MySQL option binlog_rows_query_log_events, then
-     * the original SQL statement for an INSERT statement is parsed into the resulting event.
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events,
+     * but configure the connector to NOT include the query, it will not be included in the event.
      */
     @Test
     @FixFor("DBZ-706")
-    public void shouldParseQueryIfAvailable() throws Exception {
+    public void shouldNotParseQueryIfConnectorNotConfiguredTo() throws Exception {
         // Define the table we want to watch events from.
         final String tableName = "products";
 
         config = DATABASE.defaultConfig()
-            .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
             .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
             .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
             .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName(tableName))
+            // Explicitly configure connector to NOT parse query
+            .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, false)
             .build();
 
         // Start the connector ...
         start(MySqlConnector.class, config);
 
         // Flush all existing records not related to the test.
-        waitForAvailableRecords(3, TimeUnit.SECONDS);
-        consumeAvailableRecords(null);
+        consumeRecords(INITIAL_EVENT_COUNT, null);
+
+        // Define insert query we want to validate.
+        final String insertSqlStatement = "INSERT INTO products VALUES (default,'robot','Toy robot',1.304)";
+
+        // Connect to the DB and issue our insert statement to test.
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                // Enable Query log option
+                connection.execute("SET binlog_rows_query_log_events=ON");
+
+                // Execute insert statement.
+                connection.execute(insertSqlStatement);
+            }
+        }
+
+        // Lets see what gets produced?
+        final SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable(tableName)).size()).isEqualTo(1);
+
+        // Parse through the source record for the query value.
+        final SourceRecord sourceRecord = records.recordsForTopic(DATABASE.topicForTable(tableName)).get(0);
+        logger.info("Record: {}", sourceRecord);
+
+        // Should have been an insert with query parsed.
+        validate(sourceRecord);
+        assertInsert(sourceRecord, "id", 110);
+        assertQuery(sourceRecord, null);
+    }
+
+    /**
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events, then
+     * the original SQL statement for an INSERT statement is parsed into the resulting event.
+     */
+    @Test
+    @FixFor("DBZ-706")
+    public void shouldParseQueryIfAvailableAndConnectorOptionEnabled() throws Exception {
+        // Define the table we want to watch events from.
+        final String tableName = "products";
+
+        config = DATABASE.defaultConfig()
+            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+            .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+            .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName(tableName))
+            // Explicitly configure connector TO parse query
+            .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
+            .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // Flush all existing records not related to the test.
+        consumeRecords(INITIAL_EVENT_COUNT, null);
 
         // Define insert query we want to validate.
         final String insertSqlStatement = "INSERT INTO products VALUES (default,'robot','Toy robot',1.304)";
@@ -1217,18 +1272,18 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         final String tableName = "products";
 
         config = DATABASE.defaultConfig()
-            .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
             .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
             .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
             .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName(tableName))
+            // Explicitly configure connector TO parse query
+            .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
             .build();
 
         // Start the connector ...
         start(MySqlConnector.class, config);
 
         // Flush all existing records not related to the test.
-        waitForAvailableRecords(3, TimeUnit.SECONDS);
-        consumeAvailableRecords(null);
+        consumeRecords(INITIAL_EVENT_COUNT, null);
 
         // Define insert query we want to validate.
         final String insertSqlStatement1 = "INSERT INTO products VALUES (default,'robot','Toy robot',1.304)";
@@ -1280,18 +1335,18 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         final String tableName = "products";
 
         config = DATABASE.defaultConfig()
-            .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
             .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
             .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
             .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName(tableName))
+            // Explicitly configure connector TO parse query
+            .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
             .build();
 
         // Start the connector ...
         start(MySqlConnector.class, config);
 
         // Flush all existing records not related to the test.
-        waitForAvailableRecords(3, TimeUnit.SECONDS);
-        consumeAvailableRecords(null);
+        consumeRecords(INITIAL_EVENT_COUNT, null);
 
         // Define insert query we want to validate.
         final String insertSqlStatement = "INSERT INTO products VALUES (default,'robot','Toy robot',1.304), (default,'toaster','Toaster',3.33)";
@@ -1341,18 +1396,18 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         final String tableName = "orders";
 
         config = DATABASE.defaultConfig()
-            .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
             .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
             .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
             .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName(tableName))
+            // Explicitly configure connector TO parse query
+            .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
             .build();
 
         // Start the connector ...
         start(MySqlConnector.class, config);
 
         // Flush all existing records not related to the test.
-        waitForAvailableRecords(3, TimeUnit.SECONDS);
-        consumeAvailableRecords(null);
+        consumeRecords(INITIAL_EVENT_COUNT, null);
 
         // Define insert query we want to validate.
         final String deleteSqlStatement = "DELETE FROM orders WHERE order_number=10001 LIMIT 1";
@@ -1392,18 +1447,18 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         final String tableName = "orders";
 
         config = DATABASE.defaultConfig()
-            .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
             .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
             .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
             .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName(tableName))
+            // Explicitly configure connector TO parse query
+            .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
             .build();
 
         // Start the connector ...
         start(MySqlConnector.class, config);
 
         // Flush all existing records not related to the test.
-        waitForAvailableRecords(3, TimeUnit.SECONDS);
-        consumeAvailableRecords(null);
+        consumeRecords(INITIAL_EVENT_COUNT, null);
 
         // Define insert query we want to validate.
         final String deleteSqlStatement = "DELETE FROM orders WHERE purchaser=1002";
@@ -1451,18 +1506,18 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         final String tableName = "products";
 
         config = DATABASE.defaultConfig()
-            .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
             .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
             .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
             .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName(tableName))
+            // Explicitly configure connector TO parse query
+            .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
             .build();
 
         // Start the connector ...
         start(MySqlConnector.class, config);
 
         // Flush all existing records not related to the test.
-        waitForAvailableRecords(3, TimeUnit.SECONDS);
-        consumeAvailableRecords(null);
+        consumeRecords(INITIAL_EVENT_COUNT, null);
 
         // Define insert query we want to validate.
         final String updateSqlStatement = "UPDATE products set name='toaster' where id=109 LIMIT 1";
@@ -1502,18 +1557,18 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         final String tableName = "orders";
 
         config = DATABASE.defaultConfig()
-            .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
             .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
             .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
             .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName(tableName))
+            // Explicitly configure connector TO parse query
+            .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
             .build();
 
         // Start the connector ...
         start(MySqlConnector.class, config);
 
         // Flush all existing records not related to the test.
-        waitForAvailableRecords(3, TimeUnit.SECONDS);
-        consumeAvailableRecords(null);
+        consumeRecords(INITIAL_EVENT_COUNT, null);
 
         // Define insert query we want to validate.
         final String updateSqlStatement = "UPDATE orders set quantity=0 where order_number in (10001, 10004)";

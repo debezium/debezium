@@ -216,6 +216,10 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         return config.getBoolean(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES);
     }
 
+    public boolean includeSqlQuery() {
+        return config.getBoolean(MySqlConnectorConfig.INCLUDE_SQL_QUERY);
+    }
+
     public boolean isSnapshotAllowedWhenNeeded() {
         return snapshotMode() == SnapshotMode.WHEN_NEEDED;
     }

@@ -256,7 +256,6 @@ public class BinlogReader extends AbstractReader {
         eventHandlers.put(EventType.ROTATE, this::handleRotateLogsEvent);
         eventHandlers.put(EventType.TABLE_MAP, this::handleUpdateTableMetadata);
         eventHandlers.put(EventType.QUERY, this::handleQueryEvent);
-        eventHandlers.put(EventType.ROWS_QUERY, this::handleRowsQuery);
         eventHandlers.put(EventType.WRITE_ROWS, this::handleInsert);
         eventHandlers.put(EventType.UPDATE_ROWS, this::handleUpdate);
         eventHandlers.put(EventType.DELETE_ROWS, this::handleDelete);
@@ -266,6 +265,11 @@ public class BinlogReader extends AbstractReader {
         eventHandlers.put(EventType.VIEW_CHANGE, this::viewChange);
         eventHandlers.put(EventType.XA_PREPARE, this::prepareTransaction);
         eventHandlers.put(EventType.XID, this::handleTransactionCompletion);
+
+        // Conditionally register QUERY handler to parse SQL statements.
+        if (context.includeSqlQuery()) {
+            eventHandlers.put(EventType.ROWS_QUERY, this::handleRowsQuery);
+        }
 
         // Get the current GtidSet from MySQL so we can get a filtered/merged GtidSet based off of the last Debezium checkpoint.
         String availableServerGtidStr = connectionContext.knownGtidSet();
