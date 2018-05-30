@@ -266,7 +266,7 @@ public class BinlogReader extends AbstractReader {
         eventHandlers.put(EventType.XA_PREPARE, this::prepareTransaction);
         eventHandlers.put(EventType.XID, this::handleTransactionCompletion);
 
-        // Conditionally register QUERY handler to parse SQL statements.
+        // Conditionally register ROWS_QUERY handler to parse SQL statements.
         if (context.includeSqlQuery()) {
             eventHandlers.put(EventType.ROWS_QUERY, this::handleRowsQuery);
         }
@@ -580,7 +580,7 @@ public class BinlogReader extends AbstractReader {
     }
 
     /**
-     * Handle the supplied event with an {@link RowsQueryEventData} by possibly recording the original SQL query
+     * Handle the supplied event with an {@link RowsQueryEventData} by recording the original SQL query
      * that generated the event.
      *
      * @param event the database change data event to be processed; may not be null
