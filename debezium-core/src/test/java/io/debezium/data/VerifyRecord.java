@@ -286,7 +286,8 @@ public class VerifyRecord {
             String fieldName = fieldNames[i];
             if (value instanceof Struct) {
                 value = ((Struct)value).get(fieldName);
-            } else {
+            }
+            else {
                 // We expected the value to be a struct ...
                 String path = pathSoFar == null ? "record value" : ("'" + pathSoFar + "'");
                 String msg = "Expected the " + path + " to be a Struct but was " + value.getClass().getSimpleName() + " in record: " + SchemaUtil.asString(record);

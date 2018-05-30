@@ -1149,7 +1149,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         // Parse through the source record for the query value.
         final SourceRecord sourceRecord = records.recordsForTopic(DATABASE.topicForTable(tableName)).get(0);
-        logger.info("Record: {}", sourceRecord);
 
         // Should have been an insert with query parsed.
         validate(sourceRecord);
