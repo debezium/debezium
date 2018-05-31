@@ -109,7 +109,8 @@ public class BinlogReaderIT {
         return DATABASE.defaultConfig()
                             .with(MySqlConnectorConfig.USER, "replicator")
                             .with(MySqlConnectorConfig.PASSWORD, "replpass")
-                            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
+                            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                            .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, false);
     }
 
     @Test

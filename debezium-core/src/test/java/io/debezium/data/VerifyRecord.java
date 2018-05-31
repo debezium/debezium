@@ -251,6 +251,78 @@ public class VerifyRecord {
     }
 
     /**
+     * Verify that the given {@link SourceRecord} has the appropriate source query value.
+     *
+     * @param record the source record; may not be null
+     * @param query the expected sql query value.
+     */
+    public static void hasValidSourceQuery(final SourceRecord record, final String query) {
+        assertValueField(record, "source/query", query);
+    }
+
+    /**
+     * Verify that the given {@link SourceRecord} has no source query value.
+     *
+     * @param record the source record; may not be null
+     */
+    public static void hasNoSourceQuery(final SourceRecord record) {
+        // Abstracted out so if we change from having a null value in the query field to
+        // not including the query field entirely, we can easily update the assertion in one place.
+        hasValidSourceQuery(record, null);
+    }
+
+    /**
+     * Verify the given {@link SourceRecord} has the expected value in the given fieldPath.
+     *
+     * @param record the source record; may not be null
+     * @param fieldPath the field path to validate, separated by '/'
+     * @param expectedValue the expected value in the source records field path.
+     */
+    public static void assertValueField(SourceRecord record, String fieldPath, Object expectedValue) {
+        Object value = record.value();
+        String[] fieldNames = fieldPath.split("/");
+        String pathSoFar = null;
+        for (int i=0; i!=fieldNames.length; ++i) {
+            String fieldName = fieldNames[i];
+            if (value instanceof Struct) {
+                value = ((Struct)value).get(fieldName);
+            }
+            else {
+                // We expected the value to be a struct ...
+                String path = pathSoFar == null ? "record value" : ("'" + pathSoFar + "'");
+                String msg = "Expected the " + path + " to be a Struct but was " + value.getClass().getSimpleName() + " in record: " + SchemaUtil.asString(record);
+                fail(msg);
+            }
+            pathSoFar = pathSoFar == null ? fieldName : pathSoFar + "/" + fieldName;
+        }
+        assertSameValue(value,expectedValue);
+    }
+
+    /**
+     * Utility method to validate that two given {@link SourceRecord} values are identical.
+     * @param actual actual value stored on the source record
+     * @param expected expected value stored on the source record
+     */
+    public static void assertSameValue(Object actual, Object expected) {
+        if(expected instanceof Double || expected instanceof Float || expected instanceof BigDecimal) {
+            // Value should be within 1%
+            double expectedNumericValue = ((Number)expected).doubleValue();
+            double actualNumericValue = ((Number)actual).doubleValue();
+            assertThat(actualNumericValue).isEqualTo(expectedNumericValue, Delta.delta(0.01d*expectedNumericValue));
+        } else if (expected instanceof Integer || expected instanceof Long || expected instanceof Short) {
+            long expectedNumericValue = ((Number)expected).longValue();
+            long actualNumericValue = ((Number)actual).longValue();
+            assertThat(actualNumericValue).isEqualTo(expectedNumericValue);
+        } else if (expected instanceof Boolean) {
+            boolean expectedValue = (Boolean) expected;
+            boolean actualValue = (Boolean) actual;
+            assertThat(actualValue).isEqualTo(expectedValue);
+        } else {
+            assertThat(actual).isEqualTo(expected);
+        }
+    }
+
+    /**
      * Assert that the supplied {@link Struct} is {@link Struct#validate() valid} and its {@link Struct#schema() schema}
      * matches that of the supplied {@code schema}.
      *
