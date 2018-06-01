@@ -128,7 +128,6 @@ final class SourceInfo extends AbstractSourceInfo {
                                                      .field(THREAD_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                      .field(DB_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(TABLE_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                                                     // TODO how to make this optional?
                                                      .field(QUERY_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .build();
 

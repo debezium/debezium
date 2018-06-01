@@ -309,15 +309,18 @@ public class VerifyRecord {
             double expectedNumericValue = ((Number)expected).doubleValue();
             double actualNumericValue = ((Number)actual).doubleValue();
             assertThat(actualNumericValue).isEqualTo(expectedNumericValue, Delta.delta(0.01d*expectedNumericValue));
-        } else if (expected instanceof Integer || expected instanceof Long || expected instanceof Short) {
+        }
+        else if (expected instanceof Integer || expected instanceof Long || expected instanceof Short) {
             long expectedNumericValue = ((Number)expected).longValue();
             long actualNumericValue = ((Number)actual).longValue();
             assertThat(actualNumericValue).isEqualTo(expectedNumericValue);
-        } else if (expected instanceof Boolean) {
+        }
+        else if (expected instanceof Boolean) {
             boolean expectedValue = (Boolean) expected;
             boolean actualValue = (Boolean) actual;
             assertThat(actualValue).isEqualTo(expectedValue);
-        } else {
+        }
+        else {
             assertThat(actual).isEqualTo(expected);
         }
     }
@@ -333,7 +336,8 @@ public class VerifyRecord {
         if (value == null) {
             // The schema should also be null ...
             assertThat(schemaAndValue.schema()).isNull();
-        } else {
+        }
+        else {
             // Both value and schema should exist and be valid ...
             assertThat(value).isInstanceOf(Struct.class);
             fieldsInSchema((Struct) value, schemaAndValue.schema());
@@ -351,7 +355,8 @@ public class VerifyRecord {
         // First validate the struct itself ...
         try {
             struct.validate();
-        } catch (DataException e) {
+        }
+        catch (DataException e) {
             throw new AssertionError("The struct '" + struct + "' failed to validate", e);
         }
 
@@ -453,7 +458,8 @@ public class VerifyRecord {
         if (o1 == null) {
             if (o2 == null) return;
             fail(nameOf(keyOrValue, field) + " was null but expected " + SchemaUtil.asString(o2));
-        } else if (o2 == null) {
+        }
+        else if (o2 == null) {
             fail("expecting a null " + nameOf(keyOrValue, field) + " but found " + SchemaUtil.asString(o1));
         }
         // See if there is a custom comparator for this field ...
@@ -485,14 +491,16 @@ public class VerifyRecord {
             if (!Arrays.equals((byte[]) o1, (byte[]) o2)) {
                 fail("byte[] at " + nameOf(keyOrValue, field) + " is " + o1 + " but was expected to be " + o2);
             }
-        } else if (o2 instanceof Object[]) {
+        }
+        else if (o2 instanceof Object[]) {
             if (!(o1 instanceof Object[])) {
                 fail("expecting " + nameOf(keyOrValue, field) + " to be Object[] but was " + o1.getClass().toString());
             }
             if (!deepEquals((Object[]) o1, (Object[]) o2)) {
                 fail("Object[] at " + nameOf(keyOrValue, field) + " is " + o1 + " but was expected to be " + o2);
             }
-        } else if (o2 instanceof Map) {
+        }
+        else if (o2 instanceof Map) {
             if (!(o1 instanceof Map)) {
                 fail("expecting " + nameOf(keyOrValue, field) + " to be Map<String,?> but was " + o1.getClass().toString());
             }
@@ -513,7 +521,8 @@ public class VerifyRecord {
                 assertEquals(null, v1, v2, keyOrValue, fieldName(field, key), ignoreFields,
                              comparatorsByName, comparatorsBySchemaName);
             }
-        } else if (o2 instanceof Collection) {
+        }
+        else if (o2 instanceof Collection) {
             if (!(o1 instanceof Collection)) {
                 fail("expecting " + nameOf(keyOrValue, field) + " to be Collection<?> but was " + o1.getClass().toString());
             }
@@ -530,7 +539,8 @@ public class VerifyRecord {
                 assertEquals(null, iter1.next(), iter2.next(), keyOrValue, field + "[" + (index++) + "]", ignoreFields,
                              comparatorsByName, comparatorsBySchemaName);
             }
-        } else if (o2 instanceof Struct) {
+        }
+        else if (o2 instanceof Struct) {
             if (!(o1 instanceof Struct)) {
                 fail("expecting " + nameOf(keyOrValue, field) + " to be Struct but was " + o1.getClass().toString());
             }
@@ -556,23 +566,27 @@ public class VerifyRecord {
                              comparatorsByName, comparatorsBySchemaName);
             }
             return;
-        } else if (o2 instanceof Double || o2 instanceof Float || o2 instanceof BigDecimal) {
+        }
+        else if (o2 instanceof Double || o2 instanceof Float || o2 instanceof BigDecimal) {
             // Value should be within 1%
             double expectedNumericValue = ((Number) o2).doubleValue();
             double actualNumericValue = ((Number) o1).doubleValue();
             String desc = "found " + nameOf(keyOrValue, field) + " is " + o1 + " but expected " + o2;
             assertThat(actualNumericValue).as(desc).isEqualTo(expectedNumericValue, Delta.delta(0.01d * expectedNumericValue));
-        } else if (o2 instanceof Integer || o2 instanceof Long || o2 instanceof Short) {
+        }
+        else if (o2 instanceof Integer || o2 instanceof Long || o2 instanceof Short) {
             long expectedNumericValue = ((Number) o2).longValue();
             long actualNumericValue = ((Number) o1).longValue();
             String desc = "found " + nameOf(keyOrValue, field) + " is " + o1 + " but expected " + o2;
             assertThat(actualNumericValue).as(desc).isEqualTo(expectedNumericValue);
-        } else if (o2 instanceof Boolean) {
+        }
+        else if (o2 instanceof Boolean) {
             boolean expectedValue = ((Boolean) o2).booleanValue();
             boolean actualValue = ((Boolean) o1).booleanValue();
             String desc = "found " + nameOf(keyOrValue, field) + " is " + o1 + " but expected " + o2;
             assertThat(actualValue).as(desc).isEqualTo(expectedValue);
-        } else if (ZonedTimestamp.SCHEMA_NAME.equals(schemaName)) {
+        }
+        else if (ZonedTimestamp.SCHEMA_NAME.equals(schemaName)) {
             // the actual value (produced by the connectors) should always be properly formatted
             String actualValueString = o1.toString();
             ZonedDateTime actualValue = ZonedDateTime.parse(o1.toString(), ZonedTimestamp.FORMATTER);
@@ -582,13 +596,15 @@ public class VerifyRecord {
             try {
                 // first try a standard offset format which contains the TZ information
                 expectedValue = ZonedDateTime.parse(expectedValueString, ZonedTimestamp.FORMATTER);
-            } catch (DateTimeParseException e) {
+            }
+            catch (DateTimeParseException e) {
                 // then try a local format using the system default offset
                 LocalDateTime localDateTime = LocalDateTime.parse(expectedValueString);
                 expectedValue = ZonedDateTime.of(localDateTime, ZoneId.systemDefault());
             }
             assertThat(actualValue.toInstant()).as(actualValueString).isEqualTo(expectedValue.toInstant()).as(expectedValueString);
-        } else {
+        }
+        else {
             assertThat(o1).isEqualTo(o2);
         }
     }
@@ -615,7 +631,8 @@ public class VerifyRecord {
                 msg = "checking key is not null";
                 assertThat(record.key()).isNotNull();
                 assertThat(record.keySchema()).isNotNull();
-            } else {
+            }
+            else {
                 msg = "checking key schema and key are both null";
                 assertThat(record.key()).isNull();
                 assertThat(record.keySchema()).isNull();
@@ -627,7 +644,8 @@ public class VerifyRecord {
                 assertThat(record.valueSchema()).isNull();
                 msg = "checking key is not null when value is null";
                 assertThat(record.key()).isNotNull();
-            } else {
+            }
+            else {
                 msg = "checking value schema is not null";
                 assertThat(record.valueSchema()).isNotNull();
             }
@@ -688,7 +706,8 @@ public class VerifyRecord {
             msg = "comparing value to its schema";
             schemaMatchesStruct(valueWithSchema);
 
-        } catch (Throwable t) {
+        }
+        catch (Throwable t) {
             Testing.Print.enable();
             Testing.print("Problem with message on topic '" + record.topic() + "':");
             Testing.printError(t);
@@ -759,17 +778,20 @@ public class VerifyRecord {
             message.set("value", valueJson);
             Testing.print("Message on topic '" + record.topic() + "':");
             Testing.print(prettyJson(message));
-        } catch (Throwable t) {
+        }
+        catch (Throwable t) {
             Testing.printError(t);
             Testing.print("Problem with message on topic '" + record.topic() + "':");
             if (keyJson != null) {
                 Testing.print("valid key = " + prettyJson(keyJson));
-            } else {
+            }
+            else {
                 Testing.print("invalid key");
             }
             if (valueJson != null) {
                 Testing.print("valid value = " + prettyJson(valueJson));
-            } else {
+            }
+            else {
                 Testing.print("invalid value");
             }
             fail(t.getMessage());
@@ -779,7 +801,8 @@ public class VerifyRecord {
     protected static String prettyJson(JsonNode json) {
         try {
             return new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(json);
-        } catch (Throwable t) {
+        }
+        catch (Throwable t) {
             Testing.printError(t);
             fail(t.getMessage());
             assert false : "Will not get here";
