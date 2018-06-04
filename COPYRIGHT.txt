@@ -26,7 +26,6 @@ Jiri Pechanec
 Jure Kajzer
 Listman Gamboa
 Liu Hanlin
-Luobo
 Maciej Bryński
 MaoXiang Pan
 Mario Mueller
@@ -50,4 +49,5 @@ Stanley Shyiko
 Stephen Powis
 Steven Siahetiong
 Tom Bentley
+WenZe Hu
 Willie Cheong
