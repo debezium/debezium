@@ -15,10 +15,17 @@ import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.transforms.ExtractField;
+import org.apache.kafka.connect.transforms.Flatten;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 
 /**
  * Debezium Mongo Connector generates the CDC records in String format. Sink connectors usually are not able to parse
@@ -33,6 +40,28 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
     private final ExtractField<R> afterExtractor = new ExtractField.Value<R>();
     private final ExtractField<R> patchExtractor = new ExtractField.Value<R>();
     private final ExtractField<R> keyExtractor = new ExtractField.Key<R>();
+    private final Flatten<R> recordFlattener = new Flatten.Value<R>();
+    private final Logger logger = LoggerFactory.getLogger(getClass());
+    private static final Field FLATTEN_STRUCT = Field.create("flatten.struct")
+            .withDisplayName("Flatten struct")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(false)
+            .withDescription("Flattening structs by concatenating the fields into plain properties, using a "
+                    + "(configurable) delimiter.");
+    
+    private static final Field DELIMITER = Field.create("flatten.struct.delimiter")
+            .withDisplayName("Delimiter for flattened struct")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault("_")
+            .withDescription("Delimiter to concat between field names from the input record when generating field names for the"
+                    + "output record.");
+    
+    private boolean flattenStruct;
+    private String delimiter; 
 
     @Override
     public R apply(R r) {
@@ -55,9 +84,14 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
             if (patchRecord.value() != null) {
                 valueDocument = BsonDocument.parse(patchRecord.value().toString());
                 valueDocument = valueDocument.getDocument("$set");
-
                 if (!valueDocument.containsKey("id")) {
                     valueDocument.append("id", keyDocument.get("id"));
+                }
+                // patch already contains flattened document, there is no need for conversion
+                if (flattenStruct) {
+                    final BsonDocument newDocument = new BsonDocument();
+                    valueDocument.forEach((fKey, fValue) -> newDocument.put(fKey.replace(".", delimiter), fValue));
+                    valueDocument = newDocument;
                 }
             }
             // delete
@@ -76,7 +110,7 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
         Set<Entry<String, BsonValue>> keyPairs = keyDocument.entrySet();
 
         for (Entry<String, BsonValue> valuePairsforSchema : valuePairs) {
-            if(valuePairsforSchema.getKey().toString().equalsIgnoreCase("$set")) {
+            if (valuePairsforSchema.getKey().toString().equalsIgnoreCase("$set")) {
                 BsonDocument val1 = BsonDocument.parse(valuePairsforSchema.getValue().toString());
                 Set<Entry<String, BsonValue>> keyValuesforSetSchema = val1.entrySet();
                 for (Entry<String, BsonValue> keyValuesforSetSchemaEntry : keyValuesforSetSchema) {
@@ -97,13 +131,14 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
         Struct finalKeyStruct = new Struct(finalKeySchema);
 
         for (Entry<String, BsonValue> valuePairsforStruct : valuePairs) {
-            if(valuePairsforStruct.getKey().toString().equalsIgnoreCase("$set")) {
+            if (valuePairsforStruct.getKey().toString().equalsIgnoreCase("$set")) {
                 BsonDocument val1 = BsonDocument.parse(valuePairsforStruct.getValue().toString());
                 Set<Entry<String, BsonValue>> keyvalueforSetStruct = val1.entrySet();
                 for (Entry<String, BsonValue> keyvalueforSetStructEntry : keyvalueforSetStruct) {
                     MongoDataConverter.convertRecord(keyvalueforSetStructEntry, finalValueSchema, finalValueStruct);
                 }
-            } else {
+            }
+            else {
                 MongoDataConverter.convertRecord(valuePairsforStruct, finalValueSchema, finalValueStruct);
             }
         }
@@ -111,14 +146,20 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
         for (Entry<String, BsonValue> keyPairsforStruct : keyPairs) {
             MongoDataConverter.convertRecord(keyPairsforStruct, finalKeySchema, finalKeyStruct);
         }
-
-        if (finalValueSchema.fields().isEmpty()) {
-            return r.newRecord(r.topic(), r.kafkaPartition(), finalKeySchema, finalKeyStruct, null, null,
-                    r.timestamp());
+        if (flattenStruct) {
+           final R flattenRecord = recordFlattener.apply(r.newRecord(r.topic(), r.kafkaPartition(), finalKeySchema, 
+               finalKeyStruct, finalValueSchema, finalValueStruct,r.timestamp()));
+           return flattenRecord;
         }
         else {
-            return r.newRecord(r.topic(), r.kafkaPartition(), finalKeySchema, finalKeyStruct, finalValueSchema, finalValueStruct,
-                    r.timestamp());
+            if (finalValueSchema.fields().isEmpty()) {
+                    return r.newRecord(r.topic(), r.kafkaPartition(), finalKeySchema, finalKeyStruct, null, null,
+                            r.timestamp());
+                }
+                else {
+                    return r.newRecord(r.topic(), r.kafkaPartition(), finalKeySchema, finalKeyStruct, finalValueSchema, finalValueStruct,
+                            r.timestamp());
+                }
         }
     }
 
@@ -133,14 +174,25 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
 
     @Override
     public void configure(final Map<String, ?> map) {
+    final Configuration config = Configuration.from(map);
+        final Field.Set configFields = Field.setOf(FLATTEN_STRUCT, DELIMITER);
+        if (!config.validateAndRecord(configFields, logger::error)) {
+            throw new ConnectException("Unable to validate config.");
+        }
+
+        flattenStruct = config.getBoolean(FLATTEN_STRUCT);
+        delimiter = config.getString(DELIMITER);
         final Map<String, String> afterExtractorConfig = new HashMap<>();
         afterExtractorConfig.put("field", "after");
         final Map<String, String> patchExtractorConfig = new HashMap<>();
         patchExtractorConfig.put("field", "patch");
         final Map<String, String> keyExtractorConfig = new HashMap<>();
         keyExtractorConfig.put("field", "id");
+        final Map<String, String> delegateConfig = new HashMap<>();
+        delegateConfig.put("delimiter", delimiter);
         afterExtractor.configure(afterExtractorConfig);
         patchExtractor.configure(patchExtractorConfig);
         keyExtractor.configure(keyExtractorConfig);
+        recordFlattener.configure(delegateConfig);
     }
 }
