@@ -92,7 +92,7 @@ public class MongoDataConverterTest {
                 SchemaBuilder.struct().name("pub")
                     .field("address", SchemaBuilder.struct().name("pub.address")
                             .field("building", Schema.OPTIONAL_STRING_SCHEMA)
-                            .field("floor", SchemaBuilder.struct().name("pub.address.floor").optional()
+                            .field("floor", SchemaBuilder.struct().name("pub.address.floor")
                                     .field("level", Schema.OPTIONAL_INT32_SCHEMA)
                                     .field("description", Schema.OPTIONAL_STRING_SCHEMA)
                                     .build()
