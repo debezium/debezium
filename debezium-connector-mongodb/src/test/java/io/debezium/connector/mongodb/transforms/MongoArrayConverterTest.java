@@ -247,8 +247,8 @@ public class MongoArrayConverterTest {
                     SchemaBuilder.struct().name("array")
                             .field("_id", Schema.OPTIONAL_INT32_SCHEMA)
                             .field("a2", SchemaBuilder.struct().name("array.a2").optional()
-                                    .field("0", Schema.OPTIONAL_INT32_SCHEMA)
-                                    .field("1", Schema.OPTIONAL_STRING_SCHEMA)
+                                    .field("_0", Schema.OPTIONAL_INT32_SCHEMA)
+                                    .field("_1", Schema.OPTIONAL_STRING_SCHEMA)
                                     .build()
                              ).build()
                     );
@@ -272,7 +272,7 @@ public class MongoArrayConverterTest {
         assertThat(struct.toString()).isEqualTo(
                 "Struct{" +
                         "_id=1," +
-                        "a2=Struct{0=11,1=abc}}"
+                        "a2=Struct{_0=11,_1=abc}}"
         );
     }
 
@@ -290,10 +290,10 @@ public class MongoArrayConverterTest {
                     SchemaBuilder.struct().name("array")
                             .field("_id", Schema.OPTIONAL_INT32_SCHEMA)
                             .field("a1", SchemaBuilder.struct().name("array.a1").optional()
-                                    .field("0", SchemaBuilder.struct().name("array.a1.0").optional()
+                                    .field("_0", SchemaBuilder.struct().name("array.a1._0").optional()
                                             .field("a", Schema.OPTIONAL_INT32_SCHEMA)
                                             .build())
-                                    .field("1", SchemaBuilder.struct().name("array.a1.1").optional()
+                                    .field("_1", SchemaBuilder.struct().name("array.a1._1").optional()
                                             .field("a", Schema.OPTIONAL_STRING_SCHEMA)
                                             .build())
                                     .build()
@@ -321,8 +321,8 @@ public class MongoArrayConverterTest {
                 "Struct{" +
                         "_id=1," +
                         "a1=Struct{" +
-                            "0=Struct{a=1}," +
-                            "1=Struct{a=c}" +
+                            "_0=Struct{a=1}," +
+                            "_1=Struct{a=c}" +
                         "}" +
                 "}"
         );
