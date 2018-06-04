@@ -202,7 +202,7 @@ public class MongoDataConverter {
                     final Schema arraySchema = schema.field(keyvalueforStruct.getKey()).schema();
                     final Struct arrayStruct = new Struct(arraySchema);
                     for (int i = 0; i < array.size(); i++) {
-                        convertedArray.put(Integer.toString(i), array.get(i));
+                        convertedArray.put(arrayElementStructName(i), array.get(i));
                     }
                     convertedArray.entrySet().forEach(x -> {
                         final Schema elementSchema = schema.field(key).schema();
@@ -218,6 +218,10 @@ public class MongoDataConverter {
             break;
         }
         struct.put(key, keyvalueforStruct.getValue().isNull() ? null : colValue);
+    }
+
+    protected String arrayElementStructName(int i) {
+        return "_" + i;
     }
 
     public void addFieldSchema(Entry<String, BsonValue> keyValuesforSchema, SchemaBuilder builder) {
@@ -375,7 +379,7 @@ public class MongoDataConverter {
                     final SchemaBuilder arrayStructBuilder = SchemaBuilder.struct().name(builder.name() + "." + key).optional();
                     final Map<String, BsonValue> convertedArray = new HashMap<>();
                     for (int i = 0; i < array.size(); i++) {
-                        convertedArray.put(Integer.toString(i), array.get(i));
+                        convertedArray.put(arrayElementStructName(i), array.get(i));
                     }
                     convertedArray.entrySet().forEach(x -> addFieldSchema(x, arrayStructBuilder));
                     builder.field(key, arrayStructBuilder.build());
