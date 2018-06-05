@@ -296,6 +296,10 @@ public final class SourceInfo extends AbstractSourceInfo {
         if (replicaSetName == null) throw new IllegalArgumentException("The replica set name may not be null");
         if (sourceOffset == null) return false;
         // We have previously recorded at least one offset for this database ...
+        boolean initSync = booleanOffsetValue(sourceOffset, INITIAL_SYNC);
+        if (initSync) {
+            return false;
+        }
         int time = intOffsetValue(sourceOffset, TIMESTAMP);
         int order = intOffsetValue(sourceOffset, ORDER);
         Long operationId = longOffsetValue(sourceOffset, OPERATION_ID);
@@ -366,5 +370,13 @@ public final class SourceInfo extends AbstractSourceInfo {
         } catch (NumberFormatException e) {
             throw new ConnectException("Source offset '" + key + "' parameter value " + obj + " could not be converted to a long");
         }
+    }
+
+    private static boolean booleanOffsetValue(Map<String, ?> values, String key) {
+        Object obj = values.get(key);
+        if (obj != null && obj instanceof Boolean) {
+            return ((Boolean) obj).booleanValue();
+        }
+        return false;
     }
 }
