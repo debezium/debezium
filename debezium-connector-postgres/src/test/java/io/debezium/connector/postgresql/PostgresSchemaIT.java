@@ -37,8 +37,8 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.time.Date;
 import io.debezium.time.MicroDuration;
-import io.debezium.time.NanoTime;
-import io.debezium.time.NanoTimestamp;
+import io.debezium.time.MicroTime;
+import io.debezium.time.MicroTimestamp;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.SchemaNameAdjuster;
@@ -95,8 +95,8 @@ public class PostgresSchemaIT {
                               Schema.OPTIONAL_BYTES_SCHEMA, Schema.OPTIONAL_BOOLEAN_SCHEMA, Bits.builder(2).optional().build(),
                               Bits.builder(2).optional().build());
             assertTableSchema("public.time_table", "ts, tz, date, ti, ttz, it",
-                              NanoTimestamp.builder().optional().build(), ZonedTimestamp.builder().optional().build(),
-                              Date.builder().optional().build(), NanoTime.builder().optional().build(), ZonedTime.builder().optional().build(),
+                              MicroTimestamp.builder().optional().build(), ZonedTimestamp.builder().optional().build(),
+                              Date.builder().optional().build(), MicroTime.builder().optional().build(), ZonedTime.builder().optional().build(),
                               MicroDuration.builder().optional().build());
             assertTableSchema("public.text_table", "j, jb, x, u",
                               Json.builder().optional().build(), Json.builder().optional().build(), Xml.builder().optional().build(),
