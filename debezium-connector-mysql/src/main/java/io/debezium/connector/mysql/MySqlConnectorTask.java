@@ -6,7 +6,6 @@
 package io.debezium.connector.mysql;
 
 import java.sql.SQLException;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -167,9 +166,9 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                 SnapshotReader snapshotReader = new SnapshotReader("snapshot", taskContext);
                 if (snapshotEventsAreInserts) snapshotReader.generateInsertEvents();
 
-                if (taskContext.snapshotDelayMinutes() > 0) {
+                if (!taskContext.snapshotDelay().isZero()) {
                     // Adding a timed blocking reader to delay the snapshot, can help to avoid initial rebalancing interruptions
-                    chainedReaderBuilder.addReader(new TimedBlockingReader("timed-blocker", Duration.ofMinutes(taskContext.snapshotDelayMinutes())));
+                    chainedReaderBuilder.addReader(new TimedBlockingReader("timed-blocker", taskContext.snapshotDelay()));
                 }
                 chainedReaderBuilder.addReader(snapshotReader);
 

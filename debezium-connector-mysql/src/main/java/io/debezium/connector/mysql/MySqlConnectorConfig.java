@@ -882,13 +882,13 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                     "The value of those properties is the select statement to use when retrieving data from the specific table during snapshotting. " +
                     "A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted.");
 
-    public static final Field SNAPSHOT_DELAY_MINUTES = Field.createInternal("snapshot.delay.minutes")
-            .withDisplayName("Snapshot Delay (minutes)")
+    public static final Field SNAPSHOT_DELAY_MS = Field.createInternal("snapshot.delay.ms")
+            .withDisplayName("Snapshot Delay (milliseconds)")
             .withType(Type.LONG)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
-            .withDescription("The number of minutes to delay before a snapshot will begin.")
-            .withDefault(0l)
+            .withDescription("The number of milliseconds to delay before a snapshot will begin.")
+            .withDefault(0L)
             .withValidation(Field::isNonNegativeLong);
 
     /**
@@ -944,7 +944,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                      BIGINT_UNSIGNED_HANDLING_MODE,
                                                      EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE,
                                                      INCONSISTENT_SCHEMA_HANDLING_MODE,
-                                                     SNAPSHOT_DELAY_MINUTES,
+                                                     SNAPSHOT_DELAY_MS,
                                                      CommonConnectorConfig.TOMBSTONES_ON_DELETE);
 
     /**
@@ -1001,7 +1001,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
                     SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
-                    BIGINT_UNSIGNED_HANDLING_MODE, SNAPSHOT_DELAY_MINUTES);
+                    BIGINT_UNSIGNED_HANDLING_MODE, SNAPSHOT_DELAY_MS);
         return config;
     }
 

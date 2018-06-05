@@ -12,7 +12,9 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.config.ConfigurationDefaults;
+import io.debezium.util.Clock;
+import io.debezium.util.Threads;
+import io.debezium.util.Threads.Timer;
 
 /**
  * A component that blocks doing nothing for a specified period of time or until the connector task is stopped
@@ -23,18 +25,22 @@ public class TimedBlockingReader extends BlockingReader {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
-    // calculated number of ticks until this TimedBlockingReader should stop
-    private long ticks;
+    private final Duration timeout;
+    private Timer timer;
 
     /**
      * @param name Name of the reader
      * @param timeout Duration of time until this TimedBlockingReader should stop
      */
-    public TimedBlockingReader(String name, Duration timeoutMinutes) {
-        super(name, "The connector will wait for " + timeoutMinutes.toMinutes() + " minutes before proceeding");
+    public TimedBlockingReader(String name, Duration timeout) {
+        super(name, "The connector will wait for " + timeout.toMillis() + " ms before proceeding");
+        this.timeout = timeout;
+    }
 
-        // number of ticks calculated based upon the BlockingReader's metronome period
-        ticks = timeoutMinutes.toMillis() / ConfigurationDefaults.RETURN_CONTROL_INTERVAL.toMillis();
+    @Override
+    public void start() {
+        super.start();
+        this.timer = Threads.timer(Clock.SYSTEM, timeout);
     }
 
     @Override
@@ -42,7 +48,7 @@ public class TimedBlockingReader extends BlockingReader {
         super.poll();
 
         // Stop when we've reached the timeout threshold
-        if (--ticks <= 0) {
+        if (timer != null && timer.expired()) {
             stop();
         }
 
