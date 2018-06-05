@@ -621,4 +621,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
         return Optional.empty();
     }
+
+    @Override
+    protected int getTimePrecision(Column column) {
+        return column.scale();
+    }
 }
