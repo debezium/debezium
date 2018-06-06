@@ -894,7 +894,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                     "The value of those properties is the select statement to use when retrieving data from the specific table during snapshotting. " +
                     "A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted.");
 
-    public static final Field SNAPSHOT_DELAY_MS = Field.createInternal("snapshot.delay.ms")
+    public static final Field SNAPSHOT_DELAY_MS = Field.create("snapshot.delay.ms")
             .withDisplayName("Snapshot Delay (milliseconds)")
             .withType(Type.LONG)
             .withWidth(Width.MEDIUM)
