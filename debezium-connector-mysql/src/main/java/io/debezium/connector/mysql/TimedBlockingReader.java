@@ -26,7 +26,7 @@ public class TimedBlockingReader extends BlockingReader {
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
     private final Duration timeout;
-    private Timer timer;
+    private volatile Timer timer;
 
     /**
      * @param name Name of the reader
@@ -54,6 +54,4 @@ public class TimedBlockingReader extends BlockingReader {
 
         return null;
     }
-
-
 }
