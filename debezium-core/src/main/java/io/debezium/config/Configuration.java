@@ -60,7 +60,7 @@ import io.debezium.util.Strings;
 @Immutable
 public interface Configuration {
 
-    public static final Pattern PASSWORD_PATTERN = Pattern.compile(".*password$", Pattern.CASE_INSENSITIVE);
+    public static final Pattern PASSWORD_PATTERN = Pattern.compile(".*password$|.*sasl\\.jaas\\.config$", Pattern.CASE_INSENSITIVE);
 
     /**
      * The basic interface for configuration builders.
