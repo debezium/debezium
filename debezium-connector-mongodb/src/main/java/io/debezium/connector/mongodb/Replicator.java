@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -261,10 +260,7 @@ public class Replicator {
         final long syncStart = clock.currentTimeInMillis();
 
         // We need to copy each collection, so put the collection IDs into a queue ...
-        final List<CollectionId> collections = new ArrayList<>();
-        primaryClient.collections().forEach(id -> {
-            if (databaseFilter.test(id.dbName()) && collectionFilter.test(id))collections.add(id);
-        });
+        final List<CollectionId> collections = primaryClient.collections(databaseFilter, collectionFilter);
         final Queue<CollectionId> collectionsToCopy = new ConcurrentLinkedQueue<>(collections);
         final int numThreads = Math.min(collections.size(), context.getConnectionContext().maxNumberOfCopyThreads());
         final CountDownLatch latch = new CountDownLatch(numThreads);
