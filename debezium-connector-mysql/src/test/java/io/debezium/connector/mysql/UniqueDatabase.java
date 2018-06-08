@@ -12,7 +12,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -110,11 +112,22 @@ public class UniqueDatabase {
      * See fnDbz162 procedure in reqression_test.sql for example of usage.
      */
     public void createAndInitialize() {
+        createAndInitialize(Collections.emptyMap());
+    }
+
+    /**
+     * Creates the database and populates it with initialization SQL script. To use multiline
+     * statements for stored procedures definition use delimiter $$ to delimit statements in the procedure.
+     * See fnDbz162 procedure in reqression_test.sql for example of usage.
+     *
+     * @param urlProperties jdbc url properties
+     */
+    public void createAndInitialize(Map<String, Object> urlProperties) {
         final String ddlFile = String.format("ddl/%s.sql", templateName);
         final URL ddlTestFile = UniqueDatabase.class.getClassLoader().getResource(ddlFile);
         assertNotNull("Cannot locate " + ddlFile, ddlTestFile);
         try {
-            try (MySQLConnection connection = MySQLConnection.forTestDatabase(DEFAULT_DATABASE)) {
+            try (MySQLConnection connection = MySQLConnection.forTestDatabase(DEFAULT_DATABASE, urlProperties)) {
                 final List<String> statements = Arrays.stream(
                         Stream.concat(
                                 Arrays.stream(CREATE_DATABASE_DDL),
