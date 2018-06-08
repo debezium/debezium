@@ -38,16 +38,6 @@ import io.debezium.config.Field;
  */
 public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Transformation<R> {
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
-    private static final Field ARRAY_ENCODING = Field.create("array.encoding")
-            .withDisplayName("Array encoding")
-            .withEnum(ArrayEncoding.class, ArrayEncoding.ARRAY)
-            .withWidth(ConfigDef.Width.SHORT)
-            .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDescription("The arrays can be encoded using 'array' schema type (the default) ar as a 'struct' (similar to how BSON encodes arrays). "
-                    + "'array' is easier to consume but requires all elements in the array to be of the same type. "
-                    + "Use 'struct' if the arrays in data source mix different types together.");
-
     public static enum ArrayEncoding implements EnumeratedValue {
         ARRAY("array"),
         DOCUMENT("document");
@@ -91,15 +81,17 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
             return mode;
         }
     }
+    private static final Logger LOGGER = LoggerFactory.getLogger(UnwrapFromMongoDbEnvelope.class);
 
+    private static final Field ARRAY_ENCODING = Field.create("array.encoding")
+            .withDisplayName("Array encoding")
+            .withEnum(ArrayEncoding.class, ArrayEncoding.ARRAY)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDescription("The arrays can be encoded using 'array' schema type (the default) ar as a 'struct' (similar to how BSON encodes arrays). "
+                    + "'array' is easier to consume but requires all elements in the array to be of the same type. "
+                    + "Use 'struct' if the arrays in data source mix different types together.");
 
-    private final ExtractField<R> afterExtractor = new ExtractField.Value<R>();
-    private final ExtractField<R> patchExtractor = new ExtractField.Value<R>();
-    private final ExtractField<R> keyExtractor = new ExtractField.Key<R>();
-
-    private MongoDataConverter converter;
-
-    private final Flatten<R> recordFlattener = new Flatten.Value<R>();
     private static final Field FLATTEN_STRUCT = Field.create("flatten.struct")
             .withDisplayName("Flatten struct")
             .withType(ConfigDef.Type.BOOLEAN)
@@ -117,6 +109,13 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
             .withDefault("_")
             .withDescription("Delimiter to concat between field names from the input record when generating field names for the"
                     + "output record.");
+
+    private final ExtractField<R> afterExtractor = new ExtractField.Value<R>();
+    private final ExtractField<R> patchExtractor = new ExtractField.Value<R>();
+    private final ExtractField<R> keyExtractor = new ExtractField.Key<R>();
+
+    private MongoDataConverter converter;
+    private final Flatten<R> recordFlattener = new Flatten.Value<R>();
 
     private boolean flattenStruct;
     private String delimiter;
@@ -238,7 +237,7 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
         final Configuration config = Configuration.from(map);
         final Field.Set configFields = Field.setOf(ARRAY_ENCODING, FLATTEN_STRUCT, DELIMITER);
 
-        if (!config.validateAndRecord(configFields, logger::error)) {
+        if (!config.validateAndRecord(configFields, LOGGER::error)) {
             throw new ConnectException("Unable to validate config.");
         }
 
@@ -253,11 +252,13 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
         patchExtractorConfig.put("field", "patch");
         final Map<String, String> keyExtractorConfig = new HashMap<>();
         keyExtractorConfig.put("field", "id");
-        final Map<String, String> delegateConfig = new HashMap<>();
-        delegateConfig.put("delimiter", delimiter);
+
         afterExtractor.configure(afterExtractorConfig);
         patchExtractor.configure(patchExtractorConfig);
         keyExtractor.configure(keyExtractorConfig);
+
+        final Map<String, String> delegateConfig = new HashMap<>();
+        delegateConfig.put("delimiter", delimiter);
         recordFlattener.configure(delegateConfig);
     }
 }
