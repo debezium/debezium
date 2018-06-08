@@ -319,8 +319,14 @@ public class UnwrapFromMongoDbEnvelopeTest {
 
         assertThat(value.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
-        assertThat(value.schema().field("address").schema()).isEqualTo(SchemaBuilder.struct().field("street", 
-            Schema.OPTIONAL_STRING_SCHEMA).field("zipcode", Schema.OPTIONAL_STRING_SCHEMA).build());
+        assertThat(value.schema().field("address").schema()).isEqualTo(
+                SchemaBuilder.struct()
+                    .name("serverX...dbA.c1.address")
+                    .optional()
+                    .field("street", Schema.OPTIONAL_STRING_SCHEMA)
+                    .field("zipcode", Schema.OPTIONAL_STRING_SCHEMA)
+                    .build()
+        );
         assertThat(value.schema().fields()).hasSize(3);
 
         transformation.close();
