@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -322,16 +323,25 @@ public class ConnectionContext implements AutoCloseable {
          * @return the collection identifiers; never null
          */
         public List<CollectionId> collections() {
+            return collections(s->true, collectionId -> true);
+        }
+
+        public List<CollectionId> collections(Predicate<String> databaseFilter, Predicate<CollectionId> collectionFilter) {
             String replicaSetName = replicaSet.replicaSetName();
             // For each database, get the list of collections ...
             List<CollectionId> collections = new ArrayList<>();
             execute("get collections in databases", primary -> {
                 collections.clear(); // in case we restarted
                 Set<String> databaseNames = databaseNames();
-                MongoUtil.forEachDatabaseName(primary, databaseNames::add);
+                MongoUtil.forEachDatabaseName(primary, dbName -> {
+                    if(databaseFilter.test(dbName)) databaseNames.add(dbName);
+                });
                 databaseNames.forEach(dbName -> {
                     MongoUtil.forEachCollectionNameInDatabase(primary, dbName, collectionName -> {
-                        collections.add(new CollectionId(replicaSetName, dbName, collectionName));
+                        CollectionId id = new CollectionId(replicaSetName, dbName, collectionName);
+                        if(collectionFilter.test(id)){
+                            collections.add(id);
+                        }
                     });
                 });
             });
