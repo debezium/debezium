@@ -51,11 +51,11 @@ public class MySqlDefaultValuePreConverter  {
         }
         switch (column.jdbcType()) {
         case Types.DATE:
-            return convertToLocalDate(value);
+            return convertToLocalDate(column, value);
         case Types.TIMESTAMP:
             return convertToLocalDateTime(column, value);
         case Types.TIMESTAMP_WITH_TIMEZONE:
-            return convertToTimestamp(value);
+            return convertToTimestamp(column, value);
         case Types.TIME:
             return convertToDuration(column, value);
         case Types.BOOLEAN:
@@ -84,25 +84,30 @@ public class MySqlDefaultValuePreConverter  {
 
     /**
      * Converts a string object for an object type of {@link LocalDate}.
-     * 0000-00-00 will be replaced with 1970-01-01;
+     * If the column definition allows null and default value is 0000-00-00, we need return null;
+     * else 0000-00-00 will be replaced with 1970-01-01;
      *
+     * @param column the column definition describing the {@code data} value; never null
      * @param value the string object to be converted into a {@link LocalDate} type;
      * @return the converted value;
      */
-    private Object convertToLocalDate(String value) {
+    private Object convertToLocalDate(Column column, String value) {
+        if (ALL_ZERO_DATE.equals(value) && column.isOptional()) return null;
         if (ALL_ZERO_DATE.equals(value)) value = EPOCH_DATE;
         return LocalDate.from(DateTimeFormatter.ISO_LOCAL_DATE.parse(value));
     }
 
     /**
      * Converts a string object for an object type of {@link LocalDateTime}.
-     * 0000-00-00 00:00:00 will be replaced with 1970-01-01 00:00:00;
+     * If the column definition allows null and default value is 0000-00-00 00:00:00, we need return null,
+     * else 0000-00-00 00:00:00 will be replaced with 1970-01-01 00:00:00;
      *
      * @param column the column definition describing the {@code data} value; never null
      * @param value the string object to be converted into a {@link LocalDateTime} type;
      * @return the converted value;
      */
     private Object convertToLocalDateTime(Column column, String value) {
+        if (ALL_ZERO_TIMESTAMP.equals(value) && column.isOptional()) return null;
         if (ALL_ZERO_TIMESTAMP.equals(value)) value = EPOCH_TIMESTAMP;
         String timestampFormat = timestampFormat(column.length());
         return LocalDateTime.from(DateTimeFormatter.ofPattern(timestampFormat).parse(value));
@@ -110,12 +115,15 @@ public class MySqlDefaultValuePreConverter  {
 
     /**
      * Converts a string object for an object type of {@link Timestamp}.
-     * 0000-00-00 00:00:00 will be replaced with 1970-01-01 00:00:00;
+     * If the column definition allows null and default value is 0000-00-00 00:00:00, we need return null,
+     * else 0000-00-00 00:00:00 will be replaced with 1970-01-01 00:00:00;
      *
+     * @param column the column definition describing the {@code data} value; never null
      * @param value the string object to be converted into a {@link Timestamp} type;
      * @return the converted value;
      */
-    private Object convertToTimestamp(String value) {
+    private Object convertToTimestamp(Column column, String value) {
+        if (ALL_ZERO_TIMESTAMP.equals(value) && column.isOptional()) return null;
         if (ALL_ZERO_TIMESTAMP.equals(value)) value = EPOCH_TIMESTAMP;
         return Timestamp.valueOf(value).toInstant().atZone(ZoneId.systemDefault());
     }
