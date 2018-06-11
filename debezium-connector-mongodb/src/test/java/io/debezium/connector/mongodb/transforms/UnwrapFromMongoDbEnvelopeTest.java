@@ -42,8 +42,7 @@ import io.debezium.util.Collect;
  */
 public class UnwrapFromMongoDbEnvelopeTest {
 
-    private static final String SERVER_NAME = "serverX.";
-    private static final String PREFIX = SERVER_NAME + ".";
+    private static final String SERVER_NAME = "serverX";
     private static final String FLATTEN_STRUCT = "flatten.struct";
     private static final String DELIMITER = "flatten.struct.delimiter";
 
@@ -57,7 +56,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
     @Before
     public void setup() {
         source = new SourceInfo(SERVER_NAME);
-        topicSelector = TopicSelector.defaultSelector(PREFIX);
+        topicSelector = TopicSelector.defaultSelector(SERVER_NAME);
         produced = new ArrayList<>();
         recordMakers = new RecordMakers(source, topicSelector, produced::add, true);
 
@@ -104,7 +103,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
         assertThat(key.get("id")).isEqualTo(objId.toString());
 
         // and then assert value and its schema
-        assertThat(value.schema().name()).isEqualTo("serverX...dbA.c1");
+        assertThat(value.schema().name()).isEqualTo("serverX.dbA.c1");
         assertThat(value.schema()).isSameAs(transformed.valueSchema());
         assertThat(value.get("name")).isEqualTo("Sally");
         assertThat(value.get("id")).isEqualTo(objId.toString());
@@ -321,7 +320,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
         assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("address").schema()).isEqualTo(
                 SchemaBuilder.struct()
-                    .name("serverX...dbA.c1.address")
+                    .name("serverX.dbA.c1.address")
                     .optional()
                     .field("street", Schema.OPTIONAL_STRING_SCHEMA)
                     .field("zipcode", Schema.OPTIONAL_STRING_SCHEMA)
