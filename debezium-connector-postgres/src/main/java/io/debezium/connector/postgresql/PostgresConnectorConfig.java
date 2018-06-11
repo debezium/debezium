@@ -202,7 +202,7 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
          *
          * see the {@code sslmode} Postgres JDBC driver option
          */
-        VERIFY_CA("verify_ca"),
+        VERIFY_CA("verify-ca"),
 
         /**
          * Like VERIFY_CA, but additionally verify that the server certificate matches the host to which the connection is
@@ -210,7 +210,7 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
          *
          * see the {@code sslmode} Postgres JDBC driver option
          */
-        VERIFY_FULL("verify_full");
+        VERIFY_FULL("verify-full");
 
         private final String value;
 
@@ -496,11 +496,11 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                                               .withWidth(Width.MEDIUM)
                                               .withImportance(Importance.MEDIUM)
                                               .withDescription("Whether to use an encrypted connection to Postgres. Options include"
-                                                      + "'disabled' (the default) to use an unencrypted connection; "
-                                                      + "'required' to use a secure (encrypted) connection, and fail if one cannot be established; "
-                                                      + "'verify_ca' like 'required' but additionally verify the server TLS certificate against the configured Certificate Authority "
+                                                      + "'disable' (the default) to use an unencrypted connection; "
+                                                      + "'require' to use a secure (encrypted) connection, and fail if one cannot be established; "
+                                                      + "'verify-ca' like 'required' but additionally verify the server TLS certificate against the configured Certificate Authority "
                                                       + "(CA) certificates, or fail if no valid matching CA certificates are found; or"
-                                                      + "'verify_full' like 'verify_ca' but additionally verify that the server certificate matches the host to which the connection is attempted.");
+                                                      + "'verify-full' like 'verify-ca' but additionally verify that the server certificate matches the host to which the connection is attempted.");
 
     public static final Field SSL_CLIENT_CERT = Field.create(DATABASE_CONFIG_PREFIX + "sslcert")
                                                      .withDisplayName("SSL Client Certificate")
