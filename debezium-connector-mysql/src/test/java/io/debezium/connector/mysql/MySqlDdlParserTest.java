@@ -156,14 +156,20 @@ public class MySqlDdlParserTest {
     @Test
     @FixFor("DBZ-646")
     public void shouldParseTokuDBTable() {
-        String ddl = "CREATE TABLE foo ( " + System.lineSeparator()
+        String ddl1 = "CREATE TABLE foo ( " + System.lineSeparator()
                 + " c1 INTEGER NOT NULL, " + System.lineSeparator()
                 + " c2 VARCHAR(22) " + System.lineSeparator()
-                + ") engine=TokuDB `compression`=tokudb_zlib;";
-        parser.parse(ddl, tables);
-        assertThat(tables.size()).isEqualTo(1);
+                + ") engine=TokuDB compression=tokudb_zlib;";
+        String ddl2 = "CREATE TABLE bar ( " + System.lineSeparator()
+        + " c1 INTEGER NOT NULL, " + System.lineSeparator()
+        + " c2 VARCHAR(22) " + System.lineSeparator()
+        + ") engine=TokuDB compression='tokudb_zlib';";
+        parser.parse(ddl1 + ddl2, tables);
+        assertThat(tables.size()).isEqualTo(2);
         listener.assertNext().createTableNamed("foo").ddlStartsWith("CREATE TABLE foo (");
+        listener.assertNext().createTableNamed("bar").ddlStartsWith("CREATE TABLE bar (");
         parser.parse("DROP TABLE foo", tables);
+        parser.parse("DROP TABLE bar", tables);
         assertThat(tables.size()).isEqualTo(0);
     }
 
@@ -490,22 +496,22 @@ public class MySqlDdlParserTest {
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
 
-        ddl = "ALTER TABLE t ADD CONSTRAINT UNIQUE KEY col_key ('col1');";
+        ddl = "ALTER TABLE t ADD CONSTRAINT UNIQUE KEY col_key (col1);";
         parser.parse(ddl, tables);
 
-        ddl = "ALTER TABLE t ADD CONSTRAINT UNIQUE KEY ('col1');";
+        ddl = "ALTER TABLE t ADD CONSTRAINT UNIQUE KEY (col1);";
         parser.parse(ddl, tables);
 
-        ddl = "ALTER TABLE t ADD UNIQUE KEY col_key ('col1');";
+        ddl = "ALTER TABLE t ADD UNIQUE KEY col_key (col1);";
         parser.parse(ddl, tables);
 
-        ddl = "ALTER TABLE t ADD UNIQUE KEY ('col1');";
+        ddl = "ALTER TABLE t ADD UNIQUE KEY (col1);";
         parser.parse(ddl, tables);
 
-        ddl = "ALTER TABLE t ADD CONSTRAINT 'xx' UNIQUE KEY col_key ('col1');";
+        ddl = "ALTER TABLE t ADD CONSTRAINT xx UNIQUE KEY col_key (col1);";
         parser.parse(ddl, tables);
 
-        ddl = "ALTER TABLE t ADD CONSTRAINT 'xx' UNIQUE KEY ('col1');";
+        ddl = "ALTER TABLE t ADD CONSTRAINT xy UNIQUE KEY (col1);";
         parser.parse(ddl, tables);
     }
 
@@ -819,11 +825,11 @@ public class MySqlDdlParserTest {
     @FixFor("DBZ-667")
     @Test
     public void shouldParseScientificNotationNumber() {
-        String ddl = "CREATE TABLE t (id INT NOT NULL, myvalue DOUBLE DEFAULT 1E-10, PRIMARY KEY (`id`));"
+        String ddl = "CREATE TABLE t (id INT NOT NULL, myvalue DOUBLE DEFAULT 1E10, PRIMARY KEY (`id`));"
                 + "CREATE TABLE t (id INT NOT NULL, myvalue DOUBLE DEFAULT 1.3E-10, PRIMARY KEY (`id`));"
-                + "CREATE TABLE t (id INT NOT NULL, myvalue DOUBLE DEFAULT 1.3E+10, PRIMARY KEY (`id`));"
+                + "CREATE TABLE t (id INT NOT NULL, myvalue DOUBLE DEFAULT 1.4E+10, PRIMARY KEY (`id`));"
                 + "CREATE TABLE t (id INT NOT NULL, myvalue DOUBLE DEFAULT 3E10, PRIMARY KEY (`id`));"
-                + "CREATE TABLE t (id INT NOT NULL, myvalue DOUBLE DEFAULT 1.3e10, PRIMARY KEY (`id`))";
+                + "CREATE TABLE t (id INT NOT NULL, myvalue DOUBLE DEFAULT 1.5e10, PRIMARY KEY (`id`))";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
     }

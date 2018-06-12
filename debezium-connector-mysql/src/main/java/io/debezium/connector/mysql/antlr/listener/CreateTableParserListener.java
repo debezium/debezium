@@ -77,7 +77,7 @@ public class CreateTableParserListener extends MySqlParserBaseListener {
             String columnName = parserCtx.parseName(ctx.uid());
             ColumnEditor columnEditor = Column.editor().name(columnName);
             if (columnDefinitionListener == null) {
-                columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, columnEditor, parserCtx.dataTypeResolver());
+                columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, columnEditor, parserCtx.dataTypeResolver(), parserCtx.getConverters());
                 listeners.add(columnDefinitionListener);
             } else {
                 columnDefinitionListener.setColumnEditor(columnEditor);

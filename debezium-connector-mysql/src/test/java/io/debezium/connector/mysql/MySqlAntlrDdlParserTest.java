@@ -253,7 +253,7 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
         }
 
         public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews) {
-            super(false, includeViews);
+            super(false, includeViews, null);
             this.ddlChanges = changesListener;
         }
     }

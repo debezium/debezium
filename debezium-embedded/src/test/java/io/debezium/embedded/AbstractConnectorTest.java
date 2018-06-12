@@ -296,7 +296,7 @@ public abstract class AbstractConnectorTest implements Testing {
             engine.run();
         });
         try {
-            if (!latch.await(10, TimeUnit.SECONDS)) {
+            if (!latch.await(1000, TimeUnit.SECONDS)) {
                 // maybe it takes more time to start up, so just log a warning and continue
                 logger.warn("The connector did not finish starting its task(s) or complete in the expected amount of time");
             }

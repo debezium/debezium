@@ -409,7 +409,7 @@ tableOption
     | (CHECKSUM | PAGE_CHECKSUM) '='? boolValue=('0' | '1')         #tableOptionChecksum
     | DEFAULT? COLLATE '='? collationName                           #tableOptionCollate
     | COMMENT '='? STRING_LITERAL                                   #tableOptionComment
-    | COMPRESSION '='? STRING_LITERAL                               #tableOptionCompression
+    | COMPRESSION '='? (STRING_LITERAL | ID)                        #tableOptionCompression
     | CONNECTION '='? STRING_LITERAL                                #tableOptionConnection
     | DATA DIRECTORY '='? STRING_LITERAL                            #tableOptionDataDirectory
     | DELAY_KEY_WRITE '='? boolValue=('0' | '1')                    #tableOptionDelay
@@ -1877,6 +1877,7 @@ collationName
 engineName
     : ARCHIVE | BLACKHOLE | CSV | FEDERATED | INNODB | MEMORY 
     | MRG_MYISAM | MYISAM | NDB | NDBCLUSTER | PERFORMANCE_SCHEMA
+    | TOKUDB
     ;
 
 uuidSet

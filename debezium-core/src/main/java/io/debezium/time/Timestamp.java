@@ -65,6 +65,9 @@ public class Timestamp {
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types
      */
     public static long toEpochMillis(Object value, TemporalAdjuster adjuster) {
+        if (value instanceof Long) {
+            return (Long)value;
+        }
         LocalDateTime dateTime = Conversions.toLocalDateTime(value);
         if (adjuster != null) {
             dateTime = dateTime.with(adjuster);

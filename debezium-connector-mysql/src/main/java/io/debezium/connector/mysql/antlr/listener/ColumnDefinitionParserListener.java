@@ -6,18 +6,26 @@
 
 package io.debezium.connector.mysql.antlr.listener;
 
-import io.debezium.antlr.DataTypeResolver;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
-import io.debezium.relational.Column;
-import io.debezium.relational.ColumnEditor;
-import io.debezium.relational.TableEditor;
-import io.debezium.relational.ddl.DataType;
+import static io.debezium.antlr.AntlrDdlParser.getText;
 
 import java.sql.Types;
 import java.util.List;
 
-import static io.debezium.antlr.AntlrDdlParser.getText;
+import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+
+import io.debezium.antlr.DataTypeResolver;
+import io.debezium.connector.mysql.MySqlDefaultValuePreConverter;
+import io.debezium.connector.mysql.MySqlValueConverters;
+import io.debezium.ddl.parser.mysql.generated.MySqlParser;
+import io.debezium.ddl.parser.mysql.generated.MySqlParser.DefaultValueContext;
+import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
+import io.debezium.relational.Column;
+import io.debezium.relational.ColumnEditor;
+import io.debezium.relational.TableEditor;
+import io.debezium.relational.ValueConverter;
+import io.debezium.relational.ddl.DataType;
 
 /**
  * Parser listeners that is parsing column definition part of MySQL statements.
@@ -30,10 +38,14 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
     private final TableEditor tableEditor;
     private ColumnEditor columnEditor;
 
-    public ColumnDefinitionParserListener(TableEditor tableEditor, ColumnEditor columnEditor, DataTypeResolver dataTypeResolver) {
+    private final MySqlValueConverters converters;
+    private final MySqlDefaultValuePreConverter defaultValuePreConverter = new MySqlDefaultValuePreConverter();
+
+    public ColumnDefinitionParserListener(TableEditor tableEditor, ColumnEditor columnEditor, DataTypeResolver dataTypeResolver, MySqlValueConverters converters) {
         this.tableEditor = tableEditor;
         this.columnEditor = columnEditor;
         this.dataTypeResolver = dataTypeResolver;
+        this.converters = converters;
     }
 
     public void setColumnEditor(ColumnEditor columnEditor) {
@@ -78,6 +90,44 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
     public void enterNullNotnull(MySqlParser.NullNotnullContext ctx) {
         columnEditor.optional(ctx.NOT() == null);
         super.enterNullNotnull(ctx);
+    }
+
+    @Override
+    public void enterDefaultValue(DefaultValueContext ctx) {
+        String sign = "";
+        if (ctx.NULL_LITERAL() != null) {
+            return;
+        }
+        if (ctx.unaryOperator() != null) {
+            sign = ctx.unaryOperator().getText();
+        }
+        if (ctx.constant() != null) {
+            if (ctx.constant().stringLiteral() != null) {
+                columnEditor.defaultValue(sign + unquote(ctx.constant().stringLiteral().getText()));
+            }
+            else if (ctx.constant().decimalLiteral() != null) {
+                columnEditor.defaultValue(sign + ctx.constant().decimalLiteral().getText());
+            }
+            else if (ctx.constant().BIT_STRING() != null) {
+                columnEditor.defaultValue(unquoteBinary(ctx.constant().BIT_STRING().getText()));
+            }
+            else if (ctx.constant().booleanLiteral() != null) {
+                columnEditor.defaultValue(ctx.constant().booleanLiteral().getText());
+            }
+            else if (ctx.constant().REAL_LITERAL() != null) {
+                columnEditor.defaultValue(ctx.constant().REAL_LITERAL().getText());
+            }
+        }
+        else if (ctx.timeDefinition() != null) {
+            if (ctx.timeDefinition().CURRENT_TIMESTAMP() != null || ctx.timeDefinition().NOW() != null) {
+                columnEditor.defaultValue("1970-01-01 00:00:00");
+            }
+            else {
+                columnEditor.defaultValue(ctx.timeDefinition().getText());
+            }
+        }
+        convertDefaultValueToSchemaType(columnEditor);
+        super.enterDefaultValue(ctx);
     }
 
     @Override
@@ -190,5 +240,36 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
         else {
             columnEditor.charsetName(charsetName);
         }
+    }
+
+    private void convertDefaultValueToSchemaType(ColumnEditor columnEditor) {
+        final Column column = columnEditor.create();
+        // if converters is not null and the default value is not null, we need to convert default value
+        if (converters != null && columnEditor.defaultValue() != null) {
+            Object defaultValue = columnEditor.defaultValue();
+            final SchemaBuilder schemaBuilder = converters.schemaBuilder(column);
+            if (schemaBuilder == null) {
+                return;
+            }
+            final Schema schema = schemaBuilder.build();
+            //In order to get the valueConverter for this column, we have to create a field;
+            //The index value -1 in the field will never used when converting default value;
+            //So we can set any number here;
+            final Field field = new Field(column.name(), -1, schema);
+            final ValueConverter valueConverter = converters.converter(column, field);
+            if (defaultValue instanceof String) {
+                defaultValue = defaultValuePreConverter.convert(column, (String)defaultValue);
+            }
+            defaultValue = valueConverter.convert(defaultValue);
+            columnEditor.defaultValue(defaultValue);
+        }
+    }
+
+    private String unquote(String stringLiteral) {
+        return stringLiteral.substring(1, stringLiteral.length() - 1);
+    }
+
+    private String unquoteBinary(String stringLiteral) {
+        return stringLiteral.substring(2, stringLiteral.length() - 1);
     }
 }

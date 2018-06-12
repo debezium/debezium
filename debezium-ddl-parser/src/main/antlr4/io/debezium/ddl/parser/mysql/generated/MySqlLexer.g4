@@ -705,6 +705,7 @@ MYISAM:                              'MYISAM';
 NDB:                                 'NDB';
 NDBCLUSTER:                          'NDBCLUSTER';
 PERFORMANCE_SCHEMA:                  'PERFORMANCE_SCHEMA';
+TOKUDB:                              'TOKUDB';
 
 
 // Transaction Levels
@@ -1162,7 +1163,7 @@ fragment CHARSET_NAME:               ARMSCII8 | ASCII | BIG5 | BINARY | CP1250
                                      | UCS2 | UJIS | UTF16 | UTF16LE | UTF32
                                      | UTF8 | UTF8MB4;
 
-fragment EXPONENT_NUM_PART:          'E' '-'? DEC_DIGIT+;
+fragment EXPONENT_NUM_PART:          'E' [\-+]? DEC_DIGIT+;
 fragment ID_LITERAL:                 [A-Z_$0-9]*?[A-Z_$]+?[A-Z_$0-9]*;
 fragment DQUOTA_STRING:              '"' ( '\\'. | '""' | ~('"'| '\\') )* '"';
 fragment SQUOTA_STRING:              '\'' ('\\'. | '\'\'' | ~('\'' | '\\'))* '\'';
