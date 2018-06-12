@@ -61,6 +61,10 @@ public final class Conversions {
             // Assume the value is the epoch day number
             return LocalDate.ofEpochDay((Long)obj);
         }
+        if ( obj instanceof Integer) {
+            // Assume the value is the epoch day number
+            return LocalDate.ofEpochDay((Integer)obj);
+        }
         throw new IllegalArgumentException("Unable to convert to LocalDate from unexpected value '" + obj + "' of type " + obj.getClass().getName());
     }
 

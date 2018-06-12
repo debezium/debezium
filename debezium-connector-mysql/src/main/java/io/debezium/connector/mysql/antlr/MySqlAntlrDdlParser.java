@@ -11,6 +11,7 @@ import io.debezium.antlr.AntlrDdlParserListener;
 import io.debezium.antlr.DataTypeResolver;
 import io.debezium.antlr.DataTypeResolver.DataTypeEntry;
 import io.debezium.connector.mysql.MySqlSystemVariables;
+import io.debezium.connector.mysql.MySqlValueConverters;
 import io.debezium.connector.mysql.antlr.listener.MySqlAntlrDdlParserListener;
 import io.debezium.ddl.parser.mysql.generated.MySqlLexer;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
@@ -40,18 +41,24 @@ import java.util.stream.Collectors;
 public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser> {
 
     private final ConcurrentMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
+    private final MySqlValueConverters converters;
 
     public MySqlAntlrDdlParser() {
         this(true);
     }
 
-    public MySqlAntlrDdlParser(boolean throwErrorsFromTreeWalk) {
-        this(throwErrorsFromTreeWalk, false);
+    public MySqlAntlrDdlParser(MySqlValueConverters converters) {
+        this(true, false, converters);
     }
 
-    public MySqlAntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews) {
+    public MySqlAntlrDdlParser(boolean throwErrorsFromTreeWalk) {
+        this(throwErrorsFromTreeWalk, false, null);
+    }
+
+    public MySqlAntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews, MySqlValueConverters converters) {
         super(throwErrorsFromTreeWalk, includeViews);
         systemVariables = new MySqlSystemVariables();
+        this.converters = converters;
     }
 
     @Override
@@ -289,6 +296,10 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
             }
         }
         return options;
+    }
+
+    public MySqlValueConverters getConverters() {
+        return converters;
     }
 
 }
