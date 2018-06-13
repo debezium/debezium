@@ -35,7 +35,7 @@ public class ChangeEventSourceCoordinator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ChangeEventSourceCoordinator.class);
 
-    private static final Duration SHUTDOWN_WAIT_TIMEOUT = Duration.ofSeconds(60);
+    private static final Duration SHUTDOWN_WAIT_TIMEOUT = Duration.ofSeconds(90);
 
     private final OffsetContext previousOffset;
     private final ErrorHandler errorHandler;
@@ -91,6 +91,7 @@ public class ChangeEventSourceCoordinator {
         running = false;
 
         executor.shutdown();
+        Thread.interrupted();
         boolean isShutdown = executor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
 
         if (!isShutdown) {
