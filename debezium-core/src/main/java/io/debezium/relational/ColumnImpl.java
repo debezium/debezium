@@ -19,7 +19,7 @@ final class ColumnImpl implements Column, Comparable<Column> {
     private final String typeExpression;
     private final String charsetName;
     private final int length;
-    private final Optional<Integer> scale;
+    private final Integer scale;
     private final boolean optional;
     private final boolean autoIncremented;
     private final boolean generated;
@@ -27,14 +27,14 @@ final class ColumnImpl implements Column, Comparable<Column> {
     private final boolean hasDefaultValue;
 
     protected ColumnImpl(String columnName, int position, int jdbcType, int componentType, String typeName, String typeExpression,
-            String charsetName, String defaultCharsetName, int columnLength, Optional<Integer> columnScale,
+            String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
             boolean optional, boolean autoIncremented, boolean generated) {
         this(columnName, position, jdbcType, componentType, typeName, typeExpression, charsetName,
                 defaultCharsetName, columnLength, columnScale, optional, autoIncremented, generated, null, false);
     }
 
     protected ColumnImpl(String columnName, int position, int jdbcType, int nativeType, String typeName, String typeExpression,
-                         String charsetName, String defaultCharsetName, int columnLength, Optional<Integer> columnScale,
+                         String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
                          boolean optional, boolean autoIncremented, boolean generated, Object defaultValue, boolean hasDefaultValue) {
         this.name = columnName;
         this.position = position;
@@ -100,7 +100,7 @@ final class ColumnImpl implements Column, Comparable<Column> {
 
     @Override
     public Optional<Integer> scale() {
-        return scale;
+        return Optional.ofNullable(scale);
     }
 
     @Override
@@ -161,7 +161,9 @@ final class ColumnImpl implements Column, Comparable<Column> {
         sb.append(" ").append(typeName);
         if (length >= 0) {
             sb.append('(').append(length);
-            scale.ifPresent(s -> sb.append(',').append(s));
+            if (scale != null) {
+                sb.append(", ").append(scale);
+            }
             sb.append(')');
         }
         if (charsetName != null && !charsetName.isEmpty()) {
@@ -187,7 +189,7 @@ final class ColumnImpl implements Column, Comparable<Column> {
                 .nativeType(nativeType)
                 .charsetName(charsetName)
                 .length(length())
-                .scale(scale())
+                .scale(scale().orElse(null))
                 .position(position())
                 .optional(isOptional())
                 .autoIncremented(isAutoIncremented())

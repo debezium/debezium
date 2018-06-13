@@ -18,7 +18,7 @@ final class ColumnEditorImpl implements ColumnEditor {
     private String charsetName;
     private String tableCharsetName;
     private int length = Column.UNSET_INT_VALUE;
-    private Optional<Integer> scale = Optional.empty();
+    private Integer scale;
     private int position = 1;
     private boolean optional = true;
     private boolean autoIncremented = false;
@@ -71,7 +71,7 @@ final class ColumnEditorImpl implements ColumnEditor {
 
     @Override
     public Optional<Integer> scale() {
-        return scale;
+        return Optional.ofNullable(scale);
     }
 
     @Override
@@ -156,12 +156,7 @@ final class ColumnEditorImpl implements ColumnEditor {
     }
 
     @Override
-    public ColumnEditorImpl scale(int scale) {
-        return scale(Optional.of(scale));
-    }
-
-    @Override
-    public ColumnEditorImpl scale(Optional<Integer> scale) {
+    public ColumnEditorImpl scale(Integer scale) {
         this.scale = scale;
         return this;
     }
