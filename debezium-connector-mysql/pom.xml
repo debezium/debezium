@@ -145,7 +145,9 @@
                     </run>
                     <build>
                       <from>mysql/mysql-server:${version.mysql.server}</from>
-                      <runCmds>${docker.initimage}</runCmds>
+                      <runCmds>
+                        <run>${docker.initimage}</run>
+                      </runCmds>
                       <assembly>
                         <inline>
                           <fileSets>
@@ -193,7 +195,9 @@
                     </run>
                     <build>
                       <from>mysql/mysql-server:${version.mysql.server}</from>
-                      <runCmds>${docker.initimage}</runCmds>
+                      <runCmds>
+                        <run>${docker.initimage}</run>
+                      </runCmds>
                       <assembly>
                         <inline>
                           <fileSets>
@@ -245,7 +249,9 @@
                     </run>
                     <build>
                       <from>mysql/mysql-server:${version.mysql.server}</from>
-                      <runCmds>${docker.initimage}</runCmds>
+                      <runCmds>
+                        <run>${docker.initimage}</run>
+                      </runCmds>
                       <assembly>
                         <inline>
                           <fileSets>
