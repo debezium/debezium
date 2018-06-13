@@ -85,7 +85,12 @@ public class OracleStreamingChangeEventSource implements StreamingChangeEventSou
     public void commitOffset(Map<String, ?> offset) {
         if (xsOut != null) {
             try {
-                xsOut.setProcessedLowWatermark(convertScnToPosition((long) offset.get(SourceInfo.SCN_KEY)), XStreamOut.DEFAULT_MODE);
+                LOGGER.debug("Recording offsets to Oracle");
+                xsOut.setProcessedLowWatermark(
+                        convertScnToPosition((Long) offset.get(SourceInfo.SCN_KEY)),
+                        XStreamOut.DEFAULT_MODE
+                );
+                LOGGER.trace("Offsets recorded to Oracle");
             }
             catch (StreamsException e) {
                 throw new RuntimeException("Couldn't set processed low watermark", e);

@@ -130,7 +130,8 @@ public abstract class AbstractConnectorTest implements Testing {
             if (engine != null && engine.isRunning()) {
                 engine.stop();
                 try {
-                    engine.await(8, TimeUnit.SECONDS);
+                    // Oracle connector needs longer time to complete shutdown
+                    engine.await(60, TimeUnit.SECONDS);
                 } catch (InterruptedException e) {
                     Thread.interrupted();
                 }
