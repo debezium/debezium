@@ -306,7 +306,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 .nativeType(elementType.getOid())
                 .type(elementTypeName)
                 .optional(true)
-                .scale(column.scale())
+                .scale(column.scale().orElse(null))
                 .length(column.length())
                 .create();
 

@@ -60,7 +60,7 @@ public class MySqlDdlParser extends LegacyDdlParser {
 
     private final ConcurrentMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
     private MySqlValueConverters converters = null;
-    private MySqlDefaultValuePreConverter defaultValuePreConverter = new MySqlDefaultValuePreConverter();
+    private final MySqlDefaultValuePreConverter defaultValuePreConverter = new MySqlDefaultValuePreConverter();
 
     /**
      * Create a new DDL parser for MySQL that does not include view definitions.
@@ -1075,7 +1075,7 @@ public class MySqlDdlParser extends LegacyDdlParser {
                                                  .jdbcType(selectedColumn.jdbcType())
                                                  .type(selectedColumn.typeName(), selectedColumn.typeExpression())
                                                  .length(selectedColumn.length())
-                                                 .scale(selectedColumn.scale())
+                                                 .scale(selectedColumn.scale().orElse(null))
                                                  .autoIncremented(selectedColumn.isAutoIncremented())
                                                  .generated(selectedColumn.isGenerated())
                                                  .optional(selectedColumn.isOptional()).create());
