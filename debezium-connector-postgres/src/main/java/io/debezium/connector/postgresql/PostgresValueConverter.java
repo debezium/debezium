@@ -131,7 +131,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.POINT:
                 return Point.builder();
             case PgOid.MONEY:
-                return Decimal.builder(column.scale());
+                return Decimal.builder(column.scale().get());
             case PgOid.NUMERIC:
                 return numericSchema(column);
             case PgOid.BYTEA:
@@ -207,7 +207,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         if (decimalMode == DecimalMode.PRECISE && isVariableScaleDecimal(column)) {
             return VariableScaleDecimal.builder();
         }
-        return SpecialValueDecimal.builder(decimalMode, column.scale());
+        return SpecialValueDecimal.builder(decimalMode, column.scale().get());
     }
 
     @Override
@@ -341,8 +341,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
 
         newDecimal = value.getDecimalValue().get();
-        if (column.scale() > newDecimal.scale()) {
-          newDecimal = newDecimal.setScale(column.scale());
+        if (column.scale().get() > newDecimal.scale()) {
+          newDecimal = newDecimal.setScale(column.scale().get());
         }
 
         if (isVariableScaleDecimal(column) && mode == DecimalMode.PRECISE) {
@@ -610,8 +610,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     private boolean isVariableScaleDecimal(final Column column) {
-        return (column.scale() == 0 && column.length() == VARIABLE_SCALE_DECIMAL_LENGTH)
-                || (column.scale() == -1 && column.length() == -1);
+        return (column.scale().isPresent() && column.scale().get() == 0 && column.length() == VARIABLE_SCALE_DECIMAL_LENGTH)
+                || (!column.scale().isPresent() && column.length() == -1);
     }
 
     public static Optional<SpecialValueDecimal> toSpecialValue(String value) {
@@ -643,6 +643,6 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     @Override
     protected int getTimePrecision(Column column) {
-        return column.scale();
+        return column.scale().orElse(-1);
     }
 }

@@ -203,9 +203,7 @@ public class TableChanges implements Iterable<TableChange> {
                 document.setNumber("length", column.length());
             }
 
-            if (column.scale() != Column.UNSET_INT_VALUE) {
-                document.setNumber("scale", column.scale());
-            }
+            column.scale().ifPresent(s -> document.setNumber("scale", s));
 
             document.setNumber("position", column.position());
             document.setBoolean("optional", column.isOptional());

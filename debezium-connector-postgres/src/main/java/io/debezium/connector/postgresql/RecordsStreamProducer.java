@@ -465,7 +465,7 @@ public class RecordsStreamProducer extends RecordsProducer {
                                     incomingLength);
                         return true;
                     }
-                    final int localScale = column.scale();
+                    final int localScale = column.scale().get();
                     final int incomingScale = message.getTypeMetadata().getScale();
                     if (localScale != incomingScale) {
                         logger.info("detected new scale for column '{}', old scale was {}, new scale is {}; refreshing table schema", columnName, localScale,
