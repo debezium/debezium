@@ -6,6 +6,7 @@
 package io.debezium.relational;
 
 import java.sql.Types;
+import java.util.Optional;
 
 import io.debezium.annotation.Immutable;
 
@@ -90,9 +91,9 @@ public interface Column extends Comparable<Column> {
     /**
      * Get the scale of the column.
      *
-     * @return the scale, or -1 if the scale does not apply to this type
+     * @return the scale if it applies to this type
      */
-    int scale();
+    Optional<Integer> scale();
 
     /**
      * Determine whether this column is optional.

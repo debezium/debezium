@@ -11,6 +11,7 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -107,8 +108,8 @@ public class OracleConnection extends JdbcConnection {
                 if (column.jdbcType() == Types.TIMESTAMP) {
                     editor.addColumn(
                             column.edit()
-                                .length(column.scale())
-                                .scale(-1)
+                                .length(column.scale().orElse(Column.UNSET_INT_VALUE))
+                                .scale(Optional.empty())
                                 .create()
                             );
                 }

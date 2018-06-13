@@ -840,7 +840,9 @@ public class JdbcConnection implements AutoCloseable {
                         column.jdbcType(rs.getInt(5));
                         column.type(rs.getString(6));
                         column.length(rs.getInt(7));
-                        column.scale(rs.getInt(9));
+                        if (rs.getObject(9) != null) {
+                            column.scale(rs.getInt(9));
+                        }
                         column.optional(isNullable(rs.getInt(11)));
                         column.position(rs.getInt(17));
                         column.autoIncremented("YES".equalsIgnoreCase(rs.getString(23)));

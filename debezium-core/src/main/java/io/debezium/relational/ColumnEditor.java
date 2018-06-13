@@ -6,6 +6,7 @@
 package io.debezium.relational;
 
 import java.sql.Types;
+import java.util.Optional;
 
 import io.debezium.annotation.NotThreadSafe;
 
@@ -87,9 +88,9 @@ public interface ColumnEditor extends Comparable<Column> {
     /**
      * Get the scale of the column.
      * 
-     * @return the scale, or -1 if the scale does not apply to this type
+     * @return the scale if present
      */
-    int scale();
+    Optional<Integer> scale();
 
     /**
      * Determine whether this column is optional.
@@ -195,10 +196,18 @@ public interface ColumnEditor extends Comparable<Column> {
     /**
      * Set the scale of the column.
      * 
-     * @param scale the scale, or -1 if the scale does not apply to this type
+     * @param scale the scale
      * @return this editor so callers can chain methods together
      */
     ColumnEditor scale(int scale);
+
+    /**
+     * Set the scale of the column.
+     *
+     * @param scale the scale, or empty() if the scale does not apply to this type
+     * @return this editor so callers can chain methods together
+     */
+    ColumnEditor scale(Optional<Integer> scale);
 
     /**
      * Set whether the column's values are optional (e.g., can contain nulls).

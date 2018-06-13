@@ -61,7 +61,7 @@ public class OracleDdlParserTest {
         assertThat(score.jdbcType()).isEqualTo(Types.NUMERIC);
         assertThat(score.typeName()).isEqualTo("NUMBER");
         assertThat(score.length()).isEqualTo(6);
-        assertThat(score.scale()).isEqualTo(2);
+        assertThat(score.scale().get()).isEqualTo(2);
 
         assertThat(table.columns()).hasSize(4);
         assertThat(table.isPrimaryKeyColumn("ID"));

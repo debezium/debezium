@@ -6,6 +6,7 @@
 package io.debezium.connector.mysql;
 
 import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -1619,7 +1620,7 @@ public class MySqlDdlParserTest {
         assertThat(column.jdbcType()).isEqualTo(jdbcType);
         assertThat(column.length()).isEqualTo(length);
         assertThat(column.charsetName()).isEqualTo(charsetName);
-        assertThat(column.scale()).isEqualTo(-1);
+        assertFalse(column.scale().isPresent());
         assertThat(column.isOptional()).isEqualTo(optional);
         assertThat(column.isGenerated()).isFalse();
         assertThat(column.isAutoIncremented()).isFalse();
@@ -1632,7 +1633,12 @@ public class MySqlDdlParserTest {
         assertThat(column.typeName()).isEqualTo(typeName);
         assertThat(column.jdbcType()).isEqualTo(jdbcType);
         assertThat(column.length()).isEqualTo(length);
-        assertThat(column.scale()).isEqualTo(scale);
+        if (scale == Column.UNSET_INT_VALUE) {
+            assertFalse(column.scale().isPresent());
+        }
+        else {
+            assertThat(column.scale().get()).isEqualTo(scale);
+        }
         assertThat(column.isOptional()).isEqualTo(optional);
         assertThat(column.isGenerated()).isEqualTo(generated);
         assertThat(column.isAutoIncremented()).isEqualTo(autoIncremented);

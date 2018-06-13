@@ -6,6 +6,7 @@
 package io.debezium.relational;
 
 import java.sql.Types;
+import java.util.Optional;
 
 final class ColumnEditorImpl implements ColumnEditor {
 
@@ -17,7 +18,7 @@ final class ColumnEditorImpl implements ColumnEditor {
     private String charsetName;
     private String tableCharsetName;
     private int length = Column.UNSET_INT_VALUE;
-    private int scale = Column.UNSET_INT_VALUE;
+    private Optional<Integer> scale = Optional.empty();
     private int position = 1;
     private boolean optional = true;
     private boolean autoIncremented = false;
@@ -69,7 +70,7 @@ final class ColumnEditorImpl implements ColumnEditor {
     }
 
     @Override
-    public int scale() {
+    public Optional<Integer> scale() {
         return scale;
     }
 
@@ -156,7 +157,11 @@ final class ColumnEditorImpl implements ColumnEditor {
 
     @Override
     public ColumnEditorImpl scale(int scale) {
-        assert scale >= -1;
+        return scale(Optional.of(scale));
+    }
+
+    @Override
+    public ColumnEditorImpl scale(Optional<Integer> scale) {
         this.scale = scale;
         return this;
     }
