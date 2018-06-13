@@ -222,7 +222,15 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     @Test
     public void timeTypes() throws Exception {
         int expectedRecordCount = 0;
-        connection.execute("INSERT INTO debezium.type_time VALUES (1, '27-MAR-2018', '27-MAR-2018 12:34:56.00789', '27-MAR-2018 01:34:56.00789 am -11:00', '27-MAR-2018 01:34:56.00789', INTERVAL '-3-6' YEAR TO MONTH, INTERVAL '-1 2:3:4.56' DAY TO SECOND)");
+        connection.execute("INSERT INTO debezium.type_time VALUES ("
+                + "1"
+                + ", TO_DATE('27-MAR-2018', 'dd-MON-yyyy')"
+                + ", TO_TIMESTAMP('27-MAR-2018 12:34:56.00789', 'dd-MON-yyyy HH24:MI:SS.FF5')"
+                + ", TO_TIMESTAMP_TZ('27-MAR-2018 01:34:56.00789 -11:00', 'dd-MON-yyyy HH24:MI:SS.FF5 TZH:TZM')"
+                + ", TO_TIMESTAMP_TZ('27-MAR-2018 01:34:56.00789', 'dd-MON-yyyy HH24:MI:SS.FF5')"
+                + ", INTERVAL '-3-6' YEAR TO MONTH"
+                + ", INTERVAL '-1 2:3:4.56' DAY TO SECOND"
+                + ")");
         connection.execute("COMMIT");
 
         Testing.debug("Inserted");
