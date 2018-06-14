@@ -1406,29 +1406,31 @@ public class MySqlDdlParserTest {
 
     @Test
     public void parseDdlForDecAndFixed() {
-        String ddl = "CREATE TABLE t ( c1 DEC(2) NOT NULL, c2 FIXED(1,0) NOT NULL);";
+        String ddl = "CREATE TABLE t ( c1 DEC(2) NOT NULL, c2 FIXED(1,0) NOT NULL, c3 NUMERIC(3) NOT NULL);";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
         Table t = tables.forTable(new TableId(null, null, "t"));
         assertThat(t).isNotNull();
-        assertThat(t.columnNames()).containsExactly("c1", "c2");
+        assertThat(t.columnNames()).containsExactly("c1", "c2", "c3");
         assertThat(t.primaryKeyColumnNames()).isEmpty();
         assertColumn(t, "c1", "DEC", Types.DECIMAL, 2, 0, false, false, false);
         assertColumn(t, "c2", "FIXED", Types.DECIMAL, 1, 0, false, false, false);
+        assertColumn(t, "c3", "NUMERIC", Types.NUMERIC, 3, 0, false, false, false);
     }
 
     @Test
-    @FixFor("DBZ-615")
+    @FixFor({"DBZ-615", "DBZ-727"})
     public void parseDdlForUnscaledDecAndFixed() {
-        String ddl = "CREATE TABLE t ( c1 DEC NOT NULL, c2 FIXED(3) NOT NULL);";
+        String ddl = "CREATE TABLE t ( c1 DEC NOT NULL, c2 FIXED(3) NOT NULL, c3 NUMERIC NOT NULL);";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
         Table t = tables.forTable(new TableId(null, null, "t"));
         assertThat(t).isNotNull();
-        assertThat(t.columnNames()).containsExactly("c1", "c2");
+        assertThat(t.columnNames()).containsExactly("c1", "c2", "c3");
         assertThat(t.primaryKeyColumnNames()).isEmpty();
         assertColumn(t, "c1", "DEC", Types.DECIMAL, 10, 0, false, false, false);
         assertColumn(t, "c2", "FIXED", Types.DECIMAL, 3, 0, false, false, false);
+        assertColumn(t, "c3", "NUMERIC", Types.NUMERIC, 10, 0, false, false, false);
     }
 
     @Test

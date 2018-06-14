@@ -878,7 +878,7 @@ public class MySqlDdlParser extends DdlParser {
             column.charsetName("utf8");
         }
 
-        if (Types.DECIMAL == dataType.jdbcType()) {
+        if (Types.DECIMAL == dataType.jdbcType() || Types.NUMERIC == dataType.jdbcType()) {
             if (dataType.length() == -1) {
                 column.length(10);
             }
