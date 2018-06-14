@@ -18,10 +18,12 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
 
+import org.apache.kafka.connect.data.ConnectSchema;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Schema.Type;
@@ -428,6 +430,16 @@ public class VerifyRecord {
         assertEquals(actualValueSchema, actual.value(), expected.value(), "value", "", ignoreFields, comparatorsByName, comparatorsBySchemaName);
     }
 
+    public static void assertConnectSchemasAreEqual(Schema schema1, Schema schema2) {
+        if (!areConnectSchemasEqual(schema1, schema2)) {
+            // failing with an assertion message that shows the difference
+            assertThat(SchemaUtil.asString(schema1)).isEqualTo(SchemaUtil.asString(schema2));
+
+            // fall-back just in case
+            fail(SchemaUtil.asString(schema1) + " was not equal to " + SchemaUtil.asString(schema2));
+        }
+    }
+
     protected static String nameOf(String keyOrValue, String field) {
         if (field == null || field.trim().isEmpty()) {
             return keyOrValue;
@@ -814,7 +826,11 @@ public class VerifyRecord {
 
     protected static void assertEquals(Object o1, Object o2) {
         // assertThat(o1).isEqualTo(o2);
-        if (!equals(o1, o2)) {
+
+        if (o1 instanceof Schema && o2 instanceof Schema) {
+            assertConnectSchemasAreEqual((Schema) o1, (Schema) o2);
+        }
+        else if (!equals(o1, o2)) {
             fail(SchemaUtil.asString(o1) + " was not equal to " + SchemaUtil.asString(o2));
         }
     }
@@ -823,7 +839,9 @@ public class VerifyRecord {
     protected static boolean equals(Object o1, Object o2) {
         if (o1 == o2) return true;
         if (o1 == null) return o2 == null ? true : false;
-        if (o2 == null) return false;
+        if (o2 == null) {
+            return false;
+        }
         if (o1 instanceof ByteBuffer) {
             o1 = ((ByteBuffer) o1).array();
         }
@@ -841,22 +859,31 @@ public class VerifyRecord {
         if (o1 instanceof Map && o2 instanceof Map) {
             Map<String, Object> m1 = (Map<String, Object>) o1;
             Map<String, Object> m2 = (Map<String, Object>) o2;
-            if (!m1.keySet().equals(m2.keySet())) return false;
+            if (!m1.keySet().equals(m2.keySet())) {
+                return false;
+            }
+
             for (Map.Entry<String, Object> entry : m1.entrySet()) {
                 Object v1 = entry.getValue();
                 Object v2 = m2.get(entry.getKey());
-                if (!equals(v1, v2)) return false;
+                if (!equals(v1, v2)) {
+                    return false;
+                }
             }
             return true;
         }
         if (o1 instanceof Collection && o2 instanceof Collection) {
             Collection<Object> m1 = (Collection<Object>) o1;
             Collection<Object> m2 = (Collection<Object>) o2;
-            if (m1.size() != m2.size()) return false;
+            if (m1.size() != m2.size()) {
+                return false;
+            }
             Iterator<?> iter1 = m1.iterator();
             Iterator<?> iter2 = m2.iterator();
             while (iter1.hasNext() && iter2.hasNext()) {
-                if (!equals(iter1.next(), iter2.next())) return false;
+                if (!equals(iter1.next(), iter2.next())) {
+                    return false;
+                }
             }
             return true;
         }
@@ -867,14 +894,19 @@ public class VerifyRecord {
             // does not work for non-primitive values.
             Struct struct1 = (Struct) o1;
             Struct struct2 = (Struct) o2;
-            if (!Objects.equals(struct1.schema(), struct2.schema())) {
+            if (!areConnectSchemasEqual(struct1.schema(), struct2.schema())) {
                 return false;
             }
             Object[] array1 = valuesFor(struct1);
             Object[] array2 = valuesFor(struct2);
-            boolean result = deepEquals(array1, array2);
-            return result;
+
+            return deepEquals(array1, array2);
         }
+
+        if (o1 instanceof ConnectSchema && o1 instanceof ConnectSchema) {
+            return areConnectSchemasEqual((ConnectSchema)o1, (ConnectSchema)o2);
+        }
+
         return Objects.equals(o1, o2);
     }
 
@@ -939,5 +971,69 @@ public class VerifyRecord {
         else
             eq = equals(e1, e2);
         return eq;
+    }
+
+    private static boolean areConnectSchemasEqual(Schema schema1, Schema schema2) {
+        if (schema1 == schema2) {
+            return true;
+        }
+        if (schema1 == null && schema2 != null || schema1 != null && schema2 == null) {
+            return false;
+        }
+        if (schema1.getClass() != schema2.getClass()) {
+            return false;
+        }
+
+        boolean keySchemasEqual = true;
+        boolean valueSchemasEqual = true;
+        boolean fieldsEqual = true;
+        if (schema1.type() == Type.MAP && schema2.type() == Type.MAP) {
+            keySchemasEqual = Objects.equals(schema1.keySchema(), schema2.keySchema());
+            valueSchemasEqual = Objects.equals(schema1.valueSchema(), schema2.valueSchema());
+        }
+        else if (schema1.type() == Type.ARRAY && schema2.type() == Type.ARRAY) {
+            valueSchemasEqual = Objects.equals(schema1.valueSchema(), schema2.valueSchema());
+        }
+        else if (schema1.type() == Type.STRUCT && schema2.type() == Type.STRUCT) {
+            fieldsEqual = areFieldListsEqual(schema1.fields(), schema2.fields());
+        }
+
+        boolean equal = Objects.equals(schema1.isOptional(), schema2.isOptional()) &&
+                Objects.equals(schema1.version(), schema2.version()) &&
+                Objects.equals(schema1.name(), schema2.name()) &&
+                Objects.equals(schema1.doc(), schema2.doc()) &&
+                Objects.equals(schema1.type(), schema2.type()) &&
+                Objects.deepEquals(schema1.defaultValue(), schema2.defaultValue()) &&
+                fieldsEqual &&
+                keySchemasEqual &&
+                valueSchemasEqual &&
+                Objects.equals(schema1.parameters(), schema2.parameters());
+
+        return equal;
+    }
+
+    private static boolean areFieldListsEqual(List<Field> fields1, List<Field> fields2) {
+        if (fields1 == null && fields2 != null || fields1 != null && fields2 == null) {
+            return false;
+        }
+
+        if (fields1.size() != fields2.size()) {
+            return false;
+        }
+
+        for(int i = 0; i < fields1.size(); i++) {
+            Field field1 = fields1.get(i);
+            Field field2 = fields2.get(i);
+
+            boolean equal = Objects.equals(field1.index(), field2.index()) &&
+                    Objects.equals(field1.name(), field2.name()) &&
+                    areConnectSchemasEqual(field1.schema(), field2.schema());
+
+            if (!equal) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

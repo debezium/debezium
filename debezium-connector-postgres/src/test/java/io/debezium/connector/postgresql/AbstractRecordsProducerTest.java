@@ -51,6 +51,7 @@ import io.debezium.data.Bits;
 import io.debezium.data.Json;
 import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
+import io.debezium.data.VerifyRecord;
 import io.debezium.data.Xml;
 import io.debezium.data.geometry.Geography;
 import io.debezium.data.geometry.Geometry;
@@ -547,12 +548,12 @@ public abstract class AbstractRecordsProducerTest {
     }
 
     protected static class SchemaAndValueField {
-        private final Object schema;
+        private final Schema schema;
         private final Object value;
         private final String fieldName;
         private Supplier<Boolean> assertValueOnlyIf = null;
 
-        public SchemaAndValueField(String fieldName, Object schema, Object value) {
+        public SchemaAndValueField(String fieldName, Schema schema, Object value) {
             this.schema = schema;
             this.value = value;
             this.fieldName = fieldName;
@@ -632,7 +633,7 @@ public abstract class AbstractRecordsProducerTest {
             Schema schema = content.schema();
             Field field = schema.field(fieldName);
             assertNotNull(fieldName + " not found in schema " + schema, field);
-            assertEquals("Schema for " + field.name() + " does not match the actual value", this.schema, field.schema());
+            VerifyRecord.assertConnectSchemasAreEqual(this.schema, field.schema());
         }
     }
 
