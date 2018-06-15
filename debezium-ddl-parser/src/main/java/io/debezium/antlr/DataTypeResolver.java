@@ -6,21 +6,22 @@
 
 package io.debezium.antlr;
 
-import io.debezium.relational.ddl.DataType;
-import io.debezium.relational.ddl.DataTypeBuilder;
-import io.debezium.text.ParsingException;
-import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.tree.TerminalNode;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.tree.TerminalNode;
+
+import io.debezium.relational.ddl.DataType;
+import io.debezium.relational.ddl.DataTypeBuilder;
+import io.debezium.text.ParsingException;
+
 /**
  * A resolver for DBMS data types.
  *
- * It's main purpose is to match corresponding JDBC data type, resolve a name of parsed data type,
+ * Its main purpose is to match corresponding JDBC data type, resolve a name of parsed data type,
  * and optionally predefine default values for length and scale for DBMS data type.
  *
  * @author Roman Kuchár <kucharrom@gmail.com>.
@@ -170,7 +171,7 @@ public class DataTypeResolver {
          * @param defaultLength default length for data type.
          * @return instance of this class, so the calls may be chained.
          */
-        public DataTypeEntry setDefualtLengthDimmension(int defaultLength) {
+        public DataTypeEntry setDefaultLengthDimension(int defaultLength) {
             this.defaultLength = defaultLength;
             return this;
         }
@@ -187,6 +188,5 @@ public class DataTypeResolver {
             this.defaultScale = defaultScale;
             return this;
         }
-
     }
 }

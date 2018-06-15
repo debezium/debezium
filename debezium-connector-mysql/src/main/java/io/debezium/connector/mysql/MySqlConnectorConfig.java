@@ -1047,10 +1047,15 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                                 DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL,
                                                                 DatabaseHistory.DDL_FILTER);
 
+    private final Configuration config;
+
     private final SnapshotLockingMode snapshotLockingMode;
+    private final DdlParsingMode ddlParsingMode;
 
     public MySqlConnectorConfig(Configuration config) {
         super(config);
+
+        this.config = config;
 
         // If deprecated snapshot.minimal.locking property is explicitly configured
         if (config.hasKey(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING.name())) {
@@ -1064,10 +1069,25 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
             // Otherwise use configured snapshot.locking.mode configuration.
             this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
         }
+
+        String ddlParsingModeStr = config.getString(MySqlConnectorConfig.DDL_PARSER_MODE);
+        this.ddlParsingMode = DdlParsingMode.parse(ddlParsingModeStr, MySqlConnectorConfig.DDL_PARSER_MODE.defaultValueAsString());
+    }
+
+    @Deprecated
+    /**
+     * @deprecated Typed accessors should be used instead
+     */
+    public Configuration getConfig() {
+        return config;
     }
 
     public SnapshotLockingMode getSnapshotLockingMode() {
         return this.snapshotLockingMode;
+    }
+
+    public DdlParsingMode getDdlParsingMode() {
+        return ddlParsingMode;
     }
 
     protected static ConfigDef configDef() {

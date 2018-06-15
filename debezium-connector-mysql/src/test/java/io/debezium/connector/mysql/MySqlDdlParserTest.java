@@ -152,7 +152,7 @@ public class MySqlDdlParserTest {
         Column column = table.columnWithName("v1");
         assertThat(column.typeUsesCharset()).isTrue();
     }
-    
+
     @Test
     @FixFor("DBZ-646")
     public void shouldParseTokuDBTable() {
@@ -705,7 +705,7 @@ public class MySqlDdlParserTest {
     }
 
     @Test
-    public void shouldParseButNotSetUserVariableWithHyphenDelimiter() {
+    public void shouldParseButNotSetUserVariableWithUnderscoreDelimiter() {
         String ddl = "SET @a_b_c_d:=1";
         parser.parse(ddl, tables);
         assertLocalVariable("a_b_c_d", null);
@@ -714,7 +714,7 @@ public class MySqlDdlParserTest {
     }
 
     @Test
-    public void shouldParseVariableWithHyphenDelimiter() {
+    public void shouldParseVariableWithUnderscoreDelimiter() {
         String ddl = "SET a_b_c_d=1";
         parser.parse(ddl, tables);
         assertSessionVariable("a_b_c_d", "1");

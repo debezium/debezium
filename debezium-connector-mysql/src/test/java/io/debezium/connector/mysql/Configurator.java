@@ -87,7 +87,7 @@ public class Configurator {
         Configuration config = configBuilder.build();
         String serverName = config.getString(MySqlConnectorConfig.SERVER_NAME);
 
-        return new MySqlSchema(config, serverName, null, false,
+        return new MySqlSchema(new MySqlConnectorConfig(config), serverName, null, false,
                 TopicSelector.defaultSelector(serverName, "__debezium-heartbeat"));
     }
 }

@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.BigIntUnsignedHandlingMode;
-import io.debezium.connector.mysql.MySqlConnectorConfig.DdlParsingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.DecimalHandlingMode;
 import io.debezium.connector.mysql.MySqlSystemVariables.MySqlScope;
 import io.debezium.document.Document;
@@ -92,7 +91,9 @@ public class MySqlSchema {
      *          may be null if not needed
      * @param tableIdCaseInsensitive true if table lookup ignores letter case
      */
-    public MySqlSchema(Configuration config, String serverName, Predicate<String> gtidFilter, boolean tableIdCaseInsensitive, TopicSelector topicSelector) {
+    public MySqlSchema(MySqlConnectorConfig configuration, String serverName, Predicate<String> gtidFilter, boolean tableIdCaseInsensitive, TopicSelector topicSelector) {
+        Configuration config = configuration.getConfig();
+
         this.filters = new Filters(config);
         this.tables = new Tables(tableIdCaseInsensitive);
         this.topicSelector = topicSelector;
@@ -110,10 +111,7 @@ public class MySqlSchema {
         MySqlValueConverters valueConverters = new MySqlValueConverters(decimalMode, timePrecisionMode, bigIntUnsignedMode);
         this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameAdjuster, SourceInfo.SCHEMA);
 
-        String ddlParsingModeStr = config.getString(MySqlConnectorConfig.DDL_PARSER_MODE);
-        DdlParsingMode parsingMode = DdlParsingMode.parse(ddlParsingModeStr, MySqlConnectorConfig.DDL_PARSER_MODE.defaultValueAsString());
-
-        this.ddlParser = parsingMode.getNewParserInstance(valueConverters);
+        this.ddlParser = configuration.getDdlParsingMode().getNewParserInstance(valueConverters);
         this.ddlChanges = this.ddlParser.getDdlChanges();
 
         // Set up the server name and schema prefix ...
