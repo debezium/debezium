@@ -6,11 +6,8 @@
 
 package io.debezium.antlr;
 
-import io.debezium.relational.TableId;
-import io.debezium.relational.Tables;
-import io.debezium.relational.ddl.AbstractDdlParser;
-import io.debezium.text.MultipleParsingExceptions;
-import io.debezium.text.ParsingException;
+import java.util.Collection;
+
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CodePointCharStream;
@@ -23,7 +20,11 @@ import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 
-import java.util.Collection;
+import io.debezium.relational.TableId;
+import io.debezium.relational.Tables;
+import io.debezium.relational.ddl.AbstractDdlParser;
+import io.debezium.text.MultipleParsingExceptions;
+import io.debezium.text.ParsingException;
 
 /**
  * Base implementation of ANTLR based parsers.
@@ -49,7 +50,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     private AntlrDdlParserListener antlrDdlParserListener;
 
     protected Tables databaseTables;
-    protected DataTypeResolver dataTypeResolver = new DataTypeResolver();
+    protected DataTypeResolver dataTypeResolver;
 
     public AntlrDdlParser(boolean throwErrorsFromTreeWalk) {
         this(throwErrorsFromTreeWalk, false);
@@ -68,7 +69,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
         L lexer = createNewLexerInstance(new CaseChangingCharStream(ddlContentCharStream, isGrammarInUpperCase()));
         P parser = createNewParserInstance(new CommonTokenStream(lexer));
 
-        initDataTypes(dataTypeResolver);
+        dataTypeResolver = initializeDataTypeResolver();
 
         // remove default console output printing error listener
         parser.removeErrorListener(ConsoleErrorListener.INSTANCE);
@@ -145,7 +146,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      *
      * @param dataTypeResolver data type resolver
      */
-    protected abstract void initDataTypes(DataTypeResolver dataTypeResolver);
+    protected abstract DataTypeResolver initializeDataTypeResolver();
 
     /**
      * Returns actual tables schema.

@@ -6,7 +6,7 @@
 
 package io.debezium.antlr;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +14,9 @@ import java.util.Map;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
+import io.debezium.annotation.Immutable;
+import io.debezium.annotation.ThreadSafe;
+import io.debezium.relational.Column;
 import io.debezium.relational.ddl.DataType;
 import io.debezium.relational.ddl.DataTypeBuilder;
 import io.debezium.text.ParsingException;
@@ -26,29 +29,14 @@ import io.debezium.text.ParsingException;
  *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
+@ThreadSafe
+@Immutable
 public class DataTypeResolver {
 
-    private final Map<String, List<DataTypeEntry>> contextDataTypesMap = new HashMap<>();
+    private final Map<String, List<DataTypeEntry>> contextDataTypesMap;
 
-    /**
-     * Registers a data type entries, which will be used for resolving phase.
-     *
-     * @param contextClassCanonicalName canonical name of context instance, in which the data type entry will appear; may not be null
-     * @param dataTypeEntries list of {@link DataTypeEntry} definitions; may not be null
-     */
-    public void registerDataTypes(String contextClassCanonicalName, List<DataTypeEntry> dataTypeEntries) {
-        contextDataTypesMap.put(contextClassCanonicalName, dataTypeEntries);
-    }
-
-    /**
-     * Registers a data type entry, which will be used for resolving phase.
-     *
-     * @param contextClassCanonicalName canonical name of context instance, in which the data type entry will appear; may not be null
-     * @param dataTypeEntry {@link DataTypeEntry} definitions; may not be null
-     */
-    public void registerDataType(String contextClassCanonicalName, DataTypeEntry dataTypeEntry) {
-        List<DataTypeEntry> dataTypeEntries = contextDataTypesMap.computeIfAbsent(contextClassCanonicalName, k -> new ArrayList<>());
-        dataTypeEntries.add(dataTypeEntry);
+    private DataTypeResolver(Map<String, List<DataTypeEntry>> contextDataTypesMap) {
+        this.contextDataTypesMap = Collections.unmodifiableMap(contextDataTypesMap);
     }
 
     /**
@@ -108,6 +96,24 @@ public class DataTypeResolver {
         }
     }
 
+    public static class Builder {
+
+        private final Map<String, List<DataTypeEntry>> contextDataTypesMap = new HashMap<>();
+        /**
+         * Registers a data type entries, which will be used for resolving phase.
+         *
+         * @param contextClassCanonicalName canonical name of context instance, in which the data type entry will appear; may not be null
+         * @param dataTypeEntries list of {@link DataTypeEntry} definitions; may not be null
+         */
+        public void registerDataTypes(String contextClassCanonicalName, List<DataTypeEntry> dataTypeEntries) {
+            contextDataTypesMap.put(contextClassCanonicalName, Collections.unmodifiableList(dataTypeEntries));
+        }
+
+        public DataTypeResolver build() {
+            return new DataTypeResolver(contextDataTypesMap);
+        }
+    }
+
     /**
      * DTO class for definition of data type.
      */
@@ -125,14 +131,13 @@ public class DataTypeResolver {
          * Token identifiers for optional suffix tokens for DBMS data type.
          */
         private Integer[] suffixTokens = null;
-        private int defaultLength = -1;
-        private int defaultScale = -1;
+        private int defaultLength = Column.UNSET_INT_VALUE;
+        private int defaultScale = Column.UNSET_INT_VALUE;
 
         public DataTypeEntry(int jdbcDataType, Integer... dbmsDataTypeTokenIdentifiers) {
             this.dbmsDataTypeTokenIdentifiers = dbmsDataTypeTokenIdentifiers;
             this.jdbcDataType = jdbcDataType;
         }
-
 
         Integer[] getDbmsDataTypeTokenIdentifiers() {
             return dbmsDataTypeTokenIdentifiers;
