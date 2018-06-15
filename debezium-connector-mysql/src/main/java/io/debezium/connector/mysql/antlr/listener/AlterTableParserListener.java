@@ -6,6 +6,13 @@
 
 package io.debezium.connector.mysql.antlr.listener;
 
+import static io.debezium.antlr.AntlrDdlParser.getText;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.antlr.v4.runtime.tree.ParseTreeListener;
+
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
@@ -14,15 +21,9 @@ import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 import io.debezium.text.ParsingException;
-import org.antlr.v4.runtime.tree.ParseTreeListener;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static io.debezium.antlr.AntlrDdlParser.getText;
 
 /**
- * Parser listeners that is parsing MySQL ALTER TABLE statements.
+ * Parser listener that is parsing MySQL ALTER TABLE statements.
  *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
@@ -30,7 +31,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
 
     private static final int STARTING_INDEX = 1;
 
-    private final MySqlAntlrDdlParser parserCtx;
+    private final MySqlAntlrDdlParser parser;
     private final List<ParseTreeListener> listeners;
 
     private TableEditor tableEditor;
@@ -39,15 +40,15 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
     private List<ColumnEditor> columnEditors;
     private int parsingColumnIndex = STARTING_INDEX;
 
-    public AlterTableParserListener(MySqlAntlrDdlParser parserCtx, List<ParseTreeListener> listeners) {
-        this.parserCtx = parserCtx;
+    public AlterTableParserListener(MySqlAntlrDdlParser parser, List<ParseTreeListener> listeners) {
+        this.parser = parser;
         this.listeners = listeners;
     }
 
     @Override
     public void enterAlterTable(MySqlParser.AlterTableContext ctx) {
-        TableId tableId = parserCtx.parseQualifiedTableId(ctx.tableName().fullId());
-        tableEditor = parserCtx.databaseTables().editTable(tableId);
+        TableId tableId = parser.parseQualifiedTableId(ctx.tableName().fullId());
+        tableEditor = parser.databaseTables().editTable(tableId);
         if (tableEditor == null) {
             throw new ParsingException(null, "Trying to alter table " + tableId.toString()
                     + ", which does not exists. Query: " + getText(ctx));
@@ -57,20 +58,20 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
 
     @Override
     public void exitAlterTable(MySqlParser.AlterTableContext ctx) {
-        parserCtx.runIfNotNull(() -> {
+        parser.runIfNotNull(() -> {
             listeners.remove(columnDefinitionListener);
-            parserCtx.databaseTables().overwriteTable(tableEditor.create());
-            parserCtx.signalAlterTable(tableEditor.tableId(), null, ctx.getParent());
+            parser.databaseTables().overwriteTable(tableEditor.create());
+            parser.signalAlterTable(tableEditor.tableId(), null, ctx.getParent());
         }, tableEditor);
         super.exitAlterTable(ctx);
     }
 
     @Override
     public void enterAlterByAddColumn(MySqlParser.AlterByAddColumnContext ctx) {
-        parserCtx.runIfNotNull(() -> {
-            String columnName = parserCtx.parseName(ctx.uid(0));
+        parser.runIfNotNull(() -> {
+            String columnName = parser.parseName(ctx.uid(0));
             ColumnEditor columnEditor = Column.editor().name(columnName);
-            columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, columnEditor, parserCtx.dataTypeResolver(), parserCtx.getConverters());
+            columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, columnEditor, parser.dataTypeResolver(), parser.getConverters());
             listeners.add(columnDefinitionListener);
         }, tableEditor);
         super.exitAlterByAddColumn(ctx);
@@ -78,7 +79,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
 
     @Override
     public void exitAlterByAddColumn(MySqlParser.AlterByAddColumnContext ctx) {
-        parserCtx.runIfNotNull(() -> {
+        parser.runIfNotNull(() -> {
             Column column = columnDefinitionListener.getColumn();
             tableEditor.addColumn(column);
 
@@ -87,7 +88,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
                 tableEditor.reorderColumn(columnName, null);
             }
             else if (ctx.AFTER() != null) {
-                String afterColumn = parserCtx.parseName(ctx.uid(1));
+                String afterColumn = parser.parseName(ctx.uid(1));
                 tableEditor.reorderColumn(columnName, afterColumn);
             }
         }, tableEditor, columnDefinitionListener);
@@ -97,13 +98,13 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
     @Override
     public void enterAlterByAddColumns(MySqlParser.AlterByAddColumnsContext ctx) {
         // multiple columns are added. Initialize a list of column editors for them
-        parserCtx.runIfNotNull(() -> {
+        parser.runIfNotNull(() -> {
             columnEditors = new ArrayList<>(ctx.uid().size());
             for (MySqlParser.UidContext uidContext : ctx.uid()) {
-                String columnName = parserCtx.parseName(uidContext);
+                String columnName = parser.parseName(uidContext);
                 columnEditors.add(Column.editor().name(columnName));
             }
-            columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, columnEditors.get(0), parserCtx.dataTypeResolver(), parserCtx.getConverters());
+            columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, columnEditors.get(0), parser.dataTypeResolver(), parser.getConverters());
             listeners.add(columnDefinitionListener);
         }, tableEditor);
         super.enterAlterByAddColumns(ctx);
@@ -111,7 +112,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
 
     @Override
     public void exitColumnDefinition(MySqlParser.ColumnDefinitionContext ctx) {
-        parserCtx.runIfNotNull(() -> {
+        parser.runIfNotNull(() -> {
             if (columnEditors != null) {
                 // column editor list is not null when a multiple columns are parsed in one statement
                 if (columnEditors.size() > parsingColumnIndex) {
@@ -131,7 +132,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
 
     @Override
     public void exitAlterByAddColumns(MySqlParser.AlterByAddColumnsContext ctx) {
-        parserCtx.runIfNotNull(() -> {
+        parser.runIfNotNull(() -> {
             columnEditors.forEach(columnEditor -> tableEditor.addColumn(columnEditor.create()));
         }, tableEditor, columnEditors);
         super.exitAlterByAddColumns(ctx);
@@ -139,11 +140,11 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
 
     @Override
     public void enterAlterByChangeColumn(MySqlParser.AlterByChangeColumnContext ctx) {
-        parserCtx.runIfNotNull(() -> {
-            String oldColumnName = parserCtx.parseName(ctx.oldColumn);
+        parser.runIfNotNull(() -> {
+            String oldColumnName = parser.parseName(ctx.oldColumn);
             Column existingColumn = tableEditor.columnWithName(oldColumnName);
             if (existingColumn != null) {
-                columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, existingColumn.edit(), parserCtx.dataTypeResolver(), parserCtx.getConverters());
+                columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, existingColumn.edit(), parser.dataTypeResolver(), parser.getConverters());
                 listeners.add(columnDefinitionListener);
             }
             else {
@@ -156,17 +157,17 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
 
     @Override
     public void exitAlterByChangeColumn(MySqlParser.AlterByChangeColumnContext ctx) {
-        parserCtx.runIfNotNull(() -> {
+        parser.runIfNotNull(() -> {
             Column column = columnDefinitionListener.getColumn();
             tableEditor.addColumn(column);
-            String newColumnName = parserCtx.parseName(ctx.newColumn);
+            String newColumnName = parser.parseName(ctx.newColumn);
             tableEditor.renameColumn(column.name(), newColumnName);
 
             if (ctx.FIRST() != null) {
                 tableEditor.reorderColumn(newColumnName, null);
             }
             else if (ctx.afterColumn != null) {
-                tableEditor.reorderColumn(newColumnName, parserCtx.parseName(ctx.afterColumn));
+                tableEditor.reorderColumn(newColumnName, parser.parseName(ctx.afterColumn));
             }
         }, tableEditor, columnDefinitionListener);
         super.exitAlterByChangeColumn(ctx);
@@ -174,11 +175,11 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
 
     @Override
     public void enterAlterByModifyColumn(MySqlParser.AlterByModifyColumnContext ctx) {
-        parserCtx.runIfNotNull(() -> {
-            String columnName = parserCtx.parseName(ctx.uid(0));
+        parser.runIfNotNull(() -> {
+            String columnName = parser.parseName(ctx.uid(0));
             Column column = tableEditor.columnWithName(columnName);
             if (column != null) {
-                columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, column.edit(), parserCtx.dataTypeResolver(), parserCtx.getConverters());
+                columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, column.edit(), parser.dataTypeResolver(), parser.getConverters());
                 listeners.add(columnDefinitionListener);
             }
             else {
@@ -191,7 +192,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
 
     @Override
     public void exitAlterByModifyColumn(MySqlParser.AlterByModifyColumnContext ctx) {
-        parserCtx.runIfNotNull(() -> {
+        parser.runIfNotNull(() -> {
             Column column = columnDefinitionListener.getColumn();
             tableEditor.addColumn(column);
 
@@ -199,7 +200,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
                 tableEditor.reorderColumn(column.name(), null);
             }
             else if (ctx.AFTER() != null) {
-                String afterColumn = parserCtx.parseName(ctx.uid(1));
+                String afterColumn = parser.parseName(ctx.uid(1));
                 tableEditor.reorderColumn(column.name(), afterColumn);
             }
         }, tableEditor, columnDefinitionListener);
@@ -208,17 +209,17 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
 
     @Override
     public void enterAlterByDropColumn(MySqlParser.AlterByDropColumnContext ctx) {
-        parserCtx.runIfNotNull(() -> {
-            tableEditor.removeColumn(parserCtx.parseName(ctx.uid()));
+        parser.runIfNotNull(() -> {
+            tableEditor.removeColumn(parser.parseName(ctx.uid()));
         }, tableEditor);
         super.enterAlterByDropColumn(ctx);
     }
 
     @Override
     public void enterAlterByRename(MySqlParser.AlterByRenameContext ctx) {
-        parserCtx.runIfNotNull(() -> {
-            TableId newTableId = parserCtx.resolveTableId(parserCtx.currentSchema(), parserCtx.parseName(ctx.uid()));
-            parserCtx.databaseTables().renameTable(tableEditor.tableId(), newTableId);
+        parser.runIfNotNull(() -> {
+            TableId newTableId = parser.resolveTableId(parser.currentSchema(), parser.parseName(ctx.uid()));
+            parser.databaseTables().renameTable(tableEditor.tableId(), newTableId);
             // databaseTables are updated clear table editor so exitAlterTable will not update a table by table editor
             tableEditor = null;
         }, tableEditor);
@@ -227,8 +228,8 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
 
     @Override
     public void enterAlterByChangeDefault(MySqlParser.AlterByChangeDefaultContext ctx) {
-        parserCtx.runIfNotNull(() -> {
-            String columnName = parserCtx.parseName(ctx.uid());
+        parser.runIfNotNull(() -> {
+            String columnName = parser.parseName(ctx.uid());
             Column column = tableEditor.columnWithName(columnName);
             if (column != null) {
                 ColumnEditor columnEditor = column.edit();
@@ -240,15 +241,15 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
 
     @Override
     public void enterAlterByAddPrimaryKey(MySqlParser.AlterByAddPrimaryKeyContext ctx) {
-        parserCtx.runIfNotNull(() -> {
-            parserCtx.parsePrimaryIndexColumnNames(ctx.indexColumnNames(), tableEditor);
+        parser.runIfNotNull(() -> {
+            parser.parsePrimaryIndexColumnNames(ctx.indexColumnNames(), tableEditor);
         }, tableEditor);
         super.enterAlterByAddPrimaryKey(ctx);
     }
 
     @Override
     public void enterAlterByDropPrimaryKey(MySqlParser.AlterByDropPrimaryKeyContext ctx) {
-        parserCtx.runIfNotNull(() -> {
+        parser.runIfNotNull(() -> {
             tableEditor.setPrimaryKeyNames(new ArrayList<>());
         }, tableEditor);
         super.enterAlterByDropPrimaryKey(ctx);
@@ -256,10 +257,10 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
 
     @Override
     public void enterAlterByAddUniqueKey(MySqlParser.AlterByAddUniqueKeyContext ctx) {
-        parserCtx.runIfNotNull(() -> {
+        parser.runIfNotNull(() -> {
             if (!tableEditor.hasPrimaryKey()) {
                 // this may eventually get overwritten by a real PK
-                parserCtx.parsePrimaryIndexColumnNames(ctx.indexColumnNames(), tableEditor);
+                parser.parsePrimaryIndexColumnNames(ctx.indexColumnNames(), tableEditor);
             }
         }, tableEditor);
         super.enterAlterByAddUniqueKey(ctx);

@@ -12,23 +12,23 @@ import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
 import io.debezium.relational.TableId;
 
 /**
- * Parser listeners that is parsing MySQL TRUNCATE TABLE statements.
+ * Parser listener that is parsing MySQL TRUNCATE TABLE statements.
  *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public class TruncateTableParserListener extends MySqlParserBaseListener {
 
-    private final MySqlAntlrDdlParser parserCtx;
+    private final MySqlAntlrDdlParser parser;
 
-    public TruncateTableParserListener(MySqlAntlrDdlParser parserCtx) {
-        this.parserCtx = parserCtx;
+    public TruncateTableParserListener(MySqlAntlrDdlParser parser) {
+        this.parser = parser;
     }
 
     @Override
     public void enterTruncateTable(MySqlParser.TruncateTableContext ctx) {
-        TableId tableId = parserCtx.parseQualifiedTableId(ctx.tableName().fullId());
+        TableId tableId = parser.parseQualifiedTableId(ctx.tableName().fullId());
         // Be aware the legacy parser is not signaling truncate events
-        parserCtx.signalTruncateTable(tableId, ctx);
+        parser.signalTruncateTable(tableId, ctx);
         super.enterTruncateTable(ctx);
     }
 }

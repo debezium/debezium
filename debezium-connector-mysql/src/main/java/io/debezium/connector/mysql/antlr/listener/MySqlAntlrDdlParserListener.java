@@ -6,25 +6,27 @@
 
 package io.debezium.connector.mysql.antlr.listener;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.tree.ErrorNode;
+import org.antlr.v4.runtime.tree.ParseTreeListener;
+import org.antlr.v4.runtime.tree.TerminalNode;
+
 import io.debezium.antlr.AntlrDdlParserListener;
 import io.debezium.antlr.ProxyParseTreeListenerUtil;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
 import io.debezium.text.ParsingException;
-import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.tree.ErrorNode;
-import org.antlr.v4.runtime.tree.ParseTreeListener;
-import org.antlr.v4.runtime.tree.TerminalNode;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Parser listener for MySQL column definition queries. It's purpose is to delegate events
+ * Parser listener for MySQL column definition queries. Its purpose is to delegate events
  * to defined collection of concrete parser listeners. Each listener handles the specified type of DDL statement.
+ * <p>
  * This listener is catching all occurred parsing exceptions and implements a skipping logic for BEGIN ... END
  * statements. No event will be delegated during skipping phase.
  */
@@ -33,7 +35,7 @@ public class MySqlAntlrDdlParserListener extends MySqlParserBaseListener impleme
     /**
      * Collection of listeners for delegation of events.
      */
-    private List<ParseTreeListener> listeners = new CopyOnWriteArrayList<>();
+    private final List<ParseTreeListener> listeners = new CopyOnWriteArrayList<>();
 
     /**
      * Flag for skipping phase.
@@ -49,23 +51,23 @@ public class MySqlAntlrDdlParserListener extends MySqlParserBaseListener impleme
     /**
      * Collection of catched exceptions.
      */
-    private Collection<ParsingException> errors = new ArrayList<>();
+    private final Collection<ParsingException> errors = new ArrayList<>();
 
-    public MySqlAntlrDdlParserListener(MySqlAntlrDdlParser parserCtx) {
+    public MySqlAntlrDdlParserListener(MySqlAntlrDdlParser parser) {
         // initialize listeners
-        listeners.add(new CreateAndAlterDatabaseParserListener(parserCtx));
-        listeners.add(new DropDatabaseParserListener(parserCtx));
-        listeners.add(new CreateTableParserListener(parserCtx, listeners));
-        listeners.add(new AlterTableParserListener(parserCtx, listeners));
-        listeners.add(new DropTableParserListener(parserCtx));
-        listeners.add(new RenameTableParserListener(parserCtx));
-        listeners.add(new TruncateTableParserListener(parserCtx));
-        listeners.add(new CreateViewParserListener(parserCtx, listeners));
-        listeners.add(new AlterViewParserListener(parserCtx, listeners));
-        listeners.add(new DropViewParserListener(parserCtx));
-        listeners.add(new CreateUniqueIndexParserListener(parserCtx));
-        listeners.add(new SetStatementParserListener(parserCtx));
-        listeners.add(new UseStatementParserListener(parserCtx));
+        listeners.add(new CreateAndAlterDatabaseParserListener(parser));
+        listeners.add(new DropDatabaseParserListener(parser));
+        listeners.add(new CreateTableParserListener(parser, listeners));
+        listeners.add(new AlterTableParserListener(parser, listeners));
+        listeners.add(new DropTableParserListener(parser));
+        listeners.add(new RenameTableParserListener(parser));
+        listeners.add(new TruncateTableParserListener(parser));
+        listeners.add(new CreateViewParserListener(parser, listeners));
+        listeners.add(new AlterViewParserListener(parser, listeners));
+        listeners.add(new DropViewParserListener(parser));
+        listeners.add(new CreateUniqueIndexParserListener(parser));
+        listeners.add(new SetStatementParserListener(parser));
+        listeners.add(new UseStatementParserListener(parser));
     }
 
     /**
@@ -73,6 +75,7 @@ public class MySqlAntlrDdlParserListener extends MySqlParserBaseListener impleme
      *
      * @return list of Parsing exceptions
      */
+    @Override
     public Collection<ParsingException> getErrors() {
         return errors;
     }
@@ -119,5 +122,4 @@ public class MySqlAntlrDdlParserListener extends MySqlParserBaseListener impleme
         // this is a grammar rule for BEGIN ... END part of statements. Skip it.
         skipNodes = true;
     }
-
 }

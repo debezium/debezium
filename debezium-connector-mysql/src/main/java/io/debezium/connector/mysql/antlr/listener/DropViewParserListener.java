@@ -11,23 +11,23 @@ import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
 
 /**
- * Parser listeners that is parsing MySQL DROP VIEW statements.
+ * Parser listener that is parsing MySQL DROP VIEW statements.
  *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public class DropViewParserListener extends MySqlParserBaseListener {
 
-    private final MySqlAntlrDdlParser parserCtx;
+    private final MySqlAntlrDdlParser parser;
 
-    public DropViewParserListener(MySqlAntlrDdlParser parserCtx) {
-        this.parserCtx = parserCtx;
+    public DropViewParserListener(MySqlAntlrDdlParser parser) {
+        this.parser = parser;
     }
 
     @Override
     public void enterDropView(MySqlParser.DropViewContext ctx) {
-        ctx.fullId().stream().map(parserCtx::parseQualifiedTableId).forEach(tableId -> {
-            parserCtx.databaseTables().removeTable(tableId);
-            parserCtx.signalDropView(tableId, ctx);
+        ctx.fullId().stream().map(parser::parseQualifiedTableId).forEach(tableId -> {
+            parser.databaseTables().removeTable(tableId);
+            parser.signalDropView(tableId, ctx);
         });
         super.enterDropView(ctx);
     }

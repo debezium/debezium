@@ -12,29 +12,29 @@ import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
 
 /**
- * Parser listeners that is parsing MySQL USE statements that changes
+ * Parser listener that is parsing MySQL USE statements that changes
  * current database/schema on which all changes are applied.
  *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public class UseStatementParserListener extends MySqlParserBaseListener {
 
-    private final MySqlAntlrDdlParser parserCtx;
+    private final MySqlAntlrDdlParser parser;
 
-    public UseStatementParserListener(MySqlAntlrDdlParser parserCtx) {
-        this.parserCtx = parserCtx;
+    public UseStatementParserListener(MySqlAntlrDdlParser parser) {
+        this.parser = parser;
     }
 
     @Override
     public void enterUseStatement(MySqlParser.UseStatementContext ctx) {
-        String dbName = parserCtx.parseName(ctx.uid());
-        parserCtx.setCurrentSchema(dbName);
+        String dbName = parser.parseName(ctx.uid());
+        parser.setCurrentSchema(dbName);
 
         // Every time MySQL switches to a different database, it sets the "character_set_database" and "collation_database"
         // system variables. We replicate that behavior here (or the variable we care about) so that these variables are always
         // right for the current database.
-        String charsetForDb = parserCtx.charsetNameForDatabase().get(dbName);
-        parserCtx.systemVariables().setVariable(MySqlSystemVariables.MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_DATABASE, charsetForDb);
+        String charsetForDb = parser.charsetNameForDatabase().get(dbName);
+        parser.systemVariables().setVariable(MySqlSystemVariables.MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_DATABASE, charsetForDb);
         super.enterUseStatement(ctx);
     }
 }

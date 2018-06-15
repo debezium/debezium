@@ -21,21 +21,21 @@ import java.util.Map;
 import static io.debezium.relational.ddl.AbstractDdlParser.withoutQuotes;
 
 /**
- * Parser listeners that is parsing MySQL SELECT statements used for definition of VIEW.
+ * Parser listener that is parsing MySQL SELECT statements used for definition of VIEW.
  *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public class ViewSelectedColumnsParserListener extends MySqlParserBaseListener {
 
-    private final MySqlAntlrDdlParser parserCtx;
+    private final MySqlAntlrDdlParser parser;
     private final TableEditor tableEditor;
 
     private TableEditor selectTableEditor;
     private Map<TableId, Table> tableByAlias = new HashMap<>();
 
-    public ViewSelectedColumnsParserListener(TableEditor tableEditor, MySqlAntlrDdlParser parserCtx) {
+    public ViewSelectedColumnsParserListener(TableEditor tableEditor, MySqlAntlrDdlParser parser) {
         this.tableEditor = tableEditor;
-        this.parserCtx = parserCtx;
+        this.parser = parser;
     }
 
     public List<Column> getSelectedColumns() {
@@ -60,7 +60,7 @@ public class ViewSelectedColumnsParserListener extends MySqlParserBaseListener {
 
     @Override
     public void exitAtomTableItem(MySqlParser.AtomTableItemContext ctx) {
-        parserCtx.runIfNotNull(() -> {
+        parser.runIfNotNull(() -> {
             parseAtomTableItem(ctx, tableByAlias);
         }, tableEditor);
         super.exitAtomTableItem(ctx);
@@ -68,10 +68,10 @@ public class ViewSelectedColumnsParserListener extends MySqlParserBaseListener {
 
     @Override
     public void exitSubqueryTableItem(MySqlParser.SubqueryTableItemContext ctx) {
-        parserCtx.runIfNotNull(() -> {
+        parser.runIfNotNull(() -> {
             // parsing subselect
-            String tableAlias = parserCtx.parseName(ctx.uid());
-            TableId aliasTableId = parserCtx.resolveTableId(parserCtx.currentSchema(), tableAlias);
+            String tableAlias = parser.parseName(ctx.uid());
+            TableId aliasTableId = parser.resolveTableId(parser.currentSchema(), tableAlias);
             selectTableEditor.tableId(aliasTableId);
             tableByAlias.put(aliasTableId, selectTableEditor.create());
         }, tableEditor);
@@ -79,7 +79,7 @@ public class ViewSelectedColumnsParserListener extends MySqlParserBaseListener {
     }
 
     private void parseQuerySpecification(MySqlParser.SelectElementsContext selectElementsContext) {
-        parserCtx.runIfNotNull(() -> {
+        parser.runIfNotNull(() -> {
             selectTableEditor = parseSelectElements(selectElementsContext);
         }, tableEditor);
     }
@@ -88,14 +88,14 @@ public class ViewSelectedColumnsParserListener extends MySqlParserBaseListener {
         if (ctx instanceof MySqlParser.AtomTableItemContext) {
             MySqlParser.AtomTableItemContext atomTableItemContext = (MySqlParser.AtomTableItemContext) ctx;
 
-            TableId tableId = parserCtx.parseQualifiedTableId(atomTableItemContext.tableName().fullId());
+            TableId tableId = parser.parseQualifiedTableId(atomTableItemContext.tableName().fullId());
 
             Table table = tableByAlias.get(tableId);
             if (table == null) {
-                table = parserCtx.databaseTables().forTable(tableId);
+                table = parser.databaseTables().forTable(tableId);
             }
             if (atomTableItemContext.alias != null) {
-                TableId aliasTableId = parserCtx.resolveTableId(tableId.schema(), parserCtx.parseName(atomTableItemContext.alias));
+                TableId aliasTableId = parser.resolveTableId(tableId.schema(), parser.parseName(atomTableItemContext.alias));
                 tableByAlias.put(aliasTableId, table);
             }
             else {
@@ -114,7 +114,7 @@ public class ViewSelectedColumnsParserListener extends MySqlParserBaseListener {
         else {
             ctx.selectElement().forEach(selectElementContext -> {
                 if (selectElementContext instanceof MySqlParser.SelectStarElementContext) {
-                    TableId tableId = parserCtx.parseQualifiedTableId(((MySqlParser.SelectStarElementContext) selectElementContext).fullId());
+                    TableId tableId = parser.parseQualifiedTableId(((MySqlParser.SelectStarElementContext) selectElementContext).fullId());
                     Table selectedTable = tableByAlias.get(tableId);
                     table.addColumns(selectedTable.columns());
                 }
@@ -122,11 +122,11 @@ public class ViewSelectedColumnsParserListener extends MySqlParserBaseListener {
                     MySqlParser.SelectColumnElementContext selectColumnElementContext = (MySqlParser.SelectColumnElementContext) selectElementContext;
                     MySqlParser.FullColumnNameContext fullColumnNameContext = selectColumnElementContext.fullColumnName();
 
-                    String schemaName = parserCtx.currentSchema();
+                    String schemaName = parser.currentSchema();
                     String tableName = null;
                     String columnName;
 
-                    columnName = parserCtx.parseName(fullColumnNameContext.uid());
+                    columnName = parser.parseName(fullColumnNameContext.uid());
                     if (fullColumnNameContext.dottedId(0) != null) {
                         // shift by 1
                         tableName = columnName;
@@ -144,10 +144,10 @@ public class ViewSelectedColumnsParserListener extends MySqlParserBaseListener {
                     }
                     String alias = columnName;
                     if (selectColumnElementContext.uid() != null) {
-                        alias = parserCtx.parseName(selectColumnElementContext.uid());
+                        alias = parser.parseName(selectColumnElementContext.uid());
                     }
                     if (tableName != null) {
-                        Table selectedTable = tableByAlias.get(parserCtx.resolveTableId(schemaName, tableName));
+                        Table selectedTable = tableByAlias.get(parser.resolveTableId(schemaName, tableName));
                         addColumnFromTable(table, columnName, alias, selectedTable);
                     }
                     else {

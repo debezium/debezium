@@ -28,8 +28,8 @@ import io.debezium.text.ParsingException;
 
 /**
  * Base implementation of ANTLR based parsers.
- *
- * This abstract class provides generic initialization of parser and it's main sequence of steps
+ * <p>
+ * This abstract class provides generic initialization of parser and its main sequence of steps
  * that are needed to properly start parsing.
  * It also provides implementation of helper methods for any type of ANTLR listeners.
  *
@@ -38,11 +38,11 @@ import io.debezium.text.ParsingException;
 public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends AbstractDdlParser {
 
     /**
-     * Flag to indicate if the errors catched during tree walk will be thrown.
+     * Flag to indicate if the errors caught during tree walk will be thrown.
      * true = errors will be thrown
      * false = errors will not be thrown. They will be available to get by {@link AntlrDdlParser#getParsingExceptionsFromWalker()}.
      */
-    private boolean throwErrorsFromTreeWalk;
+    private final boolean throwErrorsFromTreeWalk;
 
     /**
      * Parser listener for tree walker.

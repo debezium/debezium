@@ -6,22 +6,22 @@
 
 package io.debezium.connector.mysql.antlr.listener;
 
-import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.connector.mysql.MySqlSystemVariables;
+import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
 
 /**
- * Parser listeners that is parsing MySQL SET statements, for defining a system variables.
+ * Parser listener that is parsing MySQL SET statements, for defining a system variables.
  *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public class SetStatementParserListener extends MySqlParserBaseListener {
 
-    private final MySqlAntlrDdlParser parserCtx;
+    private final MySqlAntlrDdlParser parser;
 
-    public SetStatementParserListener(MySqlAntlrDdlParser parserCtx) {
-        this.parserCtx = parserCtx;
+    public SetStatementParserListener(MySqlAntlrDdlParser parser) {
+        this.parser = parser;
     }
 
     @Override
@@ -66,51 +66,51 @@ public class SetStatementParserListener extends MySqlParserBaseListener {
                     scope = MySqlSystemVariables.MySqlScope.LOCAL;
                 }
 
-                variableName = parserCtx.parseName(variableClauseContext.uid());
+                variableName = parser.parseName(variableClauseContext.uid());
             }
-            String value = parserCtx.withoutQuotes(ctx.expression(i));
+            String value = parser.withoutQuotes(ctx.expression(i));
 
-            parserCtx.systemVariables().setVariable(scope, variableName, value);
+            parser.systemVariables().setVariable(scope, variableName, value);
 
             // If this is setting 'character_set_database', then we need to record the character set for
             // the given database ...
             if (MySqlSystemVariables.CHARSET_NAME_DATABASE.equalsIgnoreCase(variableName)) {
-                String currentDatabaseName = parserCtx.currentSchema();
+                String currentDatabaseName = parser.currentSchema();
                 if (currentDatabaseName != null) {
-                    parserCtx.charsetNameForDatabase().put(currentDatabaseName, value);
+                    parser.charsetNameForDatabase().put(currentDatabaseName, value);
                 }
             }
 
             // Signal that the variable was set ...
-            parserCtx.signalSetVariable(variableName, value, ctx);
+            parser.signalSetVariable(variableName, value, ctx);
         }
         super.enterSetVariable(ctx);
     }
 
     @Override
     public void enterSetCharset(MySqlParser.SetCharsetContext ctx) {
-        String charsetName = ctx.charsetName() != null ? parserCtx.withoutQuotes(ctx.charsetName()) : parserCtx.currentDatabaseCharset();
+        String charsetName = ctx.charsetName() != null ? parser.withoutQuotes(ctx.charsetName()) : parser.currentDatabaseCharset();
         // Sets variables according to documentation at
         // https://dev.mysql.com/doc/refman/5.7/en/set-character-set.html
         // Using default scope for these variables, because this type of set statement you cannot specify
         // the scope manually
-        parserCtx.systemVariables().setVariable(MySqlSystemVariables.MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_CLIENT, charsetName);
-        parserCtx.systemVariables().setVariable(MySqlSystemVariables.MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_RESULT, charsetName);
-        parserCtx.systemVariables().setVariable(MySqlSystemVariables.MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_CONNECTION,
-                parserCtx.systemVariables().getVariable(MySqlSystemVariables.CHARSET_NAME_DATABASE));
+        parser.systemVariables().setVariable(MySqlSystemVariables.MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_CLIENT, charsetName);
+        parser.systemVariables().setVariable(MySqlSystemVariables.MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_RESULT, charsetName);
+        parser.systemVariables().setVariable(MySqlSystemVariables.MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_CONNECTION,
+                parser.systemVariables().getVariable(MySqlSystemVariables.CHARSET_NAME_DATABASE));
         super.enterSetCharset(ctx);
     }
 
     @Override
     public void enterSetNames(MySqlParser.SetNamesContext ctx) {
-        String charsetName = ctx.charsetName() != null ? parserCtx.withoutQuotes(ctx.charsetName()) : parserCtx.currentDatabaseCharset();
+        String charsetName = ctx.charsetName() != null ? parser.withoutQuotes(ctx.charsetName()) : parser.currentDatabaseCharset();
         // Sets variables according to documentation at
         // https://dev.mysql.com/doc/refman/5.7/en/set-names.html
         // Using default scope for these variables, because this type of set statement you cannot specify
         // the scope manually
-        parserCtx.systemVariables().setVariable(MySqlSystemVariables.MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_CLIENT, charsetName);
-        parserCtx.systemVariables().setVariable(MySqlSystemVariables.MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_RESULT, charsetName);
-        parserCtx.systemVariables().setVariable(MySqlSystemVariables.MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_CONNECTION, charsetName);
+        parser.systemVariables().setVariable(MySqlSystemVariables.MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_CLIENT, charsetName);
+        parser.systemVariables().setVariable(MySqlSystemVariables.MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_RESULT, charsetName);
+        parser.systemVariables().setVariable(MySqlSystemVariables.MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_CONNECTION, charsetName);
         super.enterSetNames(ctx);
     }
 }

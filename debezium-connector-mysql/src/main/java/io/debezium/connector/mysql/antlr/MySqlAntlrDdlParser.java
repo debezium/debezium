@@ -35,7 +35,7 @@ import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 
 /**
- * A ANTLR based parser for MySQL DDL statements.
+ * An ANTLR based parser for MySQL DDL statements.
  *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */

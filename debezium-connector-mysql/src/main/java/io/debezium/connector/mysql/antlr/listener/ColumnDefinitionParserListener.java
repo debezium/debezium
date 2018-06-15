@@ -28,7 +28,7 @@ import io.debezium.relational.ValueConverter;
 import io.debezium.relational.ddl.DataType;
 
 /**
- * Parser listeners that is parsing column definition part of MySQL statements.
+ * Parser listener that is parsing column definition part of MySQL statements.
  *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */

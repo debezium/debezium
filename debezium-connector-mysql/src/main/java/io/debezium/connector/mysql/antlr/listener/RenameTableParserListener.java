@@ -12,24 +12,24 @@ import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
 import io.debezium.relational.TableId;
 
 /**
- * Parser listeners that is parsing MySQL RENAME TABLE statements.
+ * Parser listener that is parsing MySQL RENAME TABLE statements.
  *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public class RenameTableParserListener extends MySqlParserBaseListener {
 
-    private final MySqlAntlrDdlParser parserCtx;
+    private final MySqlAntlrDdlParser parser;
 
-    public RenameTableParserListener(MySqlAntlrDdlParser parserCtx) {
-        this.parserCtx = parserCtx;
+    public RenameTableParserListener(MySqlAntlrDdlParser parser) {
+        this.parser = parser;
     }
 
     @Override
     public void enterRenameTableClause(MySqlParser.RenameTableClauseContext ctx) {
-        TableId oldTable = parserCtx.parseQualifiedTableId(ctx.tableName(0).fullId());
-        TableId newTable = parserCtx.parseQualifiedTableId(ctx.tableName(1).fullId());
-        parserCtx.databaseTables().renameTable(oldTable, newTable);
-        parserCtx.signalAlterTable(newTable, oldTable, ctx);
+        TableId oldTable = parser.parseQualifiedTableId(ctx.tableName(0).fullId());
+        TableId newTable = parser.parseQualifiedTableId(ctx.tableName(1).fullId());
+        parser.databaseTables().renameTable(oldTable, newTable);
+        parser.signalAlterTable(newTable, oldTable, ctx);
         super.enterRenameTableClause(ctx);
     }
 }

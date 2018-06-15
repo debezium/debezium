@@ -13,16 +13,16 @@ import io.debezium.relational.TableId;
 import org.antlr.v4.runtime.misc.Interval;
 
 /**
- * Parser listeners that is parsing MySQL DROP TABLE statements.
+ * Parser listener that is parsing MySQL DROP TABLE statements.
  *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public class DropTableParserListener extends MySqlParserBaseListener {
 
-    private final MySqlAntlrDdlParser parserCtx;
+    private final MySqlAntlrDdlParser parser;
 
-    public DropTableParserListener(MySqlAntlrDdlParser parserCtx) {
-        this.parserCtx = parserCtx;
+    public DropTableParserListener(MySqlAntlrDdlParser parser) {
+        this.parser = parser;
     }
 
     @Override
@@ -30,9 +30,9 @@ public class DropTableParserListener extends MySqlParserBaseListener {
         Interval interval = new Interval(ctx.start.getStartIndex(), ctx.tables().start.getStartIndex() - 1);
         String prefix = ctx.start.getInputStream().getText(interval);
         ctx.tables().tableName().forEach(tableNameContext -> {
-            TableId tableId = parserCtx.parseQualifiedTableId(tableNameContext.fullId());
-            parserCtx.databaseTables().removeTable(tableId);
-            parserCtx.signalDropTable(tableId, prefix + tableId.table()
+            TableId tableId = parser.parseQualifiedTableId(tableNameContext.fullId());
+            parser.databaseTables().removeTable(tableId);
+            parser.signalDropTable(tableId, prefix + tableId.table()
                     + (ctx.dropType != null ? " " + ctx.dropType.getText() : ""));
         });
         super.enterDropTable(ctx);

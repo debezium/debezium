@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 /**
- * Encapsulates a set of the MySQL system variables.
+ * Encapsulates a set of a database's system variables.
  *
  * @author Randall Hauch
  */

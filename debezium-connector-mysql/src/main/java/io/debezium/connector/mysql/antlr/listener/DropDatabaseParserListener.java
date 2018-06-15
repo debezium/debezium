@@ -11,24 +11,24 @@ import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
 
 /**
- * Parser listeners that is parsing MySQL DROP DATABASE statements.
+ * Parser listener that is parsing MySQL DROP DATABASE statements.
  *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public class DropDatabaseParserListener extends MySqlParserBaseListener {
 
-    private final MySqlAntlrDdlParser parserCtx;
+    private final MySqlAntlrDdlParser parser;
 
-    public DropDatabaseParserListener(MySqlAntlrDdlParser parserCtx) {
-        this.parserCtx = parserCtx;
+    public DropDatabaseParserListener(MySqlAntlrDdlParser parser) {
+        this.parser = parser;
     }
 
     @Override
     public void enterDropDatabase(MySqlParser.DropDatabaseContext ctx) {
-        String databaseName = parserCtx.parseName(ctx.uid());
-        parserCtx.databaseTables().removeTablesForDatabase(databaseName);
-        parserCtx.charsetNameForDatabase().remove(databaseName);
-        parserCtx.signalDropDatabase(databaseName, ctx);
+        String databaseName = parser.parseName(ctx.uid());
+        parser.databaseTables().removeTablesForDatabase(databaseName);
+        parser.charsetNameForDatabase().remove(databaseName);
+        parser.signalDropDatabase(databaseName, ctx);
         super.enterDropDatabase(ctx);
     }
 }
