@@ -6,19 +6,20 @@
 
 package io.debezium.relational.ddl;
 
+import java.math.BigDecimal;
+import java.sql.Types;
+import java.util.ArrayList;
+import java.util.Collection;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.SystemVariables;
 import io.debezium.relational.TableId;
 import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.math.BigDecimal;
-import java.sql.Types;
-import java.util.ArrayList;
-import java.util.Collection;
 
 /**
  * @author Roman Kuchár <kucharrom@gmail.com>.
@@ -77,6 +78,7 @@ public abstract class AbstractDdlParser implements DdlParser {
         return ddlChanges;
     }
 
+    @Override
     public SystemVariables systemVariables() {
         return systemVariables;
     }
@@ -410,7 +412,9 @@ public abstract class AbstractDdlParser implements DdlParser {
         }
     }
 
-    protected void commnetParsed(String comment) {
-        logger.trace("COMMENT: {}", comment);
+    protected void commentParsed(String comment) {
+        if (logger.isTraceEnabled()) {
+            logger.trace("COMMENT: {}", comment);
+        }
     }
 }

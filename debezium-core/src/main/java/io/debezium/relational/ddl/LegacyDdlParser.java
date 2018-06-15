@@ -256,7 +256,7 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
      */
     protected void parseComment(Marker marker) {
         String comment = tokens.consume();
-        commnetParsed(comment);
+        commentParsed(comment);
     }
 
     /**

@@ -8,6 +8,7 @@ package io.debezium.relational;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -177,10 +178,10 @@ public final class Tables {
         lock.write(() -> {
             tablesByTableId.entrySet().removeIf(tableIdTableEntry -> {
                 TableId tableId = tableIdTableEntry.getKey();
-                boolean equalSchema = schemaName == null && tableId.schema() == null
-                        || schemaName != null && schemaName.equals(tableId.schema());
-                boolean equalCatalog = catalogName == null && tableId.catalog() == null
-                        || catalogName != null && catalogName.equals(tableId.schema());
+
+                boolean equalCatalog = Objects.equals(catalogName, tableId.catalog());
+                boolean equalSchema = Objects.equals(schemaName, tableId.schema());
+
                 return equalSchema && equalCatalog;
             });
         });
