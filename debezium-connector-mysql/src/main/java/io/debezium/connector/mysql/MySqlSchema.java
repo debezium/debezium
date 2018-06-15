@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.mysql;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
@@ -19,11 +18,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.connector.mysql.MySqlSystemVariables.MySqlScope;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.BigIntUnsignedHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.DdlParsingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.DecimalHandlingMode;
+import io.debezium.connector.mysql.MySqlSystemVariables.MySqlScope;
 import io.debezium.document.Document;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
@@ -114,14 +113,8 @@ public class MySqlSchema {
         String ddlParsingModeStr = config.getString(MySqlConnectorConfig.DDL_PARSER_MODE);
         DdlParsingMode parsingMode = DdlParsingMode.parse(ddlParsingModeStr, MySqlConnectorConfig.DDL_PARSER_MODE.defaultValueAsString());
 
-        try {
-            this.ddlParser = parsingMode.getParserClass().getConstructor(MySqlValueConverters.class).newInstance(valueConverters);
-            this.ddlChanges = this.ddlParser.getDdlChanges();
-        }
-        catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-            // ddl parser constructors are not throwing any exceptions, so this should never happen
-            throw new IllegalArgumentException("Unable to create new instance for ddl parser class " + parsingMode.getParserClass().getCanonicalName());
-        }
+        this.ddlParser = parsingMode.getNewParserInstance(valueConverters);
+        this.ddlChanges = this.ddlParser.getDdlChanges();
 
         // Set up the server name and schema prefix ...
         if (serverName != null) serverName = serverName.trim();

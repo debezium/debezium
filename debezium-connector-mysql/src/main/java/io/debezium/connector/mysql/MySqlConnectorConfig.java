@@ -10,8 +10,6 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.Random;
 
-import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
-import io.debezium.relational.ddl.DdlParser;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -22,10 +20,13 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
+import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.heartbeat.Heartbeat;
+import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.KafkaDatabaseHistory;
 
@@ -456,15 +457,23 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
 
     public static enum DdlParsingMode implements EnumeratedValue {
 
-        LEGACY("legacy", MySqlDdlParser.class),
-        ANTLR("antlr", MySqlAntlrDdlParser.class);
+        LEGACY("legacy") {
+            @Override
+            public DdlParser getNewParserInstance(JdbcValueConverters valueConverters) {
+                return new MySqlDdlParser(false, (MySqlValueConverters) valueConverters);
+            }
+        },
+        ANTLR("antlr") {
+            @Override
+            public DdlParser getNewParserInstance(JdbcValueConverters valueConverters) {
+                return new MySqlAntlrDdlParser((MySqlValueConverters) valueConverters);
+            }
+        };
 
         private final String value;
-        private final Class<? extends DdlParser> parserClass;
 
-        private DdlParsingMode(String value, Class<? extends DdlParser> parserClass) {
+        private DdlParsingMode(String value) {
             this.value = value;
-            this.parserClass = parserClass;
         }
 
         @Override
@@ -472,10 +481,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
             return value;
         }
 
-        public Class<? extends DdlParser> getParserClass() {
-            return parserClass;
-        }
-
+        public abstract DdlParser getNewParserInstance(JdbcValueConverters valueConverters);
 
         /**
          * Determine if the supplied value is one of the predefined options.
@@ -491,7 +497,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
             }
             return null;
         }
-        
+
         /**
          * Determine if the supplied value is one of the predefined options.
          *
@@ -960,11 +966,11 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
             .withValidation(Field::isNonNegativeLong);
 
     public static final Field DDL_PARSER_MODE = Field.create("ddl.parser.mode")
-            .withDisplayName("Ddl parser mode")
+            .withDisplayName("DDL parser mode")
             .withEnum(DdlParsingMode.class, DdlParsingMode.ANTLR)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription("MySQL ddl statements can be parsed in different ways:" +
+            .withDescription("MySQL DDL statements can be parsed in different ways:" +
                     "'legacy' (the default) parsing is creating a TokenStream and comparing token by token with an expected values." +
                     "The decisions are made by matched token values." +
                     "'antlr' uses generated parser from MySQL grammar using ANTLR v4 tool which use ALL(*) algorithm for parsing." +
