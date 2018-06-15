@@ -24,7 +24,7 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.kafka.KafkaCluster;
 import io.debezium.relational.Tables;
-import io.debezium.relational.ddl.DdlParser;
+import io.debezium.relational.ddl.LegacyDdlParser;
 import io.debezium.relational.ddl.DdlParserSql2003;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Collect;
@@ -113,8 +113,8 @@ public class KafkaDatabaseHistoryTest {
         // Calling it another time to ensure we can work with the DB history topic already existing
         history.initializeStorage();
 
-        DdlParser recoveryParser = new DdlParserSql2003();
-        DdlParser ddlParser = new DdlParserSql2003();
+        LegacyDdlParser recoveryParser = new DdlParserSql2003();
+        LegacyDdlParser ddlParser = new DdlParserSql2003();
         ddlParser.setCurrentSchema("db1"); // recover does this, so we need to as well
         Tables tables1 = new Tables();
         Tables tables2 = new Tables();

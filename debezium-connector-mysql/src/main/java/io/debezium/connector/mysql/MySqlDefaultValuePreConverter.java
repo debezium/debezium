@@ -73,6 +73,7 @@ public class MySqlDefaultValuePreConverter  {
 
         case Types.FLOAT:
         case Types.DOUBLE:
+        case Types.REAL:
             return convertToDouble(value);
         case Types.BIGINT:
             return convertToBigInt(value);

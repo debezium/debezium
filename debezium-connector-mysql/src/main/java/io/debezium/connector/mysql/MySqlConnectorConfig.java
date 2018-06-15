@@ -20,10 +20,13 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
+import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.heartbeat.Heartbeat;
+import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.KafkaDatabaseHistory;
 
@@ -449,6 +452,65 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
             }
 
             return null;
+        }
+    }
+
+    public static enum DdlParsingMode implements EnumeratedValue {
+
+        LEGACY("legacy") {
+            @Override
+            public DdlParser getNewParserInstance(JdbcValueConverters valueConverters) {
+                return new MySqlDdlParser(false, (MySqlValueConverters) valueConverters);
+            }
+        },
+        ANTLR("antlr") {
+            @Override
+            public DdlParser getNewParserInstance(JdbcValueConverters valueConverters) {
+                return new MySqlAntlrDdlParser((MySqlValueConverters) valueConverters);
+            }
+        };
+
+        private final String value;
+
+        private DdlParsingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public abstract DdlParser getNewParserInstance(JdbcValueConverters valueConverters);
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static DdlParsingMode parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+            for (DdlParsingMode option : DdlParsingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static DdlParsingMode parse(String value, String defaultValue) {
+            DdlParsingMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
         }
     }
 
@@ -903,6 +965,17 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
             .withDefault(0L)
             .withValidation(Field::isNonNegativeLong);
 
+    public static final Field DDL_PARSER_MODE = Field.create("ddl.parser.mode")
+            .withDisplayName("DDL parser mode")
+            .withEnum(DdlParsingMode.class, DdlParsingMode.ANTLR)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("MySQL DDL statements can be parsed in different ways:" +
+                    "'legacy' (the default) parsing is creating a TokenStream and comparing token by token with an expected values." +
+                    "The decisions are made by matched token values." +
+                    "'antlr' uses generated parser from MySQL grammar using ANTLR v4 tool which use ALL(*) algorithm for parsing." +
+                    "This parser creates a parsing tree for DDL statement, then walks trough it and apply changes by node types in parsed tree.");
+
     /**
      * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
      * have their values truncated to be no longer than the specified number of characters.
@@ -957,6 +1030,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                      EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE,
                                                      INCONSISTENT_SCHEMA_HANDLING_MODE,
                                                      SNAPSHOT_DELAY_MS,
+                                                     DDL_PARSER_MODE,
                                                      CommonConnectorConfig.TOMBSTONES_ON_DELETE);
 
     /**
@@ -973,10 +1047,15 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                                 DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL,
                                                                 DatabaseHistory.DDL_FILTER);
 
+    private final Configuration config;
+
     private final SnapshotLockingMode snapshotLockingMode;
+    private final DdlParsingMode ddlParsingMode;
 
     public MySqlConnectorConfig(Configuration config) {
         super(config);
+
+        this.config = config;
 
         // If deprecated snapshot.minimal.locking property is explicitly configured
         if (config.hasKey(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING.name())) {
@@ -990,10 +1069,25 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
             // Otherwise use configured snapshot.locking.mode configuration.
             this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
         }
+
+        String ddlParsingModeStr = config.getString(MySqlConnectorConfig.DDL_PARSER_MODE);
+        this.ddlParsingMode = DdlParsingMode.parse(ddlParsingModeStr, MySqlConnectorConfig.DDL_PARSER_MODE.defaultValueAsString());
+    }
+
+    @Deprecated
+    /**
+     * @deprecated Typed accessors should be used instead
+     */
+    public Configuration getConfig() {
+        return config;
     }
 
     public SnapshotLockingMode getSnapshotLockingMode() {
         return this.snapshotLockingMode;
+    }
+
+    public DdlParsingMode getDdlParsingMode() {
+        return ddlParsingMode;
     }
 
     protected static ConfigDef configDef() {
@@ -1013,7 +1107,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
                     SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
-                    BIGINT_UNSIGNED_HANDLING_MODE, SNAPSHOT_DELAY_MS);
+                    BIGINT_UNSIGNED_HANDLING_MODE, SNAPSHOT_DELAY_MS, DDL_PARSER_MODE);
         return config;
     }
 

@@ -41,6 +41,6 @@ BEGIN
     DECLARE i int default 0;
     doubleNestedBegin: BEGIN
         DECLARE i int default 0;
-    END doubleNestedBegin
-  END
+    END doubleNestedBegin;
+  END;
 END

@@ -23,17 +23,19 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.connector.mysql.MySqlSystemVariables.MySqlScope;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
+import io.debezium.relational.SystemVariables;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 import io.debezium.relational.ValueConverter;
 import io.debezium.relational.ddl.DataType;
 import io.debezium.relational.ddl.DataTypeParser;
-import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.ddl.DdlParserListener.SetVariableEvent;
 import io.debezium.relational.ddl.DdlTokenizer;
+import io.debezium.relational.ddl.LegacyDdlParser;
 import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
 import io.debezium.text.TokenStream;
@@ -48,7 +50,7 @@ import io.debezium.text.TokenStream.Marker;
  * @author Randall Hauch
  */
 @NotThreadSafe
-public class MySqlDdlParser extends DdlParser {
+public class MySqlDdlParser extends LegacyDdlParser {
 
     /**
      * The system variable name for the name of the character set that the server uses by default.
@@ -56,7 +58,6 @@ public class MySqlDdlParser extends DdlParser {
      */
     private static final String SERVER_CHARSET_NAME = MySqlSystemVariables.CHARSET_NAME_SERVER;
 
-    private final MySqlSystemVariables systemVariables = new MySqlSystemVariables();
     private final ConcurrentMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
     private MySqlValueConverters converters = null;
     private MySqlDefaultValuePreConverter defaultValuePreConverter = new MySqlDefaultValuePreConverter();
@@ -77,13 +78,15 @@ public class MySqlDdlParser extends DdlParser {
         super(";", includeViews);
     }
 
+    @Override
+    protected SystemVariables createNewSystemVariablesInstance() {
+        return new MySqlSystemVariables();
+    }
+
     protected MySqlDdlParser(boolean includeViews, MySqlValueConverters converters) {
         super(";", includeViews);
         this.converters = converters;
-    }
-
-    protected MySqlSystemVariables systemVariables() {
-        return systemVariables;
+        systemVariables = new MySqlSystemVariables();
     }
 
     @Override
@@ -191,7 +194,7 @@ public class MySqlDdlParser extends DdlParser {
 
     protected void parseSet(Marker start) {
         tokens.consume("SET");
-        AtomicReference<MySqlSystemVariables.Scope> scope = new AtomicReference<>();
+        AtomicReference<MySqlScope> scope = new AtomicReference<>();
         parseSetVariable(start, scope);
         while (tokens.canConsume(',')) {
             parseSetVariable(start, scope);
@@ -200,14 +203,14 @@ public class MySqlDdlParser extends DdlParser {
         debugParsed(start);
     }
 
-    protected void parseSetVariable(Marker start, AtomicReference<MySqlSystemVariables.Scope> scope) {
+    protected void parseSetVariable(Marker start, AtomicReference<MySqlScope> scope) {
         // First, use the modifier to set the scope ...
         if (tokens.canConsume("GLOBAL") || tokens.canConsume("@@GLOBAL", ".")) {
-            scope.set(MySqlSystemVariables.Scope.GLOBAL);
+            scope.set(MySqlScope.GLOBAL);
         } else if (tokens.canConsume("SESSION") || tokens.canConsume("@@SESSION", ".")) {
-            scope.set(MySqlSystemVariables.Scope.SESSION);
+            scope.set(MySqlScope.SESSION);
         } else if (tokens.canConsume("LOCAL") || tokens.canConsume("@@LOCAL", ".")) {
-            scope.set(MySqlSystemVariables.Scope.LOCAL);
+            scope.set(MySqlScope.LOCAL);
         }
 
         // Now handle the remainder of the variable assignment ...
@@ -224,6 +227,8 @@ public class MySqlDdlParser extends DdlParser {
             }
             systemVariables.setVariable(scope.get(), "character_set_client", charsetName);
             systemVariables.setVariable(scope.get(), "character_set_results", charsetName);
+            systemVariables.setVariable(MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_CONNECTION,
+                    systemVariables.getVariable(MySqlSystemVariables.CHARSET_NAME_DATABASE));
             // systemVariables.setVariable(scope.get(), "collation_connection", ...);
         } else if (tokens.canConsume("NAMES")) {
             // https://dev.mysql.com/doc/refman/5.7/en/set-statement.html
@@ -261,7 +266,7 @@ public class MySqlDdlParser extends DdlParser {
                 }
 
                 // Signal that the variable was set ...
-                signalEvent(new SetVariableEvent(variableName, value, statement(start)));
+                signalChangeEvent(new SetVariableEvent(variableName, value, statement(start)));
             }
         }
     }
@@ -831,20 +836,6 @@ public class MySqlDdlParser extends DdlParser {
         return options;
     }
 
-    protected static String withoutQuotes(String possiblyQuoted) {
-        if (possiblyQuoted.length() < 2) {
-            // Too short to be quoted ...
-            return possiblyQuoted;
-        }
-        if (possiblyQuoted.startsWith("'") && possiblyQuoted.endsWith("'")) {
-            return possiblyQuoted.substring(1, possiblyQuoted.length() - 1);
-        }
-        if (possiblyQuoted.startsWith("\"") && possiblyQuoted.endsWith("\"")) {
-            return possiblyQuoted.substring(1, possiblyQuoted.length() - 1);
-        }
-        return possiblyQuoted;
-    }
-
     protected void parseColumnDefinition(Marker start, String columnName, TokenStream tokens, TableEditor table, ColumnEditor column,
                                          AtomicBoolean isPrimaryKey) {
         // Parse the data type, which must be at this location ...
@@ -1149,6 +1140,7 @@ public class MySqlDdlParser extends DdlParser {
 
         // We don't care about any other statements or the rest of this statement ...
         consumeRemainingStatement(start);
+        // TODO fix: signal should be send only when some changes on table are made
         signalCreateIndex(indexName, tableId, start);
         debugParsed(start);
     }
@@ -1484,7 +1476,7 @@ public class MySqlDdlParser extends DdlParser {
         // system variables. We replicate that behavior here (or the variable we care about) so that these variables are always
         // right for the current database.
         String charsetForDb = charsetNameForDatabase.get(dbName);
-        systemVariables.setVariable(MySqlSystemVariables.Scope.GLOBAL, "character_set_database", charsetForDb);
+        systemVariables.setVariable(MySqlScope.GLOBAL, "character_set_database", charsetForDb);
     }
 
     /**

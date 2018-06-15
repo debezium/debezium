@@ -81,7 +81,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         }
 
         // Set up the MySQL schema ...
-        this.dbSchema = new MySqlSchema(config, serverName(), this.gtidSourceFilter, this.tableIdCaseInsensitive, topicSelector);
+        this.dbSchema = new MySqlSchema(connectorConfig, serverName(), this.gtidSourceFilter, this.tableIdCaseInsensitive, topicSelector);
 
         // Set up the record processor ...
         this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector, config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE));

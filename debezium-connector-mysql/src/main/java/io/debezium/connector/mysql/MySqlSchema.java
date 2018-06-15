@@ -21,11 +21,12 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.BigIntUnsignedHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.DecimalHandlingMode;
-import io.debezium.connector.mysql.MySqlSystemVariables.Scope;
+import io.debezium.connector.mysql.MySqlSystemVariables.MySqlScope;
 import io.debezium.document.Document;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.SystemVariables;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
@@ -33,8 +34,10 @@ import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.ddl.DdlChanges.DatabaseStatementStringConsumer;
+import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Collect;
 import io.debezium.util.SchemaNameAdjuster;
@@ -63,7 +66,7 @@ public class MySqlSchema {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(logger);
     private final Set<String> ignoredQueryStatements = Collect.unmodifiableSet("BEGIN", "END", "FLUSH PRIVILEGES");
-    private final MySqlDdlParser ddlParser;
+    private final DdlParser ddlParser;
     private final TopicSelector topicSelector;
     private final SchemasByTableId tableSchemaByTableId;
     private final Filters filters;
@@ -88,7 +91,9 @@ public class MySqlSchema {
      *          may be null if not needed
      * @param tableIdCaseInsensitive true if table lookup ignores letter case
      */
-    public MySqlSchema(Configuration config, String serverName, Predicate<String> gtidFilter, boolean tableIdCaseInsensitive, TopicSelector topicSelector) {
+    public MySqlSchema(MySqlConnectorConfig configuration, String serverName, Predicate<String> gtidFilter, boolean tableIdCaseInsensitive, TopicSelector topicSelector) {
+        Configuration config = configuration.getConfig();
+
         this.filters = new Filters(config);
         this.tables = new Tables(tableIdCaseInsensitive);
         this.topicSelector = topicSelector;
@@ -106,16 +111,16 @@ public class MySqlSchema {
         MySqlValueConverters valueConverters = new MySqlValueConverters(decimalMode, timePrecisionMode, bigIntUnsignedMode);
         this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameAdjuster, SourceInfo.SCHEMA);
 
-        this.ddlParser = new MySqlDdlParser(false, valueConverters);
-        this.ddlChanges = new DdlChanges(this.ddlParser.terminator());
-        this.ddlParser.addListener(ddlChanges);
+        this.ddlParser = configuration.getDdlParsingMode().getNewParserInstance(valueConverters);
+        this.ddlChanges = this.ddlParser.getDdlChanges();
 
         // Set up the server name and schema prefix ...
         if (serverName != null) serverName = serverName.trim();
         this.serverName = serverName;
         if (this.serverName == null || serverName.isEmpty()) {
             this.schemaPrefix = "";
-        } else {
+        }
+        else {
             this.schemaPrefix = serverName.endsWith(".") ? serverName : serverName + ".";
         }
 
@@ -252,7 +257,7 @@ public class MySqlSchema {
      */
     public void setSystemVariables(Map<String, String> variables) {
         variables.forEach((varName, value) -> {
-            ddlParser.systemVariables().setVariable(Scope.SESSION, varName, value);
+            ddlParser.systemVariables().setVariable(MySqlScope.SESSION, varName, value);
         });
     }
 
@@ -261,7 +266,7 @@ public class MySqlSchema {
      *
      * @return the system variables; never null
      */
-    public MySqlSystemVariables systemVariables() {
+    public SystemVariables systemVariables() {
         return ddlParser.systemVariables();
     }
 
@@ -337,7 +342,7 @@ public class MySqlSchema {
             this.ddlChanges.reset();
             this.ddlParser.setCurrentSchema(databaseName);
             this.ddlParser.parse(ddlStatements, tables);
-        } catch (ParsingException e) {
+        } catch (ParsingException | MultipleParsingExceptions e) {
             if (skipUnparseableDDL) {
                 logger.warn("Ignoring unparseable DDL statement '{}': {}", ddlStatements);
             } else {

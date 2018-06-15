@@ -17,6 +17,10 @@
             <artifactId>debezium-core</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-ddl-parser</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.github.shyiko</groupId>
             <artifactId>mysql-binlog-connector-java</artifactId>
         </dependency>
@@ -104,6 +108,7 @@
         <docker.filter>debezium/mysql-server-test-database</docker.filter>
         <docker.skip>false</docker.skip>
         <docker.initimage>ln -s /usr/share/zoneinfo/US/Samoa /etc/localtime</docker.initimage>
+
     </properties>
     <build>
         <plugins>

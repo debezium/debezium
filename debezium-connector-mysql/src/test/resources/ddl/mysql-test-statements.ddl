@@ -7,9 +7,9 @@ RENAME TABLE blue_table TO red_table,
      orange_table TO green_table,
      black_table TO white_table;
 
-RENAME DATABASE blue_db TO red_db;
+-- RENAME DATABASE blue_db TO red_db;
 
-RENAME SCHEMA blue_schema TO red_schema;
+-- RENAME SCHEMA blue_schema TO red_schema;
      
 CREATE TABLE RT_VDB_MDLS
 (
@@ -152,7 +152,7 @@ CREATE EVENT myevent
     DO
       UPDATE myschema.mytable SET mycol = mycol + 1;
 
---ALTER
+-- ALTER
 --    [DEFINER = { user | CURRENT_USER }]
 --    EVENT event_name
 --    [ON SCHEDULE schedule]
@@ -182,7 +182,7 @@ ALTER EVENT myevent
 ALTER EVENT olddb.myevent
     RENAME TO newdb.myevent;
     
---ALTER LOGFILE GROUP logfile_group
+-- ALTER LOGFILE GROUP logfile_group
 --    ADD UNDOFILE 'file_name'
 --    [INITIAL_SIZE [=] size]
 --    [WAIT]
@@ -193,9 +193,9 @@ ALTER LOGFILE GROUP lg_3
     INITIAL_SIZE=32M
     ENGINE=NDBCLUSTER;
 
---ALTER FUNCTION func_name [characteristic ...]
+-- ALTER FUNCTION func_name [characteristic ...]
 --
---characteristic:
+-- characteristic:
 --    { CONTAINS SQL | NO SQL | READS SQL DATA | MODIFIES SQL DATA }
 --  | SQL SECURITY { DEFINER | INVOKER }
 --  | COMMENT 'string'
@@ -214,15 +214,15 @@ ALTER PROCEDURE fall_back COMMENT 'no more wind please';
 
 ALTER SERVER s OPTIONS (USER 'sally');
 
---ALTER TABLESPACE tablespace_name
+-- ALTER TABLESPACE tablespace_name
 --    {ADD|DROP} DATAFILE 'file_name'
 --    [INITIAL_SIZE [=] size]
 --    [WAIT]
 --    ENGINE [=] engine_name
 
-ALTER TABLESPACE tspace_name ADD DATAFILE 'file_name'INITIAL_SIZE = 9999 WAIT;
+ALTER TABLESPACE tspace_name ADD DATAFILE 'file_name'INITIAL_SIZE = 9999 WAIT ENGINE = MEMORY;
 
---ALTER
+-- ALTER
 --    [ALGORITHM = {UNDEFINED | MERGE | TEMPTABLE}]
 --    [DEFINER = { user | CURRENT_USER }]
 --    [SQL SECURITY { DEFINER | INVOKER }]
@@ -234,18 +234,18 @@ ALTER VIEW great_view (c1, c2) AS SELECT * FROM table_a;
 
 ALTER VIEW great_view (c1, c2) AS SELECT * FROM table_a WITH LOCAL CHECK OPTION;
 
-ALTER VIEW ALGORITHM = MERGE great_view AS SELECT * FROM table_a;
+ALTER ALGORITHM = MERGE VIEW great_view AS SELECT * FROM table_a;
 
-ALTER VIEW DEFINER = 'joe'@'there.com' great_view AS SELECT * FROM table_a;
+ALTER DEFINER = 'joe'@'there.com' VIEW great_view AS SELECT * FROM table_a;
 -- ============ 50 STATEMENTS ====================
-ALTER VIEW SQL SECURITY INVOKER great_view AS SELECT * FROM table_a;
+ALTER SQL SECURITY INVOKER VIEW great_view AS SELECT * FROM table_a;
 
-ALTER VIEW ALGORITHM = MERGE DEFINER = 'joe'@'there.com' SQL SECURITY INVOKER great_view AS SELECT * FROM table_a;
+ALTER ALGORITHM = MERGE DEFINER = 'joe'@'there.com' SQL SECURITY INVOKER VIEW great_view AS SELECT * FROM table_a;
 
---CREATE {DATABASE | SCHEMA} [IF NOT EXISTS] db_name
+-- CREATE {DATABASE | SCHEMA} [IF NOT EXISTS] db_name
 --    [create_specification] ...
 --
---create_specification:
+-- create_specification:
 --    [DEFAULT] CHARACTER SET [=] charset_name
 --  | [DEFAULT] COLLATE [=] collation_name
 
@@ -253,7 +253,7 @@ CREATE DATABASE db_1;
 
 CREATE DATABASE db_2 DEFAULT CHARACTER SET = utf8;
 
-CREATE DATABASE db_3 CHARACTER SET utf10;
+CREATE DATABASE db_3 CHARACTER SET utf16;
 
 CREATE DATABASE IF NOT EXISTS db_4 DEFAULT CHARACTER SET = utf8;
 
@@ -261,7 +261,7 @@ CREATE SCHEMA schema_1;
 
 CREATE SCHEMA schema_2 DEFAULT CHARACTER SET = utf8;
 
-CREATE SCHEMA schema_3 CHARACTER SET utf10;
+CREATE SCHEMA schema_3 CHARACTER SET utf16;
 
 CREATE SCHEMA IF NOT EXISTS schema_4 DEFAULT CHARACTER SET = utf8;
 -- ============ 60 STATEMENTS ====================
@@ -271,21 +271,21 @@ CREATE INDEX id_index USING BTREE ON lookup (id);
 
 -- CREATE [ONLINE|OFFLINE] [UNIQUE|FULLTEXT|SPATIAL] INDEX index_name
 
-CREATE ONLINE INDEX index_1;
+# CREATE ONLINE INDEX index_1;
+#
+# CREATE OFFLINE INDEX index_2;
+#
+# CREATE ONLINE UNIQUE INDEX index_3;
+#
+# CREATE OFFLINE FULLTEXT INDEX index_4;
+#
+# CREATE UNIQUE INDEX index_5;
+#
+# CREATE FULLTEXT INDEX index_6;
+#
+# CREATE SPATIAL INDEX index_7;
 
-CREATE OFFLINE INDEX index_2;
-
-CREATE ONLINE UNIQUE INDEX index_3;
-
-CREATE OFFLINE FULLTEXT INDEX index_4;
-
-CREATE UNIQUE INDEX index_5;
-
-CREATE FULLTEXT INDEX index_6;
-
-CREATE SPATIAL INDEX index_7;
-
---CREATE LOGFILE GROUP lf_group_name
+-- CREATE LOGFILE GROUP lf_group_name
 --    ADD UNDOFILE 'undo_file'
 --    [INITIAL_SIZE [=] initial_size]
 --    [UNDO_BUFFER_SIZE [=] undo_buffer_size]
@@ -296,18 +296,18 @@ CREATE SPATIAL INDEX index_7;
 --    ENGINE [=] engine_name
 
 CREATE LOGFILE GROUP lf_group_name_1 ADD UNDOFILE 'my_undo_file'
-    ENGINE some_engine_name;
+    ENGINE NDB;
 -- ============ 70 STATEMENTS ====================
 CREATE LOGFILE GROUP lf_group_name_2 ADD UNDOFILE 'my_undo_file'
     INITIAL_SIZE = 9999 WAIT COMMENT = 'some bogus comment'
-    ENGINE some_engine_name;
+    ENGINE NDB;
     
 CREATE DEFINER = 'admin'@'localhost' PROCEDURE account_count()
     BEGIN
       SELECT 'Number of accounts:', COUNT(*) FROM mysql.user;
     END;
 
-CREATE DEFINER = 'admin'@'localhost' FUNCTION account_count()
+CREATE DEFINER = 'admin'@'localhost' FUNCTION account_count() RETURNS INT
     SQL SECURITY INVOKER
     BEGIN
       SELECT 'Number of accounts:', COUNT(*) FROM mysql.user;
@@ -317,7 +317,7 @@ CREATE SERVER server_1
     FOREIGN DATA WRAPPER mysql
     OPTIONS (USER 'Remote', HOST '192.168.1.106', DATABASE 'test');
 
---CREATE TABLESPACE tablespace_name
+-- CREATE TABLESPACE tablespace_name
 --    ADD DATAFILE 'file_name'
 --    USE LOGFILE GROUP logfile_group
 --    [EXTENT_SIZE [=] extent_size]
@@ -329,10 +329,9 @@ CREATE SERVER server_1
 --    [COMMENT [=] comment_text]
 --    ENGINE [=] engine_name
 
-CREATE TABLESPACE tbl_space_1 ADD DATAFILE 'my_data_file' USER LOGFILE GROUP my_lf_group
-    ENGINE = my_engine_1;
+CREATE TABLESPACE tbl_space_1 ADD DATAFILE 'my_data_file' USER LOGFILE GROUP my_lf_group ENGINE = NDB;
 
---CREATE
+-- CREATE
 --    [DEFINER = { user | CURRENT_USER }]
 --    TRIGGER trigger_name trigger_time trigger_event
 --    ON tbl_name FOR EACH ROW trigger_stmt
@@ -347,14 +346,14 @@ CREATE TRIGGER testref BEFORE INSERT ON test1
     UPDATE test4 SET b4 = b4 + 1 WHERE a4 = NEW.a1;
   END;
 
-CREATE DEFINER = 'user'@'hostname' TRIGGER my_trigger_1 INSERT ON test1
+CREATE DEFINER = 'user'@'hostname' TRIGGER my_trigger_1 BEFORE INSERT ON test1
   FOR EACH ROW BEGIN
     INSERT INTO test2 SET a2 = NEW.a1;
     DELETE FROM test3 WHERE a3 = NEW.a1;
     UPDATE test4 SET b4 = b4 + 1 WHERE a4 = NEW.a1;
   END;
   
---CREATE
+-- CREATE
 --    [OR REPLACE]
 --    [ALGORITHM = {UNDEFINED | MERGE | TEMPTABLE}]
 --    [DEFINER = { user | CURRENT_USER }]
@@ -395,7 +394,7 @@ DROP SERVER my_server_1;
 
 DROP SERVER IF EXISTS my_server_2;
 
---DROP [TEMPORARY] TABLE [IF EXISTS]
+-- DROP [TEMPORARY] TABLE [IF EXISTS]
 --    tbl_name [, tbl_name] ...
 --    [RESTRICT | CASCADE]
 
@@ -409,12 +408,12 @@ DROP TABLE IF EXISTS table_4, table_5, table_6;
 
 DROP TABLE IF EXISTS table_7, table_8 RESTRICT;
 
---DROP TABLESPACE tablespace_name
+-- DROP TABLESPACE tablespace_name
 --    ENGINE [=] engine_name
 
-DROP TABLESPACE my_tbl_space_1 ENGINE = my_eng;
+DROP TABLESPACE my_tbl_space_1 ENGINE = NDB;
 
-DROP TABLESPACE my_tbl_space_2 ENGINE my_eng;
+DROP TABLESPACE my_tbl_space_2 ENGINE NDB;
 -- ============ 100 STATEMENTS ====================
 DROP TRIGGER my_schema_1.blue_trigger;
 
