@@ -10,6 +10,8 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.Random;
 
+import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
+import io.debezium.relational.ddl.DdlParser;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -449,6 +451,60 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
             }
 
             return null;
+        }
+    }
+
+    public static enum DdlParsingMode implements EnumeratedValue {
+
+        LEGACY("legacy", MySqlDdlParser.class),
+        ANTLR("antlr", MySqlAntlrDdlParser.class);
+
+        private final String value;
+        private final Class<? extends DdlParser> parserClass;
+
+        private DdlParsingMode(String value, Class<? extends DdlParser> parserClass) {
+            this.value = value;
+            this.parserClass = parserClass;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public Class<? extends DdlParser> getParserClass() {
+            return parserClass;
+        }
+
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static DdlParsingMode parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+            for (DdlParsingMode option : DdlParsingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+        
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static DdlParsingMode parse(String value, String defaultValue) {
+            DdlParsingMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
         }
     }
 
@@ -903,6 +959,17 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
             .withDefault(0L)
             .withValidation(Field::isNonNegativeLong);
 
+    public static final Field DDL_PARSER_MODE = Field.create("ddl.parser.mode")
+            .withDisplayName("Ddl parser mode")
+            .withEnum(DdlParsingMode.class, DdlParsingMode.ANTLR)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("MySQL ddl statements can be parsed in different ways:" +
+                    "'legacy' (the default) parsing is creating a TokenStream and comparing token by token with an expected values." +
+                    "The decisions are made by matched token values." +
+                    "'antlr' uses generated parser from MySQL grammar using ANTLR v4 tool which use ALL(*) algorithm for parsing." +
+                    "This parser creates a parsing tree for DDL statement, then walks trough it and apply changes by node types in parsed tree.");
+
     /**
      * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
      * have their values truncated to be no longer than the specified number of characters.
@@ -957,6 +1024,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                      EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE,
                                                      INCONSISTENT_SCHEMA_HANDLING_MODE,
                                                      SNAPSHOT_DELAY_MS,
+                                                     DDL_PARSER_MODE,
                                                      CommonConnectorConfig.TOMBSTONES_ON_DELETE);
 
     /**
@@ -1013,7 +1081,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
                     SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
-                    BIGINT_UNSIGNED_HANDLING_MODE, SNAPSHOT_DELAY_MS);
+                    BIGINT_UNSIGNED_HANDLING_MODE, SNAPSHOT_DELAY_MS, DDL_PARSER_MODE);
         return config;
     }
 
