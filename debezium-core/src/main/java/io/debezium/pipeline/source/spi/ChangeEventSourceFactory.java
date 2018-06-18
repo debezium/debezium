@@ -8,7 +8,7 @@ package io.debezium.pipeline.source.spi;
 import io.debezium.pipeline.spi.OffsetContext;
 
 /**
- * A factory for creating @l# {@link ChangeEventSource}s specific to one database.
+ * A factory for creating {@link ChangeEventSource}s specific to one database.
  *
  * @author Gunnar Morling
  */
