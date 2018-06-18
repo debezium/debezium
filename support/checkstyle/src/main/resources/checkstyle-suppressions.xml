@@ -13,7 +13,7 @@
 
     <!--exclude any antlr generated files-->
     <suppress checks="." files=".[\\/]io[\\/]debezium[\\/]ddl[\\/]parser[\\/]mysql[\\/]generated[\\/].*\.java$"/>
-    <suppress checks="." files=".[\\/]antlr4[\\/]io[\\/]debezium[\\/]connector[\\/]oracle[\\/]parser[\\/].*\.java"/>
+    <suppress checks="." files=".[\\/]io[\\/]debezium[\\/]ddl[\\/]parser[\\/]oracle[\\/]generated[\\/].*\.java$"/>
 
     <!--exclude files from antlr which has to be copied into the module, because they are not included in library-->
     <suppress checks="." files=".[\\/]io[\\/]debezium[\\/]antlr[\\/]CaseChangingCharStream\.java$"/>
