@@ -715,11 +715,5 @@
                 <modules.argline>--add-modules java.xml.bind</modules.argline>
             </properties>
         </profile>
-        <profile>
-            <id>oracle</id>
-            <modules>
-                <module>debezium-connector-oracle</module>
-            </modules>
-        </profile>
     </profiles>
 </project>
