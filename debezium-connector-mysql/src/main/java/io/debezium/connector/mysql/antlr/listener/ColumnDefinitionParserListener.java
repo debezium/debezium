@@ -230,7 +230,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
         if (columnEditor.length() == -1) {
             columnEditor.length((int) dataType.length());
         }
-        if (columnEditor.scale() == -1) {
+        if (!columnEditor.scale().isPresent() && dataType.scale() != Column.UNSET_INT_VALUE) {
             columnEditor.scale(dataType.scale());
         }
         if (Types.NCHAR == jdbcDataType || Types.NVARCHAR == jdbcDataType) {
