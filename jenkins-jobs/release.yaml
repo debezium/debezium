@@ -13,9 +13,11 @@
       - string:
           name: RELEASE_VERSION
           description: "Version of Debezium to be released - e.g. 0.5.2"
+          default: "0.8.0.Beta1"
       - string:
           name: DEVELOPMENT_VERSION
           description: "Next development version - e.g. 0.5.3-SNAPSHOT"
+          default: "0.9.0-SNAPSHOT"
       - string:
           name: DEBEZIUM_REPOSITORY
           description: "Repository from which Debezium is built"
@@ -23,6 +25,14 @@
       - string:
           name: DEBEZIUM_BRANCH
           description: "A branch from which Debezium is built"
+          default: "master"
+      - string:
+          name: DEBEZIUM_INCUBATOR_REPOSITORY
+          description: "Repository from which Debezium incubating modules are built"
+          default: "github.com/debezium/debezium-incubator.git"
+      - string:
+          name: DEBEZIUM_INCUBATOR_BRANCH
+          description: "A branch from which Debezium incubating modules are built"
           default: "master"
       - string:
           name: IMAGES_REPOSITORY
@@ -40,6 +50,10 @@
           name: POSTGRES_DECODER_BRANCH
           description: "A branch from which Debezium images are built PostgreSQL decoder plugin is built"
           default: "master"
+      - bool:
+          name: DRY_RUN
+          description: "When checked the changes and artefacts are not pushed to repositories and registries"
+          default: "true"
     dsl:
       !include-raw:
         - "scripts/release-pipeline.groovy"

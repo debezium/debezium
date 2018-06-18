@@ -6,6 +6,8 @@ if (
     !DEVELOPMENT_VERSION ||
     !DEBEZIUM_REPOSITORY ||
     !DEBEZIUM_BRANCH ||
+    !DEBEZIUM_INCUBATOR_REPOSITORY ||
+    !DEBEZIUM_INCUBATOR_BRANCH ||
     !IMAGES_REPOSITORY ||
     !IMAGES_BRANCH ||
     !POSTGRES_DECODER_REPOSITORY ||
@@ -14,19 +16,33 @@ if (
     error 'Input parameters not provided'
 }
 
+if (DRY_RUN == null) {
+    DRY_RUN = false
+}
+else if (DRY_RUN instanceof String) {
+    DRY_RUN = Boolean.valueOf(DRY_RUN)
+}
+echo "Dry run: ${DRY_RUN}"
+
 GIT_CREDENTIALS_ID = '17e7a907-8401-4b7e-a91b-a7823047b3e5'
 JIRA_CREDENTIALS_ID = 'debezium-jira'
 
 DEBEZIUM_DIR = 'debezium'
+DEBEZIUM_INCUBATOR_DIR = 'debezium-incubator'
 IMAGES_DIR = 'images'
 POSTGRES_DECODER_DIR = 'postgres-decoder'
+ORACLE_ARTIFACT_DIR = '/home/jenkins/oracle-libs/12.2.0.1.0'
+ORACLE_ARTIFACT_VERSION = '12.1.0.2'
 
 VERSION_TAG = "v$RELEASE_VERSION"
-CONNECTORS = ['mongodb','mysql','postgres']
+CORE_CONNECTORS = ['mongodb','mysql','postgres']
+INCUBATOR_CONNECTORS = ['oracle']
+CONNECTORS = CORE_CONNECTORS + INCUBATOR_CONNECTORS
 IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/postgres', 'examples/mongodb', 'kafka', 'zookeeper']
 MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
 STAGING_REPO = 'https://oss.sonatype.org/content/repositories'
 STAGING_REPO_ID = null
+INCUBATOR_STAGING_REPO_ID = null
 LOCAL_MAVEN_REPO = "/home/jenkins/.m2/repository"
 
 withCredentials([usernamePassword(credentialsId: JIRA_CREDENTIALS_ID, passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {
@@ -134,6 +150,32 @@ def closeJiraRelease() {
     jiraUpdate(jiraGET('project/DBZ/versions').find { it.name == JIRA_VERSION }.self, JIRA_CLOSE_RELEASE, 'PUT')
 }
 
+def mvnRelease(repoDir, repoName, branchName, buildArgs = '') {
+    def repoId = null
+    dir(repoDir) {
+        sh "mvn release:clean release:prepare -DreleaseVersion=$RELEASE_VERSION -Dtag=$VERSION_TAG -DdevelopmentVersion=$DEVELOPMENT_VERSION -DpushChanges=${!DRY_RUN} -Darguments=\"-DskipTests -DskipITs -Passembly $buildArgs\" $buildArgs"
+        if (!DRY_RUN) {
+            withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                sh "git push \"https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${repoName}\" HEAD:$branchName --follow-tags"
+            }
+        }
+        withCredentials([
+            string(credentialsId: 'debezium-ci-gpg-passphrase', variable: 'PASSPHRASE'),
+            [$class: 'FileBinding', credentialsId: 'debezium-ci-gpg-public', variable: 'PUBLIC_FILE'],
+            [$class: 'FileBinding', credentialsId: 'debezium-ci-gpg', variable: 'PRIVATE_FILE']]) {
+            def mvnlog = sh(script: 'mvn release:perform -DlocalCheckout=$DRY_RUN -Darguments="-s $HOME/.m2/settings-snapshots.xml -Dgpg.secretKeyring=$PRIVATE_FILE -Dgpg.publicKeyring=$PUBLIC_FILE -Dgpg.passphrase=$PASSPHRASE -Dgpg.keyname=8DCDC40D -DskipTests -DskipITs $buildArgs ' + buildArgs + '"', returnStdout: true).trim()
+            echo mvnlog
+            def match = mvnlog =~ /Created staging repository with ID \"(iodebezium-.+)\"/
+            if (!match[0]) {
+                error 'Could not find staging repository ID'
+            }
+            repoId = match[0][1]
+            echo "Using staging repository $repoId"
+        }
+    }
+    return repoId
+}
+
 node('Slave') {
 
     stage ('Initialize') {
@@ -146,6 +188,14 @@ node('Slave') {
             extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: DEBEZIUM_DIR]], 
                 submoduleCfg: [], 
                 userRemoteConfigs: [[url: "https://$DEBEZIUM_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
+            ]
+        )
+        checkout([$class: 'GitSCM', 
+            branches: [[name: "*/$DEBEZIUM_INCUBATOR_BRANCH"]], 
+            doGenerateSubmoduleConfigurations: false, 
+            extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: DEBEZIUM_INCUBATOR_DIR]], 
+                submoduleCfg: [], 
+                userRemoteConfigs: [[url: "https://$DEBEZIUM_INCUBATOR_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
             ]
         )
         checkout([$class: 'GitSCM', 
@@ -167,24 +217,32 @@ node('Slave') {
         def version = RELEASE_VERSION.split('\\.')
         IMAGE_TAG = "${version[0]}.${version[1]}"
         echo "Images tagged with $IMAGE_TAG will be used"
+        dir(ORACLE_ARTIFACT_DIR) {
+            sh "mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=ojdbc8 -Dversion=$ORACLE_ARTIFACT_VERSION -Dpackaging=jar -Dfile=ojdbc8.jar"
+            sh "mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=xstreams -Dversion=$ORACLE_ARTIFACT_VERSION -Dpackaging=jar -Dfile=xstreams.jar"
+        }
     }
 
     stage ('Check Jira') {
-        unresolvedIssues = unresolvedIssuesFromJira()
-        issuesWithoutComponents = issuesWithoutComponentsFromJira()
-        if (unresolvedIssues) {
-            error "Error, issues ${unresolvedIssues.toString()} must be resolved"
-        }
-        if (issuesWithoutComponents) {
-            error "Error, issues ${issuesWithoutComponents.toString()} must have component set"
+        if (!DRY_RUN) {
+            unresolvedIssues = unresolvedIssuesFromJira()
+            issuesWithoutComponents = issuesWithoutComponentsFromJira()
+            if (unresolvedIssues) {
+                error "Error, issues ${unresolvedIssues.toString()} must be resolved"
+            }
+            if (issuesWithoutComponents) {
+                error "Error, issues ${issuesWithoutComponents.toString()} must have component set"
+            }
         }
     }
 
     stage ('Check changelog') {
-        if (!new URL("https://raw.githubusercontent.com/debezium/debezium/$DEBEZIUM_BRANCH/CHANGELOG.md").text.contains(RELEASE_VERSION) ||
-            !new URL('https://raw.githubusercontent.com/debezium/debezium.github.io/develop/docs/releases.asciidoc').text.contains(RELEASE_VERSION)
-        ) {
-            error 'Changelog was not modified to include release information'
+        if (!DRY_RUN) {
+            if (!new URL("https://raw.githubusercontent.com/debezium/debezium/$DEBEZIUM_BRANCH/CHANGELOG.md").text.contains(RELEASE_VERSION) ||
+                !new URL('https://raw.githubusercontent.com/debezium/debezium.github.io/develop/docs/releases.asciidoc').text.contains(RELEASE_VERSION)
+            ) {
+                error 'Changelog was not modified to include release information'
+            }
         }
     }
 
@@ -203,23 +261,22 @@ node('Slave') {
 
     stage ('Prepare release') {
         dir(DEBEZIUM_DIR) {
-            sh "mvn release:clean release:prepare -DreleaseVersion=$RELEASE_VERSION -Dtag=$VERSION_TAG -DdevelopmentVersion=$DEVELOPMENT_VERSION -DpushChanges=true -Darguments=\"-DskipTests -DskipITs -Passembly\""
-            withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
-                sh "git push \"https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${DEBEZIUM_REPOSITORY}\" HEAD:$DEBEZIUM_BRANCH --follow-tags"
-            }
-            withCredentials([
-                string(credentialsId: 'debezium-ci-gpg-passphrase', variable: 'PASSPHRASE'),
-                [$class: 'FileBinding', credentialsId: 'debezium-ci-gpg-public', variable: 'PUBLIC_FILE'],
-                [$class: 'FileBinding', credentialsId: 'debezium-ci-gpg', variable: 'PRIVATE_FILE']]) {
-                def mvnlog = sh(script: 'mvn release:perform -DlocalCheckout=false -Darguments="-s $HOME/.m2/settings-snapshots.xml -Dgpg.secretKeyring=$PRIVATE_FILE -Dgpg.publicKeyring=$PUBLIC_FILE -Dgpg.passphrase=$PASSPHRASE -Dgpg.keyname=8DCDC40D -DskipTests -DskipITs"', returnStdout: true).trim()
-                echo mvnlog
-                def match = mvnlog =~ /Created staging repository with ID \"(iodebezium-.+)\"/
-                if (!match[0]) {
-                    error 'Could not find staging repository ID'
-                }
-                STAGING_REPO_ID = match[0][1]
-                echo "Using staging repository $STAGING_REPO_ID"
-            }
+            sh "mvn clean install -DskipTests -DskipITs"
+        }
+        STAGING_REPO_ID = mvnRelease(DEBEZIUM_DIR, DEBEZIUM_REPOSITORY, DEBEZIUM_BRANCH)
+        dir(DEBEZIUM_INCUBATOR_DIR) {
+            modifyFile("pom.xml") {
+                it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$RELEASE_VERSION</version>\n    </parent>")
+	    }
+	    sh "git commit -a -m 'Stable parent $RELEASE_VERSION for release'"
+            sh "mvn clean install -DskipTests -DskipITs -Poracle"
+        }
+        INCUBATOR_STAGING_REPO_ID = mvnRelease(DEBEZIUM_INCUBATOR_DIR, DEBEZIUM_INCUBATOR_REPOSITORY, DEBEZIUM_INCUBATOR_BRANCH, '-Dversion.debezium=$RELEASE_VERSION -Poracle')
+        dir(DEBEZIUM_INCUBATOR_DIR) {
+            modifyFile("pom.xml") {
+                it.replaceFirst('<version>.+</version>\n    </parent>', "<version>x$DEVELOPMENT_VERSION</version>\n    </parent>")
+	    }
+	    sh "git commit -a -m 'New parent $DEVELOPMENT_VERSION for development'"
         }
     }
 
@@ -236,7 +293,8 @@ node('Slave') {
             modifyFile('Dockerfile') {
                 it
                     .replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$RELEASE_VERSION")
-                    .replaceFirst('MAVEN_CENTRAL="[^"]+"', "MAVEN_CENTRAL=\"$STAGING_REPO/$STAGING_REPO_ID/\"")
+                    .replaceFirst('MAVEN_REPO_CORE="[^"]+"', "MAVEN_REPO_CORE=\"$STAGING_REPO/$STAGING_REPO_ID/\"")
+                    .replaceFirst('MAVEN_REPO_INCUBATOR="[^"]+"', "MAVEN_REPO_INCUBATOR=\"$STAGING_REPO/$INCUBATOR_STAGING_REPO_ID/\"")
                     .replaceFirst('MD5SUMS="[^"]+"', "MD5SUMS=\"${sums.join(' ')}\"")
             }
             modifyFile('Dockerfile.local') {
@@ -300,7 +358,8 @@ node('Slave') {
         dir ("$IMAGES_DIR/connect/$IMAGE_TAG") {
             modifyFile('Dockerfile') {
                 it
-                    .replaceFirst('MAVEN_CENTRAL="[^"]+"', "MAVEN_CENTRAL=\"$MAVEN_CENTRAL\"")
+                    .replaceFirst('MAVEN_REPO_CORE="[^"]+"', "MAVEN_REPO_CORE=\"$MAVEN_CENTRAL\"")
+                    .replaceFirst('MAVEN_REPO_INCUBATOR="[^"]+"', "MAVEN_REPO_INCUBATOR=\"$MAVEN_CENTRAL\"")
             }
             modifyFile('Dockerfile.local') {
                 it
@@ -320,36 +379,42 @@ node('Slave') {
     }
 
     stage ('Wait for Central sync') {
-        timeout (time: 2, unit: java.util.concurrent.TimeUnit.HOURS) {
-            while (true) {
-                failed = false
-                for (i = 0; i < CONNECTORS.size(); i++) {
-                    def connector = CONNECTORS[i]
-                    try {
-                        new URL("http://central.maven.org/maven2/io/debezium/debezium-connector-$connector/${RELEASE_VERSION}/debezium-connector-$connector-${RELEASE_VERSION}-plugin.tar.gz").bytes
+        if (!DRY_RUN) {
+            timeout (time: 2, unit: java.util.concurrent.TimeUnit.HOURS) {
+                while (true) {
+                    failed = false
+                    for (i = 0; i < CONNECTORS.size(); i++) {
+                        def connector = CONNECTORS[i]
+                        try {
+                            new URL("http://central.maven.org/maven2/io/debezium/debezium-connector-$connector/${RELEASE_VERSION}/debezium-connector-$connector-${RELEASE_VERSION}-plugin.tar.gz").bytes
+                        }
+                        catch (FileNotFoundException e) {
+                            echo "Connector $connector not yet in Maven Central"
+                            failed = true
+                        }
                     }
-                    catch (FileNotFoundException e) {
-                        echo "Connector $connector not yet in Maven Central"
-                        failed = true
+                    if (!failed) {
+                        break
                     }
+                    sleep 30
                 }
-                if (!failed) {
-                    break
-                }
-                sleep 30
             }
         }
     }
 
     stage ('Cleanup Jira') {
-        closeJiraIssues()
-        closeJiraRelease()
+        if (!DRY_RUN) {
+            closeJiraIssues()
+            closeJiraRelease()
+        }
     }
 
     stage('PostgreSQL Decoder') {
-        dir(POSTGRES_DECODER_DIR) {
-            withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
-                sh "git tag $VERSION_TAG && git push \"https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${POSTGRES_DECODER_REPOSITORY}\" $VERSION_TAG"
+        if (!DRY_RUN) {
+            dir(POSTGRES_DECODER_DIR) {
+                withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                    sh "git tag $VERSION_TAG && git push \"https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${POSTGRES_DECODER_REPOSITORY}\" $VERSION_TAG"
+                }
             }
         }
         dir ("$IMAGES_DIR") {
@@ -387,11 +452,13 @@ node('Slave') {
                     it.replaceFirst('FROM \\S+', "FROM debezium/kafka:$nextTag")
                 }
             }
-            withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
-                sh """
-                    git commit -a -m "Updated Docker images for release $RELEASE_VERSION" && git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${IMAGES_REPOSITORY} HEAD:$IMAGES_BRANCH
-                    git tag $VERSION_TAG && git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${IMAGES_REPOSITORY} $VERSION_TAG
-                """
+            if (!DRY_RUN) {
+                withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                    sh """
+                        git commit -a -m "Updated Docker images for release $RELEASE_VERSION" && git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${IMAGES_REPOSITORY} HEAD:$IMAGES_BRANCH
+                        git tag $VERSION_TAG && git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${IMAGES_REPOSITORY} $VERSION_TAG
+                    """
+                }
             }
         }
     }
