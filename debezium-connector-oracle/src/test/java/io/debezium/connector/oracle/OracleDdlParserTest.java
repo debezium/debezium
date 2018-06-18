@@ -15,9 +15,9 @@ import org.antlr.v4.runtime.RuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.junit.Test;
 
-import io.debezium.connector.oracle.parser.PlSqlLexer;
-import io.debezium.connector.oracle.parser.PlSqlParser;
-import io.debezium.connector.oracle.parser.PlSqlParser.Unit_statementContext;
+import io.debezium.ddl.parser.oracle.generated.PlSqlLexer;
+import io.debezium.ddl.parser.oracle.generated.PlSqlParser;
+import io.debezium.ddl.parser.oracle.generated.PlSqlParser.Unit_statementContext;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
