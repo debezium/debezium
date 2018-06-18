@@ -23,8 +23,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.mysql.MySqlConnectorConfig.DdlParsingMode;
 import io.debezium.relational.history.FileDatabaseHistory;
+import io.debezium.util.Testing;
 
 /**
  * Create and populate a unique instance of a MySQL database for each run of JUnit test. A user of class
@@ -37,8 +37,8 @@ import io.debezium.relational.history.FileDatabaseHistory;
  *
  */
 public class UniqueDatabase {
+
     private static final ZoneId TIMEZONE = ZoneId.of("US/Samoa");
-    private static final MySqlConnectorConfig.DdlParsingMode DEFAULT_PARSING_MODE = DdlParsingMode.LEGACY;
 
     private static final String DEFAULT_DATABASE = "mysql";
     private static final String[] CREATE_DATABASE_DDL = new String[] {
@@ -179,7 +179,12 @@ public class UniqueDatabase {
      * @return Configuration builder initialized with JDBC connection parameters and most frequently used parameters
      */
     public Configuration.Builder defaultConfig() {
-        System.err.println("=================================== " + System.getProperty("ddl.parser.mode", DEFAULT_PARSING_MODE.getValue()));
+        String ddlParserMode = System.getProperty(
+                MySqlConnectorConfig.DDL_PARSER_MODE.name(),
+                MySqlConnectorConfig.DDL_PARSER_MODE.defaultValueAsString()
+        );
+        Testing.print("DDL parser mode: " + ddlParserMode);
+
         final Configuration.Builder builder = defaultJdbcConfigBuilder()
                 .with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.SecureConnectionMode.DISABLED)
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
@@ -188,10 +193,12 @@ public class UniqueDatabase {
                 .with(MySqlConnectorConfig.DATABASE_WHITELIST, getDatabaseName())
                 .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                 .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000)
-                .with(MySqlConnectorConfig.DDL_PARSER_MODE, System.getProperty("ddl.parser.mode", DEFAULT_PARSING_MODE.getValue()));
+                .with(MySqlConnectorConfig.DDL_PARSER_MODE, ddlParserMode);
+
         if (dbHistoryPath != null) {
             builder.with(FileDatabaseHistory.FILE_PATH, dbHistoryPath);
         }
+
         return builder;
     }
 
