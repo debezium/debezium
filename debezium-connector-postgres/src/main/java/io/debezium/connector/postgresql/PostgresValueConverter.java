@@ -16,7 +16,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.Date;
@@ -89,18 +88,12 @@ public class PostgresValueConverter extends JdbcValueConverters {
      */
     private final boolean includeUnknownDatatypes;
 
-    /**
-     * Offset of timezone used by the database server
-     */
-    private final ZoneOffset serverZoneOffset;
-
     private final TypeRegistry typeRegistry;
 
-    protected PostgresValueConverter(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode, boolean includeUnknownDatatypes, TypeRegistry typeRegistry, ZoneOffset serverZoneOffset) {
+    protected PostgresValueConverter(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode, boolean includeUnknownDatatypes, TypeRegistry typeRegistry) {
         super(decimalMode, temporalPrecisionMode, defaultOffset, null, bigIntUnsignedMode);
         this.includeUnknownDatatypes = includeUnknownDatatypes;
         this.typeRegistry = typeRegistry;
-        this.serverZoneOffset = serverZoneOffset;
     }
 
     @Override
@@ -221,7 +214,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.INTERVAL:
                 return data -> convertInterval(column, fieldDefn, data);
             case PgOid.TIMESTAMP:
-                return ((ValueConverter)(data-> convertTimestampToUTC(column, fieldDefn, data))).and(super.converter(column, fieldDefn));
+                return ((ValueConverter)(data-> convertTimestampToLocalDateTime(column, fieldDefn, data))).and(super.converter(column, fieldDefn));
             case PgOid.TIMESTAMPTZ:
                 return data -> convertTimestampWithZone(column, fieldDefn, data);
             case PgOid.TIMETZ:
@@ -627,7 +620,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         return Optional.empty();
     }
 
-    protected Object convertTimestampToUTC(Column column, Field fieldDefn, Object data) {
+    protected Object convertTimestampToLocalDateTime(Column column, Field fieldDefn, Object data) {
         if (data == null) {
             return null;
         }
@@ -635,10 +628,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
             return data;
         }
         final Timestamp timestamp = (Timestamp) data;
-        final LocalDateTime serverLocalTime = timestamp.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
-        final LocalDateTime utcTime = LocalDateTime
-                .ofInstant(serverLocalTime.atOffset(serverZoneOffset).toInstant(), ZoneOffset.UTC);
-        return utcTime;
+
+        return timestamp.toLocalDateTime();
     }
 
     @Override

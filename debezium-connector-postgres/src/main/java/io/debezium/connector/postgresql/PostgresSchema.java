@@ -65,7 +65,7 @@ public class PostgresSchema {
         this.topicSelector = topicSelector;
 
         this.valueConverter = new PostgresValueConverter(config.decimalHandlingMode(), config.temporalPrecisionMode(),
-                ZoneOffset.UTC, null, config.includeUnknownDatatypes(), typeRegistry, config.serverZoneOffset());
+                ZoneOffset.UTC, null, config.includeUnknownDatatypes(), typeRegistry);
         this.schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
         this.schemaBuilder = new TableSchemaBuilder(valueConverter, this.schemaNameAdjuster, SourceInfo.SCHEMA);
 

@@ -7,7 +7,6 @@ package io.debezium.connector.postgresql.connection.pgproto;
 
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
-import java.time.ZoneOffset;
 import java.util.Arrays;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -31,7 +30,7 @@ import io.debezium.connector.postgresql.proto.PgProto.RowMessage;
 public class PgProtoMessageDecoder implements MessageDecoder {
 
     @Override
-    public void processMessage(final ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry, ZoneOffset serverTimezone) throws SQLException, InterruptedException {
+    public void processMessage(final ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException {
         try {
             if (!buffer.hasArray()) {
                 throw new IllegalStateException(
@@ -46,7 +45,7 @@ public class PgProtoMessageDecoder implements MessageDecoder {
                         message.getNewTupleCount(),
                         message.getNewTypeinfoCount()));
             }
-            processor.process(new PgProtoReplicationMessage(message, typeRegistry, serverTimezone));
+            processor.process(new PgProtoReplicationMessage(message, typeRegistry));
         } catch (InvalidProtocolBufferException e) {
             throw new ConnectException(e);
         }
