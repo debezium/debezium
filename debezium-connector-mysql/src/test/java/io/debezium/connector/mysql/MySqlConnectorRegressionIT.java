@@ -165,16 +165,19 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c2Time).isEqualTo(Duration.ofHours(17).plusMinutes(51).plusSeconds(4).plusMillis(780));
 
                 // '2014-09-08 17:51:04.777'
+                // DATETIME is a logical date and time, it doesn't contain any TZ information;
+                // it is mapped to a point on the time line by interpreting the value at UTC
                 Long c3 = after.getInt64("c3"); // epoch millis
                 long c3Seconds = c3 / 1000;
                 long c3Millis = c3 % 1000;
                 LocalDateTime c3DateTime = LocalDateTime.ofEpochSecond(c3Seconds,
                                                                        (int) TimeUnit.MILLISECONDS.toNanos(c3Millis),
                                                                        ZoneOffset.UTC);
+
                 assertThat(c3DateTime.getYear()).isEqualTo(2014);
                 assertThat(c3DateTime.getMonth()).isEqualTo(Month.SEPTEMBER);
-                assertThat(c3DateTime.getDayOfMonth()).isEqualTo(9);
-                assertThat(c3DateTime.getHour()).isEqualTo(4);
+                assertThat(c3DateTime.getDayOfMonth()).isEqualTo(8);
+                assertThat(c3DateTime.getHour()).isEqualTo(17);
                 assertThat(c3DateTime.getMinute()).isEqualTo(51);
                 assertThat(c3DateTime.getSecond()).isEqualTo(4);
                 assertThat(c3DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
@@ -420,6 +423,8 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(io.debezium.time.Time.toMilliOfDay(c2Time, ADJUSTER)).isEqualTo((int) c2.getTime());
 
                 // '2014-09-08 17:51:04.777'
+                // DATETIME is a logical date and time, it doesn't contain any TZ information;
+                // it is mapped to a point on the time line by interpreting the value at UTC
                 java.util.Date c3 = (java.util.Date) after.get("c3"); // epoch millis
                 long c3Seconds = c3.getTime() / 1000;
                 long c3Millis = c3.getTime() % 1000;
@@ -428,8 +433,8 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                                                                        ZoneOffset.UTC);
                 assertThat(c3DateTime.getYear()).isEqualTo(2014);
                 assertThat(c3DateTime.getMonth()).isEqualTo(Month.SEPTEMBER);
-                assertThat(c3DateTime.getDayOfMonth()).isEqualTo(9);
-                assertThat(c3DateTime.getHour()).isEqualTo(4);
+                assertThat(c3DateTime.getDayOfMonth()).isEqualTo(8);
+                assertThat(c3DateTime.getHour()).isEqualTo(17);
                 assertThat(c3DateTime.getMinute()).isEqualTo(51);
                 assertThat(c3DateTime.getSecond()).isEqualTo(4);
                 assertThat(c3DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
@@ -627,7 +632,9 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c2Time.toNanos()).isEqualTo(64264780000000L);
                 assertThat(c2Time).isEqualTo(Duration.ofHours(17).plusMinutes(51).plusSeconds(4).plusMillis(780));
 
-                // '2014-09-08 17:51:04.777' -> '2014-09-09 04:51:04.78'
+                // '2014-09-08 17:51:04.777'
+                // DATETIME is a logical date and time, it doesn't contain any TZ information;
+                // it is mapped to a point on the time line by interpreting the value at UTC
                 Long c3 = after.getInt64("c3"); // epoch millis
                 long c3Seconds = c3 / 1000;
                 long c3Millis = c3 % 1000;
@@ -636,8 +643,8 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                         ZoneOffset.UTC);
                 assertThat(c3DateTime.getYear()).isEqualTo(2014);
                 assertThat(c3DateTime.getMonth()).isEqualTo(Month.SEPTEMBER);
-                assertThat(c3DateTime.getDayOfMonth()).isEqualTo(9);
-                assertThat(c3DateTime.getHour()).isEqualTo(4);
+                assertThat(c3DateTime.getDayOfMonth()).isEqualTo(8);
+                assertThat(c3DateTime.getHour()).isEqualTo(17);
                 assertThat(c3DateTime.getMinute()).isEqualTo(51);
                 assertThat(c3DateTime.getSecond()).isEqualTo(4);
                 assertThat(c3DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
@@ -645,17 +652,25 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
 
                 // '2014-09-08 17:51:04.777' -> '2014-09-09 04:51:04.78'
                 String c4 = after.getString("c4"); // timestamp
-
                 OffsetDateTime c4DateTime = OffsetDateTime.parse(c4, ZonedTimestamp.FORMATTER);
-                // In case the timestamp string not in our timezone, convert to ours so we can compare ...
+
+                // TIMESTAMP should be converted to UTC, the DBs TZ is US/Samoa (-11:00)
                 assertThat(c4DateTime.getYear()).isEqualTo(2014);
                 assertThat(c4DateTime.getMonth()).isEqualTo(Month.SEPTEMBER);
                 assertThat(c4DateTime.getDayOfMonth()).isEqualTo(9);
-                // Difference depends upon whether the zone we're in is also using DST as it is on the date in question ...
                 assertThat(c4DateTime.getHour()).isEqualTo(4);
                 assertThat(c4DateTime.getMinute()).isEqualTo(51);
                 assertThat(c4DateTime.getSecond()).isEqualTo(4);
                 assertThat(c4DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
+
+                OffsetDateTime expected = ZonedDateTime.of(
+                            LocalDateTime.of(2014, 9, 8, 17, 51, 4, (int) TimeUnit.MILLISECONDS.toNanos(780)),
+                            UniqueDatabase.TIMEZONE
+                        )
+                        .withZoneSameInstant(ZoneOffset.UTC)
+                        .toOffsetDateTime();
+
+                assertThat(c4DateTime).isEqualTo(expected);
             } else if (record.topic().endsWith("dbz_123_bitvaluetest")) {
                 // All row events should have the same values ...
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
