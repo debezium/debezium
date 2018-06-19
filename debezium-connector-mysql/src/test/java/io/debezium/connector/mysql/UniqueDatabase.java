@@ -38,7 +38,7 @@ import io.debezium.util.Testing;
  */
 public class UniqueDatabase {
 
-    private static final ZoneId TIMEZONE = ZoneId.of("US/Samoa");
+    public static final ZoneId TIMEZONE = ZoneId.of("US/Samoa");
 
     private static final String DEFAULT_DATABASE = "mysql";
     private static final String[] CREATE_DATABASE_DDL = new String[] {

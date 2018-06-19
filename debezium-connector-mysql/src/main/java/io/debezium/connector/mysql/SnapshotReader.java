@@ -13,16 +13,17 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.time.Duration;
-import java.util.List;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Collections;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -137,6 +138,12 @@ public class SnapshotReader extends AbstractReader {
     protected Object readField(ResultSet rs, int fieldNo, Column actualColumn) throws SQLException {
         if(actualColumn.jdbcType() == Types.TIME) {
             return readTimeField(rs, fieldNo);
+        }
+        // This is for DATETIME columns (a logical date + time without time zone)
+        // by reading them with a calendar based on the default time zone, we make sure that the value
+        // is constructed correctly using the database's (or connection's) time zone
+        else if (actualColumn.jdbcType() == Types.TIMESTAMP) {
+            return rs.getTimestamp(fieldNo, Calendar.getInstance());
         }
         else {
             return rs.getObject(fieldNo);

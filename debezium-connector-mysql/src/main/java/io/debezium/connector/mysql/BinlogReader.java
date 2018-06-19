@@ -7,10 +7,6 @@ package io.debezium.connector.mysql;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.sql.SQLException;
-import java.time.DateTimeException;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.BitSet;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -20,10 +16,8 @@ import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
-import com.github.shyiko.mysql.binlog.event.RowsQueryEventData;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 
@@ -38,6 +32,7 @@ import com.github.shyiko.mysql.binlog.event.EventType;
 import com.github.shyiko.mysql.binlog.event.GtidEventData;
 import com.github.shyiko.mysql.binlog.event.QueryEventData;
 import com.github.shyiko.mysql.binlog.event.RotateEventData;
+import com.github.shyiko.mysql.binlog.event.RowsQueryEventData;
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
@@ -54,7 +49,6 @@ import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.heartbeat.OffsetPosition;
-import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
@@ -217,54 +211,25 @@ public class BinlogReader extends AbstractReader {
                 }
             }
         };
-        ZoneId serverTimezone = ZoneOffset.UTC;
-        try (final JdbcConnection db = connectionContext.jdbc()) {
-            AtomicReference<String> zoneName = new AtomicReference<String>(db.config().getString("serverTimezone"));
-            if (zoneName.get() == null) {
-                db.query("SHOW VARIABLES LIKE '%time_zone%'", rs -> {
-                    if (rs.next()) {
-                        zoneName.set(rs.getString(2));
-                    }
-                });
-            }
-            if ("SYSTEM".equalsIgnoreCase(zoneName.get())) {
-                db.query("SHOW VARIABLES LIKE '%system_time_zone%'", rs -> {
-                    if (rs.next()) {
-                        zoneName.set(rs.getString(2));
-                    }
-                });
-            }
-            try {
-                if (zoneName.get() != null) {
-                    serverTimezone = ZoneId.of(zoneName.get());
-                }
-            }
-            catch (DateTimeException e) {
-                logger.warn("Invalid zone name '{}', defaulting to '{}'. Please set 'database.serverTimezone' to explicitly define database server timezone", zoneName.get(), serverTimezone);
-            }
-        }
-        catch (SQLException e) {
-            throw new ConnectException("Could not get timezone setting from database", e);
-        }
-        logger.info("Using timezone '{}' as baseline for converting to epoch");
+
         // Add our custom deserializers ...
         eventDeserializer.setEventDataDeserializer(EventType.STOP, new StopEventDataDeserializer());
         eventDeserializer.setEventDataDeserializer(EventType.GTID, new GtidEventDataDeserializer());
         eventDeserializer.setEventDataDeserializer(EventType.WRITE_ROWS,
-                                                   new RowDeserializers.WriteRowsDeserializer(tableMapEventByTableId, serverTimezone));
+                                                   new RowDeserializers.WriteRowsDeserializer(tableMapEventByTableId));
         eventDeserializer.setEventDataDeserializer(EventType.UPDATE_ROWS,
-                                                   new RowDeserializers.UpdateRowsDeserializer(tableMapEventByTableId, serverTimezone));
+                                                   new RowDeserializers.UpdateRowsDeserializer(tableMapEventByTableId));
         eventDeserializer.setEventDataDeserializer(EventType.DELETE_ROWS,
-                                                   new RowDeserializers.DeleteRowsDeserializer(tableMapEventByTableId, serverTimezone));
+                                                   new RowDeserializers.DeleteRowsDeserializer(tableMapEventByTableId));
         eventDeserializer.setEventDataDeserializer(EventType.EXT_WRITE_ROWS,
                                                    new RowDeserializers.WriteRowsDeserializer(
-                                                           tableMapEventByTableId, serverTimezone).setMayContainExtraInformation(true));
+                                                           tableMapEventByTableId).setMayContainExtraInformation(true));
         eventDeserializer.setEventDataDeserializer(EventType.EXT_UPDATE_ROWS,
                                                    new RowDeserializers.UpdateRowsDeserializer(
-                                                           tableMapEventByTableId, serverTimezone).setMayContainExtraInformation(true));
+                                                           tableMapEventByTableId).setMayContainExtraInformation(true));
         eventDeserializer.setEventDataDeserializer(EventType.EXT_DELETE_ROWS,
                                                    new RowDeserializers.DeleteRowsDeserializer(
-                                                           tableMapEventByTableId, serverTimezone).setMayContainExtraInformation(true));
+                                                           tableMapEventByTableId).setMayContainExtraInformation(true));
         client.setEventDeserializer(eventDeserializer);
 
         // Set up for JMX ...

@@ -15,7 +15,6 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoField;
@@ -24,7 +23,6 @@ import java.time.temporal.Temporal;
 import java.util.Arrays;
 import java.util.List;
 
-import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -37,6 +35,7 @@ import com.github.shyiko.mysql.binlog.event.deserialization.json.JsonBinary;
 import com.mysql.jdbc.CharsetMapping;
 
 import io.debezium.annotation.Immutable;
+import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.data.Json;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -281,7 +280,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
                 if (adaptiveTimeMicrosecondsPrecisionMode)
                     return data -> convertDurationToMicroseconds(column, fieldDefn, data);
             case Types.TIMESTAMP:
-                return ((ValueConverter)(data-> convertTimestampToUTC(column, fieldDefn, data))).and(super.converter(column, fieldDefn));
+                return ((ValueConverter)(data-> convertTimestampToLocalDateTime(column, fieldDefn, data))).and(super.converter(column, fieldDefn));
             default:
                 break;
         }
@@ -810,13 +809,14 @@ public class MySqlValueConverters extends JdbcValueConverters {
         return handleUnknownData(column, fieldDefn, data);
     }
 
-    protected Object convertTimestampToUTC(Column column, Field fieldDefn, Object data) {
+    protected Object convertTimestampToLocalDateTime(Column column, Field fieldDefn, Object data) {
         if (data == null) {
             return null;
         }
         if (!(data instanceof Timestamp)) {
             return data;
         }
-        return LocalDateTime.ofInstant(((Timestamp)data).toInstant(), ZoneOffset.UTC);
+
+        return ((Timestamp)data).toLocalDateTime();
     }
 }
