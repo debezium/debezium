@@ -8,7 +8,6 @@ package io.debezium.connector.postgresql.connection.wal2json;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -59,16 +58,14 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
     private final boolean hasMetadata;
     private final boolean lastEventForLsn;
     private final TypeRegistry typeRegistry;
-    private final ZoneOffset serverTimezone;
 
-    public Wal2JsonReplicationMessage(long txId, long commitTime, Document rawMessage, boolean hasMetadata, boolean lastEventForLsn, TypeRegistry typeRegistry, ZoneOffset serverTimezone) {
+    public Wal2JsonReplicationMessage(long txId, long commitTime, Document rawMessage, boolean hasMetadata, boolean lastEventForLsn, TypeRegistry typeRegistry) {
         this.txId = txId;
         this.commitTime = commitTime;
         this.rawMessage = rawMessage;
         this.hasMetadata = hasMetadata;
         this.lastEventForLsn = lastEventForLsn;
         this.typeRegistry = typeRegistry;
-        this.serverTimezone = serverTimezone;
     }
 
     @Override
@@ -260,8 +257,7 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
             case "timestamp":
             case "timestamp without time zone":
                 final LocalDateTime serverLocal = Conversions.fromNanosToLocalDateTimeUTC(DateTimeFormat.get().timestamp(rawValue.asString()));
-                final Instant utc = serverLocal.atOffset(serverTimezone).toInstant();
-                return Conversions.toEpochNanos(utc);
+                return Conversions.toEpochNanos(serverLocal.toInstant(ZoneOffset.UTC));
 
             case "time":
             case "time without time zone":

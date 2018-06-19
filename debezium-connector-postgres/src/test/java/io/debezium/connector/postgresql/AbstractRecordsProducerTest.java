@@ -297,9 +297,9 @@ public abstract class AbstractRecordsProducerTest {
     }
 
     protected List<SchemaAndValueField> schemaAndValuesForDateTimeTypes() {
-        long expectedTs = MicroTimestamp.toEpochMicros(LocalDateTime.parse("2016-11-05T00:51:30.123456"), null); // Need to compare it with value in UTC
-        long expectedTsMs = Timestamp.toEpochMillis(LocalDateTime.parse("2016-11-05T00:51:30.123456"), null); // Need to compare it with value in UTC
-        long expectedNegTs = MicroTimestamp.toEpochMicros(LocalDateTime.parse("1936-10-26T09:10:12.608"), null); // Need to compare it with value in UTC
+        long expectedTs = MicroTimestamp.toEpochMicros(LocalDateTime.parse("2016-11-04T13:51:30.123456"), null);
+        long expectedTsMs = Timestamp.toEpochMillis(LocalDateTime.parse("2016-11-04T13:51:30.123456"), null);
+        long expectedNegTs = MicroTimestamp.toEpochMicros(LocalDateTime.parse("1936-10-25T22:10:12.608"), null);
         String expectedTz = "2016-11-04T11:51:30Z"; //timestamp is stored with TZ, should be read back with UTC
         int expectedDate = Date.toEpochDay(LocalDate.parse("2016-11-04"), null);
         long expectedTi = LocalTime.parse("13:51:30").toNanoOfDay() / 1_000;
@@ -322,9 +322,9 @@ public abstract class AbstractRecordsProducerTest {
     }
 
     protected List<SchemaAndValueField> schemaAndValuesForDateTimeTypesAdaptiveTimeMicroseconds() {
-        long expectedTs = MicroTimestamp.toEpochMicros(LocalDateTime.parse("2016-11-05T00:51:30.123456"), null); // Need to compare it with value in UTC
-        long expectedTsMs = Timestamp.toEpochMillis(LocalDateTime.parse("2016-11-05T00:51:30.123456"), null); // Need to compare it with value in UTC
-        long expectedNegTs = MicroTimestamp.toEpochMicros(LocalDateTime.parse("1936-10-26T09:10:12.608"), null); // Need to compare it with value in UTC
+        long expectedTs = MicroTimestamp.toEpochMicros(LocalDateTime.parse("2016-11-04T13:51:30.123456"), null);
+        long expectedTsMs = Timestamp.toEpochMillis(LocalDateTime.parse("2016-11-04T13:51:30.123456"), null);
+        long expectedNegTs = MicroTimestamp.toEpochMicros(LocalDateTime.parse("1936-10-25T22:10:12.608"), null);
         String expectedTz = "2016-11-04T11:51:30Z"; //timestamp is stored with TZ, should be read back with UTC
         int expectedDate = Date.toEpochDay(LocalDate.parse("2016-11-04"), null);
         long expectedTi = LocalTime.parse("13:51:30").toNanoOfDay() / 1_000;

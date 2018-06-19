@@ -13,7 +13,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.time.ZoneOffset;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -53,7 +52,6 @@ public final class TestHelper {
                                     .withSlot(slotName)
                                     .withTypeRegistry(getTypeRegistry())
                                     .dropSlotOnClose(dropOnClose)
-                                    .withServerTimezone(databaseTimeZone())
                                     .build();
     }
 
@@ -177,9 +175,5 @@ public final class TestHelper {
 
     protected static int waitTimeForRecords() {
         return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "records.waittime", "2"));
-    }
-
-    protected static ZoneOffset databaseTimeZone() {
-        return ZoneOffset.of(System.getProperty(TEST_PROPERTY_PREFIX + "database.timeoffset", "-11:00"));
     }
 }
