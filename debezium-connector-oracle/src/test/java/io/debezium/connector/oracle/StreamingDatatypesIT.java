@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.oracle;
 
+import java.util.concurrent.TimeUnit;
+
 import org.junit.Before;
 
 import io.debezium.config.Configuration;
@@ -20,6 +22,7 @@ public class StreamingDatatypesIT extends AbstractOracleDatatypesTest {
 
     @Before
     public void before() throws Exception {
+        setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         dropTables();
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);

@@ -124,4 +124,8 @@ public class TestHelper {
             }
         }
     }
+
+    public static int defaultMessageConsumerPollTimeout() {
+        return 120;
+    }
 }

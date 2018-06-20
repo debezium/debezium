@@ -65,6 +65,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Before
     public void before() {
+        setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
     }

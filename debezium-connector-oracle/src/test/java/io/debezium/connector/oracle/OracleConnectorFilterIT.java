@@ -10,6 +10,7 @@ import static org.fest.assertions.Assertions.assertThat;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -48,6 +49,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
 
     @Before
     public void before() throws SQLException {
+        setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         TestHelper.dropTable(connection, "debezium.table1");
         TestHelper.dropTable(connection, "debezium.table2");
         TestHelper.dropTable(connection, "debezium.table3");

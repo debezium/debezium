@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle;
 
 import java.sql.SQLException;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -28,6 +29,7 @@ public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
 
     @Before
     public void before() throws Exception {
+        setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
         Testing.Debug.enable();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
