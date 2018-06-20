@@ -15,6 +15,7 @@ David Szabo
 Denis Mikhaylov
 Dennis Persson
 Duncan Sands
+Echo Xu
 Emrul Islam
 Eric S. Kreiseir
 Ewen Cheslack-Postava
