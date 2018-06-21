@@ -145,7 +145,7 @@ final class ColumnImpl implements Column, Comparable<Column> {
                     Strings.equalsIgnoreCase(this.charsetName(),that.charsetName()) &&
                     this.position() == that.position() &&
                     this.length() == that.length() &&
-                    this.scale() == that.scale() &&
+                    this.scale().equals(that.scale()) &&
                     this.isOptional() == that.isOptional() &&
                     this.isAutoIncremented() == that.isAutoIncremented() &&
                     this.isGenerated() == that.isGenerated() &&
