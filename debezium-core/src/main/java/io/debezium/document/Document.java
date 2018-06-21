@@ -1120,19 +1120,6 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
     }
 
     /**
-     * Set the value for the field with the given name to be the supplied array.
-     * 
-     * @param name The name of the field
-     * @param values the (valid) values for the array
-     * @return The array that was just set as the value for the named field; never null and may or may not be the same
-     *         instance as the supplied <code>array</code>.
-     */
-    default Array setArray(CharSequence name,
-                           Object... values) {
-        return setArray(name, Value.create(Array.create(values)));
-    }
-
-    /**
      * Compare this Document to the specified Document, taking into account the order of the fields.
      * 
      * @param that the other Document to be compared to this object
