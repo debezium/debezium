@@ -9,7 +9,7 @@ import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
-import java.util.Base64;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -175,10 +175,9 @@ public class SchemaUtil {
                 }
                 sb.append('}');
             } else if (obj instanceof ByteBuffer) {
-                ByteBuffer b = (ByteBuffer) obj;
-                sb.append('"').append(Base64.getEncoder().encode(b.array())).append('"');
+                append((ByteBuffer)obj);
             } else if (obj instanceof byte[]) {
-                sb.append('"').append(Base64.getEncoder().encode((byte[])obj)).append('"');
+                append((byte[])obj);
             } else if (obj instanceof Map<?, ?>) {
                 Map<?, ?> map = (Map<?, ?>) obj;
                 sb.append('{');
@@ -251,6 +250,15 @@ public class SchemaUtil {
                 append(obj.toString());
             }
             return this;
+        }
+
+        protected void append(ByteBuffer b) {
+            append(b.array());
+        }
+
+        protected void append(byte[] b) {
+            String arrayString = Arrays.toString(b);
+            sb.append('"').append(arrayString).append('"');
         }
 
         protected void appendFirst(String name, Object value) {
