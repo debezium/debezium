@@ -2,6 +2,79 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 0.8.0 Beta 1
+June 21st, 2018 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12337217)
+
+### New features since 0.7.5
+
+* Improve MySQL connector's handling of DML / DDL statements [DBZ-252](https://issues.jboss.org/browse/DBZ-252)
+* Snapshots fail if launching multiple connectors at once [DBZ-601](https://issues.jboss.org/browse/DBZ-601)
+* Data-inclusive snapshot without table locks (For RDS/Aurora) [DBZ-639](https://issues.jboss.org/browse/DBZ-639)
+* Enable ordered snapshotting of data-Mysql Connector [DBZ-666](https://issues.jboss.org/browse/DBZ-666)
+* Add a topic name configuration for the heartbeat messages [DBZ-668](https://issues.jboss.org/browse/DBZ-668)
+* Mongo cursor cleanup [DBZ-672](https://issues.jboss.org/browse/DBZ-672)
+* wal2json on RDS omits initial changes in streaming mode [DBZ-679](https://issues.jboss.org/browse/DBZ-679)
+* Make PG_CONFIG configurable (postgres-decoderbufs) [DBZ-686](https://issues.jboss.org/browse/DBZ-686)
+* Rebase Debezium to Kafka 1.1 and Confluent platform 4.1 [DBZ-687](https://issues.jboss.org/browse/DBZ-687)
+* When MySQL has BINLOG_ROWS_QUERY_LOG_EVENTS enabled, include original SQL query in event. [DBZ-706](https://issues.jboss.org/browse/DBZ-706)
+* Ingest change data from Oracle databases using XStream [DBZ-20](https://issues.jboss.org/browse/DBZ-20)
+* Support defaults in MySQL [DBZ-191](https://issues.jboss.org/browse/DBZ-191)
+* Run test suite against MongoDB 3.6 [DBZ-529](https://issues.jboss.org/browse/DBZ-529)
+* Provide option to flatten structs in MongoDB unwrapping SMT [DBZ-561](https://issues.jboss.org/browse/DBZ-561)
+* Allow configuration option for keep alive interval for Mysql binlog reader [DBZ-670](https://issues.jboss.org/browse/DBZ-670)
+* Add support for databases with encodings other than UTF-8/16/32 [DBZ-676](https://issues.jboss.org/browse/DBZ-676)
+* Provide option to specify statements to be executed upon connection creation (e.g.  connection wait timeout) [DBZ-693](https://issues.jboss.org/browse/DBZ-693)
+
+
+### Breaking changes since 0.7.5
+
+Apache Kafka was upgraded to version 1.1 ([DBZ-687](https://issues.jboss.org/browse/DBZ-687)).
+Please see [upgrade documentation](http://kafka.apache.org/11/documentation.html#upgrade) for correct upgrade procedure.
+
+Topic names for heartbeat messages followed a hard-coded naming schema.
+The rules were made more flexible in [DBZ-668](https://issues.jboss.org/browse/DBZ-668).
+
+Transaction id (`txId` field of `Envelope`) for PostgreSQL was originally encoded as an 32-bit `integer` type.
+The real range is a 64-bit `long` type so this was changed in [DBZ-673](https://issues.jboss.org/browse/DBZ-673).
+
+The datatypes without timezone were not correctly offsetted for databases running in non-UTC timezones.
+This was fixed in [DBZ-587](https://issues.jboss.org/browse/DBZ-578) and [DBZ-741](https://issues.jboss.org/browse/DBZ-741).
+See [MySQL](http://debezium.io/docs/connectors/mysql/#temporal-values) and [PostgreSQL](http://debezium.io/docs/connectors/postgresql/#temporal-values) connector documentation for further details.
+
+
+### Fixes since 0.7.5
+
+* Timestamps are not converted to UTC during snapshot [DBZ-578](https://issues.jboss.org/browse/DBZ-578)
+* wal2json cannot handle transactions bigger than 1Gb [DBZ-638](https://issues.jboss.org/browse/DBZ-638)
+* SMT - DataException with io.debezium.connector.mongodb.transforms.UnwrapFromMongoDbEnvelope [DBZ-649](https://issues.jboss.org/browse/DBZ-649)
+* SchemaParseException when using UnwrapFromMongoDbEnvelope SMT with Avro format [DBZ-650](https://issues.jboss.org/browse/DBZ-650)
+* Upgrade OpenShift intructions to Strimzi 0.2.0 [DBZ-654](https://issues.jboss.org/browse/DBZ-654)
+* Mysql ddl parser cannot parse scientific format number in exponential notation default values [DBZ-667](https://issues.jboss.org/browse/DBZ-667)
+* Close Kafka admin client after DB history topic has been created [DBZ-669](https://issues.jboss.org/browse/DBZ-669)
+* Postgres DateTimeParseException [DBZ-671](https://issues.jboss.org/browse/DBZ-671)
+* Transaction ID must be handled as long [DBZ-673](https://issues.jboss.org/browse/DBZ-673)
+* PostgreSQL connector doesn't handle TIME(p) columns correctly with wal2json [DBZ-681](https://issues.jboss.org/browse/DBZ-681)
+* Error on initial load for records with negative timestamp [DBZ-694](https://issues.jboss.org/browse/DBZ-694)
+* Postgres Connector inconsistent handling of timestamp precision [DBZ-696](https://issues.jboss.org/browse/DBZ-696)
+* Debezium is throwing exception when max OID in pg db is larger than max int [DBZ-697](https://issues.jboss.org/browse/DBZ-697)
+* PostgresReplicationConnection doesn't close jdbc connection [DBZ-699](https://issues.jboss.org/browse/DBZ-699)
+* Debezium is throwing exception when max typelem in pg db is larger than max int [DBZ-701](https://issues.jboss.org/browse/DBZ-701)
+* Plaintext jaas configuration passwords logged out [DBZ-702](https://issues.jboss.org/browse/DBZ-702)
+* Postgres TIME columns are always exported as nano-seconds, unlike documented [DBZ-709](https://issues.jboss.org/browse/DBZ-709)
+* Incorrect options for PostgreSQL sslmode listed in documentation [DBZ-711](https://issues.jboss.org/browse/DBZ-711)
+* Mongo Connector - doesn't redo initial sync after connector restart [DBZ-712](https://issues.jboss.org/browse/DBZ-712)
+* NUMERIC column without scale value causes exception [DBZ-727](https://issues.jboss.org/browse/DBZ-727)
+* Inconsistency in parameter names for database histy producer/consumer [DBZ-728](https://issues.jboss.org/browse/DBZ-728)
+* MySQL DATETIME Value Incorrectly Snapshotted [DBZ-741](https://issues.jboss.org/browse/DBZ-741)
+
+
+### Other changes since 0.7.5
+
+* Support incubator repo in release process [DBZ-749](https://issues.jboss.org/browse/DBZ-749)
+* Upgrade Postgres Docker images to wal2json 1.0 [DBZ-750](https://issues.jboss.org/browse/DBZ-750)
+* Provide Maven profile so that the MySQL module test suite can be run using old and new parser [DBZ-734](https://issues.jboss.org/browse/DBZ-734)
+
+
 ## 0.7.5
 March 20th, 2018 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12337159)
 
