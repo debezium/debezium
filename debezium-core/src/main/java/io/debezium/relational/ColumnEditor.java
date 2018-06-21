@@ -16,7 +16,7 @@ import io.debezium.annotation.NotThreadSafe;
  * @author Randall Hauch
  */
 @NotThreadSafe
-public interface ColumnEditor extends Comparable<Column> {
+public interface ColumnEditor {
 
     /**
      * Get the name of the column.

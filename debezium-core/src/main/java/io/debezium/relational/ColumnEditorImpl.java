@@ -203,11 +203,6 @@ final class ColumnEditorImpl implements ColumnEditor {
     }
 
     @Override
-    public int compareTo(Column that) {
-        return create().compareTo(that);
-    }
-
-    @Override
     public String toString() {
         return create().toString();
     }
