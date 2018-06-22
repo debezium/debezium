@@ -119,7 +119,7 @@ public class SchemaUtil {
         return new RecordWriter().detailed(true).append(record).toString();
     }
 
-    protected static class RecordWriter {
+    public static class RecordWriter {
         private final StringBuilder sb = new StringBuilder();
         private boolean detailed = false;
 
