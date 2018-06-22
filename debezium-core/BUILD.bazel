@@ -1,0 +1,18 @@
+
+java_library(
+    name = "debezium-core",
+    srcs = glob([
+        "src/main/java/**/*.java",
+    ]),
+    resources = glob([
+        "src/main/resources/**",
+    ]),
+    deps = [
+        "@com_fasterxml_jackson_core_jackson_core//jar",
+        "@org_apache_kafka_connect_api//jar",
+        "@org_apache_kafka_connect_transforms//jar"
+        "@org_apache_kafka_kafka_clients//jar",
+        "@org_slf4j_slf4j_api//jar",
+    ],
+    visibility = ["//visibility:public"],
+)
