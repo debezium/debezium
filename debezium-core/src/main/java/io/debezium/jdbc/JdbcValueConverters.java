@@ -162,7 +162,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 return SchemaBuilder.float64();
             case Types.NUMERIC:
             case Types.DECIMAL:
-                return SpecialValueDecimal.builder(decimalMode, column.scale().get());
+                return SpecialValueDecimal.builder(decimalMode, column.length(), column.scale().get());
 
                 // Fixed-length string values
             case Types.CHAR:

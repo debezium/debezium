@@ -182,16 +182,16 @@ public abstract class AbstractRecordsProducerTest {
         final Struct nvs_int = new Struct(VariableScaleDecimal.schema());
         nvs_int.put("scale", 0).put("value", new BigDecimal("22").unscaledValue().toByteArray());
         final List<SchemaAndValueField> fields = new ArrayList<SchemaAndValueField>(Arrays.asList(
-                new SchemaAndValueField("d", Decimal.builder(2).optional().build(), new BigDecimal("1.10")),
-                new SchemaAndValueField("dzs", Decimal.builder(0).optional().build(), new BigDecimal("10")),
+                new SchemaAndValueField("d", Decimal.builder(2).parameter("connect.decimal.precision", "3").optional().build(), new BigDecimal("1.10")),
+                new SchemaAndValueField("dzs", Decimal.builder(0).parameter("connect.decimal.precision", "4").optional().build(), new BigDecimal("10")),
                 new SchemaAndValueField("dvs", VariableScaleDecimal.optionalSchema(), dvs),
-                new SchemaAndValueField("d_nn", Decimal.builder(2).build(), new BigDecimal("3.30")),
-                new SchemaAndValueField("n", Decimal.builder(4).optional().build(), new BigDecimal("22.2200")),
-                new SchemaAndValueField("nzs", Decimal.builder(0).optional().build(), new BigDecimal("22")),
+                new SchemaAndValueField("d_nn", Decimal.builder(2).parameter("connect.decimal.precision", "3").build(), new BigDecimal("3.30")),
+                new SchemaAndValueField("n", Decimal.builder(4).parameter("connect.decimal.precision", "6").optional().build(), new BigDecimal("22.2200")),
+                new SchemaAndValueField("nzs", Decimal.builder(0).parameter("connect.decimal.precision", "4").optional().build(), new BigDecimal("22")),
                 new SchemaAndValueField("nvs", VariableScaleDecimal.optionalSchema(), nvs),
-                new SchemaAndValueField("d_int", Decimal.builder(2).optional().build(), new BigDecimal("1.00")),
+                new SchemaAndValueField("d_int", Decimal.builder(2).parameter("connect.decimal.precision", "3").optional().build(), new BigDecimal("1.00")),
                 new SchemaAndValueField("dvs_int", VariableScaleDecimal.optionalSchema(), dvs_int),
-                new SchemaAndValueField("n_int", Decimal.builder(4).optional().build(), new BigDecimal("22.0000")),
+                new SchemaAndValueField("n_int", Decimal.builder(4).parameter("connect.decimal.precision", "6").optional().build(), new BigDecimal("22.0000")),
                 new SchemaAndValueField("nvs_int", VariableScaleDecimal.optionalSchema(), nvs_int)
         ));
         return fields;
@@ -376,7 +376,7 @@ public abstract class AbstractRecordsProducerTest {
                                         (int)LocalDate.of(2016, Month.NOVEMBER, 5).toEpochDay(),
                                         (int)LocalDate.of(2016, Month.NOVEMBER, 6).toEpochDay()
                                 )),
-                            new SchemaAndValueField("numeric_array", SchemaBuilder.array(Decimal.builder(2).optional().build()).optional().build(),
+                            new SchemaAndValueField("numeric_array", SchemaBuilder.array(Decimal.builder(2).parameter("connect.decimal.precision", "10").optional().build()).optional().build(),
                                     Arrays.asList(
                                             new BigDecimal("1.20"),
                                             new BigDecimal("3.40"),
@@ -397,7 +397,7 @@ public abstract class AbstractRecordsProducerTest {
                 new SchemaAndValueField("char_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null),
                 new SchemaAndValueField("varchar_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null),
                 new SchemaAndValueField("date_array", SchemaBuilder.array(Date.builder().optional().schema()).optional().build(), null),
-                new SchemaAndValueField("numeric_array", SchemaBuilder.array(Decimal.builder(2).optional().build()).optional().build(), null),
+                new SchemaAndValueField("numeric_array", SchemaBuilder.array(Decimal.builder(2).parameter("connect.decimal.precision", "10").optional().build()).optional().build(),null),
                 new SchemaAndValueField("citext_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null)
         );
     }
@@ -637,7 +637,7 @@ public abstract class AbstractRecordsProducerTest {
             Schema schema = content.schema();
             Field field = schema.field(fieldName);
             assertNotNull(fieldName + " not found in schema " + schema, field);
-            VerifyRecord.assertConnectSchemasAreEqual(this.schema, field.schema());
+            VerifyRecord.assertConnectSchemasAreEqual(field.name(), this.schema, field.schema());
         }
     }
 

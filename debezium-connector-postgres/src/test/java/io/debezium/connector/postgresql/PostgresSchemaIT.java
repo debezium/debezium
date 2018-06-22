@@ -8,7 +8,6 @@ package io.debezium.connector.postgresql;
 
 import static io.debezium.connector.postgresql.PostgresConnectorConfig.SCHEMA_BLACKLIST;
 import static org.fest.assertions.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
@@ -28,6 +27,7 @@ import io.debezium.data.Bits;
 import io.debezium.data.Json;
 import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
+import io.debezium.data.VerifyRecord;
 import io.debezium.data.Xml;
 import io.debezium.data.geometry.Geography;
 import io.debezium.data.geometry.Geometry;
@@ -80,11 +80,11 @@ public class PostgresSchemaIT {
                               Schema.OPTIONAL_INT16_SCHEMA, Schema.OPTIONAL_INT32_SCHEMA, Schema.OPTIONAL_INT64_SCHEMA, Schema.OPTIONAL_FLOAT32_SCHEMA,
                               Schema.OPTIONAL_FLOAT64_SCHEMA, Schema.INT16_SCHEMA, Schema.INT64_SCHEMA, Schema.OPTIONAL_BOOLEAN_SCHEMA);
             assertTableSchema("public.numeric_decimal_table", "d, dzs, dvs, n, nzs, nvs",
-                    Decimal.builder(2).optional().build(),
-                    Decimal.builder(0).optional().build(),
+                    Decimal.builder(2).parameter("connect.decimal.precision", "3").optional().build(),
+                    Decimal.builder(0).parameter("connect.decimal.precision", "4").optional().build(),
                     VariableScaleDecimal.builder().optional().build(),
-                    Decimal.builder(4).optional().build(),
-                    Decimal.builder(0).optional().build(),
+                    Decimal.builder(4).parameter("connect.decimal.precision", "6").optional().build(),
+                    Decimal.builder(0).parameter("connect.decimal.precision", "4").optional().build(),
                     VariableScaleDecimal.builder().optional().build()
             );
             assertTableSchema("public.string_table", "vc, vcv, ch, c, t",
@@ -263,7 +263,7 @@ public class PostgresSchemaIT {
             String fieldName = fields[i].trim();
             Field field = keySchema.field(Strings.unquoteIdentifierPart(fieldName));
             assertNotNull(fieldName + " not found in schema", field);
-            assertEquals("'" + fieldName + "' has incorrect schema.", types[i], field.schema());
+            VerifyRecord.assertConnectSchemasAreEqual(fieldName, types[i], field.schema());
         });
     }
 

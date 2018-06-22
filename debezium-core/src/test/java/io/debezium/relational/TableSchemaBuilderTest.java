@@ -123,7 +123,7 @@ public class TableSchemaBuilderTest {
         assertThat(values.field("C1").schema()).isEqualTo(SchemaBuilder.string().build());
         assertThat(values.field("C2").name()).isEqualTo("C2");
         assertThat(values.field("C2").index()).isEqualTo(1);
-        assertThat(values.field("C2").schema()).isEqualTo(Decimal.builder(3).optional().build()); // scale of 3
+        assertThat(values.field("C2").schema()).isEqualTo(Decimal.builder(3).parameter("connect.decimal.precision", "5").optional().build()); // scale of 3
         assertThat(values.field("C3").name()).isEqualTo("C3");
         assertThat(values.field("C3").index()).isEqualTo(2);
         assertThat(values.field("C3").schema()).isEqualTo(Date.builder().optional().build()); // optional date

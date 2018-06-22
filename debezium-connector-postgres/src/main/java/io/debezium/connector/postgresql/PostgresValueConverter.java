@@ -207,7 +207,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         if (decimalMode == DecimalMode.PRECISE && isVariableScaleDecimal(column)) {
             return VariableScaleDecimal.builder();
         }
-        return SpecialValueDecimal.builder(decimalMode, column.scale().get());
+        return SpecialValueDecimal.builder(decimalMode, column.length(), column.scale().get());
     }
 
     @Override
