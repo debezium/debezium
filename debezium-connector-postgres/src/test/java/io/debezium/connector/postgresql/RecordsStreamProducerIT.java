@@ -432,7 +432,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         List<SchemaAndValueField> expectedBefore = Collections.singletonList(new SchemaAndValueField("num_val", null, null));
         assertRecordSchemaAndValues(expectedBefore, updatedRecord, Envelope.FieldName.BEFORE);
 
-        List<SchemaAndValueField> expectedAfter = Collections.singletonList(new SchemaAndValueField("num_val", Decimal.builder(2).optional().build(), new BigDecimal("123.45")));
+        List<SchemaAndValueField> expectedAfter = Collections.singletonList(new SchemaAndValueField("num_val", Decimal.builder(2).parameter("connect.decimal.precision", "5").optional().build(), new BigDecimal("123.45")));
         assertRecordSchemaAndValues(expectedAfter, updatedRecord, Envelope.FieldName.AFTER);
 
         // change a constraint
@@ -445,7 +445,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         VerifyRecord.isValidInsert(updatedRecord, PK_FIELD, 2);
         assertRecordSchemaAndValues(
-                Collections.singletonList(new SchemaAndValueField("num_val", Decimal.builder(1).optional().build(), new BigDecimal("123.4"))), updatedRecord, Envelope.FieldName.AFTER);
+                Collections.singletonList(new SchemaAndValueField("num_val", Decimal.builder(1).parameter("connect.decimal.precision", "6").optional().build(), new BigDecimal("123.4"))), updatedRecord, Envelope.FieldName.AFTER);
 
         statements = "ALTER TABLE test_table ALTER COLUMN num_val TYPE NUMERIC;" +
                 "INSERT INTO test_table (pk,num_val) VALUES (3,123.4567);";
@@ -469,7 +469,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         VerifyRecord.isValidInsert(updatedRecord, PK_FIELD, 4);
         assertRecordSchemaAndValues(
-                Collections.singletonList(new SchemaAndValueField("num_val", Decimal.builder(4).optional().build(), new BigDecimal("2.4800"))), updatedRecord, Envelope.FieldName.AFTER);
+                Collections.singletonList(new SchemaAndValueField("num_val", Decimal.builder(4).parameter("connect.decimal.precision", "12").optional().build(), new BigDecimal("2.4800"))), updatedRecord, Envelope.FieldName.AFTER);
 
         statements = "ALTER TABLE test_table ALTER COLUMN num_val TYPE DECIMAL(12);" +
                 "INSERT INTO test_table (pk,num_val) VALUES (5,1238);";
@@ -480,7 +480,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         VerifyRecord.isValidInsert(updatedRecord, PK_FIELD, 5);
         assertRecordSchemaAndValues(
-                Collections.singletonList(new SchemaAndValueField("num_val", Decimal.builder(0).optional().build(), new BigDecimal("1238"))), updatedRecord, Envelope.FieldName.AFTER);
+                Collections.singletonList(new SchemaAndValueField("num_val", Decimal.builder(0).parameter("connect.decimal.precision", "12").optional().build(), new BigDecimal("1238"))), updatedRecord, Envelope.FieldName.AFTER);
 
         statements = "ALTER TABLE test_table ALTER COLUMN num_val TYPE DECIMAL;" +
                 "INSERT INTO test_table (pk,num_val) VALUES (6,1225.1);";

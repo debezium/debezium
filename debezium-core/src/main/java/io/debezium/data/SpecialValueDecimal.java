@@ -28,6 +28,14 @@ public class SpecialValueDecimal implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
+     * Used as a schema parameter by the Avro serializer for creating a corresponding Avro schema with the correct
+     * precision.
+     *
+     * @see {@code AvroData#CONNECT_AVRO_DECIMAL_PRECISION_PROP}.
+     */
+    private static final String PRECISION_PARAMETER_KEY = "connect.decimal.precision";
+
+    /**
      * Special values for floating-point and numeric types
      */
     private static enum SpecialValue {
@@ -135,17 +143,19 @@ public class SpecialValueDecimal implements Serializable {
      * and documentation.
      *
      * @param mode the mode in which the number should be encoded
+     * @param precision the precision of the decimal
      * @param scale scale of the decimal
      * @return the schema builder
      */
-    public static SchemaBuilder builder(DecimalMode mode, int scale) {
+    public static SchemaBuilder builder(DecimalMode mode, int precision, int scale) {
         switch (mode) {
-        case DOUBLE:
-            return SchemaBuilder.float64();
-        case PRECISE:
-            return Decimal.builder(scale);
-        case STRING:
-            return SchemaBuilder.string();
+            case DOUBLE:
+                return SchemaBuilder.float64();
+            case PRECISE:
+                return Decimal.builder(scale)
+                    .parameter(PRECISION_PARAMETER_KEY, String.valueOf(precision));
+            case STRING:
+                return SchemaBuilder.string();
         }
         throw new IllegalArgumentException("Unknown decimalMode");
     }

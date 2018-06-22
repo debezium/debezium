@@ -430,13 +430,26 @@ public class VerifyRecord {
         assertEquals(actualValueSchema, actual.value(), expected.value(), "value", "", ignoreFields, comparatorsByName, comparatorsBySchemaName);
     }
 
-    public static void assertConnectSchemasAreEqual(Schema schema1, Schema schema2) {
-        if (!areConnectSchemasEqual(schema1, schema2)) {
-            // failing with an assertion message that shows the difference
-            assertThat(SchemaUtil.asString(schema1)).isEqualTo(SchemaUtil.asString(schema2));
+    /**
+     * Asserts that the two given schemas are equal.
+     *
+     * @param fieldName
+     *            name of the field owning that schema, if it's not a top-level schema
+     * @param actual
+     *            the actual schema
+     * @param expected
+     *            the expected schema
+     */
+    public static void assertConnectSchemasAreEqual(String fieldName, Schema actual, Schema expected) {
+        if (!areConnectSchemasEqual(actual, expected)) {
+            // first try failing with an assertion message that shows the actual difference
+            assertThat(SchemaUtil.asString(actual)).describedAs("field name: " + fieldName).isEqualTo(SchemaUtil.asString(expected));
 
-            // fall-back just in case
-            fail(SchemaUtil.asString(schema1) + " was not equal to " + SchemaUtil.asString(schema2));
+            // compare schema parameters
+            assertThat(actual.parameters()).describedAs("field '" + fieldName + "' parameters").isEqualTo(expected.parameters());
+
+            // fall-back just in case (e.g. differences of element schemas of arrays)
+            fail("field '" + fieldName + "': " + SchemaUtil.asString(actual) + " was not equal to " + SchemaUtil.asString(expected));
         }
     }
 
@@ -828,7 +841,7 @@ public class VerifyRecord {
         // assertThat(o1).isEqualTo(o2);
 
         if (o1 instanceof Schema && o2 instanceof Schema) {
-            assertConnectSchemasAreEqual((Schema) o1, (Schema) o2);
+            assertConnectSchemasAreEqual(null, (Schema) o1, (Schema) o2);
         }
         else if (!equals(o1, o2)) {
             fail(SchemaUtil.asString(o1) + " was not equal to " + SchemaUtil.asString(o2));
