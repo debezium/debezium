@@ -84,11 +84,14 @@ public class MySqlConnector extends SourceConnector {
         ConfigValue userValue = results.get(MySqlConnectorConfig.USER.name());
         ConfigValue passwordValue = results.get(MySqlConnectorConfig.PASSWORD.name());
 
+        if (passwordValue.value() == null || ((String)passwordValue.value()).isEmpty()) {
+            logger.warn("The connection password is empty");
+        }
+
         // If there are no errors on any of these ...
         if (hostnameValue.errorMessages().isEmpty()
                 && portValue.errorMessages().isEmpty()
-                && userValue.errorMessages().isEmpty()
-                && passwordValue.errorMessages().isEmpty()) {
+                && userValue.errorMessages().isEmpty()) {
             // Try to connect to the database ...
             try (MySqlJdbcContext jdbcContext = new MySqlJdbcContext(config)) {
                 jdbcContext.start();

@@ -438,7 +438,6 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                                               .withType(Type.PASSWORD)
                                               .withWidth(Width.SHORT)
                                               .withImportance(Importance.HIGH)
-                                              .withValidation(Field::isRequired)
                                               .withDescription("Password of the Postgres database user to be used when connecting to the database.");
 
     public static final Field DATABASE_NAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASE)
