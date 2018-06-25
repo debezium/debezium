@@ -556,7 +556,6 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                               .withType(Type.PASSWORD)
                                               .withWidth(Width.SHORT)
                                               .withImportance(Importance.HIGH)
-                                              .withValidation(Field::isRequired)
                                               .withDescription("Password of the MySQL database user to be used when connecting to the database.");
 
     public static final Field SERVER_NAME = Field.create("database.server.name")

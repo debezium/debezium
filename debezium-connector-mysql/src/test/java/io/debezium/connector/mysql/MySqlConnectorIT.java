@@ -107,7 +107,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertConfigurationErrors(result, MySqlConnectorConfig.HOSTNAME, 1);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.PORT);
         assertConfigurationErrors(result, MySqlConnectorConfig.USER, 1);
-        assertConfigurationErrors(result, MySqlConnectorConfig.PASSWORD, 1);
         assertConfigurationErrors(result, MySqlConnectorConfig.SERVER_NAME, 2);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SERVER_ID);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLES_IGNORE_BUILTIN);
