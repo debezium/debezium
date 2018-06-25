@@ -102,7 +102,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         String typeName = column.typeName();
         
         switch (typeName) {
-        	case PgTypeName.CITEXT:
+            case PgTypeName.CITEXT:
                 return SchemaBuilder.string();
         }
         
@@ -216,7 +216,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         String typeName = column.typeName();
         
         switch (typeName) {
-        	case PgTypeName.CITEXT:
+            case PgTypeName.CITEXT:
                 return data -> super.convertString(column, fieldDefn, data);
         }
 
