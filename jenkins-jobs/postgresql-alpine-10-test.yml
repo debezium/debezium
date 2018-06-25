@@ -1,10 +1,10 @@
-# Job definition to test PostgreSQL connector with wal2json decoder without metadata
+# Job definition to test PostgreSQL connector against PostgreSQL 10
 ---
 - job:
     project-type: freestyle
-    name: debezium-postgresql-test-wal2json-legacy
-    display-name: Debezium PostgreSQL(wal2json w/o metadata) Test
-    description: Executes tests for wal2json decoder without metadata
+    name: debezium-postgresql-alpine-10-test
+    display-name: Debezium PostgreSQL 10.0 Test (Alpine)
+    description: Executes tests for PostgreSQL Connector with PostgreSQL 10.0 based on Alpine image
     node: Slave
     properties:
       - build-discarder:
@@ -30,11 +30,11 @@
           timeout: 45
     triggers:
       - reverse:
-          jobs: 'debezium-postgresql-alpine-10-test'
+          jobs: "debezium-postgresql-alpine-9.6-test"
     builders:
       - maven-target:
           maven-version: (Default)
-          goals: clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-postgres -am -fae -Dmaven.test.failure.ignore=true -Dpostgres.port=55432 -Dversion.postgres.server=9.6-legacy -Pwal2json-decoder
+          goals: clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-postgres -am -fae -Dmaven.test.failure.ignore=true -Dpostgres.port=55432 -Dversion.postgres.server=10.0-alpine
     publishers:
       - junit:
           results: "**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml"

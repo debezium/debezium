@@ -28,9 +28,6 @@
     wrappers:
       - timeout:
           timeout: 45
-    triggers:
-      - reverse:
-          jobs: 'debezium-postgresql-test-wal2json'
     builders:
       - maven-target:
           maven-version: (Default)
