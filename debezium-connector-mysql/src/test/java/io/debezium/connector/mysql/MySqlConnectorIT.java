@@ -807,7 +807,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Start the connector ...
         start(MySqlConnector.class, config);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
@@ -857,7 +857,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Start the connector ...
         start(MySqlConnector.class, config);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
