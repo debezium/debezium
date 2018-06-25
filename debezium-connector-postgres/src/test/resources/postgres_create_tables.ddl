@@ -25,7 +25,7 @@ CREATE TABLE geom_table (pk SERIAL, p POINT, PRIMARY KEY(pk));
 CREATE TABLE tstzrange_table (pk serial, unbounded_exclusive_range tstzrange, bounded_inclusive_range tstzrange, PRIMARY KEY(pk));
 CREATE TABLE array_table (pk SERIAL, int_array INT[], bigint_array BIGINT[], text_array TEXT[], char_array CHAR(10)[], varchar_array VARCHAR(10)[], date_array DATE[], numeric_array NUMERIC(10, 2)[], varnumeric_array NUMERIC[3], PRIMARY KEY(pk));
 CREATE TABLE array_table_with_nulls (pk SERIAL, int_array INT[], bigint_array BIGINT[], text_array TEXT[], char_array CHAR(10)[], varchar_array VARCHAR(10)[], date_array DATE[], numeric_array NUMERIC(10, 2)[], varnumeric_array NUMERIC[3], PRIMARY KEY(pk));
-CREATE TABLE custom_table (pk serial, lt ltree, i isbn, n TEXT, PRIMARY KEY(pk));
+CREATE TABLE custom_table (pk serial, lt ltree, i isbn, n TEXT, ct CITEXT, PRIMARY KEY(pk));
 
 DROP SCHEMA IF EXISTS "Quoted_"" . Schema" CASCADE;
 CREATE SCHEMA "Quoted_"" . Schema";
