@@ -13,11 +13,9 @@
       - string:
           name: RELEASE_VERSION
           description: "Version of Debezium to be released - e.g. 0.5.2"
-          default: "0.8.0.Beta1"
       - string:
           name: DEVELOPMENT_VERSION
           description: "Next development version - e.g. 0.5.3-SNAPSHOT"
-          default: "0.9.0-SNAPSHOT"
       - string:
           name: DEBEZIUM_REPOSITORY
           description: "Repository from which Debezium is built"
