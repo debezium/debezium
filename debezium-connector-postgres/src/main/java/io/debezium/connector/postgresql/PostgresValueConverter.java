@@ -99,12 +99,6 @@ public class PostgresValueConverter extends JdbcValueConverters {
     @Override
     public SchemaBuilder schemaBuilder(Column column) {
         int oidValue = column.nativeType();
-        String typeName = column.typeName();
-        
-        switch (typeName) {
-            case PgTypeName.CITEXT:
-                return SchemaBuilder.string();
-        }
         
         switch (oidValue) {
             case PgOid.BIT:
@@ -187,11 +181,17 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 else if (oidValue == typeRegistry.geographyOid()) {
                     return Geography.builder();
                 }
+                else if (oidValue == typeRegistry.citextOid()) {
+                    return SchemaBuilder.string();
+                }
                 else if (oidValue == typeRegistry.geometryArrayOid()) {
                     return SchemaBuilder.array(Geometry.builder().optional().build());
                 }
                 else if (oidValue == typeRegistry.geographyArrayOid()) {
                     return SchemaBuilder.array(Geography.builder().optional().build());
+                }
+                else if (oidValue == typeRegistry.citextArrayOid()) {
+                    return SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
                 }
                 final SchemaBuilder jdbcSchemaBuilder = super.schemaBuilder(column);
                 if (jdbcSchemaBuilder == null) {
@@ -213,12 +213,6 @@ public class PostgresValueConverter extends JdbcValueConverters {
     @Override
     public ValueConverter converter(Column column, Field fieldDefn) {
         int oidValue = column.nativeType();
-        String typeName = column.typeName();
-        
-        switch (typeName) {
-            case PgTypeName.CITEXT:
-                return data -> super.convertString(column, fieldDefn, data);
-        }
 
         switch (oidValue) {
             case PgOid.BIT:
@@ -238,6 +232,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.UUID:
             case PgOid.TSTZRANGE_OID:
             case PgOid.JSON:
+                return data -> super.convertString(column, fieldDefn, data);
             case PgOid.POINT:
                 return data -> convertPoint(column, fieldDefn, data);
             case PgOid.MONEY:
@@ -287,7 +282,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 else if (oidValue == typeRegistry.geographyOid()) {
                     return data -> convertGeography(column, fieldDefn, data);
                 }
-                else if (oidValue == typeRegistry.geometryArrayOid() || oidValue == typeRegistry.geographyArrayOid()) {
+                else if (oidValue == typeRegistry.citextOid()) {
+                    return data -> convertCitext(column, fieldDefn, data);
+                }
+                else if (oidValue == typeRegistry.geometryArrayOid() || oidValue == typeRegistry.geographyArrayOid() || oidValue == typeRegistry.citextArrayOid()) {
                     return createArrayConverter(column, fieldDefn);
                 }
                 final ValueConverter jdbcConverter = super.converter(column, fieldDefn);
@@ -553,6 +551,25 @@ public class PostgresValueConverter extends JdbcValueConverters {
         } catch (IllegalArgumentException | UnsupportedEncodingException e) {
             logger.warn("Error converting to a Geography type", column);
         }
+        return handleUnknownData(column, fieldDefn, data);
+    }
+
+    protected Object convertCitext(Column column, Field fieldDefn, Object data) {
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+
+        if (data == null) {
+            if (column.isOptional()) return null;
+            return "";
+        }
+        
+        if (data instanceof byte[]) {
+            return new String((byte[]) data);
+        } else if (data instanceof String) {
+            return data;
+        }
+        
         return handleUnknownData(column, fieldDefn, data);
     }
 
