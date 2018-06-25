@@ -23,7 +23,7 @@ public class ColumnEditorTest {
         editor = Column.editor();
         column = null;
     }
-    
+
     protected void createColumnWithAllFieldsSetToNonDefaults() {
         column = editor.name("price")
                 .type("NUMBER")
@@ -71,15 +71,4 @@ public class ColumnEditorTest {
         assertThat(editor.toString()).isEqualTo(column.toString());
         assertThat(editor.toString()).isNotEmpty();
     }
-
-    @Test
-    public void shouldCompareBasedUponPosition() {
-        createColumnWithAllFieldsSetToNonDefaults();
-        assertThat(editor.compareTo(column)).isEqualTo(0);
-        editor.position(100);
-        assertThat(editor.compareTo(column)).isGreaterThan(0);
-        editor.position(1);
-        assertThat(editor.compareTo(column)).isLessThan(0);
-    }
-
 }
