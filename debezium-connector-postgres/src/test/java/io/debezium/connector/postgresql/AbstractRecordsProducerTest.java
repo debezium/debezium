@@ -468,7 +468,7 @@ public abstract class AbstractRecordsProducerTest {
         return Arrays.asList(new SchemaAndValueField("lt", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap("Top.Collections.Pictures.Astronomy.Galaxies".getBytes())),
                              new SchemaAndValueField("i", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap("0-393-04002-X".getBytes())),
                              new SchemaAndValueField("n", Schema.OPTIONAL_STRING_SCHEMA, null),
-                             new SchemaAndValueField("ct", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap("Hello World".getBytes())));
+                             new SchemaAndValueField("ct", Schema.OPTIONAL_STRING_SCHEMA, "Hello World"));
 
     }
 

@@ -99,6 +99,13 @@ public class PostgresValueConverter extends JdbcValueConverters {
     @Override
     public SchemaBuilder schemaBuilder(Column column) {
         int oidValue = column.nativeType();
+        String typeName = column.typeName();
+        
+        switch (typeName) {
+        	case PgTypeName.CITEXT:
+                return SchemaBuilder.string();
+        }
+        
         switch (oidValue) {
             case PgOid.BIT:
             case PgOid.BIT_ARRAY:
@@ -118,7 +125,6 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.JSON:
                 return Json.builder();
             case PgOid.TSTZRANGE_OID:
-            case PgOid.CITEXT:
                 return SchemaBuilder.string();
             case PgOid.UUID:
                 return Uuid.builder();
@@ -207,6 +213,12 @@ public class PostgresValueConverter extends JdbcValueConverters {
     @Override
     public ValueConverter converter(Column column, Field fieldDefn) {
         int oidValue = column.nativeType();
+        String typeName = column.typeName();
+        
+        switch (typeName) {
+        	case PgTypeName.CITEXT:
+                return data -> super.convertString(column, fieldDefn, data);
+        }
 
         switch (oidValue) {
             case PgOid.BIT:
@@ -226,8 +238,6 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.UUID:
             case PgOid.TSTZRANGE_OID:
             case PgOid.JSON:
-            case PgOid.CITEXT:
-                return data -> super.convertString(column, fieldDefn, data);
             case PgOid.POINT:
                 return data -> convertPoint(column, fieldDefn, data);
             case PgOid.MONEY:
