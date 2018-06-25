@@ -21,5 +21,4 @@ public final class PgOid extends Oid {
      */
     public static final int JSONB_OID = 3802;
     public static final int TSTZRANGE_OID = 3910;
-    public static final int CITEXT = 22682;
 }
