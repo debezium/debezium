@@ -82,8 +82,9 @@
         <!-- Testing -->
         <version.junit>4.12</version.junit>
         <version.fest>1.4</version.fest>
+        <version.jmh>1.21</version.jmh>
 
-       <!-- Maven Plugins -->
+        <!-- Maven Plugins -->
         <version.resources.plugin>2.7</version.resources.plugin>
         <version.dependency.plugin>2.10</version.dependency.plugin>
         <version.enforcer.plugin>3.0.0-M1</version.enforcer.plugin>
@@ -121,6 +122,7 @@
         <module>debezium-connector-mysql</module>
         <module>debezium-connector-postgres</module>
         <module>debezium-connector-mongodb</module>
+        <module>debezium-microbenchmark</module>
     </modules>
 
     <distributionManagement>
@@ -297,6 +299,16 @@
                 <groupId>org.easytesting</groupId>
                 <artifactId>fest-assert</artifactId>
                 <version>${version.fest}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.openjdk.jmh</groupId>
+                <artifactId>jmh-core</artifactId>
+                <version>${version.jmh}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.openjdk.jmh</groupId>
+                <artifactId>jmh-generator-annprocess</artifactId>
+                <version>${version.jmh}</version>
             </dependency>
 
             <!-- Debezium artifacts -->
