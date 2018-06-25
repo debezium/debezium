@@ -61,7 +61,7 @@ public class MysqlDefaultValueAllZeroTimeIT extends AbstractConnectorTest {
                 .build();
         start(MySqlConnector.class, config);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         AbstractConnectorTest.SourceRecords records = consumeRecordsByTopic(7);
         final SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("ALL_ZERO_DATE_AND_TIME_TABLE")).get(0);

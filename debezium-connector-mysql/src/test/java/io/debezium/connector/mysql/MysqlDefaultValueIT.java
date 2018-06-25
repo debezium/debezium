@@ -71,7 +71,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
                 .build();
         start(MySqlConnector.class, config);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         SourceRecords records = consumeRecordsByTopic(EVENT_COUNT);
         SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("UNSIGNED_TINYINT_TABLE")).get(0);
@@ -103,7 +103,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
                 .build();
         start(MySqlConnector.class, config);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         SourceRecords records = consumeRecordsByTopic(EVENT_COUNT);
         SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("UNSIGNED_SMALLINT_TABLE")).get(0);
@@ -135,7 +135,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
                 .build();
         start(MySqlConnector.class, config);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         SourceRecords records = consumeRecordsByTopic(EVENT_COUNT);
         SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("UNSIGNED_MEDIUMINT_TABLE")).get(0);
@@ -167,7 +167,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
                 .build();
         start(MySqlConnector.class, config);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         SourceRecords records = consumeRecordsByTopic(EVENT_COUNT);
         SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("UNSIGNED_INT_TABLE")).get(0);
@@ -199,7 +199,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
                 .build();
         start(MySqlConnector.class, config);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         SourceRecords records = consumeRecordsByTopic(EVENT_COUNT);
         SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("UNSIGNED_BIGINT_TABLE")).get(0);
@@ -232,7 +232,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
                 .build();
         start(MySqlConnector.class, config);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         SourceRecords records = consumeRecordsByTopic(EVENT_COUNT);
         SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("UNSIGNED_BIGINT_TABLE")).get(0);
@@ -267,7 +267,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
                 .build();
         start(MySqlConnector.class, config);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         SourceRecords records = consumeRecordsByTopic(EVENT_COUNT);
         SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("STRING_TABLE")).get(0);
@@ -298,7 +298,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
                 .build();
         start(MySqlConnector.class, config);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         SourceRecords records = consumeRecordsByTopic(EVENT_COUNT);
         SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("BIT_TABLE")).get(0);
@@ -333,7 +333,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
                 .build();
         start(MySqlConnector.class, config);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         SourceRecords records = consumeRecordsByTopic(EVENT_COUNT);
         SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("BOOLEAN_TABLE")).get(0);
@@ -358,7 +358,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
                 .build();
         start(MySqlConnector.class, config);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         SourceRecords records = consumeRecordsByTopic(EVENT_COUNT);
         SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("NUMBER_TABLE")).get(0);
@@ -383,7 +383,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
                 .build();
         start(MySqlConnector.class, config);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         SourceRecords records = consumeRecordsByTopic(EVENT_COUNT);
         SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("FlOAT_DOUBLE_TABLE")).get(0);
@@ -402,7 +402,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
                 .build();
         start(MySqlConnector.class, config);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         SourceRecords records = consumeRecordsByTopic(EVENT_COUNT);
         SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("REAL_TABLE")).get(0);
@@ -422,7 +422,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
                 .build();
         start(MySqlConnector.class, config);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         SourceRecords records = consumeRecordsByTopic(EVENT_COUNT);
         SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("NUMERIC_DECIMAL_TABLE")).get(0);
@@ -444,7 +444,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
                 .build();
         start(MySqlConnector.class, config);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         SourceRecords records = consumeRecordsByTopic(EVENT_COUNT);
         SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("NUMERIC_DECIMAL_TABLE")).get(0);
@@ -467,7 +467,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
                 .build();
         start(MySqlConnector.class, config);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         SourceRecords records = consumeRecordsByTopic(7);
         final SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("DATE_TIME_TABLE")).get(0);
@@ -524,7 +524,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
                 .build();
         start(MySqlConnector.class, config);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         SourceRecords records = consumeRecordsByTopic(7);
         final SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("DATE_TIME_TABLE")).get(0);
@@ -574,7 +574,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
                 .build();
         start(MySqlConnector.class, config);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         SourceRecords records = consumeRecordsByTopic(7);
         final SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("DATE_TIME_TABLE")).get(0);
