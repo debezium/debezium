@@ -568,6 +568,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
             return new String((byte[]) data);
         } else if (data instanceof String) {
             return data;
+        } else if (data instanceof PGobject) {
+            return ((PGobject) data).getValue();
         }
         
         return handleUnknownData(column, fieldDefn, data);
