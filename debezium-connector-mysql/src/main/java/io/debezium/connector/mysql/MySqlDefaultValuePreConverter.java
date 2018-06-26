@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.regex.Pattern;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.relational.Column;
@@ -29,7 +30,7 @@ import io.debezium.relational.Column;
 @Immutable
 public class MySqlDefaultValuePreConverter  {
 
-    private static final String ALL_ZERO_TIMESTAMP = "0000-00-00 00:00:00";
+    private static final Pattern ALL_ZERO_TIMESTAMP = Pattern.compile("0000-00-00 00:00:00(\\.\\d{1,6})?");
 
     private static final String ALL_ZERO_DATE = "0000-00-00";
 
@@ -108,9 +109,19 @@ public class MySqlDefaultValuePreConverter  {
      * @return the converted value;
      */
     private Object convertToLocalDateTime(Column column, String value) {
-        if (ALL_ZERO_TIMESTAMP.equals(value) && column.isOptional()) return null;
-        if (ALL_ZERO_TIMESTAMP.equals(value)) value = EPOCH_TIMESTAMP;
-        String timestampFormat = timestampFormat(column.length());
+        final boolean matches = ALL_ZERO_TIMESTAMP.matcher(value).matches();
+        if (matches && column.isOptional()) return null;
+        if (matches) {
+            value = EPOCH_TIMESTAMP;
+            if (column.length() > 0) {
+                final StringBuilder sb = new StringBuilder(EPOCH_TIMESTAMP).append('.');
+                for (int i = 0; i < column.length(); i++) {
+                    sb.append('0');
+                }
+                value = sb.toString();
+            }
+        }
+        final String timestampFormat = timestampFormat(column.length());
         return LocalDateTime.from(DateTimeFormatter.ofPattern(timestampFormat).parse(value));
     }
 
@@ -124,8 +135,9 @@ public class MySqlDefaultValuePreConverter  {
      * @return the converted value;
      */
     private Object convertToTimestamp(Column column, String value) {
-        if (ALL_ZERO_TIMESTAMP.equals(value) && column.isOptional()) return null;
-        if (ALL_ZERO_TIMESTAMP.equals(value)) value = EPOCH_TIMESTAMP;
+        final boolean matches = ALL_ZERO_TIMESTAMP.matcher(value).matches();
+        if (matches && column.isOptional()) return null;
+        if (matches) value = EPOCH_TIMESTAMP;
         return Timestamp.valueOf(value).toInstant().atZone(ZoneId.systemDefault());
     }
 

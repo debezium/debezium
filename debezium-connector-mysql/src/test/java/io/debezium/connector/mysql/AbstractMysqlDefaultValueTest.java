@@ -8,6 +8,10 @@ package io.debezium.connector.mysql;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.util.Date;
 import java.util.function.Function;
 
 import org.junit.Before;
@@ -271,7 +275,6 @@ public abstract class AbstractMysqlDefaultValueTest {
         assertThat(table.columnWithName("D").defaultValue()).isEqualTo(20L);
         assertThat(table.columnWithName("E").defaultValue()).isEqualTo(null);
         assertThat(table.columnWithName("F").defaultValue()).isEqualTo(0d);
-
     }
 
     @Test
@@ -316,5 +319,37 @@ public abstract class AbstractMysqlDefaultValueTest {
         assertThat(table.columnWithName("A").defaultValue()).isEqualTo(BigDecimal.valueOf(1.23));
         assertThat(table.columnWithName("B").defaultValue()).isEqualTo(BigDecimal.valueOf(2.321));
         assertThat(table.columnWithName("C").defaultValue()).isEqualTo(BigDecimal.valueOf(12.678));
+    }
+
+    @Test
+    public void parseTimeDefaultValue() {
+        String sql = "CREATE TABLE TIME_TABLE (\n" +
+                "  A timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n" +
+                "  B timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',\n" +
+                "  C timestamp NOT NULL DEFAULT '0000-00-00 00:00:00.000'," +
+                "  D timestamp NOT NULL DEFAULT '2018-06-26 12:34:56'," +
+                "  E timestamp NOT NULL DEFAULT '2018-06-26 12:34:56.000'," +
+                "  F timestamp NOT NULL DEFAULT '2018-06-26 12:34:56.78'," +
+                "  G datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n" +
+                "  H datetime NOT NULL DEFAULT '0000-00-00 00:00:00',\n" +
+                "  I datetime(3) NOT NULL DEFAULT '0000-00-00 00:00:00.000'," +
+                "  J datetime NOT NULL DEFAULT '2018-06-26 12:34:56'," +
+                "  K datetime(3) NOT NULL DEFAULT '2018-06-26 12:34:56.000'," +
+                "  L datetime(2) NOT NULL DEFAULT '2018-06-26 12:34:56.78'" +
+                ");";
+        parser.parse(sql, tables);
+        Table table = tables.forTable(new TableId(null, null, "TIME_TABLE"));
+        assertThat(table.columnWithName("A").defaultValue()).isEqualTo("1970-01-01T00:00:00+01:00");
+        assertThat(table.columnWithName("B").defaultValue()).isEqualTo("1970-01-01T00:00:00+01:00");
+        assertThat(table.columnWithName("C").defaultValue()).isEqualTo("1970-01-01T00:00:00+01:00");
+        assertThat(table.columnWithName("D").defaultValue()).isEqualTo("2018-06-26T12:34:56+02:00");
+        assertThat(table.columnWithName("E").defaultValue()).isEqualTo("2018-06-26T12:34:56+02:00");
+        assertThat(table.columnWithName("F").defaultValue()).isEqualTo("2018-06-26T12:34:56.78+02:00");
+        assertThat(table.columnWithName("G").defaultValue()).isEqualTo(Date.from(Instant.ofEpochMilli(0)));
+        assertThat(table.columnWithName("H").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
+        assertThat(table.columnWithName("I").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
+        assertThat(table.columnWithName("J").defaultValue()).isEqualTo(Date.from(ZonedDateTime.of(2018, 6, 26, 12, 34, 56, 0, ZoneOffset.UTC).toInstant()));
+        assertThat(table.columnWithName("K").defaultValue()).isEqualTo(Date.from(ZonedDateTime.of(2018, 6, 26, 12, 34, 56, 0, ZoneOffset.UTC).toInstant()));
+        assertThat(table.columnWithName("L").defaultValue()).isEqualTo(Date.from(ZonedDateTime.of(2018, 6, 26, 12, 34, 56, 780_000_000, ZoneOffset.UTC).toInstant()));
     }
 }
