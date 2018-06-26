@@ -422,13 +422,15 @@ public class RecordsStreamProducer extends RecordsProducer {
         List<String> columnNames = table.columnNames();
         // JSON does not deliver a list of all columns for REPLICA IDENTITY DEFAULT
         Object[] values = new Object[columns.size() < columnNames.size() ? columnNames.size() : columns.size()];
-        columns.forEach(message -> {
+
+        for (ReplicationMessage.Column column : columns) {
             //DBZ-298 Quoted column names will be sent like that in messages, but stored unquoted in the column names
-            String columnName = Strings.unquoteIdentifierPart(message.getName());
+            String columnName = Strings.unquoteIdentifierPart(column.getName());
             int position = columnNames.indexOf(columnName);
             assert position >= 0;
-            values[position] = message.getValue(this::typeResolverConnection, taskContext.config().includeUnknownDatatypes());
-        });
+            values[position] = column.getValue(this::typeResolverConnection, taskContext.config().includeUnknownDatatypes());
+        }
+
         return values;
     }
 

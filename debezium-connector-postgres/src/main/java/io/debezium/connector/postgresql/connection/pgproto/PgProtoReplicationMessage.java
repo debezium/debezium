@@ -110,6 +110,11 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                         public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
                             return PgProtoReplicationMessage.this.getValue(datum, connection, includeUnknownDatatypes);
                         }
+
+                        @Override
+                        public String toString() {
+                            return datum.toString();
+                        }
                     };
                    })
                 .collect(Collectors.toList());
@@ -240,14 +245,14 @@ class PgProtoReplicationMessage implements ReplicationMessage {
 
             default:
                 PostgresType type = typeRegistry.get(columnType);
-                if (type.getOid() == typeRegistry.geometryOid() || type.getOid() == typeRegistry.geographyOid() ) {
+                if (type.getOid() == typeRegistry.geometryOid() || type.getOid() == typeRegistry.geographyOid() || type.getOid() == typeRegistry.citextOid() ) {
                     return datumMessage.getDatumBytes().toByteArray();
                 }
-                if (type.getOid() == typeRegistry.geometryArrayOid() || type.getOid() == typeRegistry.geographyArrayOid() ) {
+                if (type.getOid() == typeRegistry.geometryArrayOid() || type.getOid() == typeRegistry.geographyArrayOid() || type.getOid() == typeRegistry.citextArrayOid() ) {
                     return getArray(datumMessage, connection, columnType);
                 }
 
-                // unknown datatype is sent by decoder as binary value
+                // unknown data type is sent by decoder as binary value
                 if (includeUnknownDatatypes && datumMessage.hasDatumBytes()) {
                     return datumMessage.getDatumBytes().toByteArray();
                 }
