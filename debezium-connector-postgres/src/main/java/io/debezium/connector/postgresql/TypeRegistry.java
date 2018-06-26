@@ -26,8 +26,10 @@ public class TypeRegistry {
 
     public static final String TYPE_NAME_GEOGRAPHY = "geography";
     public static final String TYPE_NAME_GEOMETRY = "geometry";
+    public static final String TYPE_NAME_CITEXT = "citext";
     public static final String TYPE_NAME_GEOGRAPHY_ARRAY = "_geography";
     public static final String TYPE_NAME_GEOMETRY_ARRAY = "_geometry";
+    public static final String TYPE_NAME_CITEXT_ARRAY = "_citext";
 
     public static final int NO_TYPE_MODIFIER = -1;
     public static final int UNKNOWN_LENGTH = -1;
@@ -63,8 +65,10 @@ public class TypeRegistry {
         private final Map<Integer, PostgresType> oidToType = new HashMap<>();
         private int geometryOid = Integer.MIN_VALUE;
         private int geographyOid = Integer.MIN_VALUE;
+        private int citextOid = Integer.MIN_VALUE;
         private int geometryArrayOid = Integer.MIN_VALUE;
         private int geographyArrayOid = Integer.MIN_VALUE;
+        private int citextArrayOid = Integer.MIN_VALUE;
 
         private Builder() {
         }
@@ -86,11 +90,17 @@ public class TypeRegistry {
             else if (TYPE_NAME_GEOGRAPHY.equals(type.getName())) {
                 geographyOid = type.getOid();
             }
+            else if (TYPE_NAME_CITEXT.equals(type.getName())) {
+                citextOid = type.getOid();
+            }
             else if (TYPE_NAME_GEOMETRY_ARRAY.equals(type.getName())) {
                 geometryArrayOid = type.getOid();
             }
             else if (TYPE_NAME_GEOGRAPHY_ARRAY.equals(type.getName())) {
                 geographyArrayOid = type.getOid();
+            }
+            else if (TYPE_NAME_CITEXT_ARRAY.equals(type.getName())) {
+                citextArrayOid = type.getOid();
             }
 
             return this;
@@ -109,7 +119,7 @@ public class TypeRegistry {
          * @return initialized type registry
          */
         public TypeRegistry build() {
-            return new TypeRegistry(nameToType, oidToType, geometryOid, geographyOid, geometryArrayOid, geographyArrayOid);
+            return new TypeRegistry(nameToType, oidToType, geometryOid, geographyOid, citextOid, geometryArrayOid, geographyArrayOid, citextArrayOid);
         }
     }
 
@@ -121,18 +131,22 @@ public class TypeRegistry {
     private final Map<Integer, PostgresType> oidToType;
     private final int geometryOid;
     private final int geographyOid;
+    private final int citextOid;
     private final int geometryArrayOid;
     private final int geographyArrayOid;
+    private final int citextArrayOid;
 
     private TypeRegistry(Map<String, PostgresType> nameToType, Map<Integer, PostgresType> oidToType,
-            int geometryOid, int geographyOid, int geometryArrayOid, int geographyArrayOid) {
+            int geometryOid, int geographyOid, int citextOid, int geometryArrayOid, int geographyArrayOid, int citextArrayOid) {
 
         this.nameToType = Collections.unmodifiableMap(nameToType);
         this.oidToType = Collections.unmodifiableMap(oidToType);
         this.geometryOid = geometryOid;
         this.geographyOid = geographyOid;
+        this.citextOid = citextOid;
         this.geometryArrayOid = geometryArrayOid;
         this.geographyArrayOid = geographyArrayOid;
+        this.citextArrayOid = citextArrayOid;
     }
 
     /**
@@ -199,6 +213,14 @@ public class TypeRegistry {
 
     /**
      *
+     * @return OID for {@code CITEXT} type of this PostgreSQL instance
+     */
+    public int citextOid() {
+        return citextOid;
+    }
+
+    /**
+     *
      * @return OID for array of {@code GEOMETRY} type of this PostgreSQL instance
      */
     public int geometryArrayOid() {
@@ -211,6 +233,14 @@ public class TypeRegistry {
      */
     public int geographyArrayOid() {
         return geographyArrayOid;
+    }
+
+    /**
+     *
+     * @return OID for array of {@code CITEXT} type of this PostgreSQL instance
+     */
+    public int citextArrayOid() {
+        return citextArrayOid;
     }
 
     /**

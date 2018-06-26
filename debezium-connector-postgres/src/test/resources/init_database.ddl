@@ -7,3 +7,4 @@ CREATE SCHEMA public;
 -- load contrib extensions for testing non-builtin types
 CREATE EXTENSION IF NOT EXISTS ltree SCHEMA public;
 CREATE EXTENSION IF NOT EXISTS isn SCHEMA public;
+CREATE EXTENSION IF NOT EXISTS citext SCHEMA public;
