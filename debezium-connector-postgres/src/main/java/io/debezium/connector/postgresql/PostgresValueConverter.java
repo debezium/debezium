@@ -99,7 +99,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     @Override
     public SchemaBuilder schemaBuilder(Column column) {
         int oidValue = column.nativeType();
-        
+
         switch (oidValue) {
             case PgOid.BIT:
             case PgOid.BIT_ARRAY:
@@ -563,15 +563,17 @@ public class PostgresValueConverter extends JdbcValueConverters {
             if (column.isOptional()) return null;
             return "";
         }
-        
+
         if (data instanceof byte[]) {
             return new String((byte[]) data);
-        } else if (data instanceof String) {
+        }
+        else if (data instanceof String) {
             return data;
-        } else if (data instanceof PGobject) {
+        }
+        else if (data instanceof PGobject) {
             return ((PGobject) data).getValue();
         }
-        
+
         return handleUnknownData(column, fieldDefn, data);
     }
 
