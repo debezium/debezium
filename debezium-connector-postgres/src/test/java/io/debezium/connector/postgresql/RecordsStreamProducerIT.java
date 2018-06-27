@@ -639,7 +639,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     private void setupRecordsProducer(PostgresConnectorConfig config) {
-        TopicSelector selector = TopicSelector.create(config);
+        PostgresTopicSelector selector = PostgresTopicSelector.create(config);
 
         PostgresTaskContext context = new PostgresTaskContext(
                 config,

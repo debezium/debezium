@@ -40,7 +40,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
     private final MySqlConnectorConfig connectorConfig;
     private final SourceInfo source;
     private final MySqlSchema dbSchema;
-    private final TopicSelector topicSelector;
+    private final MySqlTopicSelector topicSelector;
     private final RecordMakers recordProcessor;
     private final Predicate<String> gtidSourceFilter;
     private final Predicate<String> ddlFilter;
@@ -62,7 +62,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         this.connectionContext = new MySqlJdbcContext(config);
 
         // Set up the topic selector ...
-        this.topicSelector = TopicSelector.defaultSelector(serverName(), getHeartbeatTopicsPrefix());
+        this.topicSelector = MySqlTopicSelector.defaultSelector(serverName(), getHeartbeatTopicsPrefix());
 
         // Set up the source information ...
         this.source = new SourceInfo();
@@ -107,7 +107,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         return config.getString("name");
     }
 
-    public TopicSelector topicSelector() {
+    public MySqlTopicSelector topicSelector() {
         return topicSelector;
     }
 

@@ -8,7 +8,6 @@ package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
 import java.time.ZoneOffset;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -21,6 +20,7 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ServerInfo;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
@@ -37,47 +37,39 @@ import io.debezium.util.SchemaNameAdjuster;
  * @author Horia Chiorean
  */
 @NotThreadSafe
-public class PostgresSchema {
+public class PostgresSchema extends RelationalDatabaseSchema {
 
     protected final static String PUBLIC_SCHEMA_NAME = "public";
     private final static Logger LOGGER = LoggerFactory.getLogger(PostgresSchema.class);
 
-    private final Map<TableId, TableSchema> tableSchemaByTableId = new HashMap<>();
     private final Filters filters;
-    private final TableSchemaBuilder schemaBuilder;
-    private final String schemaPrefix;
     private final Tables tables;
     private final SchemaNameAdjuster schemaNameAdjuster;
-    private final PostgresValueConverter valueConverter;
 
     private Map<String, Integer> typeInfo;
     private final TypeRegistry typeRegistry;
-    private final TopicSelector topicSelector;
 
     /**
      * Create a schema component given the supplied {@link PostgresConnectorConfig Postgres connector configuration}.
      *
      * @param config the connector configuration, which is presumed to be valid
      */
-    protected PostgresSchema(PostgresConnectorConfig config, TypeRegistry typeRegistry, TopicSelector topicSelector) {
+    protected PostgresSchema(PostgresConnectorConfig config, TypeRegistry typeRegistry,
+            PostgresTopicSelector topicSelector) {
+        super(config.serverName(), topicSelector, new Filters(config).tableFilter(), new Filters(config).columnFilter(),
+                null, getTableSchemaBuilder(config, typeRegistry), false);
+
         this.filters = new Filters(config);
         this.tables = new Tables();
-        this.topicSelector = topicSelector;
-
-        this.valueConverter = new PostgresValueConverter(config.decimalHandlingMode(), config.temporalPrecisionMode(),
-                ZoneOffset.UTC, null, config.includeUnknownDatatypes(), typeRegistry);
         this.schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
-        this.schemaBuilder = new TableSchemaBuilder(valueConverter, this.schemaNameAdjuster, SourceInfo.SCHEMA);
-
-        // Set up the server name and schema prefix ...
-        String serverName = config.serverName();
-        if (serverName == null) {
-            schemaPrefix = "";
-        } else {
-            serverName = serverName.trim();
-            this.schemaPrefix = serverName.endsWith(".") || serverName.isEmpty() ? serverName : serverName + ".";
-        }
         this.typeRegistry = typeRegistry;
+    }
+
+    private static TableSchemaBuilder getTableSchemaBuilder(PostgresConnectorConfig config, TypeRegistry typeRegistry) {
+        PostgresValueConverter valueConverter = new PostgresValueConverter(config.decimalHandlingMode(), config.temporalPrecisionMode(),
+                ZoneOffset.UTC, null, config.includeUnknownDatatypes(), typeRegistry);
+
+        return new TableSchemaBuilder(valueConverter, SchemaNameAdjuster.create(LOGGER), SourceInfo.SCHEMA);
     }
 
     /**
@@ -162,16 +154,13 @@ public class PostgresSchema {
      * @return the current table definition, or null if there is no table with the given identifier, if the identifier is null,
      *         or if the table has been excluded by the filters
      */
+    @Override
     public Table tableFor(TableId id) {
         return filters.tableFilter().test(id) ? tables.forTable(id) : null;
     }
 
     protected String adjustSchemaName(String name) {
         return this.schemaNameAdjuster.adjust(name);
-    }
-
-    protected TableSchema schemaFor(TableId id) {
-        return tableSchemaByTableId.get(id);
     }
 
     protected boolean isFilteredOut(TableId id) {
@@ -194,7 +183,8 @@ public class PostgresSchema {
      * Discard any currently-cached schemas and rebuild them using the filters.
      */
     protected void refreshSchemas() {
-        tableSchemaByTableId.clear();
+        clearSchemas();
+
         // Create TableSchema instances for any existing table ...
         this.tables.tableIds().forEach(this::refreshSchema);
     }
@@ -204,12 +194,8 @@ public class PostgresSchema {
             LOGGER.debug("refreshing DB schema for table '{}'", id);
         }
         Table table = this.tables.forTable(id);
-        TableSchema schema = schemaBuilder.create(schemaPrefix, getEnvelopeSchemaName(table), table, filters.columnFilter(), null);
-        tableSchemaByTableId.put(id, schema);
-    }
 
-    private String getEnvelopeSchemaName(Table table) {
-        return topicSelector.topicNameFor(table.id()) + ".Envelope";
+        buildAndRegisterSchema(table);
     }
 
     protected static TableId parse(String table) {
