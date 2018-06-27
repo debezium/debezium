@@ -34,6 +34,11 @@ public final class TestHelper {
     protected static final String PK_FIELD = "pk";
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
 
+    /**
+     * Key for schema parameter used to store DECIMAL/NUMERIC columns' precision.
+     */
+    static final String PRECISION_PARAMETER_KEY = "connect.decimal.precision";
+
     private TestHelper() {
     }
 
