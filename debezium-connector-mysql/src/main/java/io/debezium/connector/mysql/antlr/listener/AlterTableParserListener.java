@@ -51,7 +51,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
         tableEditor = parser.databaseTables().editTable(tableId);
         if (tableEditor == null) {
             throw new ParsingException(null, "Trying to alter table " + tableId.toString()
-                    + ", which does not exists. Query: " + getText(ctx));
+                    + ", which does not exist. Query: " + getText(ctx));
         }
         super.enterAlterTable(ctx);
     }
@@ -149,7 +149,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
             }
             else {
                 throw new ParsingException(null, "Trying to change column " + oldColumnName + " in "
-                        + tableEditor.tableId().toString() + " table, which does not exists. Query: " + getText(ctx));
+                        + tableEditor.tableId().toString() + " table, which does not exist. Query: " + getText(ctx));
             }
         }, tableEditor);
         super.enterAlterByChangeColumn(ctx);
@@ -186,7 +186,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
             }
             else {
                 throw new ParsingException(null, "Trying to change column " + columnName + " in "
-                        + tableEditor.tableId().toString() + " table, which does not exists. Query: " + getText(ctx));
+                        + tableEditor.tableId().toString() + " table, which does not exist. Query: " + getText(ctx));
             }
         }, tableEditor);
         super.enterAlterByModifyColumn(ctx);

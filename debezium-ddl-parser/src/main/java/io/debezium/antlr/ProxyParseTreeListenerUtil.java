@@ -11,13 +11,14 @@
 
 package io.debezium.antlr;
 
-import io.debezium.text.ParsingException;
+import java.util.Collection;
+
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
-import java.util.Collection;
+import io.debezium.text.ParsingException;
 
 /**
  * Utility class that implements a helper method for achieving a delegation of parsed rules to multiple listeners.
@@ -28,7 +29,7 @@ import java.util.Collection;
 public class ProxyParseTreeListenerUtil {
 
     private ProxyParseTreeListenerUtil() {
-        // instance of util class should never exists
+        // instance of util class should never exist
     }
 
     /**

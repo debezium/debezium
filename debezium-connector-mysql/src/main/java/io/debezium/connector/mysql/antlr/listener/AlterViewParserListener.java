@@ -6,6 +6,10 @@
 
 package io.debezium.connector.mysql.antlr.listener;
 
+import java.util.List;
+
+import org.antlr.v4.runtime.tree.ParseTreeListener;
+
 import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
@@ -14,9 +18,6 @@ import io.debezium.relational.Column;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 import io.debezium.text.ParsingException;
-import org.antlr.v4.runtime.tree.ParseTreeListener;
-
-import java.util.List;
 
 /**
  * Parser listener that is parsing MySQL ALTER VIEW statements.
@@ -45,7 +46,7 @@ public class AlterViewParserListener extends MySqlParserBaseListener {
             tableEditor = parser.databaseTables().editTable(tableId);
             if (tableEditor == null) {
                 throw new ParsingException(null, "Trying to alter view " + tableId.toString()
-                        + ", which does not exists. Query:" + AntlrDdlParser.getText(ctx));
+                        + ", which does not exist. Query:" + AntlrDdlParser.getText(ctx));
             }
             // alter view will override existing columns for a new one
             tableEditor.columnNames().forEach(tableEditor::removeColumn);
