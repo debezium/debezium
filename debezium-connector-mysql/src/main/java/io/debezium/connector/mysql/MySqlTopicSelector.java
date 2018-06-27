@@ -7,14 +7,15 @@ package io.debezium.connector.mysql;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.relational.TableId;
+import io.debezium.schema.TopicSelector;
 
 /**
  * A function that determines the name of topics for data and metadata.
- * 
+ *
  * @author Randall Hauch
  */
 @ThreadSafe
-public interface TopicSelector {
+public interface MySqlTopicSelector extends TopicSelector<TableId> {
     /**
      * Get the default topic selector logic, which uses a '.' delimiter character when needed.
      *
@@ -24,7 +25,7 @@ public interface TopicSelector {
      *            {@code delimiter}
      * @return the topic selector; never null
      */
-    static TopicSelector defaultSelector(String prefix, String heartbeatPrefix) {
+    static MySqlTopicSelector defaultSelector(String prefix, String heartbeatPrefix) {
         return defaultSelector(prefix, heartbeatPrefix, ".");
     }
 
@@ -38,8 +39,8 @@ public interface TopicSelector {
      * @param delimiter the string delineating the server, database, and table names; may not be null
      * @return the topic selector; never null
      */
-    static TopicSelector defaultSelector(String prefix, String heartbeatPrefix, String delimiter) {
-        return new TopicSelector() {
+    static MySqlTopicSelector defaultSelector(String prefix, String heartbeatPrefix, String delimiter) {
+        return new MySqlTopicSelector() {
             /**
              * Get the name of the topic for the given server, database, and table names. This method returns
              * "{@code <serverName>}".
@@ -84,7 +85,8 @@ public interface TopicSelector {
      * @param tableId the identifier of the table; may not be null
      * @return the topic name; never null
      */
-    default String getTopic(TableId tableId) {
+    @Override
+    default String topicNameFor(TableId tableId) {
         return getTopic(tableId.catalog(),tableId.table());
     }
 

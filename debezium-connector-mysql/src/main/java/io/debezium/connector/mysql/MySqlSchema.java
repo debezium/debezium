@@ -8,8 +8,6 @@ package io.debezium.connector.mysql;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Schema;
@@ -26,6 +24,7 @@ import io.debezium.document.Document;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.SystemVariables;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -61,20 +60,15 @@ import io.debezium.util.SchemaNameAdjuster;
  * @author Randall Hauch
  */
 @NotThreadSafe
-public class MySqlSchema {
+public class MySqlSchema extends RelationalDatabaseSchema {
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
-    private final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(logger);
+    private final static Logger logger = LoggerFactory.getLogger(MySqlSchema.class);
+
     private final Set<String> ignoredQueryStatements = Collect.unmodifiableSet("BEGIN", "END", "FLUSH PRIVILEGES");
     private final DdlParser ddlParser;
-    private final TopicSelector topicSelector;
-    private final SchemasByTableId tableSchemaByTableId;
     private final Filters filters;
     private final DatabaseHistory dbHistory;
-    private final TableSchemaBuilder schemaBuilder;
     private final DdlChanges ddlChanges;
-    private final String serverName;
-    private final String schemaPrefix;
     private final HistoryRecordComparator historyComparator;
     private Tables tables;
     private final boolean skipUnparseableDDL;
@@ -91,38 +85,27 @@ public class MySqlSchema {
      *          may be null if not needed
      * @param tableIdCaseInsensitive true if table lookup ignores letter case
      */
-    public MySqlSchema(MySqlConnectorConfig configuration, String serverName, Predicate<String> gtidFilter, boolean tableIdCaseInsensitive, TopicSelector topicSelector) {
+    public MySqlSchema(MySqlConnectorConfig configuration, String serverName, Predicate<String> gtidFilter, boolean tableIdCaseInsensitive, MySqlTopicSelector topicSelector) {
+        super(
+                serverName,
+                topicSelector,
+                new Filters(configuration.getConfig()).tableFilter(),
+                new Filters(configuration.getConfig()).columnFilter(),
+                new Filters(configuration.getConfig()).columnMappers(),
+                new TableSchemaBuilder(
+                        getValueConverters(configuration.getConfig()), SchemaNameAdjuster.create(logger), SourceInfo.SCHEMA)
+                ,
+                tableIdCaseInsensitive
+        );
+
         Configuration config = configuration.getConfig();
 
         this.filters = new Filters(config);
         this.tables = new Tables(tableIdCaseInsensitive);
-        this.topicSelector = topicSelector;
         this.tableIdCaseInsensitive = tableIdCaseInsensitive;
 
-        // Use MySQL-specific converters and schemas for values ...
-        String timePrecisionModeStr = config.getString(MySqlConnectorConfig.TIME_PRECISION_MODE);
-        TemporalPrecisionMode timePrecisionMode = TemporalPrecisionMode.parse(timePrecisionModeStr);
-        String decimalHandlingModeStr = config.getString(MySqlConnectorConfig.DECIMAL_HANDLING_MODE);
-        DecimalHandlingMode decimalHandlingMode = DecimalHandlingMode.parse(decimalHandlingModeStr);
-        DecimalMode decimalMode = decimalHandlingMode.asDecimalMode();
-        String bigIntUnsignedHandlingModeStr = config.getString(MySqlConnectorConfig.BIGINT_UNSIGNED_HANDLING_MODE);
-        BigIntUnsignedHandlingMode bigIntUnsignedHandlingMode = BigIntUnsignedHandlingMode.parse(bigIntUnsignedHandlingModeStr);
-        BigIntUnsignedMode bigIntUnsignedMode = bigIntUnsignedHandlingMode.asBigIntUnsignedMode();
-        MySqlValueConverters valueConverters = new MySqlValueConverters(decimalMode, timePrecisionMode, bigIntUnsignedMode);
-        this.schemaBuilder = new TableSchemaBuilder(valueConverters, schemaNameAdjuster, SourceInfo.SCHEMA);
-
-        this.ddlParser = configuration.getDdlParsingMode().getNewParserInstance(valueConverters);
+        this.ddlParser = configuration.getDdlParsingMode().getNewParserInstance(getValueConverters(config));
         this.ddlChanges = this.ddlParser.getDdlChanges();
-
-        // Set up the server name and schema prefix ...
-        if (serverName != null) serverName = serverName.trim();
-        this.serverName = serverName;
-        if (this.serverName == null || serverName.isEmpty()) {
-            this.schemaPrefix = "";
-        }
-        else {
-            this.schemaPrefix = serverName.endsWith(".") ? serverName : serverName + ".";
-        }
 
         // Create and configure the database history ...
         this.dbHistory = config.getInstance(MySqlConnectorConfig.DATABASE_HISTORY, DatabaseHistory.class);
@@ -147,8 +130,24 @@ public class MySqlSchema {
         this.dbHistory.configure(dbHistoryConfig, historyComparator); // validates
 
         this.skipUnparseableDDL = dbHistoryConfig.getBoolean(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS);
-        tableSchemaByTableId = new SchemasByTableId(tableIdCaseInsensitive);
         this.storeOnlyMonitoredTablesDdl = dbHistoryConfig.getBoolean(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL);
+    }
+
+    private static MySqlValueConverters getValueConverters(Configuration config) {
+        // Use MySQL-specific converters and schemas for values ...
+
+        String timePrecisionModeStr = config.getString(MySqlConnectorConfig.TIME_PRECISION_MODE);
+        TemporalPrecisionMode timePrecisionMode = TemporalPrecisionMode.parse(timePrecisionModeStr);
+
+        String decimalHandlingModeStr = config.getString(MySqlConnectorConfig.DECIMAL_HANDLING_MODE);
+        DecimalHandlingMode decimalHandlingMode = DecimalHandlingMode.parse(decimalHandlingModeStr);
+        DecimalMode decimalMode = decimalHandlingMode.asDecimalMode();
+
+        String bigIntUnsignedHandlingModeStr = config.getString(MySqlConnectorConfig.BIGINT_UNSIGNED_HANDLING_MODE);
+        BigIntUnsignedHandlingMode bigIntUnsignedHandlingMode = BigIntUnsignedHandlingMode.parse(bigIntUnsignedHandlingModeStr);
+        BigIntUnsignedMode bigIntUnsignedMode = bigIntUnsignedHandlingMode.asBigIntUnsignedMode();
+
+        return new MySqlValueConverters(decimalMode, timePrecisionMode, bigIntUnsignedMode);
     }
 
     protected HistoryRecordComparator historyComparator() {
@@ -212,23 +211,9 @@ public class MySqlSchema {
      * @return the current table definition, or null if there is no table with the given identifier, if the identifier is null,
      *         or if the table has been excluded by the filters
      */
+    @Override
     public Table tableFor(TableId id) {
         return isTableMonitored(id) ? tables.forTable(id) : null;
-    }
-
-    /**
-     * Get the {@link TableSchema Schema information} for the table with the given identifier, if that table exists and is
-     * included by the {@link #filters() filter}.
-     * <p>
-     * Note that the {@link Schema} will not contain any columns that have been {@link MySqlConnectorConfig#COLUMN_BLACKLIST
-     * filtered out}.
-     *
-     * @param id the fully-qualified table identifier; may be null
-     * @return the schema information, or null if there is no table with the given identifier, if the identifier is null,
-     *         or if the table has been excluded by the filters
-     */
-    public TableSchema schemaFor(TableId id) {
-        return isTableMonitored(id) ? tableSchemaByTableId.get(id) : null;
     }
 
     /**
@@ -309,12 +294,11 @@ public class MySqlSchema {
      * Discard any currently-cached schemas and rebuild them using the filters.
      */
     protected void refreshSchemas() {
-        tableSchemaByTableId.clear();
+        clearSchemas();
         // Create TableSchema instances for any existing table ...
         this.tables.tableIds().forEach(id -> {
             Table table = this.tables.forTable(id);
-            TableSchema schema = schemaBuilder.create(schemaPrefix, getEnvelopeSchemaName(table), table, filters.columnFilter(), filters.columnMappers());
-            tableSchemaByTableId.put(id, schema);
+            buildAndRegisterSchema(table);
         });
     }
 
@@ -401,50 +385,12 @@ public class MySqlSchema {
         changes.forEach(tableId -> {
             Table table = tables.forTable(tableId);
             if (table == null) { // removed
-                tableSchemaByTableId.remove(tableId);
-            } else {
-                TableSchema schema = schemaBuilder.create(schemaPrefix, getEnvelopeSchemaName(table), table, filters.columnFilter(), filters.columnMappers());
-                tableSchemaByTableId.put(tableId, schema);
+                removeSchema(tableId);
+            }
+            else {
+                buildAndRegisterSchema(table);
             }
         });
         return true;
-    }
-
-    private String getEnvelopeSchemaName(Table table) {
-        return topicSelector.getTopic(table.id()) + ".Envelope";
-    }
-
-    /**
-     * A map of schemas by table id. Table names are stored lower-case if required as per the config.
-     */
-    private static class SchemasByTableId {
-
-        private final boolean tableIdCaseInsensitive;
-        private final ConcurrentMap<TableId, TableSchema> values;
-
-        public SchemasByTableId(boolean tableIdCaseInsensitive) {
-            this.tableIdCaseInsensitive = tableIdCaseInsensitive;
-            this.values = new ConcurrentHashMap<>();
-        }
-
-        public void clear() {
-            values.clear();
-        }
-
-        public TableSchema remove(TableId tableId) {
-            return values.remove(toLowerCaseIfNeeded(tableId));
-        }
-
-        public TableSchema get(TableId tableId) {
-            return values.get(toLowerCaseIfNeeded(tableId));
-        }
-
-        public TableSchema put(TableId tableId, TableSchema updated) {
-            return values.put(toLowerCaseIfNeeded(tableId), updated);
-        }
-
-        private TableId toLowerCaseIfNeeded(TableId tableId) {
-            return tableIdCaseInsensitive ? tableId.toLowercase() : tableId;
-        }
     }
 }

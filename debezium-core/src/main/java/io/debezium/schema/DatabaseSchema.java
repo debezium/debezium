@@ -5,15 +5,17 @@
  */
 package io.debezium.schema;
 
-import io.debezium.pipeline.spi.OffsetContext;
-
-public interface DatabaseSchema {
-
-    void applySchemaChange(SchemaChangeEvent schemaChange);
-
-    void recover(OffsetContext offset);
+/**
+ * The schema of a database. Provides information about the structures of the tables (collections etc.) it contains.
+ *
+ * @author Gunnar Morling
+ *
+ * @param <I>
+ *            The type of {@link DataCollectionId} used by a given implementation
+ */
+public interface DatabaseSchema<I extends DataCollectionId> {
 
     void close();
 
-    DataCollectionSchema getDataCollectionSchema(DataCollectionId id);
+    DataCollectionSchema schemaFor(I id);
 }

@@ -24,6 +24,7 @@ import io.debezium.schema.DataCollectionFilters.DataCollectionFilter;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.schema.DataCollectionSchema;
 import io.debezium.schema.DatabaseSchema;
+import io.debezium.schema.HistorizedDatabaseSchema;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.TopicSelector;
 
@@ -40,16 +41,20 @@ public class EventDispatcher<T extends DataCollectionId> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EventDispatcher.class);
 
-    private final TopicSelector topicSelector;
-    private final DatabaseSchema schema;
+    private final TopicSelector<T> topicSelector;
+    private final DatabaseSchema<T> schema;
+    private final HistorizedDatabaseSchema<T> historizedSchema;
     private final ChangeEventQueue<Object> queue;
     private final DataCollectionFilter<T> filter;
 
-    public EventDispatcher(TopicSelector topicSelector, DatabaseSchema schema,
+    public EventDispatcher(TopicSelector<T> topicSelector, DatabaseSchema<T> schema,
             ChangeEventQueue<Object> queue,
             DataCollectionFilter<T> filter) {
         this.topicSelector = topicSelector;
         this.schema = schema;
+        this.historizedSchema = schema instanceof HistorizedDatabaseSchema
+                ? (HistorizedDatabaseSchema<T>) schema
+                : null;
         this.queue = queue;
         this.filter = filter;
     }
@@ -71,7 +76,7 @@ public class EventDispatcher<T extends DataCollectionId> {
             return;
         }
 
-        DataCollectionSchema dataCollectionSchema = schema.getDataCollectionSchema(dataCollectionId);
+        DataCollectionSchema dataCollectionSchema = schema.schemaFor(dataCollectionId);
 
         // TODO handle as per inconsistent schema info option
         if(dataCollectionSchema == null) {
@@ -95,11 +100,11 @@ public class EventDispatcher<T extends DataCollectionId> {
 
     private final class ChangeRecordReceiver implements ChangeRecordEmitter.Receiver {
 
-        private final DataCollectionId dataCollectionId;
+        private final T dataCollectionId;
         private final ChangeEventCreator changeEventCreator;
         private final DataCollectionSchema dataCollectionSchema;
 
-        private ChangeRecordReceiver(DataCollectionId dataCollectionId, ChangeEventCreator changeEventCreator,
+        private ChangeRecordReceiver(T dataCollectionId, ChangeEventCreator changeEventCreator,
                 DataCollectionSchema dataCollectionSchema) {
             this.dataCollectionId = dataCollectionId;
             this.changeEventCreator = changeEventCreator;
@@ -144,7 +149,7 @@ public class EventDispatcher<T extends DataCollectionId> {
 
         @Override
         public void schemaChangeEvent(SchemaChangeEvent event) throws InterruptedException {
-            schema.applySchemaChange(event);
+            historizedSchema.applySchemaChange(event);
         }
     }
 }

@@ -55,7 +55,7 @@ public abstract class RecordsProducer {
         return taskContext.schema();
     }
 
-    protected TopicSelector topicSelector() {
+    protected PostgresTopicSelector topicSelector() {
         return taskContext.topicSelector();
     }
 

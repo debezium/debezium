@@ -47,7 +47,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                 .build());
-        TopicSelector selector = TopicSelector.create(config);
+        PostgresTopicSelector selector = PostgresTopicSelector.create(config);
         context = new PostgresTaskContext(
                 config,
                 new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
@@ -93,7 +93,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
-        TopicSelector selector = TopicSelector.create(config);
+        PostgresTopicSelector selector = PostgresTopicSelector.create(config);
         context = new PostgresTaskContext(
                 config,
                 new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
@@ -183,7 +183,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                         .with(PostgresConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS)
                         .build());
 
-        TopicSelector selector = TopicSelector.create(config);
+        PostgresTopicSelector selector = PostgresTopicSelector.create(config);
         context = new PostgresTaskContext(
                 config,
                 new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
@@ -224,7 +224,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                         .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING)
                         .build());
 
-        TopicSelector selector = TopicSelector.create(config);
+        PostgresTopicSelector selector = PostgresTopicSelector.create(config);
         context = new PostgresTaskContext(
                 config,
                 new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
