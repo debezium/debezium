@@ -28,6 +28,8 @@ import io.debezium.util.Testing;
  */
 public class MySqlDecimalColumnIT extends AbstractConnectorTest {
 
+    private static final String PRECISION_PARAMETER_KEY = "connect.decimal.precision";
+
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-decimal-column.txt")
                                                              .toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("decimalcolumnit", "decimal_column_test")
@@ -88,7 +90,7 @@ public class MySqlDecimalColumnIT extends AbstractConnectorTest {
                 .parameters();
 
         assertThat(rating1SchemaParameters).includes(
-                entry("scale", "0"), entry("connect.decimal.precision", "10"));
+                entry("scale", "0"), entry(PRECISION_PARAMETER_KEY, "10"));
 
         Map<String, String> rating2SchemaParameters = insert.valueSchema()
                 .field("before")
@@ -98,6 +100,26 @@ public class MySqlDecimalColumnIT extends AbstractConnectorTest {
                 .parameters();
 
         assertThat(rating2SchemaParameters).includes(
-                entry("scale", "4"), entry("connect.decimal.precision", "8"));
+                entry("scale", "4"), entry(PRECISION_PARAMETER_KEY, "8"));
+
+        Map<String, String> rating3SchemaParameters = insert.valueSchema()
+                .field("before")
+                .schema()
+                .field("rating3")
+                .schema()
+                .parameters();
+
+        assertThat(rating3SchemaParameters).includes(
+                entry("scale", "0"), entry(PRECISION_PARAMETER_KEY, "7"));
+
+        Map<String, String> rating4SchemaParameters = insert.valueSchema()
+                .field("before")
+                .schema()
+                .field("rating4")
+                .schema()
+                .parameters();
+
+        assertThat(rating4SchemaParameters).includes(
+                entry("scale", "0"), entry(PRECISION_PARAMETER_KEY, "6"));
     }
 }
