@@ -9,6 +9,8 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Date;
@@ -23,6 +25,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.AbstractDdlParser;
+import io.debezium.time.ZonedTimestamp;
 
 /**
  * @author laomei
@@ -323,15 +326,15 @@ public abstract class AbstractMysqlDefaultValueTest {
 
     @Test
     public void parseTimeDefaultValue() {
-        String sql = "CREATE TABLE TIME_TABLE (\n" +
-                "  A timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n" +
-                "  B timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',\n" +
+        String sql = "CREATE TABLE TIME_TABLE (" +
+                "  A timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
+                "  B timestamp NOT NULL DEFAULT '0000-00-00 00:00:00'," +
                 "  C timestamp NOT NULL DEFAULT '0000-00-00 00:00:00.000'," +
                 "  D timestamp NOT NULL DEFAULT '2018-06-26 12:34:56'," +
                 "  E timestamp NOT NULL DEFAULT '2018-06-26 12:34:56.000'," +
                 "  F timestamp NOT NULL DEFAULT '2018-06-26 12:34:56.78'," +
-                "  G datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n" +
-                "  H datetime NOT NULL DEFAULT '0000-00-00 00:00:00',\n" +
+                "  G datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
+                "  H datetime NOT NULL DEFAULT '0000-00-00 00:00:00'," +
                 "  I datetime(3) NOT NULL DEFAULT '0000-00-00 00:00:00.000'," +
                 "  J datetime NOT NULL DEFAULT '2018-06-26 12:34:56'," +
                 "  K datetime(3) NOT NULL DEFAULT '2018-06-26 12:34:56.000'," +
@@ -339,12 +342,12 @@ public abstract class AbstractMysqlDefaultValueTest {
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "TIME_TABLE"));
-        assertThat(table.columnWithName("A").defaultValue()).isEqualTo("1970-01-01T00:00:00+01:00");
-        assertThat(table.columnWithName("B").defaultValue()).isEqualTo("1970-01-01T00:00:00+01:00");
-        assertThat(table.columnWithName("C").defaultValue()).isEqualTo("1970-01-01T00:00:00+01:00");
-        assertThat(table.columnWithName("D").defaultValue()).isEqualTo("2018-06-26T12:34:56+02:00");
-        assertThat(table.columnWithName("E").defaultValue()).isEqualTo("2018-06-26T12:34:56+02:00");
-        assertThat(table.columnWithName("F").defaultValue()).isEqualTo("2018-06-26T12:34:56.78+02:00");
+        assertThat(table.columnWithName("A").defaultValue()).isEqualTo("1970-01-01T00:00:00Z");
+        assertThat(table.columnWithName("B").defaultValue()).isEqualTo("1970-01-01T00:00:00Z");
+        assertThat(table.columnWithName("C").defaultValue()).isEqualTo("1970-01-01T00:00:00Z");
+        assertThat(table.columnWithName("D").defaultValue()).isEqualTo(ZonedTimestamp.toIsoString(LocalDateTime.of(2018, 6, 26, 12, 34, 56, 0).atZone(ZoneId.systemDefault()), null));
+        assertThat(table.columnWithName("E").defaultValue()).isEqualTo(ZonedTimestamp.toIsoString(LocalDateTime.of(2018, 6, 26, 12, 34, 56, 0).atZone(ZoneId.systemDefault()), null));
+        assertThat(table.columnWithName("F").defaultValue()).isEqualTo(ZonedTimestamp.toIsoString(LocalDateTime.of(2018, 6, 26, 12, 34, 56, 780_000_000).atZone(ZoneId.systemDefault()), null));
         assertThat(table.columnWithName("G").defaultValue()).isEqualTo(Date.from(Instant.ofEpochMilli(0)));
         assertThat(table.columnWithName("H").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
         assertThat(table.columnWithName("I").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));

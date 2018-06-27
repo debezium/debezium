@@ -5,25 +5,27 @@
  */
 package io.debezium.connector.mysql;
 
-import io.debezium.config.Configuration;
-import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.time.Timestamp;
-import io.debezium.time.ZonedTimestamp;
-import io.debezium.util.Testing;
+import static org.fest.assertions.Assertions.assertThat;
+
+import java.nio.file.Path;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Collections;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.nio.file.Path;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Collections;
-
-import static org.fest.assertions.Assertions.assertThat;
+import io.debezium.config.Configuration;
+import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.time.Timestamp;
+import io.debezium.time.ZonedTimestamp;
+import io.debezium.util.Testing;
 
 /**
  * @author luobo on 2018/6/8 14:16
@@ -74,9 +76,8 @@ public class MysqlDefaultValueAllZeroTimeIT extends AbstractConnectorTest {
         Schema schemaF = record.valueSchema().fields().get(1).schema().fields().get(5).schema();
 
         //column A, 0000-00-00 00:00:00 => 1970-01-01 00:00:00
-        String valueA = "1970-01-01 00:00:00";
-        ZonedDateTime a = java.sql.Timestamp.valueOf(valueA).toInstant().atZone(ZoneId.systemDefault());
-        String isoStringA = ZonedTimestamp.toIsoString(a, ZoneId.systemDefault(), MySqlValueConverters::adjustTemporal);
+        ZonedDateTime a = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneOffset.UTC);
+        String isoStringA = ZonedTimestamp.toIsoString(a, ZoneOffset.UTC, MySqlValueConverters::adjustTemporal);
         assertThat(schemaA.defaultValue()).isEqualTo(isoStringA);
 
         //column B allows null, default value should be null

@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -94,8 +95,12 @@ public class MySqlDefaultValuePreConverter  {
      * @return the converted value;
      */
     private Object convertToLocalDate(Column column, String value) {
-        if (ALL_ZERO_DATE.equals(value) && column.isOptional()) return null;
-        if (ALL_ZERO_DATE.equals(value)) value = EPOCH_DATE;
+        if (ALL_ZERO_DATE.equals(value) && column.isOptional()) {
+            return null;
+        }
+        if (ALL_ZERO_DATE.equals(value)) {
+            value = EPOCH_DATE;
+        }
         return LocalDate.from(DateTimeFormatter.ISO_LOCAL_DATE.parse(value));
     }
 
@@ -110,9 +115,12 @@ public class MySqlDefaultValuePreConverter  {
      */
     private Object convertToLocalDateTime(Column column, String value) {
         final boolean matches = ALL_ZERO_TIMESTAMP.matcher(value).matches();
-        if (matches && column.isOptional()) return null;
+        if (matches && column.isOptional()) {
+            return null;
+        }
         if (matches) {
             value = EPOCH_TIMESTAMP;
+            // Align fraction zeros according to the database schema
             if (column.length() > 0) {
                 final StringBuilder sb = new StringBuilder(EPOCH_TIMESTAMP).append('.');
                 for (int i = 0; i < column.length(); i++) {
@@ -135,9 +143,13 @@ public class MySqlDefaultValuePreConverter  {
      * @return the converted value;
      */
     private Object convertToTimestamp(Column column, String value) {
-        final boolean matches = ALL_ZERO_TIMESTAMP.matcher(value).matches();
-        if (matches && column.isOptional()) return null;
-        if (matches) value = EPOCH_TIMESTAMP;
+        final boolean matches = ALL_ZERO_TIMESTAMP.matcher(value).matches() || EPOCH_TIMESTAMP.equals(value);
+        if (matches && column.isOptional()) {
+            return null;
+        }
+        if (matches) {
+            return Timestamp.from(Instant.EPOCH);
+        }
         return Timestamp.valueOf(value).toInstant().atZone(ZoneId.systemDefault());
     }
 
@@ -253,7 +265,9 @@ public class MySqlDefaultValuePreConverter  {
 
     private String timeFormat(int length) {
         String defaultFormat = "HH:mm:ss";
-        if (length <= 0) return defaultFormat;
+        if (length <= 0) {
+            return defaultFormat;
+        }
         StringBuilder format = new StringBuilder(defaultFormat);
         format.append(".");
         for (int i = 0; i < length; i++) {
@@ -264,7 +278,9 @@ public class MySqlDefaultValuePreConverter  {
 
     private String timestampFormat(int length) {
         String defaultFormat = "yyyy-MM-dd HH:mm:ss";
-        if (length <= 0) return defaultFormat;
+        if (length <= 0) {
+            return defaultFormat;
+        }
         StringBuilder format = new StringBuilder(defaultFormat);
         format.append(".");
         for (int i = 0; i < length; i++) {
