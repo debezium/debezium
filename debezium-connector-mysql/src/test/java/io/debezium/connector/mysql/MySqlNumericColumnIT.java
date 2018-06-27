@@ -24,17 +24,17 @@ import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Testing;
 
 /**
- * Tests around {@code DECIMAL} columns. Keep in sync with {@link MySqlNumericColumnIT}.
+ * Tests around {@code NUMERIC} columns. Keep in sync with {@link MySqlDecimalColumnIT}.
  *
  * @author Gunnar Morling
  */
-public class MySqlDecimalColumnIT extends AbstractConnectorTest {
+public class MySqlNumericColumnIT extends AbstractConnectorTest {
 
     private static final String PRECISION_PARAMETER_KEY = "connect.decimal.precision";
 
-    private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-decimal-column.txt")
+    private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-numeric-column.txt")
                                                              .toAbsolutePath();
-    private final UniqueDatabase DATABASE = new UniqueDatabase("decimalcolumnit", "decimal_column_test")
+    private final UniqueDatabase DATABASE = new UniqueDatabase("numericcolumnit", "numeric_column_test")
             .withDbHistoryPath(DB_HISTORY_PATH);
 
     private Configuration config;
@@ -79,7 +79,7 @@ public class MySqlDecimalColumnIT extends AbstractConnectorTest {
         assertThat(records).isNotNull();
         records.forEach(this::validate);
 
-        List<SourceRecord> dmls = records.recordsForTopic(DATABASE.topicForTable("dbz_751_decimal_column_test"));
+        List<SourceRecord> dmls = records.recordsForTopic(DATABASE.topicForTable("dbz_751_numeric_column_test"));
         assertThat(dmls).hasSize(1);
 
         SourceRecord insert = dmls.get(0);
