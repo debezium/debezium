@@ -1522,21 +1522,34 @@ public class MySqlDdlParserTest {
                 "  id INT NOT NULL, myvalue ENUM('Foo','Bar','Baz') NOT NULL DEFAULT 'Foo'," +
                 "  PRIMARY KEY (`id`)" +
                 ");";
-        final String alter =
-                "ALTER TABLE test " +
-                "  CHANGE myvalue myvalue INT;";
 
         parser.parse(create, tables);
         assertThat(tables.size()).isEqualTo(1);
         Table table = tables.forTable(new TableId(null, null, "test"));
         assertThat(table).isNotNull();
         assertThat(table.columns().size()).isEqualTo(2);
-        parser.parse(alter, tables);
+
+        final String alter1 =
+                "ALTER TABLE test " +
+                "  CHANGE myvalue myvalue INT;";
+
+        parser.parse(alter1, tables);
         table = tables.forTable(new TableId(null, null, "test"));
         assertThat(table.columns().size()).isEqualTo(2);
-        final Column col = table.columns().get(1);
+        Column col = table.columns().get(1);
         assertThat(col.name()).isEqualTo("myvalue");
         assertThat(col.typeName()).isEqualTo("INT");
+
+        final String alter2 =
+                "ALTER TABLE test " +
+                "  CHANGE myvalue myvalue TINYINT;";
+
+        parser.parse(alter2, tables);
+        table = tables.forTable(new TableId(null, null, "test"));
+        assertThat(table.columns().size()).isEqualTo(2);
+        col = table.columns().get(1);
+        assertThat(col.name()).isEqualTo("myvalue");
+        assertThat(col.typeName()).isEqualTo("TINYINT");
     }
 
     @Test
