@@ -205,7 +205,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
                 charsetName = collectionDataTypeContext.charsetName().getText();
             }
 
-            if (dataType.name().equals("SET")) {
+            if (dataType.name().toUpperCase().equals("SET")) {
                 // After DBZ-132, it will always be comma seperated
                 columnEditor.length(Math.max(0, collectionDataTypeContext.collectionOption().size() * 2 - 1)); // number of options + number of commas
             }
@@ -214,14 +214,14 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
             }
         }
 
-        String dataTypeName = dataType.name();
+        String dataTypeName = dataType.name().toUpperCase();
 
         if (dataTypeName.equals("ENUM") || dataTypeName.equals("SET")) {
             // type expression has to be set, because the value converter needs to know the enum or set options
-            columnEditor.type(dataTypeName.toUpperCase(), getText(dataTypeContext));
+            columnEditor.type(dataTypeName, getText(dataTypeContext));
         }
         else {
-            columnEditor.type(dataTypeName.toUpperCase());
+            columnEditor.type(dataTypeName);
         }
 
         int jdbcDataType = dataType.jdbcType();

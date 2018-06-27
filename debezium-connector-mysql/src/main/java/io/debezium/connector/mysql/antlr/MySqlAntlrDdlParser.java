@@ -294,7 +294,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
      */
     public static List<String> parseSetAndEnumOptions(String typeExpression) {
         List<String> options = new ArrayList<>();
-        if (typeExpression.startsWith("ENUM") || typeExpression.startsWith("SET")) {
+        final String ucTypeExpression = typeExpression.toUpperCase();
+        if (ucTypeExpression.startsWith("ENUM") || ucTypeExpression.startsWith("SET")) {
             Pattern pattern = Pattern.compile("['\"][a-zA-Z0-9-!$%^&*()_+|~=`{}\\[\\]:\";'<>?\\/\\\\ ]*['\"]");
             Matcher matcher = pattern.matcher(typeExpression);
             while (matcher.find()) {
