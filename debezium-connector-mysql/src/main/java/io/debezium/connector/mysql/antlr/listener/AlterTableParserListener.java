@@ -161,7 +161,9 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
             Column column = columnDefinitionListener.getColumn();
             tableEditor.addColumn(column);
             String newColumnName = parser.parseName(ctx.newColumn);
-            tableEditor.renameColumn(column.name(), newColumnName);
+            if (newColumnName != null && !column.name().equals(newColumnName)) {
+                tableEditor.renameColumn(column.name(), newColumnName);
+            }
 
             if (ctx.FIRST() != null) {
                 tableEditor.reorderColumn(newColumnName, null);

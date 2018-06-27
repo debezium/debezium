@@ -1515,6 +1515,31 @@ public class MySqlDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-767")
+    public void shouldParseChangeColumnAndKeepName() {
+        final String create =
+                "CREATE TABLE test (" +
+                "  id INT NOT NULL, myvalue ENUM('Foo','Bar','Baz') NOT NULL DEFAULT 'Foo'," +
+                "  PRIMARY KEY (`id`)" +
+                ");";
+        final String alter =
+                "ALTER TABLE test " +
+                "  CHANGE myvalue myvalue INT;";
+
+        parser.parse(create, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table table = tables.forTable(new TableId(null, null, "test"));
+        assertThat(table).isNotNull();
+        assertThat(table.columns().size()).isEqualTo(2);
+        parser.parse(alter, tables);
+        table = tables.forTable(new TableId(null, null, "test"));
+        assertThat(table.columns().size()).isEqualTo(2);
+        final Column col = table.columns().get(1);
+        assertThat(col.name()).isEqualTo("myvalue");
+        assertThat(col.typeName()).isEqualTo("INT");
+    }
+
+    @Test
     public void parseDefaultValue() {
         String ddl = "CREATE TABLE tmp (id INT NOT NULL, " +
                 "columnA CHAR(60) NOT NULL DEFAULT 'A'," +
