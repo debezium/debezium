@@ -18,12 +18,11 @@ import io.debezium.relational.Selectors;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.TableNameFilter;
-import io.debezium.relational.mapping.ColumnMappers;
 import io.debezium.util.Collect;
 
 /**
  * A utility that is contains various filters for acceptable database names, {@link TableId}s, and columns.
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable
@@ -60,7 +59,6 @@ public class Filters {
     private final Predicate<String> isBuiltInDb;
     private final Predicate<TableId> isBuiltInTable;
     private final Predicate<ColumnId> columnFilter;
-    private final ColumnMappers columnMappers;
 
     /**
      * @param config the configuration; may not be null
@@ -94,13 +92,6 @@ public class Filters {
 
         // Define the filter that excludes blacklisted columns, truncated columns, and masked columns ...
         this.columnFilter = Selectors.excludeColumns(config.getString(MySqlConnectorConfig.COLUMN_BLACKLIST));
-
-        // Define the truncated, masked, and mapped columns ...
-        ColumnMappers.Builder columnMapperBuilder = ColumnMappers.create();
-        config.forEachMatchingFieldNameWithInteger("column\\.truncate\\.to\\.(\\d+)\\.chars", columnMapperBuilder::truncateStrings);
-        config.forEachMatchingFieldNameWithInteger("column\\.mask\\.with\\.(\\d+)\\.chars", columnMapperBuilder::maskStrings);
-        config.forEachMatchingFieldName("column\\.add\\.original\\.type", columnMapperBuilder::addOriginalType);
-        this.columnMappers = columnMapperBuilder.build();
     }
 
     public Predicate<String> databaseFilter() {
@@ -112,11 +103,11 @@ public class Filters {
             return dbFilter.test(tableId.catalog());
         };
     }
-    
+
     public Predicate<TableId> tableFilter() {
         return tableFilter;
     }
-    
+
     public TableNameFilter tableNameFilter() {
         return Tables.filterFor(tableFilter);
     }
@@ -132,9 +123,4 @@ public class Filters {
     public Predicate<ColumnId> columnFilter() {
         return columnFilter;
     }
-
-    public ColumnMappers columnMappers() {
-        return columnMappers;
-    }
-
 }

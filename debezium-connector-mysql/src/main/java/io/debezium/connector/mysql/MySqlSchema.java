@@ -84,11 +84,11 @@ public class MySqlSchema extends RelationalDatabaseSchema {
      */
     public MySqlSchema(MySqlConnectorConfig configuration, String serverName, Predicate<String> gtidFilter, boolean tableIdCaseInsensitive, MySqlTopicSelector topicSelector) {
         super(
+                configuration.getConfig(),
                 serverName,
                 topicSelector,
                 new Filters(configuration.getConfig()).tableFilter(),
                 new Filters(configuration.getConfig()).columnFilter(),
-                new Filters(configuration.getConfig()).columnMappers(),
                 new TableSchemaBuilder(
                         getValueConverters(configuration.getConfig()), SchemaNameAdjuster.create(logger), SourceInfo.SCHEMA)
                 ,

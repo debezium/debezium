@@ -52,8 +52,8 @@ public class PostgresSchema extends RelationalDatabaseSchema {
      */
     protected PostgresSchema(PostgresConnectorConfig config, TypeRegistry typeRegistry,
             PostgresTopicSelector topicSelector) {
-        super(config.serverName(), topicSelector, new Filters(config).tableFilter(), new Filters(config).columnFilter(),
-                null, getTableSchemaBuilder(config, typeRegistry), false);
+        super(config.getConfig(), config.serverName(), topicSelector, new Filters(config).tableFilter(),
+                new Filters(config).columnFilter(), getTableSchemaBuilder(config, typeRegistry), false);
 
         this.filters = new Filters(config);
         this.typeRegistry = typeRegistry;
