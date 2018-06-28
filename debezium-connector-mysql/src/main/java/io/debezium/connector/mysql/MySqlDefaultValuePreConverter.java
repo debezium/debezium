@@ -115,10 +115,11 @@ public class MySqlDefaultValuePreConverter  {
      */
     private Object convertToLocalDateTime(Column column, String value) {
         final boolean matches = ALL_ZERO_TIMESTAMP.matcher(value).matches();
-        if (matches && column.isOptional()) {
-            return null;
-        }
         if (matches) {
+            if (column.isOptional()) {
+                return null;
+            }
+
             value = EPOCH_TIMESTAMP;
             // Align fraction zeros according to the database schema
             if (column.length() > 0) {
@@ -129,6 +130,7 @@ public class MySqlDefaultValuePreConverter  {
                 value = sb.toString();
             }
         }
+
         final String timestampFormat = timestampFormat(column.length());
         return LocalDateTime.from(DateTimeFormatter.ofPattern(timestampFormat).parse(value));
     }
@@ -144,10 +146,11 @@ public class MySqlDefaultValuePreConverter  {
      */
     private Object convertToTimestamp(Column column, String value) {
         final boolean matches = ALL_ZERO_TIMESTAMP.matcher(value).matches() || EPOCH_TIMESTAMP.equals(value);
-        if (matches && column.isOptional()) {
-            return null;
-        }
         if (matches) {
+            if (column.isOptional()) {
+                return null;
+            }
+
             return Timestamp.from(Instant.EPOCH);
         }
         return Timestamp.valueOf(value).toInstant().atZone(ZoneId.systemDefault());
