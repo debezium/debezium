@@ -152,7 +152,7 @@ public class RecordMakers {
     public void regenerate() {
         clear();
         AtomicInteger nextTableNumber = new AtomicInteger(0);
-        Set<TableId> tableIds = schema.tables().tableIds();
+        Set<TableId> tableIds = schema.tableIds();
         logger.debug("Regenerating converters for {} tables", tableIds.size());
         tableIds.forEach(id -> {
             assign(nextTableNumber.incrementAndGet(), id);

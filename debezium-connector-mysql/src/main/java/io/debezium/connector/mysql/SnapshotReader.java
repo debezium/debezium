@@ -409,7 +409,7 @@ public class SnapshotReader extends AbstractReader {
                     schema.applyDdl(source, null, setSystemVariablesStatement, this::enqueueSchemaChanges);
 
                     // Add DROP TABLE statements for all tables that we knew about AND those tables found in the databases ...
-                    List<TableId> allTableIds = new ArrayList<>(schema.tables().tableIds());
+                    List<TableId> allTableIds = new ArrayList<>(schema.tableIds());
                     allTableIds.addAll(tableIds);
                     allTableIds.stream()
                                .filter(id -> isRunning()) // ignore all subsequent tables if this reader is stopped
@@ -418,7 +418,7 @@ public class SnapshotReader extends AbstractReader {
                                                                    this::enqueueSchemaChanges));
 
                     // Add a DROP DATABASE statement for each database that we no longer know about ...
-                    schema.tables().tableIds().stream().map(TableId::catalog)
+                    schema.tableIds().stream().map(TableId::catalog)
                           .filter(Predicates.not(readableDatabaseNames::contains))
                           .filter(id -> isRunning()) // ignore all subsequent tables if this reader is stopped
                           .forEach(missingDbName -> schema.applyDdl(source, missingDbName,

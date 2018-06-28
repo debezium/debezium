@@ -108,6 +108,13 @@ public final class Tables {
         this.tablesByTableId.putAll(other.tablesByTableId);
     }
 
+    public void clear() {
+        lock.write(() -> {
+            tablesByTableId.clear();
+            changes.clear();
+        });
+    }
+
     @Override
     public Tables clone() {
         return new Tables(this, tableIdCaseInsensitive);
@@ -402,6 +409,10 @@ public final class Tables {
 
         Set<Map.Entry<TableId, TableImpl>> entrySet() {
             return values.entrySet();
+        }
+
+        void clear() {
+            values.clear();
         }
 
         private TableId toLowerCaseIfNeeded(TableId tableId) {

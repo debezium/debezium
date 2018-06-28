@@ -154,7 +154,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             // we're locking in SHARE UPDATE EXCLUSIVE MODE to avoid concurrent schema changes while we're taking the snapshot
             // this does not prevent writes to the table, but prevents changes to the table's schema....
             // DBZ-298 Quoting name in case it has been quoted originally; it doesn't do harm if it hasn't been quoted
-            schema.tables().forEach(tableId -> statements.append("LOCK TABLE ")
+            schema.tableIds().forEach(tableId -> statements.append("LOCK TABLE ")
                                                          .append(tableId.toDoubleQuotedString())
                                                          .append(" IN SHARE UPDATE EXCLUSIVE MODE;")
                                                          .append(lineSeparator));
@@ -178,7 +178,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             AtomicInteger rowsCounter = new AtomicInteger(0);
             final Map<TableId, String> selectOverrides = getSnapshotSelectOverridesByTable();
 
-            for(TableId tableId : schema.tables()) {
+            for(TableId tableId : schema.tableIds()) {
                 if (schema.isFilteredOut(tableId)) {
                     logger.info("\t table '{}' is filtered out, ignoring", tableId);
                     continue;

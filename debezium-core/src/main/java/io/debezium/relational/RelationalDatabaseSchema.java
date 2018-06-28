@@ -5,6 +5,7 @@
  */
 package io.debezium.relational;
 
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Predicate;
@@ -30,6 +31,7 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
 
     private final String schemaPrefix;
     private final SchemasByTableId schemasByTableId;
+    private final Tables tables;
 
     protected RelationalDatabaseSchema(String serverName, TopicSelector<TableId> topicSelector,
             Predicate<TableId> tableFilter, Predicate<ColumnId> columnFilter, ColumnMappers columnMappers,
@@ -43,6 +45,7 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
 
         this.schemaPrefix = getSchemaPrefix(serverName);
         this.schemasByTableId = new SchemasByTableId(tableIdCaseInsensitive);
+        this.tables = new Tables(tableIdCaseInsensitive);
     }
 
     private static String getSchemaPrefix(String serverName) {
@@ -57,6 +60,14 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
 
     @Override
     public void close() {
+    }
+
+    /**
+     * Returns the set of table ids included in the current filter configuration.
+     */
+    public Set<TableId> tableIds() {
+        // TODO that filtering should really be done once upon insertion
+        return tables.subset(tableFilter).tableIds();
     }
 
     /**
@@ -75,8 +86,21 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
         return schemasByTableId.get(id);
     }
 
-    // TODO have single implementation here
-    public abstract Table tableFor(TableId id);
+    /**
+     * Get the {@link Table} meta-data for the table with the given identifier, if that table exists and is
+     * included by the filter configuration
+     *
+     * @param id the table identifier; may be null
+     * @return the current table definition, or null if there is no table with the given identifier, if the identifier is null,
+     *         or if the table has been excluded by the filters
+     */
+    public Table tableFor(TableId id) {
+        return tableFilter.test(id) ? tables.forTable(id) : null;
+    }
+
+    protected Tables tables() {
+        return tables;
+    }
 
     protected void clearSchemas() {
         schemasByTableId.clear();
@@ -96,6 +120,7 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
     private String getEnvelopeSchemaName(Table table) {
         return topicSelector.topicNameFor(table.id()) + ".Envelope";
     }
+
 
     /**
      * A map of schemas by table id. Table names are stored lower-case if required as per the config.
