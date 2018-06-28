@@ -49,7 +49,7 @@ public class ColumnMappers {
         // Define the truncated, masked, and mapped columns ...
         config.forEachMatchingFieldNameWithInteger("column\\.truncate\\.to\\.(\\d+)\\.chars", builder::truncateStrings);
         config.forEachMatchingFieldNameWithInteger("column\\.mask\\.with\\.(\\d+)\\.chars", builder::maskStrings);
-        config.forEachMatchingFieldName("column\\.add\\.original\\.type", builder::addOriginalType);
+        config.forEachMatchingFieldName("column\\.propagate\\.source\\.type", builder::propagateSourceTypeToSchemaParameter);
 
         return  builder.build();
     }
@@ -154,8 +154,8 @@ public class ColumnMappers {
             return map(fullyQualifiedColumnNames, new MaskStrings(maskValue));
         }
 
-        public Builder addOriginalType(String fullyQualifiedColumnNames, String value) {
-            return map(value, new AddOriginalDataType());
+        public Builder propagateSourceTypeToSchemaParameter(String fullyQualifiedColumnNames, String value) {
+            return map(value, new PropagateSourceTypeToSchemaParameter());
         }
 
         /**
