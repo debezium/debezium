@@ -28,7 +28,6 @@ import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.SystemVariables;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.relational.TableSchema;
 import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlChanges;
@@ -70,9 +69,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
     private final DatabaseHistory dbHistory;
     private final DdlChanges ddlChanges;
     private final HistoryRecordComparator historyComparator;
-    private Tables tables;
     private final boolean skipUnparseableDDL;
-    private final boolean tableIdCaseInsensitive;
     private final boolean storeOnlyMonitoredTablesDdl;
 
     /**
@@ -101,8 +98,6 @@ public class MySqlSchema extends RelationalDatabaseSchema {
         Configuration config = configuration.getConfig();
 
         this.filters = new Filters(config);
-        this.tables = new Tables(tableIdCaseInsensitive);
-        this.tableIdCaseInsensitive = tableIdCaseInsensitive;
 
         this.ddlParser = configuration.getDdlParsingMode().getNewParserInstance(getValueConverters(config));
         this.ddlChanges = this.ddlParser.getDdlChanges();
@@ -178,42 +173,18 @@ public class MySqlSchema extends RelationalDatabaseSchema {
     }
 
     /**
-     * Get all of the table definitions for all database tables as defined by
-     * {@link #applyDdl(SourceInfo, String, String, DatabaseStatementStringConsumer) applied DDL statements}, excluding those
-     * that have been excluded by the {@link #filters() filters}.
-     *
-     * @return the table definitions; never null
-     */
-    public Tables tables() {
-        return tables.subset(filters.tableFilter());
-    }
-
-    /**
      * Get all table names for all databases that are monitored whose events are captured by Debezium
      *
      * @return the array with the table names
      */
     public String[] monitoredTablesAsStringArray() {
-        final Collection<TableId> tables = tables().tableIds();
+        final Collection<TableId> tables = tableIds();
         String[] ret = new String[tables.size()];
         int i = 0;
         for (TableId table: tables) {
             ret[i++] = table.toString();
         }
         return ret;
-    }
-
-    /**
-     * Get the {@link TableSchema Schema information} for the table with the given identifier, if that table exists and is
-     * included by the {@link #filters() filter}.
-     *
-     * @param id the fully-qualified table identifier; may be null
-     * @return the current table definition, or null if there is no table with the given identifier, if the identifier is null,
-     *         or if the table has been excluded by the filters
-     */
-    @Override
-    public Table tableFor(TableId id) {
-        return isTableMonitored(id) ? tables.forTable(id) : null;
     }
 
     /**
@@ -271,8 +242,8 @@ public class MySqlSchema extends RelationalDatabaseSchema {
      *            offset} at which the database schemas are to reflect; may not be null
      */
     public void loadHistory(SourceInfo startingPoint) {
-        tables = new Tables(tableIdCaseInsensitive);
-        dbHistory.recover(startingPoint.partition(), startingPoint.offset(), tables, ddlParser);
+        tables().clear();
+        dbHistory.recover(startingPoint.partition(), startingPoint.offset(), tables(), ddlParser);
         refreshSchemas();
     }
 
@@ -296,8 +267,8 @@ public class MySqlSchema extends RelationalDatabaseSchema {
     protected void refreshSchemas() {
         clearSchemas();
         // Create TableSchema instances for any existing table ...
-        this.tables.tableIds().forEach(id -> {
-            Table table = this.tables.forTable(id);
+        this.tableIds().forEach(id -> {
+            Table table = this.tableFor(id);
             buildAndRegisterSchema(table);
         });
     }
@@ -325,7 +296,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
         try {
             this.ddlChanges.reset();
             this.ddlParser.setCurrentSchema(databaseName);
-            this.ddlParser.parse(ddlStatements, tables);
+            this.ddlParser.parse(ddlStatements, tables());
         } catch (ParsingException | MultipleParsingExceptions e) {
             if (skipUnparseableDDL) {
                 logger.warn("Ignoring unparseable DDL statement '{}': {}", ddlStatements);
@@ -333,7 +304,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
                 throw e;
             }
         } finally {
-            changes = tables.drainChanges();
+            changes = tables().drainChanges();
             // No need to send schema events or store DDL if no table has changed
             // Note that, unlike with the DB history topic, we don't filter out non-whitelisted tables here
             // (which writes to the public schema change topic); if required, a second option could be added
@@ -383,7 +354,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
 
         // Figure out what changed ...
         changes.forEach(tableId -> {
-            Table table = tables.forTable(tableId);
+            Table table = tableFor(tableId);
             if (table == null) { // removed
                 removeSchema(tableId);
             }

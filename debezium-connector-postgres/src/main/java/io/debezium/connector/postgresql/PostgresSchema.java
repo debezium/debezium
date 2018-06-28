@@ -9,7 +9,6 @@ package io.debezium.connector.postgresql;
 import java.sql.SQLException;
 import java.time.ZoneOffset;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Schema;
@@ -23,7 +22,6 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.relational.TableSchema;
 import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
 import io.debezium.util.SchemaNameAdjuster;
@@ -43,7 +41,6 @@ public class PostgresSchema extends RelationalDatabaseSchema {
     private final static Logger LOGGER = LoggerFactory.getLogger(PostgresSchema.class);
 
     private final Filters filters;
-    private final Tables tables;
     private final SchemaNameAdjuster schemaNameAdjuster;
 
     private Map<String, Integer> typeInfo;
@@ -60,7 +57,6 @@ public class PostgresSchema extends RelationalDatabaseSchema {
                 null, getTableSchemaBuilder(config, typeRegistry), false);
 
         this.filters = new Filters(config);
-        this.tables = new Tables();
         this.schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
         this.typeRegistry = typeRegistry;
     }
@@ -86,10 +82,10 @@ public class PostgresSchema extends RelationalDatabaseSchema {
         }
 
         // read all the information from the DB
-        connection.readSchema(tables, null, null, filters.tableNameFilter(), null, true);
+        connection.readSchema(tables(), null, null, filters.tableNameFilter(), null, true);
         if (printReplicaIdentityInfo) {
             // print out all the replica identity info
-            tables.tableIds().forEach(tableId -> printReplicaIdentityInfo(connection, tableId));
+            tableIds().forEach(tableId -> printReplicaIdentityInfo(connection, tableId));
         }
         // and then refresh the schemas
         refreshSchemas();
@@ -120,7 +116,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
         // we expect the refreshed table to be there
         assert temp.size() == 1;
         // overwrite (add or update) or views of the tables
-        tables.overwriteTable(temp.forTable(tableId));
+        tables().overwriteTable(temp.forTable(tableId));
         // and refresh the schema
         refreshSchema(tableId);
     }
@@ -132,7 +128,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
      */
     protected void refresh(Table table) {
         // overwrite (add or update) or views of the tables
-        tables.overwriteTable(table);
+        tables().overwriteTable(table);
         // and refresh the schema
         refreshSchema(table.id());
     }
@@ -144,19 +140,6 @@ public class PostgresSchema extends RelationalDatabaseSchema {
      */
     public Filters filters() {
         return filters;
-    }
-
-    /**
-     * Get the {@link TableSchema Schema information} for the table with the given identifier, if that table exists and is
-     * included by the {@link #filters() filter}.
-     *
-     * @param id the fully-qualified table identifier; may be null
-     * @return the current table definition, or null if there is no table with the given identifier, if the identifier is null,
-     *         or if the table has been excluded by the filters
-     */
-    @Override
-    public Table tableFor(TableId id) {
-        return filters.tableFilter().test(id) ? tables.forTable(id) : null;
     }
 
     protected String adjustSchemaName(String name) {
@@ -175,10 +158,6 @@ public class PostgresSchema extends RelationalDatabaseSchema {
         return typeInfo.get(localTypeName);
     }
 
-    protected Set<TableId> tables() {
-        return tables.tableIds();
-    }
-
     /**
      * Discard any currently-cached schemas and rebuild them using the filters.
      */
@@ -186,14 +165,14 @@ public class PostgresSchema extends RelationalDatabaseSchema {
         clearSchemas();
 
         // Create TableSchema instances for any existing table ...
-        this.tables.tableIds().forEach(this::refreshSchema);
+        tableIds().forEach(this::refreshSchema);
     }
 
     private void refreshSchema(TableId id) {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("refreshing DB schema for table '{}'", id);
         }
-        Table table = this.tables.forTable(id);
+        Table table = tableFor(id);
 
         buildAndRegisterSchema(table);
     }
