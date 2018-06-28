@@ -5,13 +5,14 @@
  */
 package io.debezium.relational.mapping;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.sql.Types;
 
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.fest.assertions.Assertions.assertThat;
-
+import io.debezium.config.Configuration;
 import io.debezium.relational.Column;
 import io.debezium.relational.TableId;
 import io.debezium.relational.ValueConverter;
@@ -22,7 +23,7 @@ import io.debezium.util.Strings;
  */
 public class ColumnMappersTest {
 
-    private TableId tableId = new TableId("db", null, "A");
+    private final TableId tableId = new TableId("db", null, "A");
     private Column column;
     private Column column2;
     private Column column3;
@@ -41,14 +42,22 @@ public class ColumnMappersTest {
 
     @Test
     public void shouldNotFindMapperForUnmatchedColumn() {
-        mappers = ColumnMappers.create().truncateStrings(fullyQualifiedNames, 10).build();
+        Configuration config = Configuration.create()
+                .with("column.truncate.to.10.chars", fullyQualifiedNames)
+                .build();
+
+        mappers = ColumnMappers.create(config);
         converter = mappers.mappingConverterFor(tableId, column2);
         assertThat(converter).isNull();
     }
 
     @Test
     public void shouldTruncateStrings() {
-        mappers = ColumnMappers.create().truncateStrings(fullyQualifiedNames.toUpperCase(), 10).build(); // inexact case
+        Configuration config = Configuration.create()
+                .with("column.truncate.to.10.chars", fullyQualifiedNames.toUpperCase())
+                .build();
+
+        mappers = ColumnMappers.create(config);
         converter = mappers.mappingConverterFor(tableId, column);
         assertThat(converter).isNotNull();
         assertThat(converter.convert("12345678901234567890").toString()).isEqualTo("1234567890");
@@ -65,7 +74,12 @@ public class ColumnMappersTest {
     @Test
     public void shouldMaskStringsToFixedLength() {
         String maskValue = "**********";
-        mappers = ColumnMappers.create().maskStrings(fullyQualifiedNames, maskValue.length()).build(); // exact case
+
+        Configuration config = Configuration.create()
+                .with("column.mask.with.10.chars", fullyQualifiedNames)
+                .build();
+
+        mappers = ColumnMappers.create(config); // exact case
         converter = mappers.mappingConverterFor(tableId, column);
         assertThat(converter).isNotNull();
         assertThat(converter.convert("12345678901234567890")).isEqualTo(maskValue);
@@ -79,7 +93,7 @@ public class ColumnMappersTest {
     public void shouldMaskStringsToFixedNumberOfSpecifiedCharacters() {
         char maskChar = '=';
         String maskValue = Strings.createString(maskChar, 10);
-        mappers = ColumnMappers.create().maskStrings(fullyQualifiedNames, maskValue.length(), maskChar).build();
+        mappers = ColumnMappers.build().maskStrings(fullyQualifiedNames, maskValue.length(), maskChar).build();
         converter = mappers.mappingConverterFor(tableId, column);
         assertThat(converter).isNotNull();
         assertThat(converter.convert("12345678901234567890")).isEqualTo(maskValue);
@@ -92,7 +106,7 @@ public class ColumnMappersTest {
     @Test
     public void shouldMaskStringsWithSpecificValue() {
         String maskValue = "*-*-*-*-*";
-        mappers = ColumnMappers.create().maskStrings(fullyQualifiedNames, maskValue).build(); // exact case
+        mappers = ColumnMappers.build().maskStrings(fullyQualifiedNames, maskValue).build(); // exact case
         converter = mappers.mappingConverterFor(tableId, column);
         assertThat(converter).isNotNull();
         assertThat(converter.convert("12345678901234567890")).isEqualTo(maskValue);
@@ -105,7 +119,7 @@ public class ColumnMappersTest {
     @Test
     public void shouldMapValuesUsingColumnMapperInstance() {
         RepeatingColumnMapper mapper = new RepeatingColumnMapper();
-        mappers = ColumnMappers.create().map(fullyQualifiedNames, mapper).build();
+        mappers = ColumnMappers.build().map(fullyQualifiedNames, mapper).build();
         converter = mappers.mappingConverterFor(tableId, column);
         assertThat(converter).isNotNull();
         assertThat(converter.convert("1234")).isEqualTo("12341234");
@@ -115,7 +129,7 @@ public class ColumnMappersTest {
 
     @Test
     public void shouldMapValuesUsingFunctionByClassName() {
-        mappers = ColumnMappers.create().map(fullyQualifiedNames, RepeatingColumnMapper.class.getName()).build();
+        mappers = ColumnMappers.build().map(fullyQualifiedNames, RepeatingColumnMapper.class.getName()).build();
         converter = mappers.mappingConverterFor(tableId, column);
         assertThat(converter).isNotNull();
         assertThat(converter.convert("1234")).isEqualTo("12341234");
