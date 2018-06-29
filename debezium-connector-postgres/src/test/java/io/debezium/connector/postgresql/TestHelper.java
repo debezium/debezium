@@ -39,6 +39,16 @@ public final class TestHelper {
      */
     static final String PRECISION_PARAMETER_KEY = "connect.decimal.precision";
 
+    /**
+     * Key for schema parameter used to store a source column's type name.
+     */
+    static final String TYPE_NAME_PARAMETER_KEY = "__debezium.source.column.type";
+
+    /**
+     * Key for schema parameter used to store a source column's type length.
+     */
+    static final String TYPE_LENGTH_PARAMETER_KEY = "__debezium.source.column.length";
+
     private TestHelper() {
     }
 
