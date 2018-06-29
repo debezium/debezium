@@ -41,7 +41,6 @@ public class PostgresSchema extends RelationalDatabaseSchema {
     private final static Logger LOGGER = LoggerFactory.getLogger(PostgresSchema.class);
 
     private final Filters filters;
-    private final SchemaNameAdjuster schemaNameAdjuster;
 
     private Map<String, Integer> typeInfo;
     private final TypeRegistry typeRegistry;
@@ -57,7 +56,6 @@ public class PostgresSchema extends RelationalDatabaseSchema {
                 null, getTableSchemaBuilder(config, typeRegistry), false);
 
         this.filters = new Filters(config);
-        this.schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
         this.typeRegistry = typeRegistry;
     }
 
@@ -133,29 +131,8 @@ public class PostgresSchema extends RelationalDatabaseSchema {
         refreshSchema(table.id());
     }
 
-    /**
-     * Get the {@link Filters database and table filters} defined by the configuration.
-     *
-     * @return the filters; never null
-     */
-    public Filters filters() {
-        return filters;
-    }
-
-    protected String adjustSchemaName(String name) {
-        return this.schemaNameAdjuster.adjust(name);
-    }
-
     protected boolean isFilteredOut(TableId id) {
         return !filters.tableFilter().test(id);
-    }
-
-    protected boolean isJdbcType(String localTypeName, int jdbcType) {
-        return typeInfo != null && columnTypeNameToJdbcTypeId(localTypeName) == jdbcType;
-    }
-
-    protected int columnTypeNameToJdbcTypeId(String localTypeName) {
-        return typeInfo.get(localTypeName);
     }
 
     /**

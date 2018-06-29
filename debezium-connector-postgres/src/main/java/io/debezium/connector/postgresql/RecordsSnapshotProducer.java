@@ -179,11 +179,6 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             final Map<TableId, String> selectOverrides = getSnapshotSelectOverridesByTable();
 
             for(TableId tableId : schema.tableIds()) {
-                if (schema.isFilteredOut(tableId)) {
-                    logger.info("\t table '{}' is filtered out, ignoring", tableId);
-                    continue;
-                }
-
                 long exportStart = clock().currentTimeInMillis();
                 logger.info("\t exporting data from table '{}'", tableId);
                 try {
