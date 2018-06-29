@@ -5,6 +5,8 @@
  */
 package io.debezium.relational.mapping;
 
+import java.util.Locale;
+
 import org.apache.kafka.connect.data.SchemaBuilder;
 
 import io.debezium.relational.Column;
@@ -29,7 +31,8 @@ public class PropagateSourceTypeToSchemaParameter implements ColumnMapper {
 
     @Override
     public void alterFieldSchema(Column column, SchemaBuilder schemaBuilder) {
-       schemaBuilder.parameter(TYPE_NAME_PARAMETER_KEY, column.typeName());
+        // upper-casing type names to be consistent across connectors
+       schemaBuilder.parameter(TYPE_NAME_PARAMETER_KEY, column.typeName().toUpperCase(Locale.ENGLISH));
 
        if (column.length() != Column.UNSET_INT_VALUE) {
            schemaBuilder.parameter(TYPE_LENGTH_PARAMETER_KEY, String.valueOf(column.length()));
