@@ -144,7 +144,15 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
             String oldColumnName = parser.parseName(ctx.oldColumn);
             Column existingColumn = tableEditor.columnWithName(oldColumnName);
             if (existingColumn != null) {
-                columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, existingColumn.edit(), parser.dataTypeResolver(), parser.getConverters());
+                // DBZ-771 unset previously set default value, as it's not kept by MySQL; for any column modifications a new
+                // default value (which could be the same) has to be provided by the column_definition which we'll parse later
+                // on; only in 8.0 (not yet supported by this parser) columns can be renamed without repeating the full column
+                // definition; so in fact it's arguably not correct to use edit() on the existing column to begin with, but
+                // I'm going to leave this as is for now, to be prepared for the ability of updating column definitions in 8.0
+                ColumnEditor columnEditor = existingColumn.edit();
+                columnEditor.unsetDefaultValue();
+
+                columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, columnEditor, parser.dataTypeResolver(), parser.getConverters());
                 listeners.add(columnDefinitionListener);
             }
             else {
@@ -161,7 +169,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
             Column column = columnDefinitionListener.getColumn();
             tableEditor.addColumn(column);
             String newColumnName = parser.parseName(ctx.newColumn);
-            if (newColumnName != null && !column.name().equals(newColumnName)) {
+            if (newColumnName != null && column.name().compareToIgnoreCase(newColumnName) != 0) {
                 tableEditor.renameColumn(column.name(), newColumnName);
             }
 

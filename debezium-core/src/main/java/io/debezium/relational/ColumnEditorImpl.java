@@ -197,6 +197,13 @@ final class ColumnEditorImpl implements ColumnEditor {
     }
 
     @Override
+    public ColumnEditor unsetDefaultValue() {
+        this.hasDefaultValue = false;
+        this.defaultValue = null;
+        return this;
+    }
+
+    @Override
     public Column create() {
         return new ColumnImpl(name, position, jdbcType, nativeType, typeName, typeExpression, charsetName, tableCharsetName, length, scale, optional,
                               autoIncremented, generated, defaultValue, hasDefaultValue);

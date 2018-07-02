@@ -28,7 +28,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.time.MicroTimestamp;
@@ -40,7 +42,10 @@ import io.debezium.util.Testing;
  * @author luobo
  */
 public class MysqlDefaultValueIT extends AbstractConnectorTest {
-    private static final int EVENT_COUNT = 43;
+
+    // 4 meta events (set character_set etc.) and then 14 tables with 3 events each (drop DDL, create DDL, insert)
+    private static final int EVENT_COUNT = 4 + 14 * 3;
+
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("myServer1", "default_value")
             .withDbHistoryPath(DB_HISTORY_PATH);
@@ -68,6 +73,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
     public void unsignedTinyIntTest() throws InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
+                .with(MySqlConnectorConfig.DDL_PARSER_MODE, "antlr")
                 .build();
         start(MySqlConnector.class, config);
 
@@ -622,5 +628,44 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         Duration duration2 = Duration.between(LocalTime.MIN, LocalTime.from(DateTimeFormatter.ofPattern("HH:mm:ss.SSSSSS").parse("23:00:00.123456")));
         assertThat(schemaI.defaultValue()).isEqualTo(new java.util.Date(io.debezium.time.Time.toMilliOfDay(duration2, MySqlValueConverters::adjustTemporal)));
+    }
+
+    @Test
+    @FixFor("DBZ-771")
+    public void columnTypeChangeResetsDefaultValue() throws Exception {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
+                .build();
+        start(MySqlConnector.class, config);
+
+        // Testing.Print.enable();
+
+        SourceRecords records = consumeRecordsByTopic(EVENT_COUNT);
+
+        SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("DBZ_771_CUSTOMERS")).get(0);
+        validate(record);
+
+        Schema customerTypeSchema = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
+        assertThat(customerTypeSchema.defaultValue()).isEqualTo("b2c");
+
+        // Connect to the DB and issue our insert statement to test.
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                // Enable Query log option
+                connection.execute("SET binlog_rows_query_log_events=ON");
+
+                connection.execute("alter table DBZ_771_CUSTOMERS change customer_type customer_type int;");
+                connection.execute("insert into DBZ_771_CUSTOMERS (id, customer_type) values (2, 456);");
+            }
+        }
+
+        // consume the records for the two executed statements
+        records = consumeRecordsByTopic(2);
+
+        record = records.recordsForTopic(DATABASE.topicForTable("DBZ_771_CUSTOMERS")).get(0);
+        validate(record);
+
+        customerTypeSchema = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
+        assertThat(customerTypeSchema.defaultValue()).isNull();
     }
 }
