@@ -243,6 +243,14 @@ public interface ColumnEditor {
     ColumnEditor defaultValue(Object defaultValue);
 
     /**
+     * Unsets the default value of the column, reverting the editor to the state where {@link #defaultValue(Object))}
+     * has never been called
+     *
+     * @return this editor so callers can chain methods together
+     */
+    ColumnEditor unsetDefaultValue();
+
+    /**
      * Obtain an immutable column definition representing the current state of this editor. Typically, an editor is created and
      * used to build a column, and then discarded. However, this editor with its current state can be reused after this method,
      * since the resulting column definition no longer refers to any of the data used in this editor.

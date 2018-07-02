@@ -851,6 +851,13 @@ public class MySqlDdlParser extends LegacyDdlParser {
             parsingFailed(dataTypeStart.position(), errors, "Unable to read the data type");
             return;
         }
+
+        // DBZ-771 unset previously set default value, as it's not kept by MySQL; for any column modifications a new
+        // default value (which could be the same) has to be provided by the column_definition which we'll parse later
+        // on; only in 8.0 (not supported by this parser) columns can be renamed without repeating the full column
+        // definition
+        column.unsetDefaultValue();
+
         column.jdbcType(dataType.jdbcType());
         column.type(dataType.name(), dataType.expression());
         if ("ENUM".equals(dataType.name())) {
