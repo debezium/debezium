@@ -22,7 +22,6 @@ import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
-import io.debezium.schema.DatabaseSchema;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 
@@ -33,9 +32,9 @@ public class OracleSnapshotChangeEventSource implements SnapshotChangeEventSourc
     private final OracleConnectorConfig connectorConfig;
     private final OracleOffsetContext previousOffset;
     private final OracleConnection jdbcConnection;
-    private final DatabaseSchema schema;
+    private final OracleDatabaseSchema schema;
 
-    public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext previousOffset, OracleConnection jdbcConnection, DatabaseSchema schema) {
+    public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext previousOffset, OracleConnection jdbcConnection, OracleDatabaseSchema schema) {
         this.connectorConfig = connectorConfig;
         this.previousOffset = previousOffset;
         this.jdbcConnection = jdbcConnection;

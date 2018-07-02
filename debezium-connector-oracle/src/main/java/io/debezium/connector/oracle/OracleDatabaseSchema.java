@@ -5,23 +5,18 @@
  */
 package io.debezium.connector.oracle;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.function.Predicate;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.relational.RelationalDatabaseSchema;
+import io.debezium.relational.HistorizedRelationalDatabaseSchema;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.relational.TableSchema;
 import io.debezium.relational.TableSchemaBuilder;
-import io.debezium.relational.Tables;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.TableChanges;
-import io.debezium.schema.DataCollectionId;
-import io.debezium.schema.DataCollectionSchema;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.schema.TopicSelector;
@@ -29,35 +24,30 @@ import io.debezium.util.SchemaNameAdjuster;
 
 // TODO generify into HistorizedRelationalDatabaseSchema
 
-public class OracleDatabaseSchema implements RelationalDatabaseSchema {
+public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleDatabaseSchema.class);
 
-    private final TopicSelector topicSelector;
-
-    private final Tables tables;
-    private final Map<TableId, TableSchema> schemas;
-    private final TableSchemaBuilder tableSchemaBuilder;
     private final DatabaseHistory databaseHistory;
 
-    public OracleDatabaseSchema(OracleConnectorConfig connectorConfig, SchemaNameAdjuster schemaNameAdjuster, TopicSelector topicSelector, OracleConnection connection) {
-        this.topicSelector = topicSelector;
-
-        this.tables = new Tables();
-        this.schemas = new HashMap<>();
-        this.tableSchemaBuilder = new TableSchemaBuilder(new OracleValueConverters(connection), schemaNameAdjuster, SourceInfo.SCHEMA);
-
+    public OracleDatabaseSchema(OracleConnectorConfig connectorConfig, SchemaNameAdjuster schemaNameAdjuster, TopicSelector<TableId> topicSelector, OracleConnection connection) {
+        super(connectorConfig, topicSelector, getTableFilter(connectorConfig), null,
+                new TableSchemaBuilder(new OracleValueConverters(connection), schemaNameAdjuster, SourceInfo.SCHEMA),
+                false);
         this.databaseHistory = connectorConfig.getDatabaseHistory();
         this.databaseHistory.start();
     }
 
+    // TODO use TableFilter contract everywhere
+    private static Predicate<TableId> getTableFilter(OracleConnectorConfig connectorConfig) {
+        return t -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(t);
+    }
+
     @Override
     public void recover(OffsetContext offset) {
-        databaseHistory.recover(offset.getPartition(), offset.getOffset(), tables, new OracleDdlParser());
-
-        for (TableId tableId : tables.tableIds()) {
-            Table table = tables.forTable(tableId);
-            schemas.put(table.id(), tableSchemaBuilder.create(null, getEnvelopeSchemaName(table), table, null, null));
+        databaseHistory.recover(offset.getPartition(), offset.getOffset(), tables(), new OracleDdlParser());
+        for (TableId tableId : tableIds()) {
+            buildAndRegisterSchema(tableFor(tableId));
         }
     }
 
@@ -72,9 +62,8 @@ public class OracleDatabaseSchema implements RelationalDatabaseSchema {
 
         // just a single table per DDL event for Oracle
         Table table = schemaChange.getTables().iterator().next();
-
-        tables.overwriteTable(table);
-        schemas.put(table.id(), tableSchemaBuilder.create(null, getEnvelopeSchemaName(table), table, null, null));
+        buildAndRegisterSchema(table);
+        tables().overwriteTable(table);
 
         TableChanges tableChanges = null;
         if (schemaChange.getType() == SchemaChangeEventType.CREATE && schemaChange.isFromSnapshot()) {
@@ -84,19 +73,5 @@ public class OracleDatabaseSchema implements RelationalDatabaseSchema {
 
         databaseHistory.record(schemaChange.getPartition(), schemaChange.getOffset(), schemaChange.getDatabase(),
                 schemaChange.getSchema(), schemaChange.getDdl(), tableChanges);
-    }
-
-    private String getEnvelopeSchemaName(Table table) {
-        return topicSelector.topicNameFor(table.id()) + ".Envelope";
-    }
-
-    @Override
-    public DataCollectionSchema getDataCollectionSchema(DataCollectionId id) {
-        return schemas.get(id);
-    }
-
-    @Override
-    public Table getTable(TableId id) {
-        return tables.forTable(id);
     }
 }

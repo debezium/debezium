@@ -6,10 +6,9 @@
 package io.debezium.connector.oracle;
 
 import io.debezium.relational.TableId;
-import io.debezium.schema.DataCollectionId;
 import io.debezium.schema.TopicSelector;
 
-public class OracleTopicSelector implements TopicSelector {
+public class OracleTopicSelector implements TopicSelector<TableId> {
 
     private final String prefix;
 
@@ -22,8 +21,7 @@ public class OracleTopicSelector implements TopicSelector {
     }
 
     @Override
-    public String topicNameFor(DataCollectionId id) {
-        TableId tableId = (TableId) id;
+    public String topicNameFor(TableId tableId) {
         return String.join(".", prefix, tableId.catalog(), tableId.schema(), tableId.table());
     }
 }

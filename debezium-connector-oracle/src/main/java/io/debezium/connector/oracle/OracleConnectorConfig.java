@@ -103,7 +103,7 @@ public class OracleConnectorConfig extends RelationalDatabaseConnectorConfig {
     private final String xoutServerName;
 
     public OracleConnectorConfig(Configuration config) {
-        super(config, LOGICAL_NAME, new SystemTablesPredicate());
+        super(config, config.getString(LOGICAL_NAME), new SystemTablesPredicate());
 
         this.databaseName = config.getString(DATABASE_NAME);
         this.pdbName = config.getString(PDB_NAME);
