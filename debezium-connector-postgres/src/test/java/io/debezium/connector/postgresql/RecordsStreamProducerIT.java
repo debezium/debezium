@@ -655,6 +655,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     private void setupRecordsProducer(PostgresConnectorConfig config) {
+        if (recordsProducer != null) {
+            recordsProducer.stop();
+        }
+
         PostgresTopicSelector selector = PostgresTopicSelector.create(config);
 
         PostgresTaskContext context = new PostgresTaskContext(
