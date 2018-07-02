@@ -38,7 +38,7 @@ public class MySqlTaskContextIT extends MySqlTaskContextTest {
         assertThat(context.getConnectionContext().username()).isEqualTo(username);
         assertThat(context.getConnectionContext().password()).isEqualTo(password);
         assertThat(context.serverId()).isEqualTo(serverId);
-        assertThat(context.serverName()).isEqualTo(serverName);
+        assertThat(context.getConnectorConfig().getLogicalName()).isEqualTo(serverName);
 
         assertThat("" + context.includeSchemaChangeRecords()).isEqualTo(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES.defaultValueAsString());
         assertThat("" + context.includeSqlQuery()).isEqualTo(MySqlConnectorConfig.INCLUDE_SQL_QUERY.defaultValueAsString());

@@ -258,6 +258,29 @@ public abstract class AbstractRecordsProducerTest {
                );
     }
 
+    protected List<SchemaAndValueField> schemasAndValuesForStringTypesWithSourceColumnTypeInfo() {
+        return Arrays.asList(new SchemaAndValueField("vc",
+                                    SchemaBuilder.string().optional()
+                                        .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "VARCHAR")
+                                        .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "2")
+                                        .build(),
+                                    "\u017E\u0161"
+                             ),
+                             new SchemaAndValueField("vcv",
+                                     SchemaBuilder.string().optional()
+                                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "VARCHAR")
+                                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "2")
+                                         .build(),
+                                     "bb"
+                             ),
+                             new SchemaAndValueField("ch", Schema.OPTIONAL_STRING_SCHEMA, "cdef"),
+                             new SchemaAndValueField("c", Schema.OPTIONAL_STRING_SCHEMA, "abc"),
+                             new SchemaAndValueField("t", Schema.OPTIONAL_STRING_SCHEMA, "some text"),
+                             new SchemaAndValueField("b", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap(new byte[] {0, 1, 2})),
+                             new SchemaAndValueField("bnn", Schema.BYTES_SCHEMA, ByteBuffer.wrap(new byte[] {3, 4, 5}))
+                );
+     }
+
     protected List<SchemaAndValueField> schemasAndValuesForTextTypes() {
         return Arrays.asList(new SchemaAndValueField("j", Json.builder().optional().build(), "{\"bar\": \"baz\"}"),
                              new SchemaAndValueField("jb", Json.builder().optional().build(), "{\"bar\": \"baz\"}"),

@@ -118,7 +118,7 @@ public class SnapshotReader extends AbstractReader {
      */
     @Override
     protected void doStart() {
-        executorService = Threads.newSingleThreadExecutor(MySqlConnector.class, context.serverName(), "snapshot");
+        executorService = Threads.newSingleThreadExecutor(MySqlConnector.class, context.getConnectorConfig().getLogicalName(), "snapshot");
         executorService.execute(this::execute);
     }
 

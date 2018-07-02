@@ -638,7 +638,27 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         recordsProducer.start(consumer, blackHole);
     }
 
+    @Test
+    @FixFor("DBZ-644")
+    public void shouldPropagateSourceColumnTypeToSchemaParameter() throws Exception {
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with("column.propagate.source.type", ".*vc.*")
+                .build());
+        setupRecordsProducer(config);
+
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer, blackHole);
+
+        assertInsert(INSERT_STRING_TYPES_STMT, schemasAndValuesForStringTypesWithSourceColumnTypeInfo());
+    }
+
     private void setupRecordsProducer(PostgresConnectorConfig config) {
+        if (recordsProducer != null) {
+            recordsProducer.stop();
+        }
+
         PostgresTopicSelector selector = PostgresTopicSelector.create(config);
 
         PostgresTaskContext context = new PostgresTaskContext(
@@ -646,7 +666,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
                 selector
         );
-        recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.serverName()));
+        recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.getLogicalName()));
     }
 
     private void assertInsert(String statement, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {
