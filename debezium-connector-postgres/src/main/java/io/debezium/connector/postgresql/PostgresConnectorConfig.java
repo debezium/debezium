@@ -702,25 +702,29 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                                                      SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
 
     private final Configuration config;
-    private final String serverName;
     private final TemporalPrecisionMode temporalPrecisionMode;
     private final DecimalMode decimalHandlingMode;
     private final SnapshotMode snapshotMode;
 
     protected PostgresConnectorConfig(Configuration config) {
-        super(config, SERVER_NAME);
+        super(config, getLogicalName(config));
 
         this.config = config;
-        String serverName = config.getString(PostgresConnectorConfig.SERVER_NAME);
-        if (serverName == null) {
-            serverName = hostname() + ":" + port() + "/" + databaseName();
-        }
-        this.serverName = serverName;
         this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
         String decimalHandlingModeStr = config.getString(PostgresConnectorConfig.DECIMAL_HANDLING_MODE);
         DecimalHandlingMode decimalHandlingMode = DecimalHandlingMode.parse(decimalHandlingModeStr);
         this.decimalHandlingMode = decimalHandlingMode.asDecimalMode();
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
+    }
+
+    private static String getLogicalName(Configuration config) {
+        String logicalName = config.getString(PostgresConnectorConfig.SERVER_NAME);
+
+        if (logicalName == null) {
+            logicalName = config.getString(HOSTNAME) + ":" + config.getInteger(PORT) + "/" + config.getString(DATABASE_NAME);
+        }
+
+        return logicalName;
     }
 
     protected String hostname() {
@@ -765,10 +769,6 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
 
     public Configuration jdbcConfig() {
         return config.subset(DATABASE_CONFIG_PREFIX, true);
-    }
-
-    protected String serverName() {
-        return serverName;
     }
 
     protected TopicSelectionStrategy topicSelectionStrategy() {

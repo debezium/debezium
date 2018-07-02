@@ -61,8 +61,8 @@ public class RelationalDatabaseConnectorConfig extends CommonConnectorConfig {
 
     private final RelationalTableFilters tableFilters;
 
-    protected RelationalDatabaseConnectorConfig(Configuration config, Field logicalNameField, Predicate<TableId> systemTablesFilter) {
-        super(config, logicalNameField);
+    protected RelationalDatabaseConnectorConfig(Configuration config, String logicalName, Predicate<TableId> systemTablesFilter) {
+        super(config, logicalName);
 
         this.tableFilters = new RelationalTableFilters(config, systemTablesFilter);
     }

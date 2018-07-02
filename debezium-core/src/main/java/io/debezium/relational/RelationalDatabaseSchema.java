@@ -12,7 +12,7 @@ import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.config.Configuration;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.relational.mapping.ColumnMappers;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.schema.TopicSelector;
@@ -34,7 +34,7 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
     private final SchemasByTableId schemasByTableId;
     private final Tables tables;
 
-    protected RelationalDatabaseSchema(Configuration config, String serverName, TopicSelector<TableId> topicSelector,
+    protected RelationalDatabaseSchema(CommonConnectorConfig config, TopicSelector<TableId> topicSelector,
             Predicate<TableId> tableFilter, Predicate<ColumnId> columnFilter, TableSchemaBuilder schemaBuilder,
             boolean tableIdCaseInsensitive) {
 
@@ -42,9 +42,9 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
         this.schemaBuilder = schemaBuilder;
         this.tableFilter = tableFilter;
         this.columnFilter = columnFilter;
-        this.columnMappers = ColumnMappers.create(config);
+        this.columnMappers = ColumnMappers.create(config.getConfig());
 
-        this.schemaPrefix = getSchemaPrefix(serverName);
+        this.schemaPrefix = getSchemaPrefix(config.getLogicalName());
         this.schemasByTableId = new SchemasByTableId(tableIdCaseInsensitive);
         this.tables = new Tables(tableIdCaseInsensitive);
     }

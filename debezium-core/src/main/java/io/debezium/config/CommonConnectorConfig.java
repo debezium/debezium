@@ -69,17 +69,17 @@ public class CommonConnectorConfig {
     private final Duration pollInterval;
     private final String logicalName;
 
-    protected CommonConnectorConfig(Configuration config, Field logicalNameField) {
+    protected CommonConnectorConfig(Configuration config, String logicalName) {
         this.config = config;
         this.emitTombstoneOnDelete = config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         this.maxQueueSize = config.getInteger(MAX_QUEUE_SIZE);
         this.maxBatchSize = config.getInteger(MAX_BATCH_SIZE);
         this.pollInterval = config.getDuration(POLL_INTERVAL_MS, ChronoUnit.MILLIS);
-        this.logicalName = config.getString(logicalNameField);
+        this.logicalName = logicalName;
     }
 
     /**
-     * Provides access to the "raw" config instance. In most cases, access via typed getters for invididual properties
+     * Provides access to the "raw" config instance. In most cases, access via typed getters for individual properties
      * on the connector config class should be preferred.
      */
     public Configuration getConfig() {

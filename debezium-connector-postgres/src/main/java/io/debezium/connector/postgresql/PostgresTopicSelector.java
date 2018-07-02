@@ -22,9 +22,9 @@ public interface PostgresTopicSelector extends TopicSelector<TableId> {
 
         switch (topicSelectionStrategy) {
             case TOPIC_PER_SCHEMA:
-                return topicPerSchema(config.serverName());
+                return topicPerSchema(config.getLogicalName());
             case TOPIC_PER_TABLE:
-                return topicPerTable(config.serverName());
+                return topicPerTable(config.getLogicalName());
             default:
                 throw new IllegalArgumentException("Unknown topic selection strategy: " + topicSelectionStrategy);
         }

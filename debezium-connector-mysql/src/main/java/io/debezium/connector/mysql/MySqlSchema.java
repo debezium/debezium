@@ -76,16 +76,14 @@ public class MySqlSchema extends RelationalDatabaseSchema {
      * Create a schema component given the supplied {@link MySqlConnectorConfig MySQL connector configuration}.
      *
      * @param config the connector configuration, which is presumed to be valid
-     * @param serverName the name of the server
      * @param gtidFilter the predicate function that should be applied to GTID sets in database history, and which
      *          returns {@code true} if a GTID source is to be included, or {@code false} if a GTID source is to be excluded;
      *          may be null if not needed
      * @param tableIdCaseInsensitive true if table lookup ignores letter case
      */
-    public MySqlSchema(MySqlConnectorConfig configuration, String serverName, Predicate<String> gtidFilter, boolean tableIdCaseInsensitive, MySqlTopicSelector topicSelector) {
+    public MySqlSchema(MySqlConnectorConfig configuration, Predicate<String> gtidFilter, boolean tableIdCaseInsensitive, MySqlTopicSelector topicSelector) {
         super(
-                configuration.getConfig(),
-                serverName,
+                configuration,
                 topicSelector,
                 new Filters(configuration.getConfig()).tableFilter(),
                 new Filters(configuration.getConfig()).columnFilter(),
@@ -109,7 +107,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
                     config.getString(MySqlConnectorConfig.DATABASE_HISTORY));
         }
         // Do not remove the prefix from the subset of config properties ...
-        String connectorName = config.getString("name", serverName);
+        String connectorName = config.getString("name", configuration.getLogicalName());
         Configuration dbHistoryConfig = config.subset(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING, false)
                                               .edit()
                                               .withDefault(DatabaseHistory.NAME, connectorName + "-dbhistory")
