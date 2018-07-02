@@ -5,6 +5,20 @@
  */
 package io.debezium.relational.ddl;
 
+import java.math.BigDecimal;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.relational.Column;
 import io.debezium.relational.SystemVariables;
@@ -17,19 +31,6 @@ import io.debezium.text.ParsingException;
 import io.debezium.text.Position;
 import io.debezium.text.TokenStream;
 import io.debezium.text.TokenStream.Marker;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.math.BigDecimal;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * A parser for DDL statements.
@@ -223,7 +224,7 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
             ddlContent.rewind(marker);
             throw new ParsingException(e.getPosition(), "Failed to parse statement '" + ddlContent.getInputString() + "'", e);
         } catch (Throwable t) {
-            parsingFailed(ddlContent.nextPosition(), "Unexpected exception while parsing statement " + ddlContent.getInputString(), t);
+            parsingFailed(ddlContent.hasNext() ? ddlContent.nextPosition() : null, "Unexpected exception while parsing statement " + ddlContent.getInputString(), t);
         }
     }
 
@@ -545,12 +546,17 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
      * Generate a {@link ParsingException} with the supplied message, which is appended by this method with additional
      * information about the position's line and column.
      *
-     * @param position the position at which the error occurred; may not be null
+     * @param position the position at which the error occurred
      * @param msg the leading portion of the message; may not be null
      * @param t the exception that occurred; may be null
      */
     protected void parsingFailed(Position position, String msg, Throwable t) {
-        throw new ParsingException(position, msg + " at line " + position.line() + ", column " + position.column(), t);
+        if (position != null) {
+            throw new ParsingException(position, msg + " at line " + position.line() + ", column " + position.column(), t);
+        }
+        else {
+            throw new ParsingException(null, msg, t);
+        }
     }
 
     /**
