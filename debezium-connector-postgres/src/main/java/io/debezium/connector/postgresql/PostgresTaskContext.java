@@ -27,7 +27,7 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
     private final PostgresSchema schema;
 
     protected PostgresTaskContext(PostgresConnectorConfig config, PostgresSchema schema, PostgresTopicSelector topicSelector) {
-        super("Postgres", config.serverName());
+        super("Postgres", config.getLogicalName());
 
         this.config = config;
         this.topicSelector = topicSelector;

@@ -62,11 +62,11 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         this.connectionContext = new MySqlJdbcContext(config);
 
         // Set up the topic selector ...
-        this.topicSelector = MySqlTopicSelector.defaultSelector(serverName(), getHeartbeatTopicsPrefix());
+        this.topicSelector = MySqlTopicSelector.defaultSelector(connectorConfig.getLogicalName(), getHeartbeatTopicsPrefix());
 
         // Set up the source information ...
         this.source = new SourceInfo();
-        this.source.setServerName(serverName());
+        this.source.setServerName(connectorConfig.getLogicalName());
 
         // Set up the GTID filter ...
         String gtidSetIncludes = config.getString(MySqlConnectorConfig.GTID_SOURCE_INCLUDES);
@@ -81,7 +81,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         }
 
         // Set up the MySQL schema ...
-        this.dbSchema = new MySqlSchema(connectorConfig, serverName(), this.gtidSourceFilter, this.tableIdCaseInsensitive, topicSelector);
+        this.dbSchema = new MySqlSchema(connectorConfig, this.gtidSourceFilter, this.tableIdCaseInsensitive, topicSelector);
 
         // Set up the record processor ...
         this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector, config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE));
@@ -197,10 +197,6 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         return config.getLong(MySqlConnectorConfig.SERVER_ID);
     }
 
-    public String serverName() {
-        return config.getString(MySqlConnectorConfig.SERVER_NAME);
-    }
-
     public long timeoutInMilliseconds() {
         return config.getLong(MySqlConnectorConfig.CONNECTION_TIMEOUT_MS);
     }
@@ -285,7 +281,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
      * @throws IllegalArgumentException if any of the parameters are null
      */
     public void temporaryLoggingContext(String contextName, Runnable operation) {
-        LoggingContext.temporarilyForConnector("MySQL", serverName(), contextName, operation);
+        LoggingContext.temporarilyForConnector("MySQL", connectorConfig.getLogicalName(), contextName, operation);
     }
 
     /**
@@ -296,7 +292,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
      */
     public ObjectName metricName(String contextName) throws MalformedObjectNameException {
         //return new ObjectName("debezium.mysql:type=connector-metrics,connector=" + serverName() + ",name=" + contextName);
-        return new ObjectName("debezium.mysql:type=connector-metrics,context=" + contextName + ",server=" + serverName());
+        return new ObjectName("debezium.mysql:type=connector-metrics,context=" + contextName + ",server=" + connectorConfig.getLogicalName());
     }
 
     /**

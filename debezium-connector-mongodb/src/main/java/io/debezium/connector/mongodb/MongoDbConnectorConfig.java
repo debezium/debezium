@@ -217,7 +217,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS;
 
     public MongoDbConnectorConfig(Configuration config) {
-        super(config, LOGICAL_NAME);
+        super(config, config.getString(LOGICAL_NAME));
     }
 
     protected static ConfigDef configDef() {

@@ -7,15 +7,16 @@ package io.debezium.relational;
 
 import java.util.function.Predicate;
 
-import io.debezium.config.Configuration;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.schema.HistorizedDatabaseSchema;
 import io.debezium.schema.TopicSelector;
 
-public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatabaseSchema implements HistorizedDatabaseSchema<TableId> {
+public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatabaseSchema
+        implements HistorizedDatabaseSchema<TableId> {
 
-    protected HistorizedRelationalDatabaseSchema(Configuration config, String serverName,
-            TopicSelector<TableId> topicSelector, Predicate<TableId> tableFilter, Predicate<ColumnId> columnFilter,
-            TableSchemaBuilder schemaBuilder, boolean tableIdCaseInsensitive) {
-        super(config, serverName, topicSelector, tableFilter, columnFilter, schemaBuilder, tableIdCaseInsensitive);
+    protected HistorizedRelationalDatabaseSchema(CommonConnectorConfig config, TopicSelector<TableId> topicSelector,
+            Predicate<TableId> tableFilter, Predicate<ColumnId> columnFilter, TableSchemaBuilder schemaBuilder,
+            boolean tableIdCaseInsensitive) {
+        super(config, topicSelector, tableFilter, columnFilter, schemaBuilder, tableIdCaseInsensitive);
     }
 }

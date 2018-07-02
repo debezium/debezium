@@ -62,7 +62,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                                    SourceInfo sourceInfo,
                                    boolean continueStreamingAfterCompletion) {
         super(taskContext, sourceInfo);
-        executorService = Threads.newSingleThreadExecutor(PostgresConnector.class, taskContext.config().serverName(), CONTEXT_NAME);
+        executorService = Threads.newSingleThreadExecutor(PostgresConnector.class, taskContext.config().getLogicalName(), CONTEXT_NAME);
         currentRecord = new AtomicReference<>();
         if (continueStreamingAfterCompletion) {
             // we need to create the stream producer here to make sure it creates the replication connection;
