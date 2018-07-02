@@ -120,7 +120,7 @@
                 <watchInterval>500</watchInterval>
                 <logDate>default</logDate>
                 <verbose>true</verbose>
-                <autoPull>always</autoPull>
+                <imagePullPolicy>IfNotPresent</imagePullPolicy>
                 <images>
                   <!--
                   Images based on "mysql/mysql-server" Docker image

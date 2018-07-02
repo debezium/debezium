@@ -146,7 +146,7 @@
                         <color>green</color>
                       </log>
                       <wait>
-                        <log>Replica set is ready</log>
+                        <exit>0</exit>
                         <time>30000</time> <!-- 30 seconds max -->
                       </wait>
                     </run>
