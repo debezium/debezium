@@ -169,9 +169,18 @@ public class Replicator {
      */
     protected boolean establishConnectionToPrimary() {
         logger.info("Connecting to '{}'", replicaSet);
-        primaryClient = context.getConnectionContext().primaryFor(replicaSet, (desc, error) -> {
-            logger.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
-        });
+        primaryClient = context.getConnectionContext().primaryFor(
+                replicaSet,
+                (desc, error) -> {
+                    // propagate authorization failures
+                    if (error.getMessage() != null && error.getMessage().startsWith("Command failed with error 13")) {
+                        throw new ConnectException("Error while attempting to " + desc, error);
+                    }
+                    else {
+                        logger.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
+                    }
+                });
+
         return primaryClient != null;
     }
 
