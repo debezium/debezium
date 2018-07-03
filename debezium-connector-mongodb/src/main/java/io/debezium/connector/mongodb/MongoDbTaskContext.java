@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.util.function.Predicate;
-
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.CdcSourceTaskContext;
@@ -43,12 +41,8 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
         return topicSelector;
     }
 
-    public Predicate<String> databaseFilter() {
-        return filters.databaseFilter();
-    }
-
-    public Predicate<CollectionId> collectionFilter() {
-        return filters.collectionFilter();
+    public Filters filters() {
+        return filters;
     }
 
     public SourceInfo source() {

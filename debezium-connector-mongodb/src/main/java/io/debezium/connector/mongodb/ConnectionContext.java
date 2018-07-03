@@ -147,12 +147,13 @@ public class ConnectionContext implements AutoCloseable {
      * this context's back-off strategy) if required until the primary becomes available.
      *
      * @param replicaSet the replica set information; may not be null
+     * @param filters the filter configuration
      * @param errorHandler the function to be called whenever the primary is unable to
      *            {@link MongoPrimary#execute(String, Consumer) execute} an operation to completion; may be null
      * @return the client, or {@code null} if no primary could be found for the replica set
      */
-    public ConnectionContext.MongoPrimary primaryFor(ReplicaSet replicaSet, BiConsumer<String, Throwable> errorHandler) {
-        return new ConnectionContext.MongoPrimary(this, replicaSet, errorHandler);
+    public ConnectionContext.MongoPrimary primaryFor(ReplicaSet replicaSet, Filters filters, BiConsumer<String, Throwable> errorHandler) {
+        return new ConnectionContext.MongoPrimary(this, replicaSet, filters, errorHandler);
     }
 
     /**
@@ -219,11 +220,13 @@ public class ConnectionContext implements AutoCloseable {
     public static class MongoPrimary {
         private final ReplicaSet replicaSet;
         private final Supplier<MongoClient> primaryConnectionSupplier;
+        private final Filters filters;
         private final BiConsumer<String, Throwable> errorHandler;
 
-        protected MongoPrimary(ConnectionContext context, ReplicaSet replicaSet, BiConsumer<String, Throwable> errorHandler) {
+        protected MongoPrimary(ConnectionContext context, ReplicaSet replicaSet, Filters filters, BiConsumer<String, Throwable> errorHandler) {
             this.replicaSet = replicaSet;
             this.primaryConnectionSupplier = context.primaryClientFor(replicaSet);
+            this.filters = filters;
             this.errorHandler = errorHandler;
         }
 
@@ -301,8 +304,9 @@ public class ConnectionContext implements AutoCloseable {
         }
 
         /**
-         * Use the primary to get the names of all the databases in the replica set. This method will block until
-         * a primary can be obtained to get the names of all databases in the replica set.
+         * Use the primary to get the names of all the databases in the replica set, applying the current database
+         * filter configuration. This method will block until a primary can be obtained to get the names of all
+         * databases in the replica set.
          *
          * @return the database names; never null but possibly empty
          */
@@ -310,14 +314,21 @@ public class ConnectionContext implements AutoCloseable {
             Set<String> databaseNames = new HashSet<>();
             execute("get database names", primary -> {
                 databaseNames.clear(); // in case we restarted
-                MongoUtil.forEachDatabaseName(primary, databaseNames::add);
+                MongoUtil.forEachDatabaseName(
+                        primary,
+                        dbName -> {
+                            if (filters.databaseFilter().test(dbName)) {
+                                databaseNames.add(dbName);
+                            }
+                        });
             });
             return databaseNames;
         }
 
         /**
-         * Use the primary to get the identifiers of all the collections in the replica set. This method will block until
-         * a primary can be obtained to get the identifiers of all collections in the replica set.
+         * Use the primary to get the identifiers of all the collections in the replica set, applying the current
+         * collection filter configuration. This method will block until a primary can be obtained to get the
+         * identifiers of all collections in the replica set.
          *
          * @return the collection identifiers; never null
          */
@@ -328,12 +339,16 @@ public class ConnectionContext implements AutoCloseable {
             execute("get collections in databases", primary -> {
                 collections.clear(); // in case we restarted
                 Set<String> databaseNames = databaseNames();
-                MongoUtil.forEachDatabaseName(primary, databaseNames::add);
-                databaseNames.forEach(dbName -> {
+
+                for (String dbName : databaseNames) {
                     MongoUtil.forEachCollectionNameInDatabase(primary, dbName, collectionName -> {
-                        collections.add(new CollectionId(replicaSetName, dbName, collectionName));
+                        CollectionId collectionId = new CollectionId(replicaSetName, dbName, collectionName);
+
+                        if (filters.collectionFilter().test(collectionId)) {
+                            collections.add(collectionId);
+                        }
                     });
-                });
+                }
             });
             return collections;
         }
