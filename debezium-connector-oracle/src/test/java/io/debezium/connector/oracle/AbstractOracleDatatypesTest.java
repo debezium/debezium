@@ -41,7 +41,12 @@ import io.debezium.util.Testing;
  */
 public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest {
 
-    private static final Schema INTEGER_SCHEMA = Decimal.builder(0).optional().schema();
+    /**
+     * Key for schema parameter used to store DECIMAL/NUMERIC columns' precision.
+     */
+    static final String PRECISION_PARAMETER_KEY = "connect.decimal.precision";
+
+    private static final Schema INTEGER_SCHEMA = Decimal.builder(0).optional().parameter(PRECISION_PARAMETER_KEY, "38").build();
 
     private static final String DDL_STRING = "create table debezium.type_string (" +
             "  id int not null, " +
@@ -93,11 +98,11 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     private static final List<SchemaAndValueField> EXPECTED_FP = Arrays.asList(
             new SchemaAndValueField("VAL_BF", Schema.OPTIONAL_FLOAT32_SCHEMA, 1.1f),
             new SchemaAndValueField("VAL_BD", Schema.OPTIONAL_FLOAT64_SCHEMA, 2.22),
-            new SchemaAndValueField("VAL_F", VariableScaleDecimal.builder().optional().schema(), VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().schema(), new SpecialValueDecimal(new BigDecimal("3.33")))),
-            new SchemaAndValueField("VAL_NUM", Decimal.builder(6).optional().schema(), new BigDecimal("4.4444")),
-            new SchemaAndValueField("VAL_DP", VariableScaleDecimal.builder().optional().schema(), VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().schema(), new SpecialValueDecimal(new BigDecimal("5.555")))),
-            new SchemaAndValueField("VAL_R", VariableScaleDecimal.builder().optional().schema(), VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().schema(), new SpecialValueDecimal(new BigDecimal("6.66")))),
-            new SchemaAndValueField("VAL_NUM_VS", VariableScaleDecimal.builder().optional().schema(), VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().schema(), new SpecialValueDecimal(new BigDecimal("77.323"))))
+            new SchemaAndValueField("VAL_F", VariableScaleDecimal.builder().optional().build(), VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().build(), new SpecialValueDecimal(new BigDecimal("3.33")))),
+            new SchemaAndValueField("VAL_NUM", Decimal.builder(6).parameter(PRECISION_PARAMETER_KEY, "10").optional().build(), new BigDecimal("4.4444")),
+            new SchemaAndValueField("VAL_DP", VariableScaleDecimal.builder().optional().build(), VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().build(), new SpecialValueDecimal(new BigDecimal("5.555")))),
+            new SchemaAndValueField("VAL_R", VariableScaleDecimal.builder().optional().build(), VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().build(), new SpecialValueDecimal(new BigDecimal("6.66")))),
+            new SchemaAndValueField("VAL_NUM_VS", VariableScaleDecimal.builder().optional().build(), VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().build(), new SpecialValueDecimal(new BigDecimal("77.323"))))
     );
 
     private static final List<SchemaAndValueField> EXPECTED_INT = Arrays.asList(
