@@ -632,6 +632,45 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-771")
+    public void columnTypeAndDefaultValueChange() throws Exception {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
+                .build();
+        start(MySqlConnector.class, config);
+
+        // Testing.Print.enable();
+
+        SourceRecords records = consumeRecordsByTopic(EVENT_COUNT);
+
+        SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("DBZ_771_CUSTOMERS")).get(0);
+        validate(record);
+
+        Schema customerTypeSchema = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
+        assertThat(customerTypeSchema.defaultValue()).isEqualTo("b2c");
+
+        // Connect to the DB and issue our insert statement to test.
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                // Enable Query log option
+                connection.execute("SET binlog_rows_query_log_events=ON");
+
+                connection.execute("alter table DBZ_771_CUSTOMERS change customer_type customer_type int default 42;");
+                connection.execute("insert into DBZ_771_CUSTOMERS (id) values (2);");
+            }
+        }
+
+        // consume the records for the two executed statements
+        records = consumeRecordsByTopic(2);
+
+        record = records.recordsForTopic(DATABASE.topicForTable("DBZ_771_CUSTOMERS")).get(0);
+        validate(record);
+
+        customerTypeSchema = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
+        assertThat(customerTypeSchema.defaultValue()).isEqualTo(42);
+    }
+
+    @Test
+    @FixFor("DBZ-771")
     public void columnTypeChangeResetsDefaultValue() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
