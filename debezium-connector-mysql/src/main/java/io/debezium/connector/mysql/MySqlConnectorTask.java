@@ -71,6 +71,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
             Map<String, ?> offsets = context.offsetStorageReader().offset(partition);
             final SourceInfo source;
             if (offsets != null) {
+                logger.info("MOST RECENT OFFSET IS: {}", offsets);
                 Filters filters = SourceInfo.offsetsHaveFilterInfo(offsets) ? getOldFilters(offsets, config) : getAllFilters(config);
                 this.taskContext = createAndStartTaskContext(config, filters);
                 this.connectionContext = taskContext.getConnectionContext();

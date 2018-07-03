@@ -152,6 +152,7 @@ public class ParallelSnapshotReader implements Reader {
         else {
             // else newTableRecords == null
             if (allRecords == null) {
+                // if both readers have stopped, we need to stop.
                 completeSuccessfully();
             }
         }
@@ -159,9 +160,7 @@ public class ParallelSnapshotReader implements Reader {
     }
 
     private void completeSuccessfully() {
-        // if both readers have stopped, we need to stop.
-        logger.info("PARALLEL SNAPSHOT READER IS DONE! NEXT UP IS {}", this.uponCompletion.get().getClass());
-        running.compareAndSet(true, false);
+        stop();
         Runnable completionHandler = uponCompletion.getAndSet(null); // set to null so that we call it only once
         if (completionHandler != null) {
             completionHandler.run();

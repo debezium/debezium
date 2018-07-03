@@ -78,6 +78,7 @@ public class ReconcilingBinlogReader implements Reader {
                 new OffsetLimitPredicate(getLeadingReader().getLastOffset(),
                                          laggingReaderContext.gtidSourceFilter());
             // create our actual reader
+            logger.info("CREATING INNER RBR with offset {}", laggingReaderContext.source().offset());
             reconcilingReader = new BinlogReader("innerReconcilingReader",
                                                  laggingReaderContext,
                                                  offsetLimitPredicate);
@@ -119,16 +120,26 @@ public class ReconcilingBinlogReader implements Reader {
         Map<String, ?> bOffset = binlogReaderB.getLastOffset();
         boolean aNotStopped = binlogReaderA.state() != State.STOPPED;
         boolean bNotStopped = binlogReaderB.state() != State.STOPPED;
-        if (aOffset == null || bOffset == null || aNotStopped || bNotStopped) {
+        boolean noOffsets = aOffset == null && bOffset == null;
+        if (noOffsets || aNotStopped || bNotStopped) {
             throw new IllegalStateException("Cannot determine leading reader until both source readers have completed.");
         }
 
-        Document aDocument = SourceInfo.createDocumentFromOffset(aOffset);
-        Document bDocument = SourceInfo.createDocumentFromOffset(bOffset);
+        // if one reader has not processed any events, its 'lastOffset' will be null.
+        // in this case, it must the be the lagging reader.
+        if (aOffset == null) {
+            aReaderLeading = false;
+        } else if (bOffset == null) {
+            aReaderLeading = true;
+        } else {
+            Document aDocument = SourceInfo.createDocumentFromOffset(aOffset);
+            Document bDocument = SourceInfo.createDocumentFromOffset(bOffset);
 
-        aReaderLeading = SourceInfo.isPositionAtOrBefore(bDocument,
-                                                         aDocument,
-                                                         binlogReaderA.context.gtidSourceFilter());
+            aReaderLeading = SourceInfo.isPositionAtOrBefore(bDocument,
+                                                             aDocument,
+                                                             binlogReaderA.context.gtidSourceFilter());
+        }
+
         if (aReaderLeading) {
             logger.info("OLD TABLES LEADING; READING ONLY FROM NEW TABLES");
         } else {
@@ -158,11 +169,15 @@ public class ReconcilingBinlogReader implements Reader {
      */
     /*package private*/ static class OffsetLimitPredicate implements Predicate<SourceRecord> {
 
+        private final Logger logger = LoggerFactory.getLogger(getClass());
+
+        private Map<String, ?> leadingReaderFinalOffset;
         private Document leadingReaderFinalOffsetDocument;
         private Predicate<String> gtidFilter;
 
         /*package private*/ OffsetLimitPredicate(Map<String, ?> leadingReaderFinalOffset,
                                                  Predicate<String> gtidFilter) {
+            this.leadingReaderFinalOffset = leadingReaderFinalOffset;
             this.leadingReaderFinalOffsetDocument = SourceInfo.createDocumentFromOffset(leadingReaderFinalOffset);
             this.gtidFilter = gtidFilter;
 
@@ -171,9 +186,19 @@ public class ReconcilingBinlogReader implements Reader {
         @Override
         public boolean test(SourceRecord sourceRecord) {
             Document offsetDocument = SourceInfo.createDocumentFromOffset(sourceRecord.sourceOffset());
-            return SourceInfo.isPositionAtOrBefore(leadingReaderFinalOffsetDocument,
-                                                   offsetDocument,
-                                                   gtidFilter);
+            boolean positionAtOrBefore = SourceInfo.isPositionAtOrBefore(leadingReaderFinalOffsetDocument,
+                                                                    offsetDocument,
+                                                                    gtidFilter);
+            logger.info("{} VERSUS {} :OFFSETLIMITPREDICATE RETURNS {}", leadingReaderFinalOffset, sourceRecord.sourceOffset(), positionAtOrBefore);
+            return positionAtOrBefore;
+            // TODO obviously this isn't actually functional for real life but should hopefully be sufficient for me getting past some stuff for now.
+            // another option would be to use binlog position. But at this point I'm getting into fixing the issues with isPositionAtOrBefore and I don't
+            // really want to do that.
+            //long leadingReaderFinalOffsetTsSec = (Long) leadingReaderFinalOffset.get(SourceInfo.TIMESTAMP_KEY);
+            //long sourceRecordTsSec = (Long) sourceRecord.sourceOffset().get(SourceInfo.TIMESTAMP_KEY);
+            //boolean result = sourceRecordTsSec < leadingReaderFinalOffsetTsSec;
+            //logger.info("OFFSETLIMITPREDICATE RETURNING {}", result);
+            //return result;
         }
     }
 }

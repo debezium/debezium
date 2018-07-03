@@ -280,7 +280,7 @@ final class SourceInfo extends AbstractSourceInfo {
         return offsetUsingPosition(totalNumberOfRows);
     }
 
-    private Map<String, ?> offsetUsingPosition(long rowsToSkip) {
+    private Map<String, ?> offsetUsingPosition(long rowsToSkip) { // this is the method! I think!
         Map<String, Object> map = new HashMap<>();
         if (serverId != 0) map.put(SERVER_ID_KEY, serverId);
         if (restartGtidSet != null) {
@@ -298,6 +298,9 @@ final class SourceInfo extends AbstractSourceInfo {
         if (binlogTimestampSeconds != 0) map.put(TIMESTAMP_KEY, binlogTimestampSeconds);
         if (isSnapshotInEffect()) {
             map.put(SNAPSHOT_KEY, true);
+        }
+        else {
+            throw new RuntimeException("SNAPSHOT IS NOT IN EFFECT!");
         }
         map.put(DATABASE_WHITELIST_KEY, databaseWhitelist);
         map.put(DATABASE_BLACKLIST_KEY, databaseBlacklist);
@@ -360,6 +363,7 @@ final class SourceInfo extends AbstractSourceInfo {
         result.put(BINLOG_ROW_IN_EVENT_OFFSET_KEY, currentRowNumber);
         result.put(TIMESTAMP_KEY, binlogTimestampSeconds);
         if (lastSnapshot) {
+            // if the snapshot is COMPLETED, then this will not happen.
             result.put(SNAPSHOT_KEY, true);
         }
         if (threadId >= 0) {
@@ -372,10 +376,12 @@ final class SourceInfo extends AbstractSourceInfo {
         if (currentQuery != null) {
             result.put(QUERY_KEY, currentQuery);
         }
+        /*
         result.put(DATABASE_WHITELIST_KEY, databaseWhitelist);
         result.put(DATABASE_BLACKLIST_KEY, databaseBlacklist);
         result.put(TABLE_WHITELIST_KEY, tableWhitelist);
         result.put(TABLE_BLACKLIST_KEY, tableBlacklist);
+        */ // I think I don't want these here. These are what ends up in the kafka messages, which I don't care about...
         return result;
     }
 
@@ -499,9 +505,10 @@ final class SourceInfo extends AbstractSourceInfo {
     /**
      * Denote that a snapshot will be complete after one last record.
      */
-    public void markLastSnapshot() {
+    public void markLastSnapshot(Configuration config) {
         this.lastSnapshot = true;
         this.nextSnapshot = false;
+        setFilterDataFromConfig(config);
     }
 
     /**
@@ -556,7 +563,7 @@ final class SourceInfo extends AbstractSourceInfo {
     /**
      * Set the source offset, as read from Kafka Connect. This method does nothing if the supplied map is null.
      *
-     * @param sourceOffset the previously-recorded Kafka Connect source offset
+     * @param sourceOffset the previously-recorded Kafka Connect source oisffset
      * @throws ConnectException if any offset parameter values are missing, invalid, or of the wrong type
      */
     public void setOffset(Map<String, ?> sourceOffset) {

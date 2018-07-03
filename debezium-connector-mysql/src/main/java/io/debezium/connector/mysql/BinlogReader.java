@@ -380,22 +380,10 @@ public class BinlogReader extends AbstractReader {
     }
 
     /**
-     * Halting predicate that always returns false.
-     */
-    @Immutable
-    private static class NeverHaltPredicate implements Predicate<Map<String, ?>> {
-
-        @Override
-        public boolean test(Map<String, ?> offset) {
-            return false;
-        }
-    }
-
-    /**
-     * @return a copy of the last offset of this reader.
+     * @return a copy of the last offset of this reader, or null if this reader has not completed a poll.
      */
     public Map<String, ?> getLastOffset() {
-        return new HashMap<>(lastOffset);
+        return lastOffset == null? null : new HashMap<>(lastOffset);
     }
 
     @Override

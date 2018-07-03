@@ -601,7 +601,7 @@ public class SnapshotReader extends AbstractReader {
                     // We've copied all of the tables and we've not yet been stopped, but our buffer holds onto the
                     // very last record. First mark the snapshot as complete and then apply the updated offset to
                     // the buffered record ...
-                    source.markLastSnapshot();
+                    source.markLastSnapshot(context.config());
                     long stop = clock.currentTimeInMillis();
                     try {
                         bufferedRecordQueue.close(this::replaceOffset);
@@ -684,8 +684,6 @@ public class SnapshotReader extends AbstractReader {
             } else {
                 // We completed the snapshot...
                 try {
-                    // set the filter in the offset
-                    source.setFilterDataFromConfig(context.config());
                     // Mark the source as having completed the snapshot. This will ensure the `source` field on records
                     // are not denoted as a snapshot ...
                     source.completeSnapshot();
