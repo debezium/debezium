@@ -213,13 +213,13 @@ public class Replicator {
                 } else {
                     // There is no ongoing initial sync, so look to see if our last recorded offset still exists in the oplog.
                     BsonTimestamp lastRecordedTs = source.lastOffsetTimestamp(rsName);
-                    AtomicReference<BsonTimestamp> firstExistingTs = new AtomicReference<>();
-                    primaryClient.execute("get oplog position", primary -> {
+
+                    BsonTimestamp firstAvailableTs = primaryClient.execute("get oplog position", primary -> {
                         MongoCollection<Document> oplog = primary.getDatabase("local").getCollection("oplog.rs");
                         Document firstEvent = oplog.find().sort(new Document("$natural", 1)).limit(1).first(); // may be null
-                        firstExistingTs.set(SourceInfo.extractEventTimestamp(firstEvent));
+                        return SourceInfo.extractEventTimestamp(firstEvent);
                     });
-                    BsonTimestamp firstAvailableTs = firstExistingTs.get();
+
                     if (firstAvailableTs == null) {
                         logger.info("The oplog contains no entries, so performing initial sync of replica set '{}'", rsName);
                         performSnapshot = true;
@@ -382,7 +382,7 @@ public class Replicator {
      * is elected (as identified by an oplog event), of if the current thread doing the reading is interrupted.
      */
     protected void readOplog() {
-        primaryClient.execute("read from oplog on '" + replicaSet + "'", this::readOplog);
+        primaryClient.execute("read from oplog on '" + replicaSet + "'", (Consumer<MongoClient>)this::readOplog);
     }
 
     /**

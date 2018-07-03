@@ -10,9 +10,9 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -245,14 +245,15 @@ public class ConnectionContext implements AutoCloseable {
          * @return the address of the replica set's primary node, or {@code null} if there is currently no primary
          */
         public ServerAddress address() {
-            AtomicReference<ServerAddress> address = new AtomicReference<>();
-            execute("get replica set primary", primary -> {
+            return execute("get replica set primary", primary -> {
                 ReplicaSetStatus rsStatus = primary.getReplicaSetStatus();
                 if (rsStatus != null) {
-                    address.set(rsStatus.getMaster());
+                    return rsStatus.getMaster();
+                }
+                else {
+                    return null;
                 }
             });
-            return address.get();
         }
 
         /**
@@ -270,6 +271,33 @@ public class ConnectionContext implements AutoCloseable {
                     operation.accept(primary);
                     return;
                 } catch (Throwable t) {
+                    errorHandler.accept(desc, t);
+                    try {
+                        errorMetronome.pause();
+                    }
+                    catch (InterruptedException e) {
+                        // Interruption is not propagated
+                    }
+                }
+            }
+        }
+
+        /**
+         * Execute the supplied operation using the primary, blocking until a primary is available. Whenever the operation stops
+         * (e.g., if the primary is no longer primary), then restart the operation using the current primary.
+         *
+         * @param desc the description of the operation, for logging purposes
+         * @param operation the operation to be performed on the primary
+         * @return return value of the executed operation
+         */
+        public <T> T execute(String desc, Function<MongoClient, T> operation) {
+            final Metronome errorMetronome = Metronome.sleeper(PAUSE_AFTER_ERROR, Clock.SYSTEM);
+            while (true) {
+                MongoClient primary = primaryConnectionSupplier.get();
+                try {
+                    return operation.apply(primary);
+                }
+                catch (Throwable t) {
                     errorHandler.accept(desc, t);
                     try {
                         errorMetronome.pause();
@@ -311,9 +339,9 @@ public class ConnectionContext implements AutoCloseable {
          * @return the database names; never null but possibly empty
          */
         public Set<String> databaseNames() {
-            Set<String> databaseNames = new HashSet<>();
-            execute("get database names", primary -> {
-                databaseNames.clear(); // in case we restarted
+            return execute("get database names", primary -> {
+                Set<String> databaseNames = new HashSet<>();
+
                 MongoUtil.forEachDatabaseName(
                         primary,
                         dbName -> {
@@ -321,8 +349,9 @@ public class ConnectionContext implements AutoCloseable {
                                 databaseNames.add(dbName);
                             }
                         });
+
+                return databaseNames;
             });
-            return databaseNames;
         }
 
         /**
@@ -334,10 +363,10 @@ public class ConnectionContext implements AutoCloseable {
          */
         public List<CollectionId> collections() {
             String replicaSetName = replicaSet.replicaSetName();
+
             // For each database, get the list of collections ...
-            List<CollectionId> collections = new ArrayList<>();
-            execute("get collections in databases", primary -> {
-                collections.clear(); // in case we restarted
+            return execute("get collections in databases", primary -> {
+                List<CollectionId> collections = new ArrayList<>();
                 Set<String> databaseNames = databaseNames();
 
                 for (String dbName : databaseNames) {
@@ -349,8 +378,9 @@ public class ConnectionContext implements AutoCloseable {
                         }
                     });
                 }
+
+                return collections;
             });
-            return collections;
         }
     }
 
