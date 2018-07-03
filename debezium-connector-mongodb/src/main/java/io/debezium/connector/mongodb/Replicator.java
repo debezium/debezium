@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -17,7 +16,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -96,8 +94,6 @@ public class Replicator {
     private final SourceInfo source;
     private final RecordMakers recordMakers;
     private final BufferableRecorder bufferedRecorder;
-    private final Predicate<CollectionId> collectionFilter;
-    private final Predicate<String> databaseFilter;
     private final Clock clock;
     private ConnectionContext.MongoPrimary primaryClient;
     private final Consumer<Throwable> onFailure;
@@ -120,8 +116,6 @@ public class Replicator {
         this.copyThreads = Threads.newFixedThreadPool(MongoDbConnector.class, context.serverName(), copyThreadName, context.getConnectionContext().maxNumberOfCopyThreads());
         this.bufferedRecorder = new BufferableRecorder(recorder);
         this.recordMakers = new RecordMakers(this.source, context.topicSelector(), this.bufferedRecorder, context.isEmitTombstoneOnDelete());
-        this.collectionFilter = this.context.collectionFilter();
-        this.databaseFilter = this.context.databaseFilter();
         this.clock = this.context.getClock();
         this.onFailure = onFailure;
     }
@@ -171,6 +165,7 @@ public class Replicator {
         logger.info("Connecting to '{}'", replicaSet);
         primaryClient = context.getConnectionContext().primaryFor(
                 replicaSet,
+                context.filters(),
                 (desc, error) -> {
                     // propagate authorization failures
                     if (error.getMessage() != null && error.getMessage().startsWith("Command failed with error 13")) {
@@ -270,10 +265,7 @@ public class Replicator {
         final long syncStart = clock.currentTimeInMillis();
 
         // We need to copy each collection, so put the collection IDs into a queue ...
-        final List<CollectionId> collections = new ArrayList<>();
-        primaryClient.collections().forEach(id -> {
-            if (databaseFilter.test(id.dbName()) && collectionFilter.test(id))collections.add(id);
-        });
+        final List<CollectionId> collections = primaryClient.collections();
         final Queue<CollectionId> collectionsToCopy = new ConcurrentLinkedQueue<>(collections);
         final int numThreads = Math.min(collections.size(), context.getConnectionContext().maxNumberOfCopyThreads());
         final CountDownLatch latch = new CountDownLatch(numThreads);
@@ -479,12 +471,12 @@ public class Replicator {
                 return true;
             }
             // Otherwise, it is an event on a document in a collection ...
-            if (!databaseFilter.test(dbName)){
+            if (!context.filters().databaseFilter().test(dbName)){
                 logger.debug("Skipping the event for database {} based on database.whitelist");
                 return true;
             }
             CollectionId collectionId = new CollectionId(rsName, dbName, collectionName);
-            if (collectionFilter.test(collectionId)) {
+            if (context.filters().collectionFilter().test(collectionId)) {
                 RecordsForCollection factory = recordMakers.forCollection(collectionId);
                 try {
                     factory.recordEvent(event, clock.currentTimeInMillis());
