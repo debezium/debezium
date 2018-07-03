@@ -86,6 +86,9 @@ import io.debezium.util.Threads;
 public class Replicator {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
+
+    private static final String AUTHORIZATION_FAILURE_MESSAGE = "Command failed with error 13";
+
     private final MongoDbTaskContext context;
     private final ExecutorService copyThreads;
     private final ReplicaSet replicaSet;
@@ -168,7 +171,7 @@ public class Replicator {
                 context.filters(),
                 (desc, error) -> {
                     // propagate authorization failures
-                    if (error.getMessage() != null && error.getMessage().startsWith("Command failed with error 13")) {
+                    if (error.getMessage() != null && error.getMessage().startsWith(AUTHORIZATION_FAILURE_MESSAGE)) {
                         throw new ConnectException("Error while attempting to " + desc, error);
                     }
                     else {
