@@ -8,7 +8,6 @@
     </parent>
 
     <modelVersion>4.0.0</modelVersion>
-    <groupId>io.debezium</groupId>
     <artifactId>debezium-incubator-parent</artifactId>
     <version>0.8.0-SNAPSHOT</version>
     <name>Debezium Incubator Parent POM</name>
@@ -25,14 +24,25 @@
     <properties>
         <!-- Databases -->
         <version.oracle.driver>12.1.0.2</version.oracle.driver>
+        <version.sqlserver.driver>6.4.0.jre8</version.sqlserver.driver>
+
+        <!-- Debezium parent -->
         <version.debezium>${project.version}</version.debezium>
     </properties>
 
     <modules>
+        <module>debezium-connector-sqlserver</module>
     </modules>
 
     <dependencyManagement>
         <dependencies>
+           <!--SQL Server -->
+            <dependency>
+                <groupId>com.microsoft.sqlserver</groupId>
+                <artifactId>mssql-jdbc</artifactId>
+                <version>${version.sqlserver.driver}</version>
+            </dependency>
+
             <!-- Debezium artifacts -->
             <dependency>
                 <groupId>io.debezium</groupId>
