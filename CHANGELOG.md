@@ -2,7 +2,47 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
-## 0.8.0 Beta 1
+## 0.8.0.CR1
+July 4th, 2018 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12338150)
+
+### New features since 0.8.0.Beta1
+
+* List collections only for databases accepted by database filter [DBZ-713](https://issues.jboss.org/browse/DBZ-713)
+* Set DECIMAL precision as schema parameter [DBZ-751](https://issues.jboss.org/browse/DBZ-751)
+* Stop MongoDB connector in case of authorization failure [DBZ-782](https://issues.jboss.org/browse/DBZ-782)
+* Add the original data type of a column as schema parameter [DBZ-644](https://issues.jboss.org/browse/DBZ-644)
+* Add support for columns of type CITEXT [DBZ-762](https://issues.jboss.org/browse/DBZ-762)
+
+
+### Breaking changes since 0.8.0.Beta1
+
+There are no breaking changes in this release.
+
+
+### Fixes since 0.8.0.Beta1
+
+* Allow Empty Database Passwords [DBZ-743](https://issues.jboss.org/browse/DBZ-743)
+* Antlr parser raising exception for MySQL-valid ALTER TABLE [DBZ-767](https://issues.jboss.org/browse/DBZ-767)
+* Timestamp format must be yyyy-mm-dd hh:mm:ss[.fffffffff] [DBZ-768](https://issues.jboss.org/browse/DBZ-768)
+* Antlr parser raising exception when parsing ENUM fields [DBZ-770](https://issues.jboss.org/browse/DBZ-770)
+* Default value is not removed when changing a column's type [DBZ-771](https://issues.jboss.org/browse/DBZ-771)
+
+
+### Other changes since 0.8.0.Beta1
+
+* Add documentation for supported geometry types [DBZ-573](https://issues.jboss.org/browse/DBZ-573)
+* Benchmark Antlr parser [DBZ-742](https://issues.jboss.org/browse/DBZ-742)
+* Document rules for "slot.name" property of the Postgres connector [DBZ-746](https://issues.jboss.org/browse/DBZ-746)
+* Add table-of-contents sections to connector doc pages [DBZ-752](https://issues.jboss.org/browse/DBZ-752)
+* Guard against simple bugs [DBZ-759](https://issues.jboss.org/browse/DBZ-759)
+* Reduce test log output [DBZ-765](https://issues.jboss.org/browse/DBZ-765)
+* Document wal2json plugin streaming mode [DBZ-772](https://issues.jboss.org/browse/DBZ-772)
+* Extract common base class for relational DatabaseSchema implementations [DBZ-773](https://issues.jboss.org/browse/DBZ-773)
+* Intermittent failures in ReplicationConnectionIT#shouldCloseConnectionOnInvalidSlotName() [DBZ-778](https://issues.jboss.org/browse/DBZ-778)
+* Stabilize MongoDB integration test execution [DBZ-779](https://issues.jboss.org/browse/DBZ-779)
+
+
+## 0.8.0.Beta1
 June 21st, 2018 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12337217)
 
 ### New features since 0.7.5
@@ -864,3 +904,4 @@ March 17, 2016 - [Detailed release notes](https://issues.jboss.org/secure/Releas
 * Kafka Connect plugin archive for MySQL connector. ([DBZ-17](https://issues.jboss.org/projects/DBZ/issues/DBZ-17))
 * Simple DDL parsing framework that can be extended and used by various connectors. ([DBZ-1](https://issues.jboss.org/projects/DBZ/issues/DBZ-1))
 * Framework for embedding a single Kafka Connect connector inside an application. ([DBZ-8](https://issues.jboss.org/projects/DBZ/issues/DBZ-8))
+
