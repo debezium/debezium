@@ -567,6 +567,7 @@ public class SnapshotReader extends AbstractReader {
                                                 long stop = clock.currentTimeInMillis();
                                                 logger.info("Step {}: - {} of {} rows scanned from table '{}' after {}",
                                                             stepNum, rowNum, rowCountStr, tableId, Strings.duration(stop - start));
+                                                metrics.setRowsScanned(tableId.toString(), rowNum);
                                             }
                                         }
 
@@ -575,6 +576,7 @@ public class SnapshotReader extends AbstractReader {
                                             long stop = clock.currentTimeInMillis();
                                             logger.info("Step {}: - Completed scanning a total of {} rows from table '{}' after {}",
                                                         stepNum, rowNum, tableId, Strings.duration(stop - start));
+                                            metrics.setRowsScanned(tableId.toString(), rowNum);
                                         }
                                     } catch (InterruptedException e) {
                                         Thread.interrupted();

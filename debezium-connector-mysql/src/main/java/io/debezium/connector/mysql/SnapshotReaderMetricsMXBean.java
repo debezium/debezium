@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import java.util.Map;
+
 /**
  * @author Randall Hauch
  */
@@ -17,4 +19,5 @@ public interface SnapshotReaderMetricsMXBean extends ReaderMetricsMXBean {
     boolean getSnapshotAborted();
     boolean getSnapshotCompleted();
     long getSnapshotDurationInSeconds();
+    Map<String, Long> getRowsScanned();
 }
