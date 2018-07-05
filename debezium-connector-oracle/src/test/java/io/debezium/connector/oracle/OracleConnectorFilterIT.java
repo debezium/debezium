@@ -109,7 +109,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
 
         SourceRecords records = consumeRecordsByTopic(2);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.ORCLPDB1.DEBEZIUM.TABLE1");
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE1");
         assertThat(testTableRecords).hasSize(1);
 
         VerifyRecord.isValidInsert(testTableRecords.get(0));
@@ -117,10 +117,10 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         assertThat(after.get("ID")).isEqualTo(BigDecimal.valueOf(1));
         assertThat(after.get("NAME")).isEqualTo("Text-1");
 
-        testTableRecords = records.recordsForTopic("server1.ORCLPDB1.DEBEZIUM.TABLE2");
+        testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE2");
         assertThat(testTableRecords).isNull();
 
-        testTableRecords = records.recordsForTopic("server1.ORCLPDB1.DEBEZIUM.TABLE3");
+        testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE3");
         assertThat(testTableRecords).hasSize(1);
 
         VerifyRecord.isValidInsert(testTableRecords.get(0));
@@ -160,7 +160,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
 
         SourceRecords records = consumeRecordsByTopic(2);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.ORCLPDB1.DEBEZIUM.TABLE1");
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE1");
         assertThat(testTableRecords).hasSize(1);
 
         VerifyRecord.isValidInsert(testTableRecords.get(0));
@@ -168,10 +168,10 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         assertThat(after.get("ID")).isEqualTo(BigDecimal.valueOf(1));
         assertThat(after.get("NAME")).isEqualTo("Text-1");
 
-        testTableRecords = records.recordsForTopic("server1.ORCLPDB1.DEBEZIUM.TABLE2");
+        testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE2");
         assertThat(testTableRecords).isNull();
 
-        testTableRecords = records.recordsForTopic("server1.ORCLPDB1.DEBEZIUM.TABLE3");
+        testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE3");
         assertThat(testTableRecords).hasSize(1);
 
         VerifyRecord.isValidInsert(testTableRecords.get(0));

@@ -175,7 +175,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
 
         final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.ORCLPDB1.DEBEZIUM.TYPE_STRING");
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TYPE_STRING");
         assertThat(testTableRecords).hasSize(expectedRecordCount);
 
         // insert
@@ -195,7 +195,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
 
         final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.ORCLPDB1.DEBEZIUM.TYPE_FP");
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TYPE_FP");
         assertThat(testTableRecords).hasSize(expectedRecordCount);
 
         // insert
@@ -215,7 +215,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
 
         final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.ORCLPDB1.DEBEZIUM.TYPE_INT");
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TYPE_INT");
         assertThat(testTableRecords).hasSize(expectedRecordCount);
 
         // insert
@@ -243,7 +243,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
 
         final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.ORCLPDB1.DEBEZIUM.TYPE_TIME");
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TYPE_TIME");
         assertThat(testTableRecords).hasSize(expectedRecordCount);
 
         // insert

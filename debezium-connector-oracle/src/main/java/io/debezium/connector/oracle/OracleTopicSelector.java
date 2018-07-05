@@ -12,7 +12,7 @@ public class OracleTopicSelector implements TopicSelector<TableId> {
 
     private final String prefix;
 
-    public OracleTopicSelector(String prefix) {
+    private OracleTopicSelector(String prefix) {
         this.prefix = prefix;
     }
 
@@ -22,6 +22,6 @@ public class OracleTopicSelector implements TopicSelector<TableId> {
 
     @Override
     public String topicNameFor(TableId tableId) {
-        return String.join(".", prefix, tableId.catalog(), tableId.schema(), tableId.table());
+        return String.join(".", prefix, tableId.schema(), tableId.table());
     }
 }

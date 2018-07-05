@@ -99,7 +99,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
         SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.ORCLPDB1.DEBEZIUM.CUSTOMER");
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.CUSTOMER");
         assertThat(testTableRecords).hasSize(expectedRecordCount);
 
         // insert
@@ -180,7 +180,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
         SourceRecords records = consumeRecordsByTopic(1);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.ORCLPDB1.DEBEZIUM.CUSTOMER2");
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.CUSTOMER2");
         assertThat(testTableRecords).hasSize(1);
 
         VerifyRecord.isValidInsert(testTableRecords.get(0));
