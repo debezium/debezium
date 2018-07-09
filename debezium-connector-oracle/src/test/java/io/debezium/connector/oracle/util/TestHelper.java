@@ -21,16 +21,18 @@ import io.debezium.util.Testing;
 
 public class TestHelper {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(TestHelper.class);
+
     public static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(TestHelper.class);
+    public static final String CONNECTOR_USER = "c##xstrm";
 
     private static JdbcConfiguration defaultJdbcConfig() {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                 .withDefault(JdbcConfiguration.PORT, 1521)
-                .withDefault(JdbcConfiguration.USER, "c##xstrmadmin")
-                .withDefault(JdbcConfiguration.PASSWORD, "xsa")
+                .withDefault(JdbcConfiguration.USER, CONNECTOR_USER)
+                .withDefault(JdbcConfiguration.PASSWORD, "xs")
                 .withDefault(JdbcConfiguration.DATABASE, "ORCLCDB")
                 .build();
     }

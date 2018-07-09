@@ -52,7 +52,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                 ")";
 
         connection.execute(ddl);
-        connection.execute("GRANT SELECT ON debezium.customer to c##xstrmadmin");
+        connection.execute("GRANT SELECT ON debezium.customer to  " + TestHelper.CONNECTOR_USER);
         connection.execute("ALTER TABLE debezium.customer ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
     }
 
@@ -172,7 +172,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                 ")";
 
         connection.execute(ddl);
-        connection.execute("GRANT SELECT ON debezium.customer2 to c##xstrmadmin");
+        connection.execute("GRANT SELECT ON debezium.customer2 to " + TestHelper.CONNECTOR_USER);
 
         connection.execute("INSERT INTO debezium.customer2 VALUES (2, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
         connection.execute("COMMIT");

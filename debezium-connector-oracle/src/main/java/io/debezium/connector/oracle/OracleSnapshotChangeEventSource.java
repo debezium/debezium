@@ -131,7 +131,7 @@ public class OracleSnapshotChangeEventSource implements SnapshotChangeEventSourc
     }
 
     private void determineOffsetContextWithScn(SnapshotContext ctx) throws SQLException {
-        ResultSet rs = ctx.statement.executeQuery("select DBMS_FLASHBACK.GET_SYSTEM_CHANGE_NUMBER from dual");
+        ResultSet rs = ctx.statement.executeQuery("select CURRENT_SCN from V$DATABASE");
 
         if (!rs.next()) {
             throw new IllegalStateException("Couldn't get SCN");

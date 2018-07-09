@@ -61,7 +61,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
                 ")";
 
         connection.execute(ddl);
-        connection.execute("GRANT SELECT ON debezium.table1 to c##xstrmadmin");
+        connection.execute("GRANT SELECT ON debezium.table1 to " + TestHelper.CONNECTOR_USER);
         connection.execute("ALTER TABLE debezium.table1 ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
 
         ddl = "create table debezium.table2 (" +
@@ -71,7 +71,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
                 ")";
 
         connection.execute(ddl);
-        connection.execute("GRANT SELECT ON debezium.table2 to c##xstrmadmin");
+        connection.execute("GRANT SELECT ON debezium.table2 to  " + TestHelper.CONNECTOR_USER);
         connection.execute("ALTER TABLE debezium.table2 ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
 
         initializeConnectorTestFramework();
@@ -102,7 +102,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
                 ")";
 
         connection.execute(ddl);
-        connection.execute("GRANT SELECT ON debezium.table3 to c##xstrmadmin");
+        connection.execute("GRANT SELECT ON debezium.table3 to c##xstrm");
 
         connection.execute("INSERT INTO debezium.table3 VALUES (3, 'Text-3')");
         connection.execute("COMMIT");
@@ -153,7 +153,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
                 ")";
 
         connection.execute(ddl);
-        connection.execute("GRANT SELECT ON debezium.table3 to c##xstrmadmin");
+        connection.execute("GRANT SELECT ON debezium.table3 to  " + TestHelper.CONNECTOR_USER);
 
         connection.execute("INSERT INTO debezium.table3 VALUES (3, 'Text-3')");
         connection.execute("COMMIT");
