@@ -57,7 +57,7 @@ public class SqlServerConnectionIT {
             connection.execute(sql);
 
             // then enable CDC and wrapper functions
-            connection.enableTableCcd("testTable");
+            connection.enableTableCdc("testTable");
             // insert some data
 
             connection.execute("INSERT INTO testTable (NUMBER, TEXT) values (1, 'aaa')\n"
