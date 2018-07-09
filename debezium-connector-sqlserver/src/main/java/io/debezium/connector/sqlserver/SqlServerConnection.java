@@ -90,7 +90,7 @@ public class SqlServerConnection extends JdbcConnection {
      *            the name of the table, may not be {@code null}
      * @throws SQLException if anything unexpected fails
      */
-    public void enableTableCcd(String name) throws SQLException {
+    public void enableTableCdc(String name) throws SQLException {
         Objects.requireNonNull(name);
         String enableCdcForTableStmt = ENABLE_TABLE_CDC.replace(STATEMENTS_PLACEHOLDER, name);
         String generateWrapperFunctionsStmts = CDC_WRAPPERS_DML.replaceAll(STATEMENTS_PLACEHOLDER, name);
