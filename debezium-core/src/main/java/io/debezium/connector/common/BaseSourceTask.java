@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.common;
 
+import java.util.Collections;
 import java.util.Map;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -15,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.pipeline.spi.OffsetContext;
 
 /**
  * Base class for Debezium's CDC {@link SourceTask} implementations. Provides functionality common to all connectors,
@@ -58,4 +60,24 @@ public abstract class BaseSourceTask extends SourceTask {
      * Returns all configuration {@link Field} supported by this source task.
      */
     protected abstract Iterable<Field> getAllConfigurationFields();
+
+    /**
+     * Loads the connector's persistent offset (if present) via the given loader.
+     */
+    protected OffsetContext getPreviousOffset(OffsetContext.Loader loader) {
+        Map<String, ?> partition = loader.getPartition();
+
+        Map<String, Object> previousOffset = context.offsetStorageReader()
+                .offsets(Collections.singleton(partition))
+                .get(partition);
+
+        if (previousOffset != null) {
+            OffsetContext offsetContext = loader.load(previousOffset);
+            LOGGER.info("Found previous offset {}", offsetContext);
+            return offsetContext;
+        }
+        else {
+            return null;
+        }
+    }
 }

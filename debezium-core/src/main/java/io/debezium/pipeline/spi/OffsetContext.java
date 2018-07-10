@@ -10,12 +10,46 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
+/**
+ * Keeps track of the current offset within the source DB's change stream. This reflects in the offset as committed to
+ * Kafka and in the source info block contained within CDC messages themselves.
+ *
+ * @author Gunnar Morling
+ *
+ */
 public interface OffsetContext {
 
-    // load()
+    /**
+     * Implementations load a connector-specific offset context based on the offset values stored in Kafka.
+     */
+    interface Loader {
+        Map<String, ?> getPartition();
+        OffsetContext load(Map<String, ?> offset);
+    }
 
     Map<String, ?> getPartition();
     Map<String, ?> getOffset();
     Schema getSourceInfoSchema();
     Struct getSourceInfo();
+
+    /**
+     * Whether this offset indicates that an (uncompleted) snapshot is currently running or not.
+     * @return
+     */
+    boolean isSnapshotRunning();
+
+    /**
+     * Signals that a snapshot will begin, which should reflect in an updated offset state.
+     */
+    void preSnapshotStart();
+
+    /**
+     * Signals that a snapshot will complete, which should reflect in an updated offset state.
+     */
+    void preSnapshotCompletion();
+
+    /**
+     * Signals that a snapshot has been completed, which should reflect in an updated offset state.
+     */
+    void postSnapshotCompletion();
 }

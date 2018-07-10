@@ -6,6 +6,7 @@
 package io.debezium.pipeline;
 
 import java.util.Objects;
+import java.util.function.Supplier;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -46,7 +47,11 @@ public class EventDispatcher<T extends DataCollectionId> {
     private final ChangeEventQueue<Object> queue;
     private final DataCollectionFilter<T> filter;
     private final ChangeEventCreator changeEventCreator;
-    private final StreamingChangeRecordReceiver receiver;
+
+    /**
+     * Change event receiver for events dispatched from a streaming change event source.
+     */
+    private final StreamingChangeRecordReceiver streamingReceiver;
 
     public EventDispatcher(TopicSelector<T> topicSelector, DatabaseSchema<T> schema,
             ChangeEventQueue<Object> queue,
@@ -60,7 +65,29 @@ public class EventDispatcher<T extends DataCollectionId> {
         this.queue = queue;
         this.filter = filter;
         this.changeEventCreator = changeEventCreator;
-        this.receiver = new StreamingChangeRecordReceiver();
+        this.streamingReceiver = new StreamingChangeRecordReceiver();
+    }
+
+    // TODO One could argue that snapshot events shouldn't have to go through the dispatcher but rather to the queue
+    // directly; It's done though in order to handle heartbeat, JMX and other things consistently with streaming, so
+    // it might be beneficial eventually
+    public void dispatchSnapshotEvent(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter, SnapshotReceiver receiver) throws InterruptedException {
+        // TODO Handle Heartbeat
+
+        // TODO Handle JMX
+
+        DataCollectionSchema dataCollectionSchema = schema.schemaFor(dataCollectionId);
+
+        // TODO handle as per inconsistent schema info option
+        if(dataCollectionSchema == null) {
+            throw new IllegalArgumentException("No metadata registered for captured table " + dataCollectionId);
+        }
+
+        changeRecordEmitter.emitChangeRecords(dataCollectionSchema, receiver);
+    }
+
+    public SnapshotReceiver getSnapshotChangeEventReceiver() {
+        return new BufferingSnapshotChangeRecordReceiver();
     }
 
     /**
@@ -87,10 +114,7 @@ public class EventDispatcher<T extends DataCollectionId> {
             throw new IllegalArgumentException("No metadata registered for captured table " + dataCollectionId);
         }
 
-        changeRecordEmitter.emitChangeRecords(
-            dataCollectionSchema,
-            receiver
-        );
+        changeRecordEmitter.emitChangeRecords(dataCollectionSchema, streamingReceiver);
     }
 
     public void dispatchSchemaChangeEvent(T dataCollectionId, SchemaChangeEventEmitter schemaChangeEventEmitter) throws InterruptedException {
@@ -100,6 +124,15 @@ public class EventDispatcher<T extends DataCollectionId> {
         }
 
         schemaChangeEventEmitter.emitSchemaChangeEvent(new SchemaChangeEventReceiver());
+    }
+
+    /**
+     * Change record receiver used during snapshotting. Allows for a deferred submission of records, which is needed in
+     * order to set the "snapshot completed" offset field, which we can't send to Kafka Connect without sending an
+     * actual record
+     */
+    public interface SnapshotReceiver extends ChangeRecordEmitter.Receiver {
+        void completeSnapshot() throws InterruptedException;
     }
 
     private final class StreamingChangeRecordReceiver implements ChangeRecordEmitter.Receiver {
@@ -134,6 +167,42 @@ public class EventDispatcher<T extends DataCollectionId> {
                 );
 
                 queue.enqueue(changeEventCreator.createDataChangeEvent(tombStone));
+            }
+        }
+    }
+
+    private final class BufferingSnapshotChangeRecordReceiver implements SnapshotReceiver {
+
+        private Supplier<DataChangeEvent> bufferedEvent;
+
+        @Override
+        public void changeRecord(DataCollectionSchema dataCollectionSchema, Operation operation, Object key, Struct value, OffsetContext offsetContext) throws InterruptedException {
+            Objects.requireNonNull(key, "key must not be null");
+            Objects.requireNonNull(value, "key must not be null");
+
+            LOGGER.trace( "Received change record for {} operation on key {}", operation, key);
+
+            if(bufferedEvent != null) {
+                queue.enqueue(bufferedEvent.get());
+            }
+
+            Schema keySchema = dataCollectionSchema.keySchema();
+            String topicName = topicSelector.topicNameFor((T) dataCollectionSchema.id());
+
+            // the record is produced lazily, so to have the correct offset as per the pre/post completion callbacks
+            bufferedEvent = () -> {
+                SourceRecord record = new SourceRecord(offsetContext.getPartition(), offsetContext.getOffset(),
+                        topicName, null, keySchema, key, dataCollectionSchema.getEnvelopeSchema().schema(), value);
+
+                return changeEventCreator.createDataChangeEvent(record);
+            };
+        }
+
+        @Override
+        public void completeSnapshot() throws InterruptedException {
+            if(bufferedEvent != null) {
+                queue.enqueue(bufferedEvent.get());
+                bufferedEvent = null;
             }
         }
     }
