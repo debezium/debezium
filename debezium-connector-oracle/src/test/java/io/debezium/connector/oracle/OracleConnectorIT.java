@@ -25,6 +25,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Testing;
 
 /**
@@ -35,6 +36,8 @@ import io.debezium.util.Testing;
 public class OracleConnectorIT extends AbstractConnectorTest {
 
     private static final long MICROS_PER_SECOND = TimeUnit.SECONDS.toMicros(1);
+    private static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
+
     private static OracleConnection connection;
 
     @BeforeClass
@@ -64,15 +67,124 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     }
 
     @Before
-    public void before() {
+    public void before() throws SQLException {
+        connection.execute("delete from debezium.customer");
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
     }
 
     @Test
+    public void shouldTakeSnapshot() throws Exception {
+        Configuration config = TestHelper.defaultConfig()
+                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "ORCLPDB1\\.DEBEZIUM\\.CUSTOMER")
+                .build();
+
+        int expectedRecordCount = 0;
+        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (2, 'Bruce', 2345.67, null)");
+        connection.execute("COMMIT");
+        expectedRecordCount += 2;
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.CUSTOMER");
+        assertThat(testTableRecords).hasSize(expectedRecordCount);
+
+        // read
+        SourceRecord record1 = testTableRecords.get(0);
+        VerifyRecord.isValidRead(record1);
+        Struct after = (Struct) ((Struct)record1.value()).get("after");
+        assertThat(after.get("ID")).isEqualTo(BigDecimal.valueOf(1));
+        assertThat(after.get("NAME")).isEqualTo("Billie-Bob");
+        assertThat(after.get("SCORE")).isEqualTo(BigDecimal.valueOf(1234.56));
+        assertThat(after.get("REGISTERED")).isEqualTo(toMicroSecondsSinceEpoch(LocalDateTime.of(2018, 2, 22, 0, 0, 0)));
+
+        assertThat(record1.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(record1.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(false);
+
+        Struct source = (Struct) ((Struct)record1.value()).get("source");
+        assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+
+        SourceRecord record2 = testTableRecords.get(1);
+        VerifyRecord.isValidRead(record2);
+        after = (Struct) ((Struct)record2.value()).get("after");
+        assertThat(after.get("ID")).isEqualTo(BigDecimal.valueOf(2));
+        assertThat(after.get("NAME")).isEqualTo("Bruce");
+        assertThat(after.get("SCORE")).isEqualTo(BigDecimal.valueOf(2345.67));
+        assertThat(after.get("REGISTERED")).isNull();
+
+        assertThat(record2.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(record2.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(true);
+
+        source = (Struct) ((Struct)record2.value()).get("source");
+        assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+    }
+
+    @Test
+    public void shouldContinueWithStreamingAfterSnapshot() throws Exception {
+        Configuration config = TestHelper.defaultConfig()
+                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "ORCLPDB1\\.DEBEZIUM\\.CUSTOMER")
+                .build();
+
+        int expectedRecordCount = 0;
+        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (2, 'Bruce', 2345.67, null)");
+        connection.execute("COMMIT");
+        expectedRecordCount += 2;
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.CUSTOMER");
+        assertThat(testTableRecords).hasSize(expectedRecordCount);
+
+        // read
+        SourceRecord record1 = testTableRecords.get(0);
+        VerifyRecord.isValidRead(record1);
+        Struct after = (Struct) ((Struct)record1.value()).get("after");
+        assertThat(after.get("ID")).isEqualTo(BigDecimal.valueOf(1));
+
+        assertThat(record1.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(record1.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(false);
+
+        SourceRecord record2 = testTableRecords.get(1);
+        VerifyRecord.isValidRead(record2);
+        after = (Struct) ((Struct)record2.value()).get("after");
+        assertThat(after.get("ID")).isEqualTo(BigDecimal.valueOf(2));
+
+        assertThat(record2.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(record2.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(true);
+
+        expectedRecordCount = 0;
+        connection.execute("INSERT INTO debezium.customer VALUES (3, 'Brian', 2345.67, null)");
+        connection.execute("COMMIT");
+        expectedRecordCount += 1;
+
+        records = consumeRecordsByTopic(expectedRecordCount);
+        testTableRecords = records.recordsForTopic("server1.DEBEZIUM.CUSTOMER");
+        assertThat(testTableRecords).hasSize(expectedRecordCount);
+
+        SourceRecord record3 = testTableRecords.get(0);
+        VerifyRecord.isValidInsert(record3);
+        after = (Struct) ((Struct)record3.value()).get("after");
+        assertThat(after.get("ID")).isEqualTo(BigDecimal.valueOf(3));
+
+        assertThat(record3.sourceOffset().containsKey(SourceInfo.SNAPSHOT_KEY)).isFalse();
+        assertThat(record3.sourceOffset().containsKey(SNAPSHOT_COMPLETED_KEY)).isFalse();
+
+        Struct source = (Struct) ((Struct)record3.value()).get("source");
+        assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(false);
+    }
+
+    @Test
     public void shouldReadChangeStreamForExistingTable() throws Exception {
-        Configuration config = TestHelper.defaultConfig().build();
+        Configuration config = TestHelper.defaultConfig()
+                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "ORCLPDB1\\.DEBEZIUM\\.CUSTOMER")
+                .build();
 
         start(OracleConnector.class, config);
         assertConnectorIsRunning();
@@ -156,7 +268,9 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     public void shouldReadChangeStreamForTableCreatedWhileStreaming() throws Exception {
         TestHelper.dropTable(connection, "debezium.customer2");
 
-        Configuration config = TestHelper.defaultConfig().build();
+        Configuration config = TestHelper.defaultConfig()
+                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "ORCLPDB1\\.DEBEZIUM\\.CUSTOMER2")
+                .build();
 
         start(OracleConnector.class, config);
         assertConnectorIsRunning();

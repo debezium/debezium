@@ -13,6 +13,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.document.Document;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -81,6 +82,16 @@ public class OracleConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withValidation(Field::isRequired)
             .withDescription("Name of the XStream Out server to connect to.");
 
+    public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
+            .withDisplayName("Snapshot mode")
+            .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("The criteria for running a snapshot upon startup of the connector. "
+                    + "Options include: "
+                    + "'initial' (the default) to specify the connector should run a snapshot only when no offsets are available for the logical server name; "
+                    + "'initial_schema_only' to specify the connector should run a snapshot of the schema when no offsets are available for the logical server name. ");
+
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
@@ -89,6 +100,7 @@ public class OracleConnectorConfig extends RelationalDatabaseConnectorConfig {
             DATABASE_NAME,
             PDB_NAME,
             XSTREAM_SERVER_NAME,
+            SNAPSHOT_MODE,
             RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
             RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
             RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
@@ -100,6 +112,7 @@ public class OracleConnectorConfig extends RelationalDatabaseConnectorConfig {
     private final String databaseName;
     private final String pdbName;
     private final String xoutServerName;
+    private final SnapshotMode snapshotMode;
 
     public OracleConnectorConfig(Configuration config) {
         super(config, config.getString(LOGICAL_NAME), new SystemTablesPredicate());
@@ -107,12 +120,13 @@ public class OracleConnectorConfig extends RelationalDatabaseConnectorConfig {
         this.databaseName = config.getString(DATABASE_NAME);
         this.pdbName = config.getString(PDB_NAME);
         this.xoutServerName = config.getString(XSTREAM_SERVER_NAME);
+        this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
     }
 
     public static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
 
-        Field.group(config, "Oracle", LOGICAL_NAME, DATABASE_NAME, PDB_NAME, XSTREAM_SERVER_NAME);
+        Field.group(config, "Oracle", LOGICAL_NAME, DATABASE_NAME, PDB_NAME, XSTREAM_SERVER_NAME, SNAPSHOT_MODE);
         Field.group(config, "Events", RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
                 RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
                 RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN
@@ -132,6 +146,10 @@ public class OracleConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public String getXoutServerName() {
         return xoutServerName;
+    }
+
+    public SnapshotMode getSnapshotMode() {
+        return snapshotMode;
     }
 
     /**
@@ -164,6 +182,79 @@ public class OracleConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     /**
+     * The set of predefined SnapshotMode options or aliases.
+     */
+    public static enum SnapshotMode implements EnumeratedValue {
+
+        /**
+         * Perform a snapshot of data and schema upon initial startup of a connector.
+         */
+        INITIAL("initial", true),
+
+        /**
+         * Perform a snapshot of data and schema upon initial startup of a connector.
+         */
+        INITIAL_SCHEMA_ONLY("initial_schema_only", false);
+
+        private final String value;
+        private final boolean includeData;
+
+        private SnapshotMode(String value, boolean includeData) {
+            this.value = value;
+            this.includeData = includeData;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Whether this snapshotting mode should include the actual data or just the
+         * schema of captured tables.
+         */
+        public boolean includeData() {
+            return includeData;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static SnapshotMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+
+            for (SnapshotMode option : SnapshotMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static SnapshotMode parse(String value, String defaultValue) {
+            SnapshotMode mode = parse(value);
+
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+
+            return mode;
+        }
+    }
+
+    /**
      * A {@link TableFilter} that excludes all Oracle system tables.
      *
      * @author Gunnar Morling
@@ -172,11 +263,22 @@ public class OracleConnectorConfig extends RelationalDatabaseConnectorConfig {
 
         @Override
         public boolean isIncluded(TableId t) {
-            return !t.schema().toLowerCase().equals("system") &&
-                    !t.schema().toLowerCase().equals("sys") &&
-                    !t.schema().toLowerCase().equals("mdsys") &&
+            return !t.schema().toLowerCase().equals("appqossys") &&
                     !t.schema().toLowerCase().equals("ctxsys") &&
+                    !t.schema().toLowerCase().equals("dvsys") &&
+                    !t.schema().toLowerCase().equals("dbsfwuser") &&
+                    !t.schema().toLowerCase().equals("dbsnmp") &&
+                    !t.schema().toLowerCase().equals("gsmadmin_internal") &&
+                    !t.schema().toLowerCase().equals("lbacsys") &&
+                    !t.schema().toLowerCase().equals("mdsys") &&
+                    !t.schema().toLowerCase().equals("ojvmsys") &&
+                    !t.schema().toLowerCase().equals("olapsys") &&
+                    !t.schema().toLowerCase().equals("orddata") &&
+                    !t.schema().toLowerCase().equals("ordsys") &&
                     !t.schema().toLowerCase().equals("outln") &&
+                    !t.schema().toLowerCase().equals("sys") &&
+                    !t.schema().toLowerCase().equals("system") &&
+                    !t.schema().toLowerCase().equals("wmsys") &&
                     !t.schema().toLowerCase().equals("xdb");
         }
     }

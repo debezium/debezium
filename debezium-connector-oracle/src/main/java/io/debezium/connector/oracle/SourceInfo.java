@@ -33,6 +33,7 @@ public class SourceInfo extends AbstractSourceInfo {
     private long scn;
     private String transactionId;
     private Instant sourceTime;
+    private boolean snapshot;
 
     protected SourceInfo(String serverName) {
         super(Module.version());
@@ -51,7 +52,7 @@ public class SourceInfo extends AbstractSourceInfo {
                 .put(TIMESTAMP_KEY, sourceTime.toEpochMilli())
                 .put(TXID_KEY, transactionId)
                 .put(SCN_KEY, scn)
-                .put(SNAPSHOT_KEY, false);
+                .put(SNAPSHOT_KEY, snapshot);
     }
 
     public String getServerName() {
@@ -80,5 +81,13 @@ public class SourceInfo extends AbstractSourceInfo {
 
     public void setSourceTime(Instant sourceTime) {
         this.sourceTime = sourceTime;
+    }
+
+    public void setSnapshot(boolean snapshot) {
+        this.snapshot = snapshot;
+    }
+
+    public boolean isSnapshot() {
+        return snapshot;
     }
 }

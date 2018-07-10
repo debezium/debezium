@@ -6,7 +6,6 @@
 package io.debezium.connector.oracle;
 
 import java.sql.SQLException;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -25,6 +24,7 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.SchemaNameAdjuster;
@@ -83,7 +83,7 @@ public class OracleConnectorTask extends BaseSourceTask {
 
         this.schema = new OracleDatabaseSchema(connectorConfig, schemaNameAdjuster, topicSelector, jdbcConnection);
 
-        OracleOffsetContext previousOffset = getPreviousOffset(connectorConfig);
+        OffsetContext previousOffset = getPreviousOffset(new OracleOffsetContext.Loader(connectorConfig.getLogicalName()));
         if (previousOffset != null) {
             schema.recover(previousOffset);
         }
@@ -100,24 +100,6 @@ public class OracleConnectorTask extends BaseSourceTask {
         );
 
         coordinator.start();
-    }
-
-    private OracleOffsetContext getPreviousOffset(OracleConnectorConfig connectorConfig) {
-        OracleOffsetContext offsetContext = new OracleOffsetContext(connectorConfig.getLogicalName());
-
-        Map<String, Object> previousOffset = context.offsetStorageReader()
-                .offsets(Collections.singleton(offsetContext.getPartition()))
-                .get(offsetContext.getPartition());
-
-        if (previousOffset != null) {
-            long scn = (long) previousOffset.get(SourceInfo.SCN_KEY);
-            offsetContext.setScn(scn);
-            LOGGER.info("Found previous offset {}", offsetContext);
-
-            return offsetContext;
-        }
-
-        return null;
     }
 
     @Override

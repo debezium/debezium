@@ -93,27 +93,34 @@ public class OracleConnection extends JdbcConnection {
     public void readSchema(Tables tables, String databaseCatalog, String schemaNamePattern, TableFilter tableFilter,
             ColumnNameFilter columnFilter, boolean removeTablesNotFoundInJdbc) throws SQLException {
 
-        super.readSchema(tables, null, schemaNamePattern, tableFilter, columnFilter, removeTablesNotFoundInJdbc);
+        super.readSchema(tables, null, schemaNamePattern, null, columnFilter, removeTablesNotFoundInJdbc);
 
         Set<TableId> tableIds = new HashSet<>(tables.tableIds());
 
         for (TableId tableId : tableIds) {
-            TableEditor editor = tables.editTable(tableId);
-            editor.tableId(new TableId(databaseCatalog, tableId.schema(), tableId.table()));
+            // super.readSchema() populates ids without the catalog; hence we apply the filtering only
+            // here and if a table is included, overwrite it with a new id including the catalog
+            TableId tableIdWithCatalog = new TableId(databaseCatalog, tableId.schema(), tableId.table());
 
-            List<String> columnNames = new ArrayList<>(editor.columnNames());
-            for (String columnName : columnNames) {
-                Column column = editor.columnWithName(columnName);
-                if (column.jdbcType() == Types.TIMESTAMP) {
-                    editor.addColumn(
-                            column.edit()
-                                .length(column.scale().orElse(Column.UNSET_INT_VALUE))
-                                .scale(null)
-                                .create()
-                            );
+            if (tableFilter.isIncluded(tableIdWithCatalog)) {
+                TableEditor editor = tables.editTable(tableId);
+                editor.tableId(tableIdWithCatalog);
+
+                List<String> columnNames = new ArrayList<>(editor.columnNames());
+                for (String columnName : columnNames) {
+                    Column column = editor.columnWithName(columnName);
+                    if (column.jdbcType() == Types.TIMESTAMP) {
+                        editor.addColumn(
+                                column.edit()
+                                    .length(column.scale().orElse(Column.UNSET_INT_VALUE))
+                                    .scale(null)
+                                    .create()
+                                );
+                    }
                 }
+                tables.overwriteTable(editor.create());
             }
-            tables.overwriteTable(editor.create());
+
             tables.removeTable(tableId);
         }
     }
