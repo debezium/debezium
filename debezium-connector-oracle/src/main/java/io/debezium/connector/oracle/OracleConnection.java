@@ -24,7 +24,7 @@ import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
-import io.debezium.relational.Tables.TableNameFilter;
+import io.debezium.relational.Tables.TableFilter;
 
 public class OracleConnection extends JdbcConnection {
 
@@ -90,7 +90,7 @@ public class OracleConnection extends JdbcConnection {
     }
 
     @Override
-    public void readSchema(Tables tables, String databaseCatalog, String schemaNamePattern, TableNameFilter tableFilter,
+    public void readSchema(Tables tables, String databaseCatalog, String schemaNamePattern, TableFilter tableFilter,
             ColumnNameFilter columnFilter, boolean removeTablesNotFoundInJdbc) throws SQLException {
 
         super.readSchema(tables, null, schemaNamePattern, tableFilter, columnFilter, removeTablesNotFoundInJdbc);

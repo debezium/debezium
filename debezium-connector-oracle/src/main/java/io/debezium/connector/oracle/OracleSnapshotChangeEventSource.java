@@ -159,9 +159,7 @@ public class OracleSnapshotChangeEventSource implements SnapshotChangeEventSourc
                     ctx.tables,
                     ctx.catalogName,
                     schema,
-                    (catalog, schemaName, tableName) -> {
-                        return connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(new TableId(ctx.catalogName, schemaName, tableName));
-                    },
+                    connectorConfig.getTableFilters().dataCollectionFilter(),
                     null,
                     false
             );

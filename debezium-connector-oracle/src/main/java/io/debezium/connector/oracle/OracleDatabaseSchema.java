@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.oracle;
 
-import java.util.function.Predicate;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,6 +13,7 @@ import io.debezium.relational.HistorizedRelationalDatabaseSchema;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchemaBuilder;
+import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.TableChanges;
 import io.debezium.schema.SchemaChangeEvent;
@@ -31,16 +30,11 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     private final DatabaseHistory databaseHistory;
 
     public OracleDatabaseSchema(OracleConnectorConfig connectorConfig, SchemaNameAdjuster schemaNameAdjuster, TopicSelector<TableId> topicSelector, OracleConnection connection) {
-        super(connectorConfig, topicSelector, getTableFilter(connectorConfig), null,
+        super(connectorConfig, topicSelector, connectorConfig.getTableFilters().dataCollectionFilter(), null,
                 new TableSchemaBuilder(new OracleValueConverters(connection), schemaNameAdjuster, SourceInfo.SCHEMA),
                 false);
         this.databaseHistory = connectorConfig.getDatabaseHistory();
         this.databaseHistory.start();
-    }
-
-    // TODO use TableFilter contract everywhere
-    private static Predicate<TableId> getTableFilter(OracleConnectorConfig connectorConfig) {
-        return t -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(t);
     }
 
     @Override

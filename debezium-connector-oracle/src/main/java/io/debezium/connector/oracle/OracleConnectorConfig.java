@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.oracle;
 
-import java.util.function.Predicate;
-
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -20,6 +18,7 @@ import io.debezium.document.Document;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
+import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.KafkaDatabaseHistory;
@@ -164,16 +163,21 @@ public class OracleConnectorConfig extends RelationalDatabaseConnectorConfig {
         return databaseHistory;
     }
 
-    private static class SystemTablesPredicate implements Predicate<TableId> {
+    /**
+     * A {@link TableFilter} that excludes all Oracle system tables.
+     *
+     * @author Gunnar Morling
+     */
+    private static class SystemTablesPredicate implements TableFilter {
 
         @Override
-        public boolean test(TableId t) {
-            return t.schema().toLowerCase().equals("system") ||
-                    t.schema().toLowerCase().equals("sys") ||
-                    t.schema().toLowerCase().equals("mdsys") ||
-                    t.schema().toLowerCase().equals("ctxsys") ||
-                    t.schema().toLowerCase().equals("outln") ||
-                    t.schema().toLowerCase().equals("xdb");
+        public boolean isIncluded(TableId t) {
+            return !t.schema().toLowerCase().equals("system") &&
+                    !t.schema().toLowerCase().equals("sys") &&
+                    !t.schema().toLowerCase().equals("mdsys") &&
+                    !t.schema().toLowerCase().equals("ctxsys") &&
+                    !t.schema().toLowerCase().equals("outln") &&
+                    !t.schema().toLowerCase().equals("xdb");
         }
     }
 }
