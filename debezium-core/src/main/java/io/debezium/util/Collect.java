@@ -96,7 +96,7 @@ public class Collect {
         List<T> result = new ArrayList<>();
         result.add(first);
         for (T another : additional) {
-            if (another != null) result.add(another);
+            result.add(another);
         }
         return result;
     }

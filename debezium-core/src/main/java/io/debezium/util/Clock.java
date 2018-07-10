@@ -50,7 +50,7 @@ public interface Clock {
      * @return the current time in microseconds.
      */
     default long currentTimeInMicros() {
-        return TimeUnit.MICROSECONDS.convert(currentTimeInMillis(), TimeUnit.MILLISECONDS);        
+        return TimeUnit.MICROSECONDS.convert(currentTimeInMillis(), TimeUnit.MILLISECONDS);
     }
 
     /**
