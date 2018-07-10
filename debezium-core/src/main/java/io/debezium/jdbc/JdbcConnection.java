@@ -15,20 +15,18 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -318,12 +316,20 @@ public class JdbcConnection implements AutoCloseable {
         void accept(ResultSet rs) throws SQLException;
     }
 
+    public static interface ResultSetMapper<T> {
+        T apply(ResultSet rs) throws SQLException;
+    }
+
     public static interface BlockingResultSetConsumer {
         void accept(ResultSet rs) throws SQLException, InterruptedException;
     }
 
-    public static interface SingleParameterResultSetConsumer {
-        boolean accept(String parameter, ResultSet rs) throws SQLException;
+    public static interface ParameterResultSetConsumer {
+        void accept(List<?> parameters, ResultSet rs) throws SQLException;
+    }
+
+    public static interface MultiResultSetConsumer {
+        void accept(ResultSet[] rs) throws SQLException;
     }
 
     public static interface StatementPreparer {
@@ -346,6 +352,20 @@ public class JdbcConnection implements AutoCloseable {
      */
     public JdbcConnection query(String query, ResultSetConsumer resultConsumer) throws SQLException {
         return query(query, Connection::createStatement, resultConsumer);
+    }
+
+    /**
+     * Execute a SQL query and map the result set into an expected type.
+     * @param <T> type returned by the mapper
+     *
+     * @param query the SQL query
+     * @param mapper the function processing the query results
+     * @return the result of the mapper calculation
+     * @throws SQLException if there is an error connecting to the database or executing the statements
+     * @see #execute(Operations)
+     */
+    public <T> T queryAndMap(String query, ResultSetMapper<T> mapper) throws SQLException {
+        return queryAndMap(query, Connection::createStatement, mapper);
     }
 
     /**
@@ -395,6 +415,83 @@ public class JdbcConnection implements AutoCloseable {
             }
         }
         return this;
+    }
+
+    /**
+     * Execute multiple SQL prepared queries where each query is executed with the same set of parameters..
+     *
+     * @param multiQuery the array of prepared queries
+     * @param preparer the function that supplied arguments to the prepared statement; may not be null
+     * @param resultConsumer the consumer of the query results
+     * @return this object for chaining methods together
+     * @throws SQLException if there is an error connecting to the database or executing the statements
+     * @see #execute(Operations)
+     */
+    public JdbcConnection prepareQuery(String[] multiQuery, StatementPreparer preparer, MultiResultSetConsumer resultConsumer) throws SQLException {
+        final Connection conn = connection();
+        final ResultSet[] resultSets = new ResultSet[multiQuery.length];
+        final PreparedStatement[] preparedStatements = new PreparedStatement[multiQuery.length];
+
+        try {
+            for (int i = 0; i < multiQuery.length; i++) {
+                final String query = multiQuery[i];
+                if (LOGGER.isTraceEnabled()) {
+                    LOGGER.trace("running '{}'", query);
+                }
+                final PreparedStatement statement = conn.prepareStatement(query);
+                preparedStatements[i] = statement;
+                preparer.accept(statement);
+                resultSets[i] = statement.executeQuery();
+            }
+            if (resultConsumer != null) {
+                resultConsumer.accept(resultSets);
+            }
+        }
+        finally {
+            for (ResultSet rs: resultSets) {
+                if (rs != null) {
+                    try {
+                        rs.close();
+                    }
+                    catch (Exception ei) {
+                    }
+                }
+            }
+            for (PreparedStatement ps: preparedStatements) {
+                if (ps != null) {
+                    try {
+                        ps.close();
+                    }
+                    catch (Exception ei) {
+                    }
+                }
+            }
+        }
+        return this;
+    }
+
+    /**
+     * Execute a SQL query and map the result set into an expected type.
+     * @param <T> type returned by the mapper
+     *
+     * @param query the SQL query
+     * @param statementFactory the function that should be used to create the statement from the connection; may not be null
+     * @param mapper the function processing the query results
+     * @return the result of the mapper calculation
+     * @throws SQLException if there is an error connecting to the database or executing the statements
+     * @see #execute(Operations)
+     */
+    public <T> T queryAndMap(String query, StatementFactory statementFactory, ResultSetMapper<T> mapper) throws SQLException {
+        Objects.requireNonNull(mapper, "Mapper must be provided");
+        Connection conn = connection();
+        try (Statement statement = statementFactory.createStatement(conn);) {
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("running '{}'", query);
+            }
+            try (ResultSet resultSet = statement.executeQuery(query);) {
+                return mapper.apply(resultSet);
+            }
+        }
     }
 
     public JdbcConnection queryWithBlockingConsumer(String query, StatementFactory statementFactory, BlockingResultSetConsumer resultConsumer) throws SQLException, InterruptedException {
@@ -450,6 +547,29 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     /**
+     * Execute a SQL prepared query and map the result set into an expected type..
+     * @param <T> type returned by the mapper
+     *
+     * @param preparedQueryString the prepared query string
+     * @param preparer the function that supplied arguments to the prepared statement; may not be null
+     * @param resultConsumer the consumer of the query results
+     * @return the result of the mapper calculation
+     * @throws SQLException if there is an error connecting to the database or executing the statements
+     * @see #execute(Operations)
+     */
+    public <T> T prepareQueryAndMap(String preparedQueryString, StatementPreparer preparer, ResultSetMapper<T> mapper)
+            throws SQLException {
+        Objects.requireNonNull(mapper, "Mapper must be provided");
+        Connection conn = connection();
+        try (PreparedStatement statement = conn.prepareStatement(preparedQueryString);) {
+            preparer.accept(statement);
+            try (ResultSet resultSet = statement.executeQuery();) {
+                return mapper.apply(resultSet);
+            }
+        }
+    }
+
+    /**
      * Execute a SQL update via a prepared statement.
      *
      * @param stmt the statement string
@@ -473,42 +593,24 @@ public class JdbcConnection implements AutoCloseable {
      * Execute a SQL prepared query.
      *
      * @param preparedQueryString the prepared query string
-     * @param parameters the collection of values for the first and only parameter in the query; may not be null
+     * @param parameters the list of values for parameters in the query; may not be null
      * @param resultConsumer the consumer of the query results
      * @return this object for chaining methods together
      * @throws SQLException if there is an error connecting to the database or executing the statements
      * @see #execute(Operations)
      */
-    public JdbcConnection prepareQuery(String preparedQueryString, Collection<String> parameters,
-                                       SingleParameterResultSetConsumer resultConsumer)
-            throws SQLException {
-        return prepareQuery(preparedQueryString, parameters.stream(), resultConsumer);
-    }
-
-    /**
-     * Execute a SQL prepared query.
-     *
-     * @param preparedQueryString the prepared query string
-     * @param parameters the stream of values for the first and only parameter in the query; may not be null
-     * @param resultConsumer the consumer of the query results
-     * @return this object for chaining methods together
-     * @throws SQLException if there is an error connecting to the database or executing the statements
-     * @see #execute(Operations)
-     */
-    public JdbcConnection prepareQuery(String preparedQueryString, Stream<String> parameters,
-                                       SingleParameterResultSetConsumer resultConsumer)
+    public JdbcConnection prepareQuery(String preparedQueryString, List<?> parameters,
+                                       ParameterResultSetConsumer resultConsumer)
             throws SQLException {
         Connection conn = connection();
-        try (PreparedStatement statement = conn.prepareStatement(preparedQueryString);) {
-            for (Iterator<String> iter = parameters.iterator(); iter.hasNext();) {
-                String value = iter.next();
-                statement.setString(1, value);
-                boolean success = false;
-                try (ResultSet resultSet = statement.executeQuery();) {
-                    if (resultConsumer != null) {
-                        success = resultConsumer.accept(value, resultSet);
-                        if (!success) break;
-                    }
+        try (PreparedStatement statement = conn.prepareStatement(preparedQueryString)) {
+            int index = 1;
+            for (final Object parameter: parameters) {
+                statement.setObject(index++, parameter);
+            }
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultConsumer != null) {
+                    resultConsumer.accept(parameters, resultSet);
                 }
             }
         }

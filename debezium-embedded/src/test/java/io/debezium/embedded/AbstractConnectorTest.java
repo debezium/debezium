@@ -345,6 +345,8 @@ public abstract class AbstractConnectorTest implements Testing {
     /**
      * Try to consume the specified number of records from the connector, calling the given function for each, and return the
      * actual number of records that were consumed.
+     * For slower connectors it is possible to receive no records form the connector multiple times in a row
+     * till the waiting is terminated.
      *
      * @param numberOfRecords the number of records that should be consumed
      * @param recordConsumer the function that should be called with each consumed record
@@ -353,9 +355,12 @@ public abstract class AbstractConnectorTest implements Testing {
      */
     protected int consumeRecords(int numberOfRecords, Consumer<SourceRecord> recordConsumer) throws InterruptedException {
         int recordsConsumed = 0;
+        final int BREAK_AFTER_NULLS = 3;
+        int nullReturn = 0;
         while (recordsConsumed < numberOfRecords) {
             SourceRecord record = consumedLines.poll(pollTimeoutInMs, TimeUnit.MILLISECONDS);
             if (record != null) {
+                nullReturn = 0;
                 ++recordsConsumed;
                 if (recordConsumer != null) {
                     recordConsumer.accept(record);
@@ -370,8 +375,9 @@ public abstract class AbstractConnectorTest implements Testing {
                     print(record);
                 }
             } else {
-                // TODO Add support for cases when records are returned in more than one batch
-                return recordsConsumed;
+                if (++nullReturn >= BREAK_AFTER_NULLS) {
+                    return recordsConsumed;
+                }
             }
         }
         return recordsConsumed;
