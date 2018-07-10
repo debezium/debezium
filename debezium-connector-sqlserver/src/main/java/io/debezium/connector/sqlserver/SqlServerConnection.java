@@ -7,33 +7,35 @@
 package io.debezium.connector.sqlserver;
 
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.Objects;
 import java.util.Properties;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
-import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.relational.TableId;
 import io.debezium.util.IoUtil;
 
 /**
  * {@link JdbcConnection} extension to be used with Microsoft SQL Server
  *
- * @author Horia Chiorean (hchiorea@redhat.com)
+ * @author Horia Chiorean (hchiorea@redhat.com), Jiri Pechanec
+ *
  */
 public class SqlServerConnection extends JdbcConnection {
 
-    private static final String URL_PATTERN = "jdbc:sqlserver://${" + JdbcConfiguration.HOSTNAME + "}:${"
-            + JdbcConfiguration.PORT + "};databaseName=${" + JdbcConfiguration.DATABASE + "}";
-    protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(URL_PATTERN,
-            com.microsoft.sqlserver.jdbc.SQLServerDriver.class.getName(), SqlServerConnection.class.getClassLoader());
     private static Logger LOGGER = LoggerFactory.getLogger(SqlServerConnection.class);
 
     private static final String STATEMENTS_PLACEHOLDER = "#";
     private static final String ENABLE_DB_CDC;
+    private static final String DISABLE_DB_CDC;
     private static final String ENABLE_TABLE_CDC;
     private static final String CDC_WRAPPERS_DML;
+    private static final String GET_MAX_LSN;
 
     static {
         try {
@@ -41,7 +43,9 @@ public class SqlServerConnection extends JdbcConnection {
             ClassLoader classLoader = SqlServerConnection.class.getClassLoader();
             statements.load(classLoader.getResourceAsStream("statements.properties"));
             ENABLE_DB_CDC = statements.getProperty("enable_cdc_for_db");
+            DISABLE_DB_CDC = statements.getProperty("disable_cdc_for_db");
             ENABLE_TABLE_CDC = statements.getProperty("enable_cdc_for_table");
+            GET_MAX_LSN = statements.getProperty("get_max_lsn");
             CDC_WRAPPERS_DML = IoUtil.read(classLoader.getResourceAsStream("generate_cdc_wrappers.sql"));
         }
         catch (Exception e) {
@@ -54,19 +58,10 @@ public class SqlServerConnection extends JdbcConnection {
      *
      * @param config
      *            {@link Configuration} instance, may not be null.
+     * @param factory a factory building the connection string
      */
-    public SqlServerConnection(Configuration config) {
-        super(config, FACTORY);
-    }
-
-    /**
-     * Returns a JDBC connection string for the current configuration.
-     *
-     * @return a {@code String} where the variables in {@code urlPattern} are
-     *         replaced with values from the configuration
-     */
-    public String connectionString() {
-        return connectionString(URL_PATTERN);
+    public SqlServerConnection(Configuration config, ConnectionFactory factory) {
+        super(config, factory);
     }
 
     /**
@@ -83,6 +78,19 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     /**
+     * Disables CDC for a given database, if not already disabled.
+     *
+     * @param name
+     *            the name of the DB, may not be {@code null}
+     * @throws SQLException
+     *             if anything unexpected fails
+     */
+    public void disableDbCdc(String name) throws SQLException {
+        Objects.requireNonNull(name);
+        execute(DISABLE_DB_CDC.replace(STATEMENTS_PLACEHOLDER, name));
+    }
+
+    /**
      * Enables CDC for a table if not already enabled and generates the wrapper
      * functions for that table.
      *
@@ -95,5 +103,87 @@ public class SqlServerConnection extends JdbcConnection {
         String enableCdcForTableStmt = ENABLE_TABLE_CDC.replace(STATEMENTS_PLACEHOLDER, name);
         String generateWrapperFunctionsStmts = CDC_WRAPPERS_DML.replaceAll(STATEMENTS_PLACEHOLDER, name);
         execute(enableCdcForTableStmt, generateWrapperFunctionsStmts);
+    }
+
+    /**
+     * @return the current largest log sequence number
+     */
+    public Lsn getMaxLsn() throws SQLException {
+        final String LSN_COUNT_ERROR = "Maximum LSN query must return exactly one value";
+        return queryAndMap(GET_MAX_LSN, rs -> {
+            if (rs.next()) {
+                final Lsn ret = new Lsn(rs.getBytes(1));
+                if (!rs.next()) {
+                    return ret;
+                }
+            }
+            throw new IllegalStateException(LSN_COUNT_ERROR);
+        });
+    }
+
+    public void getChangesForTable(TableId tableId, Lsn fromLsn, Lsn toLsn, ResultSetConsumer consumer) throws SQLException {
+        final String cdcNameForTable = cdcNameForTable(tableId);
+        final String query = "SELECT * FROM cdc.fn_cdc_get_all_changes_" + cdcNameForTable + "(ISNULL(?,sys.fn_cdc_get_min_lsn('" + cdcNameForTable + "')), ?, N'all update old')";
+        prepareQuery(query, statement -> {
+            statement.setBytes(1, fromLsn.getBinary());
+            statement.setBytes(2, toLsn.getBinary());
+        }, consumer);
+    }
+
+    public void getChangesForTables(TableId[] tableIds, Lsn fromLsn, Lsn toLsn, MultiResultSetConsumer consumer) throws SQLException {
+        final String[] queries = new String[tableIds.length];
+
+        int idx = 0;
+        for (TableId tableId: tableIds) {
+            final String cdcNameForTable = cdcNameForTable(tableId);
+            final String query = "SELECT * FROM cdc.fn_cdc_get_all_changes_" + cdcNameForTable + "(ISNULL(?,sys.fn_cdc_get_min_lsn('" + cdcNameForTable + "')), ?, N'all update old')";
+            queries[idx++] = query;
+        }
+        prepareQuery(queries, statement -> {
+            statement.setBytes(1, fromLsn.getBinary());
+            statement.setBytes(2, toLsn.getBinary());
+        }, consumer);
+    }
+
+    public Lsn incrementLsn(Lsn lsn) throws SQLException {
+        final String LSN_INCREMENT_ERROR = "Increment LSN query must return exactly one value";
+        final String query = "SELECT sys.fn_cdc_increment_lsn(?)";
+        return prepareQueryAndMap(query, statement -> {
+            statement.setBytes(1, lsn.getBinary());
+        }, rs -> {
+            if (rs.next()) {
+                final Lsn ret = new Lsn(rs.getBytes(1));
+                if (!rs.next()) {
+                    return ret;
+                }
+            }
+            throw new IllegalStateException(LSN_INCREMENT_ERROR);
+        });
+    }
+
+    public Instant timestampOfLsn(Lsn lsn) throws SQLException {
+        final String LSN_TIMESTAMP_ERROR = "LSN to timestamp query must return exactly one value";
+        final String query = "SELECT sys.fn_cdc_map_lsn_to_time(?)";
+
+        if (lsn.getBinary() == null) {
+            return null;
+        }
+
+        return prepareQueryAndMap(query, statement -> {
+            statement.setBytes(1, lsn.getBinary());
+        }, rs -> {
+            if (rs.next()) {
+                final Timestamp ts = rs.getTimestamp(1);
+                final Instant ret = ts == null ? null : ts.toInstant();
+                if (!rs.next()) {
+                    return ret;
+                }
+            }
+            throw new IllegalStateException(LSN_TIMESTAMP_ERROR);
+        });
+    }
+
+    private String cdcNameForTable(TableId tableId) {
+        return tableId.schema() + '_' + tableId.table();
     }
 }
