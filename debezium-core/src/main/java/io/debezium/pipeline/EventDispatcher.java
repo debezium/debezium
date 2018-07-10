@@ -6,7 +6,6 @@
 package io.debezium.pipeline;
 
 import java.util.Objects;
-import java.util.function.Supplier;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -66,7 +65,7 @@ public class EventDispatcher<T extends DataCollectionId> {
      * receiving coordinator creates {@link SourceRecord}s for all emitted events and passes them to the given
      * {@link ChangeEventCreator} for converting them into data change events.
      */
-    public void dispatchDataChangeEvent(T dataCollectionId, Supplier<ChangeRecordEmitter> changeRecordEmitter, ChangeEventCreator changeEventCreator) throws InterruptedException {
+    public void dispatchDataChangeEvent(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter, ChangeEventCreator changeEventCreator) throws InterruptedException {
         // TODO Handle Heartbeat
 
         // TODO Handle JMX
@@ -83,19 +82,19 @@ public class EventDispatcher<T extends DataCollectionId> {
             throw new IllegalArgumentException("No metadata registered for captured table " + dataCollectionId);
         }
 
-        changeRecordEmitter.get().emitChangeRecords(
+        changeRecordEmitter.emitChangeRecords(
             dataCollectionSchema,
             new ChangeRecordReceiver(dataCollectionId, changeEventCreator, dataCollectionSchema)
         );
     }
 
-    public void dispatchSchemaChangeEvent(T dataCollectionId, Supplier<SchemaChangeEventEmitter> schemaChangeEventEmitter) throws InterruptedException {
+    public void dispatchSchemaChangeEvent(T dataCollectionId, SchemaChangeEventEmitter schemaChangeEventEmitter) throws InterruptedException {
         if(!filter.isIncluded(dataCollectionId)) {
             LOGGER.trace("Skipping data change event for {}", dataCollectionId);
             return;
         }
 
-        schemaChangeEventEmitter.get().emitSchemaChangeEvent(new SchemaChangeEventReceiver());
+        schemaChangeEventEmitter.emitSchemaChangeEvent(new SchemaChangeEventReceiver());
     }
 
     private final class ChangeRecordReceiver implements ChangeRecordEmitter.Receiver {
