@@ -6,11 +6,13 @@
 
 package io.debezium.connector.sqlserver;
 
+import java.math.BigInteger;
 import java.sql.SQLException;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.util.Testing;
 
 /**
@@ -22,19 +24,11 @@ public class SqlServerConnectionIT {
 
     @BeforeClass
     public static void beforeClass() throws SQLException {
-        // NOTE: you cannot enable CDC for the "master" db (the default one) so
-        // all tests must use a separate database...
-        try (SqlServerConnection connection = new SqlServerConnection(TestHelper.defaultJdbcConfig())) {
-            connection.connect();
-            String sql = "IF EXISTS(select 1 from sys.databases where name='testDB') DROP DATABASE testDB\n"
-                    + "CREATE DATABASE testDB\n";
-            connection.execute(sql);
-        }
     }
 
     @Test
-    public void shouldEnableCDCForDatabase() throws Exception {
-        try (SqlServerConnection connection = new SqlServerConnection(TestHelper.defaultJdbcConfig())) {
+    public void shouldEnableCdcForDatabase() throws Exception {
+        try (SqlServerConnection connection = TestHelper.adminConnection()) {
             connection.connect();
             connection.execute("USE testDB");
             // NOTE: you cannot enable CDC on master
@@ -43,8 +37,8 @@ public class SqlServerConnectionIT {
     }
 
     @Test
-    public void shouldEnableCDCWithWrapperFunctionsForTable() throws Exception {
-        try (SqlServerConnection connection = new SqlServerConnection(TestHelper.defaultJdbcConfig())) {
+    public void shouldEnableCdcWithWrapperFunctionsForTable() throws Exception {
+        try (SqlServerConnection connection = TestHelper.adminConnection()) {
             connection.connect();
             connection.execute("USE testDB");
             // NOTE: you cannot enable CDC on master
@@ -71,7 +65,8 @@ public class SqlServerConnectionIT {
                     "select * from cdc.fn_cdc_get_all_changes_dbo_testTable(sys.fn_cdc_get_min_lsn('dbo_testTable'), sys.fn_cdc_get_max_lsn(), N'all')",
                     rs -> {
                         while (rs.next()) {
-                            final StringBuilder sb = new StringBuilder();
+                            final BigInteger lsn = new BigInteger(rs.getBytes(1));
+                            final StringBuilder sb = new StringBuilder(lsn.toString());
                             for (int col = 1; col <= rs.getMetaData().getColumnCount(); col++) {
                                 sb.append(rs.getObject(col)).append(' ');
                             }
