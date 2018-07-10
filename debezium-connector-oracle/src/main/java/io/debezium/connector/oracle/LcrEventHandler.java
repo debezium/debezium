@@ -10,7 +10,6 @@ import java.sql.SQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.relational.RelationalDatabaseSchema;
@@ -34,12 +33,12 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleStreamingChangeEventSource.class);
 
     private final ErrorHandler errorHandler;
-    private final EventDispatcher dispatcher;
+    private final EventDispatcher<TableId> dispatcher;
     private final Clock clock;
     private final RelationalDatabaseSchema schema;
     private final OracleOffsetContext offsetContext;
 
-    public LcrEventHandler(ErrorHandler errorHandler, EventDispatcher dispatcher, Clock clock, RelationalDatabaseSchema schema, OracleOffsetContext offsetContext) {
+    public LcrEventHandler(ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, RelationalDatabaseSchema schema, OracleOffsetContext offsetContext) {
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
         this.clock = clock;
@@ -100,8 +99,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
         dispatcher.dispatchDataChangeEvent(
                 tableId,
-                () -> new OracleChangeRecordEmitter(offsetContext, lcr, schema.tableFor(tableId), clock),
-                DataChangeEvent::new
+                new OracleChangeRecordEmitter(offsetContext, lcr, schema.tableFor(tableId), clock)
         );
     }
 
@@ -114,7 +112,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
         dispatcher.dispatchSchemaChangeEvent(
                 tableId,
-                () -> new OracleSchemaChangeEventEmitter(offsetContext, tableId, ddlLcr)
+                new OracleSchemaChangeEventEmitter(offsetContext, tableId, ddlLcr)
         );
     }
 

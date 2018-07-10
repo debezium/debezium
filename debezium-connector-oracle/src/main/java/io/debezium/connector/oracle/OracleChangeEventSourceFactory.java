@@ -11,6 +11,7 @@ import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 
 public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory {
@@ -18,12 +19,12 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory 
     private final OracleConnectorConfig configuration;
     private final OracleConnection jdbcConnection;
     private final ErrorHandler errorHandler;
-    private final EventDispatcher dispatcher;
+    private final EventDispatcher<TableId> dispatcher;
     private final Clock clock;
     private final OracleDatabaseSchema schema;
 
     public OracleChangeEventSourceFactory(OracleConnectorConfig configuration, OracleConnection jdbcConnection,
-            ErrorHandler errorHandler, EventDispatcher dispatcher, Clock clock, OracleDatabaseSchema schema) {
+            ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, OracleDatabaseSchema schema) {
         this.configuration = configuration;
         this.jdbcConnection = jdbcConnection;
         this.errorHandler = errorHandler;
