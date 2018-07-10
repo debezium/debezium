@@ -30,6 +30,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
+import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.ddl.DdlChanges.DatabaseStatementStringConsumer;
 import io.debezium.relational.ddl.DdlParser;
@@ -85,7 +86,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
         super(
                 configuration,
                 topicSelector,
-                new Filters(configuration.getConfig()).tableFilter(),
+                TableFilter.fromPredicate(new Filters(configuration.getConfig()).tableFilter()),
                 new Filters(configuration.getConfig()).columnFilter(),
                 new TableSchemaBuilder(
                         getValueConverters(configuration.getConfig()), SchemaNameAdjuster.create(logger), SourceInfo.SCHEMA)

@@ -42,7 +42,7 @@ import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
-import io.debezium.relational.Tables.TableNameFilter;
+import io.debezium.relational.Tables.TableFilter;
 import io.debezium.util.Collect;
 import io.debezium.util.Strings;
 
@@ -803,7 +803,7 @@ public class JdbcConnection implements AutoCloseable {
      * @throws SQLException if an error occurs while accessing the database metadata
      */
     public void readSchema(Tables tables, String databaseCatalog, String schemaNamePattern,
-                           TableNameFilter tableFilter, ColumnNameFilter columnFilter, boolean removeTablesNotFoundInJdbc)
+                           TableFilter tableFilter, ColumnNameFilter columnFilter, boolean removeTablesNotFoundInJdbc)
             throws SQLException {
         // Before we make any changes, get the copy of the set of table IDs ...
         Set<TableId> tableIdsBefore = new HashSet<>(tables.tableIds());
@@ -832,7 +832,7 @@ public class JdbcConnection implements AutoCloseable {
                 if (viewIds.contains(tableId)) {
                     continue;
                 }
-                if (tableFilter == null || tableFilter.matches(catalogName, schemaName, tableName)) {
+                if (tableFilter == null || tableFilter.isIncluded(tableId)) {
                     List<Column> cols = columnsByTable.computeIfAbsent(tableId, name -> new ArrayList<>());
                     String columnName = rs.getString(4);
                     if (columnFilter == null || columnFilter.matches(catalogName, schemaName, tableName, columnName)) {

@@ -19,6 +19,8 @@ import java.util.function.Predicate;
 import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.schema.DataCollectionFilters.DataCollectionFilter;
+import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Collect;
 import io.debezium.util.FunctionalReadWriteLock;
 
@@ -31,34 +33,23 @@ import io.debezium.util.FunctionalReadWriteLock;
 public final class Tables {
 
     /**
-     * Create a {@link TableNameFilter} for the given {@link Predicate Predicate<TableId>}.
-     * @param predicate the {@link TableId} predicate filter;  may be null
-     * @return the TableNameFilter; never null
-     */
-    public static TableNameFilter filterFor( Predicate<TableId> predicate) {
-        if ( predicate == null ) return (catalogName, schemaName, tableName)->true;
-        return (catalogName, schemaName, tableName)->{
-            TableId id = new TableId(catalogName, schemaName, tableName);
-            return predicate.test(id);
-        };
-    }
-
-    /**
      * A filter for tables.
      */
     @FunctionalInterface
-    public static interface TableNameFilter {
+    public interface TableFilter extends DataCollectionFilter<TableId> {
+
         /**
-         * Determine whether the named table should be included.
-         *
-         * @param catalogName the name of the database catalog that contains the table; may be null if the JDBC driver does not
-         *            show a schema for this table
-         * @param schemaName the name of the database schema that contains the table; may be null if the JDBC driver does not
-         *            show a schema for this table
-         * @param tableName the name of the table
-         * @return {@code true} if the table should be included, or {@code false} if the table should be excluded
+         * Determines whether the given table should be included in the current {@link DatabaseSchema}.
          */
-        boolean matches(String catalogName, String schemaName, String tableName);
+        @Override
+        boolean isIncluded(TableId tableId);
+
+        /**
+         * Creates a {@link TableFilter} from the given predicate.
+         */
+        public static TableFilter fromPredicate(Predicate<TableId> predicate) {
+            return t -> predicate.test(t);
+        }
     }
 
     /**
@@ -325,12 +316,12 @@ public final class Tables {
         return false;
     }
 
-    public Tables subset(Predicate<TableId> filter) {
+    public Tables subset(TableFilter filter) {
         if (filter == null) return this;
         return lock.read(() -> {
             Tables result = new Tables(tableIdCaseInsensitive);
             tablesByTableId.forEach((tableId, table) -> {
-                if (filter.test(tableId)) {
+                if (filter.isIncluded(tableId)) {
                     result.overwriteTable(table);
                 }
             });
