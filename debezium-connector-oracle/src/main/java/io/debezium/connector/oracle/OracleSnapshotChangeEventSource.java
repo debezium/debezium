@@ -131,17 +131,17 @@ public class OracleSnapshotChangeEventSource implements SnapshotChangeEventSourc
     }
 
     private void determineOffsetContextWithScn(SnapshotContext ctx) throws SQLException {
-        ResultSet rs = ctx.statement.executeQuery("select CURRENT_SCN from V$DATABASE");
+        try (ResultSet rs = ctx.statement.executeQuery("select CURRENT_SCN from V$DATABASE")) {
 
-        if (!rs.next()) {
-            throw new IllegalStateException("Couldn't get SCN");
+            if (!rs.next()) {
+                throw new IllegalStateException("Couldn't get SCN");
+            }
+
+            Long scn = rs.getLong(1);
+
+            ctx.offset = new OracleOffsetContext(connectorConfig.getLogicalName());
+            ctx.offset.setScn(scn);
         }
-
-        Long scn = rs.getLong(1);
-        rs.close();
-
-        ctx.offset = new OracleOffsetContext(connectorConfig.getLogicalName());
-        ctx.offset.setScn(scn);
     }
 
     private void readTableStructure(SnapshotContext ctx) throws SQLException {
@@ -178,16 +178,17 @@ public class OracleSnapshotChangeEventSource implements SnapshotChangeEventSourc
 
             Table table = ctx.tables.forTable(tableId);
 
-            ResultSet rs = ctx.statement.executeQuery("select dbms_metadata.get_ddl( 'TABLE', '" + tableId.table() + "', '" +  tableId.schema() + "' ) from dual");
-            if (!rs.next()) {
-                throw new IllegalStateException("Couldn't get metadata");
-            }
-            Object res = rs.getObject(1);
-            String ddl = ((Clob)res).getSubString(1, (int) ((Clob)res).length());
-            rs.close();
+            try (ResultSet rs = ctx.statement.executeQuery("select dbms_metadata.get_ddl( 'TABLE', '" + tableId.table() + "', '" +  tableId.schema() + "' ) from dual")) {
+                if (!rs.next()) {
+                    throw new IllegalStateException("Couldn't get metadata");
+                }
 
-            schema.applySchemaChange(new SchemaChangeEvent(ctx.offset.getPartition(), ctx.offset.getOffset(), ctx.catalogName,
-                    tableId.schema(), ddl, table, SchemaChangeEventType.CREATE, true));
+                Object res = rs.getObject(1);
+                String ddl = ((Clob)res).getSubString(1, (int) ((Clob)res).length());
+
+                schema.applySchemaChange(new SchemaChangeEvent(ctx.offset.getPartition(), ctx.offset.getOffset(), ctx.catalogName,
+                        tableId.schema(), ddl, table, SchemaChangeEventType.CREATE, true));
+            }
         }
 
         return true;
