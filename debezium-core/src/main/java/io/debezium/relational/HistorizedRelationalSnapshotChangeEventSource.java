@@ -52,15 +52,12 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
         }
 
         Connection connection = null;
-        SnapshotContext ctx = null;
 
-        try {
+        try (SnapshotContext ctx = prepare(context)) {
             LOGGER.info("Snapshot step 1 - Preparing");
 
             connection = jdbcConnection.connection();
             connection.setAutoCommit(false);
-
-            ctx = prepare(context);
 
             LOGGER.info("Snapshot step 2 - Determining captured tables");
 
@@ -99,10 +96,6 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
             throw new RuntimeException(e);
         }
         finally {
-            if (ctx != null) {
-                ctx.dispose();
-            }
-
             rollbackTransaction(connection);
 
             LOGGER.info("Snapshot step 7 - Finalizing");
@@ -197,7 +190,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
     /**
      * Mutable context which is populated in the course of snapshotting.
      */
-    public static class SnapshotContext {
+    public static class SnapshotContext implements AutoCloseable {
 
         public final String catalogName;
         public final Tables tables;
@@ -210,7 +203,8 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
             this.tables = new Tables();
         }
 
-        public void dispose() {
+        @Override
+        public void close() throws Exception {
         }
     }
 }
