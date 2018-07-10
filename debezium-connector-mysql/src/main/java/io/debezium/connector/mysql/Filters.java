@@ -16,8 +16,6 @@ import io.debezium.config.Configuration;
 import io.debezium.relational.ColumnId;
 import io.debezium.relational.Selectors;
 import io.debezium.relational.TableId;
-import io.debezium.relational.Tables;
-import io.debezium.relational.Tables.TableNameFilter;
 import io.debezium.util.Collect;
 
 /**
@@ -106,10 +104,6 @@ public class Filters {
 
     public Predicate<TableId> tableFilter() {
         return tableFilter;
-    }
-
-    public TableNameFilter tableNameFilter() {
-        return Tables.filterFor(tableFilter);
     }
 
     public Predicate<TableId> builtInTableFilter() {

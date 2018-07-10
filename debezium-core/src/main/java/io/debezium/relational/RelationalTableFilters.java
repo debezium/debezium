@@ -8,13 +8,14 @@ package io.debezium.relational;
 import java.util.function.Predicate;
 
 import io.debezium.config.Configuration;
+import io.debezium.relational.Tables.TableFilter;
 import io.debezium.schema.DataCollectionFilters;
 
 public class RelationalTableFilters implements DataCollectionFilters {
 
     private final TableFilter tableFilter;
 
-    public RelationalTableFilters(Configuration config, Predicate<TableId> systemTablesFilter) {
+    public RelationalTableFilters(Configuration config, TableFilter systemTablesFilter) {
         // Define the filter using the whitelists and blacklists for tables and database names ...
         Predicate<TableId> predicate = Selectors.tableSelector()
 //                                                  .includeDatabases(config.getString(RelationalDatabaseConnectorConfig.DATABASE_WHITELIST))
@@ -26,7 +27,7 @@ public class RelationalTableFilters implements DataCollectionFilters {
 
 
         Predicate<TableId> finalPredicate = config.getBoolean(RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN)
-                ? predicate.and(systemTablesFilter.negate())
+                ? predicate.and(systemTablesFilter::isIncluded)
                 : predicate;
 
         this.tableFilter = t -> finalPredicate.test(t);
@@ -35,12 +36,5 @@ public class RelationalTableFilters implements DataCollectionFilters {
     @Override
     public TableFilter dataCollectionFilter() {
         return tableFilter;
-    }
-
-    @FunctionalInterface
-    public interface TableFilter extends DataCollectionFilter<TableId>{
-
-        @Override
-        boolean isIncluded(TableId tableId);
     }
 }

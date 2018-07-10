@@ -5,8 +5,6 @@
  */
 package io.debezium.relational;
 
-import java.util.function.Predicate;
-
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
@@ -15,6 +13,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
+import io.debezium.relational.Tables.TableFilter;
 
 /**
  * Configuration options shared across the relational CDC connectors.
@@ -61,7 +60,7 @@ public class RelationalDatabaseConnectorConfig extends CommonConnectorConfig {
 
     private final RelationalTableFilters tableFilters;
 
-    protected RelationalDatabaseConnectorConfig(Configuration config, String logicalName, Predicate<TableId> systemTablesFilter) {
+    protected RelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter) {
         super(config, logicalName);
 
         this.tableFilters = new RelationalTableFilters(config, systemTablesFilter);
