@@ -6,132 +6,72 @@
 package io.debezium.connector.oracle;
 
 import java.sql.Clob;
-import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
-import io.debezium.pipeline.spi.SnapshotResult;
+import io.debezium.relational.HistorizedRelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 
-public class OracleSnapshotChangeEventSource implements SnapshotChangeEventSource {
+public class OracleSnapshotChangeEventSource extends HistorizedRelationalSnapshotChangeEventSource {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleSnapshotChangeEventSource.class);
 
     private final OracleConnectorConfig connectorConfig;
-    private final OracleOffsetContext previousOffset;
     private final OracleConnection jdbcConnection;
-    private final OracleDatabaseSchema schema;
 
     public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext previousOffset, OracleConnection jdbcConnection, OracleDatabaseSchema schema) {
+        super(connectorConfig, previousOffset, jdbcConnection, schema);
+
         this.connectorConfig = connectorConfig;
-        this.previousOffset = previousOffset;
         this.jdbcConnection = jdbcConnection;
-        this.schema = schema;
     }
 
     @Override
-    public SnapshotResult execute(ChangeEventSourceContext context) throws InterruptedException {
-        // for now, just simple schema snapshotting is supported which just needs to be done once
-        if (previousOffset != null) {
-            LOGGER.debug("Found previous offset, skipping snapshotting");
-            return SnapshotResult.completed(previousOffset);
+    protected SnapshotContext prepare(ChangeEventSourceContext context) throws Exception {
+        if (connectorConfig.getPdbName() != null) {
+            jdbcConnection.setSessionToPdb(connectorConfig.getPdbName());
         }
 
-        Connection connection = null;
-        SnapshotContext ctx = null;
-
-        try {
-            connection = jdbcConnection.connection();
-            connection.setAutoCommit(false);
-
-            if (connectorConfig.getPdbName() != null) {
-                jdbcConnection.setSessionToPdb(connectorConfig.getPdbName());
-            }
-
-            ctx = new SnapshotContext(
-                    context,
-                    connection,
-                    connectorConfig.getPdbName() != null ? connectorConfig.getPdbName() : connectorConfig.getDatabaseName()
-            );
-
-            determineCapturedTables(ctx);
-
-            if (!lockTablesToBeCaptured(ctx)) {
-                return SnapshotResult.aborted();
-            }
-
-            determineOffsetContextWithScn(ctx);
-            readTableStructure(ctx);
-
-            if (!createSchemaChangeEventsForTables(ctx)) {
-                return SnapshotResult.aborted();
-            }
-
-            return SnapshotResult.completed(ctx.offset);
-        }
-        catch(RuntimeException e) {
-            throw e;
-        }
-        catch(Exception e) {
-            throw new RuntimeException(e);
-        }
-        finally {
-            if (ctx != null) {
-                ctx.dispose();
-            }
-
-            rollbackTransaction(connection);
-
-            if (connectorConfig.getPdbName() != null) {
-                jdbcConnection.resetSessionToCdb();
-            }
-        }
+        return new OracleSnapshotContext(
+                connectorConfig.getPdbName() != null ? connectorConfig.getPdbName() : connectorConfig.getDatabaseName()
+        );
     }
 
-    private void determineCapturedTables(SnapshotContext ctx) throws SQLException {
-        Set<TableId> allTableIds = jdbcConnection.readTableNames(ctx.catalogName, null, null, new String[] {"TABLE"} );
-
-        Set<TableId> capturedTables = new HashSet<>();
-
-        for (TableId tableId : allTableIds) {
-            if (connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
-                capturedTables.add(tableId);
-            }
-            else {
-                LOGGER.trace("Skipping table {} as it's not included in the filter configuration", tableId);
-            }
-        }
-
-        ctx.capturedTables = capturedTables;
+    @Override
+    protected Set<TableId> getAllTableIds(SnapshotContext ctx) throws Exception {
+        return jdbcConnection.readTableNames(ctx.catalogName, null, null, new String[] {"TABLE"} );
     }
 
-    private boolean lockTablesToBeCaptured(SnapshotContext ctx) throws SQLException {
-        for (TableId tableId : ctx.capturedTables) {
-            if (!ctx.changeEventSourceContext.isRunning()) {
-                return false;
-            }
+    @Override
+    protected boolean lockTables(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws SQLException {
+        try (Statement statement = jdbcConnection.connection().createStatement()) {
+            for (TableId tableId : snapshotContext.capturedTables) {
+                if (!sourceContext.isRunning()) {
+                    return false;
+                }
 
-            LOGGER.debug("Locking table {}", tableId);
-            ctx.statement.execute("LOCK TABLE " + tableId.schema() + "." + tableId.table() + " IN EXCLUSIVE MODE");
+                LOGGER.debug("Locking table {}", tableId);
+
+                statement.execute("LOCK TABLE " + tableId.schema() + "." + tableId.table() + " IN EXCLUSIVE MODE");
+            }
         }
 
         return true;
     }
 
-    private void determineOffsetContextWithScn(SnapshotContext ctx) throws SQLException {
-        try (ResultSet rs = ctx.statement.executeQuery("select CURRENT_SCN from V$DATABASE")) {
+    @Override
+    protected void determineSnapshotOffset(SnapshotContext ctx) throws Exception {
+        try(Statement statement = jdbcConnection.connection().createStatement();
+                ResultSet rs = statement.executeQuery("select CURRENT_SCN from V$DATABASE") ) {
 
             if (!rs.next()) {
                 throw new IllegalStateException("Couldn't get SCN");
@@ -139,15 +79,16 @@ public class OracleSnapshotChangeEventSource implements SnapshotChangeEventSourc
 
             Long scn = rs.getLong(1);
 
-            ctx.offset = new OracleOffsetContext(connectorConfig.getLogicalName());
-            ctx.offset.setScn(scn);
+            OracleOffsetContext offset = new OracleOffsetContext(connectorConfig.getLogicalName());
+            offset.setScn(scn);
+
+            ctx.offset = offset;
         }
     }
 
-    private void readTableStructure(SnapshotContext ctx) throws SQLException {
-        ctx.tables = new Tables();
-
-        Set<String> schemas = ctx.capturedTables.stream()
+    @Override
+    protected boolean readTableStructure(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws SQLException {
+        Set<String> schemas = snapshotContext.capturedTables.stream()
             .map(TableId::schema)
             .collect(Collectors.toSet());
 
@@ -155,80 +96,54 @@ public class OracleSnapshotChangeEventSource implements SnapshotChangeEventSourc
         // while the passed table name filter alone would skip all non-included tables, reading the schema
         // would take much longer that way
         for (String schema : schemas) {
+            if (!sourceContext.isRunning()) {
+                return false;
+            }
+
             jdbcConnection.readSchema(
-                    ctx.tables,
-                    ctx.catalogName,
+                    snapshotContext.tables,
+                    snapshotContext.catalogName,
                     schema,
                     connectorConfig.getTableFilters().dataCollectionFilter(),
                     null,
                     false
             );
         }
-    }
-
-    private boolean createSchemaChangeEventsForTables(SnapshotContext ctx) throws SQLException {
-        for (TableId tableId : ctx.capturedTables) {
-            if (!ctx.changeEventSourceContext.isRunning()) {
-                return false;
-            }
-
-            LOGGER.debug("Capturing structure of table {}", tableId);
-
-            Table table = ctx.tables.forTable(tableId);
-
-            try (ResultSet rs = ctx.statement.executeQuery("select dbms_metadata.get_ddl( 'TABLE', '" + tableId.table() + "', '" +  tableId.schema() + "' ) from dual")) {
-                if (!rs.next()) {
-                    throw new IllegalStateException("Couldn't get metadata");
-                }
-
-                Object res = rs.getObject(1);
-                String ddl = ((Clob)res).getSubString(1, (int) ((Clob)res).length());
-
-                schema.applySchemaChange(new SchemaChangeEvent(ctx.offset.getPartition(), ctx.offset.getOffset(), ctx.catalogName,
-                        tableId.schema(), ddl, table, SchemaChangeEventType.CREATE, true));
-            }
-        }
 
         return true;
     }
 
-    private void rollbackTransaction(Connection connection) {
-        if(connection != null) {
-            try {
-                connection.rollback();
+    @Override
+    protected SchemaChangeEvent getCreateTableEvent(SnapshotContext snapshotContext, Table table) throws SQLException {
+        try (Statement statement = jdbcConnection.connection().createStatement();
+                ResultSet rs = statement.executeQuery("select dbms_metadata.get_ddl( 'TABLE', '" + table.id().table() + "', '" +  table.id().schema() + "' ) from dual")) {
+
+            if (!rs.next()) {
+                throw new IllegalStateException("Couldn't get metadata");
             }
-            catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
+
+            Object res = rs.getObject(1);
+            String ddl = ((Clob)res).getSubString(1, (int) ((Clob)res).length());
+
+            return new SchemaChangeEvent(snapshotContext.offset.getPartition(), snapshotContext.offset.getOffset(), snapshotContext.catalogName,
+                    table.id().schema(), ddl, table, SchemaChangeEventType.CREATE, true);
+        }
+    }
+
+    @Override
+    protected void complete() {
+        if (connectorConfig.getPdbName() != null) {
+            jdbcConnection.resetSessionToCdb();
         }
     }
 
     /**
      * Mutable context which is populated in the course of snapshotting.
      */
-    private static class SnapshotContext {
+    private static class OracleSnapshotContext extends SnapshotContext {
 
-        public final ChangeEventSourceContext changeEventSourceContext;
-        public final Statement statement;
-        public final String catalogName;
-
-        public Set<TableId> capturedTables;
-        public OracleOffsetContext offset;
-        public Tables tables;
-
-        public SnapshotContext(ChangeEventSourceContext changeEventSourceContext, Connection connection, String catalogName) throws SQLException {
-            this.changeEventSourceContext = changeEventSourceContext;
-            this.statement = connection.createStatement();
-            this.catalogName = catalogName;
-        }
-
-        public void dispose() {
-            try {
-                statement.close();
-            }
-            catch (SQLException e) {
-                LOGGER.error("Couldn't close statement", e);
-            }
+        public OracleSnapshotContext(String catalogName) throws SQLException {
+            super(catalogName);
         }
     }
 }
