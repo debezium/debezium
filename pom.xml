@@ -30,10 +30,6 @@
         <version.debezium>${project.version}</version.debezium>
     </properties>
 
-    <modules>
-        <module>debezium-connector-sqlserver</module>
-    </modules>
-
     <dependencyManagement>
         <dependencies>
            <!--SQL Server -->
@@ -91,6 +87,12 @@
             <id>oracle</id>
             <modules>
                 <module>debezium-connector-oracle</module>
+            </modules>
+        </profile>
+        <profile>
+            <id>sqlserver</id>
+            <modules>
+                <module>debezium-connector-sqlserver</module>
             </modules>
         </profile>
     </profiles>
