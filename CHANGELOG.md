@@ -2,6 +2,31 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 0.8.0.Final
+July 11th, 2018 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12338151)
+
+### New features since 0.8.0.CR1
+
+* Expose more granular snapshot metrics via JMX [DBZ-789](https://issues.jboss.org/browse/DBZ-789)
+
+
+### Breaking changes since 0.8.0.CR1
+
+The topic naming for Oracle connector has [changed](https://issues.jboss.org/browse/DBZ-725) and the database name is no longer part of the name.
+The naming convention is thus consistent accross all connectors.
+
+
+### Fixes since 0.8.0.CR1
+
+None
+
+
+### Other changes since 0.8.0.CR1
+
+* Remove DB name from topic ids [DBZ-725](https://issues.jboss.org/browse/DBZ-725)
+* Don't use user with DBA permissions for Oracle connector tests [DBZ-791](https://issues.jboss.org/browse/DBZ-791)
+
+
 ## 0.8.0.CR1
 July 4th, 2018 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12338150)
 
@@ -904,4 +929,3 @@ March 17, 2016 - [Detailed release notes](https://issues.jboss.org/secure/Releas
 * Kafka Connect plugin archive for MySQL connector. ([DBZ-17](https://issues.jboss.org/projects/DBZ/issues/DBZ-17))
 * Simple DDL parsing framework that can be extended and used by various connectors. ([DBZ-1](https://issues.jboss.org/projects/DBZ/issues/DBZ-1))
 * Framework for embedding a single Kafka Connect connector inside an application. ([DBZ-8](https://issues.jboss.org/projects/DBZ/issues/DBZ-8))
-
