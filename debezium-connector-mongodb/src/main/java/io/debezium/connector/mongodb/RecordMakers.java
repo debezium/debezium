@@ -14,6 +14,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
+import org.bson.codecs.Encoder;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
 import org.slf4j.Logger;
@@ -25,6 +26,7 @@ import com.mongodb.util.JSONSerializers;
 import com.mongodb.util.ObjectSerializer;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.mongodb.FieldSelector.FieldFilter;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.data.Json;
@@ -50,6 +52,7 @@ public class RecordMakers {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(logger);
+    private final Filters filters;
     private final SourceInfo source;
     private final TopicSelector<CollectionId> topicSelector;
     private final Map<CollectionId, RecordsForCollection> recordMakerByCollectionId = new HashMap<>();
@@ -60,15 +63,19 @@ public class RecordMakers {
     /**
      * Create the record makers using the supplied components.
      *
+     * @param filters the filter configuration; may not be null
      * @param source the connector's source information; may not be null
      * @param topicSelector the selector for topic names; may not be null
      * @param recorder the potentially blocking consumer function to be called for each generated record; may not be null
      */
-    public RecordMakers(SourceInfo source, TopicSelector<CollectionId> topicSelector, BlockingConsumer<SourceRecord> recorder, boolean emitTombstonesOnDelete) {
+    public RecordMakers(Filters filters, SourceInfo source, TopicSelector<CollectionId> topicSelector, BlockingConsumer<SourceRecord> recorder,
+            boolean emitTombstonesOnDelete) {
+        this.filters = filters;
         this.source = source;
         this.topicSelector = topicSelector;
         JsonWriterSettings writerSettings = new JsonWriterSettings(JsonMode.STRICT, "", ""); // most compact JSON
-        this.valueTransformer = (doc) -> doc.toJson(writerSettings);
+        Encoder<Document> encoder = MongoClient.getDefaultCodecRegistry().get(Document.class);
+        this.valueTransformer = (doc) -> doc.toJson(writerSettings, encoder);
         this.recorder = recorder;
         this.emitTombstonesOnDelete = emitTombstonesOnDelete;
     }
@@ -81,8 +88,9 @@ public class RecordMakers {
      */
     public RecordsForCollection forCollection(CollectionId collectionId) {
         return recordMakerByCollectionId.computeIfAbsent(collectionId, id -> {
+            FieldFilter fieldFilter = filters.fieldFilterFor(collectionId);
             String topicName = topicSelector.topicNameFor(collectionId);
-            return new RecordsForCollection(collectionId, source, topicName, schemaNameAdjuster, valueTransformer, recorder, emitTombstonesOnDelete);
+            return new RecordsForCollection(collectionId, fieldFilter, source, topicName, schemaNameAdjuster, valueTransformer, recorder, emitTombstonesOnDelete);
         });
     }
 
@@ -92,6 +100,7 @@ public class RecordMakers {
     public static final class RecordsForCollection {
         private final CollectionId collectionId;
         private final String replicaSetName;
+        private final FieldFilter fieldFilter;
         private final SourceInfo source;
         private final Map<String, ?> sourcePartition;
         private final String topicName;
@@ -101,11 +110,13 @@ public class RecordMakers {
         private final BlockingConsumer<SourceRecord> recorder;
         private final boolean emitTombstonesOnDelete;
 
-        protected RecordsForCollection(CollectionId collectionId, SourceInfo source, String topicName, SchemaNameAdjuster adjuster,
-                Function<Document, String> valueTransformer, BlockingConsumer<SourceRecord> recorder, boolean emitTombstonesOnDelete) {
+        protected RecordsForCollection(CollectionId collectionId, FieldFilter fieldFilter, SourceInfo source, String topicName,
+                SchemaNameAdjuster adjuster, Function<Document, String> valueTransformer, BlockingConsumer<SourceRecord> recorder,
+                boolean emitTombstonesOnDelete) {
             this.sourcePartition = source.partition(collectionId.replicaSetName());
             this.collectionId = collectionId;
             this.replicaSetName = this.collectionId.replicaSetName();
+            this.fieldFilter = fieldFilter;
             this.source = source;
             this.topicName = topicName;
             this.keySchema = SchemaBuilder.struct()
@@ -120,8 +131,7 @@ public class RecordMakers {
                                             .field(FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
                                             .field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
                                             .build();
-            JsonWriterSettings writerSettings = new JsonWriterSettings(JsonMode.STRICT, "", ""); // most compact JSON
-            this.valueTransformer = (doc) -> doc.toJson(writerSettings, MongoClient.getDefaultCodecRegistry().get(Document.class));
+            this.valueTransformer = valueTransformer;
             this.recorder = recorder;
             this.emitTombstonesOnDelete = emitTombstonesOnDelete;
         }
@@ -183,12 +193,12 @@ public class RecordMakers {
                 case READ:
                 case CREATE:
                     // The object is the new document ...
-                    String jsonStr = valueTransformer.apply(objectValue);
+                    String jsonStr = valueTransformer.apply(fieldFilter.apply(objectValue));
                     value.put(FieldName.AFTER, jsonStr);
                     break;
                 case UPDATE:
                     // The object is the idempotent patch document ...
-                    String patchStr = valueTransformer.apply(objectValue);
+                    String patchStr = valueTransformer.apply(fieldFilter.apply(objectValue));
                     value.put("patch", patchStr);
                     break;
                 case DELETE:

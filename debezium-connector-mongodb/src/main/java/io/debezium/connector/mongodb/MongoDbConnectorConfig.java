@@ -167,7 +167,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     /**
      * A comma-separated list of regular expressions that match the fully-qualified namespaces of collections to be monitored.
-     * Fully-qualified namespaces for collections are of the form {@code '<databaseName>.<collectionName>'}.
+     * Fully-qualified namespaces for collections are of the form {@code <databaseName>.<collectionName>}.
      * May not be used with {@link #COLLECTION_BLACKLIST}.
      */
     public static final Field COLLECTION_WHITELIST = Field.create("collection.whitelist")
@@ -188,6 +188,20 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                                                           .withValidation(Field::isListOfRegex)
                                                           .withInvisibleRecommender();
 
+    /**
+     * A comma-separated list of the fully-qualified names of fields that should be excluded from change event message values.
+     * Fully-qualified names for fields are of the form {@code
+     * <databaseName>.<collectionName>:<fieldName>.<nestedFieldName>|<fieldNameN>}. Where the part {@code
+     * <databaseName>.<collectionName>} is a regular expression, the dot character ({@code .}) is used to access fields
+     * of embedded documents and the pipe character ({@code |}) is used to delimit set of fields.
+     */
+    public static final Field FIELD_BLACKLIST = Field.create("field.blacklist")
+                                                     .withDisplayName("Exclude Fields")
+                                                     .withType(Type.STRING)
+                                                     .withWidth(Width.LONG)
+                                                     .withImportance(Importance.MEDIUM)
+                                                     .withDescription("");
+
     protected static final Field TASK_ID = Field.create("mongodb.task.id")
                                                 .withDescription("Internal use only")
                                                 .withValidation(Field::isInteger)
@@ -203,6 +217,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                                                      CONNECT_BACKOFF_MAX_DELAY_MS,
                                                      COLLECTION_WHITELIST,
                                                      COLLECTION_BLACKLIST,
+                                                     FIELD_BLACKLIST,
                                                      AUTO_DISCOVER_MEMBERS,
                                                      DATABASE_WHITELIST,
                                                      DATABASE_BLACKLIST,
@@ -219,7 +234,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         Field.group(config, "MongoDB", HOSTS, USER, PASSWORD, LOGICAL_NAME, CONNECT_BACKOFF_INITIAL_DELAY_MS,
                     CONNECT_BACKOFF_MAX_DELAY_MS, MAX_FAILED_CONNECTIONS, AUTO_DISCOVER_MEMBERS,
                     SSL_ENABLED, SSL_ALLOW_INVALID_HOSTNAMES);
-        Field.group(config, "Events", DATABASE_WHITELIST, DATABASE_BLACKLIST, COLLECTION_WHITELIST, COLLECTION_BLACKLIST, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
+        Field.group(config, "Events", DATABASE_WHITELIST, DATABASE_BLACKLIST, COLLECTION_WHITELIST, COLLECTION_BLACKLIST, FIELD_BLACKLIST, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         Field.group(config, "Connector", MAX_COPY_THREADS, CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS);
         return config;
     }
