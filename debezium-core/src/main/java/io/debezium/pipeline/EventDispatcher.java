@@ -45,10 +45,13 @@ public class EventDispatcher<T extends DataCollectionId> {
     private final HistorizedDatabaseSchema<T> historizedSchema;
     private final ChangeEventQueue<Object> queue;
     private final DataCollectionFilter<T> filter;
+    private final ChangeEventCreator changeEventCreator;
+    private final StreamingChangeRecordReceiver receiver;
 
     public EventDispatcher(TopicSelector<T> topicSelector, DatabaseSchema<T> schema,
             ChangeEventQueue<Object> queue,
-            DataCollectionFilter<T> filter) {
+            DataCollectionFilter<T> filter,
+            ChangeEventCreator changeEventCreator) {
         this.topicSelector = topicSelector;
         this.schema = schema;
         this.historizedSchema = schema instanceof HistorizedDatabaseSchema
@@ -56,16 +59,18 @@ public class EventDispatcher<T extends DataCollectionId> {
                 : null;
         this.queue = queue;
         this.filter = filter;
+        this.changeEventCreator = changeEventCreator;
+        this.receiver = new StreamingChangeRecordReceiver();
     }
 
     /**
      * Dispatches one or more {@link DataChangeEvent}s. If the given data collection is included in the currently
      * captured set of collections, the given emitter will be invoked, so it can emit one or more events (in the common
      * case, one event will be emitted, but e.g. in case of PK updates, it may be a deletion and a creation event). The
-     * receiving coordinator creates {@link SourceRecord}s for all emitted events and passes them to the given
+     * receiving coordinator creates {@link SourceRecord}s for all emitted events and passes them to this dispatcher's
      * {@link ChangeEventCreator} for converting them into data change events.
      */
-    public void dispatchDataChangeEvent(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter, ChangeEventCreator changeEventCreator) throws InterruptedException {
+    public void dispatchDataChangeEvent(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter) throws InterruptedException {
         // TODO Handle Heartbeat
 
         // TODO Handle JMX
@@ -84,7 +89,7 @@ public class EventDispatcher<T extends DataCollectionId> {
 
         changeRecordEmitter.emitChangeRecords(
             dataCollectionSchema,
-            new ChangeRecordReceiver(dataCollectionId, changeEventCreator, dataCollectionSchema)
+            receiver
         );
     }
 
@@ -97,28 +102,17 @@ public class EventDispatcher<T extends DataCollectionId> {
         schemaChangeEventEmitter.emitSchemaChangeEvent(new SchemaChangeEventReceiver());
     }
 
-    private final class ChangeRecordReceiver implements ChangeRecordEmitter.Receiver {
-
-        private final T dataCollectionId;
-        private final ChangeEventCreator changeEventCreator;
-        private final DataCollectionSchema dataCollectionSchema;
-
-        private ChangeRecordReceiver(T dataCollectionId, ChangeEventCreator changeEventCreator,
-                DataCollectionSchema dataCollectionSchema) {
-            this.dataCollectionId = dataCollectionId;
-            this.changeEventCreator = changeEventCreator;
-            this.dataCollectionSchema = dataCollectionSchema;
-        }
+    private final class StreamingChangeRecordReceiver implements ChangeRecordEmitter.Receiver {
 
         @Override
-        public void changeRecord(Operation operation, Object key, Struct value, OffsetContext offsetContext) throws InterruptedException {
+        public void changeRecord(DataCollectionSchema dataCollectionSchema, Operation operation, Object key, Struct value, OffsetContext offsetContext) throws InterruptedException {
             Objects.requireNonNull(key, "key must not be null");
             Objects.requireNonNull(value, "key must not be null");
 
             LOGGER.trace( "Received change record for {} operation on key {}", operation, key);
 
             Schema keySchema = dataCollectionSchema.keySchema();
-            String topicName = topicSelector.topicNameFor(dataCollectionId);
+            String topicName = topicSelector.topicNameFor((T) dataCollectionSchema.id());
 
             SourceRecord record = new SourceRecord(offsetContext.getPartition(), offsetContext.getOffset(),
                     topicName, null, keySchema, key, dataCollectionSchema.getEnvelopeSchema().schema(), value);

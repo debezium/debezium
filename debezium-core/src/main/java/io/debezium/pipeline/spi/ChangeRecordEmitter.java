@@ -20,6 +20,6 @@ public interface ChangeRecordEmitter {
     void emitChangeRecords(DataCollectionSchema schema, Receiver receiver) throws InterruptedException;
 
     public interface Receiver {
-        void changeRecord(Operation operation, Object key, Struct value, OffsetContext offsetManager) throws InterruptedException;
+        void changeRecord(DataCollectionSchema schema, Operation operation, Object key, Struct value, OffsetContext offsetManager) throws InterruptedException;
     }
 }

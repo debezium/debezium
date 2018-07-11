@@ -123,7 +123,7 @@ public class TableSchemaBuilder {
         Function<Object[], Struct> valueGenerator = createValueGenerator(valSchema, tableId, table.columns(), filter, mappers);
 
         // And the table schema ...
-        return new TableSchema(keySchema, keyGenerator, envelope, valSchema, valueGenerator);
+        return new TableSchema(tableId, keySchema, keyGenerator, envelope, valSchema, valueGenerator);
     }
 
     /**
