@@ -57,7 +57,7 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
         Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
         Struct envelope = tableSchema.getEnvelopeSchema().create(newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
 
-        receiver.changeRecord(operation, newKey, envelope, offsetContext);
+        receiver.changeRecord(tableSchema, operation, newKey, envelope, offsetContext);
     }
 
     private void emitUpdateRecord(Receiver receiver, TableSchema tableSchema, Operation operation)
@@ -74,15 +74,15 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
         // regular update
         if (Objects.equals(oldKey, newKey)) {
             Struct envelope = tableSchema.getEnvelopeSchema().update(oldValue, newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
-            receiver.changeRecord(operation, newKey, envelope, offsetContext);
+            receiver.changeRecord(tableSchema, operation, newKey, envelope, offsetContext);
         }
         // PK update -> emit as delete and re-insert with new key
         else {
             Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
-            receiver.changeRecord(Operation.DELETE, oldKey, envelope, offsetContext);
+            receiver.changeRecord(tableSchema, Operation.DELETE, oldKey, envelope, offsetContext);
 
             envelope = tableSchema.getEnvelopeSchema().create(newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
-            receiver.changeRecord(operation, oldKey, envelope, offsetContext);
+            receiver.changeRecord(tableSchema, operation, oldKey, envelope, offsetContext);
         }
     }
 
@@ -93,7 +93,7 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
         Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
 
         Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
-        receiver.changeRecord(operation, oldKey, envelope, offsetContext);
+        receiver.changeRecord(tableSchema, operation, oldKey, envelope, offsetContext);
     }
 
     protected abstract Operation getOperation();
