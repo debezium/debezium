@@ -60,6 +60,10 @@ public class Configurator {
         return with(MongoDbConnectorConfig.COLLECTION_BLACKLIST, regexList);
     }
 
+    public Configurator excludeFields(String blacklist) {
+        return with(MongoDbConnectorConfig.FIELD_BLACKLIST, blacklist);
+    }
+
     public Filters createFilters() {
         return new Filters(configBuilder.build());
     }

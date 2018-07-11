@@ -9,11 +9,12 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mongodb.FieldSelector.FieldFilter;
 import io.debezium.function.Predicates;
 import io.debezium.util.Collect;
 
 /**
- * A utility that is contains filters for acceptable collections.
+ * A utility that is contains various filters for acceptable database names, {@link CollectionId}s, and fields.
  * 
  * @author Randall Hauch
  */
@@ -21,8 +22,9 @@ public final class Filters {
 
     protected static final Set<String> BUILT_IN_DB_NAMES = Collect.unmodifiableSet("local", "admin");
 
-    private final Predicate<CollectionId> collectionFilter;
     private final Predicate<String> databaseFilter;
+    private final Predicate<CollectionId> collectionFilter;
+    private final FieldSelector fieldSelector;
 
     /**
      * Create an instance of the filters.
@@ -40,18 +42,21 @@ public final class Filters {
             databaseFilter = (db)->true;
         }
 
-        String whitelist = config.getString(MongoDbConnectorConfig.COLLECTION_WHITELIST);
-        String blacklist = config.getString(MongoDbConnectorConfig.COLLECTION_BLACKLIST);
-        Predicate<CollectionId> collectionFilter = null;
-        if (whitelist != null && !whitelist.trim().isEmpty()) {
-            collectionFilter = Predicates.includes(whitelist, CollectionId::namespace);
-        } else if (blacklist != null && !blacklist.trim().isEmpty()) {
-            collectionFilter = Predicates.excludes(blacklist, CollectionId::namespace);
+        String collectionWhitelist = config.getString(MongoDbConnectorConfig.COLLECTION_WHITELIST);
+        String collectionBlacklist = config.getString(MongoDbConnectorConfig.COLLECTION_BLACKLIST);
+        final Predicate<CollectionId> collectionFilter;
+        if (collectionWhitelist != null && !collectionWhitelist.trim().isEmpty()) {
+            collectionFilter = Predicates.includes(collectionWhitelist, CollectionId::namespace);
+        } else if (collectionBlacklist != null && !collectionBlacklist.trim().isEmpty()) {
+            collectionFilter = Predicates.excludes(collectionBlacklist, CollectionId::namespace);
         } else {
             collectionFilter = (id) -> true;
         }
         Predicate<CollectionId> isNotBuiltIn = this::isNotBuiltIn;
         this.collectionFilter = isNotBuiltIn.and(collectionFilter);
+
+        // Define the field selector that provides the field filter to exclude fields from document ...
+        fieldSelector = FieldSelector.excludeFields(config.getString(MongoDbConnectorConfig.FIELD_BLACKLIST));
     }
     
     /**
@@ -70,6 +75,16 @@ public final class Filters {
      */
     public Predicate<CollectionId> collectionFilter() {
         return collectionFilter;
+    }
+
+    /**
+     * Get the field filter for a given collection identifier.
+     *
+     * @param id the collection identifier, never null
+     * @return the field filter; never null
+     */
+    public FieldFilter fieldFilterFor(CollectionId id) {
+        return fieldSelector.fieldFilterFor(id);
     }
     
     protected boolean isNotBuiltIn(CollectionId id) {

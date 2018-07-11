@@ -77,7 +77,7 @@ import io.debezium.util.Threads;
  * This replicator does each of its tasks using a connection to the primary. If the replicator is not able to establish a
  * connection to the primary (e.g., there is no primary, or the replicator cannot communicate with the primary), the replicator
  * will continue to try to establish a connection, using an exponential back-off strategy to prevent saturating the system.
- * After a {@link MongoDbTaskContext#maxConnectionAttemptsForPrimary() configurable} number of failed attempts, the replicator
+ * After a {@link ConnectionContext#maxConnectionAttemptsForPrimary() configurable} number of failed attempts, the replicator
  * will fail by throwing a {@link ConnectException}.
  *
  * @author Randall Hauch
@@ -118,7 +118,7 @@ public class Replicator {
         final String copyThreadName = "copy-" + (replicaSet.hasReplicaSetName() ? replicaSet.replicaSetName() : "main");
         this.copyThreads = Threads.newFixedThreadPool(MongoDbConnector.class, context.serverName(), copyThreadName, context.getConnectionContext().maxNumberOfCopyThreads());
         this.bufferedRecorder = new BufferableRecorder(recorder);
-        this.recordMakers = new RecordMakers(this.source, context.topicSelector(), this.bufferedRecorder, context.isEmitTombstoneOnDelete());
+        this.recordMakers = new RecordMakers(context.filters(), this.source, context.topicSelector(), this.bufferedRecorder, context.isEmitTombstoneOnDelete());
         this.clock = this.context.getClock();
         this.onFailure = onFailure;
     }
@@ -195,7 +195,7 @@ public class Replicator {
 
     /**
      * Determine if an initial sync should be performed. An initial sync is expected if the {@link #source} has no previously
-     * recorded offsets for this replica set, or if {@link MongoDbTaskContext#performSnapshotEvenIfNotNeeded() a snapshot should
+     * recorded offsets for this replica set, or if {@link ConnectionContext#performSnapshotEvenIfNotNeeded() a snapshot should
      * always be performed}.
      *
      * @return {@code true} if the initial sync should be performed, or {@code false} otherwise
