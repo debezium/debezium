@@ -71,8 +71,10 @@ public class OracleStreamingChangeEventSource implements StreamingChangeEventSou
         }
         finally {
             // 3. disconnect
-            if (xsOut != null) {
+            if (this.xsOut != null) {
                 try {
+                    XStreamOut xsOut = this.xsOut;
+                    this.xsOut = null;
                     xsOut.detach(XStreamOut.DEFAULT_MODE);
                 }
                 catch (StreamsException e) {
