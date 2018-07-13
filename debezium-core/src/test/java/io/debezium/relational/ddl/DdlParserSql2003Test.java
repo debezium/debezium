@@ -11,6 +11,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.assertFalse;
 
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
@@ -19,7 +20,7 @@ import io.debezium.relational.Tables;
 
 public class DdlParserSql2003Test {
 
-    private DdlParser parser;
+    private LegacyDdlParser parser;
     private Tables tables;
 
     @Before
@@ -83,7 +84,12 @@ public class DdlParserSql2003Test {
         assertThat(column.typeName()).isEqualTo(typeName);
         assertThat(column.jdbcType()).isEqualTo(jdbcType);
         assertThat(column.length()).isEqualTo(length);
-        assertThat(column.scale()).isEqualTo(scale);
+        if (scale == Column.UNSET_INT_VALUE) {
+            assertFalse(column.scale().isPresent());
+        }
+        else {
+            assertThat(column.scale().get()).isEqualTo(scale);
+        }
         assertThat(column.isOptional()).isEqualTo(optional);
         assertThat(column.isGenerated()).isEqualTo(generated);
         assertThat(column.isAutoIncremented()).isEqualTo(autoIncremented);

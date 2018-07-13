@@ -32,6 +32,7 @@ import com.github.shyiko.mysql.binlog.event.EventType;
 import com.github.shyiko.mysql.binlog.event.GtidEventData;
 import com.github.shyiko.mysql.binlog.event.QueryEventData;
 import com.github.shyiko.mysql.binlog.event.RotateEventData;
+import com.github.shyiko.mysql.binlog.event.RowsQueryEventData;
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
@@ -161,10 +162,11 @@ public class BinlogReader extends AbstractReader {
         // Set up the log reader ...
         client = new BinaryLogClient(connectionContext.hostname(), connectionContext.port(), connectionContext.username(), connectionContext.password());
         // BinaryLogClient will overwrite thread names later
-        client.setThreadFactory(Threads.threadFactory(MySqlConnector.class, context.serverName(), "binlog-client", false));
+        client.setThreadFactory(Threads.threadFactory(MySqlConnector.class, context.getConnectorConfig().getLogicalName(), "binlog-client", false));
         client.setServerId(context.serverId());
         client.setSSLMode(sslModeFor(connectionContext.sslMode()));
         client.setKeepAlive(context.config().getBoolean(MySqlConnectorConfig.KEEP_ALIVE));
+        client.setKeepAliveInterval(context.config().getLong(MySqlConnectorConfig.KEEP_ALIVE_INTERVAL_MS));
         client.registerEventListener(context.bufferSizeForBinlogReader() == 0
                 ? this::handleEvent
                 : (new EventBuffer(context.bufferSizeForBinlogReader(), this))::add);
@@ -209,6 +211,7 @@ public class BinlogReader extends AbstractReader {
                 }
             }
         };
+
         // Add our custom deserializers ...
         eventDeserializer.setEventDataDeserializer(EventType.STOP, new StopEventDataDeserializer());
         eventDeserializer.setEventDataDeserializer(EventType.GTID, new GtidEventDataDeserializer());
@@ -230,14 +233,19 @@ public class BinlogReader extends AbstractReader {
         client.setEventDeserializer(eventDeserializer);
 
         // Set up for JMX ...
-        metrics = new BinlogReaderMetrics(client);
+        metrics = new BinlogReaderMetrics(client, context.dbSchema());
         heartbeat = Heartbeat.create(context.config(), context.topicSelector().getHeartbeatTopic(),
-                context.serverName(), () -> OffsetPosition.build(source.partition(), source.offset()));
+                context.getConnectorConfig().getLogicalName(), () -> OffsetPosition.build(source.partition(), source.offset()));
     }
 
     @Override
     protected void doInitialize() {
         metrics.register(context, logger);
+    }
+
+    @Override
+    public void doDestroy() {
+        metrics.unregister(logger);
     }
 
     @Override
@@ -258,6 +266,11 @@ public class BinlogReader extends AbstractReader {
         eventHandlers.put(EventType.VIEW_CHANGE, this::viewChange);
         eventHandlers.put(EventType.XA_PREPARE, this::prepareTransaction);
         eventHandlers.put(EventType.XID, this::handleTransactionCompletion);
+
+        // Conditionally register ROWS_QUERY handler to parse SQL statements.
+        if (context.includeSqlQuery()) {
+            eventHandlers.put(EventType.ROWS_QUERY, this::handleRowsQuery);
+        }
 
         // Get the current GtidSet from MySQL so we can get a filtered/merged GtidSet based off of the last Debezium checkpoint.
         String availableServerGtidStr = connectionContext.knownGtidSet();
@@ -352,10 +365,6 @@ public class BinlogReader extends AbstractReader {
             cleanupResources();
         } catch (IOException e) {
             logger.error("Unexpected error when disconnecting from the MySQL binary log reader", e);
-        } finally {
-            // We unregister our JMX metrics now, which means we won't record metrics for records that
-            // may be processed between now and complete shutdown. That's okay.
-            metrics.unregister(logger);
         }
     }
 
@@ -569,6 +578,20 @@ public class BinlogReader extends AbstractReader {
                 ignoreDmlEventByGtidSource = true;
             }
         }
+    }
+
+    /**
+     * Handle the supplied event with an {@link RowsQueryEventData} by recording the original SQL query
+     * that generated the event.
+     *
+     * @param event the database change data event to be processed; may not be null
+     */
+    protected void handleRowsQuery(Event event) {
+        // Unwrap the RowsQueryEvent
+        final RowsQueryEventData lastRowsQueryEventData = unwrapData(event);
+
+        // Set the query on the source
+        source.setQuery(lastRowsQueryEventData.getQuery());
     }
 
     /**

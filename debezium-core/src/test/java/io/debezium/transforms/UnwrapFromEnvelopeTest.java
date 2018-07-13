@@ -5,6 +5,8 @@
  */
 package io.debezium.transforms;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,7 +33,7 @@ public class UnwrapFromEnvelopeTest {
             transform.configure(props);
 
             final SourceRecord tombstone = new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", null, null);
-            assert transform.apply(tombstone) == null;
+            assertThat(transform.apply(tombstone)).isNull();
         }
     }
 
@@ -43,7 +45,7 @@ public class UnwrapFromEnvelopeTest {
             transform.configure(props);
 
             final SourceRecord tombstone = new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", null, null);
-            assert transform.apply(tombstone) == null;
+            assertThat(transform.apply(tombstone)).isNull();
         }
     }
 
@@ -55,7 +57,7 @@ public class UnwrapFromEnvelopeTest {
             transform.configure(props);
 
             final SourceRecord tombstone = new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", null, null);
-            assert transform.apply(tombstone) == tombstone;
+            assertThat(transform.apply(tombstone)).isEqualTo(tombstone);
         }
     }
 
@@ -110,7 +112,7 @@ public class UnwrapFromEnvelopeTest {
             transform.configure(props);
 
             final SourceRecord deleteRecord = createDeleteRecord();
-            assert transform.apply(deleteRecord) == null;
+            assertThat(transform.apply(deleteRecord)).isNull();
         }
     }
 
@@ -122,7 +124,7 @@ public class UnwrapFromEnvelopeTest {
             transform.configure(props);
 
             final SourceRecord deleteRecord = createDeleteRecord();
-            assert transform.apply(deleteRecord) == null;
+            assertThat(transform.apply(deleteRecord)).isNull();
         }
     }
 
@@ -135,7 +137,7 @@ public class UnwrapFromEnvelopeTest {
 
             final SourceRecord deleteRecord = createDeleteRecord();
             final SourceRecord tombstone = transform.apply(deleteRecord);
-            assert tombstone.value() == null;
+            assertThat(tombstone.value()).isNull();
         }
     }
 
@@ -147,7 +149,7 @@ public class UnwrapFromEnvelopeTest {
 
             final SourceRecord createRecord = createCreateRecord();
             final SourceRecord unwrapped = transform.apply(createRecord);
-            assert ((Struct)unwrapped.value()).getInt8("id") == 1;
+            assertThat(((Struct)unwrapped.value()).getInt8("id")).isEqualTo((byte) 1);
         }
     }
 
@@ -158,10 +160,10 @@ public class UnwrapFromEnvelopeTest {
             transform.configure(props);
 
             final SourceRecord unknownRecord = createUnknownRecord();
-            assert transform.apply(unknownRecord) == unknownRecord;
+            assertThat(transform.apply(unknownRecord)).isEqualTo(unknownRecord);
 
             final SourceRecord unnamedSchemaRecord = createUnknownUnnamedSchemaRecord();
-            assert transform.apply(unnamedSchemaRecord) == unnamedSchemaRecord;
+            assertThat(transform.apply(unnamedSchemaRecord)).isEqualTo(unnamedSchemaRecord);
         }
     }
 }

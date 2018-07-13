@@ -9,6 +9,8 @@ package io.debezium.connector.postgresql.connection.pgproto;
 import java.math.BigDecimal;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +33,7 @@ import io.debezium.connector.postgresql.connection.AbstractReplicationMessageCol
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.connector.postgresql.proto.PgProto;
 import io.debezium.data.SpecialValueDecimal;
+import io.debezium.time.Conversions;
 import io.debezium.util.Strings;
 
 /**
@@ -70,8 +73,8 @@ class PgProtoReplicationMessage implements ReplicationMessage {
     }
 
     @Override
-    public int getTransactionId() {
-        return rawMessage.getTransactionId();
+    public long getTransactionId() {
+        return Integer.toUnsignedLong(rawMessage.getTransactionId());
     }
 
     @Override
@@ -106,6 +109,11 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                         @Override
                         public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
                             return PgProtoReplicationMessage.this.getValue(datum, connection, includeUnknownDatatypes);
+                        }
+
+                        @Override
+                        public String toString() {
+                            return datum.toString();
                         }
                     };
                    })
@@ -169,6 +177,13 @@ class PgProtoReplicationMessage implements ReplicationMessage {
             case PgOid.DATE:
                 return datumMessage.hasDatumInt32() ? (long) datumMessage.getDatumInt32() : null;
             case PgOid.TIMESTAMP:
+                if (!datumMessage.hasDatumInt64()) {
+                    return null;
+                }
+                // these types are sent by the plugin as LONG - microseconds since Unix Epoch
+                // but we'll convert them to nanos which is the smallest unit
+                final LocalDateTime serverLocal = Conversions.toLocalDateTimeUTC(datumMessage.getDatumInt64());
+                return Conversions.toEpochNanos(serverLocal.toInstant(ZoneOffset.UTC));
             case PgOid.TIMESTAMPTZ:
             case PgOid.TIME:
                 if (!datumMessage.hasDatumInt64()) {
@@ -230,14 +245,14 @@ class PgProtoReplicationMessage implements ReplicationMessage {
 
             default:
                 PostgresType type = typeRegistry.get(columnType);
-                if (type.getOid() == typeRegistry.geometryOid() || type.getOid() == typeRegistry.geographyOid() ) {
+                if (type.getOid() == typeRegistry.geometryOid() || type.getOid() == typeRegistry.geographyOid() || type.getOid() == typeRegistry.citextOid() ) {
                     return datumMessage.getDatumBytes().toByteArray();
                 }
-                if (type.getOid() == typeRegistry.geometryArrayOid() || type.getOid() == typeRegistry.geographyArrayOid() ) {
+                if (type.getOid() == typeRegistry.geometryArrayOid() || type.getOid() == typeRegistry.geographyArrayOid() || type.getOid() == typeRegistry.citextArrayOid() ) {
                     return getArray(datumMessage, connection, columnType);
                 }
 
-                // unknown datatype is sent by decoder as binary value
+                // unknown data type is sent by decoder as binary value
                 if (includeUnknownDatatypes && datumMessage.hasDatumBytes()) {
                     return datumMessage.getDatumBytes().toByteArray();
                 }

@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.function.Predicate;
 
@@ -39,7 +40,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
     private final MySqlConnectorConfig connectorConfig;
     private final SourceInfo source;
     private final MySqlSchema dbSchema;
-    private final TopicSelector topicSelector;
+    private final MySqlTopicSelector topicSelector;
     private final RecordMakers recordProcessor;
     private final Predicate<String> gtidSourceFilter;
     private final Predicate<String> ddlFilter;
@@ -61,11 +62,11 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         this.connectionContext = new MySqlJdbcContext(config);
 
         // Set up the topic selector ...
-        this.topicSelector = TopicSelector.defaultSelector(serverName(), getHeartbeatTopicsPrefix());
+        this.topicSelector = MySqlTopicSelector.defaultSelector(connectorConfig.getLogicalName(), getHeartbeatTopicsPrefix());
 
         // Set up the source information ...
         this.source = new SourceInfo();
-        this.source.setServerName(serverName());
+        this.source.setServerName(connectorConfig.getLogicalName());
 
         // Set up the GTID filter ...
         String gtidSetIncludes = config.getString(MySqlConnectorConfig.GTID_SOURCE_INCLUDES);
@@ -80,7 +81,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         }
 
         // Set up the MySQL schema ...
-        this.dbSchema = new MySqlSchema(config, serverName(), this.gtidSourceFilter, this.tableIdCaseInsensitive, topicSelector);
+        this.dbSchema = new MySqlSchema(connectorConfig, this.gtidSourceFilter, this.tableIdCaseInsensitive, topicSelector);
 
         // Set up the record processor ...
         this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector, config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE));
@@ -106,7 +107,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         return config.getString("name");
     }
 
-    public TopicSelector topicSelector() {
+    public MySqlTopicSelector topicSelector() {
         return topicSelector;
     }
 
@@ -196,10 +197,6 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         return config.getLong(MySqlConnectorConfig.SERVER_ID);
     }
 
-    public String serverName() {
-        return config.getString(MySqlConnectorConfig.SERVER_NAME);
-    }
-
     public long timeoutInMilliseconds() {
         return config.getLong(MySqlConnectorConfig.CONNECTION_TIMEOUT_MS);
     }
@@ -214,6 +211,10 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
 
     public boolean includeSchemaChangeRecords() {
         return config.getBoolean(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES);
+    }
+
+    public boolean includeSqlQuery() {
+        return config.getBoolean(MySqlConnectorConfig.INCLUDE_SQL_QUERY);
     }
 
     public boolean isSnapshotAllowedWhenNeeded() {
@@ -249,6 +250,10 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         return config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX);
     }
 
+    public Duration snapshotDelay() {
+        return Duration.ofMillis(config.getLong(MySqlConnectorConfig.SNAPSHOT_DELAY_MS));
+    }
+
     public void start() {
         connectionContext.start();
         // Start the MySQL database history, which simply starts up resources but does not recover the history to a specific point
@@ -276,7 +281,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
      * @throws IllegalArgumentException if any of the parameters are null
      */
     public void temporaryLoggingContext(String contextName, Runnable operation) {
-        LoggingContext.temporarilyForConnector("MySQL", serverName(), contextName, operation);
+        LoggingContext.temporarilyForConnector("MySQL", connectorConfig.getLogicalName(), contextName, operation);
     }
 
     /**
@@ -287,7 +292,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
      */
     public ObjectName metricName(String contextName) throws MalformedObjectNameException {
         //return new ObjectName("debezium.mysql:type=connector-metrics,connector=" + serverName() + ",name=" + contextName);
-        return new ObjectName("debezium.mysql:type=connector-metrics,context=" + contextName + ",server=" + serverName());
+        return new ObjectName("debezium.mysql:type=connector-metrics,context=" + contextName + ",server=" + connectorConfig.getLogicalName());
     }
 
     /**

@@ -18,7 +18,7 @@ import io.debezium.relational.TableId;
  * @author Randall Hauch
  *
  */
-public class SimpleDdlParserListener implements DdlParserListener {
+public class SimpleDdlParserListener extends DdlChanges implements DdlParserListener {
 
     public static final class EventAssert {
 
@@ -74,6 +74,9 @@ public class SimpleDdlParserListener implements DdlParserListener {
         public EventAssert alterTableNamed( String tableName) {
             return alterTable().tableNameIs(tableName).isNotView();
         }
+        public EventAssert truncateTableNamed( String tableName) {
+            return truncateTable().tableNameIs(tableName).isNotView();
+        }
         public EventAssert renamedFrom( String oldName ) {
             TableId previousTableId = alterTableEvent().previousTableId();
             if ( oldName == null ) {
@@ -121,6 +124,10 @@ public class SimpleDdlParserListener implements DdlParserListener {
         }
         public EventAssert dropIndex() {
             ofType(EventType.DROP_INDEX);
+            return this;
+        }
+        public EventAssert truncateTable() {
+            ofType(EventType.TRUNCATE_TABLE);
             return this;
         }
     }

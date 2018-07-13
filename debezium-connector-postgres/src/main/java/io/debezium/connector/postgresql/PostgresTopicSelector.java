@@ -7,6 +7,7 @@
 package io.debezium.connector.postgresql;
 
 import io.debezium.relational.TableId;
+import io.debezium.schema.TopicSelector;
 
 /**
  * Generator of topic names for {@link io.debezium.relational.Table table ids} used by the Postgres connector to determine
@@ -14,16 +15,16 @@ import io.debezium.relational.TableId;
  *
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
-public interface TopicSelector {
+public interface PostgresTopicSelector extends TopicSelector<TableId> {
 
-    public static TopicSelector create(PostgresConnectorConfig config) {
+    public static PostgresTopicSelector create(PostgresConnectorConfig config) {
         PostgresConnectorConfig.TopicSelectionStrategy topicSelectionStrategy = config.topicSelectionStrategy();
 
         switch (topicSelectionStrategy) {
             case TOPIC_PER_SCHEMA:
-                return TopicSelector.topicPerSchema(config.serverName());
+                return topicPerSchema(config.getLogicalName());
             case TOPIC_PER_TABLE:
-                return TopicSelector.topicPerTable(config.serverName());
+                return topicPerTable(config.getLogicalName());
             default:
                 throw new IllegalArgumentException("Unknown topic selection strategy: " + topicSelectionStrategy);
         }
@@ -35,7 +36,7 @@ public interface TopicSelector {
      * @param prefix a prefix which will be prepended to the topic name
      * @return a {@link TopicSelector} instance, never {@code null}
      */
-    static TopicSelector topicPerTable(String prefix) {
+    static PostgresTopicSelector topicPerTable(String prefix) {
         return tableId -> String.join(".", prefix, tableId.schema(), tableId.table());
     }
 
@@ -45,15 +46,7 @@ public interface TopicSelector {
      * @param prefix a prefix which will be prepended to the topic name
      * @return a {@link TopicSelector} instance, never {@code null}
      */
-    static TopicSelector topicPerSchema(String prefix) {
+    static PostgresTopicSelector topicPerSchema(String prefix) {
         return tableId -> String.join(".", prefix, tableId.schema());
     }
-
-    /**
-     * Returns the name of the Kafka topic for a given table identifier
-     *
-     * @param tableId the table identifier, never {@code null}
-     * @return the name of the Kafka topic, never {@code null}
-     */
-    String topicNameFor(TableId tableId);
 }

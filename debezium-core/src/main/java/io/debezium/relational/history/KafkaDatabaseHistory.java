@@ -332,15 +332,15 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     @Override
     public void initializeStorage() {
         super.initializeStorage();
-        final AdminClient admin = AdminClient.create(this.producerConfig.asProperties());
-        try {
+
+        try (AdminClient admin = AdminClient.create(this.producerConfig.asProperties())) {
             // Find default replication factor
             Config brokerConfig = getKafkaBrokerConfig(admin);
             final short replicationFactor = Short.parseShort(brokerConfig.get(DEFAULT_TOPIC_REPLICATION_FACTOR_PROP_NAME).value());
 
             // Create topic
             final NewTopic topic = new NewTopic(topicName, (short)1, replicationFactor);
-            topic.configs(Collect.hashMapOf("cleanup.policy", "delete", "retention.ms", Long.toString(Long.MAX_VALUE)));
+            topic.configs(Collect.hashMapOf("cleanup.policy", "delete", "retention.ms", Long.toString(Long.MAX_VALUE), "retention.bytes", "-1"));
             admin.createTopics(Collections.singleton(topic));
 
             logger.info("Database history topic '{}' created", topic);

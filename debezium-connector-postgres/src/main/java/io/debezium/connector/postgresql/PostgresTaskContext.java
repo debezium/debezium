@@ -23,11 +23,11 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
 public class PostgresTaskContext extends CdcSourceTaskContext {
 
     private final PostgresConnectorConfig config;
-    private final TopicSelector topicSelector;
+    private final PostgresTopicSelector topicSelector;
     private final PostgresSchema schema;
 
-    protected PostgresTaskContext(PostgresConnectorConfig config, PostgresSchema schema, TopicSelector topicSelector) {
-        super("Postgres", config.serverName());
+    protected PostgresTaskContext(PostgresConnectorConfig config, PostgresSchema schema, PostgresTopicSelector topicSelector) {
+        super("Postgres", config.getLogicalName());
 
         this.config = config;
         this.topicSelector = topicSelector;
@@ -35,7 +35,7 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
         this.schema = schema;
     }
 
-    protected TopicSelector topicSelector() {
+    protected PostgresTopicSelector topicSelector() {
         return topicSelector;
     }
 

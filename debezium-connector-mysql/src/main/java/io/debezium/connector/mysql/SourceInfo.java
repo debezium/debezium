@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 
@@ -109,6 +110,7 @@ final class SourceInfo extends AbstractSourceInfo {
     public static final String THREAD_KEY = "thread";
     public static final String DB_NAME_KEY = "db";
     public static final String TABLE_NAME_KEY = "table";
+    public static final String QUERY_KEY = "query";
 
     /**
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition()} and {@link #offset()} information.
@@ -122,10 +124,11 @@ final class SourceInfo extends AbstractSourceInfo {
                                                      .field(BINLOG_FILENAME_OFFSET_KEY, Schema.STRING_SCHEMA)
                                                      .field(BINLOG_POSITION_OFFSET_KEY, Schema.INT64_SCHEMA)
                                                      .field(BINLOG_ROW_IN_EVENT_OFFSET_KEY, Schema.INT32_SCHEMA)
-                                                     .field(SNAPSHOT_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
+                                                     .field(SNAPSHOT_KEY, SchemaBuilder.bool().optional().defaultValue(false).build())
                                                      .field(THREAD_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                      .field(DB_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(TABLE_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                                                     .field(QUERY_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .build();
 
     private String currentGtidSet;
@@ -147,6 +150,7 @@ final class SourceInfo extends AbstractSourceInfo {
     private Map<String, String> sourcePartition;
     private boolean lastSnapshot = true;
     private boolean nextSnapshot = false;
+    private String currentQuery = null;
 
     public SourceInfo() {
         super(Module.version());
@@ -160,6 +164,22 @@ final class SourceInfo extends AbstractSourceInfo {
     public void setServerName(String logicalId) {
         this.serverName = logicalId;
         sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, serverName);
+    }
+
+    /**
+     * Set the original SQL query.
+     *
+     * @param query the original SQL query that generated the event.
+     */
+    public void setQuery(final String query) {
+        this.currentQuery = query;
+    }
+
+    /**
+     * @return the original SQL query that generated the event.  NULL if no such query is associated.
+     */
+    public String getQuery() {
+        return this.currentQuery;
     }
 
     /**
@@ -324,6 +344,9 @@ final class SourceInfo extends AbstractSourceInfo {
             result.put(DB_NAME_KEY, tableId.catalog());
             result.put(TABLE_NAME_KEY, tableId.table());
         }
+        if (currentQuery != null) {
+            result.put(QUERY_KEY, currentQuery);
+        }
         return result;
     }
 
@@ -370,6 +393,7 @@ final class SourceInfo extends AbstractSourceInfo {
         this.restartRowsToSkip = 0;
         this.restartEventsToSkip = 0;
         this.inTransaction = false;
+        this.currentQuery = null;
     }
 
     /**

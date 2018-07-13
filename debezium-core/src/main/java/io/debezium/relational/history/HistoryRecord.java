@@ -6,7 +6,9 @@
 package io.debezium.relational.history;
 
 import java.util.Map;
+import java.util.Map.Entry;
 
+import io.debezium.document.Array;
 import io.debezium.document.Document;
 
 public class HistoryRecord {
@@ -15,7 +17,9 @@ public class HistoryRecord {
         public static final String SOURCE = "source";
         public static final String POSITION = "position";
         public static final String DATABASE_NAME = "databaseName";
+        public static final String SCHEMA_NAME = "schemaName";
         public static final String DDL_STATEMENTS = "ddl";
+        public static final String TABLE_CHANGES = "tableChanges";
     }
 
     private final Document doc;
@@ -24,14 +28,40 @@ public class HistoryRecord {
         this.doc = document;
     }
 
-    public HistoryRecord(Map<String, ?> source, Map<String, ?> position, String databaseName, String ddl) {
+    public HistoryRecord(Map<String, ?> source, Map<String, ?> position, String databaseName, String schemaName, String ddl, TableChanges changes) {
         this.doc = Document.create();
+
         Document src = doc.setDocument(Fields.SOURCE);
         if (source != null) source.forEach(src::set);
+
         Document pos = doc.setDocument(Fields.POSITION);
-        if (position != null) position.forEach(pos::set);
-        if (databaseName != null) doc.setString(Fields.DATABASE_NAME, databaseName);
-        if (ddl != null) doc.setString(Fields.DDL_STATEMENTS, ddl);
+        if (position != null) {
+            for (Entry<String, ?> positionElement : position.entrySet()) {
+                if (positionElement.getValue() instanceof byte[]) {
+                    pos.setBinary(positionElement.getKey(), (byte[]) positionElement.getValue());
+                }
+                else {
+                    pos.set(positionElement.getKey(), positionElement.getValue());
+                }
+            }
+        }
+
+        if (databaseName != null) {
+            doc.setString(Fields.DATABASE_NAME, databaseName);
+        }
+
+        if (schemaName != null) {
+            doc.setString(Fields.SCHEMA_NAME, schemaName);
+        }
+
+        if (ddl != null) {
+            doc.setString(Fields.DDL_STATEMENTS, ddl);
+        }
+
+        if (changes != null) {
+            doc.setArray(Fields.TABLE_CHANGES, changes.toArray());
+        }
+
     }
 
     public Document document() {
@@ -50,8 +80,16 @@ public class HistoryRecord {
         return doc.getString(Fields.DATABASE_NAME);
     }
 
+    protected String schemaName() {
+        return doc.getString(Fields.SCHEMA_NAME);
+    }
+
     protected String ddl() {
         return doc.getString(Fields.DDL_STATEMENTS);
+    }
+
+    protected Array tableChanges() {
+        return doc.getArray(Fields.TABLE_CHANGES);
     }
 
     @Override

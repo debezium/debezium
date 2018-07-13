@@ -51,6 +51,7 @@ import io.debezium.data.Bits;
 import io.debezium.data.Json;
 import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
+import io.debezium.data.VerifyRecord;
 import io.debezium.data.Xml;
 import io.debezium.data.geometry.Geography;
 import io.debezium.data.geometry.Geometry;
@@ -60,8 +61,9 @@ import io.debezium.relational.TableId;
 import io.debezium.time.Date;
 import io.debezium.time.MicroDuration;
 import io.debezium.time.MicroTime;
-import io.debezium.time.NanoTime;
-import io.debezium.time.NanoTimestamp;
+import io.debezium.time.MicroTimestamp;
+import io.debezium.time.Time;
+import io.debezium.time.Timestamp;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.VariableLatch;
@@ -76,9 +78,10 @@ public abstract class AbstractRecordsProducerTest {
     protected static final Pattern INSERT_TABLE_MATCHING_PATTERN = Pattern.compile("insert into (.*)\\(.*\\) VALUES .*", Pattern.CASE_INSENSITIVE);
 
     protected static final String INSERT_CASH_TYPES_STMT = "INSERT INTO cash_table (csh) VALUES ('$1234.11')";
-    protected static final String INSERT_DATE_TIME_TYPES_STMT = "INSERT INTO time_table(ts, tz, date, ti, ttz, it) " +
-                                                                "VALUES ('2016-11-04T13:51:30'::TIMESTAMP, '2016-11-04T13:51:30+02:00'::TIMESTAMPTZ, " +
-                                                                "'2016-11-04'::DATE, '13:51:30'::TIME, '13:51:30+02:00'::TIMETZ, 'P1Y2M3DT4H5M0S'::INTERVAL)";
+    protected static final String INSERT_DATE_TIME_TYPES_STMT = "INSERT INTO time_table(ts, tsneg, ts_ms, ts_us, tz, date, ti, tip, ttz, tptz, it) " +
+                                                                "VALUES ('2016-11-04T13:51:30.123456'::TIMESTAMP, '1936-10-25T22:10:12.608'::TIMESTAMP, '2016-11-04T13:51:30.123456'::TIMESTAMP, '2016-11-04T13:51:30.123456'::TIMESTAMP, '2016-11-04T13:51:30+02:00'::TIMESTAMPTZ, " +
+                                                                "'2016-11-04'::DATE, '13:51:30'::TIME, '13:51:30.123'::TIME, '13:51:30+02:00'::TIMETZ, '13:51:30.123+02:00'::TIMETZ, " +
+                                                                "'P1Y2M3DT4H5M0S'::INTERVAL)";
     protected static final String INSERT_BIN_TYPES_STMT = "INSERT INTO bitbin_table (ba, bol, bs, bv) " +
                                                           "VALUES (E'\\\\001\\\\002\\\\003'::bytea, '0'::bit(1), '11'::bit(2), '00'::bit(2))";
     protected static final String INSERT_GEOM_TYPES_STMT = "INSERT INTO geom_table(p) VALUES ('(1,1)'::point)";
@@ -86,7 +89,7 @@ public abstract class AbstractRecordsProducerTest {
                                                            "VALUES ('{\"bar\": \"baz\"}'::json, '{\"bar\": \"baz\"}'::jsonb, " +
                                                            "'<foo>bar</foo><foo>bar</foo>'::xml, 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'::UUID)";
     protected static final String INSERT_STRING_TYPES_STMT = "INSERT INTO string_table (vc, vcv, ch, c, t, b, bnn) " +
-                                                             "VALUES ('aa', 'bb', 'cdef', 'abc', 'some text', E'\\\\000\\\\001\\\\002'::bytea, E'\\\\003\\\\004\\\\005'::bytea)";
+                                                             "VALUES ('\u017E\u0161', 'bb', 'cdef', 'abc', 'some text', E'\\\\000\\\\001\\\\002'::bytea, E'\\\\003\\\\004\\\\005'::bytea)";
     protected static final String INSERT_NUMERIC_TYPES_STMT =
             "INSERT INTO numeric_table (si, i, bi, r, db, r_int, db_int, r_nan, db_nan, r_pinf, db_pinf, r_ninf, db_ninf, ss, bs, b) " +
              "VALUES (1, 123456, 1234567890123, 3.3, 4.44, 3, 4, 'NaN', 'NaN', 'Infinity', 'Infinity', '-Infinity', '-Infinity', 1, 123, true)";
@@ -114,11 +117,11 @@ public abstract class AbstractRecordsProducerTest {
     protected static final String INSERT_TSTZRANGE_TYPES_STMT = "INSERT INTO tstzrange_table (unbounded_exclusive_range, bounded_inclusive_range) " +
             "VALUES ('[2017-06-05 11:29:12.549426+00,)', '[2017-06-05 11:29:12.549426+00, 2017-06-05 12:34:56.789012+00]')";
 
-    protected static final String INSERT_ARRAY_TYPES_STMT = "INSERT INTO array_table (int_array, bigint_array, text_array, char_array, varchar_array, date_array, numeric_array, varnumeric_array) " +
-                                                             "VALUES ('{1,2,3}', '{1550166368505037572}', '{\"one\",\"two\",\"three\"}', '{\"cone\",\"ctwo\",\"cthree\"}', '{\"vcone\",\"vctwo\",\"vcthree\"}', '{2016-11-04,2016-11-05,2016-11-06}', '{1.2,3.4,5.6}', '{1.1,2.22,3.333}')";
+    protected static final String INSERT_ARRAY_TYPES_STMT = "INSERT INTO array_table (int_array, bigint_array, text_array, char_array, varchar_array, date_array, numeric_array, varnumeric_array, citext_array) " +
+                                                             "VALUES ('{1,2,3}', '{1550166368505037572}', '{\"one\",\"two\",\"three\"}', '{\"cone\",\"ctwo\",\"cthree\"}', '{\"vcone\",\"vctwo\",\"vcthree\"}', '{2016-11-04,2016-11-05,2016-11-06}', '{1.2,3.4,5.6}', '{1.1,2.22,3.333}', '{\"four\",\"five\",\"six\"}')";
 
-    protected static final String INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT = "INSERT INTO array_table_with_nulls (int_array, bigint_array, text_array, date_array, numeric_array, varnumeric_array) " +
-            "VALUES (null, null, null, null, null, null)";
+    protected static final String INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT = "INSERT INTO array_table_with_nulls (int_array, bigint_array, text_array, date_array, numeric_array, varnumeric_array, citext_array) " +
+            "VALUES (null, null, null, null, null, null, null)";
 
     protected static final String INSERT_POSTGIS_TYPES_STMT = "INSERT INTO public.postgis_table (p, ml) " +
             "VALUES ('SRID=3187;POINT(174.9479 -36.7208)'::postgis.geometry, 'MULTILINESTRING((169.1321 -44.7032, 167.8974 -44.6414))'::postgis.geography)";
@@ -132,8 +135,8 @@ public abstract class AbstractRecordsProducerTest {
     protected static final String INSERT_QUOTED_TYPES_STMT = "INSERT INTO \"Quoted_\"\" . Schema\".\"Quoted_\"\" . Table\" (\"Quoted_\"\" . Text_Column\") " +
                                                              "VALUES ('some text')";
 
-    protected static final String INSERT_CUSTOM_TYPES_STMT = "INSERT INTO custom_table (lt, i, n) " +
-            "VALUES ('Top.Collections.Pictures.Astronomy.Galaxies', '978-0-393-04002-9', NULL)";
+    protected static final String INSERT_CUSTOM_TYPES_STMT = "INSERT INTO custom_table (lt, i, n, ct) " +
+            "VALUES ('Top.Collections.Pictures.Astronomy.Galaxies', '978-0-393-04002-9', NULL, 'Hello World')";
 
     protected static final Set<String> ALL_STMTS = new HashSet<>(Arrays.asList(INSERT_NUMERIC_TYPES_STMT, INSERT_NUMERIC_DECIMAL_TYPES_STMT_NO_NAN,
                                                                  INSERT_DATE_TIME_TYPES_STMT,
@@ -179,16 +182,16 @@ public abstract class AbstractRecordsProducerTest {
         final Struct nvs_int = new Struct(VariableScaleDecimal.schema());
         nvs_int.put("scale", 0).put("value", new BigDecimal("22").unscaledValue().toByteArray());
         final List<SchemaAndValueField> fields = new ArrayList<SchemaAndValueField>(Arrays.asList(
-                new SchemaAndValueField("d", Decimal.builder(2).optional().build(), new BigDecimal("1.10")),
-                new SchemaAndValueField("dzs", Decimal.builder(0).optional().build(), new BigDecimal("10")),
+                new SchemaAndValueField("d", Decimal.builder(2).parameter(TestHelper.PRECISION_PARAMETER_KEY, "3").optional().build(), new BigDecimal("1.10")),
+                new SchemaAndValueField("dzs", Decimal.builder(0).parameter(TestHelper.PRECISION_PARAMETER_KEY, "4").optional().build(), new BigDecimal("10")),
                 new SchemaAndValueField("dvs", VariableScaleDecimal.optionalSchema(), dvs),
-                new SchemaAndValueField("d_nn", Decimal.builder(2).build(), new BigDecimal("3.30")),
-                new SchemaAndValueField("n", Decimal.builder(4).optional().build(), new BigDecimal("22.2200")),
-                new SchemaAndValueField("nzs", Decimal.builder(0).optional().build(), new BigDecimal("22")),
+                new SchemaAndValueField("d_nn", Decimal.builder(2).parameter(TestHelper.PRECISION_PARAMETER_KEY, "3").build(), new BigDecimal("3.30")),
+                new SchemaAndValueField("n", Decimal.builder(4).parameter(TestHelper.PRECISION_PARAMETER_KEY, "6").optional().build(), new BigDecimal("22.2200")),
+                new SchemaAndValueField("nzs", Decimal.builder(0).parameter(TestHelper.PRECISION_PARAMETER_KEY, "4").optional().build(), new BigDecimal("22")),
                 new SchemaAndValueField("nvs", VariableScaleDecimal.optionalSchema(), nvs),
-                new SchemaAndValueField("d_int", Decimal.builder(2).optional().build(), new BigDecimal("1.00")),
+                new SchemaAndValueField("d_int", Decimal.builder(2).parameter(TestHelper.PRECISION_PARAMETER_KEY, "3").optional().build(), new BigDecimal("1.00")),
                 new SchemaAndValueField("dvs_int", VariableScaleDecimal.optionalSchema(), dvs_int),
-                new SchemaAndValueField("n_int", Decimal.builder(4).optional().build(), new BigDecimal("22.0000")),
+                new SchemaAndValueField("n_int", Decimal.builder(4).parameter(TestHelper.PRECISION_PARAMETER_KEY, "6").optional().build(), new BigDecimal("22.0000")),
                 new SchemaAndValueField("nvs_int", VariableScaleDecimal.optionalSchema(), nvs_int)
         ));
         return fields;
@@ -245,7 +248,7 @@ public abstract class AbstractRecordsProducerTest {
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForStringTypes() {
-       return Arrays.asList(new SchemaAndValueField("vc", Schema.OPTIONAL_STRING_SCHEMA, "aa"),
+       return Arrays.asList(new SchemaAndValueField("vc", Schema.OPTIONAL_STRING_SCHEMA, "\u017E\u0161"),
                             new SchemaAndValueField("vcv", Schema.OPTIONAL_STRING_SCHEMA, "bb"),
                             new SchemaAndValueField("ch", Schema.OPTIONAL_STRING_SCHEMA, "cdef"),
                             new SchemaAndValueField("c", Schema.OPTIONAL_STRING_SCHEMA, "abc"),
@@ -254,6 +257,29 @@ public abstract class AbstractRecordsProducerTest {
                             new SchemaAndValueField("bnn", Schema.BYTES_SCHEMA, ByteBuffer.wrap(new byte[] {3, 4, 5}))
                );
     }
+
+    protected List<SchemaAndValueField> schemasAndValuesForStringTypesWithSourceColumnTypeInfo() {
+        return Arrays.asList(new SchemaAndValueField("vc",
+                                    SchemaBuilder.string().optional()
+                                        .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "VARCHAR")
+                                        .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "2")
+                                        .build(),
+                                    "\u017E\u0161"
+                             ),
+                             new SchemaAndValueField("vcv",
+                                     SchemaBuilder.string().optional()
+                                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "VARCHAR")
+                                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "2")
+                                         .build(),
+                                     "bb"
+                             ),
+                             new SchemaAndValueField("ch", Schema.OPTIONAL_STRING_SCHEMA, "cdef"),
+                             new SchemaAndValueField("c", Schema.OPTIONAL_STRING_SCHEMA, "abc"),
+                             new SchemaAndValueField("t", Schema.OPTIONAL_STRING_SCHEMA, "some text"),
+                             new SchemaAndValueField("b", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap(new byte[] {0, 1, 2})),
+                             new SchemaAndValueField("bnn", Schema.BYTES_SCHEMA, ByteBuffer.wrap(new byte[] {3, 4, 5}))
+                );
+     }
 
     protected List<SchemaAndValueField> schemasAndValuesForTextTypes() {
         return Arrays.asList(new SchemaAndValueField("j", Json.builder().optional().build(), "{\"bar\": \"baz\"}"),
@@ -294,30 +320,44 @@ public abstract class AbstractRecordsProducerTest {
     }
 
     protected List<SchemaAndValueField> schemaAndValuesForDateTimeTypes() {
-        long expectedTs = NanoTimestamp.toEpochNanos(LocalDateTime.parse("2016-11-04T13:51:30"), null);
+        long expectedTs = MicroTimestamp.toEpochMicros(LocalDateTime.parse("2016-11-04T13:51:30.123456"), null);
+        long expectedTsMs = Timestamp.toEpochMillis(LocalDateTime.parse("2016-11-04T13:51:30.123456"), null);
+        long expectedNegTs = MicroTimestamp.toEpochMicros(LocalDateTime.parse("1936-10-25T22:10:12.608"), null);
         String expectedTz = "2016-11-04T11:51:30Z"; //timestamp is stored with TZ, should be read back with UTC
         int expectedDate = Date.toEpochDay(LocalDate.parse("2016-11-04"), null);
-        long expectedTi = LocalTime.parse("13:51:30").toNanoOfDay();
+        long expectedTi = LocalTime.parse("13:51:30").toNanoOfDay() / 1_000;
+        long expectedTiPrecision = LocalTime.parse("13:51:30.123").toNanoOfDay() / 1_000_000;
         String expectedTtz = "11:51:30Z";  //time is stored with TZ, should be read back at GMT
-        double interval = MicroDuration.durationMicros(1, 2, 3, 4, 5, 0, PostgresValueConverter.DAYS_PER_MONTH_AVG);
+        String expectedTtzPrecision = "11:51:30.123Z";
+        double interval = MicroDuration.durationMicros(1, 2, 3, 4, 5, 0, MicroDuration.DAYS_PER_MONTH_AVG);
 
-        return Arrays.asList(new SchemaAndValueField("ts", NanoTimestamp.builder().optional().build(), expectedTs),
+        return Arrays.asList(new SchemaAndValueField("ts", MicroTimestamp.builder().optional().build(), expectedTs),
+                             new SchemaAndValueField("tsneg", MicroTimestamp.builder().optional().build(), expectedNegTs),
+                             new SchemaAndValueField("ts_ms", Timestamp.builder().optional().build(), expectedTsMs),
+                             new SchemaAndValueField("ts_us", MicroTimestamp.builder().optional().build(), expectedTs),
                              new SchemaAndValueField("tz", ZonedTimestamp.builder().optional().build(), expectedTz),
                              new SchemaAndValueField("date", Date.builder().optional().build(), expectedDate),
-                             new SchemaAndValueField("ti", NanoTime.builder().optional().build(), expectedTi),
+                             new SchemaAndValueField("ti", MicroTime.builder().optional().build(), expectedTi),
+                             new SchemaAndValueField("tip", Time.builder().optional().build(), (int)expectedTiPrecision),
                              new SchemaAndValueField("ttz", ZonedTime.builder().optional().build(), expectedTtz),
+                             new SchemaAndValueField("tptz", ZonedTime.builder().optional().build(), expectedTtzPrecision),
                              new SchemaAndValueField("it", MicroDuration.builder().optional().build(), interval));
     }
 
     protected List<SchemaAndValueField> schemaAndValuesForDateTimeTypesAdaptiveTimeMicroseconds() {
-        long expectedTs = NanoTimestamp.toEpochNanos(LocalDateTime.parse("2016-11-04T13:51:30"), null);
+        long expectedTs = MicroTimestamp.toEpochMicros(LocalDateTime.parse("2016-11-04T13:51:30.123456"), null);
+        long expectedTsMs = Timestamp.toEpochMillis(LocalDateTime.parse("2016-11-04T13:51:30.123456"), null);
+        long expectedNegTs = MicroTimestamp.toEpochMicros(LocalDateTime.parse("1936-10-25T22:10:12.608"), null);
         String expectedTz = "2016-11-04T11:51:30Z"; //timestamp is stored with TZ, should be read back with UTC
         int expectedDate = Date.toEpochDay(LocalDate.parse("2016-11-04"), null);
         long expectedTi = LocalTime.parse("13:51:30").toNanoOfDay() / 1_000;
         String expectedTtz = "11:51:30Z";  //time is stored with TZ, should be read back at GMT
-        double interval = MicroDuration.durationMicros(1, 2, 3, 4, 5, 0, PostgresValueConverter.DAYS_PER_MONTH_AVG);
+        double interval = MicroDuration.durationMicros(1, 2, 3, 4, 5, 0, MicroDuration.DAYS_PER_MONTH_AVG);
 
-        return Arrays.asList(new SchemaAndValueField("ts", NanoTimestamp.builder().optional().build(), expectedTs),
+        return Arrays.asList(new SchemaAndValueField("ts", MicroTimestamp.builder().optional().build(), expectedTs),
+                new SchemaAndValueField("tsneg", MicroTimestamp.builder().optional().build(), expectedNegTs),
+                new SchemaAndValueField("ts_ms", Timestamp.builder().optional().build(), expectedTsMs),
+                new SchemaAndValueField("ts_us", MicroTimestamp.builder().optional().build(), expectedTs),
                 new SchemaAndValueField("tz", ZonedTimestamp.builder().optional().build(), expectedTz),
                 new SchemaAndValueField("date", Date.builder().optional().build(), expectedDate),
                 new SchemaAndValueField("ti", MicroTime.builder().optional().build(), expectedTi),
@@ -359,14 +399,16 @@ public abstract class AbstractRecordsProducerTest {
                                         (int)LocalDate.of(2016, Month.NOVEMBER, 5).toEpochDay(),
                                         (int)LocalDate.of(2016, Month.NOVEMBER, 6).toEpochDay()
                                 )),
-                            new SchemaAndValueField("numeric_array", SchemaBuilder.array(Decimal.builder(2).optional().build()).optional().build(),
+                            new SchemaAndValueField("numeric_array", SchemaBuilder.array(Decimal.builder(2).parameter(TestHelper.PRECISION_PARAMETER_KEY, "10").optional().build()).optional().build(),
                                     Arrays.asList(
                                             new BigDecimal("1.20"),
                                             new BigDecimal("3.40"),
                                             new BigDecimal("5.60")
                                     )),
                             new SchemaAndValueField("varnumeric_array", SchemaBuilder.array(VariableScaleDecimal.builder().optional().build()).optional().build(),
-                                    varnumArray)
+                                    varnumArray),
+                            new SchemaAndValueField("citext_array", SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().build(),
+                                    Arrays.asList("four", "five", "six"))
                             );
     }
 
@@ -378,7 +420,8 @@ public abstract class AbstractRecordsProducerTest {
                 new SchemaAndValueField("char_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null),
                 new SchemaAndValueField("varchar_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null),
                 new SchemaAndValueField("date_array", SchemaBuilder.array(Date.builder().optional().schema()).optional().build(), null),
-                new SchemaAndValueField("numeric_array", SchemaBuilder.array(Decimal.builder(2).optional().build()).optional().build(), null)
+                new SchemaAndValueField("numeric_array", SchemaBuilder.array(Decimal.builder(2).parameter(TestHelper.PRECISION_PARAMETER_KEY, "10").optional().build()).optional().build(), null),
+                new SchemaAndValueField("citext_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null)
         );
     }
 
@@ -450,7 +493,8 @@ public abstract class AbstractRecordsProducerTest {
     protected List<SchemaAndValueField> schemasAndValuesForCustomTypes() {
         return Arrays.asList(new SchemaAndValueField("lt", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap("Top.Collections.Pictures.Astronomy.Galaxies".getBytes())),
                              new SchemaAndValueField("i", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap("0-393-04002-X".getBytes())),
-                             new SchemaAndValueField("n", Schema.OPTIONAL_STRING_SCHEMA, null));
+                             new SchemaAndValueField("n", Schema.OPTIONAL_STRING_SCHEMA, null),
+                             new SchemaAndValueField("ct", Schema.OPTIONAL_STRING_SCHEMA, "Hello World"));
 
     }
 
@@ -531,12 +575,12 @@ public abstract class AbstractRecordsProducerTest {
     }
 
     protected static class SchemaAndValueField {
-        private final Object schema;
+        private final Schema schema;
         private final Object value;
         private final String fieldName;
         private Supplier<Boolean> assertValueOnlyIf = null;
 
-        public SchemaAndValueField(String fieldName, Object schema, Object value) {
+        public SchemaAndValueField(String fieldName, Schema schema, Object value) {
             this.schema = schema;
             this.value = value;
             this.fieldName = fieldName;
@@ -616,7 +660,7 @@ public abstract class AbstractRecordsProducerTest {
             Schema schema = content.schema();
             Field field = schema.field(fieldName);
             assertNotNull(fieldName + " not found in schema " + schema, field);
-            assertEquals("Schema for " + field.name() + " does not match the actual value", this.schema, field.schema());
+            VerifyRecord.assertConnectSchemasAreEqual(field.name(), this.schema, field.schema());
         }
     }
 

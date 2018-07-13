@@ -5,12 +5,13 @@
  */
 package io.debezium.relational;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.sql.Types;
 
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 public class ColumnEditorTest {
 
@@ -22,7 +23,7 @@ public class ColumnEditorTest {
         editor = Column.editor();
         column = null;
     }
-    
+
     protected void createColumnWithAllFieldsSetToNonDefaults() {
         column = editor.name("price")
                 .type("NUMBER")
@@ -43,7 +44,7 @@ public class ColumnEditorTest {
         assertThat(column.typeName()).isEqualTo("NUMBER");
         assertThat(column.jdbcType()).isEqualTo(Types.DOUBLE);
         assertThat(column.length()).isEqualTo(5);
-        assertThat(column.scale()).isEqualTo(2);
+        assertThat(column.scale().get()).isEqualTo(2);
         assertThat(column.position()).isEqualTo(4);
         assertThat(column.isOptional()).isTrue();
         assertThat(column.isAutoIncremented()).isTrue();
@@ -57,7 +58,7 @@ public class ColumnEditorTest {
         assertThat(column.typeName()).isNull();
         assertThat(column.jdbcType()).isEqualTo(Types.INTEGER);
         assertThat(column.length()).isEqualTo(-1);
-        assertThat(column.scale()).isEqualTo(-1);
+        Assert.assertFalse(column.scale().isPresent());
         assertThat(column.position()).isEqualTo(1);
         assertThat(column.isOptional()).isTrue();
         assertThat(column.isAutoIncremented()).isFalse();
@@ -70,15 +71,4 @@ public class ColumnEditorTest {
         assertThat(editor.toString()).isEqualTo(column.toString());
         assertThat(editor.toString()).isNotEmpty();
     }
-
-    @Test
-    public void shouldCompareBasedUponPosition() {
-        createColumnWithAllFieldsSetToNonDefaults();
-        assertThat(editor.compareTo(column)).isEqualTo(0);
-        editor.position(100);
-        assertThat(editor.compareTo(column)).isGreaterThan(0);
-        editor.position(1);
-        assertThat(editor.compareTo(column)).isLessThan(0);
-    }
-
 }

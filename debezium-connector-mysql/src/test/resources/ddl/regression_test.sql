@@ -52,8 +52,8 @@ INSERT INTO dbz_85_fractest VALUES ('2014-09-08', '17:51:04.777', '2014-09-08 17
 
 -- DBZ-100 handle enum and set
 CREATE TABLE dbz_100_enumsettest (
-  c1 ENUM('a','b','c'),
-  c2 SET('a','b','c')
+  c1 enUM('a','b','c'),
+  c2 Set('a','b','c')
 );
 INSERT INTO dbz_100_enumsettest VALUES ('a', 'a,b,c');
 INSERT INTO dbz_100_enumsettest VALUES ('b', 'b,a');

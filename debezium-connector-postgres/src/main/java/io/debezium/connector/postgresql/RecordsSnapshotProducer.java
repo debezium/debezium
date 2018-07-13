@@ -62,7 +62,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                                    SourceInfo sourceInfo,
                                    boolean continueStreamingAfterCompletion) {
         super(taskContext, sourceInfo);
-        executorService = Threads.newSingleThreadExecutor(PostgresConnector.class, taskContext.config().serverName(), CONTEXT_NAME);
+        executorService = Threads.newSingleThreadExecutor(PostgresConnector.class, taskContext.config().getLogicalName(), CONTEXT_NAME);
         currentRecord = new AtomicReference<>();
         if (continueStreamingAfterCompletion) {
             // we need to create the stream producer here to make sure it creates the replication connection;
@@ -154,7 +154,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             // we're locking in SHARE UPDATE EXCLUSIVE MODE to avoid concurrent schema changes while we're taking the snapshot
             // this does not prevent writes to the table, but prevents changes to the table's schema....
             // DBZ-298 Quoting name in case it has been quoted originally; it doesn't do harm if it hasn't been quoted
-            schema.tables().forEach(tableId -> statements.append("LOCK TABLE ")
+            schema.tableIds().forEach(tableId -> statements.append("LOCK TABLE ")
                                                          .append(tableId.toDoubleQuotedString())
                                                          .append(" IN SHARE UPDATE EXCLUSIVE MODE;")
                                                          .append(lineSeparator));
@@ -167,7 +167,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             // If rows are being inserted while we're doing the snapshot, the xlog pos should increase and so when
             // we start streaming, we should get back those changes
             long xlogStart = connection.currentXLogLocation();
-            int txId = connection.currentTransactionId().intValue();
+            long txId = connection.currentTransactionId().longValue();
             logger.info("\t read xlogStart at '{}' from transaction '{}'", ReplicationConnection.format(xlogStart), txId);
 
             // and mark the start of the snapshot
@@ -178,12 +178,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             AtomicInteger rowsCounter = new AtomicInteger(0);
             final Map<TableId, String> selectOverrides = getSnapshotSelectOverridesByTable();
 
-            for(TableId tableId : schema.tables()) {
-                if (schema.isFilteredOut(tableId)) {
-                    logger.info("\t table '{}' is filtered out, ignoring", tableId);
-                    continue;
-                }
-
+            for(TableId tableId : schema.tableIds()) {
                 long exportStart = clock().currentTimeInMillis();
                 logger.info("\t exporting data from table '{}'", tableId);
                 try {

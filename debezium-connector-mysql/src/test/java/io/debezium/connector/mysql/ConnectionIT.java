@@ -17,7 +17,7 @@ public class ConnectionIT implements Testing {
 
     @Ignore
     @Test
-    public void shouldConnectToDefaulDatabase() throws SQLException {
+    public void shouldConnectToDefaultDatabase() throws SQLException {
         try (MySQLConnection conn = MySQLConnection.forTestDatabase("mysql");) {
             conn.connect();
         }

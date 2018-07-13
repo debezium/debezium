@@ -9,7 +9,7 @@ import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
-import java.util.Base64;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -21,17 +21,17 @@ import org.apache.kafka.connect.source.SourceRecord;
 
 /**
  * Utilities for obtaining JSON string representations of {@link Schema}, {@link Struct}, and {@link Field} objects.
- * 
+ *
  * @author Randall Hauch
  */
 public class SchemaUtil {
-    
+
     private SchemaUtil() {
     }
 
     /**
      * Obtain a JSON string representation of the specified field.
-     * 
+     *
      * @param field the field; may not be null
      * @return the JSON string representation
      */
@@ -41,7 +41,7 @@ public class SchemaUtil {
 
     /**
      * Obtain a JSON string representation of the specified field.
-     * 
+     *
      * @param field the field; may not be null
      * @return the JSON string representation
      */
@@ -51,7 +51,7 @@ public class SchemaUtil {
 
     /**
      * Obtain a JSON string representation of the specified {@link Struct}.
-     * 
+     *
      * @param struct the {@link Struct}; may not be null
      * @return the JSON string representation
      */
@@ -61,7 +61,7 @@ public class SchemaUtil {
 
     /**
      * Obtain a JSON string representation of the specified {@link Schema}.
-     * 
+     *
      * @param schema the {@link Schema}; may not be null
      * @return the JSON string representation
      */
@@ -71,7 +71,7 @@ public class SchemaUtil {
 
     /**
      * Obtain a JSON string representation of the specified {@link SourceRecord}.
-     * 
+     *
      * @param record the {@link SourceRecord}; may not be null
      * @return the JSON string representation
      */
@@ -81,7 +81,7 @@ public class SchemaUtil {
 
     /**
      * Obtain a JSON string representation of the specified field.
-     * 
+     *
      * @param field the field; may not be null
      * @return the JSON string representation
      */
@@ -91,7 +91,7 @@ public class SchemaUtil {
 
     /**
      * Obtain a JSON string representation of the specified {@link Struct}.
-     * 
+     *
      * @param struct the {@link Struct}; may not be null
      * @return the JSON string representation
      */
@@ -101,7 +101,7 @@ public class SchemaUtil {
 
     /**
      * Obtain a JSON string representation of the specified {@link Schema}.
-     * 
+     *
      * @param schema the {@link Schema}; may not be null
      * @return the JSON string representation
      */
@@ -111,7 +111,7 @@ public class SchemaUtil {
 
     /**
      * Obtain a JSON string representation of the specified {@link SourceRecord}.
-     * 
+     *
      * @param record the {@link SourceRecord}; may not be null
      * @return the JSON string representation
      */
@@ -119,7 +119,7 @@ public class SchemaUtil {
         return new RecordWriter().detailed(true).append(record).toString();
     }
 
-    protected static class RecordWriter {
+    private static class RecordWriter {
         private final StringBuilder sb = new StringBuilder();
         private boolean detailed = false;
 
@@ -175,10 +175,9 @@ public class SchemaUtil {
                 }
                 sb.append('}');
             } else if (obj instanceof ByteBuffer) {
-                ByteBuffer b = (ByteBuffer) obj;
-                sb.append('"').append(Base64.getEncoder().encode(b.array())).append('"');
+                append((ByteBuffer)obj);
             } else if (obj instanceof byte[]) {
-                sb.append('"').append(Base64.getEncoder().encode((byte[])obj)).append('"');
+                append((byte[])obj);
             } else if (obj instanceof Map<?, ?>) {
                 Map<?, ?> map = (Map<?, ?>) obj;
                 sb.append('{');
@@ -251,6 +250,14 @@ public class SchemaUtil {
                 append(obj.toString());
             }
             return this;
+        }
+
+        protected void append(ByteBuffer b) {
+            append(b.array());
+        }
+
+        protected void append(byte[] b) {
+            sb.append(Arrays.toString(b));
         }
 
         protected void appendFirst(String name, Object value) {

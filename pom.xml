@@ -10,7 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.debezium</groupId>
     <artifactId>debezium-parent</artifactId>
-    <version>0.8.0-SNAPSHOT</version>
+    <version>0.9.0-SNAPSHOT</version>
     <name>Debezium Parent POM</name>
     <description>Debezium is an open source change data capture platform</description>
     <packaging>pom</packaging>
@@ -55,32 +55,36 @@
         <maven.compiler.target>1.8</maven.compiler.target>
 
         <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
-        <version.kafka>1.0.0</version.kafka>
+        <version.kafka>1.1.0</version.kafka>
         <version.kafka.scala>2.11</version.kafka.scala>
         <version.curator>2.11.0</version.curator>
         <version.zookeeper>3.4.10</version.zookeeper>
-        <version.jackson>2.9.1</version.jackson>
+        <version.jackson>2.9.4</version.jackson>
         <version.org.slf4j>1.7.25</version.org.slf4j>
         <version.log4j>1.2.17</version.log4j>
         <!-- check new release version at https://github.com/confluentinc/schema-registry/releases -->
-        <version.confluent.platform>4.0.0</version.confluent.platform>
+        <version.confluent.platform>4.1.0</version.confluent.platform>
 
         <!-- Databases -->
         <version.postgresql.driver>42.0.0-SNAPSHOT</version.postgresql.driver>
         <version.mysql.server>5.7</version.mysql.server>
         <version.mysql.driver>5.1.40</version.mysql.driver>
         <version.mysql.binlog>0.13.0</version.mysql.binlog>
-        <version.mongo.server>3.2.12</version.mongo.server>
-        <version.mongo.driver>3.4.2</version.mongo.driver>
+        <version.mongo.server>3.6.3</version.mongo.server>
+        <version.mongo.driver>3.6.3</version.mongo.driver>
 
         <!-- Connectors -->
         <version.com.google.protobuf>2.6.1</version.com.google.protobuf>
 
+        <!-- ANTLR -->
+        <antlr.version>4.7</antlr.version>
+
         <!-- Testing -->
         <version.junit>4.12</version.junit>
         <version.fest>1.4</version.fest>
+        <version.jmh>1.21</version.jmh>
 
-       <!-- Maven Plugins -->
+        <!-- Maven Plugins -->
         <version.resources.plugin>2.7</version.resources.plugin>
         <version.dependency.plugin>2.10</version.dependency.plugin>
         <version.enforcer.plugin>3.0.0-M1</version.enforcer.plugin>
@@ -89,7 +93,7 @@
         <version.assembly.plugin>2.4</version.assembly.plugin>
         <version.war.plugin>2.5</version.war.plugin>
         <version.google.formatter.plugin>0.3.1</version.google.formatter.plugin>
-        <version.docker.maven.plugin>0.20.1</version.docker.maven.plugin>
+        <version.docker.maven.plugin>0.26.0</version.docker.maven.plugin>
         <version.staging.plugin>1.6.3</version.staging.plugin>
         <version.protoc.maven.plugin>3.0.0.1</version.protoc.maven.plugin>
 
@@ -111,12 +115,14 @@
 
     <modules>
         <module>support/checkstyle</module>
+        <module>debezium-ddl-parser</module>
         <module>debezium-assembly-descriptors</module>
         <module>debezium-core</module>
         <module>debezium-embedded</module>
         <module>debezium-connector-mysql</module>
         <module>debezium-connector-postgres</module>
         <module>debezium-connector-mongodb</module>
+        <module>debezium-microbenchmark</module>
     </modules>
 
     <distributionManagement>
@@ -221,6 +227,12 @@
                 <version>${version.confluent.platform}</version>
             </dependency>
 
+            <dependency>
+                <groupId>org.antlr</groupId>
+                <artifactId>antlr4-runtime</artifactId>
+                <version>${antlr.version}</version>
+            </dependency>
+
             <!-- PostgreSQL connector -->
 
             <dependency>
@@ -288,6 +300,16 @@
                 <artifactId>fest-assert</artifactId>
                 <version>${version.fest}</version>
             </dependency>
+            <dependency>
+                <groupId>org.openjdk.jmh</groupId>
+                <artifactId>jmh-core</artifactId>
+                <version>${version.jmh}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.openjdk.jmh</groupId>
+                <artifactId>jmh-generator-annprocess</artifactId>
+                <version>${version.jmh}</version>
+            </dependency>
 
             <!-- Debezium artifacts -->
             <dependency>
@@ -318,6 +340,11 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-connector-mysql</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-ddl-parser</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

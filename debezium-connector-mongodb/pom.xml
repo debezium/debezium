@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>0.8.0-SNAPSHOT</version>
+        <version>0.9.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -123,7 +123,7 @@
                         <color>yellow</color>
                       </log>
                       <wait>
-                        <log>(?s)waiting for connections on port 27017.*waiting for connections on port 27017</log> <!-- internal port, multiline matching -->
+                        <log>.*waiting for connections on port 27017</log> <!-- internal port, multiline matching -->
                         <time>30000</time> <!-- 30 seconds max -->
                       </wait>
                     </run>
@@ -146,7 +146,7 @@
                         <color>green</color>
                       </log>
                       <wait>
-                        <log>Replica set is ready</log>
+                        <exit>0</exit>
                         <time>30000</time> <!-- 30 seconds max -->
                       </wait>
                     </run>

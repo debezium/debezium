@@ -41,7 +41,7 @@ public class PgProtoMessageDecoder implements MessageDecoder {
             final RowMessage message = PgProto.RowMessage.parseFrom(content);
             if (!message.getNewTypeinfoList().isEmpty() && message.getNewTupleCount() != message.getNewTypeinfoCount()) {
                 throw new ConnectException(String.format("Message from transaction {} has {} data columns but only {} of type info",
-                        message.getTransactionId(),
+                        Integer.toUnsignedLong(message.getTransactionId()),
                         message.getNewTupleCount(),
                         message.getNewTypeinfoCount()));
             }

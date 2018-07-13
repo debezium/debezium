@@ -171,7 +171,6 @@ public class MySqlSchemaTest {
 
     protected void assertTableIncluded(String fullyQualifiedTableName) {
         TableId tableId = TableId.parse(fullyQualifiedTableName);
-        assertThat(mysql.tables().forTable(tableId)).isNotNull();
         TableSchema tableSchema = mysql.schemaFor(tableId);
         assertThat(tableSchema).isNotNull();
         assertThat(tableSchema.keySchema().name()).isEqualTo(SchemaNameAdjuster.validFullname(SERVER_NAME + "." + fullyQualifiedTableName + ".Key"));
@@ -180,15 +179,14 @@ public class MySqlSchemaTest {
 
     protected void assertTableExcluded(String fullyQualifiedTableName) {
         TableId tableId = TableId.parse(fullyQualifiedTableName);
-        assertThat(mysql.tables().forTable(tableId)).isNull();
         assertThat(mysql.schemaFor(tableId)).isNull();
     }
 
     protected void assertNoTablesExistForDatabase(String dbName) {
-        assertThat(mysql.tables().tableIds().stream().filter(id->id.catalog().equals(dbName)).count()).isEqualTo(0);
+        assertThat(mysql.tableIds().stream().filter(id->id.catalog().equals(dbName)).count()).isEqualTo(0);
     }
     protected void assertTablesExistForDatabase(String dbName) {
-        assertThat(mysql.tables().tableIds().stream().filter(id->id.catalog().equals(dbName)).count()).isGreaterThan(0);
+        assertThat(mysql.tableIds().stream().filter(id->id.catalog().equals(dbName)).count()).isGreaterThan(0);
     }
 
     protected void assertHistoryRecorded() {
@@ -196,22 +194,22 @@ public class MySqlSchemaTest {
         duplicate.loadHistory(source);
 
         // Make sure table is defined in each ...
-        assertThat(duplicate.tables()).isEqualTo(mysql.tables());
+        assertThat(duplicate.tableIds()).isEqualTo(mysql.tableIds());
         for (int i = 0; i != 2; ++i) {
-            duplicate.tables().tableIds().forEach(tableId -> {
+            duplicate.tableIds().forEach(tableId -> {
                 TableSchema dupSchema = duplicate.schemaFor(tableId);
                 TableSchema schema = mysql.schemaFor(tableId);
                 assertThat(schema).isEqualTo(dupSchema);
-                Table dupTable = duplicate.tables().forTable(tableId);
-                Table table = mysql.tables().forTable(tableId);
+                Table dupTable = duplicate.tableFor(tableId);
+                Table table = mysql.tableFor(tableId);
                 assertThat(table).isEqualTo(dupTable);
             });
-            mysql.tables().tableIds().forEach(tableId -> {
+            mysql.tableIds().forEach(tableId -> {
                 TableSchema dupSchema = duplicate.schemaFor(tableId);
                 TableSchema schema = mysql.schemaFor(tableId);
                 assertThat(schema).isEqualTo(dupSchema);
-                Table dupTable = duplicate.tables().forTable(tableId);
-                Table table = mysql.tables().forTable(tableId);
+                Table dupTable = duplicate.tableFor(tableId);
+                Table table = mysql.tableFor(tableId);
                 assertThat(table).isEqualTo(dupTable);
             });
             duplicate.refreshSchemas();

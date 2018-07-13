@@ -8,6 +8,8 @@ package io.debezium.document;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
+import java.util.Arrays;
+
 import io.debezium.annotation.Immutable;
 
 /**
@@ -27,7 +29,7 @@ final class BinaryValue implements Value {
 
     @Override
     public int hashCode() {
-        return value.hashCode();
+        return Arrays.hashCode(this.value);
     }
 
     @Override
@@ -36,8 +38,8 @@ final class BinaryValue implements Value {
         if (obj instanceof Value) {
             Value that = (Value) obj;
             if (that.isNull()) return false;
-            if (that.isBinary()) return this.value.equals(that.asBytes());
-            if (that.isString()) return this.value.equals(that.asString().getBytes());
+            if (that.isBinary()) return Arrays.equals(this.value, that.asBytes());
+            if (that.isString()) return Arrays.equals(this.value, that.asString().getBytes());
             return false;
         }
         return false;

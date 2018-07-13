@@ -23,6 +23,8 @@ import org.bson.BsonValue;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.connector.mongodb.transforms.UnwrapFromMongoDbEnvelope.ArrayEncoding;
+
 /**
  * Unit test for {@code MongoDataConverter}.
  *
@@ -33,31 +35,37 @@ public class MongoDataConverterTest {
     private String record;
     private BsonDocument val;
     private SchemaBuilder builder;
+    private MongoDataConverter converter;
 
     @Before
     public void setup() throws Exception {
         record = getFile("restaurants5.json");
         val = BsonDocument.parse(record);
-        builder = SchemaBuilder.struct();
+        builder = SchemaBuilder.struct().name("pub");
+        converter = new MongoDataConverter(ArrayEncoding.ARRAY);
     }
 
     @Test
     public void shouldCreateCorrectStructFromInsertJson() {
         for (Entry<String, BsonValue> entry : val.entrySet()) {
-            MongoDataConverter.addFieldSchema(entry, builder);
+            converter.addFieldSchema(entry, builder);
         }
 
         Schema finalSchema = builder.build();
         Struct struct = new Struct(finalSchema);
 
         for (Entry<String, BsonValue> entry : val.entrySet()) {
-            MongoDataConverter.convertRecord(entry, finalSchema, struct);
+            converter.convertRecord(entry, finalSchema, struct);
         }
 
         assertThat(struct.toString()).isEqualTo(
                 "Struct{"
                 + "address=Struct{"
                   + "building=1007,"
+                  + "floor=Struct{"
+                    + "level=17,"
+                    + "description=level 17"
+                  + "},"
                   + "coord=[-73.856077, 40.848447],"
                   + "street=Morris Park Ave,"
                   + "zipcode=10462"
@@ -80,24 +88,33 @@ public class MongoDataConverterTest {
     @Test
     public void shouldCreateCorrectSchemaFromInsertJson() {
         for (Entry<String, BsonValue> entry : val.entrySet()) {
-            MongoDataConverter.addFieldSchema(entry, builder);
+            converter.addFieldSchema(entry, builder);
         }
         Schema finalSchema = builder.build();
 
         assertThat(finalSchema).isEqualTo(
-                SchemaBuilder.struct()
-                    .field("address", SchemaBuilder.struct()
+                SchemaBuilder.struct().name("pub")
+                    .field("address", SchemaBuilder.struct().name("pub.address").optional()
                             .field("building", Schema.OPTIONAL_STRING_SCHEMA)
-                            .field("coord", SchemaBuilder.array(Schema.OPTIONAL_FLOAT64_SCHEMA).build())
+                            .field("floor", SchemaBuilder.struct().name("pub.address.floor").optional()
+                                    .field("level", Schema.OPTIONAL_INT32_SCHEMA)
+                                    .field("description", Schema.OPTIONAL_STRING_SCHEMA)
+                                    .build()
+                            )
+                            .field("coord", SchemaBuilder.array(Schema.OPTIONAL_FLOAT64_SCHEMA).optional().build())
                             .field("street", Schema.OPTIONAL_STRING_SCHEMA)
-                            .field("zipcode", Schema.OPTIONAL_STRING_SCHEMA).build())
+                            .field("zipcode", Schema.OPTIONAL_STRING_SCHEMA)
+                            .build()
+                    )
                     .field("borough", Schema.OPTIONAL_STRING_SCHEMA)
                     .field("cuisine", Schema.OPTIONAL_STRING_SCHEMA)
-                    .field("grades", SchemaBuilder.array(SchemaBuilder.struct()
+                    .field("grades", SchemaBuilder.array(SchemaBuilder.struct().name("pub.grades").optional()
                             .field("date", Schema.OPTIONAL_INT64_SCHEMA)
                             .field("grade", Schema.OPTIONAL_STRING_SCHEMA)
-                            .field("score", Schema.OPTIONAL_INT32_SCHEMA).build())
-                            .build()
+                            .field("score", Schema.OPTIONAL_INT32_SCHEMA)
+                            .build())
+                        .optional()
+                        .build()
                     )
                     .field("name", Schema.OPTIONAL_STRING_SCHEMA)
                     .field("restaurant_id", Schema.OPTIONAL_STRING_SCHEMA)

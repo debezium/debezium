@@ -14,6 +14,7 @@ import org.apache.kafka.connect.data.Struct;
 import io.debezium.annotation.Immutable;
 import io.debezium.data.Envelope;
 import io.debezium.data.SchemaUtil;
+import io.debezium.schema.DataCollectionSchema;
 
 /**
  * Defines the Kafka Connect {@link Schema} functionality associated with a given {@link Table table definition}, and which can
@@ -46,8 +47,9 @@ import io.debezium.data.SchemaUtil;
  * @see TableSchemaBuilder
  */
 @Immutable
-public class TableSchema {
+public class TableSchema implements DataCollectionSchema {
 
+    private final TableId id;
     private final Schema keySchema;
     private final Envelope envelopeSchema;
     private final Schema valueSchema;
@@ -58,6 +60,7 @@ public class TableSchema {
      * Create an instance with the specified {@link Schema}s for the keys and values, and the functions that generate the
      * key and value for a given row of data.
      *
+     * @param id the id of the table corresponding to this schema
      * @param keySchema the schema for the primary key; may be null
      * @param keyGenerator the function that converts a row into a single key object for Kafka Connect; may not be null but may
      *            return nulls
@@ -65,14 +68,19 @@ public class TableSchema {
      * @param valueGenerator the function that converts a row into a single value object for Kafka Connect; may not be null but
      *            may return nulls
      */
-    public TableSchema(Schema keySchema, Function<Object[], Object> keyGenerator,
-            Envelope envelopeSchema,
-            Schema valueSchema, Function<Object[], Struct> valueGenerator) {
+    public TableSchema(TableId id, Schema keySchema, Function<Object[], Object> keyGenerator,
+            Envelope envelopeSchema, Schema valueSchema, Function<Object[], Struct> valueGenerator) {
+        this.id = id;
         this.keySchema = keySchema;
         this.envelopeSchema = envelopeSchema;
         this.valueSchema = valueSchema;
         this.keyGenerator = keyGenerator != null ? keyGenerator : (row) -> null;
         this.valueGenerator = valueGenerator != null ? valueGenerator : (row) -> null;
+    }
+
+    @Override
+    public TableId id() {
+        return id;
     }
 
     /**
@@ -89,6 +97,7 @@ public class TableSchema {
      *
      * @return the Schema describing the column's that make up the primary key; null if there is no primary key
      */
+    @Override
     public Schema keySchema() {
         return keySchema;
     }
@@ -99,6 +108,7 @@ public class TableSchema {
      *
      * @return the table's envelope schema
      */
+    @Override
     public Envelope getEnvelopeSchema() {
         return envelopeSchema;
     }

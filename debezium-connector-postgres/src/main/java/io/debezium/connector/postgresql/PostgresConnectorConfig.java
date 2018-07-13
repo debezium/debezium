@@ -23,7 +23,8 @@ import io.debezium.config.Field;
 import io.debezium.connector.postgresql.connection.MessageDecoder;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.pgproto.PgProtoMessageDecoder;
-import io.debezium.connector.postgresql.connection.wal2json.Wal2JsonMessageDecoder;
+import io.debezium.connector.postgresql.connection.wal2json.NonStreamingWal2JsonMessageDecoder;
+import io.debezium.connector.postgresql.connection.wal2json.StreamingWal2JsonMessageDecoder;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -200,7 +201,7 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
          *
          * see the {@code sslmode} Postgres JDBC driver option
          */
-        VERIFY_CA("verify_ca"),
+        VERIFY_CA("verify-ca"),
 
         /**
          * Like VERIFY_CA, but additionally verify that the server certificate matches the host to which the connection is
@@ -208,7 +209,7 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
          *
          * see the {@code sslmode} Postgres JDBC driver option
          */
-        VERIFY_FULL("verify_full");
+        VERIFY_FULL("verify-full");
 
         private final String value;
 
@@ -297,16 +298,43 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                 return new PgProtoMessageDecoder();
             }
         },
+        WAL2JSON_STREAMING("wal2json_streaming") {
+            @Override
+            public MessageDecoder messageDecoder() {
+                return new StreamingWal2JsonMessageDecoder();
+            }
+        },
+        WAL2JSON_RDS_STREAMING("wal2json_rds_streaming") {
+            @Override
+            public MessageDecoder messageDecoder() {
+                return new StreamingWal2JsonMessageDecoder();
+            }
+
+            @Override
+            public boolean forceRds() {
+                return true;
+            }
+
+            @Override
+            public String getPostgresPluginName() {
+                return "wal2json";
+            }
+        },
         WAL2JSON("wal2json") {
             @Override
             public MessageDecoder messageDecoder() {
-                return new Wal2JsonMessageDecoder();
+                return new NonStreamingWal2JsonMessageDecoder();
+            }
+
+            @Override
+            public String getPostgresPluginName() {
+                return "wal2json";
             }
         },
         WAL2JSON_RDS("wal2json_rds") {
             @Override
             public MessageDecoder messageDecoder() {
-                return new Wal2JsonMessageDecoder();
+                return new NonStreamingWal2JsonMessageDecoder();
             }
 
             @Override
@@ -410,7 +438,6 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                                               .withType(Type.PASSWORD)
                                               .withWidth(Width.SHORT)
                                               .withImportance(Importance.HIGH)
-                                              .withValidation(Field::isRequired)
                                               .withDescription("Password of the Postgres database user to be used when connecting to the database.");
 
     public static final Field DATABASE_NAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASE)
@@ -420,6 +447,16 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                                                    .withImportance(Importance.HIGH)
                                                    .withValidation(Field::isRequired)
                                                    .withDescription("The name of the database the connector should be monitoring");
+
+    public static final Field ON_CONNECT_STATEMENTS = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.ON_CONNECT_STATEMENTS)
+                                                           .withDisplayName("Initial statements")
+                                                           .withType(Type.STRING)
+                                                           .withWidth(Width.LONG)
+                                                           .withImportance(Importance.LOW)
+                                                           .withDescription("A semicolon separated list of SQL statements to be executed when a JDBC connection to the database is established. "
+                                                                   + "Note that the connector may establish JDBC connections at its own discretion, so this should typically be used for configuration"
+                                                                   + "of session parameters only, but not for executing DML statements. Use doubled semicolon (';;') to use a semicolon as a character "
+                                                                   + "and not as a delimiter.");
 
     public static final Field SERVER_NAME = Field.create(DATABASE_CONFIG_PREFIX + "server.name")
                                                  .withDisplayName("Namespace")
@@ -455,11 +492,11 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                                               .withWidth(Width.MEDIUM)
                                               .withImportance(Importance.MEDIUM)
                                               .withDescription("Whether to use an encrypted connection to Postgres. Options include"
-                                                      + "'disabled' (the default) to use an unencrypted connection; "
-                                                      + "'required' to use a secure (encrypted) connection, and fail if one cannot be established; "
-                                                      + "'verify_ca' like 'required' but additionally verify the server TLS certificate against the configured Certificate Authority "
+                                                      + "'disable' (the default) to use an unencrypted connection; "
+                                                      + "'require' to use a secure (encrypted) connection, and fail if one cannot be established; "
+                                                      + "'verify-ca' like 'required' but additionally verify the server TLS certificate against the configured Certificate Authority "
                                                       + "(CA) certificates, or fail if no valid matching CA certificates are found; or"
-                                                      + "'verify_full' like 'verify_ca' but additionally verify that the server certificate matches the host to which the connection is attempted.");
+                                                      + "'verify-full' like 'verify-ca' but additionally verify that the server certificate matches the host to which the connection is attempted.");
 
     public static final Field SSL_CLIENT_CERT = Field.create(DATABASE_CONFIG_PREFIX + "sslcert")
                                                      .withDisplayName("SSL Client Certificate")
@@ -653,7 +690,7 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
      * The set of {@link Field}s defined as part of this configuration.
      */
     public static Field.Set ALL_FIELDS = Field.setOf(PLUGIN_NAME, SLOT_NAME, DROP_SLOT_ON_STOP,
-                                                     DATABASE_NAME, USER, PASSWORD, HOSTNAME, PORT, SERVER_NAME,
+                                                     DATABASE_NAME, USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS, SERVER_NAME,
                                                      TOPIC_SELECTION_STRATEGY, CommonConnectorConfig.MAX_BATCH_SIZE,
                                                      CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS, SCHEMA_WHITELIST,
                                                      SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
@@ -665,25 +702,29 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                                                      SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
 
     private final Configuration config;
-    private final String serverName;
     private final TemporalPrecisionMode temporalPrecisionMode;
     private final DecimalMode decimalHandlingMode;
     private final SnapshotMode snapshotMode;
 
     protected PostgresConnectorConfig(Configuration config) {
-        super(config);
+        super(config, getLogicalName(config));
 
         this.config = config;
-        String serverName = config.getString(PostgresConnectorConfig.SERVER_NAME);
-        if (serverName == null) {
-            serverName = hostname() + ":" + port() + "/" + databaseName();
-        }
-        this.serverName = serverName;
         this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
         String decimalHandlingModeStr = config.getString(PostgresConnectorConfig.DECIMAL_HANDLING_MODE);
         DecimalHandlingMode decimalHandlingMode = DecimalHandlingMode.parse(decimalHandlingModeStr);
         this.decimalHandlingMode = decimalHandlingMode.asDecimalMode();
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
+    }
+
+    private static String getLogicalName(Configuration config) {
+        String logicalName = config.getString(PostgresConnectorConfig.SERVER_NAME);
+
+        if (logicalName == null) {
+            logicalName = config.getString(HOSTNAME) + ":" + config.getInteger(PORT) + "/" + config.getString(DATABASE_NAME);
+        }
+
+        return logicalName;
     }
 
     protected String hostname() {
@@ -728,10 +769,6 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
 
     public Configuration jdbcConfig() {
         return config.subset(DATABASE_CONFIG_PREFIX, true);
-    }
-
-    protected String serverName() {
-        return serverName;
     }
 
     protected TopicSelectionStrategy topicSelectionStrategy() {
@@ -796,7 +833,7 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
         Field.group(config, "Postgres", SLOT_NAME, PLUGIN_NAME, SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
-                    USER, PASSWORD, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD, SSL_ROOT_CERT, SSL_CLIENT_KEY,
+                    USER, PASSWORD, ON_CONNECT_STATEMENTS, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD, SSL_ROOT_CERT, SSL_CLIENT_KEY,
                     DROP_SLOT_ON_STOP, SSL_SOCKET_FACTORY, STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE);
         Field.group(config, "Events", SCHEMA_WHITELIST, SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
                     COLUMN_BLACKLIST, INCLUDE_UNKNOWN_DATATYPES, SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,

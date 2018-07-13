@@ -22,7 +22,7 @@ import io.debezium.annotation.NotThreadSafe;
 /**
  * A document contains multiple {@link Field}s, each with a name and possibly-null {@link Value}. A single document can only
  * contain a single field with a given name.
- * 
+ *
  * @author Randall Hauch
  */
 @NotThreadSafe
@@ -32,14 +32,14 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
         /**
          * Get the name of the field
-         * 
+         *
          * @return the field's name; never null
          */
         CharSequence getName();
 
         /**
          * Get the value of the field.
-         * 
+         *
          * @return the field's value; may be null
          */
         Value getValue();
@@ -107,14 +107,14 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Return the number of name-value fields in this object.
-     * 
+     *
      * @return the number of name-value fields; never negative
      */
     int size();
 
     /**
      * Return whether this document contains no fields and is therefore empty.
-     * 
+     *
      * @return true if there are no fields in this document, or false if there is at least one.
      */
     boolean isEmpty();
@@ -126,7 +126,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Determine if this contains a field with the given name.
-     * 
+     *
      * @param fieldName The name of the field
      * @return true if the field exists, or false otherwise
      */
@@ -134,7 +134,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Checks if this object contains all of the fields in the supplied document.
-     * 
+     *
      * @param document The document with the fields that should be in this document
      * @return true if this document contains all of the fields in the supplied document, or false otherwise
      */
@@ -143,7 +143,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
     /**
      * Set the value at the given path resolved against this document, optionally adding any missing intermediary documents
      * or arrays based upon the format of the path segments.
-     * 
+     *
      * @param path the path at which the value is to be set
      * @param addIntermediaries true if any missing intermediary fields should be created, or false if any missing
      *            intermediary fields should be handled as an error via {@code invalid}
@@ -208,7 +208,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Attempt to find the value at the given path.
-     * 
+     *
      * @param path the path to find
      * @return the optional value at this path, which is {@link Optional#isPresent() present} if the value was found at that
      *         path or is {@link Optional#empty() empty (not present)} if there is no value at the path or if the path was not
@@ -220,7 +220,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Attempt to find the value at the given path, optionally creating missing segments.
-     * 
+     *
      * @param path the path to find
      * @param missingSegment function called when a segment in the path does not exist, and which should return a new value
      *            if one should be created or {@link Optional#empty()} if nothing should be created and {@code invalid} function
@@ -310,7 +310,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
      * <li>a non-document value does exist in this document at the supplied path; or</li>
      * <li>a document value does exist in this document at the supplied path, but that document is empty</li>
      * </ul>
-     * 
+     *
      * @param path the path to the contained document
      * @return the stream of fields in the document at the given path; never null
      */
@@ -327,7 +327,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
      * <li>a field with the given name does exist in this document but the value is not a document; or</li>
      * <li>a field with the given name does exist in this document and the value is an empty document</li>
      * </ul>
-     * 
+     *
      * @param fieldName the path to the contained document
      * @return the stream of fields within the nested document; never null
      */
@@ -339,7 +339,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Gets the field in this document with the given field name.
-     * 
+     *
      * @param fieldName The name of the field
      * @return The field, if found, or null otherwise
      */
@@ -350,7 +350,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Gets the value in this document for the given field name.
-     * 
+     *
      * @param fieldName The name of the field
      * @return The field value, if found, or null otherwise
      */
@@ -360,7 +360,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Gets the value in this document for the given field name.
-     * 
+     *
      * @param fieldName The name of the field
      * @param defaultValue the default value to return if there is no such field
      * @return The field value, if found, or , or <code>defaultValue</code> if there is no such field
@@ -369,7 +369,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Get the boolean value in this document for the given field name.
-     * 
+     *
      * @param fieldName The name of the field
      * @return The boolean field value, if found, or null if there is no such field or if the value is not a boolean
      */
@@ -380,7 +380,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Get the boolean value in this document for the given field name.
-     * 
+     *
      * @param fieldName The name of the field
      * @param defaultValue the default value to return if there is no such field or if the value is not a boolean
      * @return The boolean field value if found, or <code>defaultValue</code> if there is no such field or if the value is not a
@@ -394,7 +394,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Get the integer value in this document for the given field name.
-     * 
+     *
      * @param fieldName The name of the field
      * @return The integer field value, if found, or null if there is no such field or if the value is not an integer
      */
@@ -405,7 +405,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Get the integer value in this document for the given field name.
-     * 
+     *
      * @param fieldName The name of the field
      * @param defaultValue the default value to return if there is no such field or if the value is not a integer
      * @return The integer field value if found, or <code>defaultValue</code> if there is no such field or if the value is not a
@@ -419,7 +419,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Get the integer value in this document for the given field name.
-     * 
+     *
      * @param fieldName The name of the field
      * @return The long field value, if found, or null if there is no such field or if the value is not a long value
      */
@@ -430,7 +430,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Get the long value in this document for the given field name.
-     * 
+     *
      * @param fieldName The name of the field
      * @param defaultValue the default value to return if there is no such field or if the value is not a long value
      * @return The long field value if found, or <code>defaultValue</code> if there is no such field or if the value is not a long
@@ -444,7 +444,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Get the double value in this document for the given field name.
-     * 
+     *
      * @param fieldName The name of the field
      * @return The double field value, if found, or null if there is no such field or if the value is not a double
      */
@@ -455,7 +455,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Get the double value in this document for the given field name.
-     * 
+     *
      * @param fieldName The name of the field
      * @param defaultValue the default value to return if there is no such field or if the value is not a double
      * @return The double field value if found, or <code>defaultValue</code> if there is no such field or if the value is not a
@@ -469,7 +469,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Get the double value in this document for the given field name.
-     * 
+     *
      * @param fieldName The name of the field
      * @return The double field value, if found, or null if there is no such field or if the value is not a double
      */
@@ -480,7 +480,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Get the float value in this document for the given field name.
-     * 
+     *
      * @param fieldName The name of the field
      * @param defaultValue the default value to return if there is no such field or if the value is not a double
      * @return The double field value if found, or <code>defaultValue</code> if there is no such field or if the value is not a
@@ -494,7 +494,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Get the number value in this document for the given field name.
-     * 
+     *
      * @param fieldName The name of the field
      * @return The number field value, if found, or null if there is no such field or if the value is not a number
      */
@@ -504,7 +504,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Get the number value in this document for the given field name.
-     * 
+     *
      * @param fieldName The name of the field
      * @param defaultValue the default value to return if there is no such field or if the value is not a number
      * @return The number field value if found, or <code>defaultValue</code> if there is no such field or if the value is not a
@@ -518,7 +518,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Get the big integer value in this document for the given field name.
-     * 
+     *
      * @param fieldName The name of the field
      * @return The big integer field value, if found, or null if there is no such field or if the value is not a big integer
      */
@@ -528,7 +528,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Get the big integer value in this document for the given field name.
-     * 
+     *
      * @param fieldName The name of the field
      * @param defaultValue the default value to return if there is no such field or if the value is not a big integer
      * @return The big integer field value, if found, or null if there is no such field or if the value is not a big integer
@@ -540,7 +540,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Get the big decimal value in this document for the given field name.
-     * 
+     *
      * @param fieldName The name of the field
      * @return The big decimal field value, if found, or null if there is no such field or if the value is not a big decimal
      */
@@ -550,7 +550,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Get the big decimal value in this document for the given field name.
-     * 
+     *
      * @param fieldName The name of the field
      * @param defaultValue the default value to return if there is no such field or if the value is not a big decimal
      * @return The big decimal field value, if found, or null if there is no such field or if the value is not a big decimal
@@ -562,7 +562,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Get the string value in this document for the given field name.
-     * 
+     *
      * @param fieldName The name of the field
      * @return The string field value, if found, or null if there is no such field or if the value is not a string
      */
@@ -572,7 +572,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Get the string value in this document for the given field name.
-     * 
+     *
      * @param fieldName The name of the field
      * @param defaultValue the default value to return if there is no such field or if the value is not a string
      * @return The string field value if found, or <code>defaultValue</code> if there is no such field or if the value is not a
@@ -586,7 +586,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Get the Base64 encoded binary value in this document for the given field name.
-     * 
+     *
      * @param fieldName The name of the field
      * @return The binary field value, if found, or null if there is no such field or if the value is not a binary value
      */
@@ -597,7 +597,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Get the array value in this document for the given field name.
-     * 
+     *
      * @param fieldName The name of the field
      * @return The array field value (as a list), if found, or null if there is no such field or if the value is not an array
      */
@@ -607,7 +607,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Get the array value in this document for the given field name.
-     * 
+     *
      * @param fieldName The name of the field
      * @param defaultValue the default array that should be returned if there is no such field
      * @return The array field value (as a list), if found, or the default value if there is no such field or if the value is not
@@ -621,7 +621,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
     /**
      * Get the existing array value in this document for the given field name, or create a new array if there is no existing array
      * at this field.
-     * 
+     *
      * @param fieldName The name of the field
      * @return The editable array field value; never null
      */
@@ -635,7 +635,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Get the document value in this document for the given field name.
-     * 
+     *
      * @param fieldName The name of the field
      * @return The document field value, if found, or null if there is no such field or if the value is not a document
      */
@@ -647,7 +647,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
     /**
      * Get the existing document value in this document for the given field name, or create a new document if there is no existing
      * document at this field.
-     * 
+     *
      * @param fieldName The name of the field
      * @return The editable document field value; null if the field exists but is not a document
      */
@@ -661,11 +661,11 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Determine whether this object has a field with the given the name and the value is null. This is equivalent to calling:
-     * 
+     *
      * <pre>
      * this.get(name) instanceof Null;
      * </pre>
-     * 
+     *
      * @param fieldName The name of the field
      * @return <code>true</code> if the field exists but is null, or false otherwise
      * @see #isNullOrMissing(CharSequence)
@@ -679,11 +679,11 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
      * Determine whether this object has a field with the given the name and the value is null, or if this object has no field
      * with
      * the given name. This is equivalent to calling:
-     * 
+     *
      * <pre>
      * Null.matches(this.get(name));
      * </pre>
-     * 
+     *
      * @param fieldName The name of the field
      * @return <code>true</code> if the field value for the name is null or if there is no such field.
      * @see #isNull(CharSequence)
@@ -695,21 +695,21 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Returns this object's fields' names
-     * 
+     *
      * @return The names of the fields in this object
      */
     Iterable<CharSequence> keySet();
 
     /**
      * Obtain a clone of this document.
-     * 
+     *
      * @return the clone of this document; never null
      */
     Document clone();
 
     /**
      * Remove the field with the supplied name, and return the value.
-     * 
+     *
      * @param name The name of the field
      * @return the value that was removed, or null if there was no such value
      */
@@ -717,7 +717,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * If the supplied name is provided, then remove the field with the supplied name and return the value.
-     * 
+     *
      * @param name The optional name of the field
      * @return the value that was removed, or null if the field was not present or there was no such value
      */
@@ -727,7 +727,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Remove all fields from this document.
-     * 
+     *
      * @return This document, to allow for chaining methods
      */
     Document removeAll();
@@ -735,7 +735,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
     /**
      * Sets on this object all name/value pairs from the supplied object. If the supplied object is null, this method does
      * nothing.
-     * 
+     *
      * @param fields the name/value pairs to be set on this object; may not be null
      * @return This document, to allow for chaining methods
      */
@@ -750,7 +750,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
     /**
      * Sets on this object all name/value pairs from the supplied object. If the supplied object is null, this method does
      * nothing.
-     * 
+     *
      * @param fields the name/value pairs to be set on this object; may not be null
      * @return This document, to allow for chaining methods
      */
@@ -764,7 +764,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
     /**
      * Attempts to copy all of the acceptable fields from the source and set on this document, overwriting any existing
      * values.
-     * 
+     *
      * @param fields the name/value pairs to be set on this object; may not be null
      * @param acceptableFieldNames the predicate to determine which fields from the source should be copied; may not be null
      * @return This document, to allow for chaining methods
@@ -780,7 +780,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Sets on this object all key/value pairs from the supplied map. If the supplied map is null, this method does nothing.
-     * 
+     *
      * @param fields the map containing the name/value pairs to be set on this object
      * @return This document, to allow for chaining methods
      */
@@ -823,7 +823,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Transform all of the field values using the supplied {@link BiFunction transformer function}.
-     * 
+     *
      * @param transformer the transformer that should be used to transform each field value; may not be null
      * @return this document with transformed fields, or this document if the transformer changed none of the values
      */
@@ -841,7 +841,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Set the value for the field with the given name to be a binary value. The value will be encoded as Base64.
-     * 
+     *
      * @param name The name of the field
      * @param value the new value
      * @return This document, to allow for chaining methods
@@ -863,7 +863,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
      * determine if a field has been set to null, or {@link #isNullOrMissing(CharSequence)} if the field has not be set or if it
      * has
      * been set to null.
-     * 
+     *
      * @param name The name of the field
      * @return This document, to allow for chaining methods
      * @see #isNull(CharSequence)
@@ -876,7 +876,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Set the value for the field with the given name to the supplied boolean value.
-     * 
+     *
      * @param name The name of the field
      * @param value the new value for the field
      * @return This document, to allow for chaining methods
@@ -889,7 +889,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Set the value for the field with the given name to the supplied integer value.
-     * 
+     *
      * @param name The name of the field
      * @param value the new value for the field
      * @return This document, to allow for chaining methods
@@ -902,7 +902,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Set the value for the field with the given name to the supplied long value.
-     * 
+     *
      * @param name The name of the field
      * @param value the new value for the field
      * @return This document, to allow for chaining methods
@@ -915,7 +915,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Set the value for the field with the given name to the supplied float value.
-     * 
+     *
      * @param name The name of the field
      * @param value the new value for the field
      * @return This document, to allow for chaining methods
@@ -928,7 +928,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Set the value for the field with the given name to the supplied double value.
-     * 
+     *
      * @param name The name of the field
      * @param value the new value for the field
      * @return This document, to allow for chaining methods
@@ -941,7 +941,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Set the value for the field with the given name to the supplied big integer value.
-     * 
+     *
      * @param name The name of the field
      * @param value the new value for the field
      * @return This document, to allow for chaining methods
@@ -954,7 +954,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Set the value for the field with the given name to the supplied big integer value.
-     * 
+     *
      * @param name The name of the field
      * @param value the new value for the field
      * @return This document, to allow for chaining methods
@@ -967,7 +967,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Set the value for the field with the given name to the supplied string value.
-     * 
+     *
      * @param name The name of the field
      * @param value the new value for the field
      * @return This document, to allow for chaining methods
@@ -980,7 +980,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Increment the numeric value in the given field by the designated amount.
-     * 
+     *
      * @param name The name of the field
      * @param increment the amount to increment the existing value; may be negative to decrement
      * @return this array to allow for chaining methods
@@ -992,7 +992,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Increment the numeric value in the given field by the designated amount.
-     * 
+     *
      * @param name The name of the field
      * @param increment the amount to increment the existing value; may be negative to decrement
      * @return this array to allow for chaining methods
@@ -1004,7 +1004,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Increment the numeric value in the given field by the designated amount.
-     * 
+     *
      * @param name The name of the field
      * @param increment the amount to increment the existing value; may be negative to decrement
      * @return this array to allow for chaining methods
@@ -1016,7 +1016,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Increment the numeric value in the given field by the designated amount.
-     * 
+     *
      * @param name The name of the field
      * @param increment the amount to increment the existing value; may be negative to decrement
      * @return this array to allow for chaining methods
@@ -1028,7 +1028,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Increment the numeric value in the given field by the designated amount.
-     * 
+     *
      * @param name The name of the field
      * @param increment the amount to increment the existing value; may be negative to decrement
      * @return this array to allow for chaining methods
@@ -1038,7 +1038,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Set the value for the field with the given name to be a binary value. The value will be encoded as Base64.
-     * 
+     *
      * @param name The name of the field
      * @param data the bytes for the binary value
      * @return This document, to allow for chaining methods
@@ -1051,7 +1051,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Set the value for the field with the given name.
-     * 
+     *
      * @param name The name of the field
      * @param value the new value
      * @return This document, to allow for chaining methods
@@ -1061,7 +1061,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Set the field on this document.
-     * 
+     *
      * @param field The field
      * @return This document, to allow for chaining methods
      */
@@ -1071,7 +1071,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Set the value for the field with the given name to be a new, empty Document.
-     * 
+     *
      * @param name The name of the field
      * @return The editable document that was just created; never null
      */
@@ -1081,7 +1081,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Set the value for the field with the given name to be the supplied Document.
-     * 
+     *
      * @param name The name of the field
      * @param document the document; if null, a new document will be created
      * @return The document that was just set as the value for the named field; never null and may or may not be the same
@@ -1096,7 +1096,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Set the value for the field with the given name to be a new, empty array.
-     * 
+     *
      * @param name The name of the field
      * @return The array that was just created; never null
      */
@@ -1106,7 +1106,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Set the value for the field with the given name to be the supplied array.
-     * 
+     *
      * @param name The name of the field
      * @param array the array
      * @return The array that was just set as the value for the named field; never null and may or may not be the same
@@ -1121,7 +1121,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Set the value for the field with the given name to be the supplied array.
-     * 
+     *
      * @param name The name of the field
      * @param values the (valid) values for the array
      * @return The array that was just set as the value for the named field; never null and may or may not be the same
@@ -1129,12 +1129,12 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
      */
     default Array setArray(CharSequence name,
                            Object... values) {
-        return setArray(name, Value.create(Array.create(values)));
+        return setArray(name, Array.create(values));
     }
 
     /**
      * Compare this Document to the specified Document, taking into account the order of the fields.
-     * 
+     *
      * @param that the other Document to be compared to this object
      * @return a negative integer, zero, or a positive integer as this object
      *         is less than, equal to, or greater than the specified object.
@@ -1144,7 +1144,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Compare this Document to the specified Document, without regard to the order of the fields.
-     * 
+     *
      * @param that the other Document to be compared to this object
      * @return a negative integer, zero, or a positive integer as this object
      *         is less than, equal to, or greater than the specified object.
@@ -1154,7 +1154,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
     /**
      * Compare this Document to the specified Document, without regard to the order of the fields and only using the fields
      * that are in both documents.
-     * 
+     *
      * @param that the other Document to be compared to this object
      * @return a negative integer, zero, or a positive integer as this object
      *         is less than, equal to, or greater than the specified object.
@@ -1163,7 +1163,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
     /**
      * Compare this Document to the specified Document, optionally comparing the fields in the same order.
-     * 
+     *
      * @param that the other Document to be compared to this object
      * @param enforceFieldOrder {@code true} if the documents should be compared using their existing field order, or
      *            {@code false} if the field order should not affect the result.

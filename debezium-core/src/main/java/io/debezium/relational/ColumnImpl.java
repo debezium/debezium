@@ -5,6 +5,9 @@
  */
 package io.debezium.relational;
 
+import java.util.Objects;
+import java.util.Optional;
+
 import io.debezium.util.Strings;
 
 final class ColumnImpl implements Column, Comparable<Column> {
@@ -16,14 +19,23 @@ final class ColumnImpl implements Column, Comparable<Column> {
     private final String typeExpression;
     private final String charsetName;
     private final int length;
-    private final int scale;
+    private final Integer scale;
     private final boolean optional;
     private final boolean autoIncremented;
     private final boolean generated;
+    private final Object defaultValue;
+    private final boolean hasDefaultValue;
+
+    protected ColumnImpl(String columnName, int position, int jdbcType, int componentType, String typeName, String typeExpression,
+            String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
+            boolean optional, boolean autoIncremented, boolean generated) {
+        this(columnName, position, jdbcType, componentType, typeName, typeExpression, charsetName,
+                defaultCharsetName, columnLength, columnScale, optional, autoIncremented, generated, null, false);
+    }
 
     protected ColumnImpl(String columnName, int position, int jdbcType, int nativeType, String typeName, String typeExpression,
-                         String charsetName, String defaultCharsetName, int columnLength, int columnScale,
-                         boolean optional, boolean autoIncremented, boolean generated) {
+                         String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
+                         boolean optional, boolean autoIncremented, boolean generated, Object defaultValue, boolean hasDefaultValue) {
         this.name = columnName;
         this.position = position;
         this.jdbcType = jdbcType;
@@ -41,7 +53,8 @@ final class ColumnImpl implements Column, Comparable<Column> {
         this.optional = optional;
         this.autoIncremented = autoIncremented;
         this.generated = generated;
-        assert this.scale >= -1;
+        this.defaultValue = defaultValue;
+        this.hasDefaultValue = hasDefaultValue;
         assert this.length >= -1;
     }
 
@@ -79,15 +92,15 @@ final class ColumnImpl implements Column, Comparable<Column> {
     public String charsetName() {
         return charsetName;
     }
-    
+
     @Override
     public int length() {
         return length;
     }
 
     @Override
-    public int scale() {
-        return scale;
+    public Optional<Integer> scale() {
+        return Optional.ofNullable(scale);
     }
 
     @Override
@@ -103,6 +116,16 @@ final class ColumnImpl implements Column, Comparable<Column> {
     @Override
     public boolean isGenerated() {
         return generated;
+    }
+
+    @Override
+    public Object defaultValue() {
+        return defaultValue;
+    }
+
+    @Override
+    public boolean hasDefaultValue() {
+        return hasDefaultValue;
     }
 
     @Override
@@ -122,10 +145,12 @@ final class ColumnImpl implements Column, Comparable<Column> {
                     Strings.equalsIgnoreCase(this.charsetName(),that.charsetName()) &&
                     this.position() == that.position() &&
                     this.length() == that.length() &&
-                    this.scale() == that.scale() &&
+                    this.scale().equals(that.scale()) &&
                     this.isOptional() == that.isOptional() &&
                     this.isAutoIncremented() == that.isAutoIncremented() &&
-                    this.isGenerated() == that.isGenerated();
+                    this.isGenerated() == that.isGenerated() &&
+                    Objects.equals(this.defaultValue(), that.defaultValue()) &&
+                    this.hasDefaultValue() == that.hasDefaultValue();
         }
         return false;
     }
@@ -136,8 +161,8 @@ final class ColumnImpl implements Column, Comparable<Column> {
         sb.append(" ").append(typeName);
         if (length >= 0) {
             sb.append('(').append(length);
-            if (scale >= 0) {
-                sb.append(',').append(scale);
+            if (scale != null) {
+                sb.append(", ").append(scale);
             }
             sb.append(')');
         }
@@ -147,6 +172,11 @@ final class ColumnImpl implements Column, Comparable<Column> {
         if (!optional) sb.append(" NOT NULL");
         if (autoIncremented) sb.append(" AUTO_INCREMENTED");
         if (generated) sb.append(" GENERATED");
+        if (hasDefaultValue() && defaultValue() == null) {
+            sb.append(" DEFAULT VALUE NULL");
+        } else if (defaultValue != null) {
+            sb.append(" DEFAULT VALUE ").append(defaultValue);
+        }
         return sb.toString();
     }
 
@@ -159,11 +189,14 @@ final class ColumnImpl implements Column, Comparable<Column> {
                 .nativeType(nativeType)
                 .charsetName(charsetName)
                 .length(length())
-                .scale(scale())
+                .scale(scale().orElse(null))
                 .position(position())
                 .optional(isOptional())
                 .autoIncremented(isAutoIncremented())
                 .generated(isGenerated());
+        if (hasDefaultValue()) {
+            editor.defaultValue(defaultValue());
+        }
         return editor;
     }
 }

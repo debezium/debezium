@@ -12,6 +12,7 @@ import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Duration;
 import java.time.OffsetDateTime;
@@ -34,6 +35,7 @@ import com.github.shyiko.mysql.binlog.event.deserialization.json.JsonBinary;
 import com.mysql.jdbc.CharsetMapping;
 
 import io.debezium.annotation.Immutable;
+import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.data.Json;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -277,6 +279,8 @@ public class MySqlValueConverters extends JdbcValueConverters {
             case Types.TIME:
                 if (adaptiveTimeMicrosecondsPrecisionMode)
                     return data -> convertDurationToMicroseconds(column, fieldDefn, data);
+            case Types.TIMESTAMP:
+                return ((ValueConverter)(data-> convertTimestampToLocalDateTime(column, fieldDefn, data))).and(super.converter(column, fieldDefn));
             default:
                 break;
         }
@@ -399,6 +403,9 @@ public class MySqlValueConverters extends JdbcValueConverters {
             // MySQL JDBC driver sometimes returns a Java SQL Date object ...
             return adjustYear(((java.sql.Date) data).getYear());
         }
+        if (data instanceof String) {
+            data = Integer.parseInt((String) data);
+        }
         if (data instanceof Number) {
             // MySQL JDBC driver sometimes returns a short ...
             return adjustYear(((Number) data).intValue());
@@ -495,7 +502,8 @@ public class MySqlValueConverters extends JdbcValueConverters {
     }
 
     protected List<String> extractEnumAndSetOptions(Column column) {
-        return MySqlDdlParser.parseSetAndEnumOptions(column.typeExpression());
+//        return MySqlDdlParser.parseSetAndEnumOptions(column.typeExpression());
+        return MySqlAntlrDdlParser.parseSetAndEnumOptions(column.typeExpression());
     }
 
     protected String extractEnumAndSetOptionsAsString(Column column) {
@@ -624,7 +632,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
         }
         if (data == null) {
             if (column.isOptional()) return null;
-            return 0;
+            return (short) 0;
         }
 
         if (data instanceof Short) {
@@ -720,7 +728,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
         }
         if (data == null) {
             if (column.isOptional()) return null;
-            return 0;
+            return 0L;
         }
 
         if (data instanceof Long) {
@@ -752,7 +760,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
         }
         if (data == null) {
             if (column.isOptional()) return null;
-            return 0;
+            return 0L;
         }
 
         if (data instanceof BigDecimal) {
@@ -760,6 +768,9 @@ public class MySqlValueConverters extends JdbcValueConverters {
         }
         else if (data instanceof Number) {
             return MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal(((Number) data).toString()));
+        }
+        else if (data instanceof String) {
+            return MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal((String) data));
         }
         else {
             //We continue with the original converting method (numeric) since we have an unsigned Integer
@@ -788,7 +799,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
         }
         if (data == null) {
             if (column.isOptional()) return null;
-            return 0;
+            return 0L;
         }
         try {
             if (data instanceof Duration) return ((Duration) data).toNanos() / 1_000;
@@ -796,5 +807,16 @@ public class MySqlValueConverters extends JdbcValueConverters {
             return handleUnknownData(column, fieldDefn, data);
         }
         return handleUnknownData(column, fieldDefn, data);
+    }
+
+    protected Object convertTimestampToLocalDateTime(Column column, Field fieldDefn, Object data) {
+        if (data == null) {
+            return null;
+        }
+        if (!(data instanceof Timestamp)) {
+            return data;
+        }
+
+        return ((Timestamp)data).toLocalDateTime();
     }
 }

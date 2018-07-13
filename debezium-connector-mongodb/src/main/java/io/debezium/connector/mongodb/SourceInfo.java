@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonTimestamp;
@@ -93,7 +94,7 @@ public final class SourceInfo extends AbstractSourceInfo {
                                                       .field(TIMESTAMP, Schema.INT32_SCHEMA)
                                                       .field(ORDER, Schema.INT32_SCHEMA)
                                                       .field(OPERATION_ID, Schema.OPTIONAL_INT64_SCHEMA)
-                                                      .field(INITIAL_SYNC, Schema.OPTIONAL_BOOLEAN_SCHEMA)
+                                                      .field(INITIAL_SYNC, SchemaBuilder.bool().optional().defaultValue(false).build())
                                                       .build();
 
     private final ConcurrentMap<String, Map<String, String>> sourcePartitionsByReplicaSetName = new ConcurrentHashMap<>();
@@ -295,6 +296,10 @@ public final class SourceInfo extends AbstractSourceInfo {
         if (replicaSetName == null) throw new IllegalArgumentException("The replica set name may not be null");
         if (sourceOffset == null) return false;
         // We have previously recorded at least one offset for this database ...
+        boolean initSync = booleanOffsetValue(sourceOffset, INITIAL_SYNC);
+        if (initSync) {
+            return false;
+        }
         int time = intOffsetValue(sourceOffset, TIMESTAMP);
         int order = intOffsetValue(sourceOffset, ORDER);
         Long operationId = longOffsetValue(sourceOffset, OPERATION_ID);
@@ -365,5 +370,13 @@ public final class SourceInfo extends AbstractSourceInfo {
         } catch (NumberFormatException e) {
             throw new ConnectException("Source offset '" + key + "' parameter value " + obj + " could not be converted to a long");
         }
+    }
+
+    private static boolean booleanOffsetValue(Map<String, ?> values, String key) {
+        Object obj = values.get(key);
+        if (obj != null && obj instanceof Boolean) {
+            return ((Boolean) obj).booleanValue();
+        }
+        return false;
     }
 }

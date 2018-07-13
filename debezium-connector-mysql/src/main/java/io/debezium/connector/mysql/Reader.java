@@ -21,7 +21,7 @@ import org.apache.kafka.connect.source.SourceRecord;
  * <p>
  * See {@link ChainedReader} if multiple {@link Reader} implementations are to be run in-sequence while keeping the
  * correct start, stop, and completion semantics.
- * 
+ *
  * @author Randall Hauch
  * @see ChainedReader
  */
@@ -50,14 +50,14 @@ public interface Reader {
 
     /**
      * Get the name of this reader.
-     * 
+     *
      * @return the reader's name; never null
      */
     public String name();
 
     /**
      * Get the current state of this reader.
-     * 
+     *
      * @return the state; never null
      */
     public State state();
@@ -68,7 +68,7 @@ public interface Reader {
      * method.
      * <p>
      * This method should only be called while the reader is in the {@link State#STOPPED} state.
-     * 
+     *
      * @param handler the function; may not be null
      */
     public void uponCompletion(Runnable handler);
@@ -79,6 +79,17 @@ public interface Reader {
      * initialization is completed.
      */
     public default void initialize() {
+        // do nothing
+    }
+
+    /**
+     * After the reader has stopped, there may still be some resources we want left available until the connector
+     * task is destroyed. This method is used to clean up those remaining resources upon shutdown.
+     * This method is effectively the opposite of {@link #initialize()}, performing any
+     * de-initialization of the reader entity before shutdown. This method should be called exactly
+     * once after {@link #stop()} is called, and it should block until all de-initialization is completed.
+     */
+    public default void destroy() {
         // do nothing
     }
 
@@ -101,7 +112,7 @@ public interface Reader {
      * this reader have been processed, following the natural or explicit {@link #stop() stopping} of this reader.
      * Note that this method may block if no additional records are available but the reader may produce more, thus
      * callers should call this method continually until this method returns {@code null}.
-     * 
+     *
      * @return the list of source records that may or may not be empty; or {@code null} when there will be no more records
      *         because the reader has completely {@link State#STOPPED}.
      * @throws InterruptedException if this thread is interrupted while waiting for more records

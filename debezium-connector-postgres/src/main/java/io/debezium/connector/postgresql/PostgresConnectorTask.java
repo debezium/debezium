@@ -61,11 +61,11 @@ public class PostgresConnectorTask extends BaseSourceTask {
         }
 
         // create the task context and schema...
-        TopicSelector topicSelector = TopicSelector.create(connectorConfig);
+        PostgresTopicSelector topicSelector = PostgresTopicSelector.create(connectorConfig);
         PostgresSchema schema = new PostgresSchema(connectorConfig, typeRegistry, topicSelector);
         this.taskContext = new PostgresTaskContext(connectorConfig, schema, topicSelector);
 
-        SourceInfo sourceInfo = new SourceInfo(connectorConfig.serverName());
+        SourceInfo sourceInfo = new SourceInfo(connectorConfig.getLogicalName());
         Map<String, Object> existingOffset = context.offsetStorageReader().offset(sourceInfo.partition());
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {

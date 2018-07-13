@@ -1,6 +1,10 @@
 {
     "address": {
         "building": "1007",
+        "floor" : {
+            "level" : 17,
+            "description" : "level 17"
+        },
         "coord": [
             -73.856077,
             40.848447

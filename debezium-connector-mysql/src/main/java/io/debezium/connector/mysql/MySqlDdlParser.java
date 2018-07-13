@@ -18,17 +18,24 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.connector.mysql.MySqlSystemVariables.MySqlScope;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
+import io.debezium.relational.SystemVariables;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
+import io.debezium.relational.ValueConverter;
 import io.debezium.relational.ddl.DataType;
 import io.debezium.relational.ddl.DataTypeParser;
-import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.ddl.DdlParserListener.SetVariableEvent;
 import io.debezium.relational.ddl.DdlTokenizer;
+import io.debezium.relational.ddl.LegacyDdlParser;
 import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
 import io.debezium.text.TokenStream;
@@ -43,7 +50,7 @@ import io.debezium.text.TokenStream.Marker;
  * @author Randall Hauch
  */
 @NotThreadSafe
-public class MySqlDdlParser extends DdlParser {
+public class MySqlDdlParser extends LegacyDdlParser {
 
     /**
      * The system variable name for the name of the character set that the server uses by default.
@@ -51,8 +58,9 @@ public class MySqlDdlParser extends DdlParser {
      */
     private static final String SERVER_CHARSET_NAME = MySqlSystemVariables.CHARSET_NAME_SERVER;
 
-    private final MySqlSystemVariables systemVariables = new MySqlSystemVariables();
     private final ConcurrentMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
+    private MySqlValueConverters converters = null;
+    private final MySqlDefaultValuePreConverter defaultValuePreConverter = new MySqlDefaultValuePreConverter();
 
     /**
      * Create a new DDL parser for MySQL that does not include view definitions.
@@ -70,8 +78,15 @@ public class MySqlDdlParser extends DdlParser {
         super(";", includeViews);
     }
 
-    protected MySqlSystemVariables systemVariables() {
-        return systemVariables;
+    @Override
+    protected SystemVariables createNewSystemVariablesInstance() {
+        return new MySqlSystemVariables();
+    }
+
+    protected MySqlDdlParser(boolean includeViews, MySqlValueConverters converters) {
+        super(";", includeViews);
+        this.converters = converters;
+        systemVariables = new MySqlSystemVariables();
     }
 
     @Override
@@ -179,7 +194,7 @@ public class MySqlDdlParser extends DdlParser {
 
     protected void parseSet(Marker start) {
         tokens.consume("SET");
-        AtomicReference<MySqlSystemVariables.Scope> scope = new AtomicReference<>();
+        AtomicReference<MySqlScope> scope = new AtomicReference<>();
         parseSetVariable(start, scope);
         while (tokens.canConsume(',')) {
             parseSetVariable(start, scope);
@@ -188,14 +203,14 @@ public class MySqlDdlParser extends DdlParser {
         debugParsed(start);
     }
 
-    protected void parseSetVariable(Marker start, AtomicReference<MySqlSystemVariables.Scope> scope) {
+    protected void parseSetVariable(Marker start, AtomicReference<MySqlScope> scope) {
         // First, use the modifier to set the scope ...
         if (tokens.canConsume("GLOBAL") || tokens.canConsume("@@GLOBAL", ".")) {
-            scope.set(MySqlSystemVariables.Scope.GLOBAL);
+            scope.set(MySqlScope.GLOBAL);
         } else if (tokens.canConsume("SESSION") || tokens.canConsume("@@SESSION", ".")) {
-            scope.set(MySqlSystemVariables.Scope.SESSION);
+            scope.set(MySqlScope.SESSION);
         } else if (tokens.canConsume("LOCAL") || tokens.canConsume("@@LOCAL", ".")) {
-            scope.set(MySqlSystemVariables.Scope.LOCAL);
+            scope.set(MySqlScope.LOCAL);
         }
 
         // Now handle the remainder of the variable assignment ...
@@ -212,6 +227,8 @@ public class MySqlDdlParser extends DdlParser {
             }
             systemVariables.setVariable(scope.get(), "character_set_client", charsetName);
             systemVariables.setVariable(scope.get(), "character_set_results", charsetName);
+            systemVariables.setVariable(MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_CONNECTION,
+                    systemVariables.getVariable(MySqlSystemVariables.CHARSET_NAME_DATABASE));
             // systemVariables.setVariable(scope.get(), "collation_connection", ...);
         } else if (tokens.canConsume("NAMES")) {
             // https://dev.mysql.com/doc/refman/5.7/en/set-statement.html
@@ -249,7 +266,7 @@ public class MySqlDdlParser extends DdlParser {
                 }
 
                 // Signal that the variable was set ...
-                signalEvent(new SetVariableEvent(variableName, value, statement(start)));
+                signalChangeEvent(new SetVariableEvent(variableName, value, statement(start)));
             }
         }
     }
@@ -418,7 +435,8 @@ public class MySqlDdlParser extends DdlParser {
             return true;
         } else if (tokens.canConsumeAnyOf("CHECKSUM", "ENGINE", "AVG_ROW_LENGTH", "MAX_ROWS", "MIN_ROWS", "ROW_FORMAT",
                                           "DELAY_KEY_WRITE", "INSERT_METHOD", "KEY_BLOCK_SIZE", "PACK_KEYS",
-                                          "STATS_AUTO_RECALC", "STATS_PERSISTENT", "STATS_SAMPLE_PAGES" , "PAGE_CHECKSUM" )) {
+                                          "STATS_AUTO_RECALC", "STATS_PERSISTENT", "STATS_SAMPLE_PAGES" , "PAGE_CHECKSUM",
+                                          "COMPRESSION")) {
             // One option token followed by '=' by a single value
             tokens.canConsume('=');
             tokens.consume();
@@ -437,7 +455,7 @@ public class MySqlDdlParser extends DdlParser {
             tokens.canConsume('=');
             tokens.consume();
             return true;
-        } else if (tokens.canConsumeAnyOf("COMMENT", "COMPRESSION", "CONNECTION", "ENCRYPTION", "PASSWORD")) {
+        } else if (tokens.canConsumeAnyOf("COMMENT", "CONNECTION", "ENCRYPTION", "PASSWORD")) {
             tokens.canConsume('=');
             consumeQuotedString();
             return true;
@@ -622,7 +640,9 @@ public class MySqlDdlParser extends DdlParser {
                     tokens.rewind(defnStart);
                 }
             }
-            if (tokens.canConsume("CONSTRAINT", TokenStream.ANY_VALUE, "UNIQUE") || tokens.canConsume("UNIQUE")) {
+            if (tokens.canConsume("CONSTRAINT", TokenStream.ANY_VALUE, "UNIQUE")
+                    || tokens.canConsume("CONSTRAINT", "UNIQUE")
+                    || tokens.canConsume("UNIQUE")) {
                 tokens.canConsumeAnyOf("KEY", "INDEX");
                 try {
                     if (!tokens.matches('(')) {
@@ -744,6 +764,8 @@ public class MySqlDdlParser extends DdlParser {
 
         parseColumnDefinition(start, columnName, tokens, table, column, isPrimaryKey);
 
+        convertDefaultValueToSchemaType(column);
+
         // Update the table ...
         Column newColumnDefn = column.create();
         table.addColumns(newColumnDefn);
@@ -763,6 +785,29 @@ public class MySqlDdlParser extends DdlParser {
             table.reorderColumn(columnName, tokens.consume());
         }
         return table.columnWithName(newColumnDefn.name());
+    }
+
+    private void convertDefaultValueToSchemaType(ColumnEditor columnEditor) {
+        final Column column = columnEditor.create();
+        // if converters is not null and the default value is not null, we need to convert default value
+        if (converters != null && columnEditor.defaultValue() != null) {
+            Object defaultValue = columnEditor.defaultValue();
+            final SchemaBuilder schemaBuilder = converters.schemaBuilder(column);
+            if (schemaBuilder == null) {
+                return;
+            }
+            final Schema schema = schemaBuilder.build();
+            //In order to get the valueConverter for this column, we have to create a field;
+            //The index value -1 in the field will never used when converting default value;
+            //So we can set any number here;
+            final Field field = new Field(column.name(), -1, schema);
+            final ValueConverter valueConverter = converters.converter(column, field);
+            if (defaultValue instanceof String) {
+                defaultValue = defaultValuePreConverter.convert(column, (String)defaultValue);
+            }
+            defaultValue = valueConverter.convert(defaultValue);
+            columnEditor.defaultValue(defaultValue);
+        }
     }
 
     /**
@@ -791,20 +836,6 @@ public class MySqlDdlParser extends DdlParser {
         return options;
     }
 
-    protected static String withoutQuotes(String possiblyQuoted) {
-        if (possiblyQuoted.length() < 2) {
-            // Too short to be quoted ...
-            return possiblyQuoted;
-        }
-        if (possiblyQuoted.startsWith("'") && possiblyQuoted.endsWith("'")) {
-            return possiblyQuoted.substring(1, possiblyQuoted.length() - 1);
-        }
-        if (possiblyQuoted.startsWith("\"") && possiblyQuoted.endsWith("\"")) {
-            return possiblyQuoted.substring(1, possiblyQuoted.length() - 1);
-        }
-        return possiblyQuoted;
-    }
-
     protected void parseColumnDefinition(Marker start, String columnName, TokenStream tokens, TableEditor table, ColumnEditor column,
                                          AtomicBoolean isPrimaryKey) {
         // Parse the data type, which must be at this location ...
@@ -820,6 +851,13 @@ public class MySqlDdlParser extends DdlParser {
             parsingFailed(dataTypeStart.position(), errors, "Unable to read the data type");
             return;
         }
+
+        // DBZ-771 unset previously set default value, as it's not kept by MySQL; for any column modifications a new
+        // default value (which could be the same) has to be provided by the column_definition which we'll parse later
+        // on; only in 8.0 (not supported by this parser) columns can be renamed without repeating the full column
+        // definition
+        column.unsetDefaultValue();
+
         column.jdbcType(dataType.jdbcType());
         column.type(dataType.name(), dataType.expression());
         if ("ENUM".equals(dataType.name())) {
@@ -838,7 +876,7 @@ public class MySqlDdlParser extends DdlParser {
             column.charsetName("utf8");
         }
 
-        if (Types.DECIMAL == dataType.jdbcType()) {
+        if (Types.DECIMAL == dataType.jdbcType() || Types.NUMERIC == dataType.jdbcType()) {
             if (dataType.length() == -1) {
                 column.length(10);
             }
@@ -882,7 +920,7 @@ public class MySqlDdlParser extends DdlParser {
                 }
                 // Default value ...
                 if (tokens.matches("DEFAULT")) {
-                    parseDefaultClause(start);
+                    parseDefaultClause(start, column);
                 }
                 if (tokens.matches("ON", "UPDATE") || tokens.matches("ON", "DELETE")) {
                     parseOnUpdateOrDelete(tokens.mark());
@@ -1044,7 +1082,7 @@ public class MySqlDdlParser extends DdlParser {
                                                  .jdbcType(selectedColumn.jdbcType())
                                                  .type(selectedColumn.typeName(), selectedColumn.typeExpression())
                                                  .length(selectedColumn.length())
-                                                 .scale(selectedColumn.scale())
+                                                 .scale(selectedColumn.scale().orElse(null))
                                                  .autoIncremented(selectedColumn.isAutoIncremented())
                                                  .generated(selectedColumn.isGenerated())
                                                  .optional(selectedColumn.isOptional()).create());
@@ -1109,6 +1147,7 @@ public class MySqlDdlParser extends DdlParser {
 
         // We don't care about any other statements or the rest of this statement ...
         consumeRemainingStatement(start);
+        // TODO fix: signal should be send only when some changes on table are made
         signalCreateIndex(indexName, tableId, start);
         debugParsed(start);
     }
@@ -1251,10 +1290,11 @@ public class MySqlDdlParser extends DdlParser {
             if (!isNextTokenQuotedIdentifier()) {
                 tokens.canConsume("COLUMN");
             }
-            tokens.consume(); // column name
+            String columnName = tokens.consume(); // column name
             if (!tokens.canConsume("DROP", "DEFAULT")) {
                 tokens.consume("SET");
-                parseDefaultClause(start);
+                ColumnEditor columnEditor = table.columnWithName(columnName).edit();
+                parseDefaultClause(start, columnEditor);
             }
         } else if (tokens.canConsume("CHANGE")) {
             if (!isNextTokenQuotedIdentifier()) {
@@ -1443,7 +1483,7 @@ public class MySqlDdlParser extends DdlParser {
         // system variables. We replicate that behavior here (or the variable we care about) so that these variables are always
         // right for the current database.
         String charsetForDb = charsetNameForDatabase.get(dbName);
-        systemVariables.setVariable(MySqlSystemVariables.Scope.GLOBAL, "character_set_database", charsetForDb);
+        systemVariables.setVariable(MySqlScope.GLOBAL, "character_set_database", charsetForDb);
     }
 
     /**
@@ -1625,6 +1665,34 @@ public class MySqlDdlParser extends DdlParser {
                 // do nothing ...
             } else {
                 parseLiteral(start);
+            }
+        }
+    }
+
+    /**
+     * Parse and consume the {@code DEFAULT} clause. Add default value in column;
+     *
+     * @param start the marker at the beginning of the clause
+     * @param column column editor
+     */
+    protected void parseDefaultClause(Marker start, ColumnEditor column) {
+        tokens.consume("DEFAULT");
+        if (isNextTokenQuotedIdentifier()) {
+            // We know that it is a quoted literal ...
+            Object defaultValue = parseLiteral(start);
+            column.defaultValue(defaultValue);
+        } else {
+            if (tokens.matchesAnyOf("CURRENT_TIMESTAMP", "NOW")) {
+                parseCurrentTimestampOrNow();
+                parseOnUpdateOrDelete(tokens.mark());
+                //CURRENT_TIMESTAMP and NOW default value will be replaced with epoch timestamp
+                column.defaultValue("1970-01-01 00:00:00");
+            } else if (tokens.canConsume("NULL")) {
+                // If the default value of column is Null, we will set default value null;
+                column.defaultValue(null);
+            } else {
+                Object defaultValue = parseLiteral(start);
+                column.defaultValue(defaultValue);
             }
         }
     }

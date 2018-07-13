@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>0.8.0-SNAPSHOT</version>
+        <version>0.9.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -15,6 +15,10 @@
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-ddl-parser</artifactId>
         </dependency>
         <dependency>
             <groupId>com.github.shyiko</groupId>
@@ -103,6 +107,9 @@
         -->
         <docker.filter>debezium/mysql-server-test-database</docker.filter>
         <docker.skip>false</docker.skip>
+        <docker.initimage>ln -s /usr/share/zoneinfo/US/Samoa /etc/localtime</docker.initimage>
+
+        <ddl.parser.mode>legacy</ddl.parser.mode>
     </properties>
     <build>
         <plugins>
@@ -113,7 +120,7 @@
                 <watchInterval>500</watchInterval>
                 <logDate>default</logDate>
                 <verbose>true</verbose>
-                <autoPull>always</autoPull>
+                <imagePullPolicy>IfNotPresent</imagePullPolicy>
                 <images>
                   <!--
                   Images based on "mysql/mysql-server" Docker image
@@ -144,6 +151,9 @@
                     </run>
                     <build>
                       <from>mysql/mysql-server:${version.mysql.server}</from>
+                      <runCmds>
+                        <run>${docker.initimage}</run>
+                      </runCmds>
                       <assembly>
                         <inline>
                           <fileSets>
@@ -191,6 +201,9 @@
                     </run>
                     <build>
                       <from>mysql/mysql-server:${version.mysql.server}</from>
+                      <runCmds>
+                        <run>${docker.initimage}</run>
+                      </runCmds>
                       <assembly>
                         <inline>
                           <fileSets>
@@ -242,6 +255,9 @@
                     </run>
                     <build>
                       <from>mysql/mysql-server:${version.mysql.server}</from>
+                      <runCmds>
+                        <run>${docker.initimage}</run>
+                      </runCmds>
                       <assembly>
                         <inline>
                           <fileSets>
@@ -306,6 +322,7 @@
                         <database.replica.hostname>${docker.host.address}</database.replica.hostname>
                         <database.replica.port>${mysql.replica.port}</database.replica.port>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
+                        <ddl.parser.mode>${ddl.parser.mode}</ddl.parser.mode>
                     </systemPropertyVariables>
                 </configuration>
                 <executions>
@@ -421,6 +438,7 @@
                                 <database.port>${mysql.port}</database.port>
                                 <database.replica.port>${mysql.port}</database.replica.port>
                                 <skipLongRunningTests>false</skipLongRunningTests>
+                                <ddl.parser.mode>${ddl.parser.mode}</ddl.parser.mode>
                             </systemPropertyVariables>
                         </configuration>
                         <executions>
@@ -521,6 +539,16 @@
           <!-- Integration test properties -->
           <database.port>${mysql.gtid.port}</database.port>
           <database.replica.port>${mysql.gtid.replica.port}</database.replica.port>
+        </properties>
+      </profile>
+
+      <profile>
+        <id>parser-antlr</id>
+        <activation>
+          <activeByDefault>false</activeByDefault>
+        </activation>
+        <properties>
+          <ddl.parser.mode>antlr</ddl.parser.mode>
         </properties>
       </profile>
     </profiles>

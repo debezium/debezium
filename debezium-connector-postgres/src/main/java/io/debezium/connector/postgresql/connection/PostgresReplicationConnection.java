@@ -77,8 +77,14 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
         try {
             initReplicationSlot();
-        } catch (SQLException e) {
-            throw new JdbcConnectionException("Cannot create replication connection", e);
+        }
+        catch (ConnectException e) {
+            close();
+            throw e;
+        }
+        catch (Throwable t) {
+            close();
+            throw new ConnectException("Cannot create replication connection", t);
         }
     }
 
@@ -109,6 +115,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             }
 
             AtomicLong xlogStart = new AtomicLong();
+            // replication connection does not support parsing of SQL statements so we need to create
+            // the connection without executing on connect statements - see JDBC opt preferQueryMode=simple
+            pgConnection();
             execute(statement -> {
                 String identifySystemStatement = "IDENTIFY_SYSTEM";
                 LOGGER.debug("running '{}' to validate replication connection", identifySystemStatement);
@@ -154,7 +163,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     protected PGConnection pgConnection() throws SQLException {
-        return (PGConnection) connection();
+        return (PGConnection) connection(false);
     }
 
     private ReplicationStream createReplicationStream(final LogSequenceNumber lsn) throws SQLException {
@@ -284,13 +293,17 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     public synchronized void close() {
         try {
             super.close();
-        } catch (SQLException e) {
+        }
+        catch (Throwable e) {
             LOGGER.error("Unexpected error while closing Postgres connection", e);
         }
         if (dropSlotOnClose) {
             // we're dropping the replication slot via a regular - i.e. not a replication - connection
             try (PostgresConnection connection = new PostgresConnection(originalConfig)) {
                 connection.dropReplicationSlot(slotName);
+            }
+            catch (Throwable e) {
+                LOGGER.error("Unexpected error while dropping replication slot", e);
             }
         }
     }

@@ -51,7 +51,7 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
         TestHelper.dropAllSchemas();
 
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(overrides).build());
-        TopicSelector selector = TopicSelector.create(config);
+        PostgresTopicSelector selector = PostgresTopicSelector.create(config);
         context = new PostgresTaskContext(
                 config,
                 new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),

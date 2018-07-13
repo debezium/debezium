@@ -43,16 +43,23 @@ public interface JdbcConfiguration extends Configuration {
      * A field for the hostname of the database server. This field has no default value.
      */
     public static final Field HOSTNAME = Field.create("hostname", "IP address of the database");
+
     /**
      * A field for the port of the database server. There is no default value.
      */
     public static final Field PORT = Field.create("port", "Port of the database");
 
     /**
+     * A semicolon separated list of SQL statements to be executed when the connection to database is established.
+     * Typical use-case is setting of session parameters. There is no default value.
+     */
+    public static final Field ON_CONNECT_STATEMENTS = Field.create("initial.statements", "A semicolon separated list of statements to be executed on connection");
+
+    /**
      * The set of names of the pre-defined JDBC configuration fields, including {@link #DATABASE}, {@link #USER},
      * {@link #PASSWORD}, {@link #HOSTNAME}, and {@link #PORT}.
      */
-    public static Set<String> ALL_KNOWN_FIELDS = Collect.unmodifiableSet(Field::name, DATABASE, USER, PASSWORD, HOSTNAME, PORT);
+    public static Set<String> ALL_KNOWN_FIELDS = Collect.unmodifiableSet(Field::name, DATABASE, USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS);
 
     /**
      * Obtain a {@link JdbcConfiguration} adapter for the given {@link Configuration}.

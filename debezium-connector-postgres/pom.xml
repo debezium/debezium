@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>0.8.0-SNAPSHOT</version>
+        <version>0.9.0-SNAPSHOT</version>
         <relativePath>../</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -21,9 +21,12 @@
         <postgres.user>postgres</postgres.user>
         <postgres.password>postgres</postgres.password>
         <postgres.db.name>postgres</postgres.db.name>
-        <docker.filter>debezium/postgres:${version.postgres.server}</docker.filter>
+        <postgres.encoding>UTF8</postgres.encoding>
+        <postgres.system.lang>en_US.utf8</postgres.system.lang>
+        <postgres.image>debezium/postgres:${version.postgres.server}</postgres.image>
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
+        <docker.initimage>ln -fs /usr/share/zoneinfo/US/Samoa /etc/localtime &amp;&amp; echo timezone=US/Samoa &gt;&gt; /usr/share/postgresql/postgresql.conf.sample</docker.initimage>
 
         <protobuf.output.directory>${project.basedir}/generated-sources</protobuf.output.directory>
     </properties>
@@ -128,13 +131,15 @@
                     <images>
                         <image>
                             <!-- A Docker image using the Postgres Server with the DBZ decoderbufs plugin -->
-                            <name>${docker.filter}</name>  
+                            <name>debezium/postgres-server-test-database</name>
                             <run>
                                 <namingStrategy>none</namingStrategy>
                                 <env>
                                     <POSTGRES_USER>${postgres.user}</POSTGRES_USER>
                                     <POSTGRES_PASSWORD>${postgres.password}</POSTGRES_PASSWORD>
                                     <POSTGRES_DB>${postgres.db.name}</POSTGRES_DB>
+                                    <POSTGRES_INITDB_ARGS>-E ${postgres.encoding}</POSTGRES_INITDB_ARGS>
+                                    <LANG>${postgres.system.lang}</LANG>
                                 </env>
                                 <ports>
                                     <port>${postgres.port}:5432</port>
@@ -149,6 +154,12 @@
                                     <log>(?s)PostgreSQL init process complete.*database system is ready to accept connections</log>
                                 </wait>
                             </run>
+                            <build>
+                                <from>${postgres.image}</from>
+                                 <runCmds>
+                                   <run>${docker.initimage}</run>
+                                 </runCmds>
+                            </build>
                         </image>
                     </images>
                 </configuration>
@@ -161,6 +172,7 @@
                         <id>start</id>
                         <phase>pre-integration-test</phase>
                         <goals>
+                            <goal>build</goal>
                             <goal>start</goal>
                         </goals>
                     </execution>
@@ -294,6 +306,13 @@
             <id>wal2json-decoder</id>
             <properties>
                 <decoder.plugin.name>wal2json</decoder.plugin.name>
+            </properties>
+        </profile>
+        <profile>
+            <id>charset-8bit</id>
+            <properties>
+                <postgres.system.lang>${cs_CZ.iso-8859-2}</postgres.system.lang>
+                <postgres.encoding>LATIN2</postgres.encoding>
             </properties>
         </profile>
     </profiles>

@@ -85,7 +85,7 @@ public abstract class AbstractMongoIT implements Testing {
         }
 
         // Get a connection to the primary ...
-        primary = context.getConnectionContext().primaryFor(replicaSet, connectionErrorHandler(3));
+        primary = context.getConnectionContext().primaryFor(replicaSet, context.filters(), connectionErrorHandler(3));
     }
 
     @After

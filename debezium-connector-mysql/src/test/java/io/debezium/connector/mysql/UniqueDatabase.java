@@ -11,8 +11,11 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.ZoneId;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -21,6 +24,7 @@ import java.util.stream.Stream;
 
 import io.debezium.config.Configuration;
 import io.debezium.relational.history.FileDatabaseHistory;
+import io.debezium.util.Testing;
 
 /**
  * Create and populate a unique instance of a MySQL database for each run of JUnit test. A user of class
@@ -33,6 +37,9 @@ import io.debezium.relational.history.FileDatabaseHistory;
  *
  */
 public class UniqueDatabase {
+
+    public static final ZoneId TIMEZONE = ZoneId.of("US/Samoa");
+
     private static final String DEFAULT_DATABASE = "mysql";
     private static final String[] CREATE_DATABASE_DDL = new String[] {
             "CREATE DATABASE $DBNAME$;",
@@ -110,11 +117,22 @@ public class UniqueDatabase {
      * See fnDbz162 procedure in reqression_test.sql for example of usage.
      */
     public void createAndInitialize() {
+        createAndInitialize(Collections.emptyMap());
+    }
+
+    /**
+     * Creates the database and populates it with initialization SQL script. To use multiline
+     * statements for stored procedures definition use delimiter $$ to delimit statements in the procedure.
+     * See fnDbz162 procedure in reqression_test.sql for example of usage.
+     *
+     * @param urlProperties jdbc url properties
+     */
+    public void createAndInitialize(Map<String, Object> urlProperties) {
         final String ddlFile = String.format("ddl/%s.sql", templateName);
         final URL ddlTestFile = UniqueDatabase.class.getClassLoader().getResource(ddlFile);
         assertNotNull("Cannot locate " + ddlFile, ddlTestFile);
         try {
-            try (MySQLConnection connection = MySQLConnection.forTestDatabase(DEFAULT_DATABASE)) {
+            try (MySQLConnection connection = MySQLConnection.forTestDatabase(DEFAULT_DATABASE, urlProperties)) {
                 final List<String> statements = Arrays.stream(
                         Stream.concat(
                                 Arrays.stream(CREATE_DATABASE_DDL),
@@ -161,6 +179,12 @@ public class UniqueDatabase {
      * @return Configuration builder initialized with JDBC connection parameters and most frequently used parameters
      */
     public Configuration.Builder defaultConfig() {
+        String ddlParserMode = System.getProperty(
+                MySqlConnectorConfig.DDL_PARSER_MODE.name(),
+                MySqlConnectorConfig.DDL_PARSER_MODE.defaultValueAsString()
+        );
+        Testing.print("DDL parser mode: " + ddlParserMode);
+
         final Configuration.Builder builder = defaultJdbcConfigBuilder()
                 .with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.SecureConnectionMode.DISABLED)
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
@@ -168,10 +192,13 @@ public class UniqueDatabase {
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_WHITELIST, getDatabaseName())
                 .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000);
+                .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000)
+                .with(MySqlConnectorConfig.DDL_PARSER_MODE, ddlParserMode);
+
         if (dbHistoryPath != null) {
             builder.with(FileDatabaseHistory.FILE_PATH, dbHistoryPath);
         }
+
         return builder;
     }
 
@@ -180,5 +207,12 @@ public class UniqueDatabase {
      */
     public String getIdentifier() {
         return identifier;
+    }
+
+    /**
+     * @return timezone in which the database is located
+     */
+    public ZoneId timezone() {
+        return TIMEZONE;
     }
 }

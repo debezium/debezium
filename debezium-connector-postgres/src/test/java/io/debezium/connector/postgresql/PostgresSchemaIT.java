@@ -8,7 +8,6 @@ package io.debezium.connector.postgresql;
 
 import static io.debezium.connector.postgresql.PostgresConnectorConfig.SCHEMA_BLACKLIST;
 import static org.fest.assertions.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
@@ -28,6 +27,7 @@ import io.debezium.data.Bits;
 import io.debezium.data.Json;
 import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
+import io.debezium.data.VerifyRecord;
 import io.debezium.data.Xml;
 import io.debezium.data.geometry.Geography;
 import io.debezium.data.geometry.Geometry;
@@ -37,8 +37,8 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.time.Date;
 import io.debezium.time.MicroDuration;
-import io.debezium.time.NanoTime;
-import io.debezium.time.NanoTimestamp;
+import io.debezium.time.MicroTime;
+import io.debezium.time.MicroTimestamp;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.SchemaNameAdjuster;
@@ -70,7 +70,7 @@ public class PostgresSchemaIT {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
-        schema = new PostgresSchema(config, TestHelper.getTypeRegistry(), TopicSelector.create(config));
+        schema = new PostgresSchema(config, TestHelper.getTypeRegistry(), PostgresTopicSelector.create(config));
 
         try (PostgresConnection connection = TestHelper.create()) {
             schema.refresh(connection, false);
@@ -80,11 +80,11 @@ public class PostgresSchemaIT {
                               Schema.OPTIONAL_INT16_SCHEMA, Schema.OPTIONAL_INT32_SCHEMA, Schema.OPTIONAL_INT64_SCHEMA, Schema.OPTIONAL_FLOAT32_SCHEMA,
                               Schema.OPTIONAL_FLOAT64_SCHEMA, Schema.INT16_SCHEMA, Schema.INT64_SCHEMA, Schema.OPTIONAL_BOOLEAN_SCHEMA);
             assertTableSchema("public.numeric_decimal_table", "d, dzs, dvs, n, nzs, nvs",
-                    Decimal.builder(2).optional().build(),
-                    Decimal.builder(0).optional().build(),
+                    Decimal.builder(2).parameter(TestHelper.PRECISION_PARAMETER_KEY, "3").optional().build(),
+                    Decimal.builder(0).parameter(TestHelper.PRECISION_PARAMETER_KEY, "4").optional().build(),
                     VariableScaleDecimal.builder().optional().build(),
-                    Decimal.builder(4).optional().build(),
-                    Decimal.builder(0).optional().build(),
+                    Decimal.builder(4).parameter(TestHelper.PRECISION_PARAMETER_KEY, "6").optional().build(),
+                    Decimal.builder(0).parameter(TestHelper.PRECISION_PARAMETER_KEY, "4").optional().build(),
                     VariableScaleDecimal.builder().optional().build()
             );
             assertTableSchema("public.string_table", "vc, vcv, ch, c, t",
@@ -95,8 +95,8 @@ public class PostgresSchemaIT {
                               Schema.OPTIONAL_BYTES_SCHEMA, Schema.OPTIONAL_BOOLEAN_SCHEMA, Bits.builder(2).optional().build(),
                               Bits.builder(2).optional().build());
             assertTableSchema("public.time_table", "ts, tz, date, ti, ttz, it",
-                              NanoTimestamp.builder().optional().build(), ZonedTimestamp.builder().optional().build(),
-                              Date.builder().optional().build(), NanoTime.builder().optional().build(), ZonedTime.builder().optional().build(),
+                              MicroTimestamp.builder().optional().build(), ZonedTimestamp.builder().optional().build(),
+                              Date.builder().optional().build(), MicroTime.builder().optional().build(), ZonedTime.builder().optional().build(),
                               MicroDuration.builder().optional().build());
             assertTableSchema("public.text_table", "j, jb, x, u",
                               Json.builder().optional().build(), Json.builder().optional().build(), Xml.builder().optional().build(),
@@ -122,13 +122,13 @@ public class PostgresSchemaIT {
                 TestHelper.defaultConfig().with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true).build()
         );
 
-        schema = new PostgresSchema(config, TestHelper.getTypeRegistry(), TopicSelector.create(config));
+        schema = new PostgresSchema(config, TestHelper.getTypeRegistry(), PostgresTopicSelector.create(config));
 
         try (PostgresConnection connection = TestHelper.create()) {
             schema.refresh(connection, false);
             assertTablesIncluded(TEST_TABLES);
-            assertTableSchema("public.custom_table", "lt, i",
-                    Schema.OPTIONAL_BYTES_SCHEMA, Schema.OPTIONAL_BYTES_SCHEMA);
+            assertTableSchema("public.custom_table", "lt, i, ct",
+                    Schema.OPTIONAL_BYTES_SCHEMA, Schema.OPTIONAL_BYTES_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA);
         }
     }
 
@@ -137,7 +137,7 @@ public class PostgresSchemaIT {
         TestHelper.executeDDL("init_postgis.ddl");
         TestHelper.executeDDL("postgis_create_tables.ddl");
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
-        schema = new PostgresSchema(config, TestHelper.getTypeRegistry(), TopicSelector.create(config));
+        schema = new PostgresSchema(config, TestHelper.getTypeRegistry(), PostgresTopicSelector.create(config));
 
         try (PostgresConnection connection = TestHelper.create()) {
             schema.refresh(connection, false);
@@ -165,7 +165,7 @@ public class PostgresSchemaIT {
         TestHelper.execute(statements);
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(SCHEMA_BLACKLIST, "s1").build());
         final TypeRegistry typeRegistry = TestHelper.getTypeRegistry();
-        schema = new PostgresSchema(config, typeRegistry, TopicSelector.create(config));
+        schema = new PostgresSchema(config, typeRegistry, PostgresTopicSelector.create(config));
         try (PostgresConnection connection = TestHelper.create()) {
             schema.refresh(connection, false);
             assertTablesIncluded("s2.a", "s2.b");
@@ -173,14 +173,14 @@ public class PostgresSchemaIT {
         }
 
         config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(SCHEMA_BLACKLIST, "s.*").build());
-        schema = new PostgresSchema(config, typeRegistry, TopicSelector.create(config));
+        schema = new PostgresSchema(config, typeRegistry, PostgresTopicSelector.create(config));
         try (PostgresConnection connection = TestHelper.create()) {
             schema.refresh(connection, false);
             assertTablesExcluded("s1.a", "s2.a", "s1.b", "s2.b");
         }
 
         config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(PostgresConnectorConfig.TABLE_BLACKLIST, "s1.A,s2.A").build());
-        schema = new PostgresSchema(config, typeRegistry, TopicSelector.create(config));
+        schema = new PostgresSchema(config, typeRegistry, PostgresTopicSelector.create(config));
         try (PostgresConnection connection = TestHelper.create()) {
             schema.refresh(connection, false);
             assertTablesIncluded("s1.b", "s2.b");
@@ -191,7 +191,7 @@ public class PostgresSchemaIT {
                                                           .with(SCHEMA_BLACKLIST, "s2")
                                                           .with(PostgresConnectorConfig.TABLE_BLACKLIST, "s1.A")
                                                           .build());
-        schema = new PostgresSchema(config, typeRegistry, TopicSelector.create(config));
+        schema = new PostgresSchema(config, typeRegistry, PostgresTopicSelector.create(config));
         try (PostgresConnection connection = TestHelper.create()) {
             schema.refresh(connection, false);
             assertTablesIncluded("s1.b");
@@ -199,7 +199,7 @@ public class PostgresSchemaIT {
         }
         config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(PostgresConnectorConfig.COLUMN_BLACKLIST, ".*aa")
                                                        .build());
-        schema = new PostgresSchema(config, typeRegistry, TopicSelector.create(config));
+        schema = new PostgresSchema(config, typeRegistry, PostgresTopicSelector.create(config));
         try (PostgresConnection connection = TestHelper.create()) {
             schema.refresh(connection, false);
             assertColumnsExcluded("s1.a.aa", "s2.a.aa");
@@ -213,7 +213,7 @@ public class PostgresSchemaIT {
                             "CREATE TABLE table1 (pk SERIAL,  PRIMARY KEY(pk));";
         TestHelper.execute(statements);
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
-        schema = new PostgresSchema(config, TestHelper.getTypeRegistry(), TopicSelector.create(config));
+        schema = new PostgresSchema(config, TestHelper.getTypeRegistry(), PostgresTopicSelector.create(config));
 
         try (PostgresConnection connection = TestHelper.create()) {
             schema.refresh(connection, false);
@@ -263,7 +263,7 @@ public class PostgresSchemaIT {
             String fieldName = fields[i].trim();
             Field field = keySchema.field(Strings.unquoteIdentifierPart(fieldName));
             assertNotNull(fieldName + " not found in schema", field);
-            assertEquals("'" + fieldName + "' has incorrect schema.", types[i], field.schema());
+            VerifyRecord.assertConnectSchemasAreEqual(fieldName, types[i], field.schema());
         });
     }
 

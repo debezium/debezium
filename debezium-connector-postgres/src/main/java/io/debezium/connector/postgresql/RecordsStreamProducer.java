@@ -69,7 +69,7 @@ public class RecordsStreamProducer extends RecordsProducer {
     public RecordsStreamProducer(PostgresTaskContext taskContext,
                                  SourceInfo sourceInfo) {
         super(taskContext, sourceInfo);
-        executorService = Threads.newSingleThreadExecutor(PostgresConnector.class, taskContext.config().serverName(), CONTEXT_NAME);
+        executorService = Threads.newSingleThreadExecutor(PostgresConnector.class, taskContext.config().getLogicalName(), CONTEXT_NAME);
         this.replicationStream = new AtomicReference<>();
         try {
             this.replicationConnection = taskContext.createReplicationConnection();
@@ -219,7 +219,7 @@ public class RecordsStreamProducer extends RecordsProducer {
 
         // update the source info with the coordinates for this message
         long commitTimeNs = message.getCommitTime();
-        int txId = message.getTransactionId();
+        long txId = message.getTransactionId();
         sourceInfo.update(lsn, commitTimeNs, txId);
         if (logger.isDebugEnabled()) {
             logger.debug("received new message at position {}\n{}", ReplicationConnection.format(lsn), message);
@@ -422,13 +422,15 @@ public class RecordsStreamProducer extends RecordsProducer {
         List<String> columnNames = table.columnNames();
         // JSON does not deliver a list of all columns for REPLICA IDENTITY DEFAULT
         Object[] values = new Object[columns.size() < columnNames.size() ? columnNames.size() : columns.size()];
-        columns.forEach(message -> {
+
+        for (ReplicationMessage.Column column : columns) {
             //DBZ-298 Quoted column names will be sent like that in messages, but stored unquoted in the column names
-            String columnName = Strings.unquoteIdentifierPart(message.getName());
+            String columnName = Strings.unquoteIdentifierPart(column.getName());
             int position = columnNames.indexOf(columnName);
             assert position >= 0;
-            values[position] = message.getValue(this::typeResolverConnection, taskContext.config().includeUnknownDatatypes());
-        });
+            values[position] = column.getValue(this::typeResolverConnection, taskContext.config().includeUnknownDatatypes());
+        }
+
         return values;
     }
 
@@ -465,7 +467,7 @@ public class RecordsStreamProducer extends RecordsProducer {
                                     incomingLength);
                         return true;
                     }
-                    final int localScale = column.scale();
+                    final int localScale = column.scale().get();
                     final int incomingScale = message.getTypeMetadata().getScale();
                     if (localScale != incomingScale) {
                         logger.info("detected new scale for column '{}', old scale was {}, new scale is {}; refreshing table schema", columnName, localScale,

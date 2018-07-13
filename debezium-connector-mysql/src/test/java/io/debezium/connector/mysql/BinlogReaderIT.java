@@ -15,7 +15,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -109,7 +109,8 @@ public class BinlogReaderIT {
         return DATABASE.defaultConfig()
                             .with(MySqlConnectorConfig.USER, "replicator")
                             .with(MySqlConnectorConfig.PASSWORD, "replpass")
-                            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
+                            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                            .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, false);
     }
 
     @Test
@@ -263,10 +264,13 @@ public class BinlogReaderIT {
         // Check the records via the store ...
         List<SourceRecord> sourceRecords = store.sourceRecords();
         assertThat(sourceRecords.size()).isEqualTo(1);
-        // MySQL container is in UTC and the test time is during summer time period
-        ZonedDateTime expectedTimestamp = ZonedDateTime.ofInstant(
-                LocalDateTime.parse("2014-09-08T17:51:04.780").atZone(ZoneId.of("UTC")).toInstant(),
-                ZoneId.systemDefault());
+        // TIMESTAMP should be converted to UTC, using the DB's (or connection's) time zone
+        ZonedDateTime expectedTimestamp = ZonedDateTime.of(
+                LocalDateTime.parse("2014-09-08T17:51:04.780"),
+                UniqueDatabase.TIMEZONE
+        )
+        .withZoneSameInstant(ZoneOffset.UTC);
+
         String expectedTimestampString = expectedTimestamp.format(ZonedTimestamp.FORMATTER);
         SourceRecord sourceRecord = sourceRecords.get(0);
         Struct value = (Struct) sourceRecord.value();

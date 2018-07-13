@@ -24,6 +24,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
@@ -63,7 +64,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 "CREATE TABLE table_with_interval (id SERIAL PRIMARY KEY, title VARCHAR(512) NOT NULL, time_limit INTERVAL DEFAULT '60 days'::INTERVAL NOT NULL);" +
                 "INSERT INTO test_table(text) VALUES ('insert');";
         TestHelper.execute(statements);
-        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true).build());
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .build());
         setupRecordsProducer(config);
     }
 
@@ -430,7 +433,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         List<SchemaAndValueField> expectedBefore = Collections.singletonList(new SchemaAndValueField("num_val", null, null));
         assertRecordSchemaAndValues(expectedBefore, updatedRecord, Envelope.FieldName.BEFORE);
 
-        List<SchemaAndValueField> expectedAfter = Collections.singletonList(new SchemaAndValueField("num_val", Decimal.builder(2).optional().build(), new BigDecimal("123.45")));
+        List<SchemaAndValueField> expectedAfter = Collections.singletonList(new SchemaAndValueField("num_val", Decimal.builder(2).parameter(TestHelper.PRECISION_PARAMETER_KEY, "5").optional().build(), new BigDecimal("123.45")));
         assertRecordSchemaAndValues(expectedAfter, updatedRecord, Envelope.FieldName.AFTER);
 
         // change a constraint
@@ -443,7 +446,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         VerifyRecord.isValidInsert(updatedRecord, PK_FIELD, 2);
         assertRecordSchemaAndValues(
-                Collections.singletonList(new SchemaAndValueField("num_val", Decimal.builder(1).optional().build(), new BigDecimal("123.4"))), updatedRecord, Envelope.FieldName.AFTER);
+                Collections.singletonList(new SchemaAndValueField("num_val", Decimal.builder(1).parameter(TestHelper.PRECISION_PARAMETER_KEY, "6").optional().build(), new BigDecimal("123.4"))), updatedRecord, Envelope.FieldName.AFTER);
 
         statements = "ALTER TABLE test_table ALTER COLUMN num_val TYPE NUMERIC;" +
                 "INSERT INTO test_table (pk,num_val) VALUES (3,123.4567);";
@@ -467,7 +470,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         VerifyRecord.isValidInsert(updatedRecord, PK_FIELD, 4);
         assertRecordSchemaAndValues(
-                Collections.singletonList(new SchemaAndValueField("num_val", Decimal.builder(4).optional().build(), new BigDecimal("2.4800"))), updatedRecord, Envelope.FieldName.AFTER);
+                Collections.singletonList(new SchemaAndValueField("num_val", Decimal.builder(4).parameter(TestHelper.PRECISION_PARAMETER_KEY, "12").optional().build(), new BigDecimal("2.4800"))), updatedRecord, Envelope.FieldName.AFTER);
 
         statements = "ALTER TABLE test_table ALTER COLUMN num_val TYPE DECIMAL(12);" +
                 "INSERT INTO test_table (pk,num_val) VALUES (5,1238);";
@@ -478,7 +481,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         VerifyRecord.isValidInsert(updatedRecord, PK_FIELD, 5);
         assertRecordSchemaAndValues(
-                Collections.singletonList(new SchemaAndValueField("num_val", Decimal.builder(0).optional().build(), new BigDecimal("1238"))), updatedRecord, Envelope.FieldName.AFTER);
+                Collections.singletonList(new SchemaAndValueField("num_val", Decimal.builder(0).parameter(TestHelper.PRECISION_PARAMETER_KEY, "12").optional().build(), new BigDecimal("1238"))), updatedRecord, Envelope.FieldName.AFTER);
 
         statements = "ALTER TABLE test_table ALTER COLUMN num_val TYPE DECIMAL;" +
                 "INSERT INTO test_table (pk,num_val) VALUES (6,1225.1);";
@@ -636,16 +639,37 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         recordsProducer.start(consumer, blackHole);
     }
 
+    @Test
+    @FixFor("DBZ-644")
+    @Ignore
+    // There are problems with test stability on Travis CI
+    public void shouldPropagateSourceColumnTypeToSchemaParameter() throws Exception {
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with("column.propagate.source.type", ".*vc.*")
+                .build());
+        setupRecordsProducer(config);
+
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer, blackHole);
+
+        assertInsert(INSERT_STRING_TYPES_STMT, schemasAndValuesForStringTypesWithSourceColumnTypeInfo());
+    }
+
     private void setupRecordsProducer(PostgresConnectorConfig config) {
-        TopicSelector selector = TopicSelector.create(config);
+        if (recordsProducer != null) {
+            recordsProducer.stop();
+        }
+
+        PostgresTopicSelector selector = PostgresTopicSelector.create(config);
 
         PostgresTaskContext context = new PostgresTaskContext(
                 config,
                 new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
                 selector
         );
-
-        recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.serverName()));
+        recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.getLogicalName()));
     }
 
     private void assertInsert(String statement, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {

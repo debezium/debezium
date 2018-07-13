@@ -123,7 +123,7 @@ public class TableSchemaBuilder {
         Function<Object[], Struct> valueGenerator = createValueGenerator(valSchema, tableId, table.columns(), filter, mappers);
 
         // And the table schema ...
-        return new TableSchema(keySchema, keyGenerator, envelope, valSchema, valueGenerator);
+        return new TableSchema(tableId, keySchema, keyGenerator, envelope, valSchema, valueGenerator);
     }
 
     /**
@@ -301,6 +301,12 @@ public class TableSchemaBuilder {
                 mapper.alterFieldSchema(column, fieldBuilder);
             }
             if (column.isOptional()) fieldBuilder.optional();
+
+            // if the default value is provided
+            if (column.hasDefaultValue()) {
+                fieldBuilder.defaultValue(column.defaultValue());
+            }
+
             builder.field(column.name(), fieldBuilder.build());
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("- field '{}' ({}{}) from column {}", column.name(), builder.isOptional() ? "OPTIONAL " : "",

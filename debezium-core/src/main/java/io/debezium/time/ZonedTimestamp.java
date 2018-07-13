@@ -78,6 +78,9 @@ public class ZonedTimestamp {
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types
      */
     public static String toIsoString(Object value, ZoneId defaultZone, TemporalAdjuster adjuster) {
+        if (value instanceof String) {
+            return (String)value;
+        }
         if (value instanceof OffsetDateTime) {
             return toIsoString((OffsetDateTime) value, adjuster);
         }

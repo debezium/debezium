@@ -42,7 +42,7 @@ import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
-import io.debezium.relational.Tables.TableNameFilter;
+import io.debezium.relational.Tables.TableFilter;
 import io.debezium.util.Collect;
 import io.debezium.util.Strings;
 
@@ -53,6 +53,7 @@ import io.debezium.util.Strings;
  */
 public class JdbcConnection implements AutoCloseable {
 
+    private static final char STATEMENT_DELIMITER = ';';
     private final static Logger LOGGER = LoggerFactory.getLogger(JdbcConnection.class);
 
     /**
@@ -581,13 +582,56 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     public synchronized Connection connection() throws SQLException {
+        return connection(true);
+    }
+
+    public synchronized Connection connection(boolean executeOnConnect) throws SQLException {
         if (conn == null) {
             conn = factory.connect(JdbcConfiguration.adapt(config));
             if (conn == null) throw new SQLException("Unable to obtain a JDBC connection");
             // Always run the initial operations on this new connection
             if (initialOps != null) execute(initialOps);
+            final String statements = config.getString(JdbcConfiguration.ON_CONNECT_STATEMENTS);
+            if (statements != null && executeOnConnect) {
+                final List<String> splitStatements = parseSqlStatementString(statements);
+                execute(splitStatements.toArray(new String[splitStatements.size()]));
+            }
         }
         return conn;
+    }
+
+    protected List<String> parseSqlStatementString(final String statements) {
+        final List<String> splitStatements = new ArrayList<>();
+        final char[] statementsChars = statements.toCharArray();
+        StringBuilder activeStatement = new StringBuilder();
+        for (int i = 0; i < statementsChars.length; i++) {
+            if (statementsChars[i] == STATEMENT_DELIMITER) {
+                if (i == statementsChars.length - 1) {
+                    // last character so it is the delimiter
+                }
+                else if (statementsChars[i + 1] == STATEMENT_DELIMITER) {
+                    // two semicolons in a row - escaped semicolon
+                    activeStatement.append(STATEMENT_DELIMITER);
+                    i++;
+                }
+                else {
+                    // semicolon as a delimiter
+                    final String trimmedStatement = activeStatement.toString().trim();
+                    if (!trimmedStatement.isEmpty()) {
+                        splitStatements.add(trimmedStatement);
+                    }
+                    activeStatement = new StringBuilder();
+                }
+            }
+            else {
+                activeStatement.append(statementsChars[i]);
+            }
+        }
+        final String trimmedStatement = activeStatement.toString().trim();
+        if (!trimmedStatement.isEmpty()) {
+            splitStatements.add(trimmedStatement);
+        }
+        return splitStatements;
     }
 
     /**
@@ -759,7 +803,7 @@ public class JdbcConnection implements AutoCloseable {
      * @throws SQLException if an error occurs while accessing the database metadata
      */
     public void readSchema(Tables tables, String databaseCatalog, String schemaNamePattern,
-                           TableNameFilter tableFilter, ColumnNameFilter columnFilter, boolean removeTablesNotFoundInJdbc)
+                           TableFilter tableFilter, ColumnNameFilter columnFilter, boolean removeTablesNotFoundInJdbc)
             throws SQLException {
         // Before we make any changes, get the copy of the set of table IDs ...
         Set<TableId> tableIdsBefore = new HashSet<>(tables.tableIds());
@@ -788,7 +832,7 @@ public class JdbcConnection implements AutoCloseable {
                 if (viewIds.contains(tableId)) {
                     continue;
                 }
-                if (tableFilter == null || tableFilter.matches(catalogName, schemaName, tableName)) {
+                if (tableFilter == null || tableFilter.isIncluded(tableId)) {
                     List<Column> cols = columnsByTable.computeIfAbsent(tableId, name -> new ArrayList<>());
                     String columnName = rs.getString(4);
                     if (columnFilter == null || columnFilter.matches(catalogName, schemaName, tableName, columnName)) {
@@ -796,7 +840,9 @@ public class JdbcConnection implements AutoCloseable {
                         column.jdbcType(rs.getInt(5));
                         column.type(rs.getString(6));
                         column.length(rs.getInt(7));
-                        column.scale(rs.getInt(9));
+                        if (rs.getObject(9) != null) {
+                            column.scale(rs.getInt(9));
+                        }
                         column.optional(isNullable(rs.getInt(11)));
                         column.position(rs.getInt(17));
                         column.autoIncremented("YES".equalsIgnoreCase(rs.getString(23)));

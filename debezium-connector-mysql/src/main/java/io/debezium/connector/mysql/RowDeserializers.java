@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.Year;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Map;
@@ -42,7 +42,7 @@ import com.github.shyiko.mysql.binlog.io.ByteArrayInputStream;
  * methods on all 3 classes. It's ugly, but it works.
  * <p>
  * See the <a href="https://dev.mysql.com/doc/refman/5.0/en/datetime.html">MySQL Date Time</a> documentation.
- * 
+ *
  * @author Randall Hauch
  */
 class RowDeserializers {
@@ -102,7 +102,7 @@ class RowDeserializers {
         protected Serializable deserializeTimestampV2(int meta, ByteArrayInputStream inputStream) throws IOException {
             return RowDeserializers.deserializeTimestampV2(meta, inputStream);
         }
-        
+
         @Override
         protected Serializable deserializeYear(ByteArrayInputStream inputStream) throws IOException {
             return RowDeserializers.deserializeYear(inputStream);
@@ -238,7 +238,7 @@ class RowDeserializers {
 
     /**
      * Converts a MySQL string to a {@code byte[]}.
-     * 
+     *
      * @param length the number of bytes used to store the length of the string
      * @param inputStream the binary stream containing the raw binlog event data for the value
      * @return the {@code byte[]} object
@@ -253,7 +253,7 @@ class RowDeserializers {
 
     /**
      * Converts a MySQL string to a {@code byte[]}.
-     * 
+     *
      * @param meta the {@code meta} value containing the number of bytes in the length field
      * @param inputStream the binary stream containing the raw binlog event data for the value
      * @return the {@code byte[]} object
@@ -269,7 +269,7 @@ class RowDeserializers {
      * <p>
      * This method treats all <a href="http://dev.mysql.com/doc/refman/5.7/en/date-and-time-types.html">zero values</a>
      * for {@code DATE} columns as NULL, since they cannot be accurately represented as valid {@link LocalDate} objects.
-     * 
+     *
      * @param inputStream the binary stream containing the raw binlog event data for the value
      * @return the {@link LocalDate} object
      * @throws IOException if there is an error reading from the binlog event data
@@ -288,7 +288,7 @@ class RowDeserializers {
 
     /**
      * Converts a MySQL {@code TIME} value <em>without fractional seconds</em> to a {@link java.time.Duration}.
-     * 
+     *
      * @param inputStream the binary stream containing the raw binlog event data for the value
      * @return the {@link LocalTime} object
      * @throws IOException if there is an error reading from the binlog event data
@@ -305,7 +305,7 @@ class RowDeserializers {
 
     /**
      * Converts a MySQL {@code TIME} value <em>with fractional seconds</em> to a {@link java.time.Duration}.
-     * 
+     *
      * @param meta the {@code meta} value containing the fractional second precision, or {@code fsp}
      * @param inputStream the binary stream containing the raw binlog event data for the value
      * @return the {@link java.time.Duration} object
@@ -314,15 +314,15 @@ class RowDeserializers {
     protected static Serializable deserializeTimeV2(int meta, ByteArrayInputStream inputStream) throws IOException {
         /*
          * (in big endian)
-         * 
+         *
          * 1 bit sign (1= non-negative, 0= negative)
          * 1 bit unused (reserved for future extensions)
          * 10 bits hour (0-838)
          * 6 bits minute (0-59)
          * 6 bits second (0-59)
-         * 
+         *
          * (3 bytes in total)
-         * 
+         *
          * + fractional-seconds storage (size depends on meta)
          */
         long time = bigEndianLong(inputStream.read(3), 0, 3);
@@ -383,7 +383,7 @@ class RowDeserializers {
      * <p>
      * This method treats all <a href="http://dev.mysql.com/doc/refman/5.7/en/date-and-time-types.html">zero values</a>
      * for {@code DATETIME} columns as NULL, since they cannot be accurately represented as valid {@link LocalDateTime} objects.
-     * 
+     *
      * @param meta the {@code meta} value containing the fractional second precision, or {@code fsp}
      * @param inputStream the binary stream containing the raw binlog event data for the value
      * @return the {@link LocalDateTime} object
@@ -392,16 +392,16 @@ class RowDeserializers {
     protected static Serializable deserializeDatetimeV2(int meta, ByteArrayInputStream inputStream) throws IOException {
         /*
          * (in big endian)
-         * 
+         *
          * 1 bit sign (1= non-negative, 0= negative)
          * 17 bits year*13+month (year 0-9999, month 0-12)
          * 5 bits day (0-31)
          * 5 bits hour (0-23)
          * 6 bits minute (0-59)
          * 6 bits second (0-59)
-         * 
+         *
          * (5 bytes in total)
-         * 
+         *
          * + fractional-seconds storage (size depends on meta)
          */
         long datetime = bigEndianLong(inputStream.read(5), 0, 5);
@@ -423,7 +423,7 @@ class RowDeserializers {
      * Converts a MySQL {@code TIMESTAMP} value <em>without fractional seconds</em> to a {@link OffsetDateTime}.
      * MySQL stores the {@code TIMESTAMP} values as seconds past epoch in UTC, but the resulting {@link OffsetDateTime} will
      * be in the local timezone.
-     * 
+     *
      * @param inputStream the binary stream containing the raw binlog event data for the value
      * @return the {@link OffsetDateTime} object
      * @throws IOException if there is an error reading from the binlog event data
@@ -431,14 +431,14 @@ class RowDeserializers {
     protected static Serializable deserializeTimestamp(ByteArrayInputStream inputStream) throws IOException {
         long epochSecond = inputStream.readLong(4);
         int nanoSeconds = 0; // no fractional seconds
-        return ZonedDateTime.ofInstant(Instant.ofEpochSecond(epochSecond, nanoSeconds), ZoneId.systemDefault());
+        return ZonedDateTime.ofInstant(Instant.ofEpochSecond(epochSecond, nanoSeconds), ZoneOffset.UTC);
     }
 
     /**
      * Converts a MySQL {@code TIMESTAMP} value <em>with fractional seconds</em> to a {@link OffsetDateTime}.
      * MySQL stores the {@code TIMESTAMP} values as seconds + fractional seconds past epoch in UTC, but the resulting
      * {@link OffsetDateTime} will be in the local timezone.
-     * 
+     *
      * @param meta the {@code meta} value containing the fractional second precision, or {@code fsp}
      * @param inputStream the binary stream containing the raw binlog event data for the value
      * @return the {@link OffsetDateTime} object
@@ -447,12 +447,12 @@ class RowDeserializers {
     protected static Serializable deserializeTimestampV2(int meta, ByteArrayInputStream inputStream) throws IOException {
         long epochSecond = bigEndianLong(inputStream.read(4), 0, 4);
         int nanoSeconds = deserializeFractionalSecondsInNanos(meta, inputStream);
-        return ZonedDateTime.ofInstant(Instant.ofEpochSecond(epochSecond, nanoSeconds), ZoneId.systemDefault());
+        return ZonedDateTime.ofInstant(Instant.ofEpochSecond(epochSecond, nanoSeconds), ZoneOffset.UTC);
     }
 
     /**
      * Converts a MySQL {@code YEAR} value to a {@link Year} object.
-     * 
+     *
      * @param inputStream the binary stream containing the raw binlog event data for the value
      * @return the {@link Year} object
      * @throws IOException if there is an error reading from the binlog event data
@@ -466,7 +466,7 @@ class RowDeserializers {
      * <p>
      * We can't use/access the private {@code split} method in the {@link AbstractRowsEventDataDeserializer} class, so we
      * replicate it here. Note the original is licensed under the same Apache Software License 2.0 as Debezium.
-     * 
+     *
      * @param value the long value
      * @param divider the value used to separate the individual values (e.g., 10 to separate each digit into a separate value,
      *            100 to separate each pair of digits into a separate value, 1000 to separate each 3 digits into a separate value,
@@ -490,7 +490,7 @@ class RowDeserializers {
      * <p>
      * We can't use/access the private {@code bigEndianLong} method in the {@link AbstractRowsEventDataDeserializer} class, so
      * we replicate it here. Note the original is licensed under the same Apache Software License 2.0 as Debezium.
-     * 
+     *
      * @param bytes the bytes containing the big-endian representation of the value
      * @param offset the offset within the {@code bytes} byte array where the value starts
      * @param length the length of the byte representation within the {@code bytes} byte array
@@ -511,7 +511,7 @@ class RowDeserializers {
      * <p>
      * We can't use/access the private {@code bitSlice} method in the {@link AbstractRowsEventDataDeserializer} class, so
      * we replicate it here. Note the original is licensed under the same Apache Software License 2.0 as Debezium.
-     * 
+     *
      * @param value the long containing the integer encoded within it
      * @param bitOffset the number of bits where the integer value starts
      * @param numberOfBits the number of bits in the integer value
@@ -530,7 +530,7 @@ class RowDeserializers {
      * We can't use/access the {@code deserializeFractionalSeconds} method in the {@link AbstractRowsEventDataDeserializer} class,
      * so we replicate it here with modifications to support nanoseconds rather than microseconds.
      * Note the original is licensed under the same Apache Software License 2.0 as Debezium.
-     * 
+     *
      * @param fsp the fractional seconds precision describing the number of digits precision used to store the fractional seconds
      *            (e.g., 1 for storing tenths of a second, 2 for storing hundredths, 3 for storing milliseconds, etc.)
      * @param inputStream the binary data stream

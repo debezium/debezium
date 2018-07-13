@@ -62,16 +62,28 @@ public class CommonConnectorConfig {
             .withDefault(DEFAULT_POLL_INTERVAL_MILLIS)
             .withValidation(Field::isPositiveInteger);
 
+    private final Configuration config;
     private final boolean emitTombstoneOnDelete;
     private final int maxQueueSize;
     private final int maxBatchSize;
     private final Duration pollInterval;
+    private final String logicalName;
 
-    protected CommonConnectorConfig(Configuration config) {
+    protected CommonConnectorConfig(Configuration config, String logicalName) {
+        this.config = config;
         this.emitTombstoneOnDelete = config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         this.maxQueueSize = config.getInteger(MAX_QUEUE_SIZE);
         this.maxBatchSize = config.getInteger(MAX_BATCH_SIZE);
         this.pollInterval = config.getDuration(POLL_INTERVAL_MS, ChronoUnit.MILLIS);
+        this.logicalName = logicalName;
+    }
+
+    /**
+     * Provides access to the "raw" config instance. In most cases, access via typed getters for individual properties
+     * on the connector config class should be preferred.
+     */
+    public Configuration getConfig() {
+        return config;
     }
 
     public boolean isEmitTombstoneOnDelete() {
@@ -88,6 +100,10 @@ public class CommonConnectorConfig {
 
     public Duration getPollInterval() {
         return pollInterval;
+    }
+
+    public String getLogicalName() {
+        return logicalName;
     }
 
     private static int validateMaxQueueSize(Configuration config, Field field, Field.ValidationOutput problems) {

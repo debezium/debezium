@@ -18,10 +18,12 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
 
+import org.apache.kafka.connect.data.ConnectSchema;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Schema.Type;
@@ -251,6 +253,81 @@ public class VerifyRecord {
     }
 
     /**
+     * Verify that the given {@link SourceRecord} has the appropriate source query value.
+     *
+     * @param record the source record; may not be null
+     * @param query the expected sql query value.
+     */
+    public static void hasValidSourceQuery(final SourceRecord record, final String query) {
+        assertValueField(record, "source/query", query);
+    }
+
+    /**
+     * Verify that the given {@link SourceRecord} has no source query value.
+     *
+     * @param record the source record; may not be null
+     */
+    public static void hasNoSourceQuery(final SourceRecord record) {
+        // Abstracted out so if we change from having a null value in the query field to
+        // not including the query field entirely, we can easily update the assertion in one place.
+        hasValidSourceQuery(record, null);
+    }
+
+    /**
+     * Verify the given {@link SourceRecord} has the expected value in the given fieldPath.
+     *
+     * @param record the source record; may not be null
+     * @param fieldPath the field path to validate, separated by '/'
+     * @param expectedValue the expected value in the source records field path.
+     */
+    public static void assertValueField(SourceRecord record, String fieldPath, Object expectedValue) {
+        Object value = record.value();
+        String[] fieldNames = fieldPath.split("/");
+        String pathSoFar = null;
+        for (int i=0; i!=fieldNames.length; ++i) {
+            String fieldName = fieldNames[i];
+            if (value instanceof Struct) {
+                value = ((Struct)value).get(fieldName);
+            }
+            else {
+                // We expected the value to be a struct ...
+                String path = pathSoFar == null ? "record value" : ("'" + pathSoFar + "'");
+                String msg = "Expected the " + path + " to be a Struct but was " + value.getClass().getSimpleName() + " in record: " + SchemaUtil.asString(record);
+                fail(msg);
+            }
+            pathSoFar = pathSoFar == null ? fieldName : pathSoFar + "/" + fieldName;
+        }
+        assertSameValue(value,expectedValue);
+    }
+
+    /**
+     * Utility method to validate that two given {@link SourceRecord} values are identical.
+     * @param actual actual value stored on the source record
+     * @param expected expected value stored on the source record
+     */
+    public static void assertSameValue(Object actual, Object expected) {
+        if(expected instanceof Double || expected instanceof Float || expected instanceof BigDecimal) {
+            // Value should be within 1%
+            double expectedNumericValue = ((Number)expected).doubleValue();
+            double actualNumericValue = ((Number)actual).doubleValue();
+            assertThat(actualNumericValue).isEqualTo(expectedNumericValue, Delta.delta(0.01d*expectedNumericValue));
+        }
+        else if (expected instanceof Integer || expected instanceof Long || expected instanceof Short) {
+            long expectedNumericValue = ((Number)expected).longValue();
+            long actualNumericValue = ((Number)actual).longValue();
+            assertThat(actualNumericValue).isEqualTo(expectedNumericValue);
+        }
+        else if (expected instanceof Boolean) {
+            boolean expectedValue = (Boolean) expected;
+            boolean actualValue = (Boolean) actual;
+            assertThat(actualValue).isEqualTo(expectedValue);
+        }
+        else {
+            assertThat(actual).isEqualTo(expected);
+        }
+    }
+
+    /**
      * Assert that the supplied {@link Struct} is {@link Struct#validate() valid} and its {@link Struct#schema() schema}
      * matches that of the supplied {@code schema}.
      *
@@ -261,7 +338,8 @@ public class VerifyRecord {
         if (value == null) {
             // The schema should also be null ...
             assertThat(schemaAndValue.schema()).isNull();
-        } else {
+        }
+        else {
             // Both value and schema should exist and be valid ...
             assertThat(value).isInstanceOf(Struct.class);
             fieldsInSchema((Struct) value, schemaAndValue.schema());
@@ -279,7 +357,8 @@ public class VerifyRecord {
         // First validate the struct itself ...
         try {
             struct.validate();
-        } catch (DataException e) {
+        }
+        catch (DataException e) {
             throw new AssertionError("The struct '" + struct + "' failed to validate", e);
         }
 
@@ -351,6 +430,29 @@ public class VerifyRecord {
         assertEquals(actualValueSchema, actual.value(), expected.value(), "value", "", ignoreFields, comparatorsByName, comparatorsBySchemaName);
     }
 
+    /**
+     * Asserts that the two given schemas are equal.
+     *
+     * @param fieldName
+     *            name of the field owning that schema, if it's not a top-level schema
+     * @param actual
+     *            the actual schema
+     * @param expected
+     *            the expected schema
+     */
+    public static void assertConnectSchemasAreEqual(String fieldName, Schema actual, Schema expected) {
+        if (!areConnectSchemasEqual(actual, expected)) {
+            // first try failing with an assertion message that shows the actual difference
+            assertThat(SchemaUtil.asString(actual)).describedAs("field name: " + fieldName).isEqualTo(SchemaUtil.asString(expected));
+
+            // compare schema parameters
+            assertThat(actual.parameters()).describedAs("field '" + fieldName + "' parameters").isEqualTo(expected.parameters());
+
+            // fall-back just in case (e.g. differences of element schemas of arrays)
+            fail("field '" + fieldName + "': " + SchemaUtil.asString(actual) + " was not equal to " + SchemaUtil.asString(expected));
+        }
+    }
+
     protected static String nameOf(String keyOrValue, String field) {
         if (field == null || field.trim().isEmpty()) {
             return keyOrValue;
@@ -381,7 +483,8 @@ public class VerifyRecord {
         if (o1 == null) {
             if (o2 == null) return;
             fail(nameOf(keyOrValue, field) + " was null but expected " + SchemaUtil.asString(o2));
-        } else if (o2 == null) {
+        }
+        else if (o2 == null) {
             fail("expecting a null " + nameOf(keyOrValue, field) + " but found " + SchemaUtil.asString(o1));
         }
         // See if there is a custom comparator for this field ...
@@ -413,14 +516,16 @@ public class VerifyRecord {
             if (!Arrays.equals((byte[]) o1, (byte[]) o2)) {
                 fail("byte[] at " + nameOf(keyOrValue, field) + " is " + o1 + " but was expected to be " + o2);
             }
-        } else if (o2 instanceof Object[]) {
+        }
+        else if (o2 instanceof Object[]) {
             if (!(o1 instanceof Object[])) {
                 fail("expecting " + nameOf(keyOrValue, field) + " to be Object[] but was " + o1.getClass().toString());
             }
             if (!deepEquals((Object[]) o1, (Object[]) o2)) {
                 fail("Object[] at " + nameOf(keyOrValue, field) + " is " + o1 + " but was expected to be " + o2);
             }
-        } else if (o2 instanceof Map) {
+        }
+        else if (o2 instanceof Map) {
             if (!(o1 instanceof Map)) {
                 fail("expecting " + nameOf(keyOrValue, field) + " to be Map<String,?> but was " + o1.getClass().toString());
             }
@@ -441,7 +546,8 @@ public class VerifyRecord {
                 assertEquals(null, v1, v2, keyOrValue, fieldName(field, key), ignoreFields,
                              comparatorsByName, comparatorsBySchemaName);
             }
-        } else if (o2 instanceof Collection) {
+        }
+        else if (o2 instanceof Collection) {
             if (!(o1 instanceof Collection)) {
                 fail("expecting " + nameOf(keyOrValue, field) + " to be Collection<?> but was " + o1.getClass().toString());
             }
@@ -458,7 +564,8 @@ public class VerifyRecord {
                 assertEquals(null, iter1.next(), iter2.next(), keyOrValue, field + "[" + (index++) + "]", ignoreFields,
                              comparatorsByName, comparatorsBySchemaName);
             }
-        } else if (o2 instanceof Struct) {
+        }
+        else if (o2 instanceof Struct) {
             if (!(o1 instanceof Struct)) {
                 fail("expecting " + nameOf(keyOrValue, field) + " to be Struct but was " + o1.getClass().toString());
             }
@@ -484,23 +591,27 @@ public class VerifyRecord {
                              comparatorsByName, comparatorsBySchemaName);
             }
             return;
-        } else if (o2 instanceof Double || o2 instanceof Float || o2 instanceof BigDecimal) {
+        }
+        else if (o2 instanceof Double || o2 instanceof Float || o2 instanceof BigDecimal) {
             // Value should be within 1%
             double expectedNumericValue = ((Number) o2).doubleValue();
             double actualNumericValue = ((Number) o1).doubleValue();
             String desc = "found " + nameOf(keyOrValue, field) + " is " + o1 + " but expected " + o2;
             assertThat(actualNumericValue).as(desc).isEqualTo(expectedNumericValue, Delta.delta(0.01d * expectedNumericValue));
-        } else if (o2 instanceof Integer || o2 instanceof Long || o2 instanceof Short) {
+        }
+        else if (o2 instanceof Integer || o2 instanceof Long || o2 instanceof Short) {
             long expectedNumericValue = ((Number) o2).longValue();
             long actualNumericValue = ((Number) o1).longValue();
             String desc = "found " + nameOf(keyOrValue, field) + " is " + o1 + " but expected " + o2;
             assertThat(actualNumericValue).as(desc).isEqualTo(expectedNumericValue);
-        } else if (o2 instanceof Boolean) {
+        }
+        else if (o2 instanceof Boolean) {
             boolean expectedValue = ((Boolean) o2).booleanValue();
             boolean actualValue = ((Boolean) o1).booleanValue();
             String desc = "found " + nameOf(keyOrValue, field) + " is " + o1 + " but expected " + o2;
             assertThat(actualValue).as(desc).isEqualTo(expectedValue);
-        } else if (ZonedTimestamp.SCHEMA_NAME.equals(schemaName)) {
+        }
+        else if (ZonedTimestamp.SCHEMA_NAME.equals(schemaName)) {
             // the actual value (produced by the connectors) should always be properly formatted
             String actualValueString = o1.toString();
             ZonedDateTime actualValue = ZonedDateTime.parse(o1.toString(), ZonedTimestamp.FORMATTER);
@@ -510,13 +621,15 @@ public class VerifyRecord {
             try {
                 // first try a standard offset format which contains the TZ information
                 expectedValue = ZonedDateTime.parse(expectedValueString, ZonedTimestamp.FORMATTER);
-            } catch (DateTimeParseException e) {
+            }
+            catch (DateTimeParseException e) {
                 // then try a local format using the system default offset
                 LocalDateTime localDateTime = LocalDateTime.parse(expectedValueString);
                 expectedValue = ZonedDateTime.of(localDateTime, ZoneId.systemDefault());
             }
             assertThat(actualValue.toInstant()).as(actualValueString).isEqualTo(expectedValue.toInstant()).as(expectedValueString);
-        } else {
+        }
+        else {
             assertThat(o1).isEqualTo(o2);
         }
     }
@@ -543,7 +656,8 @@ public class VerifyRecord {
                 msg = "checking key is not null";
                 assertThat(record.key()).isNotNull();
                 assertThat(record.keySchema()).isNotNull();
-            } else {
+            }
+            else {
                 msg = "checking key schema and key are both null";
                 assertThat(record.key()).isNull();
                 assertThat(record.keySchema()).isNull();
@@ -555,7 +669,8 @@ public class VerifyRecord {
                 assertThat(record.valueSchema()).isNull();
                 msg = "checking key is not null when value is null";
                 assertThat(record.key()).isNotNull();
-            } else {
+            }
+            else {
                 msg = "checking value schema is not null";
                 assertThat(record.valueSchema()).isNotNull();
             }
@@ -616,7 +731,8 @@ public class VerifyRecord {
             msg = "comparing value to its schema";
             schemaMatchesStruct(valueWithSchema);
 
-        } catch (Throwable t) {
+        }
+        catch (Throwable t) {
             Testing.Print.enable();
             Testing.print("Problem with message on topic '" + record.topic() + "':");
             Testing.printError(t);
@@ -687,17 +803,20 @@ public class VerifyRecord {
             message.set("value", valueJson);
             Testing.print("Message on topic '" + record.topic() + "':");
             Testing.print(prettyJson(message));
-        } catch (Throwable t) {
+        }
+        catch (Throwable t) {
             Testing.printError(t);
             Testing.print("Problem with message on topic '" + record.topic() + "':");
             if (keyJson != null) {
                 Testing.print("valid key = " + prettyJson(keyJson));
-            } else {
+            }
+            else {
                 Testing.print("invalid key");
             }
             if (valueJson != null) {
                 Testing.print("valid value = " + prettyJson(valueJson));
-            } else {
+            }
+            else {
                 Testing.print("invalid value");
             }
             fail(t.getMessage());
@@ -707,7 +826,8 @@ public class VerifyRecord {
     protected static String prettyJson(JsonNode json) {
         try {
             return new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(json);
-        } catch (Throwable t) {
+        }
+        catch (Throwable t) {
             Testing.printError(t);
             fail(t.getMessage());
             assert false : "Will not get here";
@@ -719,7 +839,11 @@ public class VerifyRecord {
 
     protected static void assertEquals(Object o1, Object o2) {
         // assertThat(o1).isEqualTo(o2);
-        if (!equals(o1, o2)) {
+
+        if (o1 instanceof Schema && o2 instanceof Schema) {
+            assertConnectSchemasAreEqual(null, (Schema) o1, (Schema) o2);
+        }
+        else if (!equals(o1, o2)) {
             fail(SchemaUtil.asString(o1) + " was not equal to " + SchemaUtil.asString(o2));
         }
     }
@@ -728,7 +852,9 @@ public class VerifyRecord {
     protected static boolean equals(Object o1, Object o2) {
         if (o1 == o2) return true;
         if (o1 == null) return o2 == null ? true : false;
-        if (o2 == null) return false;
+        if (o2 == null) {
+            return false;
+        }
         if (o1 instanceof ByteBuffer) {
             o1 = ((ByteBuffer) o1).array();
         }
@@ -746,22 +872,31 @@ public class VerifyRecord {
         if (o1 instanceof Map && o2 instanceof Map) {
             Map<String, Object> m1 = (Map<String, Object>) o1;
             Map<String, Object> m2 = (Map<String, Object>) o2;
-            if (!m1.keySet().equals(m2.keySet())) return false;
+            if (!m1.keySet().equals(m2.keySet())) {
+                return false;
+            }
+
             for (Map.Entry<String, Object> entry : m1.entrySet()) {
                 Object v1 = entry.getValue();
                 Object v2 = m2.get(entry.getKey());
-                if (!equals(v1, v2)) return false;
+                if (!equals(v1, v2)) {
+                    return false;
+                }
             }
             return true;
         }
         if (o1 instanceof Collection && o2 instanceof Collection) {
             Collection<Object> m1 = (Collection<Object>) o1;
             Collection<Object> m2 = (Collection<Object>) o2;
-            if (m1.size() != m2.size()) return false;
+            if (m1.size() != m2.size()) {
+                return false;
+            }
             Iterator<?> iter1 = m1.iterator();
             Iterator<?> iter2 = m2.iterator();
             while (iter1.hasNext() && iter2.hasNext()) {
-                if (!equals(iter1.next(), iter2.next())) return false;
+                if (!equals(iter1.next(), iter2.next())) {
+                    return false;
+                }
             }
             return true;
         }
@@ -772,14 +907,19 @@ public class VerifyRecord {
             // does not work for non-primitive values.
             Struct struct1 = (Struct) o1;
             Struct struct2 = (Struct) o2;
-            if (!Objects.equals(struct1.schema(), struct2.schema())) {
+            if (!areConnectSchemasEqual(struct1.schema(), struct2.schema())) {
                 return false;
             }
             Object[] array1 = valuesFor(struct1);
             Object[] array2 = valuesFor(struct2);
-            boolean result = deepEquals(array1, array2);
-            return result;
+
+            return deepEquals(array1, array2);
         }
+
+        if (o1 instanceof ConnectSchema && o1 instanceof ConnectSchema) {
+            return areConnectSchemasEqual((ConnectSchema)o1, (ConnectSchema)o2);
+        }
+
         return Objects.equals(o1, o2);
     }
 
@@ -844,5 +984,69 @@ public class VerifyRecord {
         else
             eq = equals(e1, e2);
         return eq;
+    }
+
+    private static boolean areConnectSchemasEqual(Schema schema1, Schema schema2) {
+        if (schema1 == schema2) {
+            return true;
+        }
+        if (schema1 == null && schema2 != null || schema1 != null && schema2 == null) {
+            return false;
+        }
+        if (schema1.getClass() != schema2.getClass()) {
+            return false;
+        }
+
+        boolean keySchemasEqual = true;
+        boolean valueSchemasEqual = true;
+        boolean fieldsEqual = true;
+        if (schema1.type() == Type.MAP && schema2.type() == Type.MAP) {
+            keySchemasEqual = Objects.equals(schema1.keySchema(), schema2.keySchema());
+            valueSchemasEqual = Objects.equals(schema1.valueSchema(), schema2.valueSchema());
+        }
+        else if (schema1.type() == Type.ARRAY && schema2.type() == Type.ARRAY) {
+            valueSchemasEqual = Objects.equals(schema1.valueSchema(), schema2.valueSchema());
+        }
+        else if (schema1.type() == Type.STRUCT && schema2.type() == Type.STRUCT) {
+            fieldsEqual = areFieldListsEqual(schema1.fields(), schema2.fields());
+        }
+
+        boolean equal = Objects.equals(schema1.isOptional(), schema2.isOptional()) &&
+                Objects.equals(schema1.version(), schema2.version()) &&
+                Objects.equals(schema1.name(), schema2.name()) &&
+                Objects.equals(schema1.doc(), schema2.doc()) &&
+                Objects.equals(schema1.type(), schema2.type()) &&
+                Objects.deepEquals(schema1.defaultValue(), schema2.defaultValue()) &&
+                fieldsEqual &&
+                keySchemasEqual &&
+                valueSchemasEqual &&
+                Objects.equals(schema1.parameters(), schema2.parameters());
+
+        return equal;
+    }
+
+    private static boolean areFieldListsEqual(List<Field> fields1, List<Field> fields2) {
+        if (fields1 == null && fields2 != null || fields1 != null && fields2 == null) {
+            return false;
+        }
+
+        if (fields1.size() != fields2.size()) {
+            return false;
+        }
+
+        for(int i = 0; i < fields1.size(); i++) {
+            Field field1 = fields1.get(i);
+            Field field2 = fields2.get(i);
+
+            boolean equal = Objects.equals(field1.index(), field2.index()) &&
+                    Objects.equals(field1.name(), field2.name()) &&
+                    areConnectSchemasEqual(field1.schema(), field2.schema());
+
+            if (!equal) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

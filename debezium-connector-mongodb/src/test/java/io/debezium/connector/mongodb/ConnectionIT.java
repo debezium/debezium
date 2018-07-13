@@ -5,6 +5,9 @@
  */
 package io.debezium.connector.mongodb;
 
+import static org.fest.assertions.Assertions.assertThat;
+
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -23,8 +26,6 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.InsertOneOptions;
 
-import static org.fest.assertions.Assertions.assertThat;
-
 import io.debezium.util.Testing;
 
 public class ConnectionIT extends AbstractMongoIT {
@@ -32,47 +33,62 @@ public class ConnectionIT extends AbstractMongoIT {
     @Before
     public void setUp() {
         TestHelper.cleanDatabase(primary, "dbA");
+        TestHelper.cleanDatabase(primary, "dbB");
+        TestHelper.cleanDatabase(primary, "dbC");
     }
 
     @Test
     public void shouldCreateMovieDatabase() {
+        useConfiguration(config.edit()
+                .with(MongoDbConnectorConfig.DATABASE_WHITELIST, "dbA,dbB")
+                .with(MongoDbConnectorConfig.COLLECTION_BLACKLIST, "dbB.moviesB")
+                .build());
+
         Testing.print("Configuration: " + config);
 
-        String dbName = "dbA";
-        primary.execute("shouldCreateMovieDatabase", mongo -> {
-            Testing.debug("Getting or creating 'movies' collection");
+        List<String> dbNames = Arrays.asList("A", "B", "C");
 
-            // Create a database and a collection in that database ...
-            MongoDatabase db = mongo.getDatabase(dbName);
+        primary.execute("shouldCreateMovieDatabases", mongo -> {
+            Testing.debug("Getting or creating 'movies' collections");
 
-            // Get or create a collection in that database ...
-            db.getCollection("movies");
-            Testing.debug("Completed getting 'movies' collection");
+            for (String dbName : dbNames) {
+                // Create a database and a collection in that database ...
+                MongoDatabase db = mongo.getDatabase("db" + dbName);
+
+                // Get or create a collection in that database ...
+                db.getCollection("movies" + dbName);
+            }
+
+            Testing.debug("Completed getting 'movies' collections");
         });
 
-        primary.execute("Add document to movies collection", mongo -> {
-            Testing.debug("Adding document to 'movies' collection");
+        primary.execute("Add document to movies collections", mongo -> {
+            Testing.debug("Adding document to 'movies' collections");
 
-            // Add a document to that collection ...
-            MongoDatabase db = mongo.getDatabase(dbName);
-            MongoCollection<Document> movies = db.getCollection("movies");
-            InsertOneOptions insertOptions = new InsertOneOptions().bypassDocumentValidation(true);
-            movies.insertOne(Document.parse("{ \"name\":\"Starter Wars\"}"), insertOptions);
-            assertThat(db.getCollection("movies").count()).isEqualTo(1);
+            for (String dbName : dbNames) {
+                // Add a document to that collection ...
+                MongoDatabase db = mongo.getDatabase("db" + dbName);
+                MongoCollection<Document> collection = db.getCollection("movies" + dbName);
+                MongoCollection<Document> movies = collection;
+                InsertOneOptions insertOptions = new InsertOneOptions().bypassDocumentValidation(true);
+                movies.insertOne(Document.parse("{ \"name\":\"Starter Wars\"}"), insertOptions);
+                assertThat(collection.count()).isEqualTo(1);
 
-            // Read the collection to make sure we can find our document ...
-            Bson filter = Filters.eq("name", "Starter Wars");
-            FindIterable<Document> movieResults = db.getCollection("movies").find(filter);
-            try (MongoCursor<Document> cursor = movieResults.iterator();) {
-                assertThat(cursor.tryNext().getString("name")).isEqualTo("Starter Wars");
-                assertThat(cursor.tryNext()).isNull();
+                // Read the collection to make sure we can find our document ...
+                Bson filter = Filters.eq("name", "Starter Wars");
+                FindIterable<Document> movieResults = collection.find(filter);
+                try (MongoCursor<Document> cursor = movieResults.iterator();) {
+                    assertThat(cursor.tryNext().getString("name")).isEqualTo("Starter Wars");
+                    assertThat(cursor.tryNext()).isNull();
+                }
             }
-            Testing.debug("Completed document to 'movies' collection");
+
+            Testing.debug("Completed adding documents to 'movies' collections");
         });
 
         // Now that we've put at least one document into our collection, verify we can see the database and collection ...
-        assertThat(primary.databaseNames()).contains("dbA");
-        assertThat(primary.collections()).contains(new CollectionId(replicaSet.replicaSetName(), dbName, "movies"));
+        assertThat(primary.databaseNames()).containsOnly("dbA", "dbB");
+        assertThat(primary.collections()).containsOnly(new CollectionId(replicaSet.replicaSetName(), "dbA", "moviesA"));
 
         // Read oplog from beginning ...
         List<Document> eventQueue = new LinkedList<>();

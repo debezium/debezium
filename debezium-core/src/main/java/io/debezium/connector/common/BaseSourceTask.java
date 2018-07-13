@@ -38,7 +38,7 @@ public abstract class BaseSourceTask extends SourceTask {
         }
 
         LOGGER.info("Starting " + getClass().getSimpleName() + " with configuration:");
-        config.forEach((propName, propValue) -> {
+        config.withMaskedPasswords().forEach((propName, propValue) -> {
             LOGGER.info("   {} = {}", propName, propValue);
         });
 

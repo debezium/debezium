@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -17,7 +16,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -88,6 +86,9 @@ import io.debezium.util.Threads;
 public class Replicator {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
+
+    private static final String AUTHORIZATION_FAILURE_MESSAGE = "Command failed with error 13";
+
     private final MongoDbTaskContext context;
     private final ExecutorService copyThreads;
     private final ReplicaSet replicaSet;
@@ -96,8 +97,6 @@ public class Replicator {
     private final SourceInfo source;
     private final RecordMakers recordMakers;
     private final BufferableRecorder bufferedRecorder;
-    private final Predicate<CollectionId> collectionFilter;
-    private final Predicate<String> databaseFilter;
     private final Clock clock;
     private ConnectionContext.MongoPrimary primaryClient;
     private final Consumer<Throwable> onFailure;
@@ -120,8 +119,6 @@ public class Replicator {
         this.copyThreads = Threads.newFixedThreadPool(MongoDbConnector.class, context.serverName(), copyThreadName, context.getConnectionContext().maxNumberOfCopyThreads());
         this.bufferedRecorder = new BufferableRecorder(recorder);
         this.recordMakers = new RecordMakers(this.source, context.topicSelector(), this.bufferedRecorder, context.isEmitTombstoneOnDelete());
-        this.collectionFilter = this.context.collectionFilter();
-        this.databaseFilter = this.context.databaseFilter();
         this.clock = this.context.getClock();
         this.onFailure = onFailure;
     }
@@ -133,6 +130,7 @@ public class Replicator {
      */
     public void stop() {
         this.copyThreads.shutdownNow();
+        this.running.set(false);
     }
 
     /**
@@ -168,9 +166,19 @@ public class Replicator {
      */
     protected boolean establishConnectionToPrimary() {
         logger.info("Connecting to '{}'", replicaSet);
-        primaryClient = context.getConnectionContext().primaryFor(replicaSet, (desc, error) -> {
-            logger.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
-        });
+        primaryClient = context.getConnectionContext().primaryFor(
+                replicaSet,
+                context.filters(),
+                (desc, error) -> {
+                    // propagate authorization failures
+                    if (error.getMessage() != null && error.getMessage().startsWith(AUTHORIZATION_FAILURE_MESSAGE)) {
+                        throw new ConnectException("Error while attempting to " + desc, error);
+                    }
+                    else {
+                        logger.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
+                    }
+                });
+
         return primaryClient != null;
     }
 
@@ -208,13 +216,13 @@ public class Replicator {
                 } else {
                     // There is no ongoing initial sync, so look to see if our last recorded offset still exists in the oplog.
                     BsonTimestamp lastRecordedTs = source.lastOffsetTimestamp(rsName);
-                    AtomicReference<BsonTimestamp> firstExistingTs = new AtomicReference<>();
-                    primaryClient.execute("get oplog position", primary -> {
+
+                    BsonTimestamp firstAvailableTs = primaryClient.execute("get oplog position", primary -> {
                         MongoCollection<Document> oplog = primary.getDatabase("local").getCollection("oplog.rs");
                         Document firstEvent = oplog.find().sort(new Document("$natural", 1)).limit(1).first(); // may be null
-                        firstExistingTs.set(SourceInfo.extractEventTimestamp(firstEvent));
+                        return SourceInfo.extractEventTimestamp(firstEvent);
                     });
-                    BsonTimestamp firstAvailableTs = firstExistingTs.get();
+
                     if (firstAvailableTs == null) {
                         logger.info("The oplog contains no entries, so performing initial sync of replica set '{}'", rsName);
                         performSnapshot = true;
@@ -260,10 +268,7 @@ public class Replicator {
         final long syncStart = clock.currentTimeInMillis();
 
         // We need to copy each collection, so put the collection IDs into a queue ...
-        final List<CollectionId> collections = new ArrayList<>();
-        primaryClient.collections().forEach(id -> {
-            if (databaseFilter.test(id.dbName()) && collectionFilter.test(id))collections.add(id);
-        });
+        final List<CollectionId> collections = primaryClient.collections();
         final Queue<CollectionId> collectionsToCopy = new ConcurrentLinkedQueue<>(collections);
         final int numThreads = Math.min(collections.size(), context.getConnectionContext().maxNumberOfCopyThreads());
         final CountDownLatch latch = new CountDownLatch(numThreads);
@@ -380,7 +385,7 @@ public class Replicator {
      * is elected (as identified by an oplog event), of if the current thread doing the reading is interrupted.
      */
     protected void readOplog() {
-        primaryClient.execute("read from oplog on '" + replicaSet + "'", this::readOplog);
+        primaryClient.execute("read from oplog on '" + replicaSet + "'", (Consumer<MongoClient>)this::readOplog);
     }
 
     /**
@@ -399,7 +404,6 @@ public class Replicator {
         FindIterable<Document> results = oplog.find(filter)
                                               .sort(new Document("$natural", 1)) // force forwards collection scan
                                               .oplogReplay(true) // tells Mongo to not rely on indexes
-                                              .noCursorTimeout(true) // don't timeout waiting for events
                                               .cursorType(CursorType.TailableAwait); // tail and await new data
         // Read as much of the oplog as we can ...
         ServerAddress primaryAddress = primary.getAddress();
@@ -470,12 +474,12 @@ public class Replicator {
                 return true;
             }
             // Otherwise, it is an event on a document in a collection ...
-            if (!databaseFilter.test(dbName)){
+            if (!context.filters().databaseFilter().test(dbName)){
                 logger.debug("Skipping the event for database {} based on database.whitelist");
                 return true;
             }
             CollectionId collectionId = new CollectionId(rsName, dbName, collectionName);
-            if (collectionFilter.test(collectionId)) {
+            if (context.filters().collectionFilter().test(collectionId)) {
                 RecordsForCollection factory = recordMakers.forCollection(collectionId);
                 try {
                     factory.recordEvent(event, clock.currentTimeInMillis());

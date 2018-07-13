@@ -15,7 +15,9 @@ import java.sql.Types;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -75,7 +77,7 @@ public class SnapshotReader extends AbstractReader {
         this.includeData = context.snapshotMode().includeData();
         this.snapshotLockingMode = context.getConnectorConfig().getSnapshotLockingMode();
         recorder = this::recordRowAsRead;
-        metrics = new SnapshotReaderMetrics(context.getClock());
+        metrics = new SnapshotReaderMetrics(context.getClock(), context.dbSchema());
     }
 
     /**
@@ -105,13 +107,18 @@ public class SnapshotReader extends AbstractReader {
         metrics.register(context, logger);
     }
 
+    @Override
+    public void doDestroy() {
+        metrics.unregister(logger);
+    }
+
     /**
      * Start the snapshot and return immediately. Once started, the records read from the database can be retrieved using
      * {@link #poll()} until that method returns {@code null}.
      */
     @Override
     protected void doStart() {
-        executorService = Threads.newSingleThreadExecutor(MySqlConnector.class, context.serverName(), "snapshot");
+        executorService = Threads.newSingleThreadExecutor(MySqlConnector.class, context.getConnectorConfig().getLogicalName(), "snapshot");
         executorService.execute(this::execute);
     }
 
@@ -124,17 +131,19 @@ public class SnapshotReader extends AbstractReader {
 
     @Override
     protected void doCleanup() {
-        try {
-            executorService.shutdown();
-            logger.debug("Completed writing all snapshot records");
-        } finally {
-            metrics.unregister(logger);
-        }
+        executorService.shutdown();
+        logger.debug("Completed writing all snapshot records");
     }
 
     protected Object readField(ResultSet rs, int fieldNo, Column actualColumn) throws SQLException {
         if(actualColumn.jdbcType() == Types.TIME) {
             return readTimeField(rs, fieldNo);
+        }
+        // This is for DATETIME columns (a logical date + time without time zone)
+        // by reading them with a calendar based on the default time zone, we make sure that the value
+        // is constructed correctly using the database's (or connection's) time zone
+        else if (actualColumn.jdbcType() == Types.TIMESTAMP) {
+            return rs.getTimestamp(fieldNo, Calendar.getInstance());
         }
         else {
             return rs.getObject(fieldNo);
@@ -336,6 +345,20 @@ public class SnapshotReader extends AbstractReader {
                         logger.warn("\t skipping database '{}' due to error reading tables: {}", dbName, e.getMessage());
                     }
                 }
+                /* To achieve an ordered snapshot, we would first get a list of Regex tables.whitelist regex patterns
++                   and then sort the tableIds list based on the above list
++                 */
+                List<Pattern> tableWhitelistPattern = Strings.listOfRegex(context.config().getString(MySqlConnectorConfig.TABLE_WHITELIST),Pattern.CASE_INSENSITIVE);
+                List<TableId> tableIdsSorted = new ArrayList<>();
+                tableWhitelistPattern.forEach(pattern -> {
+                    List<TableId> tablesMatchedByPattern = tableIds.stream().filter(t -> pattern.asPredicate().test(t.toString()))
+                            .collect(Collectors.toList());
+                                        tablesMatchedByPattern.forEach(t -> {
+                                                if (!tableIdsSorted.contains(t))
+                                                    tableIdsSorted.add(t);
+                                        });
+                });
+                tableIds.sort(Comparator.comparing(tableIdsSorted::indexOf));
                 final Set<String> includedDatabaseNames = readableDatabaseNames.stream().filter(filters.databaseFilter()).collect(Collectors.toSet());
                 logger.info("\tsnapshot continuing with database(s): {}", includedDatabaseNames);
 
@@ -386,7 +409,7 @@ public class SnapshotReader extends AbstractReader {
                     schema.applyDdl(source, null, setSystemVariablesStatement, this::enqueueSchemaChanges);
 
                     // Add DROP TABLE statements for all tables that we knew about AND those tables found in the databases ...
-                    Set<TableId> allTableIds = new HashSet<>(schema.tables().tableIds());
+                    List<TableId> allTableIds = new ArrayList<>(schema.tableIds());
                     allTableIds.addAll(tableIds);
                     allTableIds.stream()
                                .filter(id -> isRunning()) // ignore all subsequent tables if this reader is stopped
@@ -395,7 +418,7 @@ public class SnapshotReader extends AbstractReader {
                                                                    this::enqueueSchemaChanges));
 
                     // Add a DROP DATABASE statement for each database that we no longer know about ...
-                    schema.tables().tableIds().stream().map(TableId::catalog)
+                    schema.tableIds().stream().map(TableId::catalog)
                           .filter(Predicates.not(readableDatabaseNames::contains))
                           .filter(id -> isRunning()) // ignore all subsequent tables if this reader is stopped
                           .forEach(missingDbName -> schema.applyDdl(source, missingDbName,
@@ -544,6 +567,7 @@ public class SnapshotReader extends AbstractReader {
                                                 long stop = clock.currentTimeInMillis();
                                                 logger.info("Step {}: - {} of {} rows scanned from table '{}' after {}",
                                                             stepNum, rowNum, rowCountStr, tableId, Strings.duration(stop - start));
+                                                metrics.setRowsScanned(tableId.toString(), rowNum);
                                             }
                                         }
 
@@ -552,6 +576,7 @@ public class SnapshotReader extends AbstractReader {
                                             long stop = clock.currentTimeInMillis();
                                             logger.info("Step {}: - Completed scanning a total of {} rows from table '{}' after {}",
                                                         stepNum, rowNum, tableId, Strings.duration(stop - start));
+                                            metrics.setRowsScanned(tableId.toString(), rowNum);
                                         }
                                     } catch (InterruptedException e) {
                                         Thread.interrupted();

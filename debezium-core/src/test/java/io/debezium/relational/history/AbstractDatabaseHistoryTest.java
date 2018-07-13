@@ -15,7 +15,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.relational.Tables;
-import io.debezium.relational.ddl.DdlParser;
+import io.debezium.relational.ddl.LegacyDdlParser;
 import io.debezium.relational.ddl.DdlParserSql2003;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
@@ -36,7 +36,7 @@ public abstract class AbstractDatabaseHistoryTest {
     protected Tables t3;
     protected Tables t4;
     protected Tables all;
-    protected DdlParser parser;
+    protected LegacyDdlParser parser;
 
     @Before
     public void beforeEach() {

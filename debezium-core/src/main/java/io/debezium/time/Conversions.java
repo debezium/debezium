@@ -6,19 +6,22 @@
 package io.debezium.time;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Temporal conversion constants.
- * 
+ *
  * @author Randall Hauch
  */
-final class Conversions {
+public final class Conversions {
 
     static final long MILLISECONDS_PER_SECOND = TimeUnit.SECONDS.toMillis(1);
+    static final long MICROSECONDS_PER_SECOND = TimeUnit.SECONDS.toMicros(1);
     static final long MICROSECONDS_PER_MILLISECOND = TimeUnit.MILLISECONDS.toMicros(1);
     static final long NANOSECONDS_PER_MILLISECOND = TimeUnit.MILLISECONDS.toNanos(1);
     static final long NANOSECONDS_PER_MICROSECOND = TimeUnit.MICROSECONDS.toNanos(1);
@@ -30,7 +33,7 @@ final class Conversions {
 
     private Conversions() {
     }
-    
+
     @SuppressWarnings("deprecation")
     protected static LocalDate toLocalDate(Object obj) {
         if ( obj == null ) {
@@ -57,6 +60,10 @@ final class Conversions {
         if ( obj instanceof Long) {
             // Assume the value is the epoch day number
             return LocalDate.ofEpochDay((Long)obj);
+        }
+        if ( obj instanceof Integer) {
+            // Assume the value is the epoch day number
+            return LocalDate.ofEpochDay((Integer)obj);
         }
         throw new IllegalArgumentException("Unable to convert to LocalDate from unexpected value '" + obj + "' of type " + obj.getClass().getName());
     }
@@ -133,9 +140,22 @@ final class Conversions {
             LocalTime localTime = toLocalTime(obj);
             return LocalDateTime.of(EPOCH, localTime);
         }
+        if ( obj instanceof java.sql.Timestamp) {
+            java.sql.Timestamp timestamp = (java.sql.Timestamp)obj;
+            return LocalDateTime.of(timestamp.getYear() + 1900,
+                                    timestamp.getMonth() + 1,
+                                    timestamp.getDate(),
+                                    timestamp.getHours(),
+                                    timestamp.getMinutes(),
+                                    timestamp.getSeconds(),
+                                    timestamp.getNanos());
+        }
         if ( obj instanceof java.util.Date) {
             java.util.Date date = (java.util.Date)obj;
             long millis = (int)(date.getTime() % Conversions.MILLISECONDS_PER_SECOND);
+            if (millis < 0) {
+                millis = Conversions.MILLISECONDS_PER_SECOND + millis;
+            }
             int nanosOfSecond = (int)(millis * Conversions.NANOSECONDS_PER_MILLISECOND);
             return LocalDateTime.of(date.getYear() + 1900,
                                     date.getMonth() + 1,
@@ -147,10 +167,10 @@ final class Conversions {
         }
         throw new IllegalArgumentException("Unable to convert to LocalTime from unexpected value '" + obj + "' of type " + obj.getClass().getName());
     }
-    
+
     /**
      * Get the number of nanoseconds past epoch of the given {@link LocalDateTime}.
-     * 
+     *
      * @param timestamp the Java timestamp value
      * @return the epoch nanoseconds
      */
@@ -162,7 +182,7 @@ final class Conversions {
 
     /**
      * Get the number of nanoseconds past epoch of the given {@link LocalDate}.
-     * 
+     *
      * @param date the Java date value
      * @return the epoch nanoseconds
      */
@@ -171,4 +191,47 @@ final class Conversions {
         return epochDay * Conversions.NANOSECONDS_PER_DAY;
     }
 
+    /**
+     * Get the UTC-based {@link LocalDateTime} for given microseconds epoch
+     *
+     * @param microseconds - timestamp in microseconds
+     * @return timestamp in UTC timezone
+     */
+    public static LocalDateTime toLocalDateTimeUTC(long microseconds) {
+        long seconds = microseconds / MICROSECONDS_PER_SECOND;
+        // typecasting is safe as microseconds and nanoseconds in second fit in int range
+        int microsecondsOfSecond = (int)(microseconds % MICROSECONDS_PER_SECOND);
+        if (microsecondsOfSecond < 0) {
+            seconds--;
+            microsecondsOfSecond = (int)Conversions.MICROSECONDS_PER_SECOND + microsecondsOfSecond;
+        }
+        return LocalDateTime.ofEpochSecond(seconds, (int)(microsecondsOfSecond * NANOSECONDS_PER_MICROSECOND), ZoneOffset.UTC);
+    }
+
+    /**
+     * Get the UTC-based {@link LocalDateTime} for given nanoseconds epoch
+     *
+     * @param nanoseconds - timestamp in nanoseconds
+     * @return timestamp in UTC timezone
+     */
+    public static LocalDateTime fromNanosToLocalDateTimeUTC(long nanoseconds) {
+        long seconds = nanoseconds / NANOSECONDS_PER_SECOND;
+        // typecasting is safe as microseconds and nanoseconds in second fit in int range
+        int nanosecondsOfSecond = (int)(nanoseconds % NANOSECONDS_PER_SECOND);
+        if (nanosecondsOfSecond < 0) {
+            seconds--;
+            nanosecondsOfSecond = (int)Conversions.NANOSECONDS_PER_SECOND + nanosecondsOfSecond;
+        }
+        return LocalDateTime.ofEpochSecond(seconds, nanosecondsOfSecond, ZoneOffset.UTC);
+    }
+
+    /**
+     * Get the number of nanoseconds past epoch of the given {@link Instant}.
+     *
+     * @param instant the Java instant value
+     * @return the epoch nanoseconds
+     */
+    public static long toEpochNanos(Instant instant) {
+        return TimeUnit.NANOSECONDS.convert(instant.getEpochSecond() * MICROSECONDS_PER_SECOND + instant.getNano() / NANOSECONDS_PER_MICROSECOND, TimeUnit.MICROSECONDS);
+    }
 }
