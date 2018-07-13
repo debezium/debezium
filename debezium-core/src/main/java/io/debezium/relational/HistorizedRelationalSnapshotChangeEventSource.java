@@ -73,7 +73,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
     public SnapshotResult execute(ChangeEventSourceContext context) throws InterruptedException {
         SnapshottingTask snapshottingTask = getSnapshottingTask(previousOffset);
 
-        // for now, just simple schema snapshotting is supported which just needs to be done once
+        // Neither schema nor data require snapshotting
         if (!snapshottingTask.snapshotSchema() && !snapshottingTask.snapshotData()) {
             LOGGER.debug("Skipping snapshotting");
             return SnapshotResult.completed(previousOffset);
@@ -83,6 +83,10 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
         try (SnapshotContext ctx = prepare(context)) {
             LOGGER.info("Snapshot step 1 - Preparing");
+
+            if (ctx.offset.isSnapshotRunning()) {
+                LOGGER.info("Previous snapshot was cancelled before completion; a new snapshot will be taken.");
+            }
 
             connection = jdbcConnection.connection();
             connection.setAutoCommit(false);
@@ -96,29 +100,21 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
             LOGGER.info("Snapshot step 3 - Locking captured tables");
 
             if (snapshottingTask.snapshotSchema()) {
-                if (!lockTablesForSchemaSnapshot(context, ctx)) {
-                    return SnapshotResult.aborted();
-                }
+                lockTablesForSchemaSnapshot(context, ctx);
             }
 
             LOGGER.info("Snapshot step 4 - Determining snapshot offset");
-
             determineSnapshotOffset(ctx);
 
             LOGGER.info("Snapshot step 5 - Reading structure of captured tables");
-
-            if (!readTableStructure(context, ctx)) {
-                return SnapshotResult.aborted();
-            }
+            readTableStructure(context, ctx);
 
             if (snapshottingTask.snapshotSchema()) {
                 LOGGER.info("Snapshot step 6 - Persisting schema history");
 
-                if (!createSchemaChangeEventsForTables(context, ctx)) {
-                    return SnapshotResult.aborted();
-                }
+                createSchemaChangeEventsForTables(context, ctx);
 
-                // if we've returned before, the TX rollback will cause any locks to be released
+                // if we've been interrupted before, the TX rollback will cause any locks to be released
                 releaseSchemaSnapshotLocks(ctx);
             }
             else {
@@ -127,16 +123,17 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
             if (snapshottingTask.snapshotData()) {
                 LOGGER.info("Snapshot step 7 - Snapshotting data");
-
-                if (!createDataEvents(context, ctx)) {
-                    return SnapshotResult.aborted();
-                }
+                createDataEvents(context, ctx);
             }
             else {
                 LOGGER.info("Snapshot step 7 - Skipping snapshotting of data");
             }
 
             return SnapshotResult.completed(ctx.offset);
+        }
+        catch(InterruptedException e) {
+            LOGGER.warn("Snapshot was interrupted before completion");
+            throw e;
         }
         catch(RuntimeException e) {
             throw e;
@@ -190,7 +187,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
     /**
      * Locks all tables to be captured, so that no concurrent schema changes can be applied to them.
      */
-    protected abstract boolean lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws Exception;
+    protected abstract void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws Exception;
 
     /**
      * Determines the current offset (MySQL binlog position, Oracle SCN etc.), storing it into the passed context
@@ -203,17 +200,17 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
     /**
      * Reads the structure of all the captured tables, writing it to {@link SnapshotContext#tables}.
      */
-    protected abstract boolean readTableStructure(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws Exception;
+    protected abstract void readTableStructure(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws Exception;
 
     /**
      * Releases all locks established in order to create a consistent schema snapshot.
      */
     protected abstract void releaseSchemaSnapshotLocks(SnapshotContext snapshotContext) throws Exception;
 
-    private boolean createSchemaChangeEventsForTables(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws Exception {
+    private void createSchemaChangeEventsForTables(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws Exception {
         for (TableId tableId : snapshotContext.capturedTables) {
             if (!sourceContext.isRunning()) {
-                return false;
+                throw new InterruptedException("Interrupted while capturing schema of table " + tableId);
             }
 
             LOGGER.debug("Capturing structure of table {}", tableId);
@@ -222,8 +219,6 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
             schema.applySchemaChange(getCreateTableEvent(snapshotContext, table));
         }
-
-        return true;
     }
 
     /**
@@ -231,33 +226,29 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
      */
     protected abstract SchemaChangeEvent getCreateTableEvent(SnapshotContext snapshotContext, Table table) throws Exception;
 
-    private boolean createDataEvents(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws InterruptedException{
+    private void createDataEvents(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws InterruptedException{
         SnapshotReceiver snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
         snapshotContext.offset.preSnapshotStart();
 
         for (TableId tableId : snapshotContext.capturedTables) {
             if (!sourceContext.isRunning()) {
-                return false;
+                throw new InterruptedException("Interrupted while snapshotting table " + tableId);
             }
 
-            LOGGER.debug("Scanning table {}", tableId);
+            LOGGER.debug("Snapshotting table {}", tableId);
 
-            if (!createDataEventsForTable(sourceContext, snapshotContext, snapshotReceiver, snapshotContext.tables.forTable(tableId))) {
-                return false;
-            }
+            createDataEventsForTable(sourceContext, snapshotContext, snapshotReceiver, snapshotContext.tables.forTable(tableId));
         }
 
         snapshotContext.offset.preSnapshotCompletion();
         snapshotReceiver.completeSnapshot();
         snapshotContext.offset.postSnapshotCompletion();
-
-        return true;
     }
 
     /**
      * Dispatches the data change events for the records of a single table.
      */
-    private boolean createDataEventsForTable(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext, SnapshotReceiver snapshotReceiver,
+    private void createDataEventsForTable(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext, SnapshotReceiver snapshotReceiver,
             Table table) throws InterruptedException {
 
         long exportStart = clock.currentTimeInMillis();
@@ -276,7 +267,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
             while (rs.next()) {
                 if (!sourceContext.isRunning()) {
-                    return false;
+                    throw new InterruptedException("Interrupted while snapshotting table " + table.id());
                 }
 
                 rows++;
@@ -300,10 +291,8 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
                     table.id(), Strings.duration(clock.currentTimeInMillis() - exportStart));
         }
         catch(SQLException e) {
-            throw new ConnectException("Scanning of table " + table.id() + " failed", e);
+            throw new ConnectException("Snapshotting of table " + table.id() + " failed", e);
         }
-
-        return true;
     }
 
     private Timer getTableScanLogTimer() {
