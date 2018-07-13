@@ -16,7 +16,7 @@ public class SourceInfo extends AbstractSourceInfo {
 
     public static final String SERVER_NAME_KEY = "name";
     public static final String TXID_KEY = "txId";
-    public static final String TIMESTAMP_KEY = "ts_sec";
+    public static final String TIMESTAMP_KEY = "ts_ms";
     public static final String SCN_KEY = "scn";
     public static final String SNAPSHOT_KEY = "snapshot";
 

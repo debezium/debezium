@@ -148,6 +148,14 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         Struct after = (Struct) ((Struct)record1.value()).get("after");
         assertThat(after.get("ID")).isEqualTo(BigDecimal.valueOf(1));
 
+        Struct source = (Struct) ((Struct)record1.value()).get("source");
+        assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(source.get(SourceInfo.SCN_KEY)).isNotNull();
+        assertThat(source.get(SourceInfo.SERVER_NAME_KEY)).isEqualTo("server1");
+        assertThat(source.get(SourceInfo.DEBEZIUM_VERSION_KEY)).isNotNull();
+        assertThat(source.get(SourceInfo.TXID_KEY)).isNull();
+        assertThat(source.get(SourceInfo.TIMESTAMP_KEY)).isNotNull();
+
         assertThat(record1.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
         assertThat(record1.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(false);
 
@@ -176,8 +184,13 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(record3.sourceOffset().containsKey(SourceInfo.SNAPSHOT_KEY)).isFalse();
         assertThat(record3.sourceOffset().containsKey(SNAPSHOT_COMPLETED_KEY)).isFalse();
 
-        Struct source = (Struct) ((Struct)record3.value()).get("source");
+        source = (Struct) ((Struct)record3.value()).get("source");
         assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(false);
+        assertThat(source.get(SourceInfo.SCN_KEY)).isNotNull();
+        assertThat(source.get(SourceInfo.SERVER_NAME_KEY)).isEqualTo("server1");
+        assertThat(source.get(SourceInfo.DEBEZIUM_VERSION_KEY)).isNotNull();
+        assertThat(source.get(SourceInfo.TXID_KEY)).isNotNull();
+        assertThat(source.get(SourceInfo.TIMESTAMP_KEY)).isNotNull();
     }
 
     @Test
