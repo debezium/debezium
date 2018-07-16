@@ -5,19 +5,6 @@
  */
 package io.debezium.connector.mysql;
 
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-
-import org.apache.kafka.connect.errors.ConnectException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.config.Field;
@@ -27,33 +14,56 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcConnection.ConnectionFactory;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.util.Strings;
+import org.apache.kafka.connect.errors.ConnectException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.sql.DatabaseMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 /**
  * A context for a JDBC connection to MySQL.
  *
  * @author Randall Hauch
  */
-public class MySqlJdbcContext implements AutoCloseable {
+public class MySqlConnection extends JdbcConnection {
 
-    protected static final String MYSQL_CONNECTION_URL = "jdbc:mysql://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false&useSSL=${useSSL}&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=convertToNull";
+//    protected static final String MYSQL_CONNECTION_URL = "jdbc:mysql://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false&useSSL=${useSSL}&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=convertToNull";
+    protected static final String MYSQL_CONNECTION_URL = "jdbc:mysql://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false&useSSL=${useSSL}&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=${zeroDateTimeBehavior}";
     protected static final String JDBC_PROPERTY_LEGACY_DATETIME = "useLegacyDatetimeCode";
 
-    protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(MYSQL_CONNECTION_URL);
+    protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(
+            MYSQL_CONNECTION_URL,
+            com.mysql.jdbc.Driver.class.getName(),
+            MySqlConnection.class.getClassLoader());
 
-    protected final Logger logger = LoggerFactory.getLogger(getClass());
+    protected static final Logger logger = LoggerFactory.getLogger(MySqlConnection.class);
     protected final Configuration config;
     protected final JdbcConnection jdbc;
-    private final Map<String, String> originalSystemProperties = new HashMap<>();
+    private static boolean DRIVER_MAJOR_VERSION_PRE8;
+    private static final Map<String, String> originalSystemProperties = new HashMap<>();
 
-    public MySqlJdbcContext(Configuration config) {
+    public MySqlConnection(Configuration config) {
+        super(getMysqlConfig(config), FACTORY, MySqlConnection::checkMySqlDriverVersion, MySqlConnection::mySqlConnectionSettings);
+        setupSystemProperties();
         this.config = config; // must be set before most methods are used
 
-        // Set up the JDBC connection without actually connecting, with extra MySQL-specific properties
+        /*// Set up the JDBC connection without actually connecting, with extra MySQL-specific properties
         // to give us better JDBC database metadata behavior, including using UTF-8 for the client-side character encoding
         // per https://dev.mysql.com/doc/connector-j/5.1/en/connector-j-reference-charsets.html
         boolean useSSL = sslModeEnabled();
         Configuration jdbcConfig = config
-                .filter(x -> !(x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING) || x.equals(MySqlConnectorConfig.DATABASE_HISTORY.name())))
+                .filter(x -> !(x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING)
+                        || x.equals(MySqlConnectorConfig.DATABASE_HISTORY.name())))
                 .subset("database.", true);
 
         Builder jdbcConfigBuilder = jdbcConfig
@@ -71,7 +81,58 @@ public class MySqlJdbcContext implements AutoCloseable {
         jdbcConfig = jdbcConfigBuilder.build();
         String driverClassName = jdbcConfig.getString(MySqlConnectorConfig.JDBC_DRIVER);
         this.jdbc = new JdbcConnection(jdbcConfig,
-                JdbcConnection.patternBasedFactory(MYSQL_CONNECTION_URL, driverClassName, getClass().getClassLoader()));
+                JdbcConnection.patternBasedFactory(MYSQL_CONNECTION_URL, driverClassName, getClass().getClassLoader()));*/
+    }
+
+    private static void mySqlConnectionSettings(Configuration.Builder builder) {
+        builder.with("useSSL", Boolean.toString(sslModeEnabled()));
+        if (DRIVER_MAJOR_VERSION_PRE8)
+            builder.with("zeroDateTimeBehavior", "CONVERT_TO_NULL");
+        else
+            builder.with("zeroDateTimeBehavior", "convertToNull");
+        final String legacyDateTime = jdbcConfig.getString(JDBC_PROPERTY_LEGACY_DATETIME);
+        if (legacyDateTime == null) {
+            builder.with(JDBC_PROPERTY_LEGACY_DATETIME, "false");
+        }
+        else if ("true".equals(legacyDateTime)) {
+            logger.warn("'" + JDBC_PROPERTY_LEGACY_DATETIME + "'" + " is set to 'true'. This setting is not recommended and can result in timezone issues.");
+        }
+    }
+
+    private static void checkMySqlDriverVersion(Statement statement) throws SQLException{
+        DatabaseMetaData metaData = statement.getConnection().getMetaData();
+        int majorVersion = metaData.getDatabaseMajorVersion();
+        if (majorVersion >= 8)
+            DRIVER_MAJOR_VERSION_PRE8 = true;
+        else
+            DRIVER_MAJOR_VERSION_PRE8 = false;
+
+    }
+
+    private static Configuration getMysqlConfig(Configuration config){
+        return config.filter(x -> !(x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING)
+                        || x.equals(MySqlConnectorConfig.DATABASE_HISTORY.name())))
+                .subset("database.", true);
+    }
+
+    private void setupSystemProperties(){
+        if (sslModeEnabled()) {
+            originalSystemProperties.clear();
+            // Set the System properties for SSL for the MySQL driver ...
+            setSystemProperty("javax.net.ssl.keyStore", MySqlConnectorConfig.SSL_KEYSTORE, true);
+            setSystemProperty("javax.net.ssl.keyStorePassword", MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD, false);
+            setSystemProperty("javax.net.ssl.trustStore", MySqlConnectorConfig.SSL_TRUSTSTORE, true);
+            setSystemProperty("javax.net.ssl.trustStorePassword", MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD, false);
+        }
+    }
+
+    @Override
+    public synchronized void close() {
+        try {
+            super.close();
+        } catch (SQLException e) {
+            logger.error("Unexpected error while closing Postgres connection", e);
+        }
     }
 
     public Configuration config() {
@@ -149,10 +210,6 @@ public class MySqlJdbcContext implements AutoCloseable {
         }
     }
 
-    @Override
-    public void close() {
-        shutdown();
-    }
 
     /**
      * Determine the available GTID set for MySQL.

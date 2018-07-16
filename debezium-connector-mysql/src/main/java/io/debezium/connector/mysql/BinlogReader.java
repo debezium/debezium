@@ -5,22 +5,6 @@
  */
 package io.debezium.connector.mysql;
 
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.BitSet;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Predicate;
-
-import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.source.SourceRecord;
-
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.BinaryLogClient.LifecycleListener;
 import com.github.shyiko.mysql.binlog.event.DeleteRowsEventData;
@@ -42,7 +26,6 @@ import com.github.shyiko.mysql.binlog.event.deserialization.GtidEventDataDeseria
 import com.github.shyiko.mysql.binlog.io.ByteArrayInputStream;
 import com.github.shyiko.mysql.binlog.network.AuthenticationException;
 import com.github.shyiko.mysql.binlog.network.SSLMode;
-
 import io.debezium.connector.mysql.MySqlConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
@@ -54,6 +37,21 @@ import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
+import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.source.SourceRecord;
+
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.BitSet;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Predicate;
 
 /**
  * A component that reads the binlog of a MySQL server, and records any schema changes in {@link MySqlSchema}.
@@ -88,7 +86,7 @@ public class BinlogReader extends AbstractReader {
     private volatile Map<String, ?> lastOffset = null;
     private com.github.shyiko.mysql.binlog.GtidSet gtidSet;
     private Heartbeat heartbeat;
-    private MySqlJdbcContext connectionContext;
+    private MySqlConnection connectionContext;
 
     public static class BinlogPosition {
         final String filename;

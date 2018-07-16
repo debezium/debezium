@@ -5,6 +5,18 @@
  */
 package io.debezium.connector.mysql;
 
+import com.github.shyiko.mysql.binlog.network.ServerException;
+import io.debezium.config.ConfigurationDefaults;
+import io.debezium.time.Temporals;
+import io.debezium.util.Clock;
+import io.debezium.util.Metronome;
+import io.debezium.util.Threads;
+import io.debezium.util.Threads.Timer;
+import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.source.SourceRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -13,20 +25,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-
-import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.source.SourceRecord;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.github.shyiko.mysql.binlog.network.ServerException;
-
-import io.debezium.config.ConfigurationDefaults;
-import io.debezium.time.Temporals;
-import io.debezium.util.Clock;
-import io.debezium.util.Metronome;
-import io.debezium.util.Threads;
-import io.debezium.util.Threads.Timer;
 
 /**
  * A component that performs a snapshot of a MySQL server, and records the schema changes in {@link MySqlSchema}.
@@ -38,7 +36,7 @@ public abstract class AbstractReader implements Reader {
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     private final String name;
     protected final MySqlTaskContext context;
-    protected final MySqlJdbcContext connectionContext;
+    protected final MySqlConnection connectionContext;
     private final BlockingQueue<SourceRecord> records;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicBoolean success = new AtomicBoolean(false);
