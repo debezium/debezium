@@ -5,16 +5,6 @@
  */
 package io.debezium.connector.mysql;
 
-import java.time.Duration;
-import java.util.Map;
-import java.util.function.Predicate;
-
-import javax.management.MalformedObjectNameException;
-import javax.management.ObjectName;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.CdcSourceTaskContext;
@@ -24,6 +14,14 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Strings;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
+import java.time.Duration;
+import java.util.Map;
+import java.util.function.Predicate;
 
 /**
  * A Kafka Connect source task reads the MySQL binary log and generate the corresponding data change events.
@@ -35,7 +33,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlTaskContext.class);
 
-    private final MySqlJdbcContext connectionContext;
+    private final MySqlConnection connectionContext;
     private final Configuration config;
     private final MySqlConnectorConfig connectorConfig;
     private final SourceInfo source;
@@ -59,7 +57,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
 
         this.config = config;
         this.connectorConfig = new MySqlConnectorConfig(config);
-        this.connectionContext = new MySqlJdbcContext(config);
+        this.connectionContext = new MySqlConnection(config);
 
         // Set up the topic selector ...
         this.topicSelector = MySqlTopicSelector.defaultSelector(connectorConfig.getLogicalName(), getHeartbeatTopicsPrefix());
@@ -99,7 +97,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         return this.connectorConfig;
     }
 
-    public MySqlJdbcContext getConnectionContext() {
+    public MySqlConnection getConnectionContext() {
         return connectionContext;
     }
 

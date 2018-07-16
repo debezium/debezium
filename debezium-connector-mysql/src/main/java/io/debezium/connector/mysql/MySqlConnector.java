@@ -5,13 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import io.debezium.config.Configuration;
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
@@ -20,8 +14,12 @@ import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.config.Configuration;
-import io.debezium.jdbc.JdbcConnection;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * A Kafka Connect source connector that creates tasks that read the MySQL binary log and generate the corresponding
@@ -84,7 +82,7 @@ public class MySqlConnector extends SourceConnector {
         ConfigValue userValue = results.get(MySqlConnectorConfig.USER.name());
         ConfigValue passwordValue = results.get(MySqlConnectorConfig.PASSWORD.name());
 
-        if (passwordValue.value() == null || ((String)passwordValue.value()).isEmpty()) {
+        if (passwordValue.value() == null || ((String) passwordValue.value()).isEmpty()) {
             logger.warn("The connection password is empty");
         }
 
@@ -93,7 +91,18 @@ public class MySqlConnector extends SourceConnector {
                 && portValue.errorMessages().isEmpty()
                 && userValue.errorMessages().isEmpty()) {
             // Try to connect to the database ...
-            try (MySqlJdbcContext jdbcContext = new MySqlJdbcContext(config)) {
+            try (MySqlConnection connection = new MySqlConnection(config)) {
+                try {
+                    connection.execute("SELECT version()");
+                    logger.info("Successfully tested connection for {} with user '{}'", connection.connectionString(),
+                            connection.username());
+                } catch (SQLException e) {
+                    logger.info("Failed testing connection for {} with user '{}'", connection.connectionString(),
+                            connection.username());
+                    hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());
+                }
+            }
+            /*try (MySqlConnection jdbcContext = new MySqlConnection(config)) {
                 jdbcContext.start();
                 JdbcConnection mysql = jdbcContext.jdbc();
                 try {
@@ -105,7 +114,7 @@ public class MySqlConnector extends SourceConnector {
                 } finally {
                     jdbcContext.shutdown();
                 }
-            }
+            }*/
         }
         return new Config(new ArrayList<>(results.values()));
     }

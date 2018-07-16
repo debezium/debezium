@@ -5,6 +5,25 @@
  */
 package io.debezium.connector.mysql;
 
+import com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDataDeserializer;
+import com.github.shyiko.mysql.binlog.event.deserialization.json.JsonBinary;
+import com.mysql.jdbc.CharsetMapping;
+import io.debezium.annotation.Immutable;
+import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
+import io.debezium.data.Json;
+import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.Column;
+import io.debezium.relational.ValueConverter;
+import io.debezium.time.Year;
+import io.debezium.util.Strings;
+import org.apache.kafka.connect.data.Decimal;
+import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.source.SourceRecord;
+
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -22,27 +41,6 @@ import java.time.temporal.ChronoUnit;
 import java.time.temporal.Temporal;
 import java.util.Arrays;
 import java.util.List;
-
-import org.apache.kafka.connect.data.Decimal;
-import org.apache.kafka.connect.data.Field;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.source.SourceRecord;
-
-import com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDataDeserializer;
-import com.github.shyiko.mysql.binlog.event.deserialization.json.JsonBinary;
-import com.mysql.jdbc.CharsetMapping;
-
-import io.debezium.annotation.Immutable;
-import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
-import io.debezium.data.Json;
-import io.debezium.jdbc.JdbcValueConverters;
-import io.debezium.jdbc.TemporalPrecisionMode;
-import io.debezium.relational.Column;
-import io.debezium.relational.ValueConverter;
-import io.debezium.time.Year;
-import io.debezium.util.Strings;
 
 /**
  * MySQL-specific customization of the conversions from JDBC values obtained from the MySQL binlog client library.

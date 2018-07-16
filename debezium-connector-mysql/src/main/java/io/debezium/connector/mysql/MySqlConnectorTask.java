@@ -34,7 +34,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private volatile MySqlTaskContext taskContext;
-    private volatile MySqlJdbcContext connectionContext;
+    private volatile MySqlConnection connectionContext;
     private volatile ChainedReader readers;
 
     /**
