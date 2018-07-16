@@ -151,6 +151,10 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
         }
     }
 
+    List<String> getAllTables() {
+        return Arrays.asList(ALL_TABLES);
+    }
+
     private static void streamTable(String table) throws SQLException {
         connection.execute("GRANT SELECT ON " + table + " to " +  TestHelper.CONNECTOR_USER);
         connection.execute("ALTER TABLE " + table + " ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");

@@ -63,12 +63,18 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
 
     private SchemaChangeEventType getSchemaChangeEventType() {
         switch(ddlLcr.getCommandType()) {
-            case "CREATE TABLE": return SchemaChangeEventType.CREATE;
-            case "ALTER TABLE": LOGGER.warn("ALTER TABLE not yet implemented");
-            case "DROP TABLE": LOGGER.warn("DROP TABLE not yet implemented");
+            case "CREATE TABLE":
+                return SchemaChangeEventType.CREATE;
+            case "ALTER TABLE":
+                LOGGER.warn("ALTER TABLE not yet implemented");
+                break;
+            case "DROP TABLE":
+                LOGGER.warn("DROP TABLE not yet implemented");
+                break;
             default:
                 LOGGER.debug("Ignoring DDL event of type {}", ddlLcr.getCommandType());
-                return null;
         }
+
+        return null;
     }
 }

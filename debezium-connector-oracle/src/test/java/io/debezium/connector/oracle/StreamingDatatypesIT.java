@@ -6,10 +6,12 @@
 package io.debezium.connector.oracle;
 
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.junit.Before;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.util.Testing;
 
@@ -27,11 +29,22 @@ public class StreamingDatatypesIT extends AbstractOracleDatatypesTest {
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
 
-        Configuration config = TestHelper.defaultConfig().build();
+        String whitelistedTables = getAllTables().stream()
+            .map(t -> "ORCLPDB1." + t)
+            .map(t -> t.replaceAll("\\.", "\\\\."))
+            .collect(Collectors.joining(","));
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_WHITELIST, whitelistedTables)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .build();
+
         start(OracleConnector.class, config);
         assertConnectorIsRunning();
 
-        Thread.sleep(1000);
+        // wait until snapshotting has completed
+        // TODO add hook to embedded engine to reliably do this
+        Thread.sleep(2000);
         createTables();
     }
 }

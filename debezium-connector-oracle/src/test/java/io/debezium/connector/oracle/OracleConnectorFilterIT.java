@@ -20,6 +20,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.AbstractConnectorTest;
@@ -84,6 +85,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
                 .with(
                         RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
                         "ORCLPDB1\\.DEBEZIUM\\.TABLE1,ORCLPDB1\\.DEBEZIUM\\.TABLE3")
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
                 .build();
 
         start(OracleConnector.class, config);
@@ -135,6 +137,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
                 .with(
                         RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
                         "ORCLPDB1\\.DEBEZIUM\\.TABLE2,ORCLPDB1\\.DEBEZIUM\\.CUSTOMER.*")
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
                 .build();
 
         start(OracleConnector.class, config);

@@ -174,7 +174,7 @@ public class OracleOffsetContext implements OffsetContext {
 
         @Override
         public OffsetContext load(Map<String, ?> offset) {
-            long scn = (long) offset.get(SourceInfo.SCN_KEY);
+            Long scn = (Long) offset.get(SourceInfo.SCN_KEY);
             boolean snapshot = Boolean.TRUE.equals(offset.get(SourceInfo.SNAPSHOT_KEY));
             boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(SNAPSHOT_COMPLETED_KEY));
 

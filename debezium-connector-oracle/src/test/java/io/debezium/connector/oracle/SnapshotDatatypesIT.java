@@ -7,11 +7,13 @@ package io.debezium.connector.oracle;
 
 import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.junit.Before;
 import org.junit.BeforeClass;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.util.Testing;
 
@@ -34,9 +36,19 @@ public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
         Testing.Debug.enable();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
 
-        Configuration config = TestHelper.defaultConfig().build();
+        String whitelistedTables = getAllTables().stream()
+                .map(t -> "ORCLPDB1." + t)
+                .map(t -> t.replaceAll("\\.", "\\\\."))
+                .collect(Collectors.joining(","));
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_WHITELIST, whitelistedTables)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .build();
+
         start(OracleConnector.class, config);
         assertConnectorIsRunning();
-        Thread.sleep(1000);
+
+        Thread.sleep(2000);
     }
 }

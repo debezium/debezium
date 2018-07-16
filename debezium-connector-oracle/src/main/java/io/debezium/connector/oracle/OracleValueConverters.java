@@ -61,7 +61,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             case Types.FLOAT:
                 return VariableScaleDecimal.builder();
             case Types.NUMERIC:
-                return column.length() == NUMBER_VARIABLE_SCALE_LENGTH ? 
+                return column.length() == NUMBER_VARIABLE_SCALE_LENGTH ?
                         VariableScaleDecimal.builder() :
                         super.schemaBuilder(column);
             case OracleTypes.BINARY_FLOAT:
@@ -92,7 +92,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             case OracleTypes.BINARY_DOUBLE:
                 return data -> convertDouble(column, fieldDefn, data);
             case Types.NUMERIC:
-                    return column.length() == NUMBER_VARIABLE_SCALE_LENGTH ? 
+                    return column.length() == NUMBER_VARIABLE_SCALE_LENGTH ?
                             data -> convertVariableScale(column, fieldDefn, data) :
                             data -> convertNumeric(column, fieldDefn, data);
             case Types.FLOAT:
@@ -134,7 +134,10 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     @Override
     protected Object convertFloat(Column column, Field fieldDefn, Object data) {
-        if (data instanceof NUMBER) {
+        if (data instanceof Float) {
+            return data;
+        }
+        else if (data instanceof NUMBER) {
             return ((NUMBER)data).floatValue();
         }
         else if (data instanceof BINARY_FLOAT) {
