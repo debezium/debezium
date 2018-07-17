@@ -19,6 +19,7 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
+import io.debezium.util.Metronome;
 
 /**
  * A {@link StreamingChangeEventSource} based on SQL Server change data capture functionality.
@@ -55,6 +56,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
     @Override
     public void execute(ChangeEventSourceContext context) throws InterruptedException {
+        final Metronome metronome = Metronome.sleeper(pollInterval, clock);
         try {
             final TableId[] tables = schema.getCapturedTables().toArray(new TableId[schema.getCapturedTables().size()]);
             Lsn lastProcessedLsn = new Lsn(null);
@@ -64,12 +66,12 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 // Probably cannot happen but it is better to guard against such
                 // situation
                 if (!currentMaxLsn.isAvailable()) {
-                    Thread.sleep(pollInterval.toMillis());
+                    metronome.pause();
                     continue;
                 }
                 // There is no change in the database
                 if (currentMaxLsn.equals(lastProcessedLsn)) {
-                    Thread.sleep(pollInterval.toMillis());
+                    metronome.pause();
                     continue;
                 }
 
@@ -119,16 +121,22 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         final Object[] dataNext = (operation == SqlServerChangeRecordEmitter.OP_UPDATE_BEFORE) ? tableSmallestLsn.getData() : null;
 
                         offsetContext.setChangeLsn(rowLsn);
+                        offsetContext.setCommitLsn(commitLsn);
                         offsetContext.setSourceTime(connection.timestampOfLsn(commitLsn));
-                        offsetContext.setQueryFromLsn(fromLsn);
-                        offsetContext.setQueryToLsn(currentMaxLsn);
-                        offsetContext.setQueryTable(tableId);
 
                         try {
                             dispatcher
                                     .dispatchDataChangeEvent(
-                                            tableId, new SqlServerChangeRecordEmitter(offsetContext, operation,
-                                                    data, dataNext, schema.tableFor(tableId), clock));
+                                            tableId,
+                                            new SqlServerChangeRecordEmitter(
+                                                    offsetContext,
+                                                    operation,
+                                                    data,
+                                                    dataNext,
+                                                    schema.tableFor(tableId),
+                                                    clock
+                                            )
+                                    );
                         }
                         catch (InterruptedException e) {
                             break;

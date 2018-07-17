@@ -13,8 +13,11 @@ import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
+import io.debezium.config.Field.ValidationOutput;
 import io.debezium.document.Document;
+import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
@@ -31,8 +34,136 @@ import io.debezium.relational.history.KafkaDatabaseHistory;
  */
 public class SqlServerConnectorConfig extends RelationalDatabaseConnectorConfig {
 
-    // TODO pull up to RelationalConnectorConfig
-    public static final String DATABASE_CONFIG_PREFIX = "database.";
+    /**
+     * The set of predefined SnapshotMode options or aliases.
+     */
+    public static enum SnapshotMode implements EnumeratedValue {
+
+        /**
+         * Perform a snapshot of data and schema upon initial startup of a connector.
+         */
+        INITIAL("initial", true),
+
+        /**
+         * Perform a snapshot of data and schema upon initial startup of a connector.
+         */
+        INITIAL_SCHEMA_ONLY("initial_schema_only", false);
+
+        private final String value;
+        private final boolean includeData;
+
+        private SnapshotMode(String value, boolean includeData) {
+            this.value = value;
+            this.includeData = includeData;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Whether this snapshotting mode should include the actual data or just the
+         * schema of captured tables.
+         */
+        public boolean includeData() {
+            return includeData;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static SnapshotMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+
+            for (SnapshotMode option : SnapshotMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static SnapshotMode parse(String value, String defaultValue) {
+            SnapshotMode mode = parse(value);
+
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+
+            return mode;
+        }
+    }
+
+    /**
+     * The set of predefined Snapshot Locking Mode options.
+     */
+    public static enum SnapshotLockingMode implements EnumeratedValue {
+
+        /**
+         * This mode will block all reads and writes for the entire duration of the snapshot.
+         *
+         * The connector will execute {@code SELECT * FROM .. WITH (TABLOCKX)}
+         */
+        EXCLUSIVE("exclusive"),
+
+        /**
+         * This mode will avoid using ANY table locks during the snapshot process.  This mode can only be used with SnapShotMode
+         * set to schema_only or schema_only_recovery.
+         */
+        NONE("none");
+
+        private final String value;
+
+        private SnapshotLockingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static SnapshotLockingMode parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+            for (SnapshotLockingMode option : SnapshotLockingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static SnapshotLockingMode parse(String value, String defaultValue) {
+            SnapshotLockingMode mode = parse(value);
+            if (mode == null && defaultValue != null) mode = parse(defaultValue);
+            return mode;
+        }
+    }
 
     public static final Field LOGICAL_NAME = Field.create("database.server.name")
             .withDisplayName("Namespace")
@@ -40,11 +171,10 @@ public class SqlServerConnectorConfig extends RelationalDatabaseConnectorConfig 
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
             .withValidation(Field::isRequired)
-            // TODO
-            //.withValidation(Field::isRequired, MySqlConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName)
+            .withValidation(Field::isRequired, CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName)
             .withDescription("Unique name that identifies the database server and all recorded offsets, and"
                     + "that is used as a prefix for all schemas and topics. "
-                    + "Each distinct MySQL installation should have a separate namespace and monitored by "
+                    + "Each distinct SQL Server installation should have a separate namespace and monitored by "
                     + "at most one Debezium connector.");
 
     public static final Field DATABASE_NAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASE)
@@ -71,39 +201,68 @@ public class SqlServerConnectorConfig extends RelationalDatabaseConnectorConfig 
                     + DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING + "' string.")
             .withDefault(KafkaDatabaseHistory.class.getName());
 
+    public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
+            .withDisplayName("Snapshot mode")
+            .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("The criteria for running a snapshot upon startup of the connector. "
+                    + "Options include: "
+                    + "'initial' (the default) to specify the connector should run a snapshot only when no offsets are available for the logical server name; "
+                    + "'initial_schema_only' to specify the connector should run a snapshot of the schema when no offsets are available for the logical server name. ");
+
+    public static final Field SNAPSHOT_LOCKING_MODE = Field.create("snapshot.locking.mode")
+            .withDisplayName("Snapshot locking mode")
+            .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.EXCLUSIVE)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Controls how long the connector locks the montiored tables for snapshot execution. The default is '" + SnapshotLockingMode.EXCLUSIVE.getValue() + "', "
+                + "which means that the connector holds the exlusive lock (and thus prevents any reads and updates) for all monitored tables "
+                + "while the database schemas, other metadata and the data itself are being read. Using a value of '" + SnapshotLockingMode.NONE.getValue() + "' will prevent the connector from acquiring any "
+                + "table locks during the snapshot process. This mode can only be used in combination with snapshot.mode values of '" + SnapshotMode.INITIAL_SCHEMA_ONLY.getValue() + "' or "
+                + "'schema_only_recovery' and is only safe to use if no schema changes are happening while the snapshot is taken.")
+            .withValidation(SqlServerConnectorConfig::validateSnapshotLockingMode);
+
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
     public static Field.Set ALL_FIELDS = Field.setOf(
             LOGICAL_NAME,
             DATABASE_NAME,
+            SNAPSHOT_MODE,
             RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
             RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
             RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
             CommonConnectorConfig.POLL_INTERVAL_MS,
             CommonConnectorConfig.MAX_BATCH_SIZE,
-            CommonConnectorConfig.MAX_QUEUE_SIZE
+            CommonConnectorConfig.MAX_QUEUE_SIZE,
+            Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX
     );
 
+    public static ConfigDef configDef() {
+        ConfigDef config = new ConfigDef();
+
+        Field.group(config, "SQL Server", LOGICAL_NAME, DATABASE_NAME, SNAPSHOT_MODE);
+        Field.group(config, "Events", RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
+                RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
+                RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
+                Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX
+        );
+        Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.MAX_QUEUE_SIZE);
+
+        return config;
+    }
+
     private final String databaseName;
+    private final SnapshotMode snapshotMode;
+    private final SnapshotLockingMode snapshotLockingMode;
 
     public SqlServerConnectorConfig(Configuration config) {
         super(config, config.getString(LOGICAL_NAME), new SystemTablesPredicate());
 
         this.databaseName = config.getString(DATABASE_NAME);
-    }
-
-    public static ConfigDef configDef() {
-        ConfigDef config = new ConfigDef();
-
-        Field.group(config, "Oracle", LOGICAL_NAME, DATABASE_NAME);
-        Field.group(config, "Events", RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
-                RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
-                RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN
-        );
-        Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.MAX_QUEUE_SIZE);
-
-        return config;
+        this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
+        this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
     }
 
     public String getDatabaseName() {
@@ -137,6 +296,41 @@ public class SqlServerConnectorConfig extends RelationalDatabaseConnectorConfig 
         databaseHistory.configure(dbHistoryConfig, historyComparator); // validates
 
         return databaseHistory;
+    }
+
+    public SnapshotLockingMode getSnapshotLockingMode() {
+        return this.snapshotLockingMode;
+    }
+
+    public SnapshotMode getSnapshotMode() {
+        return snapshotMode;
+    }
+
+    /**
+     * Validate the snapshot.locking.mode configuration
+     * The {@link SnapshotLockingMode.NONE} is allowed only for snapshot mode {@link SnapshotMode.INITIAL_SCHEMA_ONLY}
+     *
+     * @param config connector configuration
+     * @param field validated field (snapshot locking mode)
+     * @param problems the list of violated validations
+     *
+     * @return 0 for valid configuration
+     */
+    private static int validateSnapshotLockingMode(Configuration config, Field field, ValidationOutput problems) {
+        final SnapshotMode snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
+        final SnapshotLockingMode snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
+
+        if (snapshotLockingMode == SnapshotLockingMode.NONE) {
+            if (snapshotMode != SnapshotMode.INITIAL_SCHEMA_ONLY) {
+                problems.accept(
+                        field,
+                        snapshotLockingMode,
+                        "Snapshot locking mode '" + snapshotLockingMode.getValue() + "' is not allowed for snapshot mode '" + snapshotMode.getValue() + "'"
+                    );
+            }
+        }
+        // Everything checks out ok.
+        return 0;
     }
 
     private static class SystemTablesPredicate implements TableFilter {

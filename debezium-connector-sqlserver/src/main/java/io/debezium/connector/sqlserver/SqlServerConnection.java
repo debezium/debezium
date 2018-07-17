@@ -36,6 +36,7 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String ENABLE_TABLE_CDC;
     private static final String CDC_WRAPPERS_DML;
     private static final String GET_MAX_LSN;
+    private static final String LOCK_TABLE;
 
     static {
         try {
@@ -46,6 +47,7 @@ public class SqlServerConnection extends JdbcConnection {
             DISABLE_DB_CDC = statements.getProperty("disable_cdc_for_db");
             ENABLE_TABLE_CDC = statements.getProperty("enable_cdc_for_table");
             GET_MAX_LSN = statements.getProperty("get_max_lsn");
+            LOCK_TABLE = statements.getProperty("lock_table");
             CDC_WRAPPERS_DML = IoUtil.read(classLoader.getResourceAsStream("generate_cdc_wrappers.sql"));
         }
         catch (Exception e) {
@@ -181,6 +183,11 @@ public class SqlServerConnection extends JdbcConnection {
             }
             throw new IllegalStateException(LSN_TIMESTAMP_ERROR);
         });
+    }
+
+    public void lockTable(TableId tableId) throws SQLException {
+        final String lockTableStmt = LOCK_TABLE.replace(STATEMENTS_PLACEHOLDER, tableId.table());
+        execute(lockTableStmt);
     }
 
     private String cdcNameForTable(TableId tableId) {
