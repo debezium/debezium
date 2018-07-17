@@ -16,7 +16,7 @@ import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.util.Testing;
 
 /**
- * Integration test to verify different Oracle datatypes.
+ * Integration test to verify different Oracle datatypes as captured during streaming.
  *
  * @author Jiri Pechanec
  */
@@ -46,5 +46,10 @@ public class StreamingDatatypesIT extends AbstractOracleDatatypesTest {
         // TODO add hook to embedded engine to reliably do this
         Thread.sleep(2000);
         createTables();
+    }
+
+    @Override
+    protected boolean insertRecordsDuringTest() {
+        return true;
     }
 }

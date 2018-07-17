@@ -151,15 +151,16 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
         }
     }
 
-    List<String> getAllTables() {
+    protected List<String> getAllTables() {
         return Arrays.asList(ALL_TABLES);
     }
+
+    protected abstract boolean insertRecordsDuringTest();
 
     private static void streamTable(String table) throws SQLException {
         connection.execute("GRANT SELECT ON " + table + " to " +  TestHelper.CONNECTOR_USER);
         connection.execute("ALTER TABLE " + table + " ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
     }
-
 
     @AfterClass
     public static void closeConnection() throws SQLException {
@@ -171,8 +172,10 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     @Test
     public void stringTypes() throws Exception {
         int expectedRecordCount = 0;
-        connection.execute("INSERT INTO debezium.type_string VALUES (1, 'v\u010d2', 'nv\u010d2', 'c', 'n\u010d')");
-        connection.execute("COMMIT");
+
+        if (insertRecordsDuringTest()) {
+            insertStringTypes();
+        }
 
         Testing.debug("Inserted");
         expectedRecordCount++;
@@ -183,7 +186,13 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
         assertThat(testTableRecords).hasSize(expectedRecordCount);
 
         // insert
-        VerifyRecord.isValidInsert(testTableRecords.get(0));
+        if (insertRecordsDuringTest()) {
+            VerifyRecord.isValidInsert(testTableRecords.get(0));
+        }
+        else {
+            VerifyRecord.isValidRead(testTableRecords.get(0));
+        }
+
         Struct after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
         assertRecord(after, EXPECTED_STRING);
     }
@@ -191,8 +200,10 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     @Test
     public void fpTypes() throws Exception {
         int expectedRecordCount = 0;
-        connection.execute("INSERT INTO debezium.type_fp VALUES (1, 1.1, 2.22, 3.33, 4.4444, 5.555, 6.66, 77.323)");
-        connection.execute("COMMIT");
+
+        if (insertRecordsDuringTest()) {
+            insertFpTypes();
+        }
 
         Testing.debug("Inserted");
         expectedRecordCount++;
@@ -203,7 +214,13 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
         assertThat(testTableRecords).hasSize(expectedRecordCount);
 
         // insert
-        VerifyRecord.isValidInsert(testTableRecords.get(0));
+        if (insertRecordsDuringTest()) {
+            VerifyRecord.isValidInsert(testTableRecords.get(0));
+        }
+        else {
+            VerifyRecord.isValidRead(testTableRecords.get(0));
+        }
+
         Struct after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
         assertRecord(after, EXPECTED_FP);
     }
@@ -211,8 +228,10 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     @Test
     public void intTypes() throws Exception {
         int expectedRecordCount = 0;
-        connection.execute("INSERT INTO debezium.type_int VALUES (1, 1, 22, 333)");
-        connection.execute("COMMIT");
+
+        if (insertRecordsDuringTest()) {
+            insertIntTypes();
+        }
 
         Testing.debug("Inserted");
         expectedRecordCount++;
@@ -223,7 +242,13 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
         assertThat(testTableRecords).hasSize(expectedRecordCount);
 
         // insert
-        VerifyRecord.isValidInsert(testTableRecords.get(0));
+        if (insertRecordsDuringTest()) {
+            VerifyRecord.isValidInsert(testTableRecords.get(0));
+        }
+        else {
+            VerifyRecord.isValidRead(testTableRecords.get(0));
+        }
+
         Struct after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
         assertRecord(after, EXPECTED_INT);
     }
@@ -231,16 +256,10 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     @Test
     public void timeTypes() throws Exception {
         int expectedRecordCount = 0;
-        connection.execute("INSERT INTO debezium.type_time VALUES ("
-                + "1"
-                + ", TO_DATE('27-MAR-2018', 'dd-MON-yyyy')"
-                + ", TO_TIMESTAMP('27-MAR-2018 12:34:56.00789', 'dd-MON-yyyy HH24:MI:SS.FF5')"
-                + ", TO_TIMESTAMP_TZ('27-MAR-2018 01:34:56.00789 -11:00', 'dd-MON-yyyy HH24:MI:SS.FF5 TZH:TZM')"
-                + ", TO_TIMESTAMP_TZ('27-MAR-2018 01:34:56.00789', 'dd-MON-yyyy HH24:MI:SS.FF5')"
-                + ", INTERVAL '-3-6' YEAR TO MONTH"
-                + ", INTERVAL '-1 2:3:4.56' DAY TO SECOND"
-                + ")");
-        connection.execute("COMMIT");
+
+        if (insertRecordsDuringTest()) {
+            insertTimeTypes();
+        }
 
         Testing.debug("Inserted");
         expectedRecordCount++;
@@ -251,9 +270,43 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
         assertThat(testTableRecords).hasSize(expectedRecordCount);
 
         // insert
-        VerifyRecord.isValidInsert(testTableRecords.get(0));
+        if (insertRecordsDuringTest()) {
+            VerifyRecord.isValidInsert(testTableRecords.get(0));
+        }
+        else {
+            VerifyRecord.isValidRead(testTableRecords.get(0));
+        }
+
         Struct after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
         assertRecord(after, EXPECTED_TIME);
+    }
+
+    protected static void insertStringTypes() throws SQLException {
+        connection.execute("INSERT INTO debezium.type_string VALUES (1, 'v\u010d2', 'nv\u010d2', 'c', 'n\u010d')");
+        connection.execute("COMMIT");
+    }
+
+    protected static void insertFpTypes() throws SQLException {
+        connection.execute("INSERT INTO debezium.type_fp VALUES (1, 1.1, 2.22, 3.33, 4.4444, 5.555, 6.66, 77.323)");
+        connection.execute("COMMIT");
+    }
+
+    protected static void insertIntTypes() throws SQLException {
+        connection.execute("INSERT INTO debezium.type_int VALUES (1, 1, 22, 333)");
+        connection.execute("COMMIT");
+    }
+
+    protected static void insertTimeTypes() throws SQLException {
+        connection.execute("INSERT INTO debezium.type_time VALUES ("
+                + "1"
+                + ", TO_DATE('27-MAR-2018', 'dd-MON-yyyy')"
+                + ", TO_TIMESTAMP('27-MAR-2018 12:34:56.00789', 'dd-MON-yyyy HH24:MI:SS.FF5')"
+                + ", TO_TIMESTAMP_TZ('27-MAR-2018 01:34:56.00789 -11:00', 'dd-MON-yyyy HH24:MI:SS.FF5 TZH:TZM')"
+                + ", TO_TIMESTAMP_TZ('27-MAR-2018 01:34:56.00789', 'dd-MON-yyyy HH24:MI:SS.FF5')"
+                + ", INTERVAL '-3-6' YEAR TO MONTH"
+                + ", INTERVAL '-1 2:3:4.56' DAY TO SECOND"
+                + ")");
+        connection.execute("COMMIT");
     }
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
