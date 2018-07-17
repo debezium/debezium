@@ -7,22 +7,21 @@ package io.debezium.heartbeat;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.source.SourceRecord;
-import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.util.Clock;
+import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
-import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * Default implementation of Heartbeat
@@ -67,15 +66,6 @@ class HeartbeatImpl implements Heartbeat {
 
         heartbeatInterval = configuration.getDuration(HeartbeatImpl.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS);
         heartbeatTimeout = resetHeartbeat();
-    }
-
-    @Override
-    public void heartbeat(Consumer<SourceRecord> consumer) {
-        if (heartbeatTimeout.expired()) {
-            LOGGER.debug("Generating heartbeat event");
-            consumer.accept(heartbeatRecord());
-            heartbeatTimeout = resetHeartbeat();
-        }
     }
 
     @Override
