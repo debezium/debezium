@@ -37,6 +37,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.ShouldFailWhen;
 import io.debezium.relational.TableId;
+import io.debezium.schema.TopicSelector;
 
 /**
  * Integration test for the {@link RecordsStreamProducer} class. This also tests indirectly the PG plugin functionality for
@@ -662,7 +663,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             recordsProducer.stop();
         }
 
-        PostgresTopicSelector selector = PostgresTopicSelector.create(config);
+        TopicSelector<TableId> selector = PostgresTopicSelector.create(config);
 
         PostgresTaskContext context = new PostgresTaskContext(
                 config,

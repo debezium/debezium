@@ -19,6 +19,8 @@ import org.junit.After;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.relational.TableId;
+import io.debezium.schema.TopicSelector;
 
 /**
  * Integration test for {@link io.debezium.connector.postgresql.PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE}
@@ -51,7 +53,7 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
         TestHelper.dropAllSchemas();
 
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(overrides).build());
-        PostgresTopicSelector selector = PostgresTopicSelector.create(config);
+        TopicSelector<TableId> selector = PostgresTopicSelector.create(config);
         context = new PostgresTaskContext(
                 config,
                 new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
