@@ -8,45 +8,35 @@ package io.debezium.connector.oracle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.HistorizedRelationalDatabaseSchema;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchemaBuilder;
-import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.TableChanges;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.schema.TopicSelector;
 import io.debezium.util.SchemaNameAdjuster;
 
-// TODO generify into HistorizedRelationalDatabaseSchema
-
+/**
+ * The schema of an Oracle database.
+ *
+ * @author Gunnar Morling
+ */
 public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleDatabaseSchema.class);
-
-    private final DatabaseHistory databaseHistory;
 
     public OracleDatabaseSchema(OracleConnectorConfig connectorConfig, SchemaNameAdjuster schemaNameAdjuster, TopicSelector<TableId> topicSelector, OracleConnection connection) {
         super(connectorConfig, topicSelector, connectorConfig.getTableFilters().dataCollectionFilter(), null,
                 new TableSchemaBuilder(new OracleValueConverters(connection), schemaNameAdjuster, SourceInfo.SCHEMA),
                 false);
-        this.databaseHistory = connectorConfig.getDatabaseHistory();
-        this.databaseHistory.start();
     }
 
     @Override
-    public void recover(OffsetContext offset) {
-        databaseHistory.recover(offset.getPartition(), offset.getOffset(), tables(), new OracleDdlParser());
-        for (TableId tableId : tableIds()) {
-            buildAndRegisterSchema(tableFor(tableId));
-        }
-    }
-
-    @Override
-    public void close() {
-        databaseHistory.stop();
+    protected DdlParser getDdlParser() {
+        return new OracleDdlParser();
     }
 
     @Override
@@ -64,7 +54,6 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
             tableChanges.create(table);
         }
 
-        databaseHistory.record(schemaChange.getPartition(), schemaChange.getOffset(), schemaChange.getDatabase(),
-                schemaChange.getSchema(), schemaChange.getDdl(), tableChanges);
+        record(schemaChange, tableChanges);
     }
 }

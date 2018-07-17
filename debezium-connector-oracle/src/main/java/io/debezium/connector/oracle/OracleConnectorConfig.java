@@ -155,6 +155,7 @@ public class OracleConnectorConfig extends RelationalDatabaseConnectorConfig {
     /**
      * Returns a configured (but not yet started) instance of the database history.
      */
+    @Override
     public DatabaseHistory getDatabaseHistory() {
         Configuration config = getConfig();
 
