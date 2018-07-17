@@ -14,13 +14,14 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.relational.Tables.TableFilter;
+import io.debezium.relational.history.DatabaseHistory;
 
 /**
  * Configuration options shared across the relational CDC connectors.
  *
  * @author Gunnar Morling
  */
-public class RelationalDatabaseConnectorConfig extends CommonConnectorConfig {
+public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorConfig {
 
     /**
      * A comma-separated list of regular expressions that match the fully-qualified names of tables to be monitored.
@@ -81,4 +82,9 @@ public class RelationalDatabaseConnectorConfig extends CommonConnectorConfig {
 
         return 0;
     }
+
+    /**
+     * Returns a configured (but not yet started) instance of the database history.
+     */
+    public abstract DatabaseHistory getDatabaseHistory();
 }
