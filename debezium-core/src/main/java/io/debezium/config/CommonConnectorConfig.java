@@ -7,12 +7,15 @@ package io.debezium.config;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.Objects;
 
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 
 import io.debezium.heartbeat.Heartbeat;
+import io.debezium.config.Field.ValidationOutput;
+import io.debezium.relational.history.KafkaDatabaseHistory;
 
 /**
  * Configuration options common to all Debezium connectors.
@@ -24,6 +27,7 @@ public class CommonConnectorConfig {
     public static final int DEFAULT_MAX_QUEUE_SIZE = 8192;
     public static final int DEFAULT_MAX_BATCH_SIZE = 2048;
     public static final long DEFAULT_POLL_INTERVAL_MILLIS = 500;
+    public static final String DATABASE_CONFIG_PREFIX = "database.";
 
     public static final Field TOMBSTONES_ON_DELETE = Field.create("tombstones.on.delete")
             .withDisplayName("Change the behaviour of Debezium with regards to delete operations")
@@ -129,4 +133,17 @@ public class CommonConnectorConfig {
         }
         return count;
     }
+
+    protected static int validateServerNameIsDifferentFromHistoryTopicName(Configuration config, Field field, ValidationOutput problems) {
+        String serverName = config.getString(field);
+        String historyTopicName = config.getString(KafkaDatabaseHistory.TOPIC);
+
+        if (Objects.equals(serverName, historyTopicName)) {
+            problems.accept(field, serverName, "Must not have the same value as " + KafkaDatabaseHistory.TOPIC.name());
+            return 1;
+        }
+
+        return 0;
+    }
+
 }

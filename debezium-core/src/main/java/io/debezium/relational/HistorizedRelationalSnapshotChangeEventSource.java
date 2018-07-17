@@ -399,4 +399,8 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
             return snapshotSchema;
         }
     }
+
+    protected Clock getClock() {
+        return clock;
+    }
 }
