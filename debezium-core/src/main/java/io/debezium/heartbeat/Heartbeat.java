@@ -52,21 +52,11 @@ public interface Heartbeat {
      * No-op Heartbeat implementation
      */
     public static final Heartbeat NULL = new Heartbeat() {
+
         @Override
         public void heartbeat(BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
         }
-
-        @Override
-        public void heartbeat(Consumer<SourceRecord> consumer) {
-        }
     };
-
-    /**
-     * Generates a heartbeat record if defined time has elapsed
-     *
-     * @param consumer - a code to place record among others to be sent into Connect
-     */
-    void heartbeat(Consumer<SourceRecord> consumer);
 
     /**
      * Generates a heartbeat record if defined time has elapsed
