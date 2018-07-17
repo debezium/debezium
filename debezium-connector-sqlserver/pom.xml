@@ -19,7 +19,7 @@
         <sqlserver.port>1433</sqlserver.port>
         <sqlserver.user>sa</sqlserver.user>
         <sqlserver.password>Password!</sqlserver.password>
-        <sqlserver.dbname>master</sqlserver.dbname>
+        <sqlserver.dbname>testDB</sqlserver.dbname>
         <docker.filter>microsoft/mssql-server-linux:2017-latest</docker.filter>
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
@@ -171,7 +171,6 @@
                         <database.port>${sqlserver.port}</database.port>
                         <database.user>${sqlserver.user}</database.user>
                         <database.password>${sqlserver.password}</database.password>
-                        <database.dbname>${sqlserver.dbname}</database.dbname>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
                 </configuration>

@@ -13,28 +13,27 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.relational.TableId;
 import io.debezium.util.Collect;
 
 public class SqlServerOffsetContext implements OffsetContext {
 
     private static final String SERVER_PARTITION_KEY = "server";
-    private static final String QUERY_FROM_LSN_KEY = "query_from_lsn";
-    private static final String QUERY_TO_LSN_KEY = "query_to_lsn";
-    private static final String QUERY_TABLE = "query_table";
+    private static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
 
     private final Schema sourceInfoSchema;
     private final SourceInfo sourceInfo;
     private final Map<String, String> partition;
+    private boolean snapshotCompleted;
 
-    private Lsn queryFromLsn;
-    private Lsn queryToLsn;
-    private TableId queryTable;
-
-    public SqlServerOffsetContext(String serverName) {
+    public SqlServerOffsetContext(String serverName, Lsn lsn, boolean snapshot, boolean snapshotCompleted) {
         partition = Collections.singletonMap(SERVER_PARTITION_KEY, serverName);
         sourceInfo = new SourceInfo(serverName);
+
+        sourceInfo.setChangeLsn(lsn);
+        sourceInfo.setSnapshot(snapshot);
         sourceInfoSchema = sourceInfo.schema();
+
+        this.snapshotCompleted = snapshotCompleted;
     }
 
     @Override
@@ -44,12 +43,15 @@ public class SqlServerOffsetContext implements OffsetContext {
 
     @Override
     public Map<String, ?> getOffset() {
-        return Collect.hashMapOf(
-                QUERY_FROM_LSN_KEY, queryFromLsn == null ? null : queryFromLsn.toString(),
-                QUERY_TO_LSN_KEY, queryToLsn == null ? null : queryToLsn.toString(),
-                QUERY_TABLE, queryTable == null ? null : queryTable.toString(),
-                SourceInfo.CHANGE_LSN_KEY, sourceInfo.getChangeLsn() == null ? null : sourceInfo.getChangeLsn().toString()
-        );
+        if (sourceInfo.isSnapshot()) {
+            return Collect.hashMapOf(
+                    SourceInfo.SNAPSHOT_KEY, true,
+                    SNAPSHOT_COMPLETED_KEY, snapshotCompleted
+            );
+        }
+        else {
+            return Collections.singletonMap(SourceInfo.CHANGE_LSN_KEY, sourceInfo.getChangeLsn().toString());
+        }
     }
 
     @Override
@@ -66,40 +68,55 @@ public class SqlServerOffsetContext implements OffsetContext {
         sourceInfo.setChangeLsn(lsn);
     }
 
+    public void setCommitLsn(Lsn lsn) {
+        sourceInfo.setCommitLsn(lsn);
+    }
+
     public void setSourceTime(Instant instant) {
         sourceInfo.setSourceTime(instant);
     }
 
-    public void setQueryFromLsn(Lsn queryFromLsn) {
-        this.queryFromLsn = queryFromLsn;
-    }
-
-    public void setQueryToLsn(Lsn queryToLsn) {
-        this.queryToLsn = queryToLsn;
-    }
-
-    public void setQueryTable(TableId queryTable) {
-        this.queryTable = queryTable;
-    }
-
     @Override
     public boolean isSnapshotRunning() {
-        // TODO Auto-generated method stub
-        return false;
+        return sourceInfo.isSnapshot() && !snapshotCompleted;
     }
 
     @Override
     public void preSnapshotStart() {
-        // TODO Auto-generated method stub
+        sourceInfo.setSnapshot(true);
+        snapshotCompleted = false;
     }
 
     @Override
     public void preSnapshotCompletion() {
-        // TODO Auto-generated method stub
+        snapshotCompleted = true;
     }
 
     @Override
     public void postSnapshotCompletion() {
-        // TODO Auto-generated method stub
+        sourceInfo.setSnapshot(false);
+    }
+
+    public static class Loader implements OffsetContext.Loader {
+
+        private final String logicalName;
+
+        public Loader(String logicalName) {
+            this.logicalName = logicalName;
+        }
+
+        @Override
+        public Map<String, ?> getPartition() {
+            return Collections.singletonMap(SERVER_PARTITION_KEY, logicalName);
+        }
+
+        @Override
+        public OffsetContext load(Map<String, ?> offset) {
+            final Lsn lsn = Lsn.valueOf((String)offset.get(SourceInfo.CHANGE_LSN_KEY));
+            boolean snapshot = Boolean.TRUE.equals(offset.get(SourceInfo.SNAPSHOT_KEY));
+            boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(SNAPSHOT_COMPLETED_KEY));
+
+            return new SqlServerOffsetContext(logicalName, lsn, snapshot, snapshotCompleted);
+        }
     }
 }

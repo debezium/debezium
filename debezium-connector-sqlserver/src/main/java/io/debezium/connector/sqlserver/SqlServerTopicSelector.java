@@ -14,20 +14,10 @@ import io.debezium.schema.TopicSelector;
  * @author Jiri Pechanec
  *
  */
-public class SqlServerTopicSelector implements TopicSelector<TableId> {
+public class SqlServerTopicSelector {
 
-    private final String prefix;
-
-    public SqlServerTopicSelector(String prefix) {
-        this.prefix = prefix;
-    }
-
-    public static SqlServerTopicSelector defaultSelector(String prefix) {
-        return new SqlServerTopicSelector(prefix);
-    }
-
-    @Override
-    public String topicNameFor(TableId tableId) {
-        return String.join(".", prefix, tableId.schema(), tableId.table());
+    public static TopicSelector<TableId> defaultSelector(SqlServerConnectorConfig connectorConfig) {
+        return TopicSelector.defaultSelector(connectorConfig,
+                (tableId, prefix, delimiter) -> String.join(delimiter, prefix, tableId.schema(), tableId.table()));
     }
 }
