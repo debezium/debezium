@@ -12,6 +12,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.function.BlockingConsumer;
+import io.debezium.relational.TableId;
+import io.debezium.schema.TopicSelector;
 import io.debezium.util.Clock;
 
 /**
@@ -55,7 +57,7 @@ public abstract class RecordsProducer {
         return taskContext.schema();
     }
 
-    protected PostgresTopicSelector topicSelector() {
+    protected TopicSelector<TableId> topicSelector() {
         return taskContext.topicSelector();
     }
 

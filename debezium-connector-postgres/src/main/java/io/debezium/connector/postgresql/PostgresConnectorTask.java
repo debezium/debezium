@@ -22,6 +22,8 @@ import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.relational.TableId;
+import io.debezium.schema.TopicSelector;
 import io.debezium.util.LoggingContext;
 
 /**
@@ -61,7 +63,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
         }
 
         // create the task context and schema...
-        PostgresTopicSelector topicSelector = PostgresTopicSelector.create(connectorConfig);
+        TopicSelector<TableId> topicSelector = PostgresTopicSelector.create(connectorConfig);
         PostgresSchema schema = new PostgresSchema(connectorConfig, typeRegistry, topicSelector);
         this.taskContext = new PostgresTaskContext(connectorConfig, schema, topicSelector);
 

@@ -25,6 +25,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.relational.history.HistoryRecord.Fields;
+import io.debezium.schema.TopicSelector;
 import io.debezium.util.SchemaNameAdjuster;
 
 /**
@@ -37,7 +38,7 @@ public class RecordMakers {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final MySqlSchema schema;
     private final SourceInfo source;
-    private final MySqlTopicSelector topicSelector;
+    private final TopicSelector<TableId> topicSelector;
     private final boolean emitTombstoneOnDelete;
     private final Map<Long, Converter> convertersByTableNumber = new HashMap<>();
     private final Map<TableId, Long> tableNumbersByTableId = new HashMap<>();
@@ -53,7 +54,7 @@ public class RecordMakers {
      * @param source the connector's source information; may not be null
      * @param topicSelector the selector for topic names; may not be null
      */
-    public RecordMakers(MySqlSchema schema, SourceInfo source, MySqlTopicSelector topicSelector, boolean emitTombstoneOnDelete) {
+    public RecordMakers(MySqlSchema schema, SourceInfo source, TopicSelector<TableId> topicSelector, boolean emitTombstoneOnDelete) {
         this.schema = schema;
         this.source = source;
         this.topicSelector = topicSelector;
