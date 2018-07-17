@@ -16,12 +16,11 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.fest.assertions.Assertions;
 import org.junit.After;
-import org.junit.AfterClass;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.embedded.AbstractConnectorTest;
@@ -34,18 +33,7 @@ import io.debezium.util.Testing;
  */
 public class SqlServerConnectorIT extends AbstractConnectorTest {
 
-    private static SqlServerConnection connection;
-
-    @BeforeClass
-    public static void beforeClass() {
-    }
-
-    @AfterClass
-    public static void closeConnection() throws SQLException {
-        if (connection != null) {
-            connection.close();
-        }
-    }
+    private SqlServerConnection connection;
 
     @Before
     public void before() throws SQLException {
@@ -65,7 +53,9 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
     @After
     public void after() throws SQLException {
-        connection.close();
+        if (connection != null) {
+            connection.close();
+        }
         TestHelper.dropTestDatabase();
     }
 
@@ -74,7 +64,9 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         final int RECORDS_PER_TABLE  = 5;
         final int TABLES = 2;
         final int ID_START = 10;
-        final Configuration config = TestHelper.defaultConfig().build();
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .build();
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
@@ -146,7 +138,9 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     public void update() throws Exception {
         final int RECORDS_PER_TABLE  = 5;
         final int ID_START = 10;
-        final Configuration config = TestHelper.defaultConfig().build();
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .build();
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();

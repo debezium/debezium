@@ -9,7 +9,7 @@ package io.debezium.connector.sqlserver;
 import java.math.BigInteger;
 import java.sql.SQLException;
 
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.connector.sqlserver.util.TestHelper;
@@ -22,14 +22,16 @@ import io.debezium.util.Testing;
  */
 public class SqlServerConnectionIT {
 
-    @BeforeClass
-    public static void beforeClass() throws SQLException {
+    @Before
+    public void before() throws SQLException {
+        TestHelper.dropTestDatabase();
     }
 
     @Test
     public void shouldEnableCdcForDatabase() throws Exception {
         try (SqlServerConnection connection = TestHelper.adminConnection()) {
             connection.connect();
+            connection.execute("CREATE DATABASE testDB");
             connection.execute("USE testDB");
             // NOTE: you cannot enable CDC on master
             connection.enableDbCdc("testDB");
@@ -40,6 +42,7 @@ public class SqlServerConnectionIT {
     public void shouldEnableCdcWithWrapperFunctionsForTable() throws Exception {
         try (SqlServerConnection connection = TestHelper.adminConnection()) {
             connection.connect();
+            connection.execute("CREATE DATABASE testDB");
             connection.execute("USE testDB");
             // NOTE: you cannot enable CDC on master
             connection.enableDbCdc("testDB");

@@ -21,7 +21,6 @@ import io.debezium.util.Testing;
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 public class TestHelper {
-
     public static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
     public static final String TEST_DATABASE = "testDB";
 
@@ -100,7 +99,7 @@ public class TestHelper {
             connection.execute(sql);
         }
         catch (SQLException e) {
-            throw new IllegalStateException("Error while initating test database", e);
+            throw new IllegalStateException("Error while dropping test database", e);
         }
     }
 

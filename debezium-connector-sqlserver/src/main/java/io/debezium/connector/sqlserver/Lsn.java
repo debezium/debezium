@@ -7,6 +7,8 @@ package io.debezium.connector.sqlserver;
 
 import java.util.Arrays;
 
+import io.debezium.util.Strings;
+
 /**
  * A logical representation of SQL Server LSN (log sequence number) position.
  *
@@ -14,6 +16,8 @@ import java.util.Arrays;
  *
  */
 public class Lsn implements Comparable<Lsn> {
+    public static final Lsn NULL = new Lsn(null); 
+
     private final byte[] binary;
     private int[] unsignedBinary;
 
@@ -64,6 +68,10 @@ public class Lsn implements Comparable<Lsn> {
         }
         string = sb.toString();
         return string;
+    }
+
+    public static Lsn valueOf(String lsnString) {
+        return (lsnString == null) ? NULL : new Lsn(Strings.hexStringToByteArray(lsnString.replace(":", "")));
     }
 
     @Override

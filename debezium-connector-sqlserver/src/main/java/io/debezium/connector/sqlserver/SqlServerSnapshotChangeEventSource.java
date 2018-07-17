@@ -5,104 +5,102 @@
  */
 package io.debezium.connector.sqlserver;
 
-import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Savepoint;
 import java.sql.Statement;
+import java.time.Instant;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
-import io.debezium.pipeline.spi.SnapshotResult;
+import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotLockingMode;
+import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.spi.ChangeRecordEmitter;
+import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.relational.HistorizedRelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
+import io.debezium.util.Clock;
 
-public class SqlServerSnapshotChangeEventSource implements SnapshotChangeEventSource {
+public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnapshotChangeEventSource {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerSnapshotChangeEventSource.class);
 
     private final SqlServerConnectorConfig connectorConfig;
-    private final SqlServerOffsetContext previousOffset;
     private final SqlServerConnection jdbcConnection;
-    private final SqlServerDatabaseSchema schema;
 
-    public SqlServerSnapshotChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerOffsetContext previousOffset, SqlServerConnection jdbcConnection, SqlServerDatabaseSchema schema) {
+    public SqlServerSnapshotChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerOffsetContext previousOffset, SqlServerConnection jdbcConnection, SqlServerDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock) {
+        super(connectorConfig, previousOffset, jdbcConnection, schema, dispatcher, clock);
         this.connectorConfig = connectorConfig;
-        this.previousOffset = previousOffset;
         this.jdbcConnection = jdbcConnection;
-        this.schema = schema;
     }
 
     @Override
-    public SnapshotResult execute(ChangeEventSourceContext context) throws InterruptedException {
-        // for now, just simple schema snapshotting is supported which just needs to be done once
-        if (previousOffset != null) {
-            LOGGER.debug("Found previous offset, skipping snapshotting");
-            return SnapshotResult.completed(previousOffset);
+    protected SnapshottingTask getSnapshottingTask(OffsetContext previousOffset) {
+        boolean snapshotSchema = true;
+        boolean snapshotData = true;
+
+        // found a previous offset and the earlier snapshot has completed
+        if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
+            snapshotSchema = false;
+            snapshotData = false;
+        }
+        else {
+            snapshotData = connectorConfig.getSnapshotMode().includeData();
         }
 
-        Connection connection = null;
-        SnapshotContext ctx = null;
+        return new SnapshottingTask(snapshotSchema, snapshotData);
+    }
 
-        try {
-            connection = jdbcConnection.connection();
-            connection.setAutoCommit(false);
+    @Override
+    protected SnapshotContext prepare(ChangeEventSourceContext context) throws Exception {
+        return new SqlServerSnapshotContext(connectorConfig.getDatabaseName());
+    }
 
-            ctx = new SnapshotContext(
-                    context,
-                    connection,
-                    connectorConfig.getDatabaseName()
-            );
+    @Override
+    protected Set<TableId> getAllTableIds(SnapshotContext ctx) throws Exception {
+        return jdbcConnection.readTableNames(ctx.catalogName, null, null, new String[] {"TABLE"});
+    }
 
-            ctx.capturedTables = schema.getCapturedTables();
+    @Override
+    protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws SQLException, InterruptedException {
+        if (connectorConfig.getSnapshotLockingMode() == SnapshotLockingMode.NONE) {
+            return;
+        }
 
-            if (!lockDatabase(ctx)) {
-                return SnapshotResult.aborted();
+        ((SqlServerSnapshotContext)snapshotContext).preSchemaSnapshotSavepoint = jdbcConnection.connection().setSavepoint("dbz_schema_snapshot");
+
+        try (Statement statement = jdbcConnection.connection().createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
+            for (TableId tableId : snapshotContext.capturedTables) {
+                if (!sourceContext.isRunning()) {
+                    throw new InterruptedException("Interrupted while locking table " + tableId);
+                }
+
+                LOGGER.info("Locking table {}", tableId);
+
+                statement.executeQuery("SELECT * FROM " + tableId.table() + " WITH (TABLOCKX)").close();
             }
-
-            determineOffsetContextWithLsn(ctx);
-            readTableStructure(ctx);
-
-            if (!createSchemaChangeEventsForTables(ctx)) {
-                return SnapshotResult.aborted();
-            }
-
-            return SnapshotResult.completed(ctx.offset);
-        }
-        catch(RuntimeException e) {
-            throw e;
-        }
-        catch(Exception e) {
-            throw new RuntimeException(e);
-        }
-        finally {
-            if (ctx != null) {
-                ctx.dispose();
-            }
-
-            rollbackTransaction(connection);
         }
     }
 
-    private boolean lockDatabase(SnapshotContext ctx) throws SQLException {
-        // TODO use SET SINGLE
-        return true;
+    @Override
+    protected void releaseSchemaSnapshotLocks(SnapshotContext snapshotContext) throws SQLException {
+        jdbcConnection.connection().rollback(((SqlServerSnapshotContext)snapshotContext).preSchemaSnapshotSavepoint);
     }
 
-    private void determineOffsetContextWithLsn(SnapshotContext ctx) throws SQLException {
-        ctx.offset = new SqlServerOffsetContext(connectorConfig.getLogicalName());
-        final Lsn lsn = jdbcConnection.getMaxLsn();
+    @Override
+    protected void determineSnapshotOffset(SnapshotContext ctx) throws Exception {
+        ctx.offset = new SqlServerOffsetContext(connectorConfig.getLogicalName(), jdbcConnection.getMaxLsn(), true, false); 
     }
 
-    private void readTableStructure(SnapshotContext ctx) throws SQLException {
-        ctx.tables = new Tables();
-
-        Set<String> schemas = ctx.capturedTables.stream()
+    @Override
+    protected void readTableStructure(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws SQLException, InterruptedException {
+        Set<String> schemas = snapshotContext.capturedTables.stream()
             .map(TableId::schema)
             .collect(Collectors.toSet());
 
@@ -110,9 +108,13 @@ public class SqlServerSnapshotChangeEventSource implements SnapshotChangeEventSo
         // while the passed table name filter alone would skip all non-included tables, reading the schema
         // would take much longer that way
         for (String schema : schemas) {
+            if (!sourceContext.isRunning()) {
+                throw new InterruptedException("Interrupted while reading structure of schema " + schema);
+            }
+
             jdbcConnection.readSchema(
-                    ctx.tables,
-                    ctx.catalogName,
+                    snapshotContext.tables,
+                    snapshotContext.catalogName,
                     schema,
                     connectorConfig.getTableFilters().dataCollectionFilter(),
                     null,
@@ -121,62 +123,37 @@ public class SqlServerSnapshotChangeEventSource implements SnapshotChangeEventSo
         }
     }
 
-    private boolean createSchemaChangeEventsForTables(SnapshotContext ctx) throws SQLException {
-        for (TableId tableId : ctx.capturedTables) {
-            if (!ctx.changeEventSourceContext.isRunning()) {
-                return false;
-            }
-
-            LOGGER.debug("Capturing structure of table {}", tableId);
-            Table table = ctx.tables.forTable(tableId);
-
-            // TODO - use sp_help and sp_columns to build CREATE TABLE
-            final String ddl = "";
-
-            schema.applySchemaChange(new SchemaChangeEvent(ctx.offset.getPartition(), ctx.offset.getOffset(), ctx.catalogName,
-                    tableId.schema(), ddl, table, SchemaChangeEventType.CREATE, true));
-        }
-
-        return true;
+    @Override
+    protected SchemaChangeEvent getCreateTableEvent(SnapshotContext snapshotContext, Table table) throws SQLException {
+        return new SchemaChangeEvent(snapshotContext.offset.getPartition(), snapshotContext.offset.getOffset(), snapshotContext.catalogName,
+                table.id().schema(), null, table, SchemaChangeEventType.CREATE, true);
     }
 
-    private void rollbackTransaction(Connection connection) {
-        if(connection != null) {
-            try {
-                connection.rollback();
-            }
-            catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
-        }
+    @Override
+    protected void complete() {
+    }
+
+    @Override
+    protected String getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
+        return "SELECT * FROM " + tableId.schema() + "." + tableId.table();
+    }
+
+    @Override
+    protected ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext snapshotContext, Object[] row) {
+        ((SqlServerOffsetContext) snapshotContext.offset).setSourceTime(Instant.ofEpochMilli(getClock().currentTimeInMillis()));
+        return new SnapshotChangeRecordEmitter(snapshotContext.offset, row, getClock());
     }
 
     /**
      * Mutable context which is populated in the course of snapshotting.
      */
-    private static class SnapshotContext {
+    private static class SqlServerSnapshotContext extends SnapshotContext {
 
-        public final ChangeEventSourceContext changeEventSourceContext;
-        public final Statement statement;
-        public final String catalogName;
+        private Savepoint preSchemaSnapshotSavepoint;
 
-        public Set<TableId> capturedTables;
-        public SqlServerOffsetContext offset;
-        public Tables tables;
-
-        public SnapshotContext(ChangeEventSourceContext changeEventSourceContext, Connection connection, String catalogName) throws SQLException {
-            this.changeEventSourceContext = changeEventSourceContext;
-            this.statement = connection.createStatement();
-            this.catalogName = catalogName;
-        }
-
-        public void dispose() {
-            try {
-                statement.close();
-            }
-            catch (SQLException e) {
-                LOGGER.error("Couldn't close statement", e);
-            }
+        public SqlServerSnapshotContext(String catalogName) throws SQLException {
+            super(catalogName);
         }
     }
+
 }
