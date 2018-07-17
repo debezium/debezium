@@ -155,7 +155,6 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         private boolean completed = false;
 
         public ChangeTable(TableId tableId, ResultSet resultSet) {
-            super();
             this.tableId = tableId;
             this.resultSet = resultSet;
         }

@@ -8,7 +8,7 @@ import org.apache.kafka.connect.data.Struct;
 import io.debezium.connector.AbstractSourceInfo;
 
 /**
- * Coordinates from the database log to restart streaming from. Maps to {@code source} field in enevlope and
+ * Coordinates from the database log to restart streaming from. Maps to {@code source} field in envelope and
  * to connector offsets.
  *
  * @author Jiri Pechanec
