@@ -44,7 +44,7 @@ public class EventDispatcher<T extends DataCollectionId> {
     private final TopicSelector<T> topicSelector;
     private final DatabaseSchema<T> schema;
     private final HistorizedDatabaseSchema<T> historizedSchema;
-    private final ChangeEventQueue<Object> queue;
+    private final ChangeEventQueue<DataChangeEvent> queue;
     private final DataCollectionFilter<T> filter;
     private final ChangeEventCreator changeEventCreator;
 
@@ -54,7 +54,7 @@ public class EventDispatcher<T extends DataCollectionId> {
     private final StreamingChangeRecordReceiver streamingReceiver;
 
     public EventDispatcher(TopicSelector<T> topicSelector, DatabaseSchema<T> schema,
-            ChangeEventQueue<Object> queue,
+            ChangeEventQueue<DataChangeEvent> queue,
             DataCollectionFilter<T> filter,
             ChangeEventCreator changeEventCreator) {
         this.topicSelector = topicSelector;
