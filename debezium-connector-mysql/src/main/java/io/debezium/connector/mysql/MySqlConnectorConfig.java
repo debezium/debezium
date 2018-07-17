@@ -7,7 +7,6 @@ package io.debezium.connector.mysql;
 
 import java.math.BigDecimal;
 import java.time.Duration;
-import java.util.Objects;
 import java.util.Random;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -1125,18 +1124,6 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
             problems.accept(GTID_SOURCE_EXCLUDES, excludes, "Included GTID source UUIDs are already specified");
             return 1;
         }
-        return 0;
-    }
-
-    private static int validateServerNameIsDifferentFromHistoryTopicName(Configuration config, Field field, ValidationOutput problems) {
-        String serverName = config.getString(MySqlConnectorConfig.SERVER_NAME);
-        String historyTopicName = config.getString(KafkaDatabaseHistory.TOPIC);
-
-        if (Objects.equals(serverName, historyTopicName)) {
-            problems.accept(SERVER_NAME, serverName, "Must not have the same value as " + KafkaDatabaseHistory.TOPIC.name());
-            return 1;
-        }
-
         return 0;
     }
 
