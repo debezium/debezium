@@ -84,7 +84,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
         try (SnapshotContext ctx = prepare(context)) {
             LOGGER.info("Snapshot step 1 - Preparing");
 
-            if (ctx.offset.isSnapshotRunning()) {
+            if (previousOffset != null && previousOffset.isSnapshotRunning()) {
                 LOGGER.info("Previous snapshot was cancelled before completion; a new snapshot will be taken.");
             }
 
