@@ -41,7 +41,7 @@ public class OracleConnectorTask extends BaseSourceTask {
     private final AtomicReference<State> state = new AtomicReference<State>(State.STOPPED);
 
     private volatile OracleTaskContext taskContext;
-    private volatile ChangeEventQueue<Object> queue;
+    private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile OracleConnection jdbcConnection;
     private volatile ChangeEventSourceCoordinator coordinator;
     private volatile ErrorHandler errorHandler;
@@ -66,7 +66,7 @@ public class OracleConnectorTask extends BaseSourceTask {
         Clock clock = Clock.system();
 
         // Set up the task record queue ...
-        this.queue = new ChangeEventQueue.Builder<Object>()
+        this.queue = new ChangeEventQueue.Builder<DataChangeEvent>()
                 .pollInterval(connectorConfig.getPollInterval())
                 .maxBatchSize(connectorConfig.getMaxBatchSize())
                 .maxQueueSize(connectorConfig.getMaxQueueSize())
@@ -104,10 +104,9 @@ public class OracleConnectorTask extends BaseSourceTask {
 
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
-        // TODO
-        List records = queue.poll();
+        List<DataChangeEvent> records = queue.poll();
 
-        List<SourceRecord> sourceRecords = ((List<DataChangeEvent>)records).stream()
+        List<SourceRecord> sourceRecords = records.stream()
             .map(DataChangeEvent::getRecord)
             .collect(Collectors.toList());
 
