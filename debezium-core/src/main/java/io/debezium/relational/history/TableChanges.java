@@ -21,6 +21,13 @@ import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.TableChanges.TableChange;
 
+/**
+ * An abstract representation of one or more changes to the structure to the tables of a relational database. Used
+ * within a schema history as an alternative to storing and re-parsing DB-specific DDL statements.
+ *
+ * @author Gunnar Morling
+ *
+ */
 public class TableChanges implements Iterable<TableChange> {
 
     private final List<TableChange> changes;

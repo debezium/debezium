@@ -12,6 +12,11 @@ import java.util.Set;
 
 import io.debezium.relational.Table;
 
+/**
+ * Represents a structural change to a database schema.
+ *
+ * @author Gunnar Morling
+ */
 public class SchemaChangeEvent {
 
     private final String database;

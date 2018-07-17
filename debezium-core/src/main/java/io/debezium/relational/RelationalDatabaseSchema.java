@@ -19,7 +19,8 @@ import io.debezium.schema.DatabaseSchema;
 import io.debezium.schema.TopicSelector;
 
 /**
- * A {@link DatabaseSchema} of a relational database such as Postgres.
+ * A {@link DatabaseSchema} of a relational database such as Postgres. Provides information about the physical structure
+ * of the database (the "database schema") as well as the structure of corresponding CDC messages (the "event schema").
  *
  * @author Gunnar Morling
  */
@@ -108,6 +109,9 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
         schemasByTableId.clear();
     }
 
+    /**
+     * Builds up the CDC event schema for the given table and stores it in this schema.
+     */
     protected void buildAndRegisterSchema(Table table) {
         if (tableFilter.isIncluded(table.id())) {
             TableSchema schema = schemaBuilder.create(schemaPrefix, getEnvelopeSchemaName(table), table, columnFilter, columnMappers);
