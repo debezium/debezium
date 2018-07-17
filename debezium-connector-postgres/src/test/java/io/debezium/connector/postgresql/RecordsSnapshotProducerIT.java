@@ -27,6 +27,8 @@ import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.TableId;
+import io.debezium.schema.TopicSelector;
 
 /**
  * Integration test for {@link RecordsSnapshotProducerIT}
@@ -47,7 +49,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                 .build());
-        PostgresTopicSelector selector = PostgresTopicSelector.create(config);
+        TopicSelector<TableId> selector = PostgresTopicSelector.create(config);
         context = new PostgresTaskContext(
                 config,
                 new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
@@ -93,7 +95,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
-        PostgresTopicSelector selector = PostgresTopicSelector.create(config);
+        TopicSelector<TableId> selector = PostgresTopicSelector.create(config);
         context = new PostgresTaskContext(
                 config,
                 new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
@@ -183,7 +185,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                         .with(PostgresConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS)
                         .build());
 
-        PostgresTopicSelector selector = PostgresTopicSelector.create(config);
+        TopicSelector<TableId> selector = PostgresTopicSelector.create(config);
         context = new PostgresTaskContext(
                 config,
                 new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
@@ -224,7 +226,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                         .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING)
                         .build());
 
-        PostgresTopicSelector selector = PostgresTopicSelector.create(config);
+        TopicSelector<TableId> selector = PostgresTopicSelector.create(config);
         context = new PostgresTaskContext(
                 config,
                 new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),

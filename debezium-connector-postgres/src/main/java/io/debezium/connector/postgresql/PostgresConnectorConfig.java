@@ -25,9 +25,11 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.pgproto.PgProtoMessageDecoder;
 import io.debezium.connector.postgresql.connection.wal2json.NonStreamingWal2JsonMessageDecoder;
 import io.debezium.connector.postgresql.connection.wal2json.StreamingWal2JsonMessageDecoder;
+import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.TableId;
 
 /**
  * The configuration properties for the {@link PostgresConnector}
@@ -258,12 +260,24 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
         /**
          * Create a topic for each distinct DB table
          */
-        TOPIC_PER_TABLE("topic_per_table"),
+        TOPIC_PER_TABLE("topic_per_table") {
+
+            @Override
+            public String getTopicName(TableId tableId, String prefix, String delimiter) {
+                return String.join(delimiter, prefix, tableId.schema(), tableId.table());
+            }
+        },
 
         /**
          * Create a topic for an entire DB schema
          */
-        TOPIC_PER_SCHEMA("topic_per_schema");
+        TOPIC_PER_SCHEMA("topic_per_schema") {
+
+            @Override
+            public String getTopicName(TableId tableId, String prefix, String delimiter) {
+                return String.join(delimiter, prefix, tableId.schema());
+            }
+        };
 
         private String value;
 
@@ -271,6 +285,8 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
         public String getValue() {
             return value;
         }
+
+        public abstract String getTopicName(TableId tableId, String prefix, String delimiter);
 
         TopicSelectionStrategy(String value) {
             this.value = value;
@@ -692,7 +708,10 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
     public static Field.Set ALL_FIELDS = Field.setOf(PLUGIN_NAME, SLOT_NAME, DROP_SLOT_ON_STOP,
                                                      DATABASE_NAME, USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS, SERVER_NAME,
                                                      TOPIC_SELECTION_STRATEGY, CommonConnectorConfig.MAX_BATCH_SIZE,
-                                                     CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS, SCHEMA_WHITELIST,
+                                                     CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
+                                                     Heartbeat.HEARTBEAT_INTERVAL,
+                                                     Heartbeat.HEARTBEAT_TOPICS_PREFIX,
+                                                     SCHEMA_WHITELIST,
                                                      SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE,
                                                      TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
@@ -837,7 +856,8 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                     DROP_SLOT_ON_STOP, SSL_SOCKET_FACTORY, STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE);
         Field.group(config, "Events", SCHEMA_WHITELIST, SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
                     COLUMN_BLACKLIST, INCLUDE_UNKNOWN_DATATYPES, SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
-                    CommonConnectorConfig.TOMBSTONES_ON_DELETE);
+                    CommonConnectorConfig.TOMBSTONES_ON_DELETE, Heartbeat.HEARTBEAT_INTERVAL,
+                    Heartbeat.HEARTBEAT_TOPICS_PREFIX);
         Field.group(config, "Connector", TOPIC_SELECTION_STRATEGY, CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     SNAPSHOT_MODE, SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, ROWS_FETCH_SIZE);
         return config;

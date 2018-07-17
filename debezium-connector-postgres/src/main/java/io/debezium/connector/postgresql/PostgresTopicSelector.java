@@ -6,47 +6,21 @@
 
 package io.debezium.connector.postgresql;
 
+import io.debezium.connector.postgresql.PostgresConnectorConfig.TopicSelectionStrategy;
 import io.debezium.relational.TableId;
 import io.debezium.schema.TopicSelector;
 
 /**
- * Generator of topic names for {@link io.debezium.relational.Table table ids} used by the Postgres connector to determine
- * which Kafka topics contain which messages
+ * Factory for this connector's {@link TopicSelector}.
  *
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
-public interface PostgresTopicSelector extends TopicSelector<TableId> {
+public class PostgresTopicSelector {
 
-    public static PostgresTopicSelector create(PostgresConnectorConfig config) {
-        PostgresConnectorConfig.TopicSelectionStrategy topicSelectionStrategy = config.topicSelectionStrategy();
+    public static TopicSelector<TableId> create(PostgresConnectorConfig connectorConfig) {
+        TopicSelectionStrategy topicSelectionStrategy = connectorConfig.topicSelectionStrategy();
 
-        switch (topicSelectionStrategy) {
-            case TOPIC_PER_SCHEMA:
-                return topicPerSchema(config.getLogicalName());
-            case TOPIC_PER_TABLE:
-                return topicPerTable(config.getLogicalName());
-            default:
-                throw new IllegalArgumentException("Unknown topic selection strategy: " + topicSelectionStrategy);
-        }
-    }
-
-    /**
-     * Generates a topic name for each table, based on the table schema, table name and a prefix
-     *
-     * @param prefix a prefix which will be prepended to the topic name
-     * @return a {@link TopicSelector} instance, never {@code null}
-     */
-    static PostgresTopicSelector topicPerTable(String prefix) {
-        return tableId -> String.join(".", prefix, tableId.schema(), tableId.table());
-    }
-
-    /**
-     * Generates a topic name for each table, based on the table schema and a prefix
-     *
-     * @param prefix a prefix which will be prepended to the topic name
-     * @return a {@link TopicSelector} instance, never {@code null}
-     */
-    static PostgresTopicSelector topicPerSchema(String prefix) {
-        return tableId -> String.join(".", prefix, tableId.schema());
+        return TopicSelector.defaultSelector(connectorConfig,
+                (id, prefix, delimiter) -> topicSelectionStrategy.getTopicName(id, prefix, delimiter));
     }
 }

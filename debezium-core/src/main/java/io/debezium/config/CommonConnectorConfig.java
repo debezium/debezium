@@ -12,6 +12,8 @@ import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 
+import io.debezium.heartbeat.Heartbeat;
+
 /**
  * Configuration options common to all Debezium connectors.
  *
@@ -68,6 +70,7 @@ public class CommonConnectorConfig {
     private final int maxBatchSize;
     private final Duration pollInterval;
     private final String logicalName;
+    private final String heartbeatTopicsPrefix;
 
     protected CommonConnectorConfig(Configuration config, String logicalName) {
         this.config = config;
@@ -76,6 +79,7 @@ public class CommonConnectorConfig {
         this.maxBatchSize = config.getInteger(MAX_BATCH_SIZE);
         this.pollInterval = config.getDuration(POLL_INTERVAL_MS, ChronoUnit.MILLIS);
         this.logicalName = logicalName;
+        this.heartbeatTopicsPrefix = config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX);
     }
 
     /**
@@ -105,6 +109,11 @@ public class CommonConnectorConfig {
     public String getLogicalName() {
         return logicalName;
     }
+
+    public String getHeartbeatTopicsPrefix() {
+        return heartbeatTopicsPrefix;
+    }
+
 
     private static int validateMaxQueueSize(Configuration config, Field field, Field.ValidationOutput problems) {
         int maxQueueSize = config.getInteger(field);

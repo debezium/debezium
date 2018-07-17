@@ -20,8 +20,9 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.function.Predicates;
-import io.debezium.heartbeat.Heartbeat;
+import io.debezium.relational.TableId;
 import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.schema.TopicSelector;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Strings;
 
@@ -40,7 +41,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
     private final MySqlConnectorConfig connectorConfig;
     private final SourceInfo source;
     private final MySqlSchema dbSchema;
-    private final MySqlTopicSelector topicSelector;
+    private final TopicSelector<TableId> topicSelector;
     private final RecordMakers recordProcessor;
     private final Predicate<String> gtidSourceFilter;
     private final Predicate<String> ddlFilter;
@@ -62,7 +63,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         this.connectionContext = new MySqlJdbcContext(config);
 
         // Set up the topic selector ...
-        this.topicSelector = MySqlTopicSelector.defaultSelector(connectorConfig.getLogicalName(), getHeartbeatTopicsPrefix());
+        this.topicSelector = MySqlTopicSelector.defaultSelector(connectorConfig.getLogicalName(), connectorConfig.getHeartbeatTopicsPrefix());
 
         // Set up the source information ...
         this.source = new SourceInfo();
@@ -107,7 +108,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         return config.getString("name");
     }
 
-    public MySqlTopicSelector topicSelector() {
+    public TopicSelector<TableId> topicSelector() {
         return topicSelector;
     }
 
@@ -244,10 +245,6 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
 
     public String getSnapshotSelectOverrides() {
         return config.getString(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
-    }
-
-    public String getHeartbeatTopicsPrefix() {
-        return config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX);
     }
 
     public Duration snapshotDelay() {
