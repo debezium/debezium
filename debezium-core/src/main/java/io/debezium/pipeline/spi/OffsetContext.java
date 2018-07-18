@@ -27,7 +27,7 @@ public interface OffsetContext {
         OffsetContext load(Map<String, ?> offset);
     }
 
-    Map<String, ?> getPartition();
+    Map<String, String> getPartition();
     Map<String, ?> getOffset();
     Schema getSourceInfoSchema();
     Struct getSourceInfo();

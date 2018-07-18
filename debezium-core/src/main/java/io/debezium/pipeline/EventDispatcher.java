@@ -5,6 +5,7 @@
  */
 package io.debezium.pipeline;
 
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
 
@@ -14,8 +15,11 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.data.Envelope.Operation;
+import io.debezium.heartbeat.Heartbeat;
+import io.debezium.heartbeat.OffsetPosition;
 import io.debezium.pipeline.spi.ChangeEventCreator;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -47,15 +51,15 @@ public class EventDispatcher<T extends DataCollectionId> {
     private final ChangeEventQueue<DataChangeEvent> queue;
     private final DataCollectionFilter<T> filter;
     private final ChangeEventCreator changeEventCreator;
+    private final Heartbeat heartbeat;
 
     /**
      * Change event receiver for events dispatched from a streaming change event source.
      */
     private final StreamingChangeRecordReceiver streamingReceiver;
 
-    public EventDispatcher(TopicSelector<T> topicSelector, DatabaseSchema<T> schema,
-            ChangeEventQueue<DataChangeEvent> queue,
-            DataCollectionFilter<T> filter,
+    public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
+            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
             ChangeEventCreator changeEventCreator) {
         this.topicSelector = topicSelector;
         this.schema = schema;
@@ -66,6 +70,10 @@ public class EventDispatcher<T extends DataCollectionId> {
         this.filter = filter;
         this.changeEventCreator = changeEventCreator;
         this.streamingReceiver = new StreamingChangeRecordReceiver();
+
+        heartbeat = Heartbeat.create(connectorConfig.getConfig(), topicSelector.getHeartbeatTopic(),
+                connectorConfig.getLogicalName(),
+                () -> OffsetPosition.build(streamingReceiver.lastPartition, streamingReceiver.lastOffset));
     }
 
     // TODO One could argue that snapshot events shouldn't have to go through the dispatcher but rather to the queue
@@ -98,23 +106,23 @@ public class EventDispatcher<T extends DataCollectionId> {
      * {@link ChangeEventCreator} for converting them into data change events.
      */
     public void dispatchDataChangeEvent(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter) throws InterruptedException {
-        // TODO Handle Heartbeat
-
         // TODO Handle JMX
 
         if(!filter.isIncluded(dataCollectionId)) {
             LOGGER.trace("Skipping data change event for {}", dataCollectionId);
-            return;
+        }
+        else {
+            DataCollectionSchema dataCollectionSchema = schema.schemaFor(dataCollectionId);
+
+            // TODO handle as per inconsistent schema info option
+            if(dataCollectionSchema == null) {
+                throw new IllegalArgumentException("No metadata registered for captured table " + dataCollectionId);
+            }
+
+            changeRecordEmitter.emitChangeRecords(dataCollectionSchema, streamingReceiver);
         }
 
-        DataCollectionSchema dataCollectionSchema = schema.schemaFor(dataCollectionId);
-
-        // TODO handle as per inconsistent schema info option
-        if(dataCollectionSchema == null) {
-            throw new IllegalArgumentException("No metadata registered for captured table " + dataCollectionId);
-        }
-
-        changeRecordEmitter.emitChangeRecords(dataCollectionSchema, streamingReceiver);
+        heartbeat.heartbeat(this::enqueueHeartbeat);
     }
 
     public void dispatchSchemaChangeEvent(T dataCollectionId, SchemaChangeEventEmitter schemaChangeEventEmitter) throws InterruptedException {
@@ -124,6 +132,10 @@ public class EventDispatcher<T extends DataCollectionId> {
         }
 
         schemaChangeEventEmitter.emitSchemaChangeEvent(new SchemaChangeEventReceiver());
+    }
+
+    private void enqueueHeartbeat(SourceRecord record) throws InterruptedException {
+        queue.enqueue(new DataChangeEvent(record));
     }
 
     /**
@@ -136,6 +148,9 @@ public class EventDispatcher<T extends DataCollectionId> {
     }
 
     private final class StreamingChangeRecordReceiver implements ChangeRecordEmitter.Receiver {
+
+        private Map<String, String> lastPartition;
+        private Map<String, ?> lastOffset;
 
         @Override
         public void changeRecord(DataCollectionSchema dataCollectionSchema, Operation operation, Object key, Struct value, OffsetContext offsetContext) throws InterruptedException {
@@ -167,6 +182,9 @@ public class EventDispatcher<T extends DataCollectionId> {
                 );
 
                 queue.enqueue(changeEventCreator.createDataChangeEvent(tombStone));
+
+                lastPartition = offsetContext.getPartition();
+                lastOffset = offsetContext.getOffset();
             }
         }
     }
