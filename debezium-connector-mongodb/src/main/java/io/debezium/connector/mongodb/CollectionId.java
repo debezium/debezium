@@ -8,6 +8,7 @@ package io.debezium.connector.mongodb;
 import java.util.regex.Pattern;
 
 import io.debezium.annotation.Immutable;
+import io.debezium.schema.DataCollectionId;
 
 /**
  * A simple identifier for collections in a replica set.
@@ -15,7 +16,7 @@ import io.debezium.annotation.Immutable;
  * @author Randall Hauch
  */
 @Immutable
-public final class CollectionId {
+public final class CollectionId implements DataCollectionId {
 
     private static final Pattern IDENTIFIER_SEPARATOR_PATTERN = Pattern.compile("\\.");
 

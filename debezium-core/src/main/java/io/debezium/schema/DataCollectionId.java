@@ -5,6 +5,10 @@
  */
 package io.debezium.schema;
 
+/**
+ * Common contract for all identifiers of data collections (RDBMS tables, MongoDB collections etc.)
+ *
+ * @author Gunnar Morling
+ */
 public interface DataCollectionId {
-
 }

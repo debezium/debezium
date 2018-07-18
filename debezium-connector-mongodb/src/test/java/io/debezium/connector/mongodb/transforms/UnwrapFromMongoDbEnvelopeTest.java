@@ -26,11 +26,12 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.connector.mongodb.CollectionId;
+import io.debezium.connector.mongodb.MongoDbTopicSelector;
 import io.debezium.connector.mongodb.RecordMakers;
 import io.debezium.connector.mongodb.RecordMakers.RecordsForCollection;
 import io.debezium.connector.mongodb.SourceInfo;
-import io.debezium.connector.mongodb.TopicSelector;
 import io.debezium.doc.FixFor;
+import io.debezium.schema.TopicSelector;
 import io.debezium.util.Collect;
 
 /**
@@ -48,7 +49,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
 
     private SourceInfo source;
     private RecordMakers recordMakers;
-    private TopicSelector topicSelector;
+    private TopicSelector<CollectionId> topicSelector;
     private List<SourceRecord> produced;
 
     private UnwrapFromMongoDbEnvelope<SourceRecord> transformation;
@@ -56,7 +57,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
     @Before
     public void setup() {
         source = new SourceInfo(SERVER_NAME);
-        topicSelector = TopicSelector.defaultSelector(SERVER_NAME);
+        topicSelector = MongoDbTopicSelector.defaultSelector(SERVER_NAME, "__debezium-heartbeat");
         produced = new ArrayList<>();
         recordMakers = new RecordMakers(source, topicSelector, produced::add, true);
 

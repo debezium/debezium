@@ -30,6 +30,7 @@ import io.debezium.connector.mongodb.RecordMakers.RecordsForCollection;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.doc.FixFor;
+import io.debezium.schema.TopicSelector;
 
 /**
  * @author Randall Hauch
@@ -44,7 +45,7 @@ public class RecordMakersTest {
 
     private SourceInfo source;
     private RecordMakers recordMakers;
-    private TopicSelector topicSelector;
+    private TopicSelector<CollectionId> topicSelector;
     private List<SourceRecord> produced;
     private boolean emitTombstonesOnDelete;
 
@@ -52,7 +53,7 @@ public class RecordMakersTest {
     @Before
     public void beforeEach() {
         source = new SourceInfo(SERVER_NAME);
-        topicSelector = TopicSelector.defaultSelector(PREFIX);
+        topicSelector = MongoDbTopicSelector.defaultSelector(PREFIX, "__debezium-heartbeat");
         produced = new ArrayList<>();
         emitTombstonesOnDelete = true;
         recordMakers = new RecordMakers(source, topicSelector, produced::add, emitTombstonesOnDelete);
