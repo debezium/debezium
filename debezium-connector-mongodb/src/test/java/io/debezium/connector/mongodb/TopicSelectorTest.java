@@ -5,11 +5,13 @@
  */
 package io.debezium.connector.mongodb;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import org.fest.assertions.StringAssert;
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.fest.assertions.Assertions.assertThat;
+import io.debezium.schema.TopicSelector;
 
 /**
  * @author Randall Hauch
@@ -17,25 +19,25 @@ import static org.fest.assertions.Assertions.assertThat;
  */
 public class TopicSelectorTest {
 
-    private TopicSelector noPrefix;
-    private TopicSelector withPrefix;
-    
+    private TopicSelector<CollectionId> noPrefix;
+    private TopicSelector<CollectionId> withPrefix;
+
     @Before
     public void beforeEach() {
-        noPrefix = TopicSelector.defaultSelector(null);
-        withPrefix = TopicSelector.defaultSelector("prefix");
+        noPrefix = MongoDbTopicSelector.defaultSelector(null, "__debezium-heartbeat");
+        withPrefix = MongoDbTopicSelector.defaultSelector("prefix", "__debezium-heartbeat");
     }
-    
+
     @Test
     public void shouldHandleCollectionIdWithDatabaseAndCollection() {
-        assertTopic(noPrefix,dbAndCollection("db","coll")).isEqualTo("db.coll");
-        assertTopic(withPrefix,dbAndCollection("db","coll")).isEqualTo("prefix.db.coll");
+        assertTopic(noPrefix,dbAndCollection("db", "coll")).isEqualTo("db.coll");
+        assertTopic(withPrefix,dbAndCollection("db", "coll")).isEqualTo("prefix.db.coll");
     }
-    
-    protected StringAssert assertTopic(TopicSelector selector, CollectionId collectionId) {
-        return assertThat(selector.getTopic(collectionId));
+
+    protected StringAssert assertTopic(TopicSelector<CollectionId> selector, CollectionId collectionId) {
+        return assertThat(selector.topicNameFor(collectionId));
     }
-    
+
     protected CollectionId dbAndCollection( String dbName, String collectionName ) {
         return new CollectionId("rs0",dbName,collectionName);
     }
