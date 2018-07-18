@@ -29,6 +29,8 @@ import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.connector.postgresql.connection.ReplicationStream;
 import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
+import io.debezium.heartbeat.Heartbeat;
+import io.debezium.heartbeat.OffsetPosition;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
@@ -55,6 +57,8 @@ public class RecordsStreamProducer extends RecordsProducer {
     private final AtomicReference<ReplicationStream> replicationStream;
     private PgConnection typeResolverConnection = null;
 
+    private final Heartbeat heartbeat;
+
     @FunctionalInterface
     public static interface PgConnectionSupplier {
         PgConnection get() throws SQLException;
@@ -76,6 +80,9 @@ public class RecordsStreamProducer extends RecordsProducer {
         } catch (SQLException e) {
             throw new ConnectException(e);
         }
+
+        heartbeat = Heartbeat.create(taskContext.config().getConfig(), taskContext.topicSelector().getHeartbeatTopic(),
+                taskContext.config().getLogicalName(), () -> OffsetPosition.build(sourceInfo.partition(), sourceInfo.offset()));
     }
 
     @Override
@@ -226,35 +233,36 @@ public class RecordsStreamProducer extends RecordsProducer {
         }
 
         TableSchema tableSchema = tableSchemaFor(tableId);
-        if (tableSchema == null) {
-            return;
-        }
-        if (tableSchema.keySchema() == null) {
-            logger.warn("ignoring message for table '{}' because it does not have a primary key defined", tableId);
+        if (tableSchema != null) {
+            if (tableSchema.keySchema() == null) {
+                logger.warn("ignoring message for table '{}' because it does not have a primary key defined", tableId);
+            }
+
+            ReplicationMessage.Operation operation = message.getOperation();
+            switch (operation) {
+                case INSERT: {
+                    Object[] row = columnValues(message.getNewTupleList(), tableId, true, message.hasTypeMetadata());
+                    generateCreateRecord(tableId, row, message.isLastEventForLsn(), consumer);
+                    break;
+                }
+                case UPDATE: {
+                    Object[] newRow = columnValues(message.getNewTupleList(), tableId, true, message.hasTypeMetadata());
+                    Object[] oldRow = columnValues(message.getOldTupleList(), tableId, false, message.hasTypeMetadata());
+                    generateUpdateRecord(tableId, oldRow, newRow, message.isLastEventForLsn(), consumer);
+                    break;
+                }
+                case DELETE: {
+                    Object[] row = columnValues(message.getOldTupleList(), tableId, false, message.hasTypeMetadata());
+                    generateDeleteRecord(tableId, row, message.isLastEventForLsn(), consumer);
+                    break;
+                }
+                default: {
+                   logger.warn("unknown message operation: " + operation);
+                }
+            }
         }
 
-        ReplicationMessage.Operation operation = message.getOperation();
-        switch (operation) {
-            case INSERT: {
-                Object[] row = columnValues(message.getNewTupleList(), tableId, true, message.hasTypeMetadata());
-                generateCreateRecord(tableId, row, message.isLastEventForLsn(), consumer);
-                break;
-            }
-            case UPDATE: {
-                Object[] newRow = columnValues(message.getNewTupleList(), tableId, true, message.hasTypeMetadata());
-                Object[] oldRow = columnValues(message.getOldTupleList(), tableId, false, message.hasTypeMetadata());
-                generateUpdateRecord(tableId, oldRow, newRow, message.isLastEventForLsn(), consumer);
-                break;
-            }
-            case DELETE: {
-                Object[] row = columnValues(message.getOldTupleList(), tableId, false, message.hasTypeMetadata());
-                generateDeleteRecord(tableId, row, message.isLastEventForLsn(), consumer);
-                break;
-            }
-            default: {
-               logger.warn("unknown message operation: " + operation);
-            }
-        }
+        heartbeat.heartbeat(r -> consumer.accept(new ChangeEvent(r, message.isLastEventForLsn())));
     }
 
     protected void generateCreateRecord(TableId tableId, Object[] rowData, boolean isLastEventForLsn, BlockingConsumer<ChangeEvent> recordConsumer) throws InterruptedException {
