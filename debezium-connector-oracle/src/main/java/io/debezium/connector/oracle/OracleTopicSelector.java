@@ -8,20 +8,10 @@ package io.debezium.connector.oracle;
 import io.debezium.relational.TableId;
 import io.debezium.schema.TopicSelector;
 
-public class OracleTopicSelector implements TopicSelector<TableId> {
+public class OracleTopicSelector {
 
-    private final String prefix;
-
-    private OracleTopicSelector(String prefix) {
-        this.prefix = prefix;
-    }
-
-    public static OracleTopicSelector defaultSelector(String prefix) {
-        return new OracleTopicSelector(prefix);
-    }
-
-    @Override
-    public String topicNameFor(TableId tableId) {
-        return String.join(".", prefix, tableId.schema(), tableId.table());
+    public static TopicSelector<TableId> defaultSelector(OracleConnectorConfig connectorConfig) {
+        return TopicSelector.defaultSelector(connectorConfig,
+                (tableId, prefix, delimiter) -> String.join(delimiter, prefix, tableId.schema(), tableId.table()));
     }
 }

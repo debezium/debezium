@@ -26,6 +26,7 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
+import io.debezium.schema.TopicSelector;
 import io.debezium.util.Clock;
 import io.debezium.util.SchemaNameAdjuster;
 
@@ -74,7 +75,7 @@ public class OracleConnectorTask extends BaseSourceTask {
                 .build();
 
         errorHandler = new ErrorHandler(OracleConnector.class, connectorConfig.getLogicalName(), queue, this::cleanupResources);
-        OracleTopicSelector topicSelector = OracleTopicSelector.defaultSelector(connectorConfig.getLogicalName());
+        TopicSelector<TableId> topicSelector = OracleTopicSelector.defaultSelector(connectorConfig);
 
         Configuration jdbcConfig = config.subset("database.", true);
 
