@@ -29,6 +29,7 @@ import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.data.Json;
 import io.debezium.function.BlockingConsumer;
+import io.debezium.schema.TopicSelector;
 import io.debezium.util.SchemaNameAdjuster;
 
 /**
@@ -50,7 +51,7 @@ public class RecordMakers {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(logger);
     private final SourceInfo source;
-    private final TopicSelector topicSelector;
+    private final TopicSelector<CollectionId> topicSelector;
     private final Map<CollectionId, RecordsForCollection> recordMakerByCollectionId = new HashMap<>();
     private final Function<Document, String> valueTransformer;
     private final BlockingConsumer<SourceRecord> recorder;
@@ -63,7 +64,7 @@ public class RecordMakers {
      * @param topicSelector the selector for topic names; may not be null
      * @param recorder the potentially blocking consumer function to be called for each generated record; may not be null
      */
-    public RecordMakers(SourceInfo source, TopicSelector topicSelector, BlockingConsumer<SourceRecord> recorder, boolean emitTombstonesOnDelete) {
+    public RecordMakers(SourceInfo source, TopicSelector<CollectionId> topicSelector, BlockingConsumer<SourceRecord> recorder, boolean emitTombstonesOnDelete) {
         this.source = source;
         this.topicSelector = topicSelector;
         JsonWriterSettings writerSettings = new JsonWriterSettings(JsonMode.STRICT, "", ""); // most compact JSON
@@ -80,7 +81,7 @@ public class RecordMakers {
      */
     public RecordsForCollection forCollection(CollectionId collectionId) {
         return recordMakerByCollectionId.computeIfAbsent(collectionId, id -> {
-            String topicName = topicSelector.getTopic(collectionId);
+            String topicName = topicSelector.topicNameFor(collectionId);
             return new RecordsForCollection(collectionId, source, topicName, schemaNameAdjuster, valueTransformer, recorder, emitTombstonesOnDelete);
         });
     }
