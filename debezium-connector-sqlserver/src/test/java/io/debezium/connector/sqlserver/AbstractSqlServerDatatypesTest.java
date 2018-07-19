@@ -182,7 +182,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
         assertThat(testTableRecords).hasSize(1);
 
         // insert
-        VerifyRecord.isValidInsert(testTableRecords.get(0));
+        VerifyRecord.isValidRead(testTableRecords.get(0));
         Struct after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
         assertRecord(after, EXPECTED_INT);
     }
@@ -197,7 +197,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
         assertThat(testTableRecords).hasSize(1);
 
         // insert
-        VerifyRecord.isValidInsert(testTableRecords.get(0));
+        VerifyRecord.isValidRead(testTableRecords.get(0));
         Struct after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
         assertRecord(after, EXPECTED_FP);
     }
@@ -212,7 +212,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
         assertThat(testTableRecords).hasSize(1);
 
         // insert
-        VerifyRecord.isValidInsert(testTableRecords.get(0));
+        VerifyRecord.isValidRead(testTableRecords.get(0));
         Struct after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
         assertRecord(after, EXPECTED_STRING);
     }
@@ -227,7 +227,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
         assertThat(testTableRecords).hasSize(1);
 
         // insert
-        VerifyRecord.isValidInsert(testTableRecords.get(0));
+        VerifyRecord.isValidRead(testTableRecords.get(0));
         Struct after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
         assertRecord(after, EXPECTED_DATE_TIME);
     }
@@ -242,7 +242,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
         assertThat(testTableRecords).hasSize(1);
 
         // insert
-        VerifyRecord.isValidInsert(testTableRecords.get(0));
+        VerifyRecord.isValidRead(testTableRecords.get(0));
         Struct after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
         assertRecord(after, EXPECTED_XML);
     }

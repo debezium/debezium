@@ -35,7 +35,7 @@ public class DatatypesFromSnapshotIT extends AbstractSqlServerDatatypesTest {
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
 
         Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .build();
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
