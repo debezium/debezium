@@ -16,6 +16,8 @@ import io.debezium.util.Strings;
  *
  */
 public class Lsn implements Comparable<Lsn> {
+    private static final String NULL_STRING = "NULL";
+
     public static final Lsn NULL = new Lsn(null); 
 
     private final byte[] binary;
@@ -23,7 +25,7 @@ public class Lsn implements Comparable<Lsn> {
 
     private String string; 
 
-    public Lsn(byte[] binary) {
+    private Lsn(byte[] binary) {
         this.binary = binary;
     }
 
@@ -53,7 +55,7 @@ public class Lsn implements Comparable<Lsn> {
         }
         final StringBuilder sb = new StringBuilder();
         if (binary == null) {
-            return "NULL";
+            return NULL_STRING;
         }
         final int[] unsigned = getUnsignedBinary();
         for (int i = 0; i < unsigned.length; i++) {
@@ -71,7 +73,11 @@ public class Lsn implements Comparable<Lsn> {
     }
 
     public static Lsn valueOf(String lsnString) {
-        return (lsnString == null) ? NULL : new Lsn(Strings.hexStringToByteArray(lsnString.replace(":", "")));
+        return (lsnString == null || NULL_STRING.equals(lsnString)) ? NULL : new Lsn(Strings.hexStringToByteArray(lsnString.replace(":", "")));
+    }
+
+    public static Lsn valueOf(byte[] lsnBinary) {
+        return (lsnBinary == null ) ? NULL : new Lsn(lsnBinary);
     }
 
     @Override
@@ -100,6 +106,15 @@ public class Lsn implements Comparable<Lsn> {
     public int compareTo(Lsn o) {
         if (this == o) {
             return 0;
+        }
+        if (!this.isAvailable()) {
+            if (!o.isAvailable()) {
+                return 0;
+            }
+            return -1;
+        }
+        if (!o.isAvailable()) {
+            return 1;
         }
         final int[] thisU = getUnsignedBinary();
         final int[] thatU = o.getUnsignedBinary();

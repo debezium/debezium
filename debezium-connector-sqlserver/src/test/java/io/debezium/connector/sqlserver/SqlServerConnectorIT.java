@@ -56,7 +56,6 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         if (connection != null) {
             connection.close();
         }
-        TestHelper.dropTestDatabase();
     }
 
     @Test
@@ -187,6 +186,75 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         }
 
         stopConnector();
+    }
+
+    @Test
+    public void streamChangesWhileStopped() throws Exception {
+        final int RECORDS_PER_TABLE = 5;
+        final int TABLES = 2;
+        final int ID_START = 10;
+        final int ID_RESTART = 100;
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a')"
+            );
+            connection.execute(
+                    "INSERT INTO tableb VALUES(" + id + ", 'b')"
+            );
+        }
+
+        stopConnector();
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_RESTART + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a')"
+            );
+            connection.execute(
+                    "INSERT INTO tableb VALUES(" + id + ", 'b')"
+            );
+        }
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        // After restart the last record from transaction is reprocessed, the problem is
+        // that the SQL Server seems to return sometimes the last change in transaction even if
+        // the from LSN is after the last change
+        final SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES + 1);
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.tablea");
+        List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.tableb");
+        if (tableB != null && tableB.size() == RECORDS_PER_TABLE + 1) {
+            tableB = tableB.subList(1, RECORDS_PER_TABLE + 1);
+        }
+        Assertions.assertThat(tableA).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = i + ID_RESTART;
+            final SourceRecord recordA = tableA.get(i);
+            final SourceRecord recordB = tableB.get(i);
+            final List<SchemaAndValueField> expectedRowA = Arrays.asList(
+                    new SchemaAndValueField("id", Schema.INT32_SCHEMA, id),
+                    new SchemaAndValueField("cola", Schema.OPTIONAL_STRING_SCHEMA, "a"));
+            final List<SchemaAndValueField> expectedRowB = Arrays.asList(
+                    new SchemaAndValueField("id", Schema.INT32_SCHEMA, id),
+                    new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
+
+            final Struct valueA = (Struct)recordA.value();
+            assertRecord((Struct)valueA.get("after"), expectedRowA);
+            assertNull(valueA.get("before"));
+
+            final Struct valueB = (Struct)recordB.value();
+            assertRecord((Struct)valueB.get("after"), expectedRowB);
+            assertNull(valueB.get("before"));
+        }
     }
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {

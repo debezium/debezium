@@ -59,7 +59,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         final Metronome metronome = Metronome.sleeper(pollInterval, clock);
         try {
             final TableId[] tables = schema.getCapturedTables().toArray(new TableId[schema.getCapturedTables().size()]);
-            Lsn lastProcessedLsn = new Lsn(null);
+            Lsn lastProcessedLsn = offsetContext.getChangeLsn();
             while (context.isRunning()) {
                 final Lsn currentMaxLsn = connection.getMaxLsn();
 
@@ -161,6 +161,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         private final TableId tableId;
         private final ResultSet resultSet;
         private boolean completed = false;
+        private Lsn currentChangeLsn;
 
         public ChangeTable(TableId tableId, ResultSet resultSet) {
             this.tableId = tableId;
@@ -172,11 +173,11 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         }
 
         public Lsn getCommitLsn() throws SQLException {
-            return new Lsn(resultSet.getBytes(COL_COMMIT_LSN));
+            return Lsn.valueOf(resultSet.getBytes(COL_COMMIT_LSN));
         }
 
         public Lsn getRowLsn() throws SQLException {
-            return new Lsn(resultSet.getBytes(COL_ROW_LSN));
+            return currentChangeLsn;
         }
 
         public int getOperation() throws SQLException {
@@ -194,6 +195,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
         public boolean next() throws SQLException {
             completed = !resultSet.next();
+            currentChangeLsn = completed ? Lsn.NULL : Lsn.valueOf(resultSet.getBytes(COL_ROW_LSN));
             return !completed;
         }
 
@@ -203,6 +205,11 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
         public int compareTo(ChangeTable o) throws SQLException {
             return getRowLsn().compareTo(o.getRowLsn());
+        }
+
+        @Override
+        public String toString() {
+            return "ChangeTable [tableId=" + tableId + ", resultSet=" + resultSet + ", completed=" + completed + "]";
         }
     }
 

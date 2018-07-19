@@ -68,6 +68,10 @@ public class SqlServerOffsetContext implements OffsetContext {
         sourceInfo.setChangeLsn(lsn);
     }
 
+    public Lsn getChangeLsn() {
+        return sourceInfo.getChangeLsn() == null ? Lsn.NULL : sourceInfo.getChangeLsn();
+    }
+
     public void setCommitLsn(Lsn lsn) {
         sourceInfo.setCommitLsn(lsn);
     }
