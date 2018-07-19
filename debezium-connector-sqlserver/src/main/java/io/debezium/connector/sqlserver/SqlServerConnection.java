@@ -114,8 +114,9 @@ public class SqlServerConnection extends JdbcConnection {
         final String LSN_COUNT_ERROR = "Maximum LSN query must return exactly one value";
         return queryAndMap(GET_MAX_LSN, rs -> {
             if (rs.next()) {
-                final Lsn ret = new Lsn(rs.getBytes(1));
+                final Lsn ret = Lsn.valueOf(rs.getBytes(1));
                 if (!rs.next()) {
+                    LOGGER.trace("Current maximum lsn is {}", ret);
                     return ret;
                 }
             }
@@ -140,6 +141,7 @@ public class SqlServerConnection extends JdbcConnection {
             final String cdcNameForTable = cdcNameForTable(tableId);
             final String query = "SELECT * FROM cdc.fn_cdc_get_all_changes_" + cdcNameForTable + "(ISNULL(?,sys.fn_cdc_get_min_lsn('" + cdcNameForTable + "')), ?, N'all update old')";
             queries[idx++] = query;
+            LOGGER.trace("Getting changes for table {} in range[{}, {}]", tableId, fromLsn, toLsn);
         }
         prepareQuery(queries, statement -> {
             statement.setBytes(1, fromLsn.getBinary());
@@ -154,8 +156,9 @@ public class SqlServerConnection extends JdbcConnection {
             statement.setBytes(1, lsn.getBinary());
         }, rs -> {
             if (rs.next()) {
-                final Lsn ret = new Lsn(rs.getBytes(1));
+                final Lsn ret = Lsn.valueOf(rs.getBytes(1));
                 if (!rs.next()) {
+                    LOGGER.trace("Increasing lsn from {} to {}", lsn, ret);
                     return ret;
                 }
             }
@@ -178,6 +181,7 @@ public class SqlServerConnection extends JdbcConnection {
                 final Timestamp ts = rs.getTimestamp(1);
                 final Instant ret = ts == null ? null : ts.toInstant();
                 if (!rs.next()) {
+                    LOGGER.trace("Timestamp of lsn {} is {}", lsn, ret);
                     return ret;
                 }
             }

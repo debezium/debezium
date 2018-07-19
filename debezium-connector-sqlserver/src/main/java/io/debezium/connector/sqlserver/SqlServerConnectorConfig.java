@@ -290,7 +290,7 @@ public class SqlServerConnectorConfig extends RelationalDatabaseConnectorConfig 
         HistoryRecordComparator historyComparator = new HistoryRecordComparator() {
             @Override
             protected boolean isPositionAtOrBefore(Document recorded, Document desired) {
-                return (recorded.getLong("scn")).compareTo(desired.getLong("scn")) < 1;
+                return Lsn.valueOf(recorded.getString(SourceInfo.CHANGE_LSN_KEY)).compareTo(Lsn.valueOf(desired.getString(SourceInfo.CHANGE_LSN_KEY))) < 1;
             }
         };
         databaseHistory.configure(dbHistoryConfig, historyComparator); // validates
