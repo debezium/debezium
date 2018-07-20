@@ -10,7 +10,8 @@ import java.util.Arrays;
 import io.debezium.util.Strings;
 
 /**
- * A logical representation of SQL Server LSN (log sequence number) position.
+ * A logical representation of SQL Server LSN (log sequence number) position. When LSN is not available
+ * it is replaced with {@link Lsn.NULL} constant.
  *
  * @author Jiri Pechanec
  *
@@ -29,10 +30,16 @@ public class Lsn implements Comparable<Lsn> {
         this.binary = binary;
     }
 
+    /**
+     * @return binary representation of the stored LSN
+     */
     public byte[] getBinary() {
         return binary;
     }
 
+    /**
+     * @return true if this is a real LSN or false it it is {@code NULL}
+     */
     public boolean isAvailable() {
         return binary != null;
     }
@@ -49,6 +56,9 @@ public class Lsn implements Comparable<Lsn> {
         return unsignedBinary;
     }
 
+    /**
+     * @return textual representation of the stored LSN
+     */
     public String toString() {
         if (string != null) {
             return string;
@@ -72,10 +82,18 @@ public class Lsn implements Comparable<Lsn> {
         return string;
     }
 
+    /**
+     * @param lsnString - textual representation of Lsn
+     * @return LSN converted from its textual representation 
+     */
     public static Lsn valueOf(String lsnString) {
         return (lsnString == null || NULL_STRING.equals(lsnString)) ? NULL : new Lsn(Strings.hexStringToByteArray(lsnString.replace(":", "")));
     }
 
+    /**
+     * @param lsnBinary - binary representation of Lsn
+     * @return LSN converted from its binary representation 
+     */
     public static Lsn valueOf(byte[] lsnBinary) {
         return (lsnBinary == null ) ? NULL : new Lsn(lsnBinary);
     }
@@ -102,6 +120,9 @@ public class Lsn implements Comparable<Lsn> {
         return true;
     }
 
+    /**
+     * Enables ordering of LSNs. The {@code NULL} LSN is always the smallest one.
+     */
     @Override
     public int compareTo(Lsn o) {
         if (this == o) {

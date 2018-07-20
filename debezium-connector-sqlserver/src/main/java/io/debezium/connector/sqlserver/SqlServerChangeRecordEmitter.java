@@ -12,7 +12,7 @@ import io.debezium.relational.Table;
 import io.debezium.util.Clock;
 
 /**
- * Emits change data based on a a single CDC data row.
+ * Emits change data based on a single (or two in case of updates) CDC data row(s).
  *
  * @author Jiri Pechanec
  */

@@ -32,7 +32,7 @@ import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Testing;
 
 /**
- * Integration test to verify different Oracle datatypes.
+ * Integration test to verify different SQL Server datatypes.
  *
  * @author Jiri Pechanec
  */

@@ -12,7 +12,7 @@ import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
 import io.debezium.relational.TableId;
 
 /**
- * {@link SchemaChangeEventEmitter} implementation based on SqlServer.
+ * {@link SchemaChangeEventEmitter} implementation based on SQL Server.
  *
  * @author Jiri Pechanec
  */

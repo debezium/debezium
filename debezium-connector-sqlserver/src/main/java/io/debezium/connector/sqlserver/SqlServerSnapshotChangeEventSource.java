@@ -47,10 +47,18 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
 
         // found a previous offset and the earlier snapshot has completed
         if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
+            LOGGER.info("A previous offset indicating completed snapshot has been found. Neither schema nor data will be snapshotted.");
             snapshotSchema = false;
             snapshotData = false;
         }
         else {
+            LOGGER.info("No previous offset has been found");
+            if (connectorConfig.getSnapshotMode().includeData()) {
+                LOGGER.info("Accroding to the connector configuration both schema and data will be snapshotted");
+            }
+            else {
+                LOGGER.info("Accroding to the connector configuration only schema will be snapshotted");
+            }
             snapshotData = connectorConfig.getSnapshotMode().includeData();
         }
 
@@ -70,8 +78,10 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
     @Override
     protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws SQLException, InterruptedException {
         if (connectorConfig.getSnapshotLockingMode() == SnapshotLockingMode.NONE) {
+            LOGGER.info("Schema locking was disabled in connector configuration");
             return;
         }
+        LOGGER.info("Executing schema locking");
 
         ((SqlServerSnapshotContext)snapshotContext).preSchemaSnapshotSavepoint = jdbcConnection.connection().setSavepoint("dbz_schema_snapshot");
 
@@ -112,6 +122,7 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
                 throw new InterruptedException("Interrupted while reading structure of schema " + schema);
             }
 
+            LOGGER.info("Reading sturcture of schema '{}'", snapshotContext.catalogName);
             jdbcConnection.readSchema(
                     snapshotContext.tables,
                     snapshotContext.catalogName,

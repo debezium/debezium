@@ -13,8 +13,8 @@ import org.apache.kafka.connect.data.Struct;
 import io.debezium.connector.AbstractSourceInfo;
 
 /**
- * Coordinates from the database log to restart streaming from. Maps to {@code source} field in envelope and
- * to connector offsets.
+ * Coordinates from the database log to establis relation between the change streamed and the source log position.
+ * Maps to {@code source} field in {@code Envelope}.
  *
  * @author Jiri Pechanec
  *
@@ -47,6 +47,9 @@ public class SourceInfo extends AbstractSourceInfo {
         this.serverName = serverName;
     }
 
+    /**
+     * @param lsn - LSN of the change in the database log
+     */
     public void setChangeLsn(Lsn lsn) {
         changeLsn = lsn;
     }
@@ -59,10 +62,16 @@ public class SourceInfo extends AbstractSourceInfo {
         return commitLsn;
     }
 
+    /**
+     * @param commitLsn - LSN of the {@code COMMIT} of the transaction whose part the change is
+     */
     public void setCommitLsn(Lsn commitLsn) {
         this.commitLsn = commitLsn;
     }
 
+    /**
+     * @param instant a time at which the transaction commit was executed
+     */
     public void setSourceTime(Instant instant) {
         sourceTime = instant;
     }
@@ -71,6 +80,9 @@ public class SourceInfo extends AbstractSourceInfo {
         return snapshot;
     }
 
+    /**
+     * @param snapshot - true if the source of even is snapshot phase, nto the database log
+     */
     public void setSnapshot(boolean snapshot) {
         this.snapshot = snapshot;
     }
@@ -80,6 +92,9 @@ public class SourceInfo extends AbstractSourceInfo {
         return SCHEMA;
     }
 
+    /**
+     * @return the coordinates encoded as a {@code Struct}
+     */
     @Override
     public Struct struct() {
         final Struct ret = super.struct()
