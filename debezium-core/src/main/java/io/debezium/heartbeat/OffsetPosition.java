@@ -17,7 +17,7 @@ public interface OffsetPosition {
      *
      * @return the source partition information; never null
      */
-    Map<String, String> partition();
+    Map<String, ?> partition();
 
     /**
      * Get the Kafka Connect detail about the source "offset", which describes the position within the source where we last
@@ -27,11 +27,11 @@ public interface OffsetPosition {
      */
     Map<String, ?> offset();
 
-    static OffsetPosition build(Map<String, String> partition, Map<String, ?> offset) {
+    static OffsetPosition build(Map<String, ?> partition, Map<String, ?> offset) {
         return new OffsetPosition() {
 
             @Override
-            public Map<String, String> partition() {
+            public Map<String, ?> partition() {
                 return partition;
             }
 
