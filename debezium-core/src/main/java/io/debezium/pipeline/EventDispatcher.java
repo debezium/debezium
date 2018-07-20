@@ -149,7 +149,7 @@ public class EventDispatcher<T extends DataCollectionId> {
 
     private final class StreamingChangeRecordReceiver implements ChangeRecordEmitter.Receiver {
 
-        private Map<String, String> lastPartition;
+        private Map<String, ?> lastPartition;
         private Map<String, ?> lastOffset;
 
         @Override
