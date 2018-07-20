@@ -13,7 +13,7 @@ import io.debezium.util.Clock;
 /**
  * Emits change data based on a single row read via JDBC.
  *
- * @author Gunnar Morling
+ * @author Jiri Pechanec
  */
 public class SnapshotChangeRecordEmitter extends RelationalChangeRecordEmitter {
 
