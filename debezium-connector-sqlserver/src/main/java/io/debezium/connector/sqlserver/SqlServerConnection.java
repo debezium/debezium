@@ -6,6 +6,7 @@
 
 package io.debezium.connector.sqlserver;
 
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -53,6 +54,10 @@ public class SqlServerConnection extends JdbcConnection {
         catch (Exception e) {
             throw new RuntimeException("Cannot load SQL Server statements", e);
         }
+    }
+
+    private static interface ResultSetExtractor<T> {
+        T apply(ResultSet rs) throws SQLException;
     }
 
     /**
@@ -111,17 +116,11 @@ public class SqlServerConnection extends JdbcConnection {
      * @return the current largest log sequence number
      */
     public Lsn getMaxLsn() throws SQLException {
-        final String LSN_COUNT_ERROR = "Maximum LSN query must return exactly one value";
-        return queryAndMap(GET_MAX_LSN, rs -> {
-            if (rs.next()) {
-                final Lsn ret = Lsn.valueOf(rs.getBytes(1));
-                if (!rs.next()) {
-                    LOGGER.trace("Current maximum lsn is {}", ret);
-                    return ret;
-                }
-            }
-            throw new IllegalStateException(LSN_COUNT_ERROR);
-        });
+        return queryAndMap(GET_MAX_LSN, singleResultMapper(rs -> {
+            final Lsn ret = Lsn.valueOf(rs.getBytes(1));
+            LOGGER.trace("Current maximum lsn is {}", ret);
+            return ret;
+        }, "Maximum LSN query must return exactly one value"));
     }
 
     /**
@@ -175,20 +174,14 @@ public class SqlServerConnection extends JdbcConnection {
      * @throws SQLException
      */
     public Lsn incrementLsn(Lsn lsn) throws SQLException {
-        final String LSN_INCREMENT_ERROR = "Increment LSN query must return exactly one value";
         final String query = "SELECT sys.fn_cdc_increment_lsn(?)";
         return prepareQueryAndMap(query, statement -> {
             statement.setBytes(1, lsn.getBinary());
-        }, rs -> {
-            if (rs.next()) {
-                final Lsn ret = Lsn.valueOf(rs.getBytes(1));
-                if (!rs.next()) {
-                    LOGGER.trace("Increasing lsn from {} to {}", lsn, ret);
-                    return ret;
-                }
-            }
-            throw new IllegalStateException(LSN_INCREMENT_ERROR);
-        });
+        }, singleResultMapper(rs -> {
+            final Lsn ret = Lsn.valueOf(rs.getBytes(1));
+            LOGGER.trace("Increasing lsn from {} to {}", lsn, ret);
+            return ret;
+        }, "Increment LSN query must return exactly one value"));
     }
 
     /**
@@ -199,26 +192,19 @@ public class SqlServerConnection extends JdbcConnection {
      * @throws SQLException
      */
     public Instant timestampOfLsn(Lsn lsn) throws SQLException {
-        final String LSN_TIMESTAMP_ERROR = "LSN to timestamp query must return exactly one value";
         final String query = "SELECT sys.fn_cdc_map_lsn_to_time(?)";
 
         if (lsn.getBinary() == null) {
             return null;
         }
-
         return prepareQueryAndMap(query, statement -> {
             statement.setBytes(1, lsn.getBinary());
-        }, rs -> {
-            if (rs.next()) {
-                final Timestamp ts = rs.getTimestamp(1);
-                final Instant ret = ts == null ? null : ts.toInstant();
-                if (!rs.next()) {
-                    LOGGER.trace("Timestamp of lsn {} is {}", lsn, ret);
-                    return ret;
-                }
-            }
-            throw new IllegalStateException(LSN_TIMESTAMP_ERROR);
-        });
+        }, singleResultMapper(rs -> {
+            final Timestamp ts = rs.getTimestamp(1);
+            final Instant ret = (ts == null) ? null : ts.toInstant();
+            LOGGER.trace("Timestamp of lsn {} is {}", lsn, ret);
+            return ret;
+        }, "LSN to timestamp query must return exactly one value"));
     }
 
     /**
@@ -234,5 +220,17 @@ public class SqlServerConnection extends JdbcConnection {
 
     private String cdcNameForTable(TableId tableId) {
         return tableId.schema() + '_' + tableId.table();
+    }
+
+    private <T> ResultSetMapper<T> singleResultMapper(ResultSetExtractor<T> extractor, String error) throws SQLException {
+        return (rs) -> {
+            if (rs.next()) {
+                final T ret = extractor.apply(rs);
+                if (!rs.next()) {
+                    return ret;
+                }
+            }
+            throw new IllegalStateException(error);
+        };
     }
 }
