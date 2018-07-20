@@ -16,7 +16,7 @@ import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.util.Testing;
 
 /**
- * Integration test to verify different Oracle datatypes.
+ * Integration test to verify different SQL Server datatypes.
  * The types are discovered during snapshotting phase.
  *
  * @author Jiri Pechanec

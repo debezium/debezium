@@ -124,6 +124,15 @@ public class SqlServerConnection extends JdbcConnection {
         });
     }
 
+    /**
+     * Provides all changes recorded by the SQL Server CDC capture process for a given table.
+     *
+     * @param tableId - the requested table changes
+     * @param fromLsn - closed lower bound of interval of changes to be provided
+     * @param toLsn  - closed upper bound of interval  of changes to be provided
+     * @param consumer - the change processor
+     * @throws SQLException
+     */
     public void getChangesForTable(TableId tableId, Lsn fromLsn, Lsn toLsn, ResultSetConsumer consumer) throws SQLException {
         final String cdcNameForTable = cdcNameForTable(tableId);
         final String query = "SELECT * FROM cdc.fn_cdc_get_all_changes_" + cdcNameForTable + "(ISNULL(?,sys.fn_cdc_get_min_lsn('" + cdcNameForTable + "')), ?, N'all update old')";
@@ -133,6 +142,15 @@ public class SqlServerConnection extends JdbcConnection {
         }, consumer);
     }
 
+    /**
+     * Provides all changes recorder by the SQL Server CDC capture process for a set of tables.
+     * 
+     * @param tableIds - the requested tables to obtain changes for
+     * @param fromLsn - closed lower bound of interval of changes to be provided
+     * @param toLsn  - closed upper bound of interval  of changes to be provided
+     * @param consumer - the change processor
+     * @throws SQLException
+     */
     public void getChangesForTables(TableId[] tableIds, Lsn fromLsn, Lsn toLsn, MultiResultSetConsumer consumer) throws SQLException {
         final String[] queries = new String[tableIds.length];
 
@@ -149,6 +167,13 @@ public class SqlServerConnection extends JdbcConnection {
         }, consumer);
     }
 
+    /**
+     * Obtain the next available position in the database log.
+     * 
+     * @param lsn - LSN of the current position
+     * @return LSN of the next position in the database
+     * @throws SQLException
+     */
     public Lsn incrementLsn(Lsn lsn) throws SQLException {
         final String LSN_INCREMENT_ERROR = "Increment LSN query must return exactly one value";
         final String query = "SELECT sys.fn_cdc_increment_lsn(?)";
@@ -166,6 +191,13 @@ public class SqlServerConnection extends JdbcConnection {
         });
     }
 
+    /**
+     * Map a commit LSN to a point in time when the commit happened.
+     * 
+     * @param lsn - LSN of the commit
+     * @return time when the commit was recorded into the database log
+     * @throws SQLException
+     */
     public Instant timestampOfLsn(Lsn lsn) throws SQLException {
         final String LSN_TIMESTAMP_ERROR = "LSN to timestamp query must return exactly one value";
         final String query = "SELECT sys.fn_cdc_map_lsn_to_time(?)";
@@ -189,6 +221,12 @@ public class SqlServerConnection extends JdbcConnection {
         });
     }
 
+    /**
+     * Creates an exclusive lock for a given table.
+     *
+     * @param tableId to be locked
+     * @throws SQLException
+     */
     public void lockTable(TableId tableId) throws SQLException {
         final String lockTableStmt = LOCK_TABLE.replace(STATEMENTS_PLACEHOLDER, tableId.table());
         execute(lockTableStmt);

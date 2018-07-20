@@ -66,11 +66,13 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 // Probably cannot happen but it is better to guard against such
                 // situation
                 if (!currentMaxLsn.isAvailable()) {
+                    LOGGER.debug("No maximum LSN recorded in the database");
                     metronome.pause();
                     continue;
                 }
                 // There is no change in the database
                 if (currentMaxLsn.equals(lastProcessedLsn)) {
+                    LOGGER.debug("No change in the database");
                     metronome.pause();
                     continue;
                 }
@@ -104,6 +106,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                             break;
                         }
 
+                        LOGGER.trace("Processing change {}", tableSmallestLsn);
                         final TableId tableId = tableSmallestLsn.getTableId();
                         final Lsn commitLsn = tableSmallestLsn.getCommitLsn();
                         final Lsn rowLsn = tableSmallestLsn.getRowLsn();
