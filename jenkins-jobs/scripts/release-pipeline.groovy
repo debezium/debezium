@@ -435,6 +435,9 @@ node('Slave') {
                 def nextTag = "${version[0]}.${version[1]}"
                 for (i = 0; i < IMAGES.size(); i++) {
                     def image = IMAGES[i]
+                    if ((new File("$image/$nextTag")).exists()) {
+                        continue
+                    }
                     sh "cp -r $image/$IMAGE_TAG $image/$nextTag && git add $image/$nextTag"
                 }
                 modifyFile('connect/snapshot/Dockerfile') {
