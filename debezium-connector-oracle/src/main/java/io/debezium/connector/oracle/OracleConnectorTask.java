@@ -89,7 +89,7 @@ public class OracleConnectorTask extends BaseSourceTask {
             schema.recover(previousOffset);
         }
 
-        EventDispatcher<TableId> dispatcher = new EventDispatcher<>(topicSelector, schema, queue,
+        EventDispatcher<TableId> dispatcher = new EventDispatcher<>(connectorConfig, topicSelector, schema, queue,
                 connectorConfig.getTableFilters().dataCollectionFilter(), DataChangeEvent::new);
 
         coordinator = new ChangeEventSourceCoordinator(

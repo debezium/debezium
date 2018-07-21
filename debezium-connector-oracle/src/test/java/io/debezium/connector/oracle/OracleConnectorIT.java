@@ -12,6 +12,7 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
@@ -22,6 +23,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.AbstractConnectorTest;
@@ -197,6 +199,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     public void shouldReadChangeStreamForExistingTable() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "ORCLPDB1\\.DEBEZIUM\\.CUSTOMER")
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
                 .build();
 
         start(OracleConnector.class, config);
@@ -234,6 +237,10 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(after.get("NAME")).isEqualTo("Billie-Bob");
         assertThat(after.get("SCORE")).isEqualTo(BigDecimal.valueOf(1234.56));
         assertThat(after.get("REGISTERED")).isEqualTo(toMicroSecondsSinceEpoch(LocalDateTime.of(2018, 2, 22, 0, 0, 0)));
+
+        Map<String, ?> offset = testTableRecords.get(0).sourceOffset();
+        assertThat(offset.get(SourceInfo.SNAPSHOT_KEY)).isNull();
+        assertThat(offset.get("snapshot_completed")).isNull();
 
         // update
         VerifyRecord.isValidUpdate(testTableRecords.get(1));

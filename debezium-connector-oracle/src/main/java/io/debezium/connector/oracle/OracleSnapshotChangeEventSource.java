@@ -122,8 +122,6 @@ public class OracleSnapshotChangeEventSource extends HistorizedRelationalSnapsho
         ctx.offset = OracleOffsetContext.create()
                 .logicalName(connectorConfig.getLogicalName())
                 .scn(currentScn)
-                .snapshot(true)
-                .snapshotCompleted(false)
                 .build();
     }
 
