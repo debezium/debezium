@@ -127,6 +127,8 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
             }
             else {
                 LOGGER.info("Snapshot step 7 - Skipping snapshotting of data");
+                ctx.offset.preSnapshotCompletion();
+                ctx.offset.postSnapshotCompletion();
             }
 
             return SnapshotResult.completed(ctx.offset);
