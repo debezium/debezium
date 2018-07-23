@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.oracle;
 
+import static io.debezium.util.NumberConversions.BYTE_FALSE;
+
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.sql.Types;
@@ -61,9 +63,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             case Types.FLOAT:
                 return VariableScaleDecimal.builder();
             case Types.NUMERIC:
-                return column.scale().isPresent() ?
-                        super.schemaBuilder(column) :
-                        VariableScaleDecimal.builder();
+                return getNumericSchema(column);
             case OracleTypes.BINARY_FLOAT:
                 return SchemaBuilder.float32();
             case OracleTypes.BINARY_DOUBLE:
@@ -76,6 +76,32 @@ public class OracleValueConverters extends JdbcValueConverters {
                 return MicroDuration.builder();
             default:
                 return super.schemaBuilder(column);
+        }
+    }
+
+    private SchemaBuilder getNumericSchema(Column column) {
+        if (column.scale().isPresent()) {
+            // return sufficiently sized int schema for non-floating point types
+            if (column.scale().get() == 0) {
+                if (column.length() < 3) {
+                    return SchemaBuilder.int8();
+                }
+                else if (column.length() < 5) {
+                    return SchemaBuilder.int16();
+                }
+                else if (column.length() < 10) {
+                    return SchemaBuilder.int32();
+                }
+                else if (column.length() < 19) {
+                    return SchemaBuilder.int64();
+                }
+            }
+
+            // larger non-floating point types and floating point types use Decimal
+            return super.schemaBuilder(column);
+        }
+        else {
+            return VariableScaleDecimal.builder();
         }
     }
 
@@ -92,9 +118,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             case OracleTypes.BINARY_DOUBLE:
                 return data -> convertDouble(column, fieldDefn, data);
             case Types.NUMERIC:
-                    return column.scale().isPresent() ?
-                            data -> convertNumeric(column, fieldDefn, data) :
-                            data -> convertVariableScale(column, fieldDefn, data);
+                    return getNumericConverter(column, fieldDefn);
             case Types.FLOAT:
                 return data -> convertVariableScale(column, fieldDefn, data);
             case OracleTypes.TIMESTAMPTZ:
@@ -107,6 +131,31 @@ public class OracleValueConverters extends JdbcValueConverters {
         }
 
         return super.converter(column, fieldDefn);
+    }
+
+    private ValueConverter getNumericConverter(Column column, Field fieldDefn) {
+        if (column.scale().isPresent()) {
+            if (column.scale().get() == 0) {
+                if (column.length() < 3) {
+                    return data -> convertNumericAsTinyInt(column, fieldDefn, data);
+                }
+                else if (column.length() < 5) {
+                    return data -> convertNumericAsSmallInt(column, fieldDefn, data);
+                }
+                else if (column.length() < 10) {
+                    return data -> convertNumericAsInteger(column, fieldDefn, data);
+                }
+                else if (column.length() < 19) {
+                    return data -> convertNumericAsBigInteger(column, fieldDefn, data);
+                }
+            }
+
+            // larger non-floating point types and floating point types use Decimal
+            return data -> convertNumeric(column, fieldDefn, data);
+        }
+        else {
+            return data -> convertVariableScale(column, fieldDefn, data);
+        }
     }
 
     @Override
@@ -192,6 +241,85 @@ public class OracleValueConverters extends JdbcValueConverters {
         }
 
         return super.convertNumeric(column, fieldDefn, data);
+    }
+
+    protected Object convertNumericAsTinyInt(Column column, Field fieldDefn, Object data) {
+        if (data instanceof NUMBER) {
+            try {
+                data = ((NUMBER)data).byteValue();
+            }
+            catch (SQLException e) {
+                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+            }
+        }
+
+        return convertTinyInt(column, fieldDefn, data);
+    }
+
+    protected Object convertNumericAsSmallInt(Column column, Field fieldDefn, Object data) {
+        if (data instanceof NUMBER) {
+            try {
+                data = ((NUMBER)data).shortValue();
+            }
+            catch (SQLException e) {
+                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+            }
+        }
+
+        return super.convertSmallInt(column, fieldDefn, data);
+    }
+
+    protected Object convertNumericAsInteger(Column column, Field fieldDefn, Object data) {
+        if (data instanceof NUMBER) {
+            try {
+                data = ((NUMBER)data).intValue();
+            }
+            catch (SQLException e) {
+                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+            }
+        }
+
+        return super.convertInteger(column, fieldDefn, data);
+    }
+
+    protected Object convertNumericAsBigInteger(Column column, Field fieldDefn, Object data) {
+        if (data instanceof NUMBER) {
+            try {
+                data = ((NUMBER)data).longValue();
+            }
+            catch (SQLException e) {
+                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+            }
+        }
+
+        return super.convertBigInt(column, fieldDefn, data);
+    }
+
+    @Override
+    protected Object convertTinyInt(Column column, Field fieldDefn, Object data) {
+        if (data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if (data == null) {
+            if (column.isOptional()) {
+                return null;
+            }
+            else {
+                return BYTE_FALSE;
+            }
+        }
+        if (data instanceof Byte) return data;
+        if (data instanceof Number) {
+            Number value = (Number) data;
+            return value.byteValue();
+        }
+        if (data instanceof Boolean) {
+            return NumberConversions.getByte((boolean) data);
+        }
+        if (data instanceof String) {
+            return Byte.parseByte((String) data);
+        }
+        return handleUnknownData(column, fieldDefn, data);
     }
 
     protected Object convertVariableScale(Column column, Field fieldDefn, Object data) {

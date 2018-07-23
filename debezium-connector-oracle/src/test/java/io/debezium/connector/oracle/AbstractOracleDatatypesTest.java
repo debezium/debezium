@@ -79,6 +79,12 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             "  val_smallint smallint, " +
             "  val_number_38_no_scale number(38), " +
             "  val_number_38_scale_0 number(38, 0), " +
+            "  val_number_2 number(2), " +
+            "  val_number_4 number(4), " +
+            "  val_number_9 number(9), " +
+            "  val_number_18 number(18), " +
+            "  val_decimal decimal(10), " +
+            "  val_numeric numeric(10), " +
             "  primary key (id)" +
             ")";
 
@@ -118,7 +124,13 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             new SchemaAndValueField("VAL_INTEGER", NUMBER_SCHEMA, new BigDecimal("22")),
             new SchemaAndValueField("VAL_SMALLINT", NUMBER_SCHEMA, new BigDecimal("333")),
             new SchemaAndValueField("VAL_NUMBER_38_NO_SCALE", NUMBER_SCHEMA, new BigDecimal("4444")),
-            new SchemaAndValueField("VAL_NUMBER_38_SCALE_0", NUMBER_SCHEMA, new BigDecimal("5555"))
+            new SchemaAndValueField("VAL_NUMBER_38_SCALE_0", NUMBER_SCHEMA, new BigDecimal("5555")),
+            new SchemaAndValueField("VAL_NUMBER_2", Schema.OPTIONAL_INT8_SCHEMA, (byte) 99),
+            new SchemaAndValueField("VAL_NUMBER_4", Schema.OPTIONAL_INT16_SCHEMA, (short) 9999),
+            new SchemaAndValueField("VAL_NUMBER_9", Schema.OPTIONAL_INT32_SCHEMA, 9999_99999),
+            new SchemaAndValueField("VAL_NUMBER_18", Schema.OPTIONAL_INT64_SCHEMA, 999_99999_99999_99999L),
+            new SchemaAndValueField("VAL_DECIMAL", Schema.OPTIONAL_INT64_SCHEMA, 99999_99999L),
+            new SchemaAndValueField("VAL_NUMERIC", Schema.OPTIONAL_INT64_SCHEMA, 99999_99999L)
     );
 
     private static final List<SchemaAndValueField> EXPECTED_TIME = Arrays.asList(
@@ -302,7 +314,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     }
 
     protected static void insertIntTypes() throws SQLException {
-        connection.execute("INSERT INTO debezium.type_int VALUES (1, 1, 22, 333, 4444, 5555)");
+        connection.execute("INSERT INTO debezium.type_int VALUES (1, 1, 22, 333, 4444, 5555, 99, 9999, 999999999, 999999999999999999, 9999999999, 9999999999)");
         connection.execute("COMMIT");
     }
 
