@@ -24,6 +24,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.embedded.AbstractConnectorTest;
@@ -115,6 +116,11 @@ public class SnapshotIT extends AbstractConnectorTest {
 
         // Ignore initial records
         consumeRecordsByTopic(INITIAL_RECORDS_PER_TABLE);
+
+        testStreaming();
+    }
+
+    private void testStreaming() throws SQLException, InterruptedException {
         for (int i = 0; i < STREAMING_RECORDS_PER_TABLE; i++) {
             final int id = i + INITIAL_RECORDS_PER_TABLE;
             connection.execute(
@@ -145,9 +151,22 @@ public class SnapshotIT extends AbstractConnectorTest {
             assertRecord(key1, expectedKey1);
             assertRecord((Struct)value1.get("after"), expectedRow1);
             Assertions.assertThat(record1.sourceOffset()).hasSize(1);
+
             Assert.assertTrue(record1.sourceOffset().containsKey("change_lsn"));
             assertNull(value1.get("before"));
         }
+    }
+
+    @Test
+    public void takeSchemaOnlySnapshotAndStartStreaming() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        testStreaming();
     }
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
