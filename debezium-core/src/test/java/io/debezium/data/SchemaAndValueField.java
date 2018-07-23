@@ -14,12 +14,12 @@ import org.apache.kafka.connect.data.Struct;
 import org.fest.assertions.Assertions;
 
 public class SchemaAndValueField {
-    private final Object schema;
+    private final Schema schema;
     private final Object value;
     private final String fieldName;
     private Supplier<Boolean> assertValueOnlyIf = null;
 
-    public SchemaAndValueField(String fieldName, Object schema, Object value) {
+    public SchemaAndValueField(String fieldName, Schema schema, Object value) {
         this.schema = schema;
         this.value = value;
         this.fieldName = fieldName;
@@ -105,6 +105,7 @@ public class SchemaAndValueField {
         Schema schema = content.schema();
         Field field = schema.field(fieldName);
         Assertions.assertThat(field).as(fieldName + " not found in schema " + schema).isNotNull();
-        Assertions.assertThat(field.schema()).as("Schema for " + field.name() + " does not match the actual value").isEqualTo(this.schema);
+
+        VerifyRecord.assertConnectSchemasAreEqual(field.name(), field.schema(), this.schema);
     }
 }

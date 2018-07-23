@@ -14,6 +14,9 @@ import java.math.BigDecimal;
  */
 public class NumberConversions {
 
+    public static final Byte BYTE_TRUE = Byte.valueOf((byte) 1);
+    public static final Byte BYTE_FALSE = Byte.valueOf((byte) 0);
+
     public static final Short SHORT_TRUE = Short.valueOf((short) 1);
     public static final Short SHORT_FALSE = Short.valueOf((short) 0);
 
@@ -40,6 +43,16 @@ public class NumberConversions {
      */
     public static BigDecimal getBigDecimal(Boolean data) {
         return data.booleanValue() ? BigDecimal.ONE : BigDecimal.ZERO;
+    }
+
+    /**
+     * Convert boolean object to short object.
+     *
+     * @param data A boolean object
+     * @return Byte 0 or 1
+     */
+    public static Byte getByte(boolean data) {
+        return data ? BYTE_TRUE : BYTE_FALSE;
     }
 
     /**
