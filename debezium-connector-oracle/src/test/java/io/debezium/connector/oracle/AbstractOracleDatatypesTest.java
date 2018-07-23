@@ -62,9 +62,12 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             "  val_bf binary_float, " +
             "  val_bd binary_double, " +
             "  val_f float, " +
+            "  val_f_10 float (10), " +
             "  val_num number(10,6), " +
             "  val_dp double precision, " +
             "  val_r real, " +
+            "  val_decimal decimal(10, 6), " +
+            "  val_numeric numeric(10, 6), " +
             "  val_num_vs number, " +
             "  primary key (id)" +
             ")";
@@ -101,9 +104,12 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             new SchemaAndValueField("VAL_BF", Schema.OPTIONAL_FLOAT32_SCHEMA, 1.1f),
             new SchemaAndValueField("VAL_BD", Schema.OPTIONAL_FLOAT64_SCHEMA, 2.22),
             new SchemaAndValueField("VAL_F", VariableScaleDecimal.builder().optional().build(), VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().build(), new SpecialValueDecimal(new BigDecimal("3.33")))),
+            new SchemaAndValueField("VAL_F_10", VariableScaleDecimal.builder().optional().build(), VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().build(), new SpecialValueDecimal(new BigDecimal("8.888")))),
             new SchemaAndValueField("VAL_NUM", Decimal.builder(6).parameter(PRECISION_PARAMETER_KEY, "10").optional().build(), new BigDecimal("4.4444")),
             new SchemaAndValueField("VAL_DP", VariableScaleDecimal.builder().optional().build(), VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().build(), new SpecialValueDecimal(new BigDecimal("5.555")))),
             new SchemaAndValueField("VAL_R", VariableScaleDecimal.builder().optional().build(), VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().build(), new SpecialValueDecimal(new BigDecimal("6.66")))),
+            new SchemaAndValueField("VAL_DECIMAL", Decimal.builder(6).parameter(PRECISION_PARAMETER_KEY, "10").optional().build(), new BigDecimal("1234.567891")),
+            new SchemaAndValueField("VAL_NUMERIC", Decimal.builder(6).parameter(PRECISION_PARAMETER_KEY, "10").optional().build(), new BigDecimal("1234.567891")),
             new SchemaAndValueField("VAL_NUM_VS", VariableScaleDecimal.builder().optional().build(), VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().build(), new SpecialValueDecimal(new BigDecimal("77.323"))))
     );
 
@@ -291,7 +297,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     }
 
     protected static void insertFpTypes() throws SQLException {
-        connection.execute("INSERT INTO debezium.type_fp VALUES (1, 1.1, 2.22, 3.33, 4.4444, 5.555, 6.66, 77.323)");
+        connection.execute("INSERT INTO debezium.type_fp VALUES (1, 1.1, 2.22, 3.33, 8.888, 4.4444, 5.555, 6.66, 1234.567891, 1234.567891, 77.323)");
         connection.execute("COMMIT");
     }
 
