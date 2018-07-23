@@ -37,7 +37,7 @@ import oracle.sql.TIMESTAMPLTZ;
 import oracle.sql.TIMESTAMPTZ;
 
 public class OracleValueConverters extends JdbcValueConverters {
-    private static int NUMBER_VARIABLE_SCALE_LENGTH = 0;
+
     private static final Pattern INTERVAL_DAY_SECOND_PATTERN = Pattern.compile("([+\\-])?(\\d+) (\\d+):(\\d+):(\\d+).(\\d+)");
 
     private final OracleConnection connection;
@@ -61,9 +61,9 @@ public class OracleValueConverters extends JdbcValueConverters {
             case Types.FLOAT:
                 return VariableScaleDecimal.builder();
             case Types.NUMERIC:
-                return column.length() == NUMBER_VARIABLE_SCALE_LENGTH ?
-                        VariableScaleDecimal.builder() :
-                        super.schemaBuilder(column);
+                return column.scale().isPresent() ?
+                        super.schemaBuilder(column) :
+                        VariableScaleDecimal.builder();
             case OracleTypes.BINARY_FLOAT:
                 return SchemaBuilder.float32();
             case OracleTypes.BINARY_DOUBLE:
@@ -92,9 +92,9 @@ public class OracleValueConverters extends JdbcValueConverters {
             case OracleTypes.BINARY_DOUBLE:
                 return data -> convertDouble(column, fieldDefn, data);
             case Types.NUMERIC:
-                    return column.length() == NUMBER_VARIABLE_SCALE_LENGTH ?
-                            data -> convertVariableScale(column, fieldDefn, data) :
-                            data -> convertNumeric(column, fieldDefn, data);
+                    return column.scale().isPresent() ?
+                            data -> convertNumeric(column, fieldDefn, data) :
+                            data -> convertVariableScale(column, fieldDefn, data);
             case Types.FLOAT:
                 return data -> convertVariableScale(column, fieldDefn, data);
             case OracleTypes.TIMESTAMPTZ:

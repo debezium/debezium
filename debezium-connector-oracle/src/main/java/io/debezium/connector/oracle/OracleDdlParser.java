@@ -223,13 +223,10 @@ public class OracleDdlParser implements DdlParser {
                 else if (ctx.datatype().native_datatype_element().NUMBER() != null) {
                     columnEditor
                         .jdbcType(Types.NUMERIC)
-                        .type("NUMBER")
-                        .length(38)
-                        .scale(0);
+                        .type("NUMBER");
+
                     if (precisionPart == null) {
-                        columnEditor
-                            .length(0)
-                            .scale(-127);
+                        columnEditor.length(38);
                     }
                 }
                 else {
