@@ -97,8 +97,13 @@ public class SqlServerConnectorTask extends BaseSourceTask {
             schema.recover(previousOffset);
         }
 
-        final EventDispatcher<TableId> dispatcher = new EventDispatcher<>(topicSelector, schema, queue,
-                connectorConfig.getTableFilters().dataCollectionFilter(), DataChangeEvent::new);
+        final EventDispatcher<TableId> dispatcher = new EventDispatcher<>(
+                connectorConfig,
+                topicSelector,
+                schema,
+                queue,
+                connectorConfig.getTableFilters().dataCollectionFilter(),
+                DataChangeEvent::new);
 
         coordinator = new ChangeEventSourceCoordinator(
                 previousOffset,
