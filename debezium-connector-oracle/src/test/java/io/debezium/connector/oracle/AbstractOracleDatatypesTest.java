@@ -46,7 +46,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
      */
     static final String PRECISION_PARAMETER_KEY = "connect.decimal.precision";
 
-    private static final Schema INTEGER_SCHEMA = Decimal.builder(0).optional().parameter(PRECISION_PARAMETER_KEY, "38").build();
+    private static final Schema NUMBER_SCHEMA = Decimal.builder(0).optional().parameter(PRECISION_PARAMETER_KEY, "38").build();
 
     private static final String DDL_STRING = "create table debezium.type_string (" +
             "  id int not null, " +
@@ -74,6 +74,8 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             "  val_int int, " +
             "  val_integer integer, " +
             "  val_smallint smallint, " +
+            "  val_number_38_no_scale number(38), " +
+            "  val_number_38_scale_0 number(38, 0), " +
             "  primary key (id)" +
             ")";
 
@@ -106,9 +108,11 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     );
 
     private static final List<SchemaAndValueField> EXPECTED_INT = Arrays.asList(
-            new SchemaAndValueField("VAL_INT", INTEGER_SCHEMA, new BigDecimal("1")),
-            new SchemaAndValueField("VAL_INTEGER", INTEGER_SCHEMA, new BigDecimal("22")),
-            new SchemaAndValueField("VAL_SMALLINT", INTEGER_SCHEMA, new BigDecimal("333"))
+            new SchemaAndValueField("VAL_INT", NUMBER_SCHEMA, new BigDecimal("1")),
+            new SchemaAndValueField("VAL_INTEGER", NUMBER_SCHEMA, new BigDecimal("22")),
+            new SchemaAndValueField("VAL_SMALLINT", NUMBER_SCHEMA, new BigDecimal("333")),
+            new SchemaAndValueField("VAL_NUMBER_38_NO_SCALE", NUMBER_SCHEMA, new BigDecimal("4444")),
+            new SchemaAndValueField("VAL_NUMBER_38_SCALE_0", NUMBER_SCHEMA, new BigDecimal("5555"))
     );
 
     private static final List<SchemaAndValueField> EXPECTED_TIME = Arrays.asList(
@@ -292,7 +296,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     }
 
     protected static void insertIntTypes() throws SQLException {
-        connection.execute("INSERT INTO debezium.type_int VALUES (1, 1, 22, 333)");
+        connection.execute("INSERT INTO debezium.type_int VALUES (1, 1, 22, 333, 4444, 5555)");
         connection.execute("COMMIT");
     }
 

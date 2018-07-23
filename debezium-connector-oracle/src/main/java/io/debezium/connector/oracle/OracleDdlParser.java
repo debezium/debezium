@@ -213,12 +213,22 @@ public class OracleDdlParser implements DdlParser {
                         .jdbcType(Types.FLOAT)
                         .type("FLOAT")
                         .length(126);
+
+                    // TODO float's precision is about bits not decimal digits; should be ok for now to over-size
+                    if (precisionPart != null) {
+                        setPrecision(precisionPart, columnEditor);
+                    }
                 }
                 else if (ctx.datatype().native_datatype_element().REAL() != null) {
                     columnEditor
                         .jdbcType(Types.FLOAT)
                         .type("FLOAT")
                         .length(63);
+
+                    // TODO float's precision is about bits not decimal digits; should be ok for now to over-size
+                    if (precisionPart != null) {
+                        setPrecision(precisionPart, columnEditor);
+                    }
                 }
                 else if (ctx.datatype().native_datatype_element().NUMBER() != null) {
                     columnEditor
@@ -227,6 +237,10 @@ public class OracleDdlParser implements DdlParser {
 
                     if (precisionPart == null) {
                         columnEditor.length(38);
+                    }
+                    else {
+                        setPrecision(precisionPart, columnEditor);
+                        setScale(precisionPart, columnEditor);
                     }
                 }
                 else {
@@ -293,6 +307,19 @@ public class OracleDdlParser implements DdlParser {
         private int getVarCharDefaultLength() {
             // TODO replace with value from select name, value  from v$parameter where name='max_string_size';
             return 4000;
+        }
+
+        private void setPrecision(Precision_partContext precisionPart, ColumnEditor columnEditor) {
+            columnEditor.length(Integer.valueOf(precisionPart.numeric(0).getText()));
+        }
+
+        private void setScale(Precision_partContext precisionPart, ColumnEditor columnEditor) {
+            if (precisionPart.numeric().size() > 1) {
+                columnEditor.scale(Integer.valueOf(precisionPart.numeric(1).getText()));
+            }
+            else {
+                columnEditor.scale(0);
+            }
         }
 
         @Override
