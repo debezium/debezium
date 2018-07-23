@@ -25,10 +25,16 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
+import oracle.jdbc.OracleTypes;
 
 public class OracleConnection extends JdbcConnection {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(OracleConnection.class);
+
+    /**
+     * Returned by column metadata in Oracle if no scale is set;
+     */
+    private static final int ORACLE_UNSET_SCALE = -127;
 
     public OracleConnection(Configuration config, ConnectionFactory connectionFactory) {
         super(config, connectionFactory);
@@ -116,6 +122,19 @@ public class OracleConnection extends JdbcConnection {
                                     .scale(null)
                                     .create()
                                 );
+                    }
+                    // NUMBER columns without scale value have it set to -127 instead of null;
+                    // let's rectify that
+                    else if (column.jdbcType() == OracleTypes.NUMBER) {
+                        column.scale()
+                            .filter(s -> s == ORACLE_UNSET_SCALE)
+                            .ifPresent(s -> {
+                                editor.addColumn(
+                                        column.edit()
+                                            .scale(null)
+                                            .create()
+                                        );
+                            });
                     }
                 }
                 tables.overwriteTable(editor.create());
