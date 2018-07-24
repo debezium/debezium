@@ -400,6 +400,11 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
         public boolean snapshotSchema() {
             return snapshotSchema;
         }
+
+        @Override
+        public String toString() {
+            return "SnapshottingTask [snapshotSchema=" + snapshotSchema + ", snapshotData=" + snapshotData + "]";
+        }
     }
 
     protected Clock getClock() {
