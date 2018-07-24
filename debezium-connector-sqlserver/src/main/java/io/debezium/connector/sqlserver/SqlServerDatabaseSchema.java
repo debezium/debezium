@@ -69,7 +69,7 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
         return capturedTables;
     }
 
-    private Set<TableId> determineCapturedTables(SqlServerConnectorConfig connectorConfig, SqlServerConnection connection) throws SQLException {
+    private static Set<TableId> determineCapturedTables(SqlServerConnectorConfig connectorConfig, SqlServerConnection connection) throws SQLException {
         final Set<TableId> allTableIds = connection.readTableNames(connectorConfig.getDatabaseName(), null, null, new String[] {"TABLE"} );
 
         final Set<TableId> capturedTables = new HashSet<>();

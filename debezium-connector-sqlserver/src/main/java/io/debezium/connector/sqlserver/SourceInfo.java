@@ -37,6 +37,7 @@ public class SourceInfo extends AbstractSourceInfo {
             .build();
 
     private final String serverName;
+
     private Lsn changeLsn;
     private Lsn commitLsn;
     private boolean snapshot;
@@ -81,7 +82,7 @@ public class SourceInfo extends AbstractSourceInfo {
     }
 
     /**
-     * @param snapshot - true if the source of even is snapshot phase, nto the database log
+     * @param snapshot - true if the source of even is snapshot phase, not the database log
      */
     public void setSnapshot(boolean snapshot) {
         this.snapshot = snapshot;

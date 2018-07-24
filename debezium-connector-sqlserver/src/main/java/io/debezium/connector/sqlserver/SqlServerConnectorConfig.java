@@ -16,6 +16,8 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
+import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotLockingMode;
+import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.document.Document;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -30,7 +32,6 @@ import io.debezium.relational.history.KafkaDatabaseHistory;
  * The list of configuration options for SQL Server connector
  *
  * @author Jiri Pechanec
- *
  */
 public class SqlServerConnectorConfig extends RelationalDatabaseConnectorConfig {
 
@@ -45,7 +46,7 @@ public class SqlServerConnectorConfig extends RelationalDatabaseConnectorConfig 
         INITIAL("initial", true),
 
         /**
-         * Perform a snapshot of data and schema upon initial startup of a connector.
+         * Perform a snapshot of the schema but no data upon initial startup of a connector.
          */
         INITIAL_SCHEMA_ONLY("initial_schema_only", false);
 
@@ -272,6 +273,7 @@ public class SqlServerConnectorConfig extends RelationalDatabaseConnectorConfig 
     /**
      * Returns a configured (but not yet started) instance of the database history.
      */
+    @Override
     public DatabaseHistory getDatabaseHistory() {
         Configuration config = getConfig();
 

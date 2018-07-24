@@ -215,5 +215,4 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             return "ChangeTable [tableId=" + tableId + ", resultSet=" + resultSet + ", completed=" + completed + "]";
         }
     }
-
 }

@@ -168,7 +168,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         INITIAL("initial", true),
 
         /**
-         * Perform a snapshot of data and schema upon initial startup of a connector.
+         * Perform a snapshot of the schema but no data upon initial startup of a connector.
          */
         INITIAL_SCHEMA_ONLY("initial_schema_only", false);
 
