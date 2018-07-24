@@ -11,7 +11,6 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Objects;
-import java.util.Properties;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,23 +31,22 @@ public class SqlServerConnection extends JdbcConnection {
     private static Logger LOGGER = LoggerFactory.getLogger(SqlServerConnection.class);
 
     private static final String STATEMENTS_PLACEHOLDER = "#";
-    private static final String ENABLE_DB_CDC;
-    private static final String DISABLE_DB_CDC;
-    private static final String ENABLE_TABLE_CDC;
+    private static final String ENABLE_DB_CDC = "IF EXISTS(select 1 from sys.databases where name='#' AND is_cdc_enabled=0)\n"
+            + "EXEC sys.sp_cdc_enable_db";
+    private static final String DISABLE_DB_CDC = "IF EXISTS(select 1 from sys.databases where name='#' AND is_cdc_enabled=1)\n"
+            + "EXEC sys.sp_cdc_disable_db";
+    private static final String ENABLE_TABLE_CDC = "IF EXISTS(select 1 from sys.tables where name = '#' AND is_tracked_by_cdc=0)\n"
+            + "EXEC sys.sp_cdc_enable_table @source_schema = N'dbo', @source_name = N'#', @role_name = NULL, @supports_net_changes = 0";
     private static final String CDC_WRAPPERS_DML;
-    private static final String GET_MAX_LSN;
-    private static final String LOCK_TABLE;
+    private static final String GET_MAX_LSN = "SELECT sys.fn_cdc_get_max_lsn()";
+    private static final String LOCK_TABLE = "SELECT * FROM # WITH (TABLOCKX)";
+    private static final String LSN_TO_TIMESTAMP = "SELECT sys.fn_cdc_map_lsn_to_time(?)";
+    private static final String INCREMENT_LSN = "SELECT sys.fn_cdc_increment_lsn(?)";
+    private static final String GET_ALL_CHANGES_FOR_TABLE = "SELECT * FROM cdc.fn_cdc_get_all_changes_#(ISNULL(?,sys.fn_cdc_get_min_lsn('#')), ?, N'all update old')";
 
     static {
         try {
-            Properties statements = new Properties();
             ClassLoader classLoader = SqlServerConnection.class.getClassLoader();
-            statements.load(classLoader.getResourceAsStream("statements.properties"));
-            ENABLE_DB_CDC = statements.getProperty("enable_cdc_for_db");
-            DISABLE_DB_CDC = statements.getProperty("disable_cdc_for_db");
-            ENABLE_TABLE_CDC = statements.getProperty("enable_cdc_for_table");
-            GET_MAX_LSN = statements.getProperty("get_max_lsn");
-            LOCK_TABLE = statements.getProperty("lock_table");
             CDC_WRAPPERS_DML = IoUtil.read(classLoader.getResourceAsStream("generate_cdc_wrappers.sql"));
         }
         catch (Exception e) {
@@ -133,8 +131,7 @@ public class SqlServerConnection extends JdbcConnection {
      * @throws SQLException
      */
     public void getChangesForTable(TableId tableId, Lsn fromLsn, Lsn toLsn, ResultSetConsumer consumer) throws SQLException {
-        final String cdcNameForTable = cdcNameForTable(tableId);
-        final String query = "SELECT * FROM cdc.fn_cdc_get_all_changes_" + cdcNameForTable + "(ISNULL(?,sys.fn_cdc_get_min_lsn('" + cdcNameForTable + "')), ?, N'all update old')";
+        final String query = GET_ALL_CHANGES_FOR_TABLE.replace(STATEMENTS_PLACEHOLDER, cdcNameForTable(tableId));
         prepareQuery(query, statement -> {
             statement.setBytes(1, fromLsn.getBinary());
             statement.setBytes(2, toLsn.getBinary());
@@ -150,13 +147,12 @@ public class SqlServerConnection extends JdbcConnection {
      * @param consumer - the change processor
      * @throws SQLException
      */
-    public void getChangesForTables(TableId[] tableIds, Lsn fromLsn, Lsn toLsn, MultiResultSetConsumer consumer) throws SQLException {
+    public void getChangesForTables(TableId[] tableIds, Lsn fromLsn, Lsn toLsn, BlockingMultiResultSetConsumer consumer) throws SQLException, InterruptedException {
         final String[] queries = new String[tableIds.length];
 
         int idx = 0;
         for (TableId tableId: tableIds) {
-            final String cdcNameForTable = cdcNameForTable(tableId);
-            final String query = "SELECT * FROM cdc.fn_cdc_get_all_changes_" + cdcNameForTable + "(ISNULL(?,sys.fn_cdc_get_min_lsn('" + cdcNameForTable + "')), ?, N'all update old')";
+            final String query = GET_ALL_CHANGES_FOR_TABLE.replace(STATEMENTS_PLACEHOLDER, cdcNameForTable(tableId));
             queries[idx++] = query;
             LOGGER.trace("Getting changes for table {} in range[{}, {}]", tableId, fromLsn, toLsn);
         }
@@ -174,7 +170,7 @@ public class SqlServerConnection extends JdbcConnection {
      * @throws SQLException
      */
     public Lsn incrementLsn(Lsn lsn) throws SQLException {
-        final String query = "SELECT sys.fn_cdc_increment_lsn(?)";
+        final String query = INCREMENT_LSN;
         return prepareQueryAndMap(query, statement -> {
             statement.setBytes(1, lsn.getBinary());
         }, singleResultMapper(rs -> {
@@ -192,7 +188,7 @@ public class SqlServerConnection extends JdbcConnection {
      * @throws SQLException
      */
     public Instant timestampOfLsn(Lsn lsn) throws SQLException {
-        final String query = "SELECT sys.fn_cdc_map_lsn_to_time(?)";
+        final String query = LSN_TO_TIMESTAMP;
 
         if (lsn.getBinary() == null) {
             return null;
