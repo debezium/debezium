@@ -79,6 +79,10 @@
         </dependencies>
     </dependencyManagement>
 
+    <modules>
+        <module>debezium-connector-sqlserver</module>
+    </modules>
+
     <build>
     </build>
 
@@ -87,12 +91,6 @@
             <id>oracle</id>
             <modules>
                 <module>debezium-connector-oracle</module>
-            </modules>
-        </profile>
-        <profile>
-            <id>sqlserver</id>
-            <modules>
-                <module>debezium-connector-sqlserver</module>
             </modules>
         </profile>
     </profiles>
