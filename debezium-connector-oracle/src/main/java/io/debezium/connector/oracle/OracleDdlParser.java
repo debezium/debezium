@@ -324,6 +324,9 @@ public class OracleDdlParser implements DdlParser {
             if (precisionPart.numeric().size() > 1) {
                 columnEditor.scale(Integer.valueOf(precisionPart.numeric(1).getText()));
             }
+            else if (precisionPart.numeric_negative() != null) {
+                columnEditor.scale(Integer.valueOf(precisionPart.numeric_negative().getText()));
+            }
             else {
                 columnEditor.scale(0);
             }

@@ -82,17 +82,22 @@ public class OracleValueConverters extends JdbcValueConverters {
     private SchemaBuilder getNumericSchema(Column column) {
         if (column.scale().isPresent()) {
             // return sufficiently sized int schema for non-floating point types
-            if (column.scale().get() == 0) {
-                if (column.length() < 3) {
+            Integer scale = column.scale().get();
+
+            // a negative scale means rounding, e.g. NUMBER(10, -2) would be rounded to hundreds
+            if (scale <= 0) {
+                int width = column.length() - scale;
+
+                if (width < 3) {
                     return SchemaBuilder.int8();
                 }
-                else if (column.length() < 5) {
+                else if (width < 5) {
                     return SchemaBuilder.int16();
                 }
-                else if (column.length() < 10) {
+                else if (width < 10) {
                     return SchemaBuilder.int32();
                 }
-                else if (column.length() < 19) {
+                else if (width < 19) {
                     return SchemaBuilder.int64();
                 }
             }
@@ -135,17 +140,21 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     private ValueConverter getNumericConverter(Column column, Field fieldDefn) {
         if (column.scale().isPresent()) {
-            if (column.scale().get() == 0) {
-                if (column.length() < 3) {
+            Integer scale = column.scale().get();
+
+            if (scale <= 0) {
+                int width = column.length() - scale;
+
+                if (width < 3) {
                     return data -> convertNumericAsTinyInt(column, fieldDefn, data);
                 }
-                else if (column.length() < 5) {
+                else if (width < 5) {
                     return data -> convertNumericAsSmallInt(column, fieldDefn, data);
                 }
-                else if (column.length() < 10) {
+                else if (width < 10) {
                     return data -> convertNumericAsInteger(column, fieldDefn, data);
                 }
-                else if (column.length() < 19) {
+                else if (width < 19) {
                     return data -> convertNumericAsBigInteger(column, fieldDefn, data);
                 }
             }
