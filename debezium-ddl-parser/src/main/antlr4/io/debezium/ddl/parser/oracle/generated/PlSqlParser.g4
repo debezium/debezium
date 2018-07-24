@@ -4258,8 +4258,9 @@ datatype
     | INTERVAL (YEAR | DAY) ('(' expression ')')? TO (MONTH | SECOND) ('(' expression ')')?
     ;
 
+// adjusted to support negative scale values; see https://github.com/antlr/grammars-v4/issues/1190
 precision_part
-    : '(' numeric (',' numeric)? (CHAR | BYTE)? ')'
+    : '(' numeric (',' (numeric | numeric_negative) )? (CHAR | BYTE)? ')'
     ;
 
 native_datatype_element
