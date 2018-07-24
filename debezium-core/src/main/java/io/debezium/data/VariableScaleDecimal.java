@@ -8,6 +8,7 @@ package io.debezium.data;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.Objects;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -15,7 +16,7 @@ import org.apache.kafka.connect.data.Struct;
 
 /**
  * An arbitrary precision decimal value with variable scale.
- * 
+ *
  * @author Jiri Pechanec
  *
  */
@@ -61,7 +62,7 @@ public class VariableScaleDecimal {
     }
 
     /**
-     * Converts a value from its logical format (BigDecimal) to its encoded format - a struct containing
+     * Converts a value from its logical format to its encoded format - a struct containing
      * the scale of the number and a binary representation of the number.
      *
      * @param schema of the encoded value
@@ -70,11 +71,25 @@ public class VariableScaleDecimal {
      * @return the encoded value
      */
     public static Struct fromLogical(Schema schema, SpecialValueDecimal value) {
+        return fromLogical(schema, value.getDecimalValue().orElse(null));
+    }
+
+    /**
+     * Converts a value from its logical format to its encoded format - a struct containing
+     * the scale of the number and a binary representation of the number.
+     *
+     * @param schema of the encoded value
+     * @param value the value or the decimal
+     *
+     * @return the encoded value
+     */
+    public static Struct fromLogical(Schema schema, BigDecimal decimalValue) {
+        Objects.requireNonNull(decimalValue, "decimalValue may not be null");
+
         Struct result = new Struct(schema);
-        final BigDecimal decimalValue = value.getDecimalValue().orElse(null);
-        assert decimalValue != null : "Unable to encode special value";
         result.put(VALUE_FIELD, decimalValue.unscaledValue().toByteArray());
         result.put(SCALE_FIELD, decimalValue.scale());
+
         return result;
     }
 
@@ -85,6 +100,6 @@ public class VariableScaleDecimal {
      * @return the decoded value
      */
     public static SpecialValueDecimal toLogical(final Struct value) {
-        return new SpecialValueDecimal(new BigDecimal(new BigInteger((byte[])value.getBytes(VALUE_FIELD)), value.getInt32(SCALE_FIELD)));
+        return new SpecialValueDecimal(new BigDecimal(new BigInteger(value.getBytes(VALUE_FIELD)), value.getInt32(SCALE_FIELD)));
     }
 }
