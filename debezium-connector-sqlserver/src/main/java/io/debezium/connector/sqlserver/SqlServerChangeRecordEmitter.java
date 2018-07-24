@@ -17,6 +17,7 @@ import io.debezium.util.Clock;
  * @author Jiri Pechanec
  */
 public class SqlServerChangeRecordEmitter extends RelationalChangeRecordEmitter {
+
     public static final int OP_DELETE = 1;
     public static final int OP_INSERT = 2;
     public static final int OP_UPDATE_BEFORE = 3;

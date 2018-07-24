@@ -47,17 +47,17 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
 
         // found a previous offset and the earlier snapshot has completed
         if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
-            LOGGER.info("A previous offset indicating completed snapshot has been found. Neither schema nor data will be snapshotted.");
+            LOGGER.info("A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshotted.");
             snapshotSchema = false;
             snapshotData = false;
         }
         else {
             LOGGER.info("No previous offset has been found");
             if (connectorConfig.getSnapshotMode().includeData()) {
-                LOGGER.info("Accroding to the connector configuration both schema and data will be snapshotted");
+                LOGGER.info("According to the connector configuration both schema and data will be snapshotted");
             }
             else {
-                LOGGER.info("Accroding to the connector configuration only schema will be snapshotted");
+                LOGGER.info("According to the connector configuration only schema will be snapshotted");
             }
             snapshotData = connectorConfig.getSnapshotMode().includeData();
         }
@@ -122,7 +122,7 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
                 throw new InterruptedException("Interrupted while reading structure of schema " + schema);
             }
 
-            LOGGER.info("Reading sturcture of schema '{}'", snapshotContext.catalogName);
+            LOGGER.info("Reading stucture of schema '{}'", snapshotContext.catalogName);
             jdbcConnection.readSchema(
                     snapshotContext.tables,
                     snapshotContext.catalogName,
