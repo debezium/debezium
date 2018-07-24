@@ -179,7 +179,9 @@ public class OracleDdlParser implements DdlParser {
                     }
                     columnEditor.length(6);
                 }
-                else if (ctx.datatype().native_datatype_element().VARCHAR2() != null) {
+                // VARCHAR is the same as VARCHAR2 in Oracle
+                else if (ctx.datatype().native_datatype_element().VARCHAR2() != null ||
+                        ctx.datatype().native_datatype_element().VARCHAR() != null) {
                     columnEditor
                         .jdbcType(Types.VARCHAR)
                         .type("VARCHAR2");

@@ -49,6 +49,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
 
     private static final String DDL_STRING = "create table debezium.type_string (" +
             "  id int not null, " +
+            "  val_varchar varchar(1000), " +
             "  val_varchar2 varchar2(1000), " +
             "  val_nvarchar2 nvarchar2(1000), " +
             "  val_char char(3), " +
@@ -103,6 +104,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             ")";
 
     private static final List<SchemaAndValueField> EXPECTED_STRING = Arrays.asList(
+            new SchemaAndValueField("VAL_VARCHAR", Schema.OPTIONAL_STRING_SCHEMA, "v\u010d2"),
             new SchemaAndValueField("VAL_VARCHAR2", Schema.OPTIONAL_STRING_SCHEMA, "v\u010d2"),
             new SchemaAndValueField("VAL_NVARCHAR2", Schema.OPTIONAL_STRING_SCHEMA, "nv\u010d2"),
             new SchemaAndValueField("VAL_CHAR", Schema.OPTIONAL_STRING_SCHEMA, "c  "),
@@ -311,7 +313,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     }
 
     protected static void insertStringTypes() throws SQLException {
-        connection.execute("INSERT INTO debezium.type_string VALUES (1, 'v\u010d2', 'nv\u010d2', 'c', 'n\u010d')");
+        connection.execute("INSERT INTO debezium.type_string VALUES (1, 'v\u010d2', 'v\u010d2', 'nv\u010d2', 'c', 'n\u010d')");
         connection.execute("COMMIT");
     }
 
