@@ -140,9 +140,16 @@ public class OracleDdlParser implements DdlParser {
                     // NUMERIC and DECIMAL types have by default zero scale
                     columnEditor
                         .jdbcType(Types.NUMERIC)
-                        .type("NUMBER")
-                        .length(38)
-                        .scale(0);
+                        .type("NUMBER");
+
+                    if (precisionPart == null) {
+                        columnEditor.length(38)
+                            .scale(0);
+                    }
+                    else {
+                        setPrecision(precisionPart, columnEditor);
+                        setScale(precisionPart, columnEditor);
+                    }
                 }
                 else if (ctx.datatype().native_datatype_element().DATE() != null) {
                     // JDBC driver reports type as timestamp but name DATE
@@ -175,14 +182,26 @@ public class OracleDdlParser implements DdlParser {
                 else if (ctx.datatype().native_datatype_element().VARCHAR2() != null) {
                     columnEditor
                         .jdbcType(Types.VARCHAR)
-                        .type("VARCHAR2")
-                        .length(getVarCharDefaultLength());
+                        .type("VARCHAR2");
+
+                    if (precisionPart == null) {
+                        columnEditor.length(getVarCharDefaultLength());
+                    }
+                    else {
+                        setPrecision(precisionPart, columnEditor);
+                    }
                 }
                 else if (ctx.datatype().native_datatype_element().NVARCHAR2() != null) {
                     columnEditor
                         .jdbcType(Types.NVARCHAR)
-                        .type("NVARCHAR2")
-                        .length(getVarCharDefaultLength());
+                        .type("NVARCHAR2");
+
+                    if (precisionPart == null) {
+                        columnEditor.length(getVarCharDefaultLength());
+                    }
+                    else {
+                        setPrecision(precisionPart, columnEditor);
+                    }
                 }
                 else if (ctx.datatype().native_datatype_element().CHAR() != null) {
                     columnEditor
@@ -223,12 +242,8 @@ public class OracleDdlParser implements DdlParser {
                     columnEditor
                         .jdbcType(Types.FLOAT)
                         .type("FLOAT")
+                        // TODO float's precision is about bits not decimal digits; should be ok for now to over-size
                         .length(63);
-
-                    // TODO float's precision is about bits not decimal digits; should be ok for now to over-size
-                    if (precisionPart != null) {
-                        setPrecision(precisionPart, columnEditor);
-                    }
                 }
                 else if (ctx.datatype().native_datatype_element().NUMBER() != null) {
                     columnEditor
@@ -245,14 +260,6 @@ public class OracleDdlParser implements DdlParser {
                 }
                 else {
                     throw new IllegalArgumentException("Unsupported column type: " + ctx.datatype().native_datatype_element().getText());
-                }
-
-                if (precisionPart != null) {
-                    columnEditor.length(Integer.valueOf(precisionPart.numeric(0).getText()));
-
-                    if (precisionPart.numeric().size() > 1) {
-                        columnEditor.scale(Integer.valueOf(precisionPart.numeric(1).getText()));
-                    }
                 }
             }
             else if (ctx.datatype().INTERVAL() != null
