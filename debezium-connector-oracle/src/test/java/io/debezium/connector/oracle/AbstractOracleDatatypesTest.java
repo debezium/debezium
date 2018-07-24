@@ -96,6 +96,8 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             "  id int not null, " +
             "  val_date date, " +
             "  val_ts timestamp, " +
+            "  val_ts_precision2 timestamp(2), " +
+            "  val_ts_precision4 timestamp(4), " +
             "  val_tstz timestamp with time zone, " +
             "  val_tsltz timestamp with local time zone, " +
             "  val_int_ytm interval year to month, " +
@@ -145,6 +147,8 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     private static final List<SchemaAndValueField> EXPECTED_TIME = Arrays.asList(
             new SchemaAndValueField("VAL_DATE", Timestamp.builder().optional().build(), 1522108800_000l),
             new SchemaAndValueField("VAL_TS", MicroTimestamp.builder().optional().build(), LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000 + 7890),
+            new SchemaAndValueField("VAL_TS_PRECISION2", Timestamp.builder().optional().build(), LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000 + 130),
+            new SchemaAndValueField("VAL_TS_PRECISION4", MicroTimestamp.builder().optional().build(), LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000 + 125500),
             new SchemaAndValueField("VAL_TSTZ", ZonedTimestamp.builder().optional().build(), "2018-03-27T01:34:56.00789-11:00"),
             new SchemaAndValueField("VAL_INT_YTM", MicroDuration.builder().optional().build(), -110451600_000_000.0),
             new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000.0)
@@ -332,6 +336,8 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
                 + "1"
                 + ", TO_DATE('27-MAR-2018', 'dd-MON-yyyy')"
                 + ", TO_TIMESTAMP('27-MAR-2018 12:34:56.00789', 'dd-MON-yyyy HH24:MI:SS.FF5')"
+                + ", TO_TIMESTAMP('27-MAR-2018 12:34:56.12545', 'dd-MON-yyyy HH24:MI:SS.FF5')"
+                + ", TO_TIMESTAMP('27-MAR-2018 12:34:56.12545', 'dd-MON-yyyy HH24:MI:SS.FF5')"
                 + ", TO_TIMESTAMP_TZ('27-MAR-2018 01:34:56.00789 -11:00', 'dd-MON-yyyy HH24:MI:SS.FF5 TZH:TZM')"
                 + ", TO_TIMESTAMP_TZ('27-MAR-2018 01:34:56.00789', 'dd-MON-yyyy HH24:MI:SS.FF5')"
                 + ", INTERVAL '-3-6' YEAR TO MONTH"

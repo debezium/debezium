@@ -177,7 +177,13 @@ public class OracleDdlParser implements DdlParser {
                             .jdbcType(Types.TIMESTAMP)
                             .type("TIMESTAMP");
                     }
-                    columnEditor.length(6);
+
+                    if (precisionPart == null) {
+                        columnEditor.length(6);
+                    }
+                    else {
+                        setPrecision(precisionPart, columnEditor);
+                    }
                 }
                 // VARCHAR is the same as VARCHAR2 in Oracle
                 else if (ctx.datatype().native_datatype_element().VARCHAR2() != null ||
