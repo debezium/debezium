@@ -332,6 +332,10 @@ public class JdbcConnection implements AutoCloseable {
         void accept(ResultSet[] rs) throws SQLException;
     }
 
+    public static interface BlockingMultiResultSetConsumer {
+        void accept(ResultSet[] rs) throws SQLException, InterruptedException;
+    }
+
     public static interface StatementPreparer {
         void accept(PreparedStatement statement) throws SQLException;
     }
@@ -427,7 +431,7 @@ public class JdbcConnection implements AutoCloseable {
      * @throws SQLException if there is an error connecting to the database or executing the statements
      * @see #execute(Operations)
      */
-    public JdbcConnection prepareQuery(String[] multiQuery, StatementPreparer preparer, MultiResultSetConsumer resultConsumer) throws SQLException {
+    public JdbcConnection prepareQuery(String[] multiQuery, StatementPreparer preparer, BlockingMultiResultSetConsumer resultConsumer) throws SQLException, InterruptedException {
         final Connection conn = connection();
         final ResultSet[] resultSets = new ResultSet[multiQuery.length];
         final PreparedStatement[] preparedStatements = new PreparedStatement[multiQuery.length];
