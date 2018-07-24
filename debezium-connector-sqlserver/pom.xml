@@ -20,7 +20,7 @@
         <sqlserver.user>sa</sqlserver.user>
         <sqlserver.password>Password!</sqlserver.password>
         <sqlserver.dbname>testDB</sqlserver.dbname>
-        <docker.filter>microsoft/mssql-server-linux:2017-latest</docker.filter>
+        <docker.filter>microsoft/mssql-server-linux:2017-CU8</docker.filter>
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
     </properties>
