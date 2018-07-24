@@ -1,4 +1,7 @@
  /**
+ * Taken from https://github.com/antlr/grammars-v4/commits/master/plsql/PlSqlParser.g4
+ * Version: 25ff41798a0b707d57000a31a1533cf8f2eda5df 2018-01-17
+ *
  * Oracle(c) PL/SQL 11g Parser
  *
  * Copyright (c) 2009-2011 Alexandre Porcelli <alexandre.porcelli@gmail.com>
