@@ -101,9 +101,11 @@ public class SourceInfo extends AbstractSourceInfo {
         final Struct ret = super.struct()
                 .put(SERVER_NAME_KEY, serverName)
                 .put(LOG_TIMESTAMP_KEY, sourceTime == null ? null : sourceTime.toEpochMilli())
-                .put(CHANGE_LSN_KEY, changeLsn.toString())
                 .put(SNAPSHOT_KEY, snapshot);
 
+        if (changeLsn.isAvailable()) {
+            ret.put(CHANGE_LSN_KEY, changeLsn.toString());
+        }
         if (commitLsn != null) {
             ret.put(COMMIT_LSN_KEY, commitLsn.toString());
         }

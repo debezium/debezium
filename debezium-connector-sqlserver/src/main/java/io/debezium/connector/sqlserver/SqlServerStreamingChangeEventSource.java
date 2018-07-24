@@ -127,23 +127,18 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         offsetContext.setCommitLsn(commitLsn);
                         offsetContext.setSourceTime(connection.timestampOfLsn(commitLsn));
 
-                        try {
-                            dispatcher
-                                    .dispatchDataChangeEvent(
-                                            tableId,
-                                            new SqlServerChangeRecordEmitter(
-                                                    offsetContext,
-                                                    operation,
-                                                    data,
-                                                    dataNext,
-                                                    schema.tableFor(tableId),
-                                                    clock
-                                            )
-                                    );
-                        }
-                        catch (InterruptedException e) {
-                            break;
-                        }
+                        dispatcher
+                                .dispatchDataChangeEvent(
+                                        tableId,
+                                        new SqlServerChangeRecordEmitter(
+                                                offsetContext,
+                                                operation,
+                                                data,
+                                                dataNext,
+                                                schema.tableFor(tableId),
+                                                clock
+                                        )
+                                );
                         tableSmallestLsn.next();
                     }
                 });

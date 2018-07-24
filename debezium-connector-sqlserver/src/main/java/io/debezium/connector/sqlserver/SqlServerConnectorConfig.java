@@ -15,9 +15,6 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
-import io.debezium.config.Field.ValidationOutput;
-import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotLockingMode;
-import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.document.Document;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -214,15 +211,12 @@ public class SqlServerConnectorConfig extends RelationalDatabaseConnectorConfig 
 
     public static final Field SNAPSHOT_LOCKING_MODE = Field.create("snapshot.locking.mode")
             .withDisplayName("Snapshot locking mode")
-            .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.EXCLUSIVE)
+            .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.NONE)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDescription("Controls how long the connector locks the montiored tables for snapshot execution. The default is '" + SnapshotLockingMode.EXCLUSIVE.getValue() + "', "
-                + "which means that the connector holds the exlusive lock (and thus prevents any reads and updates) for all monitored tables "
-                + "while the database schemas, other metadata and the data itself are being read. Using a value of '" + SnapshotLockingMode.NONE.getValue() + "' will prevent the connector from acquiring any "
-                + "table locks during the snapshot process. This mode can only be used in combination with snapshot.mode values of '" + SnapshotMode.INITIAL_SCHEMA_ONLY.getValue() + "' or "
-                + "'schema_only_recovery' and is only safe to use if no schema changes are happening while the snapshot is taken.")
-            .withValidation(SqlServerConnectorConfig::validateSnapshotLockingMode);
+            .withDescription("Controls how long the connector locks the montiored tables for snapshot execution. The default is '" + SnapshotLockingMode.NONE.getValue() + "', "
+                + "which means that the connector does not hold any locks for all monitored tables."
+                + "Using a value of '" + SnapshotLockingMode.EXCLUSIVE.getValue() + "' ensures that the connector holds the exlusive lock (and thus prevents any reads and updates) for all monitored tables.");
 
     /**
      * The set of {@link Field}s defined as part of this configuration.
@@ -306,33 +300,6 @@ public class SqlServerConnectorConfig extends RelationalDatabaseConnectorConfig 
 
     public SnapshotMode getSnapshotMode() {
         return snapshotMode;
-    }
-
-    /**
-     * Validate the snapshot.locking.mode configuration
-     * The {@link SnapshotLockingMode.NONE} is allowed only for snapshot mode {@link SnapshotMode.INITIAL_SCHEMA_ONLY}
-     *
-     * @param config connector configuration
-     * @param field validated field (snapshot locking mode)
-     * @param problems the list of violated validations
-     *
-     * @return 0 for valid configuration
-     */
-    private static int validateSnapshotLockingMode(Configuration config, Field field, ValidationOutput problems) {
-        final SnapshotMode snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
-        final SnapshotLockingMode snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
-
-        if (snapshotLockingMode == SnapshotLockingMode.NONE) {
-            if (snapshotMode != SnapshotMode.INITIAL_SCHEMA_ONLY) {
-                problems.accept(
-                        field,
-                        snapshotLockingMode,
-                        "Snapshot locking mode '" + snapshotLockingMode.getValue() + "' is not allowed for snapshot mode '" + snapshotMode.getValue() + "'"
-                    );
-            }
-        }
-        // Everything checks out ok.
-        return 0;
     }
 
     private static class SystemTablesPredicate implements TableFilter {
