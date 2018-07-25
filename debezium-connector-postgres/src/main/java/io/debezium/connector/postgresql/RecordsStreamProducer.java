@@ -30,7 +30,6 @@ import io.debezium.connector.postgresql.connection.ReplicationStream;
 import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.heartbeat.Heartbeat;
-import io.debezium.heartbeat.OffsetPosition;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
@@ -82,7 +81,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         }
 
         heartbeat = Heartbeat.create(taskContext.config().getConfig(), taskContext.topicSelector().getHeartbeatTopic(),
-                taskContext.config().getLogicalName(), () -> OffsetPosition.build(sourceInfo.partition(), sourceInfo.offset()));
+                taskContext.config().getLogicalName());
     }
 
     @Override
@@ -262,7 +261,8 @@ public class RecordsStreamProducer extends RecordsProducer {
             }
         }
 
-        heartbeat.heartbeat(r -> consumer.accept(new ChangeEvent(r, message.isLastEventForLsn())));
+        heartbeat.heartbeat(sourceInfo.partition(), sourceInfo.offset(),
+                r -> consumer.accept(new ChangeEvent(r, message.isLastEventForLsn())));
     }
 
     protected void generateCreateRecord(TableId tableId, Object[] rowData, boolean isLastEventForLsn, BlockingConsumer<ChangeEvent> recordConsumer) throws InterruptedException {
