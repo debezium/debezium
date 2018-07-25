@@ -120,7 +120,9 @@ public class OracleConnectorTask extends BaseSourceTask {
 
     @Override
     public void commit() throws InterruptedException {
-        coordinator.commitOffset(lastOffset);
+        if (lastOffset != null) {
+            coordinator.commitOffset(lastOffset);
+        }
     }
 
     @Override
