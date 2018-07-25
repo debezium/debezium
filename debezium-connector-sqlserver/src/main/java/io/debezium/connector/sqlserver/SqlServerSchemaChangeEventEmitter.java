@@ -30,6 +30,6 @@ public class SqlServerSchemaChangeEventEmitter implements SchemaChangeEventEmitt
 
     @Override
     public void emitSchemaChangeEvent(Receiver receiver) throws InterruptedException {
-        throw new UnsupportedOperationException("Schema evolution is not supported by the connector");
+        throw new UnsupportedOperationException("Schema evolution is not supported yet by the connector");
     }
 }
