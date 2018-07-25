@@ -5,7 +5,6 @@
  */
 package io.debezium.pipeline;
 
-import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
 
@@ -19,7 +18,6 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
-import io.debezium.heartbeat.OffsetPosition;
 import io.debezium.pipeline.spi.ChangeEventCreator;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -58,9 +56,6 @@ public class EventDispatcher<T extends DataCollectionId> {
      */
     private final StreamingChangeRecordReceiver streamingReceiver;
 
-    private Map<String, ?> lastPartition;
-    private Map<String, ?> lastOffset;
-
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
             DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
             ChangeEventCreator changeEventCreator) {
@@ -75,8 +70,7 @@ public class EventDispatcher<T extends DataCollectionId> {
         this.streamingReceiver = new StreamingChangeRecordReceiver();
 
         heartbeat = Heartbeat.create(connectorConfig.getConfig(), topicSelector.getHeartbeatTopic(),
-                connectorConfig.getLogicalName(),
-                () -> OffsetPosition.build(lastPartition, lastOffset));
+                connectorConfig.getLogicalName());
     }
 
     // TODO One could argue that snapshot events shouldn't have to go through the dispatcher but rather to the queue
@@ -125,10 +119,11 @@ public class EventDispatcher<T extends DataCollectionId> {
             changeRecordEmitter.emitChangeRecords(dataCollectionSchema, streamingReceiver);
         }
 
-        lastPartition = changeRecordEmitter.getOffset().getPartition();
-        lastOffset = changeRecordEmitter.getOffset().getOffset();
-
-        heartbeat.heartbeat(this::enqueueHeartbeat);
+        heartbeat.heartbeat(
+                changeRecordEmitter.getOffset().getPartition(),
+                changeRecordEmitter.getOffset().getOffset(),
+                this::enqueueHeartbeat
+        );
     }
 
     public void dispatchSchemaChangeEvent(T dataCollectionId, SchemaChangeEventEmitter schemaChangeEventEmitter) throws InterruptedException {

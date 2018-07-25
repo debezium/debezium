@@ -6,8 +6,8 @@
 package io.debezium.heartbeat;
 
 import java.time.temporal.ChronoUnit;
+import java.util.Map;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -54,28 +54,30 @@ public interface Heartbeat {
     public static final Heartbeat NULL = new Heartbeat() {
 
         @Override
-        public void heartbeat(BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
+        public void heartbeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
         }
     };
 
     /**
      * Generates a heartbeat record if defined time has elapsed
      *
+     * @param partition partition for the heartbeat record
+     * @param offset offset for the heartbeat record
      * @param consumer - a code to place record among others to be sent into Connect
      */
-    void heartbeat(BlockingConsumer<SourceRecord> consumer) throws InterruptedException;
+    // TODO would be nice to pass OffsetContext here; not doing it for now, though, until MySQL is using OffsetContext,
+    // too
+    void heartbeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException;
 
     /**
      * Provide an instance of Heartbeat object
      *
      * @param configuration - connector configuration
      * @param topicName - topic to which the heartbeat messages will be sent
-     * @param positionSupplier - obtain current offset position
      * @return
      */
-    public static Heartbeat create(Configuration configuration, String topicName, String key,
-            Supplier<OffsetPosition> positionSupplier) {
+    public static Heartbeat create(Configuration configuration, String topicName, String key) {
         return configuration.getDuration(HeartbeatImpl.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS).isZero() ?
-            NULL : new HeartbeatImpl(configuration, topicName, key, positionSupplier);
+            NULL : new HeartbeatImpl(configuration, topicName, key);
     }
 }

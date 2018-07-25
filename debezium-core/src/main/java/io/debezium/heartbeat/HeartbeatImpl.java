@@ -7,7 +7,7 @@ package io.debezium.heartbeat;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
-import java.util.function.Supplier;
+import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -52,16 +52,13 @@ class HeartbeatImpl implements Heartbeat {
                                                     .build();
 
     private final String topicName;
-    private final Supplier<OffsetPosition> positionSupplier;
     private final Duration heartbeatInterval;
     private final String key;
 
     private volatile Timer heartbeatTimeout;
 
-    HeartbeatImpl(Configuration configuration, String topicName,
-            String key, Supplier<OffsetPosition> positionSupplier) {
+    HeartbeatImpl(Configuration configuration, String topicName, String key) {
         this.topicName = topicName;
-        this.positionSupplier = positionSupplier;
         this.key = key;
 
         heartbeatInterval = configuration.getDuration(HeartbeatImpl.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS);
@@ -69,10 +66,10 @@ class HeartbeatImpl implements Heartbeat {
     }
 
     @Override
-    public void heartbeat(BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
+    public void heartbeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
         if (heartbeatTimeout.expired()) {
             LOGGER.debug("Generating heartbeat event");
-            consumer.accept(heartbeatRecord());
+            consumer.accept(heartbeatRecord(partition, offset));
             heartbeatTimeout = resetHeartbeat();
         }
     }
@@ -91,12 +88,11 @@ class HeartbeatImpl implements Heartbeat {
      * Produce an empty record to the heartbeat topic.
      *
      */
-    private SourceRecord heartbeatRecord() {
+    private SourceRecord heartbeatRecord(Map<String, ?> sourcePartition, Map<String, ?> sourceOffset) {
         final Integer partition = 0;
-        OffsetPosition position = positionSupplier.get();
 
-        return new SourceRecord(position.partition(), position.offset(),
-                topicName, partition,  KEY_SCHEMA, serverNameKey(key), null, null);
+        return new SourceRecord(sourcePartition, sourceOffset,
+                topicName, partition, KEY_SCHEMA, serverNameKey(key), null, null);
     }
 
     private Timer resetHeartbeat() {
