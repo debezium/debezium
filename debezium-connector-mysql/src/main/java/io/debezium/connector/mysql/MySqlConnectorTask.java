@@ -364,7 +364,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
         try {
             connectionContext.jdbc().query("SHOW GLOBAL VARIABLES LIKE 'GTID_MODE'", rs -> {
                 if (rs.next()) {
-                    mode.set(rs.getString(1));
+                    mode.set(rs.getString(2));
                 }
             });
         } catch (SQLException e) {
