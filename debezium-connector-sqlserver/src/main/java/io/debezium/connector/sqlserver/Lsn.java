@@ -24,7 +24,7 @@ public class Lsn implements Comparable<Lsn> {
     private final byte[] binary;
     private int[] unsignedBinary;
 
-    private String string; 
+    private String string;
 
     private Lsn(byte[] binary) {
         this.binary = binary;
@@ -140,7 +140,7 @@ public class Lsn implements Comparable<Lsn> {
         final int[] thisU = getUnsignedBinary();
         final int[] thatU = o.getUnsignedBinary();
         for (int i = 0; i < thisU.length; i++) {
-            final int diff = thisU[i] - thatU[i]; 
+            final int diff = thisU[i] - thatU[i];
             if (diff != 0) {
                 return diff;
             }
