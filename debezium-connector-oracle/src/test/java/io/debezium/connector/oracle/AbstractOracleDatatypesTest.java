@@ -118,7 +118,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             new SchemaAndValueField("VAL_BD", Schema.OPTIONAL_FLOAT64_SCHEMA, 2.22),
             new SchemaAndValueField("VAL_F", VariableScaleDecimal.builder().optional().build(), VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().build(), new BigDecimal("3.33"))),
             new SchemaAndValueField("VAL_F_10", VariableScaleDecimal.builder().optional().build(), VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().build(), new BigDecimal("8.888"))),
-            new SchemaAndValueField("VAL_NUM", Decimal.builder(6).parameter(PRECISION_PARAMETER_KEY, "10").optional().build(), new BigDecimal("4.4444")),
+            new SchemaAndValueField("VAL_NUM", Decimal.builder(6).parameter(PRECISION_PARAMETER_KEY, "10").optional().build(), new BigDecimal("4.444400")),
             new SchemaAndValueField("VAL_DP", VariableScaleDecimal.builder().optional().build(), VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().build(), new BigDecimal("5.555"))),
             new SchemaAndValueField("VAL_R", VariableScaleDecimal.builder().optional().build(), VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().build(), new BigDecimal("6.66"))),
             new SchemaAndValueField("VAL_DECIMAL", Decimal.builder(6).parameter(PRECISION_PARAMETER_KEY, "10").optional().build(), new BigDecimal("1234.567891")),
@@ -219,16 +219,19 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
 
         List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TYPE_STRING");
         assertThat(testTableRecords).hasSize(expectedRecordCount);
+        SourceRecord record = testTableRecords.get(0);
+
+        VerifyRecord.isValid(record);
 
         // insert
         if (insertRecordsDuringTest()) {
-            VerifyRecord.isValidInsert(testTableRecords.get(0));
+            VerifyRecord.isValidInsert(record);
         }
         else {
-            VerifyRecord.isValidRead(testTableRecords.get(0));
+            VerifyRecord.isValidRead(record);
         }
 
-        Struct after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
+        Struct after = (Struct) ((Struct)record.value()).get("after");
         assertRecord(after, EXPECTED_STRING);
     }
 
@@ -247,16 +250,19 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
 
         List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TYPE_FP");
         assertThat(testTableRecords).hasSize(expectedRecordCount);
+        SourceRecord record = testTableRecords.get(0);
+
+        VerifyRecord.isValid(record);
 
         // insert
         if (insertRecordsDuringTest()) {
-            VerifyRecord.isValidInsert(testTableRecords.get(0));
+            VerifyRecord.isValidInsert(record);
         }
         else {
-            VerifyRecord.isValidRead(testTableRecords.get(0));
+            VerifyRecord.isValidRead(record);
         }
 
-        Struct after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
+        Struct after = (Struct) ((Struct)record.value()).get("after");
         assertRecord(after, EXPECTED_FP);
     }
 
@@ -275,16 +281,19 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
 
         List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TYPE_INT");
         assertThat(testTableRecords).hasSize(expectedRecordCount);
+        SourceRecord record = testTableRecords.get(0);
+
+        VerifyRecord.isValid(record);
 
         // insert
         if (insertRecordsDuringTest()) {
-            VerifyRecord.isValidInsert(testTableRecords.get(0));
+            VerifyRecord.isValidInsert(record);
         }
         else {
-            VerifyRecord.isValidRead(testTableRecords.get(0));
+            VerifyRecord.isValidRead(record);
         }
 
-        Struct after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
+        Struct after = (Struct) ((Struct)record.value()).get("after");
         assertRecord(after, EXPECTED_INT);
     }
 
@@ -303,16 +312,19 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
 
         List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TYPE_TIME");
         assertThat(testTableRecords).hasSize(expectedRecordCount);
+        SourceRecord record = testTableRecords.get(0);
+
+        VerifyRecord.isValid(record);
 
         // insert
         if (insertRecordsDuringTest()) {
-            VerifyRecord.isValidInsert(testTableRecords.get(0));
+            VerifyRecord.isValidInsert(record);
         }
         else {
-            VerifyRecord.isValidRead(testTableRecords.get(0));
+            VerifyRecord.isValidRead(record);
         }
 
-        Struct after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
+        Struct after = (Struct) ((Struct)record.value()).get("after");
         assertRecord(after, EXPECTED_TIME);
     }
 

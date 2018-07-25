@@ -235,21 +235,26 @@ public class OracleValueConverters extends JdbcValueConverters {
             }
         }
 
+        // adjust scale to column's scale if the column's scale is larger than the one from
+        // the value (e.g. 4.4444 -> 4.444400)
+        if (data instanceof BigDecimal) {
+            data = withScaleAdjustedIfNeeded(column, (BigDecimal) data);
+        }
+
         return super.convertDecimal(column, fieldDefn, data);
+    }
+
+    private BigDecimal withScaleAdjustedIfNeeded(Column column, BigDecimal data) {
+        if (column.scale().isPresent() && column.scale().get() > data.scale()) {
+            data = data.setScale(column.scale().get());
+        }
+
+        return data;
     }
 
     @Override
     protected Object convertNumeric(Column column, Field fieldDefn, Object data) {
-        if (data instanceof NUMBER) {
-            try {
-                data = ((NUMBER)data).bigDecimalValue();
-            }
-            catch (SQLException e) {
-                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
-            }
-        }
-
-        return super.convertNumeric(column, fieldDefn, data);
+        return convertDecimal(column, fieldDefn, data);
     }
 
     protected Object convertNumericAsTinyInt(Column column, Field fieldDefn, Object data) {
