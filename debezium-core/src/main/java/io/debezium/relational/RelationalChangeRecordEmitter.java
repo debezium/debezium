@@ -53,6 +53,11 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
         }
     }
 
+    @Override
+    public OffsetContext getOffset() {
+        return offsetContext;
+    }
+
     private void emitCreateRecord(Receiver receiver, TableSchema tableSchema)
             throws InterruptedException {
         Object[] newColumnValues = getNewColumnValues();

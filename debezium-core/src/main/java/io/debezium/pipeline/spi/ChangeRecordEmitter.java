@@ -12,7 +12,7 @@ import io.debezium.schema.DataCollectionSchema;
 
 /**
  * Represents a change applied to a source database and emits one or more corresponding change records. In most cases,
- * there'll be one change record for one source change, but e.g. in case of updates involving a records PK, it may
+ * there'll be one change record for one source change, but e.g. in case of updates involving a record's PK, it may
  * result in a deletion and re-insertion record.
  *
  * @author Gunnar Morling
@@ -24,7 +24,12 @@ public interface ChangeRecordEmitter {
      */
     void emitChangeRecords(DataCollectionSchema schema, Receiver receiver) throws InterruptedException;
 
+    /**
+     * Returns the offset of the change record(s) emitted.
+     */
+    OffsetContext getOffset();
+
     public interface Receiver {
-        void changeRecord(DataCollectionSchema schema, Operation operation, Object key, Struct value, OffsetContext offsetManager) throws InterruptedException;
+        void changeRecord(DataCollectionSchema schema, Operation operation, Object key, Struct value, OffsetContext offset) throws InterruptedException;
     }
 }

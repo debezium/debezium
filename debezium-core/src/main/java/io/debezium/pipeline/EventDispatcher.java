@@ -58,6 +58,9 @@ public class EventDispatcher<T extends DataCollectionId> {
      */
     private final StreamingChangeRecordReceiver streamingReceiver;
 
+    private Map<String, ?> lastPartition;
+    private Map<String, ?> lastOffset;
+
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
             DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
             ChangeEventCreator changeEventCreator) {
@@ -73,7 +76,7 @@ public class EventDispatcher<T extends DataCollectionId> {
 
         heartbeat = Heartbeat.create(connectorConfig.getConfig(), topicSelector.getHeartbeatTopic(),
                 connectorConfig.getLogicalName(),
-                () -> OffsetPosition.build(streamingReceiver.lastPartition, streamingReceiver.lastOffset));
+                () -> OffsetPosition.build(lastPartition, lastOffset));
     }
 
     // TODO One could argue that snapshot events shouldn't have to go through the dispatcher but rather to the queue
@@ -122,6 +125,9 @@ public class EventDispatcher<T extends DataCollectionId> {
             changeRecordEmitter.emitChangeRecords(dataCollectionSchema, streamingReceiver);
         }
 
+        lastPartition = changeRecordEmitter.getOffset().getPartition();
+        lastOffset = changeRecordEmitter.getOffset().getOffset();
+
         heartbeat.heartbeat(this::enqueueHeartbeat);
     }
 
@@ -148,9 +154,6 @@ public class EventDispatcher<T extends DataCollectionId> {
     }
 
     private final class StreamingChangeRecordReceiver implements ChangeRecordEmitter.Receiver {
-
-        private Map<String, ?> lastPartition;
-        private Map<String, ?> lastOffset;
 
         @Override
         public void changeRecord(DataCollectionSchema dataCollectionSchema, Operation operation, Object key, Struct value, OffsetContext offsetContext) throws InterruptedException {
@@ -182,9 +185,6 @@ public class EventDispatcher<T extends DataCollectionId> {
                 );
 
                 queue.enqueue(changeEventCreator.createDataChangeEvent(tombStone));
-
-                lastPartition = offsetContext.getPartition();
-                lastOffset = offsetContext.getOffset();
             }
         }
     }
