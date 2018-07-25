@@ -2,6 +2,30 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 0.8.1.Final
+July 25th, 2018 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12338169)
+
+### New features since 0.8.0.Final
+
+None
+
+
+### Breaking changes since 0.8.0.Final
+
+There are no breaking changes in this release.
+
+
+### Fixes since 0.8.0.Final
+
+*  PostgreSQL LSNs are not committed when receiving events for filtered-out tables [DBZ-800](https://issues.jboss.org/browse/DBZ-800)
+
+
+### Other changes since 0.8.0.Final
+
+* Extract common TopicSelector contract [DBZ-627](https://issues.jboss.org/browse/DBZ-627)
+* Remove redundant Docker configuration [DBZ-796](https://issues.jboss.org/browse/DBZ-796)
+
+
 ## 0.8.0.Final
 July 11th, 2018 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12338151)
 
