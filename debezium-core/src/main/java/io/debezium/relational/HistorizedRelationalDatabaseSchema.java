@@ -29,7 +29,7 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
 
     private final DatabaseHistory databaseHistory;
 
-    protected HistorizedRelationalDatabaseSchema(RelationalDatabaseConnectorConfig config, TopicSelector<TableId> topicSelector,
+    protected HistorizedRelationalDatabaseSchema(HistorizedRelationalDatabaseConnectorConfig config, TopicSelector<TableId> topicSelector,
             TableFilter tableFilter, Predicate<ColumnId> columnFilter, TableSchemaBuilder schemaBuilder,
             boolean tableIdCaseInsensitive) {
         super(config, topicSelector, tableFilter, columnFilter, schemaBuilder, tableIdCaseInsensitive);

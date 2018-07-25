@@ -14,7 +14,6 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.relational.Tables.TableFilter;
-import io.debezium.relational.history.DatabaseHistory;
 
 /**
  * Configuration options shared across the relational CDC connectors.
@@ -82,9 +81,4 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
         return 0;
     }
-
-    /**
-     * Returns a configured (but not yet started) instance of the database history.
-     */
-    public abstract DatabaseHistory getDatabaseHistory();
 }
