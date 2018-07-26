@@ -14,6 +14,7 @@ July 26th, 2018 [Detailed release notes](https://issues.jboss.org/secure/Release
 * Implement initial snapshotting for SQL Server [DBZ-788](https://issues.jboss.org/browse/DBZ-788)
 * Emit NUMBER columns as Int32/Int64 if precision and scale allow [DBZ-804](https://issues.jboss.org/browse/DBZ-804)
 * Support heartbeat messages for Oracle [DBZ-815](https://issues.jboss.org/browse/DBZ-815)
+* Upgrade to Kafka 1.1.1 [DBZ-829](https://issues.jboss.org/browse/DBZ-829)
 
 ### Breaking changes since 0.8.1.Final
 
