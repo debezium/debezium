@@ -2,6 +2,41 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 0.9.0.Alpha1
+July 26th, 2018 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12338152)
+
+### New features since 0.8.1.Final
+
+* Ingest change data from SQL Server databases [DBZ-40](https://issues.jboss.org/browse/DBZ-40)
+* Oracle connector implementation cont'd (initial snapshotting etc.) [DBZ-716](https://issues.jboss.org/browse/DBZ-716)
+* Implement initial snapshotting for Oracle [DBZ-720](https://issues.jboss.org/browse/DBZ-720)
+* Implement capturing of streamed changes for SQL Server[DBZ-787](https://issues.jboss.org/browse/DBZ-787)
+* Implement initial snapshotting for SQL Server [DBZ-788](https://issues.jboss.org/browse/DBZ-788)
+* Emit NUMBER columns as Int32/Int64 if precision and scale allow [DBZ-804](https://issues.jboss.org/browse/DBZ-804)
+* Support heartbeat messages for Oracle [DBZ-815](https://issues.jboss.org/browse/DBZ-815)
+
+### Breaking changes since 0.8.1.Final
+
+The Oracle connector was storing event timestamp in the `source` block in field `ts_sec`. The time stamp is in fact measured in milliseconds to so the field was [renamed](https://issues.jboss.org/browse/DBZ-795) to `ts_ms`.
+
+
+### Fixes since 0.8.1.Final
+
+* Offset remains with "snapshot" set to true after completing schema only snapshot [DBZ-803](https://issues.jboss.org/browse/DBZ-803)
+* Misleading timestamp field name [DBZ-795](https://issues.jboss.org/browse/DBZ-795)
+* Adjust scale of decimal values to column's scale if present [DBZ-818](https://issues.jboss.org/browse/DBZ-818)
+* Avoid NPE if commit is called before any offset is prepared [DBZ-826](https://issues.jboss.org/browse/DBZ-826)
+
+
+### Other changes since 0.8.1.Final
+
+* Make DatabaseHistory set-up code re-usable [DBZ-816](https://issues.jboss.org/browse/DBZ-816)
+* Use TableFilter contract instead of Predicate<TableId> [DBZ-793](https://issues.jboss.org/browse/DBZ-793)
+* Expand SourceInfo [DBZ-719](https://issues.jboss.org/browse/DBZ-719)
+* Provide Maven module and Docker set-up [DBZ-786](https://issues.jboss.org/browse/DBZ-786)
+* Avoid a few raw type warnings [DBZ-801](https://issues.jboss.org/browse/DBZ-801)
+
+
 ## 0.8.1.Final
 July 25th, 2018 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12338169)
 
