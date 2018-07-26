@@ -369,7 +369,7 @@ public class Replicator {
         MongoCollection<Document> docCollection = db.getCollection(collectionId.name());
         long counter = 0;
         try (MongoCursor<Document> cursor = docCollection.find().iterator()) {
-            while (cursor.hasNext()) {
+            while (running.get() && cursor.hasNext()) {
                 Document doc = cursor.next();
                 logger.trace("Found existing doc in {}: {}", collectionId, doc);
                 counter += factory.recordObject(collectionId, doc, timestamp);
