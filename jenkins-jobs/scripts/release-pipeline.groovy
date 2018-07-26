@@ -36,7 +36,7 @@ ORACLE_ARTIFACT_VERSION = '12.1.0.2'
 
 VERSION_TAG = "v$RELEASE_VERSION"
 CORE_CONNECTORS = ['mongodb','mysql','postgres']
-INCUBATOR_CONNECTORS = ['oracle']
+INCUBATOR_CONNECTORS = ['oracle', 'sqlserver']
 CONNECTORS = CORE_CONNECTORS + INCUBATOR_CONNECTORS
 IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/postgres', 'examples/mongodb', 'kafka', 'zookeeper']
 MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
