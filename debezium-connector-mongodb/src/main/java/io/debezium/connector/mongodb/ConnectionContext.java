@@ -324,9 +324,11 @@ public class ConnectionContext implements AutoCloseable {
                 try {
                     operation.accept(primary);
                     return;
-                } catch (InterruptedException e) {
+                }
+                catch (InterruptedException e) {
                     throw e;
-                } catch (Throwable t) {
+                }
+                catch (Throwable t) {
                     errorHandler.accept(desc, t);
                     errorMetronome.pause();
                 }
