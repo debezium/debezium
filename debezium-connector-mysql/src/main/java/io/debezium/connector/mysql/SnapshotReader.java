@@ -245,7 +245,7 @@ public class SnapshotReader extends AbstractReader {
             mysql.execute(sql.get());
 
             // Generate the DDL statements that set the charset-related system variables ...
-            Map<String, String> systemVariables = connectionContext.readMySqlCharsetSystemVariables(sql);
+            Map<String, String> systemVariables = connectionContext.readMySqlCharsetSystemVariables();
             String setSystemVariablesStatement = connectionContext.setStatementFor(systemVariables);
             AtomicBoolean interrupted = new AtomicBoolean(false);
             long lockAcquired = 0L;

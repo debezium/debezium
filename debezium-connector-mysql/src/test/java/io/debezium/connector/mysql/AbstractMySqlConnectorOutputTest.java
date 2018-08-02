@@ -129,7 +129,7 @@ public class AbstractMySqlConnectorOutputTest extends ConnectorOutputTest {
         Map<String, String> variables = new HashMap<>();
         try (MySqlJdbcContext context = new MySqlJdbcContext(config)) {
             // Read all of the system variables ...
-            variables.putAll(context.readMySqlSystemVariables(null));
+            variables.putAll(context.readMySqlSystemVariables());
             // Now get the master GTID source ...
             String serverUuid = variables.get("server_uuid");
             if (serverUuid != null && !serverUuid.trim().isEmpty()) {

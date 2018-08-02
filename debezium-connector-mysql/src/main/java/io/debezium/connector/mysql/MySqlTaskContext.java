@@ -76,7 +76,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
                 : (gtidSetExcludes != null ? Predicates.excludesUuids(gtidSetExcludes) : null);
 
         if (tableIdCaseInsensitive == null) {
-            this.tableIdCaseInsensitive = !"0".equals(connectionContext.readMySqlSystemVariables(null).get(MySqlSystemVariables.LOWER_CASE_TABLE_NAMES));
+            this.tableIdCaseInsensitive = !"0".equals(connectionContext.readMySqlSystemVariables().get(MySqlSystemVariables.LOWER_CASE_TABLE_NAMES));
         } else {
             this.tableIdCaseInsensitive = tableIdCaseInsensitive;
         }
@@ -140,7 +140,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
      */
     public void initializeHistory() {
         // Read the system variables from the MySQL instance and get the current database name ...
-        Map<String, String> variables = connectionContext.readMySqlCharsetSystemVariables(null);
+        Map<String, String> variables = connectionContext.readMySqlCharsetSystemVariables();
         String ddlStatement = connectionContext.setStatementFor(variables);
 
         // And write them into the database history ...
@@ -156,7 +156,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
      */
     public void loadHistory(SourceInfo startingPoint) {
         // Read the system variables from the MySQL instance and load them into the DDL parser as defaults ...
-        Map<String, String> variables = connectionContext.readMySqlCharsetSystemVariables(null);
+        Map<String, String> variables = connectionContext.readMySqlCharsetSystemVariables();
         dbSchema.setSystemVariables(variables);
 
         // And then load the history ...
@@ -180,7 +180,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
      */
     public boolean historyExists() {
         // Read the system variables from the MySQL instance and load them into the DDL parser as defaults ...
-        Map<String, String> variables = connectionContext.readMySqlCharsetSystemVariables(null);
+        Map<String, String> variables = connectionContext.readMySqlCharsetSystemVariables();
         dbSchema.setSystemVariables(variables);
 
         // And then load the history ...
