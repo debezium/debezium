@@ -284,11 +284,11 @@ public class Selectors {
      * Note that this predicate is completely independent of the table selection predicate, so it is expected that this predicate
      * be used only <i>after</i> the table selection predicate determined the table containing the column(s) is to be used.
      * 
-     * @param fullyQualifiedTableNames the comma-separated list of fully-qualified table names to exclude; may be null or
+     * @param columnNames the comma-separated list of column names names to exclude; may be null or
      *            empty
      * @return this builder so that methods can be chained together; never null
      */
-    public static Predicate<ColumnId> excludeColumns(String fullyQualifiedTableNames) {
-        return Predicates.excludes(fullyQualifiedTableNames, ColumnId::toString);
+    public static Predicate<ColumnId> excludeColumns(String columnNames) {
+        return Predicates.excludes(columnNames, ColumnId::toString);
     }
 }
