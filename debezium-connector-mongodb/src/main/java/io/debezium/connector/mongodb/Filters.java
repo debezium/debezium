@@ -55,8 +55,11 @@ public final class Filters {
         Predicate<CollectionId> isNotBuiltIn = this::isNotBuiltIn;
         this.collectionFilter = isNotBuiltIn.and(collectionFilter);
 
-        // Define the field selector that provides the field filter to exclude fields from document ...
-        fieldSelector = FieldSelector.excludeFields(config.getString(MongoDbConnectorConfig.FIELD_BLACKLIST));
+        // Define the field selector that provides the field filter to exclude or rename fields in a document ...
+        fieldSelector = FieldSelector.builder()
+                .excludeFields(config.getString(MongoDbConnectorConfig.FIELD_BLACKLIST))
+                .renameFields(config.getString(MongoDbConnectorConfig.FIELD_RENAMES))
+                .build();
     }
     
     /**

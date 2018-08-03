@@ -64,6 +64,10 @@ public class Configurator {
         return with(MongoDbConnectorConfig.FIELD_BLACKLIST, blacklist);
     }
 
+    public Configurator renameFields(String renames) {
+        return with(MongoDbConnectorConfig.FIELD_RENAMES, renames);
+    }
+
     public Filters createFilters() {
         return new Filters(configBuilder.build());
     }

@@ -24,7 +24,7 @@ import java.util.List;
 import static io.debezium.data.Envelope.FieldName.AFTER;
 import static org.fest.assertions.Assertions.assertThat;
 
-public class FieldFilterTest {
+public class FieldBlacklistTest {
     private static final String SERVER_NAME = "serverX";
     private static final String PATCH = "patch";
     private static final JsonWriterSettings WRITER_SETTINGS =
@@ -52,7 +52,7 @@ public class FieldFilterTest {
                 .append("phone", 123L)
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.excludeFields(".*\\.c2:name|active").createFilters();
+        Filters filters = build.excludeFields("*.c2.name,*.c2.active").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -75,7 +75,7 @@ public class FieldFilterTest {
                 .append("phone", 123L)
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.excludeFields(".*\\.c1:name|active").createFilters();
+        Filters filters = build.excludeFields("*.c1.name,*.c1.active").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -103,7 +103,7 @@ public class FieldFilterTest {
                 .append("phone", 123L)
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.excludeFields(".*\\.c1:missing").createFilters();
+        Filters filters = build.excludeFields("*.c1.missing").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -130,7 +130,7 @@ public class FieldFilterTest {
                         .append("city", "Amsterdam"))
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.excludeFields(".*\\.c1:name|active|address.number").createFilters();
+        Filters filters = build.excludeFields("*.c1.name,*.c1.active,*.c1.address.number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -166,7 +166,7 @@ public class FieldFilterTest {
                         .append("city", "Amsterdam"))
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.excludeFields(".*\\.c1:address.missing").createFilters();
+        Filters filters = build.excludeFields("*.c1.address.missing").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -189,7 +189,7 @@ public class FieldFilterTest {
                 .append("phone", 123L)
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.excludeFields(".*\\.c1:name|active").createFilters();
+        Filters filters = build.excludeFields("*.c1.name,*.c1.active").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -217,7 +217,7 @@ public class FieldFilterTest {
                 .append("phone", 123L)
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.excludeFields(".*\\.c1:missing").createFilters();
+        Filters filters = build.excludeFields("*.c1.missing").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -244,7 +244,7 @@ public class FieldFilterTest {
                         .append("city", "Amsterdam"))
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.excludeFields(".*\\.c1:name|active|address.number").createFilters();
+        Filters filters = build.excludeFields("*.c1.name,*.c1.active,*.c1.address.number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -280,7 +280,7 @@ public class FieldFilterTest {
                         .append("city", "Amsterdam"))
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.excludeFields(".*\\.c1:address.missing").createFilters();
+        Filters filters = build.excludeFields("*.c1.address.missing").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -303,7 +303,7 @@ public class FieldFilterTest {
                 .append("phone", 123L)
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.excludeFields(".*\\.c1:name|active").createFilters();
+        Filters filters = build.excludeFields("*.c1.name,*.c1.active").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -331,7 +331,7 @@ public class FieldFilterTest {
                 .append("phone", 123L)
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.excludeFields(".*\\.c1:missing").createFilters();
+        Filters filters = build.excludeFields("*.c1.missing").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -358,7 +358,7 @@ public class FieldFilterTest {
                         .append("city", "Amsterdam"))
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.excludeFields(".*\\.c1:name|active|address.number").createFilters();
+        Filters filters = build.excludeFields("*.c1.name,*.c1.active,*.c1.address.number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -394,7 +394,7 @@ public class FieldFilterTest {
                         .append("city", "Amsterdam"))
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.excludeFields(".*\\.c1:address.missing").createFilters();
+        Filters filters = build.excludeFields("*.c1.address.missing").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -426,7 +426,7 @@ public class FieldFilterTest {
                                 .append("city", "Athens")))
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.excludeFields(".*\\.c1:name|addresses.number").createFilters();
+        Filters filters = build.excludeFields("*.c1.name,*.c1.addresses.number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -474,7 +474,7 @@ public class FieldFilterTest {
                                 .append("city", "Athens"))))
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.excludeFields(".*\\.c1:name|addresses.number").createFilters();
+        Filters filters = build.excludeFields("*.c1.name,*.c1.addresses.number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -517,7 +517,7 @@ public class FieldFilterTest {
                 .append("$set", new Document()
                         .append("name", "Sally")
                         .append("phone", 123L));
-        Filters filters = build.excludeFields(".*\\.c1:name").createFilters();
+        Filters filters = build.excludeFields("*.c1.name").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -543,7 +543,7 @@ public class FieldFilterTest {
                 .append("$unset", new Document()
                         .append("name", "")
                         .append("phone", ""));
-        Filters filters = build.excludeFields(".*\\.c1:name").createFilters();
+        Filters filters = build.excludeFields("*.c1.name").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -573,7 +573,7 @@ public class FieldFilterTest {
                                 .append("number", 34L)
                                 .append("street", "Claude Debussylaan")
                                 .append("city", "Amsterdam")));
-        Filters filters = build.excludeFields(".*\\.c1:name|address.number").createFilters();
+        Filters filters = build.excludeFields("*.c1.name,*.c1.address.number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -612,7 +612,7 @@ public class FieldFilterTest {
                                         .append("number", 7L)
                                         .append("street", "Fragkokklisias")
                                         .append("city", "Athens"))));
-        Filters filters = build.excludeFields(".*\\.c1:name|addresses.number").createFilters();
+        Filters filters = build.excludeFields("*.c1.name,*.c1.addresses.number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -657,7 +657,7 @@ public class FieldFilterTest {
                                         .append("number", 7L)
                                         .append("street", "Fragkokklisias")
                                         .append("city", "Athens")))));
-        Filters filters = build.excludeFields(".*\\.c1:name|addresses.number").createFilters();
+        Filters filters = build.excludeFields("*.c1.name,*.c1.addresses.number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -701,7 +701,7 @@ public class FieldFilterTest {
                         .append("address.number", 34L)
                         .append("address.street", "Claude Debussylaan")
                         .append("address.city", "Amsterdam"));
-        Filters filters = build.excludeFields(".*\\.c1:name|address.number").createFilters();
+        Filters filters = build.excludeFields("*.c1.name,*.c1.address.number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -730,7 +730,7 @@ public class FieldFilterTest {
                         .append("addresses.0.number", 34L)
                         .append("addresses.0.street", "Claude Debussylaan")
                         .append("addresses.0.city", "Amsterdam"));
-        Filters filters = build.excludeFields(".*\\.c1:addresses.number").createFilters();
+        Filters filters = build.excludeFields("*.c1.addresses.number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -760,7 +760,7 @@ public class FieldFilterTest {
                         .append("addresses.0.0.number", 34L)
                         .append("addresses.0.0.street", "Claude Debussylaan")
                         .append("addresses.0.0.city", "Amsterdam"));
-        Filters filters = build.excludeFields(".*\\.c1:addresses.number").createFilters();
+        Filters filters = build.excludeFields("*.c1.addresses.number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -783,7 +783,7 @@ public class FieldFilterTest {
                         .append("addresses.0.second.0.number", 34L)
                         .append("addresses.0.second.0.street", "Claude Debussylaan")
                         .append("addresses.0.second.0.city", "Amsterdam"));
-        Filters filters = build.excludeFields(".*\\.c1:addresses.second.number").createFilters();
+        Filters filters = build.excludeFields("*.c1.addresses.second.number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -813,7 +813,36 @@ public class FieldFilterTest {
                         .append("addresses.0.number", 34L)
                         .append("addresses.0.street", "Claude Debussylaan")
                         .append("addresses.0.city", "Amsterdam"));
-        Filters filters = build.excludeFields(".*\\.c1:addresses").createFilters();
+        Filters filters = build.excludeFields("*.c1.addresses").createFilters();
+        List<SourceRecord> produced = new ArrayList<>();
+        RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
+
+        // when
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+
+        // then
+        String expected = "{"
+                +     "\"$set\" : {"
+                +         "\"name\" : \"Sally\""
+                +     "}"
+                + "}";
+        Struct value = getValue(produced);
+        assertThat(value.get(PATCH)).isEqualTo(expected);
+    }
+
+    @Test
+    public void shouldExcludeFieldsForSetToArrayFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+        // given
+        CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("$set", new Document()
+                        .append("name", "Sally")
+                        .append("addresses.0", new Document()
+                                .append("number", 34L)
+                                .append("street", "Claude Debussylaan")
+                                .append("city", "Amsterdam")));
+        Filters filters = build.excludeFields("*.c1.addresses").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -841,7 +870,7 @@ public class FieldFilterTest {
                         .append("address.number", "")
                         .append("address.street", "")
                         .append("address.city", ""));
-        Filters filters = build.excludeFields(".*\\.c1:name|address.number").createFilters();
+        Filters filters = build.excludeFields("*.c1.name,*.c1.address.number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -870,7 +899,7 @@ public class FieldFilterTest {
                         .append("addresses.0.number", "")
                         .append("addresses.0.street", "")
                         .append("addresses.0.city", ""));
-        Filters filters = build.excludeFields(".*\\.c1:addresses.number").createFilters();
+        Filters filters = build.excludeFields("*.c1.addresses.number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -900,7 +929,7 @@ public class FieldFilterTest {
                         .append("addresses.0.0.number", "")
                         .append("addresses.0.0.street", "")
                         .append("addresses.0.0.city", ""));
-        Filters filters = build.excludeFields(".*\\.c1:addresses.number").createFilters();
+        Filters filters = build.excludeFields("*.c1.addresses.number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -923,7 +952,7 @@ public class FieldFilterTest {
                         .append("addresses.0.second.0.number", "")
                         .append("addresses.0.second.0.street", "")
                         .append("addresses.0.second.0.city", ""));
-        Filters filters = build.excludeFields(".*\\.c1:addresses.second.number").createFilters();
+        Filters filters = build.excludeFields("*.c1.addresses.second.number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -943,7 +972,7 @@ public class FieldFilterTest {
     }
 
     @Test
-    public void shouldExcludeFieldsForUnsetNestedFieldUpdateEventWithEmbeddedDocument() throws InterruptedException {
+    public void shouldExcludeFieldsForUnsetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();
@@ -953,7 +982,7 @@ public class FieldFilterTest {
                         .append("addresses.0.number", "")
                         .append("addresses.0.street", "")
                         .append("addresses.0.city", ""));
-        Filters filters = build.excludeFields(".*\\.c1:addresses").createFilters();
+        Filters filters = build.excludeFields("*.c1.addresses").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -976,7 +1005,7 @@ public class FieldFilterTest {
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();
         Document obj = new Document("_id", objId);
-        Filters filters = build.excludeFields(".*\\.c1:name|active").createFilters();
+        Filters filters = build.excludeFields("*.c1.name,*.c1.active").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -998,7 +1027,7 @@ public class FieldFilterTest {
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();
         Document obj = new Document("_id", objId);
-        Filters filters = build.excludeFields(".*\\.c1:name|active").createFilters();
+        Filters filters = build.excludeFields("*.c1.name,*.c1.active").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 

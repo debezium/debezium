@@ -163,18 +163,38 @@ public class FiltersTest {
     }
 
     @Test(expected = ConfigException.class)
-    public void shouldThrowExceptionWhenFieldBlacklistRegexPartIsMissing() {
-        build.excludeFields(":name").createFilters();
+    public void shouldThrowExceptionWhenFieldBlacklistDatabaseAndCollectionPartsAreMissing() {
+        build.excludeFields(".name").createFilters();
     }
 
     @Test(expected = ConfigException.class)
-    public void shouldThrowExceptionWhenFieldBlacklistFieldsPartIsMissing() {
-        build.excludeFields("db1.collectionA:").createFilters();
+    public void shouldThrowExceptionWhenFieldBlacklistFieldPartIsMissing() {
+        build.excludeFields("db1.collectionA.").createFilters();
     }
 
     @Test(expected = ConfigException.class)
-    public void shouldThrowExceptionWhenFieldBlacklistPartSeparatorIsMissing() {
-        build.excludeFields("db1.collectionAname").createFilters();
+    public void shouldThrowExceptionWhenFieldRenamesDatabaseAndCollectionPartsAreMissing() {
+        build.renameFields(".name=new_name").createFilters();
+    }
+
+    @Test(expected = ConfigException.class)
+    public void shouldThrowExceptionWhenFieldRenamesReplacementPartIsMissing() {
+        build.renameFields("db1.collectionA.").createFilters();
+    }
+
+    @Test(expected = ConfigException.class)
+    public void shouldThrowExceptionWhenFieldRenamesReplacementPartSeparatorIsMissing() {
+        build.renameFields("db1.collectionA.namenew_name").createFilters();
+    }
+
+    @Test(expected = ConfigException.class)
+    public void shouldThrowExceptionWhenFieldRenamesRenameMappingKeyIsMissing() {
+        build.renameFields("db1.collectionA.=new_name").createFilters();
+    }
+
+    @Test(expected = ConfigException.class)
+    public void shouldThrowExceptionWhenFieldRenamesRenameMappingValueIsMissing() {
+        build.renameFields("db1.collectionA.name=").createFilters();
     }
 
     protected void assertCollectionIncluded(String fullyQualifiedCollectionName) {
