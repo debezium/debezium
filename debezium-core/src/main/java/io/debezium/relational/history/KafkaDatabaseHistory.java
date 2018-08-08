@@ -251,11 +251,10 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                 }
                 if (numRecordsProcessed == 0) {
                     logger.debug("No new records found in the database history; will retry");
+                    recoveryAttempts++;
                 } else {
                     logger.debug("Processed {} records from database history", numRecordsProcessed);
                 }
-
-                recoveryAttempts++;
             }
             while (lastProcessedOffset < endOffset - 1);
         }
