@@ -687,24 +687,26 @@ public class BinlogReader extends AbstractReader {
 
             if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
                 logger.error(
-                        "Encountered change event '{}' at offset {} for table whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}" +
+                        "Encountered change event '{}' at offset {} for table {} whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}" +
                         "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
                         event,
                         source.offset(),
+                        tableId,
                         System.lineSeparator(),
                         eventHeader.getPosition(),
                         eventHeader.getNextPosition(),
                         source.binlogFilename()
                 );
-                throw new ConnectException("Encountered change event for table whose schema isn't known to this connector");
+                throw new ConnectException("Encountered change event for table " + tableId + "whose schema isn't known to this connector");
             }
             else if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.WARN) {
                 logger.warn(
-                        "Encountered change event '{}' at offset {} for table whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}" +
+                        "Encountered change event '{}' at offset {} for table {} whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}" +
                         "The event will be ignored.{}" +
                         "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
                         event,
                         source.offset(),
+                        tableId,
                         System.lineSeparator(),
                         System.lineSeparator(),
                         eventHeader.getPosition(),
@@ -714,11 +716,12 @@ public class BinlogReader extends AbstractReader {
             }
             else {
                 logger.debug(
-                        "Encountered change event '{}' at offset {} for table whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}" +
+                        "Encountered change event '{}' at offset {} for table {} whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}" +
                         "The event will be ignored.{}" +
                         "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
                         event,
                         source.offset(),
+                        tableId,
                         System.lineSeparator(),
                         System.lineSeparator(),
                         eventHeader.getPosition(),
